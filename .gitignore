@@ -1,0 +1,11 @@
+# 系統檔案
+.DS_Store
+desktop.ini
+Thumbs.db
+
+# 暫存檔
+*.tmp
+*.bak
+
+# 私密資料（視需要取消註解）
+# 私密/
