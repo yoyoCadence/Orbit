@@ -1,11 +1,45 @@
-# 系統檔案
+# ── 系統檔案 ──────────────────────────────
 .DS_Store
 desktop.ini
 Thumbs.db
+*.lnk
 
-# 暫存檔
+# ── 暫存檔 ────────────────────────────────
 *.tmp
 *.bak
+*.log
+*.cache
 
-# 私密資料（視需要取消註解）
-# 私密/
+# ── 環境變數 / 金鑰（絕對不能上傳）──────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets.json
+credentials.json
+
+# ── Python ────────────────────────────────
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# ── Node.js ───────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ── 編輯器設定 ────────────────────────────
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# ── 私密資料夾 ────────────────────────────
+私密/
+private/
