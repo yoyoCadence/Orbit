@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0d0d1a">
+
+  <!-- PWA / iOS -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Yoyo成長監控">
+
+  <title>Yoyo 成長監控</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ── Setup screen (first launch) ── -->
+  <div id="setup-screen" class="hidden">
+    <div class="setup-logo">🚀</div>
+    <div class="setup-title">Yoyo 成長監控</div>
+    <div class="setup-subtitle">開始記錄你的每一步成長</div>
+
+    <div class="setup-avatar-area">
+      <div class="setup-avatar-circle" id="setup-avatar-preview">👤</div>
+      <button type="button" class="btn btn-outline btn-sm" id="setup-avatar-btn">上傳頭像（選填）</button>
+      <input type="file" id="setup-avatar-input" accept="image/*" style="display:none">
+    </div>
+
+    <form id="setup-form" style="width:100%">
+      <div class="form-group">
+        <label class="form-label">你的名字</label>
+        <input class="form-input" id="setup-name" placeholder="Yoyo" maxlength="20" required autocomplete="name">
+      </div>
+      <button type="submit" class="btn btn-primary">開始成長！🎯</button>
+    </form>
+  </div>
+
+  <!-- ── Main app ── -->
+  <div id="main-app" class="hidden">
+
+    <!-- Header: level + XP bar -->
+    <header id="header">
+      <div class="hdr-level-badge" onclick="window.navigate('profile')">
+        <span class="hdr-lv-label">Lv.</span><span id="hdr-level">1</span>
+      </div>
+      <div class="hdr-xp-section">
+        <div class="hdr-xp-top">
+          <span id="hdr-title" class="hdr-title">初心者</span>
+          <span id="hdr-xp-text" class="hdr-xp-text">0 / 100 XP</span>
+        </div>
+        <div class="xp-bar-track">
+          <div class="xp-bar-fill" id="hdr-xp-fill" style="width:0%"></div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Page content -->
+    <main id="content"></main>
+
+    <!-- Bottom navigation -->
+    <nav id="nav">
+      <button class="nav-item active" data-page="home" onclick="window.navigate('home')">
+        <span class="nav-icon">🏠</span>今日
+      </button>
+      <button class="nav-item" data-page="goals" onclick="window.navigate('goals')">
+        <span class="nav-icon">📋</span>紀錄
+      </button>
+      <button class="nav-item" data-page="profile" onclick="window.navigate('profile')">
+        <span class="nav-icon">👤</span>個人
+      </button>
+      <button class="nav-item" data-page="settings" onclick="window.navigate('settings')">
+        <span class="nav-icon">⚙️</span>設定
+      </button>
+    </nav>
+  </div>
+
+  <!-- Level-up overlay -->
+  <div id="levelup-overlay" class="hidden">
+    <div class="levelup-box">
+      <div class="lu-stars">✨⭐✨</div>
+      <div class="lu-label">LEVEL UP！</div>
+      <div class="lu-number" id="lu-level">2</div>
+      <div class="lu-title" id="lu-title">探索者</div>
+      <button class="btn btn-primary" onclick="window.closeLevelUp()" style="margin-top:24px;max-width:200px">繼續前進 🚀</button>
+    </div>
+  </div>
+
+</div>
+
+<script type="module" src="js/app.js"></script>
+<script>
+  // Register service worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+</script>
+</body>
+</html>
