@@ -1,6 +1,6 @@
 {
-  "name": "Yoyo 成長監控",
-  "short_name": "成長監控",
+  "name": "Orbit",
+  "short_name": "Orbit",
   "description": "個人成長記錄與等級系統",
   "start_url": "./index.html",
   "display": "standalone",

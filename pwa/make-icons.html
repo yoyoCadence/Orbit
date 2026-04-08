@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>產生 App 圖示</title>
+  <style>
+    body { font-family: -apple-system, sans-serif; padding: 40px; background: #0d0d1a; color: #e2e8f0; text-align: center; }
+    canvas { display: block; margin: 20px auto; border-radius: 20%; }
+    a { display: inline-block; margin: 8px; padding: 12px 24px; background: #7c3aed; color: white; border-radius: 8px; text-decoration: none; font-weight: 600; }
+    h2 { margin-bottom: 8px; }
+    p  { color: #94a3b8; margin-bottom: 24px; }
+  </style>
+</head>
+<body>
+  <h2>Orbit — App 圖示產生器</h2>
+  <p>點下方按鈕下載，把兩個檔案存到 <code>pwa/assets/</code></p>
+  <canvas id="c" width="512" height="512"></canvas>
+  <div id="links"></div>
+
+  <script>
+    function drawIcon(size) {
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      const r = size * 0.22;
+
+      // Rounded rect background
+      ctx.beginPath();
+      ctx.moveTo(r, 0);
+      ctx.lineTo(size - r, 0);
+      ctx.quadraticCurveTo(size, 0, size, r);
+      ctx.lineTo(size, size - r);
+      ctx.quadraticCurveTo(size, size, size - r, size);
+      ctx.lineTo(r, size);
+      ctx.quadraticCurveTo(0, size, 0, size - r);
+      ctx.lineTo(0, r);
+      ctx.quadraticCurveTo(0, 0, r, 0);
+      ctx.closePath();
+
+      // Gradient fill
+      const g = ctx.createLinearGradient(0, 0, size, size);
+      g.addColorStop(0, '#4c1d95');
+      g.addColorStop(0.5, '#7c3aed');
+      g.addColorStop(1, '#f59e0b');
+      ctx.fillStyle = g;
+      ctx.fill();
+
+      // Inner glow ring
+      ctx.beginPath();
+      ctx.arc(size / 2, size / 2, size * 0.36, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+      ctx.lineWidth = size * 0.04;
+      ctx.stroke();
+
+      // "Y" letter
+      ctx.fillStyle = 'white';
+      ctx.font = `900 ${size * 0.46}px -apple-system, "SF Pro Display", Arial, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.shadowColor = 'rgba(0,0,0,0.3)';
+      ctx.shadowBlur = size * 0.04;
+      ctx.fillText('O', size / 2, size / 2 + size * 0.03);
+
+      return canvas;
+    }
+
+    // Preview
+    const preview = document.getElementById('c');
+    const pCtx = preview.getContext('2d');
+    const src = drawIcon(512);
+    pCtx.drawImage(src, 0, 0);
+
+    // Download links
+    const links = document.getElementById('links');
+    [192, 512].forEach(size => {
+      const canvas = drawIcon(size);
+      const a = document.createElement('a');
+      a.download = `icon-${size}.png`;
+      a.href = canvas.toDataURL('image/png');
+      a.textContent = `⬇ 下載 icon-${size}.png`;
+      links.appendChild(a);
+    });
+  </script>
+</body>
+</html>
