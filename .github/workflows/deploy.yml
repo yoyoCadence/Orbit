@@ -3,7 +3,7 @@ name: Deploy PWA to GitHub Pages
 on:
   push:
     branches: [main]
-  workflow_dispatch:   # 允許手動觸發
+  workflow_dispatch:
 
 permissions:
   contents: read
