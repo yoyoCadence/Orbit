@@ -140,7 +140,6 @@ export function renderHome(container) {
 // ─── Task card HTML ──────────────────────────────────────────────────────────
 
 function taskCardHtml(task, countToday) {
-  const isRecEnt   = task.impactType === 'recovery' || task.impactType === 'entertainment';
   const xpLabel    = task.value !== 'D'
     ? `+${xpPreview(task)} XP`
     : task.impactType === 'recovery' ? '回能' : '娛樂';

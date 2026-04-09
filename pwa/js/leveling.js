@@ -1,7 +1,8 @@
 // XP & leveling system (pure functions — no side effects)
-// xpRequired / getLevelInfo are in engine.js; re-exported here for convenience.
+// xpRequired / getLevelInfo live in engine.js; imported and re-exported here.
 
-export { xpRequired, getLevelInfo } from './engine.js';
+import { xpRequired, getLevelInfo } from './engine.js';
+export { xpRequired, getLevelInfo };
 
 // RPG-style level titles
 const TITLES = [
@@ -22,16 +23,11 @@ export function getTitle(level) {
   return (TITLES.find(([min]) => level >= min) || TITLES.at(-1))[1];
 }
 
-// Inline formula (mirrors engine.js) so xpTable stays synchronous
-function _xpRequired(level) {
-  return Math.round(120 + 45 * (level - 1) + 10 * Math.pow(level - 1, 1.35));
-}
-
 // Preview table: XP required for next N levels starting from `fromLevel`
 export function xpTable(fromLevel, count = 8) {
   const rows = [];
   for (let i = fromLevel; i < fromLevel + count; i++) {
-    rows.push({ from: i, to: i + 1, xp: _xpRequired(i) });
+    rows.push({ from: i, to: i + 1, xp: xpRequired(i) });
   }
   return rows;
 }

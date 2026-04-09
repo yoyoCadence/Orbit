@@ -203,12 +203,6 @@ function _showTaskModal(container, task) {
   const modal = document.createElement('div');
   modal.className = 'modal-overlay';
 
-  const impactTypeFor = (nature) => {
-    if (nature === 'recovery') return 'recovery';
-    if (nature === 'entertainment') return 'entertainment';
-    return 'task';
-  };
-
   const currentNature = task?.taskNature || 'growth';
   const currentValue  = task?.value      || 'B';
   const currentDiff   = String(task?.difficulty ?? 0.7);
