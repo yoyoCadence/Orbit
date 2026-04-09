@@ -57,3 +57,11 @@
 - 禁止在任何 client-side 程式碼使用 `service_role` key
 - 只用 `anon public key`（存在環境變數或 config，不 hardcode 在 JS 裡）
 - 禁止 `FOR ALL` 或不指定 role 的寬鬆 policy
+
+### 環境變數安全操作規則
+- 永遠不在終端機輸出任何 secret、key、token 或環境變數的值
+- 只能檢查是否存在，例如：
+  ```bash
+  [ -n "$SUPABASE_URL" ] && echo "SUPABASE_URL is set" || echo "SUPABASE_URL is missing"
+  ```
+- 禁止使用 `echo $SUPABASE_URL`、`printenv SUPABASE_ANON_KEY` 或任何會印出值的指令
