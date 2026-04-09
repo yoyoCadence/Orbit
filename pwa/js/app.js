@@ -543,7 +543,7 @@ function _renderBg(dataUrl) {
 
 function init() {
   // Migrate v1 data if needed
-  migrateV1toV2(uid, today());
+  migrateV1toV2(today());
 
   state.user     = storage.getUser();
   state.tasks    = storage.getTasks();

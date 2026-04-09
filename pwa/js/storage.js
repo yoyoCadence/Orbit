@@ -52,7 +52,7 @@ export const storage = {
 // to instant Sessions so history is preserved. Old keys are left in place
 // (they don't interfere) but are never written to again.
 
-export function migrateV1toV2(uid, today) {
+export function migrateV1toV2(today) {
   // Already migrated?
   if (get('tasks') !== null) return;
 
