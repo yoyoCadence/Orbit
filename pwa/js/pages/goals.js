@@ -1,15 +1,18 @@
-import { state } from '../state.js';
+import { state }                    from '../state.js';
 import { today, formatTime, formatDate } from '../utils.js';
 
-export function renderGoals(container) {
-  const allLogs = [...state.logs].reverse();
+const RESULT_ICON  = { complete: '✅', partial: '🔶', invalid: '❌', instant: '✓' };
+const RESULT_LABEL = { complete: '完成', partial: '部分完成', invalid: '無效', instant: '完成' };
 
-  if (allLogs.length === 0) {
+export function renderGoals(container) {
+  const allSessions = [...state.sessions].reverse();
+
+  if (allSessions.length === 0) {
     container.innerHTML = `
       <div class="section-title">📋 完成紀錄</div>
       <div class="empty-state">
         <div class="empty-icon">📋</div>
-        <p>還沒有任何紀錄<br>去首頁打卡開始吧！</p>
+        <p>還沒有任何紀錄<br>去首頁開始今日任務吧！</p>
       </div>
     `;
     return;
@@ -17,33 +20,39 @@ export function renderGoals(container) {
 
   // Group by date
   const grouped = {};
-  allLogs.forEach(l => {
-    if (!grouped[l.date]) grouped[l.date] = [];
-    grouped[l.date].push(l);
+  allSessions.forEach(s => {
+    if (!grouped[s.date]) grouped[s.date] = [];
+    grouped[s.date].push(s);
   });
 
-  const groupsHtml = Object.entries(grouped).map(([date, logs]) => {
-    const totalXP = logs.reduce((s, l) => s + l.xp, 0);
-    const logsHtml = logs.map(l => `
-      <div class="log-item">
-        ${l.goalIconImg
-          ? `<img src="${l.goalIconImg}" class="log-icon-img">`
-          : `<span class="log-emoji">${l.goalEmoji || '🎯'}</span>`}
-        <div class="log-info">
-          <div class="log-name">${escHtml(l.goalName)}</div>
-          <div class="log-time">${formatTime(l.completedAt)}</div>
+  const groupsHtml = Object.entries(grouped).map(([date, sessions]) => {
+    const totalXP = sessions.reduce((sum, s) => sum + (s.finalXP || 0), 0);
+    const rowsHtml = sessions.map(s => {
+      const dur = s.durationMinutes > 0 ? ` · ${s.durationMinutes}m` : '';
+      const xpStr = s.finalXP > 0
+        ? `+${s.finalXP} XP`
+        : s.energyGain > 0
+          ? `+${s.energyGain} ⚡`
+          : s.result === 'invalid' ? '0 XP' : '';
+      return `
+        <div class="log-item">
+          <span class="log-result-icon">${RESULT_ICON[s.result] || '✓'}</span>
+          <div class="log-info">
+            <div class="log-name">${escHtml(s.taskName)}</div>
+            <div class="log-time">${formatTime(s.completedAt)}${dur} · ${RESULT_LABEL[s.result] || ''}</div>
+          </div>
+          <span class="log-xp ${s.result === 'invalid' ? 'log-xp-invalid' : ''}">${xpStr}</span>
         </div>
-        <span class="log-xp">+${l.xp} XP</span>
-      </div>
-    `).join('');
+      `;
+    }).join('');
 
     return `
       <div class="date-group">
         <div class="date-group-header">
           <span class="date-group-label">${formatDate(date)}</span>
-          <span class="date-group-xp">+${totalXP} XP · ${logs.length} 次</span>
+          <span class="date-group-xp">+${totalXP} XP · ${sessions.length} 次</span>
         </div>
-        <div class="card" style="margin:0">${logsHtml}</div>
+        <div class="card" style="margin:0">${rowsHtml}</div>
       </div>
     `;
   }).join('');
@@ -55,5 +64,7 @@ export function renderGoals(container) {
 }
 
 function escHtml(str) {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }

@@ -1,34 +1,7 @@
 // XP & leveling system (pure functions — no side effects)
+// xpRequired / getLevelInfo are in engine.js; re-exported here for convenience.
 
-/**
- * XP needed to advance FROM `level` TO `level + 1`
- * Level 1–30 (新手期): flat 100 XP → 1 default task = 1 level up
- * Level 31+  (成長期): exponential curve
- */
-export function xpRequired(level) {
-  if (level <= 30) return 100;
-  return Math.floor(100 * Math.pow(level - 29, 1.8));
-}
-
-/**
- * Given total accumulated XP, return current level info
- */
-export function getLevelInfo(totalXP) {
-  let level = 1;
-  let remaining = Math.max(0, totalXP);
-  while (remaining >= xpRequired(level)) {
-    remaining -= xpRequired(level);
-    level++;
-  }
-  const needed = xpRequired(level);
-  return {
-    level,
-    currentXP: remaining,
-    needed,
-    percent: Math.round((remaining / needed) * 100),
-    totalXP,
-  };
-}
+export { xpRequired, getLevelInfo } from './engine.js';
 
 // RPG-style level titles
 const TITLES = [
@@ -49,11 +22,16 @@ export function getTitle(level) {
   return (TITLES.find(([min]) => level >= min) || TITLES.at(-1))[1];
 }
 
+// Inline formula (mirrors engine.js) so xpTable stays synchronous
+function _xpRequired(level) {
+  return Math.round(120 + 45 * (level - 1) + 10 * Math.pow(level - 1, 1.35));
+}
+
 // Preview table: XP required for next N levels starting from `fromLevel`
 export function xpTable(fromLevel, count = 8) {
   const rows = [];
   for (let i = fromLevel; i < fromLevel + count; i++) {
-    rows.push({ from: i, to: i + 1, xp: xpRequired(i) });
+    rows.push({ from: i, to: i + 1, xp: _xpRequired(i) });
   }
   return rows;
 }

@@ -49,7 +49,7 @@
       <div class="hdr-xp-section">
         <div class="hdr-xp-top">
           <span id="hdr-title" class="hdr-title">初心者</span>
-          <span id="hdr-xp-text" class="hdr-xp-text">0 / 100 XP</span>
+          <span id="hdr-xp-text" class="hdr-xp-text">0 / 120 XP</span>
         </div>
         <div class="xp-bar-track">
           <div class="xp-bar-fill" id="hdr-xp-fill" style="width:0%"></div>
@@ -60,13 +60,16 @@
     <!-- Page content -->
     <main id="content"></main>
 
-    <!-- Bottom navigation -->
+    <!-- Bottom navigation (5 tabs) -->
     <nav id="nav">
       <button class="nav-item active" data-page="home" onclick="window.navigate('home')">
         <span class="nav-icon">🏠</span>今日
       </button>
       <button class="nav-item" data-page="goals" onclick="window.navigate('goals')">
         <span class="nav-icon">📋</span>紀錄
+      </button>
+      <button class="nav-item" data-page="review" onclick="window.navigate('review')">
+        <span class="nav-icon">📊</span>週回顧
       </button>
       <button class="nav-item" data-page="profile" onclick="window.navigate('profile')">
         <span class="nav-icon">👤</span>個人
@@ -77,7 +80,22 @@
     </nav>
   </div>
 
-  <!-- Level-up overlay -->
+  <!-- ── Focus timer overlay ── -->
+  <div id="focus-overlay" class="hidden">
+    <div class="focus-box">
+      <div class="focus-task-header">
+        <span id="focus-task-emoji" class="focus-task-emoji">🎯</span>
+        <span id="focus-task-name" class="focus-task-name">任務名稱</span>
+      </div>
+      <div id="focus-timer" class="focus-timer">00:00</div>
+      <div id="focus-min-effective" class="focus-min-pending">最低有效時間計算中…</div>
+      <button id="focus-end-btn" class="btn btn-primary focus-end-btn" onclick="window.endFocus()">
+        結束專注
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Level-up overlay ── -->
   <div id="levelup-overlay" class="hidden">
     <div class="levelup-box">
       <div class="lu-stars">✨⭐✨</div>
@@ -92,7 +110,6 @@
 
 <script type="module" src="js/app.js"></script>
 <script>
-  // Register service worker
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
