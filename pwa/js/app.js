@@ -1,6 +1,6 @@
 import { state }                                              from './state.js';
 import { storage, db, migrateV1toV2 }                        from './storage.js';
-import { signIn, signUp, signInWithGoogle, signOut, getSession, onAuthStateChange } from './auth.js';
+import { signIn, signUp, signInWithGoogle, signOut as authSignOut, getSession, onAuthStateChange } from './auth.js';
 import { getLevelInfo, getTitle }  from './leveling.js';
 import {
   calcBaseXP, calcFinalXP, calcEnergyCost, calcEnergyGain,
@@ -436,7 +436,7 @@ window.closeLevelUp = function () {
 };
 
 window.signOut = async function () {
-  await signOut();   // triggers SIGNED_OUT → handleSignOut
+  await authSignOut();   // triggers SIGNED_OUT → handleSignOut
 };
 
 window.deleteSession = function (sessionId) {
