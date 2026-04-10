@@ -1,5 +1,6 @@
-import { state }                  from './state.js';
-import { storage, migrateV1toV2 } from './storage.js';
+import { state }                                              from './state.js';
+import { storage, db, migrateV1toV2 }                        from './storage.js';
+import { signInWithEmail, signOut, getSession, onAuthStateChange } from './auth.js';
 import { getLevelInfo, getTitle }  from './leveling.js';
 import {
   calcBaseXP, calcFinalXP, calcEnergyCost, calcEnergyGain,
@@ -13,6 +14,10 @@ import { renderGoals }          from './pages/goals.js';
 import { renderReview }         from './pages/review.js';
 import { renderProfile }        from './pages/profile.js';
 import { renderSettings }       from './pages/settings.js';
+
+// ─── Auth session state ───────────────────────────────────────────────────────
+let _currentSession   = null;
+let _loginListenerSet = false;
 
 // ─── Router ──────────────────────────────────────────────────────────────────
 
@@ -429,6 +434,10 @@ window.closeLevelUp = function () {
   document.getElementById('levelup-overlay').classList.add('hidden');
 };
 
+window.signOut = async function () {
+  await signOut();   // triggers SIGNED_OUT → handleSignOut
+};
+
 // ─── Weekly consistency bonus (called once/week) ──────────────────────────────
 
 function checkWeeklyBonus() {
@@ -487,7 +496,7 @@ function showSetup() {
     if (!name) return;
 
     state.user = {
-      id: uid(), name, avatar: avatarData, totalXP: 0,
+      id: _currentSession?.user?.id || uid(), name, avatar: avatarData, totalXP: 0,
       streakDays: 0, lastStreakDate: '', lastWeeklyBonusDate: '',
       morningState: 'normal', createdAt: today(),
     };
@@ -539,34 +548,108 @@ function _renderBg(dataUrl) {
   }
 }
 
-// ─── Init ─────────────────────────────────────────────────────────────────────
+// ─── Login screen ────────────────────────────────────────────────────────────
 
-function init() {
-  // Migrate v1 data if needed
-  migrateV1toV2(today());
+function showLoginScreen() {
+  document.getElementById('setup-screen').classList.add('hidden');
+  document.getElementById('main-app').classList.add('hidden');
+  document.getElementById('login-screen').classList.remove('hidden');
+
+  if (_loginListenerSet) return;
+  _loginListenerSet = true;
+
+  document.getElementById('login-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value.trim();
+    const btn   = e.target.querySelector('button[type=submit]');
+    btn.disabled    = true;
+    btn.textContent = '發送中…';
+
+    const error = await signInWithEmail(email);
+    if (error) {
+      btn.disabled    = false;
+      btn.textContent = '發送登入連結';
+      showToast('發送失敗：' + (error.message || '請稍後再試'));
+    } else {
+      document.getElementById('login-form').classList.add('hidden');
+      document.getElementById('login-sent').classList.remove('hidden');
+    }
+  });
+}
+
+async function loadAndStart(session) {
+  _currentSession = session;
+
+  // Pull fresh data from Supabase; fall back to localStorage cache if offline
+  try {
+    await db.loadFromRemote(session.user.id);
+  } catch (e) {
+    console.warn('Supabase load failed, using localStorage cache:', e);
+  }
 
   state.user     = storage.getUser();
   state.tasks    = storage.getTasks();
   state.sessions = storage.getSessions();
   state.energy   = storage.getEnergy();
 
-  document.documentElement.setAttribute('data-theme', storage.getTheme());
-  _renderBg(storage.getBgImage());
+  document.getElementById('login-screen').classList.add('hidden');
 
-  if (state.user) {
+  if (!state.tasks.length) {
+    // New user: no tasks yet — show setup to customise profile + seed defaults
+    showSetup();
+  } else {
     processYesterdayStreak();
-
-    // Morning reset: if new day, ask for morning state
     if (state.energy.lastResetDate !== today()) {
       showMainApp();
       showMorningModal();
     } else {
       showMainApp();
     }
-
     checkWeeklyBonus();
+  }
+}
+
+function handleSignOut() {
+  _currentSession   = null;
+  _loginListenerSet = false;
+  state.user     = null;
+  state.tasks    = [];
+  state.sessions = [];
+  state.energy   = { currentEnergy: 100, maxEnergy: 100, lastResetDate: '' };
+  storage.clearAll();
+
+  // Reset login form to initial state
+  document.getElementById('login-form').classList.remove('hidden');
+  document.getElementById('login-sent').classList.add('hidden');
+  const emailEl = document.getElementById('login-email');
+  if (emailEl) emailEl.value = '';
+
+  document.getElementById('main-app').classList.add('hidden');
+  document.getElementById('setup-screen').classList.add('hidden');
+  showLoginScreen();
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+
+async function init() {
+  migrateV1toV2(today());
+  document.documentElement.setAttribute('data-theme', storage.getTheme());
+  _renderBg(storage.getBgImage());
+
+  // Listen for future auth changes (magic-link redirects, sign-outs)
+  onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_IN' && session && !_currentSession) {
+      await loadAndStart(session);
+    } else if (event === 'SIGNED_OUT') {
+      handleSignOut();
+    }
+  });
+
+  const session = await getSession();
+  if (session) {
+    await loadAndStart(session);
   } else {
-    showSetup();
+    showLoginScreen();
   }
 }
 

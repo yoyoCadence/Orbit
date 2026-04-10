@@ -17,6 +17,29 @@
 <body>
 <div id="app">
 
+  <!-- ── Login screen ── -->
+  <div id="login-screen" class="hidden">
+    <div class="setup-logo">🚀</div>
+    <div class="setup-title">Orbit</div>
+    <div class="setup-subtitle">登入以同步你的成長紀錄</div>
+
+    <form id="login-form" style="width:100%;max-width:360px">
+      <div class="form-group">
+        <label class="form-label">電子郵件</label>
+        <input class="form-input" id="login-email" type="email"
+               placeholder="your@email.com" required autocomplete="email">
+      </div>
+      <button type="submit" class="btn btn-primary">發送登入連結</button>
+    </form>
+
+    <div id="login-sent" class="hidden" style="text-align:center;padding:24px 0">
+      <div style="font-size:48px;margin-bottom:12px">📧</div>
+      <p style="color:var(--text-muted);line-height:1.7">
+        登入連結已發送！<br>請檢查你的 email，點擊連結即可進入。
+      </p>
+    </div>
+  </div>
+
   <!-- ── Setup screen (first launch) ── -->
   <div id="setup-screen" class="hidden">
     <div class="setup-logo">🚀</div>

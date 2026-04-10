@@ -1,6 +1,6 @@
 // Service Worker — network-first for JS/CSS/HTML, cache-first for images
 // Bump CACHE version on every deploy so users always get fresh code.
-const CACHE = 'orbit-v3';
+const CACHE = 'orbit-v4';
 
 const SHELL = [
   './',
@@ -9,6 +9,9 @@ const SHELL = [
   './js/app.js',
   './js/state.js',
   './js/storage.js',
+  './js/supabase.js',
+  './js/auth.js',
+  './js/config.js',
   './js/leveling.js',
   './js/engine.js',
   './js/defaultTasks.js',

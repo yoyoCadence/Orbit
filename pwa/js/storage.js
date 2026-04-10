@@ -1,5 +1,8 @@
 // Data persistence abstraction layer
-// Swap LocalStorageProvider for an API provider later without changing callers
+// Sync reads/writes → localStorage (always available, used as cache)
+// Async background sync → Supabase (when authenticated + online)
+
+import { supabase } from './supabase.js';
 
 const PREFIX = 'yoyo_';
 
@@ -10,36 +13,240 @@ function set(key, val) {
   localStorage.setItem(PREFIX + key, JSON.stringify(val));
 }
 
+// ─── Supabase async operations ────────────────────────────────────────────────
+
+export const db = {
+
+  async _session() {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session;
+  },
+
+  /** Pull all user data from Supabase → write into localStorage cache. */
+  async loadFromRemote(userId) {
+    const [profileRes, tasksRes, sessionsRes, energyRes] = await Promise.all([
+      supabase.from('profiles').select('*').eq('user_id', userId).single(),
+      supabase.from('tasks').select('*').eq('user_id', userId).order('created_at'),
+      supabase.from('sessions').select('*').eq('user_id', userId)
+        .order('completed_at', { ascending: false }),
+      supabase.from('energy').select('*').eq('user_id', userId).single(),
+    ]);
+
+    if (profileRes.data) {
+      const p = profileRes.data;
+      set('user', {
+        id:                   p.user_id,
+        name:                 p.name,
+        avatar:               p.avatar_url || null,
+        totalXP:              p.total_xp,
+        streakDays:           p.streak_days,
+        lastStreakDate:       p.last_streak_date  || '',
+        lastWeeklyBonusDate:  p.last_weekly_bonus_date || '',
+        morningState:         p.morning_state,
+        mode:                 p.mode,
+        createdAt:            p.created_at,
+      });
+    }
+
+    if (tasksRes.data) {
+      set('tasks', tasksRes.data.map(t => ({
+        id:                   t.id,
+        name:                 t.name,
+        category:             t.category,
+        impactType:           t.impact_type,
+        taskNature:           t.task_nature,
+        value:                t.value,
+        difficulty:           t.difficulty,
+        resistance:           t.resistance,
+        emoji:                t.emoji || null,
+        dailyXpCap:           t.daily_xp_cap,
+        cooldownMinutes:      t.cooldown_minutes,
+        minEffectiveMinutes:  t.min_effective_minutes,
+        isDefault:            t.is_default,
+        reason:               t.reason || null,
+        successCriteria:      t.success_criteria || null,
+        valueConfidence:      t.value_confidence,
+        createdAt:            t.created_at,
+      })));
+    }
+
+    if (sessionsRes.data) {
+      set('sessions', sessionsRes.data.map(s => ({
+        id:              s.id,
+        taskId:          s.task_id   || null,
+        taskName:        s.task_name,
+        taskEmoji:       s.task_emoji || null,
+        date:            s.date,
+        startedAt:       s.started_at,
+        completedAt:     s.completed_at,
+        durationMinutes: s.duration_minutes,
+        result:          s.result,
+        baseXP:          s.base_xp,
+        finalXP:         s.final_xp,
+        energyCost:      s.energy_cost,
+        energyGain:      s.energy_gain,
+        impactType:      s.impact_type,
+        taskNature:      s.task_nature,
+        value:           s.value,
+        resistance:      s.resistance,
+        isProductiveXP:  s.is_productive_xp,
+      })));
+    }
+
+    if (energyRes.data) {
+      const e = energyRes.data;
+      set('energy', {
+        currentEnergy: e.current_energy,
+        maxEnergy:     e.max_energy,
+        lastResetDate: e.last_reset_date || '',
+      });
+    }
+  },
+
+  async upsertProfile(user) {
+    const session = await this._session();
+    if (!session) return;
+    // Skip base64 avatars (too large) — only sync proper Storage URLs
+    const avatarUrl = (user.avatar && user.avatar.startsWith('data:'))
+      ? null : (user.avatar || null);
+    await supabase.from('profiles').upsert({
+      user_id:                session.user.id,
+      name:                   user.name,
+      avatar_url:             avatarUrl,
+      total_xp:               user.totalXP              || 0,
+      streak_days:            user.streakDays            || 0,
+      last_streak_date:       user.lastStreakDate        || null,
+      last_weekly_bonus_date: user.lastWeeklyBonusDate   || null,
+      morning_state:          user.morningState          || 'normal',
+      mode:                   user.mode                  || 'normal',
+    });
+  },
+
+  async upsertTasks(tasks) {
+    const session = await this._session();
+    if (!session || !tasks.length) return;
+    await supabase.from('tasks').upsert(
+      tasks.map(t => ({
+        id:                    t.id,
+        user_id:               session.user.id,
+        name:                  t.name,
+        category:              t.category,
+        impact_type:           t.impactType,
+        task_nature:           t.taskNature,
+        value:                 t.value,
+        difficulty:            t.difficulty,
+        resistance:            t.resistance,
+        emoji:                 t.emoji                || null,
+        daily_xp_cap:          t.dailyXpCap           ?? 100,
+        cooldown_minutes:      t.cooldownMinutes       ?? 0,
+        min_effective_minutes: t.minEffectiveMinutes   ?? 0,
+        is_default:            t.isDefault             ?? false,
+        reason:                t.reason               || null,
+        success_criteria:      t.successCriteria      || null,
+        value_confidence:      t.valueConfidence       ?? 100,
+      })),
+      { onConflict: 'id' }
+    );
+  },
+
+  async deleteTasks(ids) {
+    const session = await this._session();
+    if (!session || !ids.length) return;
+    await supabase.from('tasks').delete().in('id', ids);
+  },
+
+  async insertSession(session) {
+    const authSession = await this._session();
+    if (!authSession) return;
+    await supabase.from('sessions').insert({
+      id:               session.id,
+      user_id:          authSession.user.id,
+      task_id:          session.taskId        || null,
+      task_name:        session.taskName,
+      task_emoji:       session.taskEmoji     || null,
+      date:             session.date,
+      started_at:       session.startedAt,
+      completed_at:     session.completedAt,
+      duration_minutes: session.durationMinutes,
+      result:           session.result,
+      base_xp:          session.baseXP,
+      final_xp:         session.finalXP,
+      energy_cost:      session.energyCost,
+      energy_gain:      session.energyGain,
+      impact_type:      session.impactType,
+      task_nature:      session.taskNature,
+      value:            session.value,
+      resistance:       session.resistance,
+      is_productive_xp: session.isProductiveXP,
+    });
+  },
+
+  async deleteSession(id) {
+    const session = await this._session();
+    if (!session) return;
+    await supabase.from('sessions').delete().eq('id', id);
+  },
+
+  async upsertEnergy(energy) {
+    const session = await this._session();
+    if (!session) return;
+    await supabase.from('energy').upsert(
+      {
+        user_id:         session.user.id,
+        current_energy:  energy.currentEnergy,
+        max_energy:      energy.maxEnergy,
+        last_reset_date: energy.lastResetDate || null,
+      },
+      { onConflict: 'user_id' }
+    );
+  },
+};
+
+// ─── Sync localStorage API (unchanged signatures) ─────────────────────────────
+
 export const storage = {
-  // ── User ──────────────────────────────────────────────────────────────────
-  getUser:       ()  => get('user'),
-  saveUser:      (u) => set('user', u),
 
-  // ── Tasks (new) ───────────────────────────────────────────────────────────
-  getTasks:      ()  => get('tasks')    ?? [],
-  saveTasks:     (t) => set('tasks', t),
+  // ── User ─────────────────────────────────────────────────────────────────────
+  getUser:    ()  => get('user'),
+  saveUser:   (u) => { set('user', u); db.upsertProfile(u).catch(console.error); },
 
-  // ── Sessions (new) ────────────────────────────────────────────────────────
-  getSessions:   ()  => get('sessions') ?? [],
-  saveSessions:  (s) => set('sessions', s),
+  // ── Tasks ────────────────────────────────────────────────────────────────────
+  getTasks:   ()  => get('tasks') ?? [],
+  saveTasks:  (t) => {
+    const prev = get('tasks') ?? [];
+    set('tasks', t);
+    db.upsertTasks(t).catch(console.error);
+    const removedIds = prev.filter(p => !t.find(n => n.id === p.id)).map(p => p.id);
+    if (removedIds.length) db.deleteTasks(removedIds).catch(console.error);
+  },
 
-  // ── Energy ────────────────────────────────────────────────────────────────
-  getEnergy:     ()  => get('energy')   ?? { currentEnergy: 100, maxEnergy: 100, lastResetDate: '' },
-  saveEnergy:    (e) => set('energy', e),
+  // ── Sessions ─────────────────────────────────────────────────────────────────
+  getSessions:  ()  => get('sessions') ?? [],
+  saveSessions: (s) => {
+    const prev = get('sessions') ?? [];
+    set('sessions', s);
+    // Only INSERT the newly added sessions (not the whole array)
+    s.filter(ns => !prev.find(ps => ps.id === ns.id))
+     .forEach(ns => db.insertSession(ns).catch(console.error));
+  },
 
-  // ── Legacy (kept for migration) ───────────────────────────────────────────
-  getGoals:      ()  => get('goals')    ?? [],
-  getLogs:       ()  => get('logs')     ?? [],
+  // ── Energy ───────────────────────────────────────────────────────────────────
+  getEnergy:   ()  => get('energy') ?? { currentEnergy: 100, maxEnergy: 100, lastResetDate: '' },
+  saveEnergy:  (e) => { set('energy', e); db.upsertEnergy(e).catch(console.error); },
 
-  // ── Theme / Background (unchanged) ───────────────────────────────────────
-  getTheme:      ()  => get('theme') || 'dark-purple',
-  saveTheme:     (t) => set('theme', t),
-  getBgImage:    ()  => localStorage.getItem(PREFIX + 'bgImage') || null,
-  saveBgImage:   (d) => d
+  // ── Legacy (migration read-only) ─────────────────────────────────────────────
+  getGoals:   ()  => get('goals') ?? [],
+  getLogs:    ()  => get('logs')  ?? [],
+
+  // ── Theme / Background (local only) ──────────────────────────────────────────
+  getTheme:    ()  => get('theme') || 'dark-purple',
+  saveTheme:   (t) => set('theme', t),
+  getBgImage:  ()  => localStorage.getItem(PREFIX + 'bgImage') || null,
+  saveBgImage: (d) => d
     ? localStorage.setItem(PREFIX + 'bgImage', d)
     : localStorage.removeItem(PREFIX + 'bgImage'),
 
-  // ── Nuke everything ───────────────────────────────────────────────────────
+  // ── Clear all local data (on sign-out) ────────────────────────────────────────
   clearAll: () => {
     ['user','tasks','sessions','energy','goals','logs','theme','bgImage']
       .forEach(k => localStorage.removeItem(PREFIX + k));
@@ -47,63 +254,53 @@ export const storage = {
 };
 
 // ─── Migration: v1 (goals/logs) → v2 (tasks/sessions) ────────────────────────
-//
-// Runs once. Converts old Goal objects to minimal Tasks and old Log objects
-// to instant Sessions so history is preserved. Old keys are left in place
-// (they don't interfere) but are never written to again.
 
 export function migrateV1toV2(today) {
-  // Already migrated?
-  if (get('tasks') !== null) return;
+  if (get('tasks') !== null) return;   // Already migrated
 
   const oldGoals = get('goals') ?? [];
   const oldLogs  = get('logs')  ?? [];
 
-  // Convert goals → tasks (use sensible defaults for new fields)
   const tasks = oldGoals.map(g => ({
-    id:                 g.id,
-    name:               g.name,
-    category:           'instant',
-    impactType:         'task',
-    taskNature:         'maintenance',
-    value:              'B',
-    difficulty:         0.4,
-    resistance:         1.0,
-    emoji:              g.emoji  || '🎯',
-    iconImg:            g.iconImg || null,
+    id:                  g.id,
+    name:                g.name,
+    category:            'instant',
+    impactType:          'task',
+    taskNature:          'maintenance',
+    value:               'B',
+    difficulty:          0.4,
+    resistance:          1.0,
+    emoji:               g.emoji   || '🎯',
+    iconImg:             g.iconImg || null,
     minEffectiveMinutes: 0,
-    cooldownMinutes:    0,
-    dailyXpCap:         100,
-    requiresReasonIfS:  false,
-    valueConfidence:    100,
-    createdAt:          today,
+    cooldownMinutes:     0,
+    dailyXpCap:          100,
+    valueConfidence:     100,
+    createdAt:           today,
   }));
   set('tasks', tasks);
 
-  // Convert logs → sessions (treat as instant completions)
   const sessions = oldLogs.map(l => {
     const task = tasks.find(t => t.id === l.goalId) || {};
     return {
-      id:            l.id,
-      taskId:        l.goalId,
-      taskName:      l.goalName,
-      taskEmoji:     l.goalEmoji  || '🎯',
-      taskIconImg:   l.goalIconImg || null,
-      date:          l.date,
-      startedAt:     l.completedAt,
-      completedAt:   l.completedAt,
+      id:              l.id,
+      taskId:          l.goalId,
+      taskName:        l.goalName,
+      taskEmoji:       l.goalEmoji || '🎯',
+      date:            l.date,
+      startedAt:       l.completedAt,
+      completedAt:     l.completedAt,
       durationMinutes: 0,
-      result:        'instant',
-      baseXP:        l.xp,
-      finalXP:       l.xp,
-      energyCost:    0,
-      energyGain:    0,
-      streakMultiplier: 1,
-      impactType:    task.impactType  || 'task',
-      taskNature:    task.taskNature  || 'maintenance',
-      value:         task.value       || 'B',
-      resistance:    task.resistance  || 1.0,
-      isProductiveXP: true,
+      result:          'instant',
+      baseXP:          l.xp,
+      finalXP:         l.xp,
+      energyCost:      0,
+      energyGain:      0,
+      impactType:      task.impactType || 'task',
+      taskNature:      task.taskNature || 'maintenance',
+      value:           task.value      || 'B',
+      resistance:      task.resistance || 1.0,
+      isProductiveXP:  true,
     };
   });
   set('sessions', sessions);
