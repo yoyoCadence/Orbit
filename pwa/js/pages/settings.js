@@ -126,11 +126,18 @@ function _renderView(container) {
       <button class="btn btn-primary" style="margin-top:12px" id="add-task-btn">+ 新增任務</button>
     </div>
 
-    <!-- Danger -->
+    <!-- Account -->
     <div class="card">
-      <div class="card-title" style="color:var(--danger)">危險操作</div>
-      <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">清除後無法復原</p>
-      <button class="btn btn-sm" style="background:var(--danger);color:white" id="reset-btn">清除所有資料</button>
+      <div class="card-title">👤 帳號</div>
+      <div class="account-row">
+        <div class="account-info">
+          <div class="account-name">${escHtml(state.user?.name || '使用者')}</div>
+          <div class="account-sub" id="account-email">載入中…</div>
+        </div>
+        <button class="btn btn-outline btn-sm" id="signout-btn">登出</button>
+      </div>
+      <div class="account-divider"></div>
+      <button class="btn-text-danger" id="reset-btn">清除本機快取資料（重新登入後可從雲端還原）</button>
     </div>
   `;
 
@@ -185,9 +192,23 @@ function _setupListeners(container) {
     }
   });
 
-  // Reset
+  // Show account email async
+  import('../auth.js').then(({ getSession }) => {
+    getSession().then(session => {
+      const el = container.querySelector('#account-email');
+      if (!el) return;
+      el.textContent = session?.user?.email || '（遊客）';
+    });
+  });
+
+  // Sign out
+  container.querySelector('#signout-btn').addEventListener('click', () => {
+    window.signOut();
+  });
+
+  // Clear local cache
   container.querySelector('#reset-btn').addEventListener('click', () => {
-    if (!confirm('確定清除所有資料？此操作無法復原！')) return;
+    if (!confirm('清除本機快取？重新登入後資料會從雲端自動還原。')) return;
     storage.clearAll();
     location.reload();
   });

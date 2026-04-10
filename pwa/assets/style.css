@@ -139,6 +139,52 @@ html.has-bg .levelup-box {
 html.has-bg #app { background: transparent; }
 
 /* ══════════════════════════════════════════════════════════════
+   ACCOUNT CARD (settings)
+══════════════════════════════════════════════════════════════ */
+.account-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.account-info { flex: 1; min-width: 0; }
+.account-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.account-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.account-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 14px 0 10px;
+}
+.btn-text-danger {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  line-height: 1.5;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  transition: color 0.2s;
+}
+.btn-text-danger:hover { color: var(--danger); }
+
+/* ══════════════════════════════════════════════════════════════
    AUTH / LOGIN SCREEN
 ══════════════════════════════════════════════════════════════ */
 .auth-card {
