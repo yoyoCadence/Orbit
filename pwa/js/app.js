@@ -714,7 +714,7 @@ async function init() {
   document.documentElement.setAttribute('data-theme', storage.getTheme());
   _renderBg(storage.getBgImage());
 
-  // Listen for future auth changes (magic-link redirects, sign-outs)
+  // Listen for future auth changes (sign-ins, sign-outs)
   onAuthStateChange(async (event, session) => {
     if (event === 'SIGNED_IN' && session && !_currentSession) {
       await loadAndStart(session);
@@ -723,6 +723,41 @@ async function init() {
     }
   });
 
+  // If we have cached user data, show app immediately — don't wait for Supabase
+  const cachedUser = storage.getUser();
+  if (cachedUser) {
+    state.user     = cachedUser;
+    state.tasks    = storage.getTasks();
+    state.sessions = storage.getSessions();
+    state.energy   = storage.getEnergy();
+    hideLoading();
+    processYesterdayStreak();
+    if (state.energy.lastResetDate !== today()) {
+      showMainApp(); showMorningModal();
+    } else {
+      showMainApp();
+    }
+    checkWeeklyBonus();
+
+    // Sync from Supabase in background (no spinner)
+    getSession().then(session => {
+      if (session) {
+        _currentSession = session;
+        db.loadFromRemote(session.user.id).then(() => {
+          // Quietly refresh state from updated cache
+          state.user     = storage.getUser()     || state.user;
+          state.tasks    = storage.getTasks();
+          state.sessions = storage.getSessions();
+          state.energy   = storage.getEnergy();
+          updateHeader();
+          renderPage(currentHash());
+        }).catch(() => {});
+      }
+    }).catch(() => {});
+    return;
+  }
+
+  // No cache: wait for Supabase session (first launch or after sign-out)
   const session = await getSession();
   if (session) {
     await loadAndStart(session);
