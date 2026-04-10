@@ -550,7 +550,12 @@ function _renderBg(dataUrl) {
 
 // ─── Login screen ────────────────────────────────────────────────────────────
 
+function hideLoading() {
+  document.getElementById('loading-screen').classList.add('hidden');
+}
+
 function showLoginScreen() {
+  hideLoading();
   document.getElementById('setup-screen').classList.add('hidden');
   document.getElementById('main-app').classList.add('hidden');
   document.getElementById('login-screen').classList.remove('hidden');
@@ -592,6 +597,7 @@ async function loadAndStart(session) {
   state.sessions = storage.getSessions();
   state.energy   = storage.getEnergy();
 
+  hideLoading();
   document.getElementById('login-screen').classList.add('hidden');
 
   if (!state.tasks.length) {
