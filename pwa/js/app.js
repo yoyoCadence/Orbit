@@ -439,6 +439,38 @@ window.signOut = async function () {
   await signOut();   // triggers SIGNED_OUT → handleSignOut
 };
 
+window.deleteSession = function (sessionId) {
+  const session = state.sessions.find(s => s.id === sessionId);
+  if (!session) return;
+  if (!confirm(`撤銷「${session.taskName}」這筆記錄？`)) return;
+
+  // Reverse XP
+  state.user.totalXP = Math.max(0, (state.user.totalXP || 0) - session.finalXP);
+
+  // Reverse energy
+  if (session.energyCost > 0) {
+    state.energy.currentEnergy = Math.min(state.energy.maxEnergy,
+      state.energy.currentEnergy + session.energyCost);
+  }
+  if (session.energyGain > 0) {
+    state.energy.currentEnergy = Math.max(0,
+      state.energy.currentEnergy - session.energyGain);
+  }
+
+  // Remove session
+  state.sessions = state.sessions.filter(s => s.id !== sessionId);
+  storage.saveSessions(state.sessions);
+  storage.saveUser(state.user);
+  storage.saveEnergy(state.energy);
+
+  // Delete from Supabase
+  db.deleteSession(sessionId).catch(console.error);
+
+  updateHeader();
+  renderPage(currentHash());
+  showToast('已撤銷');
+};
+
 // ─── Weekly consistency bonus (called once/week) ──────────────────────────────
 
 function checkWeeklyBonus() {

@@ -68,24 +68,28 @@ function _renderView(container) {
     </div>
   `).join('');
 
+  const isAdvanced = state.user?.mode === 'advanced';
   const tasksHtml = state.tasks.length
     ? state.tasks.map(t => {
-        const vcls = t.value === 'S' ? 'badge-s' : t.value === 'A' ? 'badge-a' : t.value === 'B' ? 'badge-b' : 'badge-d';
+        const vcls    = t.value === 'S' ? 'badge-s' : t.value === 'A' ? 'badge-a' : t.value === 'B' ? 'badge-b' : 'badge-d';
+        const canEdit = isAdvanced || !t.isDefault;
         return `
           <div class="log-item">
             ${t.iconImg
               ? `<img src="${t.iconImg}" class="log-icon-img">`
               : `<span class="log-emoji">${t.emoji || '🎯'}</span>`}
             <div class="log-info">
-              <div class="log-name">${escHtml(t.name)}</div>
+              <div class="log-name">${escHtml(t.name)}${t.isDefault ? ' <span class="badge-default">預設</span>' : ''}</div>
               <div class="log-time">
                 <span class="badge ${vcls}">${t.value}</span>
                 ${t.category === 'focus' ? '<span class="badge badge-nature">專注</span>' : '<span class="badge badge-nature">即時</span>'}
               </div>
             </div>
             <div style="display:flex;gap:6px;flex-shrink:0">
-              <button class="btn btn-outline btn-sm" data-edit="${t.id}">編輯</button>
-              <button class="btn-danger-sm" data-del="${t.id}">刪除</button>
+              ${canEdit
+                ? `<button class="btn btn-outline btn-sm" data-edit="${t.id}">編輯</button>
+                   <button class="btn-danger-sm" data-del="${t.id}">刪除</button>`
+                : `<span style="font-size:12px;color:var(--text-muted);padding:0 4px">🔒</span>`}
             </div>
           </div>
         `;
@@ -117,6 +121,26 @@ function _renderView(container) {
       </div>
       <input type="file" id="bg-input" accept="image/*" style="display:none">
       <div style="font-size:11px;color:var(--text-muted);margin-top:10px">啟用背景圖後，介面自動套用玻璃模糊效果</div>
+    </div>
+
+    <!-- Mode -->
+    <div class="card">
+      <div class="card-title">🔧 操作模式</div>
+      <div class="mode-row">
+        <div class="mode-info">
+          <div class="mode-name">${state.user?.mode === 'advanced' ? '進階模式' : '普通模式'}</div>
+          <div class="mode-desc">${state.user?.mode === 'advanced'
+            ? '所有任務可自由編輯，包括預設任務的評級與難度'
+            : '預設任務鎖定，只能新增自訂任務'}</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="mode-toggle" ${state.user?.mode === 'advanced' ? 'checked' : ''}>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="mode-warning ${state.user?.mode === 'advanced' ? '' : 'hidden'}" id="mode-warning">
+        ⚠️ 進階模式下修改預設任務評級會影響積分公平性，自行負責。
+      </div>
     </div>
 
     <!-- Tasks -->
@@ -172,6 +196,21 @@ function _setupListeners(container) {
       _renderView(container);
     });
   }
+
+  // Mode toggle
+  container.querySelector('#mode-toggle').addEventListener('change', e => {
+    if (!state.user) return;
+    const newMode = e.target.checked ? 'advanced' : 'normal';
+    if (newMode === 'advanced') {
+      if (!confirm('切換到進階模式後可自由編輯所有任務，包括預設任務的評級。確定切換？')) {
+        e.target.checked = false;
+        return;
+      }
+    }
+    state.user.mode = newMode;
+    storage.saveUser(state.user);
+    _renderView(container);
+  });
 
   // Task CRUD
   container.querySelector('#add-task-btn').addEventListener('click', () => {

@@ -135,6 +135,14 @@ export function renderHome(container) {
       }
     });
   });
+
+  // Bind session delete buttons
+  container.querySelectorAll('.session-del-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      window.deleteSession(btn.dataset.sessionId);
+    });
+  });
 }
 
 // ─── Task card HTML ──────────────────────────────────────────────────────────
@@ -192,6 +200,7 @@ function sessionRowHtml(s) {
         <div class="log-time">${formatTime(s.completedAt)}${dur}</div>
       </div>
       <span class="log-xp ${s.result === 'invalid' ? 'log-xp-invalid' : ''}">${xpStr}</span>
+      <button class="session-del-btn" data-session-id="${s.id}" title="撤銷">✕</button>
     </div>
   `;
 }

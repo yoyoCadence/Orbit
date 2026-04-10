@@ -334,8 +334,8 @@ html.has-bg #app { background: transparent; }
 #header {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
-  height: 68px;
-  padding: 0 16px;
+  height: calc(68px + env(safe-area-inset-top));
+  padding: env(safe-area-inset-top) 16px 0;
   display: flex; align-items: center; gap: 14px;
   flex-shrink: 0;
   transition: background 0.4s;
@@ -488,6 +488,48 @@ nav {
   padding: 10px 0; border-bottom: 1px solid var(--border);
 }
 .log-item:last-child { border-bottom: none; }
+.session-del-btn {
+  background: none; border: none;
+  color: var(--text-muted); font-size: 14px;
+  cursor: pointer; flex-shrink: 0;
+  padding: 4px 6px; border-radius: 6px;
+  opacity: 0.5; transition: opacity 0.2s, color 0.2s;
+}
+.session-del-btn:hover { opacity: 1; color: var(--danger); }
+
+/* Mode toggle */
+.mode-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.mode-info { flex: 1; }
+.mode-name  { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.mode-desc  { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+.mode-warning {
+  font-size: 12px; color: #f59e0b;
+  background: rgba(245,158,11,0.1);
+  border-radius: 8px; padding: 8px 10px;
+  margin-top: 12px;
+}
+.toggle-switch { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+  position: absolute; inset: 0;
+  background: var(--border); border-radius: 24px;
+  cursor: pointer; transition: background 0.2s;
+}
+.toggle-slider::before {
+  content: ''; position: absolute;
+  width: 18px; height: 18px; left: 3px; bottom: 3px;
+  background: white; border-radius: 50%;
+  transition: transform 0.2s;
+}
+.toggle-switch input:checked + .toggle-slider { background: var(--accent); }
+.toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); }
+.badge-default {
+  font-size: 10px; padding: 1px 5px; border-radius: 4px;
+  background: rgba(255,255,255,0.08); color: var(--text-muted);
+  vertical-align: middle;
+}
 .log-emoji   { font-size: 26px; flex-shrink: 0; }
 .log-icon-img {
   width: 36px; height: 36px;
