@@ -1,6 +1,6 @@
 import { state }                                              from './state.js';
 import { storage, db, migrateV1toV2 }                        from './storage.js';
-import { signInWithEmail, signOut, getSession, onAuthStateChange } from './auth.js';
+import { signIn, signUp, signInWithGoogle, signOut, getSession, onAuthStateChange } from './auth.js';
 import { getLevelInfo, getTitle }  from './leveling.js';
 import {
   calcBaseXP, calcFinalXP, calcEnergyCost, calcEnergyGain,
@@ -17,6 +17,7 @@ import { renderSettings }       from './pages/settings.js';
 
 // ─── Auth session state ───────────────────────────────────────────────────────
 let _currentSession   = null;
+let _isGuest          = false;
 let _loginListenerSet = false;
 
 // ─── Router ──────────────────────────────────────────────────────────────────
@@ -554,6 +555,51 @@ function hideLoading() {
   document.getElementById('loading-screen').classList.add('hidden');
 }
 
+// current tab: 'signin' | 'signup'
+let _authTab = 'signin';
+
+window.switchAuthTab = function (tab) {
+  _authTab = tab;
+  document.getElementById('tab-signin').classList.toggle('active', tab === 'signin');
+  document.getElementById('tab-signup').classList.toggle('active', tab === 'signup');
+  document.getElementById('auth-submit').textContent = tab === 'signin' ? '登入' : '註冊';
+  document.getElementById('auth-password').autocomplete =
+    tab === 'signin' ? 'current-password' : 'new-password';
+  document.getElementById('auth-error').classList.add('hidden');
+};
+
+window.loginWithGoogle = async function () {
+  const error = await signInWithGoogle();
+  if (error) showToast('Google 登入失敗：' + (error.message || '請稍後再試'));
+};
+
+window.continueAsGuest = function () {
+  _isGuest = true;
+  hideLoading();
+  document.getElementById('login-screen').classList.add('hidden');
+  state.user     = storage.getUser();
+  state.tasks    = storage.getTasks();
+  state.sessions = storage.getSessions();
+  state.energy   = storage.getEnergy();
+  if (!state.tasks.length) {
+    showSetup();
+  } else {
+    processYesterdayStreak();
+    if (state.energy.lastResetDate !== today()) {
+      showMainApp(); showMorningModal();
+    } else {
+      showMainApp();
+    }
+    checkWeeklyBonus();
+  }
+};
+
+function _showAuthError(msg) {
+  const el = document.getElementById('auth-error');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+}
+
 function showLoginScreen() {
   hideLoading();
   document.getElementById('setup-screen').classList.add('hidden');
@@ -563,21 +609,46 @@ function showLoginScreen() {
   if (_loginListenerSet) return;
   _loginListenerSet = true;
 
-  document.getElementById('login-form').addEventListener('submit', async e => {
+  document.getElementById('auth-form').addEventListener('submit', async e => {
     e.preventDefault();
-    const email = document.getElementById('login-email').value.trim();
-    const btn   = e.target.querySelector('button[type=submit]');
-    btn.disabled    = true;
-    btn.textContent = '發送中…';
+    const email    = document.getElementById('auth-email').value.trim();
+    const password = document.getElementById('auth-password').value;
+    const btn      = document.getElementById('auth-submit');
+    btn.disabled   = true;
+    document.getElementById('auth-error').classList.add('hidden');
 
-    const error = await signInWithEmail(email);
-    if (error) {
-      btn.disabled    = false;
-      btn.textContent = '發送登入連結';
-      showToast('發送失敗：' + (error.message || '請稍後再試'));
+    let error;
+    if (_authTab === 'signin') {
+      btn.textContent = '登入中…';
+      ({ error } = await signIn(email, password));
+      if (error) {
+        btn.disabled    = false;
+        btn.textContent = '登入';
+        _showAuthError(
+          error.message.includes('Invalid login') ? '帳號或密碼錯誤' : error.message
+        );
+      }
+      // on success → onAuthStateChange fires → loadAndStart
     } else {
-      document.getElementById('login-form').classList.add('hidden');
-      document.getElementById('login-sent').classList.remove('hidden');
+      btn.textContent = '註冊中…';
+      ({ error } = await signUp(email, password));
+      if (error) {
+        btn.disabled    = false;
+        btn.textContent = '註冊';
+        _showAuthError(
+          error.message.includes('already registered') ? '此 Email 已註冊，請直接登入' : error.message
+        );
+      } else {
+        // Auto sign-in after sign-up (works when email confirmation is disabled)
+        const { error: signInErr } = await signIn(email, password);
+        if (signInErr) {
+          btn.disabled    = false;
+          btn.textContent = '註冊';
+          _showAuthError('註冊成功！請用剛設定的密碼登入。');
+          window.switchAuthTab('signin');
+        }
+        // on success → onAuthStateChange fires → loadAndStart
+      }
     }
   });
 }
@@ -617,6 +688,7 @@ async function loadAndStart(session) {
 
 function handleSignOut() {
   _currentSession   = null;
+  _isGuest          = false;
   _loginListenerSet = false;
   state.user     = null;
   state.tasks    = [];
