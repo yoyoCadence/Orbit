@@ -34,6 +34,9 @@ npm-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+# ── 測試覆蓋率報告 ─────────────────────────
+coverage/
+
 # ── 編輯器設定 ────────────────────────────
 .vscode/settings.json
 .idea/

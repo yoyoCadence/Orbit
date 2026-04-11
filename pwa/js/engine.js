@@ -3,10 +3,11 @@
 // ─── Weights ──────────────────────────────────────────────────────────────────
 
 export const VALUE_WEIGHT       = { S: 3.2, A: 2.2, B: 1.2, D: 0 };
-export const DIFFICULTY_WEIGHT  = { '0.4': 0.4, '0.7': 0.7, '1.0': 1.0 };
-export const RESISTANCE_WEIGHT  = { '1.0': 1.0, '1.2': 1.2, '1.4': 1.4 };
-export const DIFFICULTY_ENERGY  = { '0.4': 0.6, '0.7': 1.0, '1.0': 1.4 };
-export const RESISTANCE_ENERGY  = { '1.0': 1.0, '1.2': 1.15, '1.4': 1.3 };
+// Keys include both '1.0' (string from form) and '1' (String(1.0) when stored as number)
+export const DIFFICULTY_WEIGHT  = { '0.4': 0.4, '0.7': 0.7, '1': 1.0, '1.0': 1.0 };
+export const RESISTANCE_WEIGHT  = { '1': 1.0, '1.0': 1.0, '1.2': 1.2, '1.4': 1.4 };
+export const DIFFICULTY_ENERGY  = { '0.4': 0.6, '0.7': 1.0, '1': 1.4, '1.0': 1.4 };
+export const RESISTANCE_ENERGY  = { '1': 1.0, '1.0': 1.0, '1.2': 1.15, '1.4': 1.3 };
 export const VALUE_ENERGY_FACTOR = { S: 1.2, A: 1.0, B: 0.8, D: 0 };
 export const RESULT_MULTIPLIER  = { complete: 1.0, partial: 0.6, invalid: 0, instant: 1.0 };
 
