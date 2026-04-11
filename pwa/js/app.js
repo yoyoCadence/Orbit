@@ -15,6 +15,9 @@ import { renderReview }         from './pages/review.js';
 import { renderProfile }        from './pages/profile.js';
 import { renderSettings }       from './pages/settings.js';
 
+// ─── Version ─────────────────────────────────────────────────────────────────
+export const APP_VERSION = 'v1.2.0';
+
 // ─── Auth session state ───────────────────────────────────────────────────────
 let _currentSession   = null;
 let _isGuest          = false;
@@ -414,6 +417,26 @@ export function showXPFloat(text) {
   setTimeout(() => el.remove(), 1400);
 }
 
+// ─── Sync banner ─────────────────────────────────────────────────────────────
+
+let _syncHideTimer = null;
+
+export function showSyncBanner(state) {
+  const el = document.getElementById('sync-banner');
+  if (!el) return;
+  clearTimeout(_syncHideTimer);
+  if (state === 'syncing') {
+    el.className = 'syncing';
+    el.textContent = '☁️ 同步中…';
+  } else {
+    el.className = 'synced';
+    el.textContent = '✓ 已更新';
+    _syncHideTimer = setTimeout(() => {
+      el.className = 'hidden';
+    }, 2000);
+  }
+}
+
 // ─── Toast ────────────────────────────────────────────────────────────────────
 
 export function showToast(text) {
@@ -775,6 +798,7 @@ async function init() {
     getSession().then(session => {
       if (session) {
         _currentSession = session;
+        showSyncBanner('syncing');
         db.loadFromRemote(session.user.id).then(() => {
           // Quietly refresh state from updated cache
           state.user     = storage.getUser()     || state.user;
@@ -783,7 +807,10 @@ async function init() {
           state.energy   = storage.getEnergy();
           updateHeader();
           renderPage(currentHash());
-        }).catch(() => {});
+          showSyncBanner('synced');
+        }).catch(() => {
+          showSyncBanner('synced'); // hide banner even on failure
+        });
       }
     }).catch(() => {});
     return;

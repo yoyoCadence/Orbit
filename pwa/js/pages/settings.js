@@ -1,6 +1,6 @@
 import { state }                      from '../state.js';
 import { storage }                     from '../storage.js';
-import { applyTheme, applyBgImage, removeBgImage } from '../app.js';
+import { applyTheme, applyBgImage, removeBgImage, APP_VERSION } from '../app.js';
 import { uid }                         from '../utils.js';
 
 // ── Theme definitions ────────────────────────────────────────────────────────
@@ -161,6 +161,7 @@ function _renderView(container) {
         <button class="btn btn-outline btn-sm" id="signout-btn">登出</button>
       </div>
       <div class="account-divider"></div>
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px">版本 ${APP_VERSION}</div>
       <button class="btn-text-danger" id="reset-btn">清除本機快取資料（重新登入後可從雲端還原）</button>
     </div>
   `;
