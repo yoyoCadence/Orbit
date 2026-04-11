@@ -21,6 +21,7 @@ export default [
         Promise: 'readonly',
         setTimeout: 'readonly',
         clearInterval: 'readonly',
+        clearTimeout: 'readonly',
         setInterval: 'readonly',
         confirm: 'readonly',
         alert: 'readonly',

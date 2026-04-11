@@ -1164,6 +1164,18 @@ nav {
 }
 .xp-preview-box strong { color: var(--primary-lt); }
 
+/* ── Sync status banner ─────────────────────────────────────────────────────── */
+#sync-banner {
+  position: sticky; top: 0; z-index: 90;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 5px 12px; font-size: 12px; font-weight: 500;
+  transition: opacity 0.3s, max-height 0.3s;
+  max-height: 32px; overflow: hidden;
+}
+#sync-banner.hidden { max-height: 0; padding: 0; opacity: 0; pointer-events: none; }
+#sync-banner.syncing { background: rgba(124,58,237,0.18); color: var(--text-muted); }
+#sync-banner.synced  { background: rgba(16,185,129,0.15); color: #10b981; }
+
 /* count badge on task card */
 .count-badge {
   position: absolute; top: 8px; right: 8px;
