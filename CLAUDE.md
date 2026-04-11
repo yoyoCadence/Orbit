@@ -58,6 +58,29 @@
 - 只用 `anon public key`（存在環境變數或 config，不 hardcode 在 JS 裡）
 - 禁止 `FOR ALL` 或不指定 role 的寬鬆 policy
 
+---
+
+## AI Working Rules
+
+Follow repository rules:
+
+1. Low-risk changes (apply directly):
+   - tests, test configs
+   - devDependencies
+   - `.gitignore` (coverage, logs, outputs)
+
+2. High-risk changes (explain first, then ask):
+   - auth, tokens, `.env`
+   - database schema, migrations
+   - CI/CD, deployment configs
+   - modifying existing configs
+
+3. Always:
+   - summarize what changed
+   - explain the reasoning
+
+---
+
 ### 環境變數安全操作規則
 - 永遠不在終端機輸出任何 secret、key、token 或環境變數的值
 - 只能檢查是否存在，例如：

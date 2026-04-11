@@ -1,5 +1,5 @@
 import { state }                    from '../state.js';
-import { today, formatTime, formatDate } from '../utils.js';
+import { formatTime, formatDate } from '../utils.js';
 
 const RESULT_ICON  = { complete: '✅', partial: '🔶', invalid: '❌', instant: '✓' };
 const RESULT_LABEL = { complete: '完成', partial: '部分完成', invalid: '無效', instant: '完成' };

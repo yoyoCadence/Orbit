@@ -11,7 +11,6 @@
 import { describe, it, expect } from 'vitest';
 import {
   calcBaseXP,
-  calcFinalXP,
   getDailyTaskXP,
   getDailyTaskCount,
 } from '../../pwa/js/engine.js';

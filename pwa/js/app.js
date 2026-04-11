@@ -325,7 +325,7 @@ function _submitFocusResult(result, durationMin) {
 
 // ─── Shared session commit ────────────────────────────────────────────────────
 
-function _commitSession(session, task) {
+function _commitSession(session, _task) {
   const oldLevel = getLevelInfo(state.user.totalXP || 0).level;
 
   // Persist session

@@ -185,6 +185,14 @@ pwa/
 
 ---
 
+## AI Rules (Summary)
+
+- Follow risk-based change policy (see `CLAUDE.md` for full details)
+- Ask before high-risk changes (auth, database, CI/CD, env)
+- Always summarize changes
+
+---
+
 ## Roadmap
 
 - [x] XP / Energy / Streak 三軌系統
