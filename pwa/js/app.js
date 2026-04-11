@@ -14,6 +14,7 @@ import { renderGoals }          from './pages/goals.js';
 import { renderReview }         from './pages/review.js';
 import { renderProfile }        from './pages/profile.js';
 import { renderSettings }       from './pages/settings.js';
+import { renderLeaderboard }    from './pages/leaderboard.js';
 
 // ─── Version ─────────────────────────────────────────────────────────────────
 export const APP_VERSION = 'v1.2.0';
@@ -26,11 +27,12 @@ let _loginListenerSet = false;
 // ─── Router ──────────────────────────────────────────────────────────────────
 
 const ROUTES = {
-  home:     renderHome,
-  goals:    renderGoals,
-  review:   renderReview,
-  profile:  renderProfile,
-  settings: renderSettings,
+  home:        renderHome,
+  goals:       renderGoals,
+  review:      renderReview,
+  profile:     renderProfile,
+  settings:    renderSettings,
+  leaderboard: renderLeaderboard,
 };
 
 function currentHash() { return window.location.hash.slice(1) || 'home'; }
