@@ -1,5 +1,4 @@
 import { state }               from '../state.js';
-import { today }               from '../utils.js';
 import { calcDailyStats, calcValueConfidence } from '../engine.js';
 
 export function renderReview(container) {

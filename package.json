@@ -2,6 +2,7 @@
   "name": "orbit",
   "type": "module",
   "scripts": {
+    "lint": "eslint pwa/js/**/*.js tests/**/*.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
@@ -9,6 +10,7 @@
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^1.6.0",
+    "eslint": "^9.25.0",
     "vitest": "^1.6.0"
   }
 }
