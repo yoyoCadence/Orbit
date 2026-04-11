@@ -44,6 +44,7 @@ export const db = {
         lastWeeklyBonusDate:  p.last_weekly_bonus_date || '',
         morningState:         p.morning_state,
         mode:                 p.mode,
+        isPublic:             p.is_public ?? false,
         createdAt:            p.created_at,
       });
     }
@@ -119,6 +120,7 @@ export const db = {
       last_weekly_bonus_date: user.lastWeeklyBonusDate   || null,
       morning_state:          user.morningState          || 'normal',
       mode:                   user.mode                  || 'normal',
+      is_public:              user.isPublic              ?? false,
     });
   },
 

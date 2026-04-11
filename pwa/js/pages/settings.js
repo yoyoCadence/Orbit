@@ -150,6 +150,23 @@ function _renderView(container) {
       <button class="btn btn-primary" style="margin-top:12px" id="add-task-btn">+ 新增任務</button>
     </div>
 
+    <!-- Leaderboard opt-in -->
+    <div class="card">
+      <div class="card-title">🏆 排行榜</div>
+      <div class="mode-row">
+        <div class="mode-info">
+          <div class="mode-name">顯示於排行榜</div>
+          <div class="mode-desc">${state.user?.isPublic
+            ? '你的名字與分數已公開顯示在排行榜'
+            : '目前不公開，不會出現在排行榜'}</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="public-toggle" ${state.user?.isPublic ? 'checked' : ''}>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+
     <!-- Account -->
     <div class="card">
       <div class="card-title">👤 帳號</div>
@@ -230,6 +247,14 @@ function _setupListeners(container) {
       storage.saveTasks(state.tasks);
       _renderView(container);
     }
+  });
+
+  // Leaderboard opt-in
+  container.querySelector('#public-toggle').addEventListener('change', e => {
+    if (!state.user) return;
+    state.user.isPublic = e.target.checked;
+    storage.saveUser(state.user);
+    _renderView(container);
   });
 
   // Show account email async
