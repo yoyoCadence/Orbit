@@ -27,6 +27,7 @@ export default [
         location: 'readonly',
         FileReader: 'readonly',
         Image: 'readonly',
+        crypto: 'readonly',
         HTMLElement: 'readonly',
         Event: 'readonly',
       },

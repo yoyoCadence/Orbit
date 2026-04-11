@@ -728,11 +728,11 @@ function handleSignOut() {
   state.energy   = { currentEnergy: 100, maxEnergy: 100, lastResetDate: '' };
   storage.clearAll();
 
-  // Reset login form to initial state
-  document.getElementById('login-form').classList.remove('hidden');
-  document.getElementById('login-sent').classList.add('hidden');
-  const emailEl = document.getElementById('login-email');
+  // Clear login form fields
+  const emailEl = document.getElementById('auth-email');
   if (emailEl) emailEl.value = '';
+  const pwEl = document.getElementById('auth-password');
+  if (pwEl) pwEl.value = '';
 
   document.getElementById('main-app').classList.add('hidden');
   document.getElementById('setup-screen').classList.add('hidden');
