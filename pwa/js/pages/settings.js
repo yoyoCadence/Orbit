@@ -197,10 +197,10 @@ function _setupListeners(container) {
   });
 
   // Background
-  container.querySelector('#bg-upload-btn').addEventListener('click', () => {
-    container.querySelector('#bg-input').click();
+  container.querySelector('#bg-upload-btn')?.addEventListener('click', () => {
+    container.querySelector('#bg-input')?.click();
   });
-  container.querySelector('#bg-input').addEventListener('change', async e => {
+  container.querySelector('#bg-input')?.addEventListener('change', async e => {
     const file = e.target.files[0];
     if (!file) return;
     const compressed = await _compressImage(file, 900, 0.72);
@@ -216,7 +216,7 @@ function _setupListeners(container) {
   }
 
   // Mode toggle
-  container.querySelector('#mode-toggle').addEventListener('change', e => {
+  container.querySelector('#mode-toggle')?.addEventListener('change', e => {
     if (!state.user) return;
     const newMode = e.target.checked ? 'advanced' : 'normal';
     if (newMode === 'advanced') {
@@ -231,10 +231,10 @@ function _setupListeners(container) {
   });
 
   // Task CRUD
-  container.querySelector('#add-task-btn').addEventListener('click', () => {
+  container.querySelector('#add-task-btn')?.addEventListener('click', () => {
     _showTaskModal(container, null);
   });
-  container.querySelector('#tasks-list').addEventListener('click', e => {
+  container.querySelector('#tasks-list')?.addEventListener('click', e => {
     const editId = e.target.dataset.edit;
     const delId  = e.target.dataset.del;
     if (editId) {
@@ -250,7 +250,7 @@ function _setupListeners(container) {
   });
 
   // Leaderboard opt-in
-  container.querySelector('#public-toggle').addEventListener('change', e => {
+  container.querySelector('#public-toggle')?.addEventListener('change', e => {
     if (!state.user) return;
     state.user.isPublic = e.target.checked;
     storage.saveUser(state.user);
@@ -267,12 +267,12 @@ function _setupListeners(container) {
   });
 
   // Sign out
-  container.querySelector('#signout-btn').addEventListener('click', () => {
+  container.querySelector('#signout-btn')?.addEventListener('click', () => {
     window.signOut();
   });
 
   // Clear local cache
-  container.querySelector('#reset-btn').addEventListener('click', () => {
+  container.querySelector('#reset-btn')?.addEventListener('click', () => {
     if (!confirm('清除本機快取？重新登入後資料會從雲端自動還原。')) return;
     storage.clearAll();
     location.reload();
