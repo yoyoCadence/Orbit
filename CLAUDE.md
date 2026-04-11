@@ -62,11 +62,22 @@
 
 ## AI Working Rules
 
-This repository follows a risk-based change policy:
+Follow repository rules:
 
-- Low-risk changes (tests, devDependencies, ignore rules) can be applied directly
-- High-risk changes (auth, env, CI/CD, core logic) require explanation first
-- Always provide a change summary
+1. Low-risk changes (apply directly):
+   - tests, test configs
+   - devDependencies
+   - `.gitignore` (coverage, logs, outputs)
+
+2. High-risk changes (explain first, then ask):
+   - auth, tokens, `.env`
+   - database schema, migrations
+   - CI/CD, deployment configs
+   - modifying existing configs
+
+3. Always:
+   - summarize what changed
+   - explain the reasoning
 
 ---
 
