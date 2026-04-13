@@ -162,9 +162,11 @@ function taskCardHtml(task, countToday) {
          style="--task-accent:${IMPACT_COLOR[task.impactType] || 'var(--primary)'}">
       ${countToday > 0 ? `<span class="count-badge">${countToday}</span>` : ''}
       <div class="task-card-top">
-        ${task.iconImg
-          ? `<img src="${task.iconImg}" class="task-icon-img">`
-          : `<span class="task-emoji">${task.emoji || '🎯'}</span>`}
+        <div class="task-icon-wrap${task.isDefault === false ? ' task-icon-custom' : ''}">
+          ${task.iconImg
+            ? `<img src="${task.iconImg}" class="task-icon-img">`
+            : `<span class="task-emoji">${task.emoji || '🎯'}</span>`}
+        </div>
         <div class="task-badges">
           ${valueLabel ? `<span class="badge ${valueCls}">${valueLabel}</span>` : ''}
           <span class="badge badge-nature">${natureLbl}</span>

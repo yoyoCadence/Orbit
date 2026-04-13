@@ -16,7 +16,7 @@ export function createDefaultTasks() {
       reason: '高品質輸出是核心成長槓桿，直接提升能力與作品',
       successCriteria: '完成一份可交付的輸出成果（文章/程式/設計/分析）',
       hasDeliverable: true,
-      valueConfidence: 100, createdAt: now,
+      valueConfidence: 100, isDefault: true, createdAt: now,
     },
     {
       id: uid(), name: '深度學習 45 分鐘',
@@ -25,7 +25,7 @@ export function createDefaultTasks() {
       emoji: '🧠', iconImg: null,
       minEffectiveMinutes: 25, cooldownMinutes: 60, dailyXpCap: 200,
       requiresReasonIfS: false,
-      valueConfidence: 100, createdAt: now,
+      valueConfidence: 100, isDefault: true, createdAt: now,
     },
     {
       id: uid(), name: '運動 30 分鐘',
@@ -34,7 +34,7 @@ export function createDefaultTasks() {
       emoji: '🏋️', iconImg: null,
       minEffectiveMinutes: 15, cooldownMinutes: 360, dailyXpCap: 200,
       requiresReasonIfS: false,
-      valueConfidence: 100, createdAt: now,
+      valueConfidence: 100, isDefault: true, createdAt: now,
     },
     {
       id: uid(), name: '閱讀高品質內容 30 分鐘',
@@ -43,7 +43,7 @@ export function createDefaultTasks() {
       emoji: '📚', iconImg: null,
       minEffectiveMinutes: 15, cooldownMinutes: 60, dailyXpCap: 200,
       requiresReasonIfS: false,
-      valueConfidence: 100, createdAt: now,
+      valueConfidence: 100, isDefault: true, createdAt: now,
     },
 
     // ── Maintenance / obligation ───────────────────────────────────────────────
@@ -54,7 +54,7 @@ export function createDefaultTasks() {
       emoji: '💼', iconImg: null,
       minEffectiveMinutes: 15, cooldownMinutes: 30, dailyXpCap: 100,
       requiresReasonIfS: false,
-      valueConfidence: 100, createdAt: now,
+      valueConfidence: 100, isDefault: true, createdAt: now,
     },
     {
       id: uid(), name: '記帳 / 檢查支出',
@@ -63,7 +63,7 @@ export function createDefaultTasks() {
       emoji: '💰', iconImg: null,
       minEffectiveMinutes: 0, cooldownMinutes: 720, dailyXpCap: 50,
       requiresReasonIfS: false,
-      valueConfidence: 100, createdAt: now,
+      valueConfidence: 100, isDefault: true, createdAt: now,
     },
     {
       id: uid(), name: '整理環境 10 分鐘',
@@ -72,7 +72,7 @@ export function createDefaultTasks() {
       emoji: '🧹', iconImg: null,
       minEffectiveMinutes: 0, cooldownMinutes: 360, dailyXpCap: 50,
       requiresReasonIfS: false,
-      valueConfidence: 100, createdAt: now,
+      valueConfidence: 100, isDefault: true, createdAt: now,
     },
     {
       id: uid(), name: '回覆必要訊息 / 行政處理',
@@ -81,7 +81,7 @@ export function createDefaultTasks() {
       emoji: '📬', iconImg: null,
       minEffectiveMinutes: 0, cooldownMinutes: 240, dailyXpCap: 50,
       requiresReasonIfS: false,
-      valueConfidence: 100, createdAt: now,
+      valueConfidence: 100, isDefault: true, createdAt: now,
     },
 
     // ── Recovery ──────────────────────────────────────────────────────────────
@@ -92,7 +92,7 @@ export function createDefaultTasks() {
       emoji: '🚶', iconImg: null,
       minEffectiveMinutes: 0, cooldownMinutes: 120, dailyXpCap: 0,
       requiresReasonIfS: false,
-      valueConfidence: 100, createdAt: now,
+      valueConfidence: 100, isDefault: true, createdAt: now,
     },
     {
       id: uid(), name: '午休 / 冥想 / 伸展',
@@ -101,7 +101,7 @@ export function createDefaultTasks() {
       emoji: '🧘', iconImg: null,
       minEffectiveMinutes: 0, cooldownMinutes: 180, dailyXpCap: 0,
       requiresReasonIfS: false,
-      valueConfidence: 100, createdAt: now,
+      valueConfidence: 100, isDefault: true, createdAt: now,
     },
 
     // ── Entertainment ─────────────────────────────────────────────────────────
@@ -112,7 +112,7 @@ export function createDefaultTasks() {
       emoji: '🎬', iconImg: null,
       minEffectiveMinutes: 0, cooldownMinutes: 0, dailyXpCap: 0,
       requiresReasonIfS: false,
-      valueConfidence: 100, createdAt: now,
+      valueConfidence: 100, isDefault: true, createdAt: now,
     },
     {
       id: uid(), name: '遊戲 30 分鐘',
@@ -121,7 +121,7 @@ export function createDefaultTasks() {
       emoji: '🎮', iconImg: null,
       minEffectiveMinutes: 0, cooldownMinutes: 0, dailyXpCap: 0,
       requiresReasonIfS: false,
-      valueConfidence: 100, createdAt: now,
+      valueConfidence: 100, isDefault: true, createdAt: now,
     },
     {
       id: uid(), name: '短影音 / 無目的滑手機 15 分鐘',
@@ -130,7 +130,7 @@ export function createDefaultTasks() {
       emoji: '📱', iconImg: null,
       minEffectiveMinutes: 0, cooldownMinutes: 0, dailyXpCap: 0,
       requiresReasonIfS: false,
-      valueConfidence: 100, createdAt: now,
+      valueConfidence: 100, isDefault: true, createdAt: now,
     },
   ];
 }

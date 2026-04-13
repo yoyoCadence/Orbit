@@ -581,6 +581,7 @@ function _showTaskModal(container, task) {
       successCriteria:     modal.querySelector('#tm-success-criteria')?.value.trim() || task?.successCriteria || '',
       hasDeliverable:      task?.hasDeliverable ?? false,
       valueConfidence:     task?.valueConfidence ?? 100,
+      isDefault:           task?.isDefault ?? false,
       createdAt:           task?.createdAt ?? new Date().toISOString().slice(0, 10),
     };
 
