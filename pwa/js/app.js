@@ -177,7 +177,17 @@ const focus = {
   elapsedSec:        0,
   intervalId:        null,
   minEffectiveSec:   0,
+  paused:            false,
+  pausedAt:          null,
 };
+
+const SKIP_MESSAGES = [
+  '成長是對自己的負責，確定已完成任務？',
+  '誠實是成長的起點，你真的完成了嗎？',
+  '記錄的是習慣，不是數字，確認已完成？',
+  '你的未來自我會感謝今天的誠實，確定完成了？',
+  '只有自己知道答案，確定已完成任務？',
+];
 
 window.startFocus = function (taskId) {
   const task = state.tasks.find(t => t.id === taskId);
@@ -203,8 +213,12 @@ function _tickFocus() {
   focus.elapsedSec = Math.floor((Date.now() - focus.startTime) / 1000);
   const min = Math.floor(focus.elapsedSec / 60);
   const sec = focus.elapsedSec % 60;
-  document.getElementById('focus-timer').textContent =
-    `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+  const timeStr = `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+  document.getElementById('focus-timer').textContent = timeStr;
+
+  // 同步更新背景計時 pip
+  const pipTimer = document.getElementById('focus-pip-timer');
+  if (pipTimer) pipTimer.textContent = timeStr;
 
   const minEl = document.getElementById('focus-min-effective');
   const minSec = focus.minEffectiveSec;
@@ -229,6 +243,7 @@ window.endFocus = function () {
   const isEffective = focus.elapsedSec >= focus.minEffectiveSec;
 
   document.getElementById('focus-overlay').classList.add('hidden');
+  document.getElementById('focus-pip').classList.add('hidden');
 
   if (!isEffective) {
     // Below minimum: record as invalid session (no XP)
@@ -237,6 +252,72 @@ window.endFocus = function () {
   }
   // Show result picker
   _showResultPicker(durationMin);
+};
+
+/** 縮小 overlay，timer 繼續在背景跑。 */
+window.minimizeFocus = function () {
+  if (!focus.active) return;
+  const task = state.tasks.find(t => t.id === focus.taskId);
+  document.getElementById('focus-pip-emoji').textContent = task?.emoji || '🎯';
+  document.getElementById('focus-overlay').classList.add('hidden');
+  document.getElementById('focus-pip').classList.remove('hidden');
+};
+
+/** 從背景恢復 overlay。 */
+window.restoreFocus = function () {
+  document.getElementById('focus-pip').classList.add('hidden');
+  document.getElementById('focus-overlay').classList.remove('hidden');
+};
+
+/** 暫停 / 繼續切換。暫停時停止計時；繼續時補償 startTime。 */
+window.togglePauseFocus = function () {
+  if (!focus.active) return;
+  const btn = document.getElementById('focus-pause-btn');
+  if (focus.paused) {
+    // 繼續：把暫停的時間長度加回 startTime，避免計入暫停秒數
+    focus.startTime += Date.now() - focus.pausedAt;
+    focus.pausedAt = null;
+    focus.paused = false;
+    focus.intervalId = setInterval(_tickFocus, 1000);
+    if (btn) btn.textContent = '⏸ 暫停';
+  } else {
+    // 暫停
+    clearInterval(focus.intervalId);
+    focus.pausedAt = Date.now();
+    focus.paused = true;
+    if (btn) btn.textContent = '▶ 繼續';
+  }
+};
+
+/** 略過：已在 app 外完成任務後補打卡。顯示隨機激勵確認語。 */
+window.skipFocus = function () {
+  if (!focus.active) return;
+  const msg = SKIP_MESSAGES[Math.floor(Math.random() * SKIP_MESSAGES.length)];
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.id = 'skip-confirm';
+  modal.innerHTML = `
+    <div class="modal-box" style="text-align:center">
+      <div style="font-size:36px;margin-bottom:14px">🌱</div>
+      <p class="skip-confirm-msg">${msg}</p>
+      <div class="skip-confirm-actions">
+        <button class="btn btn-primary" id="skip-yes">是，我完成了</button>
+        <button class="btn btn-outline" id="skip-no">取消</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  modal.querySelector('#skip-yes').addEventListener('click', () => {
+    modal.remove();
+    clearInterval(focus.intervalId);
+    const durationMin = Math.floor(focus.elapsedSec / 60);
+    document.getElementById('focus-overlay').classList.add('hidden');
+    document.getElementById('focus-pip').classList.add('hidden');
+    _submitFocusResult('complete', durationMin);
+  });
+  modal.querySelector('#skip-no').addEventListener('click', () => modal.remove());
 };
 
 function _showResultPicker(durationMin) {

@@ -983,13 +983,79 @@ nav {
 }
 .focus-min-pending {
   font-size: 13px; color: var(--text-muted);
-  margin-bottom: 28px;
+  margin-bottom: 20px;
 }
 .focus-min-reached {
   font-size: 13px; color: #10b981; font-weight: 600;
-  margin-bottom: 28px;
+  margin-bottom: 20px;
 }
-.focus-end-btn { max-width: 200px; margin: 0 auto; }
+.focus-end-btn { min-width: 120px; }
+
+/* focus-box 需要 relative 讓縮小按鈕能絕對定位 */
+.focus-box { position: relative; }
+
+/* 縮小按鈕（右上角） */
+.focus-minimize-btn {
+  position: absolute; top: 14px; right: 16px;
+  background: none; border: 1px solid var(--border);
+  border-radius: 20px; padding: 4px 12px;
+  font-size: 12px; color: var(--text-muted);
+  cursor: pointer;
+}
+.focus-minimize-btn:hover { color: var(--text); border-color: var(--text-muted); }
+
+/* 暫停 + 結束 並排 */
+.focus-controls {
+  display: flex; gap: 10px; justify-content: center;
+  margin-bottom: 14px;
+}
+.focus-pause-btn { min-width: 96px; }
+
+/* 略過按鈕（低調文字樣式） */
+.focus-skip-btn {
+  background: none; border: none;
+  font-size: 13px; color: var(--text-muted);
+  text-decoration: underline; cursor: pointer;
+  margin-top: 4px; display: block; width: 100%;
+}
+.focus-skip-btn:hover { color: var(--text); }
+
+/* 略過確認 modal 內容 */
+.skip-confirm-msg {
+  font-size: 15px; font-weight: 600; color: var(--text);
+  line-height: 1.55; margin-bottom: 22px;
+}
+.skip-confirm-actions { display: flex; flex-direction: column; gap: 10px; }
+
+/* 背景計時 PIP */
+#focus-pip {
+  position: fixed; bottom: 76px; left: 50%;
+  transform: translateX(-50%);
+  z-index: 70;
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  padding: 9px 18px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.45);
+  animation: fadeIn 0.2s;
+}
+#focus-pip.hidden { display: none; }
+.focus-pip-emoji { font-size: 20px; }
+.focus-pip-timer {
+  font-size: 19px; font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.focus-pip-expand {
+  font-size: 12px; color: var(--text-muted);
+  background: none; border: 1px solid var(--border);
+  border-radius: 20px; padding: 4px 12px;
+  cursor: pointer; white-space: nowrap;
+}
+.focus-pip-expand:hover { color: var(--text); border-color: var(--text-muted); }
 
 /* ══════════════════════════════════════════════════════════════
    RESULT PICKER (focus end)
