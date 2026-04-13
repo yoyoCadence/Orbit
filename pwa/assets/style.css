@@ -1202,6 +1202,71 @@ nav {
 .conf-warn { background: rgba(245,158,11,0.15); color: #f59e0b; }
 .conf-low  { background: rgba(239,68,68,0.12); color: #ef4444; }
 
+/* ── Review toggle ── */
+.review-toggle {
+  display: flex; gap: 8px; margin-bottom: 14px;
+}
+.review-toggle-btn {
+  flex: 1; padding: 8px 0; border-radius: 10px; font-size: 14px; font-weight: 600;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text-muted);
+  cursor: pointer; transition: background 0.2s, color 0.2s;
+}
+.review-toggle-btn.active {
+  background: var(--primary); color: #fff; border-color: var(--primary);
+}
+
+/* ── Month navigation ── */
+.month-nav {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 14px;
+}
+.month-nav-label { font-size: 16px; font-weight: 700; color: var(--text); }
+.month-nav-btn {
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--text); border-radius: 8px; width: 36px; height: 36px;
+  font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+}
+.month-nav-btn:disabled { opacity: 0.3; cursor: default; }
+.month-nav-btn:not(:disabled):hover { background: var(--surface-2); }
+
+/* ── Calendar grid ── */
+.cal-grid {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  gap: 4px 2px;
+}
+.cal-header-cell {
+  text-align: center; font-size: 11px; font-weight: 700;
+  color: var(--text-muted); padding: 4px 0 6px;
+}
+.cal-cell {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 2px; padding: 5px 2px; border-radius: 8px;
+  min-height: 52px;
+}
+.cal-cell-empty { background: none; }
+.cal-cell-today { background: rgba(139,92,246,0.12); }
+.cal-day-num    { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+.cal-today-num  { color: var(--primary); font-weight: 800; }
+.cal-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+}
+.cal-dot-effective { background: var(--accent, #22c55e); }
+.cal-dot-partial   { background: #f59e0b; }
+.cal-dot-empty     { background: var(--surface-2); border: 1px solid var(--border); }
+.cal-dot-future    { background: transparent; }
+.cal-xp {
+  font-size: 9px; color: var(--text-muted); font-weight: 600;
+  min-height: 11px; text-align: center;
+}
+
+/* Calendar legend */
+.cal-legend {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  font-size: 11px; color: var(--text-muted); margin-bottom: 10px;
+}
+.cal-legend .cal-dot { width: 8px; height: 8px; }
+
 /* ══════════════════════════════════════════════════════════════
    SETTINGS — TASK MODAL EXTRAS
 ══════════════════════════════════════════════════════════════ */
