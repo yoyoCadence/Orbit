@@ -46,3 +46,4 @@ coverage/
 # ── 私密資料夾 ────────────────────────────
 私密/
 private/
+test-results/

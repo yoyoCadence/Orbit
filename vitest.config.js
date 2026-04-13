@@ -3,10 +3,12 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     include: ['tests/**/*.test.js'],
+    exclude: ['tests/e2e/**'],
     environment: 'node',
     environmentMatchGlobs: [
-      ['tests/unit/home.test.js',     'jsdom'],
-      ['tests/unit/settings.test.js', 'jsdom'],
+      ['tests/unit/home.test.js',             'jsdom'],
+      ['tests/unit/settings.test.js',         'jsdom'],
+      ['tests/integration/storage.test.js',   'jsdom'],
     ],
     coverage: {
       provider: 'v8',
