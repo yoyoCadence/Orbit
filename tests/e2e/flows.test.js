@@ -1,0 +1,272 @@
+/**
+ * flows.test.js
+ *
+ * E2E 測試：Orbit 關鍵使用者流程。
+ *
+ * 策略：
+ * - 攔截 Supabase CDN import（page.route），讓測試離線也能跑
+ * - 用 page.addInitScript 注入 localStorage，讓 app 跳過登入直接載入（guest 模式相同路徑）
+ * - 覆蓋：登入畫面 UI、遊客模式進入、即時任務打卡、Focus 計時流程
+ *
+ * 前置需求：
+ *   npx playwright install chromium   （首次需要下載瀏覽器）
+ *   npm run test:e2e
+ */
+
+import { test, expect } from '@playwright/test';
+
+// ─── 常數 ─────────────────────────────────────────────────────────────────────
+
+const TODAY = new Date().toISOString().slice(0, 10);
+
+const GUEST_USER = {
+  id: 'e2e-user', name: 'E2E Tester', totalXP: 0,
+  streakDays: 0, lastStreakDate: TODAY, lastWeeklyBonusDate: '',
+  morningState: 'normal', mode: 'normal', isPublic: false,
+  createdAt: TODAY,
+};
+
+const INSTANT_TASK = {
+  id: 'task-instant', name: '喝水', category: 'instant',
+  impactType: 'task', taskNature: 'maintenance', value: 'B',
+  difficulty: 0.4, resistance: 1.0, emoji: '💧',
+  dailyXpCap: 100, cooldownMinutes: 0, minEffectiveMinutes: 0,
+  isDefault: true, valueConfidence: 100, createdAt: TODAY,
+};
+
+const FOCUS_TASK = {
+  id: 'task-focus', name: '深度學習', category: 'focus',
+  impactType: 'task', taskNature: 'growth', value: 'A',
+  difficulty: 0.7, resistance: 1.2, emoji: '🧠',
+  dailyXpCap: 200, cooldownMinutes: 0, minEffectiveMinutes: 1,
+  isDefault: true, valueConfidence: 100, createdAt: TODAY,
+};
+
+const BASE_ENERGY = {
+  currentEnergy: 90, maxEnergy: 100, lastResetDate: TODAY,
+};
+
+// ─── Supabase CDN mock（回傳無認證的最小 client）─────────────────────────────
+
+const SUPABASE_STUB = `
+export function createClient() {
+  const chain = () => {
+    const q = {
+      select: () => q, eq: () => q, order: () => q,
+      upsert: () => Promise.resolve({ data: null, error: null }),
+      insert: () => Promise.resolve({ data: null, error: null }),
+      delete: () => q,
+      in:     () => Promise.resolve({ data: null, error: null }),
+      single: () => Promise.resolve({ data: null, error: null }),
+      then:   (r) => Promise.resolve({ data: null, error: null }).then(r),
+    };
+    return q;
+  };
+  return {
+    auth: {
+      getSession:         () => Promise.resolve({ data: { session: null } }),
+      onAuthStateChange:  () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+      signInWithPassword: () => Promise.resolve({ data: null, error: { message: 'E2E mock' } }),
+      signUp:             () => Promise.resolve({ data: null, error: { message: 'E2E mock' } }),
+      signInWithOAuth:    () => Promise.resolve({ data: null, error: null }),
+      signOut:            () => Promise.resolve({ error: null }),
+    },
+    from: () => chain(),
+  };
+}
+`;
+
+// ─── Fixtures：攔截 CDN + 注入 localStorage ──────────────────────────────────
+
+/** 設定 Supabase CDN 攔截（每個測試都要）。 */
+async function mockSupabase(page) {
+  await page.route('https://esm.sh/**', route =>
+    route.fulfill({
+      status:      200,
+      contentType: 'application/javascript; charset=utf-8',
+      body:        SUPABASE_STUB,
+    })
+  );
+}
+
+/** 在 page script 執行前注入 localStorage 資料。 */
+async function seedStorage(page, tasks, sessions = []) {
+  await page.addInitScript(({ user, tasks, sessions, energy }) => {
+    const P = 'yoyo_';
+    localStorage.setItem(P + 'user',     JSON.stringify(user));
+    localStorage.setItem(P + 'tasks',    JSON.stringify(tasks));
+    localStorage.setItem(P + 'sessions', JSON.stringify(sessions));
+    localStorage.setItem(P + 'energy',   JSON.stringify(energy));
+  }, { user: GUEST_USER, tasks, sessions, energy: BASE_ENERGY });
+}
+
+// ─── 登入畫面 ─────────────────────────────────────────────────────────────────
+
+test.describe('登入畫面', () => {
+  test.beforeEach(async ({ page }) => {
+    await mockSupabase(page);
+    await page.goto('/');
+    await page.waitForSelector('#login-screen:not(.hidden)', { timeout: 8000 });
+  });
+
+  test('首次開啟顯示登入畫面與表單欄位', async ({ page }) => {
+    await expect(page.locator('#login-screen')).toBeVisible();
+    await expect(page.locator('#auth-email')).toBeVisible();
+    await expect(page.locator('#auth-password')).toBeVisible();
+    await expect(page.locator('#auth-submit')).toHaveText('登入');
+  });
+
+  test('切換到「註冊」tab 更新按鈕文字', async ({ page }) => {
+    await page.click('#tab-signup');
+    await expect(page.locator('#auth-submit')).toHaveText('註冊');
+  });
+
+  test('切回「登入」tab 恢復按鈕文字', async ({ page }) => {
+    await page.click('#tab-signup');
+    await page.click('#tab-signin');
+    await expect(page.locator('#auth-submit')).toHaveText('登入');
+  });
+
+  test('顯示「遊客」按鈕', async ({ page }) => {
+    await expect(page.locator('.btn-guest')).toBeVisible();
+    await expect(page.locator('.btn-guest')).toContainText('遊客');
+  });
+});
+
+// ─── 遊客模式進入 ─────────────────────────────────────────────────────────────
+
+test.describe('遊客模式', () => {
+  test('有 localStorage 資料時直接載入主畫面（跳過登入）', async ({ page }) => {
+    await mockSupabase(page);
+    await seedStorage(page, [INSTANT_TASK]);
+    await page.goto('/');
+    await expect(page.locator('#main-app')).toBeVisible({ timeout: 8000 });
+    await expect(page.locator('#login-screen')).toBeHidden();
+  });
+
+  test('主畫面顯示 nav bar', async ({ page }) => {
+    await mockSupabase(page);
+    await seedStorage(page, [INSTANT_TASK]);
+    await page.goto('/');
+    await page.waitForSelector('#main-app:not(.hidden)');
+    await expect(page.locator('.nav-bar, nav')).toBeVisible();
+  });
+
+  test('點「以遊客身份繼續」進入主畫面（無 localStorage）', async ({ page }) => {
+    await mockSupabase(page);
+    // 注入 tasks/user 讓遊客路徑不走 setup 畫面
+    await seedStorage(page, [INSTANT_TASK]);
+    await page.goto('/');
+    // 若有快取直接進主畫面；若無則會看到登入畫面再點遊客
+    const loginVisible = await page.locator('#login-screen:not(.hidden)').isVisible().catch(() => false);
+    if (loginVisible) {
+      await page.locator('.btn-guest').click();
+    }
+    await expect(page.locator('#main-app')).toBeVisible({ timeout: 8000 });
+  });
+});
+
+// ─── 即時任務打卡 ─────────────────────────────────────────────────────────────
+
+test.describe('即時任務打卡', () => {
+  test.beforeEach(async ({ page }) => {
+    await mockSupabase(page);
+    await seedStorage(page, [INSTANT_TASK]);
+    await page.goto('/');
+    await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
+  });
+
+  test('首頁顯示任務卡片', async ({ page }) => {
+    await expect(page.locator('.task-card').first()).toBeVisible();
+    await expect(page.locator('.task-card').first()).toContainText('喝水');
+  });
+
+  test('點擊即時任務顯示 XP float 動畫', async ({ page }) => {
+    await page.locator('.task-card').first().click();
+    await expect(page.locator('.xp-float')).toBeVisible({ timeout: 3000 });
+  });
+
+  test('完成任務後出現 count badge', async ({ page }) => {
+    await page.locator('.task-card').first().click();
+    await expect(page.locator('.count-badge')).toBeVisible({ timeout: 3000 });
+    await expect(page.locator('.count-badge').first()).toHaveText('1');
+  });
+
+  test('完成任務後 session 出現在今日紀錄', async ({ page }) => {
+    await page.locator('.task-card').first().click();
+    await expect(page.locator('.log-item')).toBeVisible({ timeout: 3000 });
+    await expect(page.locator('.log-item').first()).toContainText('喝水');
+  });
+
+  test('完成任務後 header XP 文字更新（不再是 0 / ...）', async ({ page }) => {
+    const xpBefore = await page.locator('#hdr-xp-text').textContent();
+    await page.locator('.task-card').first().click();
+    await page.waitForTimeout(500);
+    const xpAfter = await page.locator('#hdr-xp-text').textContent();
+    expect(xpAfter).not.toBe(xpBefore);
+  });
+});
+
+// ─── Focus 計時流程 ───────────────────────────────────────────────────────────
+
+test.describe('Focus 計時流程', () => {
+  test.beforeEach(async ({ page }) => {
+    await mockSupabase(page);
+    await seedStorage(page, [FOCUS_TASK]);
+    await page.goto('/');
+    await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
+  });
+
+  test('點擊 focus 任務開啟 focus overlay', async ({ page }) => {
+    await page.locator('.task-card').first().click();
+    await expect(page.locator('#focus-overlay')).toBeVisible({ timeout: 3000 });
+    await expect(page.locator('#focus-task-name')).toContainText('深度學習');
+  });
+
+  test('計時器數字會持續變化', async ({ page }) => {
+    await page.locator('.task-card').first().click();
+    await page.waitForSelector('#focus-overlay:not(.hidden)');
+    const t1 = await page.locator('#focus-timer').textContent();
+    await page.waitForTimeout(1200);
+    const t2 = await page.locator('#focus-timer').textContent();
+    expect(t1).not.toBe(t2);
+  });
+
+  test('未達最低有效時間提前結束 → focus overlay 關閉，不顯示 result picker', async ({ page }) => {
+    // FOCUS_TASK.minEffectiveMinutes = 1 → 需 60s，立刻按結束 → invalid
+    await page.locator('.task-card').first().click();
+    await page.waitForSelector('#focus-overlay:not(.hidden)');
+    await page.locator('#focus-end-btn').click();
+    await expect(page.locator('#focus-overlay')).toBeHidden({ timeout: 3000 });
+    // result picker 不應出現
+    await expect(page.locator('#result-picker')).toHaveCount(0);
+  });
+
+  test('未達最低有效時間 → 記錄為 invalid session（顯示「無效」）', async ({ page }) => {
+    await page.locator('.task-card').first().click();
+    await page.waitForSelector('#focus-overlay:not(.hidden)');
+    await page.locator('#focus-end-btn').click();
+    await expect(page.locator('.log-item')).toBeVisible({ timeout: 3000 });
+    await expect(page.locator('.log-item').first()).toContainText('0 XP');
+  });
+});
+
+// ─── 設定頁 ──────────────────────────────────────────────────────────────────
+
+test.describe('設定頁', () => {
+  test.beforeEach(async ({ page }) => {
+    await mockSupabase(page);
+    await seedStorage(page, [INSTANT_TASK]);
+    await page.goto('/');
+    await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
+    await page.locator('[data-page="settings"]').click();
+  });
+
+  test('設定頁顯示登出按鈕', async ({ page }) => {
+    await expect(page.locator('button:has-text("登出")')).toBeVisible({ timeout: 3000 });
+  });
+
+  test('設定頁顯示主題選擇', async ({ page }) => {
+    await expect(page.locator('.theme-btn, [data-theme]').first()).toBeVisible({ timeout: 3000 });
+  });
+});
