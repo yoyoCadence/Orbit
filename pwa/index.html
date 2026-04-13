@@ -144,16 +144,26 @@
   <!-- ── Focus timer overlay ── -->
   <div id="focus-overlay" class="hidden">
     <div class="focus-box">
+      <button class="focus-minimize-btn" onclick="window.minimizeFocus()" title="縮小到背景">⬇ 縮小</button>
       <div class="focus-task-header">
         <span id="focus-task-emoji" class="focus-task-emoji">🎯</span>
         <span id="focus-task-name" class="focus-task-name">任務名稱</span>
       </div>
       <div id="focus-timer" class="focus-timer">00:00</div>
       <div id="focus-min-effective" class="focus-min-pending">最低有效時間計算中…</div>
-      <button id="focus-end-btn" class="btn btn-primary focus-end-btn" onclick="window.endFocus()">
-        結束專注
-      </button>
+      <div class="focus-controls">
+        <button id="focus-pause-btn" class="btn btn-outline focus-pause-btn" onclick="window.togglePauseFocus()">⏸ 暫停</button>
+        <button id="focus-end-btn" class="btn btn-primary focus-end-btn" onclick="window.endFocus()">結束專注</button>
+      </div>
+      <button class="focus-skip-btn" onclick="window.skipFocus()">略過（已完成）</button>
     </div>
+  </div>
+
+  <!-- ── Focus PIP（背景計時浮動列）── -->
+  <div id="focus-pip" class="hidden">
+    <span id="focus-pip-emoji" class="focus-pip-emoji">🎯</span>
+    <span id="focus-pip-timer" class="focus-pip-timer">00:00</span>
+    <button class="focus-pip-expand" onclick="window.restoreFocus()">展開</button>
   </div>
 
   <!-- ── Level-up overlay ── -->
