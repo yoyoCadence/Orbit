@@ -13,6 +13,12 @@ export const THEMES = [
   { id: 'light',       name: '純白光', icon: '☀️', colors: ['#7c3aed', '#d97706', '#f1f5f9'] },
 ];
 
+export const THEMES_NEW = [
+  { id: 'wabi',      name: '日系簡約', icon: '⛩️', colors: ['#9b2335', '#7a6a4a', '#f5f0e8'] },
+  { id: 'material',  name: 'Material', icon: '💎', colors: ['#d0bcff', '#efb8c8', '#1c1b1f'] },
+  { id: 'cyberpunk', name: '賽博龐克', icon: '⚡', colors: ['#00ff9f', '#ff2d78', '#050508'] },
+];
+
 const EMOJI_LIST = [
   '🏃','🚶','🏋️','🧘','🚴','🏊','⚽','🏸','🎯','📚','💡','🎨','🎵','🎮',
   '🍎','🥗','🥤','💧','💊','🌙','😴','✍️','📝','💻','🤝','❤️','🧠','🌟',
@@ -49,11 +55,8 @@ export function renderSettings(container) {
   _renderView(container);
 }
 
-function _renderView(container) {
-  const currentTheme = storage.getTheme();
-  const hasBg = !!storage.getBgImage();
-
-  const themeGrid = THEMES.map(t => `
+function _themeCardHtml(t, currentTheme) {
+  return `
     <div class="theme-card ${t.id === currentTheme ? 'active' : ''}" data-theme-id="${t.id}">
       <div class="theme-preview">
         <div class="tp-bg" style="background:${t.colors[2]}">
@@ -66,7 +69,15 @@ function _renderView(container) {
       <div class="theme-name">${t.icon} ${t.name}</div>
       ${t.id === currentTheme ? '<div class="theme-check">✓</div>' : ''}
     </div>
-  `).join('');
+  `;
+}
+
+function _renderView(container) {
+  const currentTheme = storage.getTheme();
+  const hasBg = !!storage.getBgImage();
+
+  const themeGrid    = THEMES.map(t => _themeCardHtml(t, currentTheme)).join('');
+  const themeGridNew = THEMES_NEW.map(t => _themeCardHtml(t, currentTheme)).join('');
 
   const isAdvanced = state.user?.mode === 'advanced';
   const tasksHtml = state.tasks.length
@@ -102,7 +113,10 @@ function _renderView(container) {
     <!-- Theme -->
     <div class="card">
       <div class="card-title">🎨 App 主題</div>
+      <div class="theme-section-label">經典主題</div>
       <div class="theme-grid">${themeGrid}</div>
+      <div class="theme-section-label" style="margin-top:16px">新風格</div>
+      <div class="theme-grid">${themeGridNew}</div>
     </div>
 
     <!-- Background -->

@@ -71,7 +71,7 @@ vi.mock('../../pwa/js/leveling.js', () => ({
   getTitle:     vi.fn(() => '初心者'),
 }));
 
-import { renderSettings, THEMES } from '../../pwa/js/pages/settings.js';
+import { renderSettings, THEMES, THEMES_NEW } from '../../pwa/js/pages/settings.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -110,7 +110,7 @@ describe('renderSettings: theme grid', () => {
     const c = makeContainer();
     renderSettings(c);
     const cards = c.querySelectorAll('.theme-card');
-    expect(cards.length).toBe(THEMES.length);
+    expect(cards.length).toBe(THEMES.length + THEMES_NEW.length);
   });
 
   it('marks current theme as active', () => {
