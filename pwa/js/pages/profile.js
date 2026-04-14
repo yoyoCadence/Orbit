@@ -1,7 +1,7 @@
 import { state }                                         from '../state.js';
 import { storage }                                        from '../storage.js';
 import { getLevelInfo, getDisplayTitle, xpTable,
-         TITLE_TEMPLATES }                                from '../leveling.js';
+         TITLE_TEMPLATES, getAllTemplates }                from '../leveling.js';
 
 export function renderProfile(container) {
   const user   = state.user;
@@ -28,21 +28,35 @@ export function renderProfile(container) {
   const streakDays  = user.streakDays || 0;
   const streakLabel = streakDays >= 30 ? '🔥🔥🔥' : streakDays >= 14 ? '🔥🔥' : streakDays >= 7 ? '🔥' : '';
 
-  // XP table (6 levels from current)
-  const tableRows = xpTable(info.level, 6).map(r => `
-    <div class="xp-table-row ${r.from === info.level ? 'current-level' : ''}">
-      <span>Lv.${r.from} → ${r.to}</span>
-      <span>${r.from === info.level ? `${info.currentXP} / ` : ''}${r.xp} XP</span>
-    </div>
-  `).join('');
+  // XP table (6 levels from current) — show title at each level
+  const tableRows = xpTable(info.level, 6).map(r => {
+    const rowTitle = getDisplayTitle(r.from, user);
+    return `
+      <div class="xp-table-row ${r.from === info.level ? 'current-level' : ''}">
+        <span class="xp-table-lv">Lv.${r.from}</span>
+        <span class="xp-table-title">${escHtml(rowTitle)}</span>
+        <span class="xp-table-xp">${r.from === info.level ? `${info.currentXP} / ` : ''}${r.xp} XP</span>
+      </div>
+    `;
+  }).join('');
 
-  // Title template picker
-  const currentTemplate = user.titleTemplate || 'rpg';
-  const templateBtns = Object.entries(TITLE_TEMPLATES).map(([key, tmpl]) => `
-    <button class="title-tmpl-btn ${currentTemplate === key ? 'active' : ''}" data-template="${key}">
-      ${tmpl.icon} ${tmpl.name}
-    </button>
-  `).join('');
+  // Title template picker — built-in + user custom templates
+  const currentTemplate  = user.titleTemplate || 'rpg';
+  const customTemplates  = user.customTemplates || {};
+  const allTemplates     = getAllTemplates(customTemplates);
+
+  const templateBtns = Object.entries(allTemplates).map(([key, tmpl]) => {
+    const isCustom  = !!customTemplates[key];
+    const isActive  = currentTemplate === key;
+    return `
+      <div class="title-tmpl-item">
+        <button class="title-tmpl-btn ${isActive ? 'active' : ''}" data-template="${key}">
+          ${tmpl.icon} ${tmpl.name}
+        </button>
+        <button class="title-tmpl-edit-btn" data-edit-template="${key}" title="編輯主題">✏️</button>
+      </div>
+    `;
+  }).join('');
 
   container.innerHTML = `
     <!-- Avatar + Name -->
@@ -76,16 +90,20 @@ export function renderProfile(container) {
     <div class="card">
       <div class="card-title">🏷️ 等級稱號</div>
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">
-        稱號會顯示在個人頁與排行榜。選擇主題後自動依等級更新，或輸入自訂稱號覆蓋。
+        選擇主題後自動依等級更新。點 ✏️ 可編輯任意主題的每一等稱號，或新增全新主題。
       </p>
 
-      <div class="title-tmpl-row">${templateBtns}</div>
+      <div class="title-tmpl-list">${templateBtns}</div>
+
+      <button class="btn btn-outline btn-sm" id="add-template-btn" style="margin-top:10px;width:100%">
+        ＋ 新增自訂主題
+      </button>
 
       <div class="form-group" style="margin-top:14px">
-        <label class="form-label">自訂稱號（選填，留空則使用主題稱號）</label>
+        <label class="form-label">覆蓋稱號（選填，留空則使用主題稱號）</label>
         <div style="display:flex;gap:8px">
           <input class="form-input" id="custom-title-input"
-                 placeholder="輸入自訂稱號…" maxlength="20"
+                 placeholder="輸入覆蓋稱號…" maxlength="20"
                  value="${escHtml(user.customTitle || '')}">
           <button class="btn btn-outline btn-sm" id="custom-title-save">儲存</button>
           ${user.customTitle ? `<button class="btn btn-sm" style="background:rgba(239,68,68,0.15);color:var(--danger);border:1px solid rgba(239,68,68,0.3)" id="custom-title-clear">清除</button>` : ''}
@@ -168,16 +186,28 @@ export function renderProfile(container) {
     showNameModal(container);
   });
 
-  // Template buttons
+  // Template select buttons
   container.querySelectorAll('.title-tmpl-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       state.user.titleTemplate = btn.dataset.template;
-      state.user.customTitle   = '';   // clear custom override when picking a template
+      state.user.customTitle   = '';
       storage.saveUser(state.user);
       renderProfile(container);
-      // Update header title
       import('../app.js').then(({ updateHeader }) => updateHeader());
     });
+  });
+
+  // Template edit buttons (✏️)
+  container.querySelectorAll('.title-tmpl-edit-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.editTemplate;
+      showTemplateEditor(container, key);
+    });
+  });
+
+  // Add new template
+  document.getElementById('add-template-btn').addEventListener('click', () => {
+    showTemplateEditor(container, null);
   });
 
   // Custom title save
@@ -193,6 +223,120 @@ export function renderProfile(container) {
   document.getElementById('custom-title-clear')?.addEventListener('click', () => {
     state.user.customTitle = '';
     storage.saveUser(state.user);
+    renderProfile(container);
+    import('../app.js').then(({ updateHeader }) => updateHeader());
+  });
+}
+
+// ─── TIER_LEVELS: the 11 threshold levels in all built-in templates ───────────
+const TIER_LEVELS = [100, 75, 50, 40, 30, 25, 20, 15, 10, 5, 1];
+
+/**
+ * Open a modal to create or edit a title template.
+ * @param {HTMLElement} container  — profile container (for re-render on save)
+ * @param {string|null} editKey    — existing template key to edit, or null to create new
+ */
+function showTemplateEditor(container, editKey) {
+  const existing = document.getElementById('template-editor-modal');
+  if (existing) existing.remove();
+
+  const customTemplates = state.user.customTemplates || {};
+  const allTemplates    = getAllTemplates(customTemplates);
+
+  // Pre-fill from existing template (built-in or custom)
+  const src = editKey ? allTemplates[editKey] : null;
+  const isNew = !editKey;
+
+  const tierInputs = TIER_LEVELS.map((lvl, i) => {
+    const defaultTitle = src
+      ? (src.tiers.find(([min]) => min === lvl) || src.tiers[i] || [])[1] || ''
+      : '';
+    return `
+      <div class="tier-editor-row">
+        <span class="tier-editor-lv">Lv.${lvl}+</span>
+        <input class="form-input tier-title-input" data-tier="${lvl}"
+               placeholder="稱號…" maxlength="20" value="${escHtml(defaultTitle)}">
+      </div>
+    `;
+  }).join('');
+
+  const modal = document.createElement('div');
+  modal.id = 'template-editor-modal';
+  modal.className = 'modal-overlay';
+  modal.innerHTML = `
+    <div class="modal-box" style="max-height:85vh;overflow-y:auto">
+      <div class="modal-header">
+        <span class="modal-title">${isNew ? '新增自訂主題' : '編輯主題'}</span>
+        <button class="modal-close" id="tmpl-modal-close">✕</button>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">主題名稱</label>
+        <input class="form-input" id="tmpl-name" maxlength="20"
+               placeholder="例：我的主題" value="${escHtml(src?.name || '')}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">主題圖示（Emoji）</label>
+        <input class="form-input" id="tmpl-icon" maxlength="4"
+               placeholder="🌟" value="${escHtml(src?.icon || '')}">
+      </div>
+
+      <div style="margin:14px 0 8px;font-size:13px;font-weight:600;color:var(--text-muted)">
+        各等級稱號（由高到低）
+      </div>
+      ${tierInputs}
+
+      <div style="display:flex;gap:8px;margin-top:18px;flex-wrap:wrap">
+        <button class="btn btn-primary" id="tmpl-save-btn" style="flex:1">儲存主題</button>
+        ${!isNew && customTemplates[editKey] ? `
+          <button class="btn btn-sm" style="background:rgba(239,68,68,0.15);color:var(--danger);border:1px solid rgba(239,68,68,0.3)" id="tmpl-delete-btn">刪除</button>
+        ` : ''}
+      </div>
+      ${!isNew && !customTemplates[editKey] ? `
+        <p style="font-size:11px;color:var(--text-muted);margin-top:8px">
+          修改內建主題會建立同名的自訂版本。
+        </p>
+      ` : ''}
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  modal.querySelector('#tmpl-modal-close').addEventListener('click', () => modal.remove());
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+
+  modal.querySelector('#tmpl-save-btn').addEventListener('click', () => {
+    const name = modal.querySelector('#tmpl-name').value.trim();
+    const icon = modal.querySelector('#tmpl-icon').value.trim() || '🏷️';
+    if (!name) { alert('請輸入主題名稱'); return; }
+
+    const tiers = TIER_LEVELS.map(lvl => {
+      const val = modal.querySelector(`[data-tier="${lvl}"]`).value.trim();
+      return [lvl, val || `Lv.${lvl}`];
+    });
+
+    const key = isNew
+      ? 'custom_' + Date.now()
+      : editKey;
+
+    if (!state.user.customTemplates) state.user.customTemplates = {};
+    state.user.customTemplates[key] = { name, icon, tiers };
+
+    // Auto-select newly created template
+    if (isNew) state.user.titleTemplate = key;
+
+    storage.saveUser(state.user);
+    modal.remove();
+    renderProfile(container);
+    import('../app.js').then(({ updateHeader }) => updateHeader());
+  });
+
+  modal.querySelector('#tmpl-delete-btn')?.addEventListener('click', () => {
+    if (!confirm(`確定刪除主題「${src?.name}」？`)) return;
+    delete state.user.customTemplates[editKey];
+    // Fall back to rpg if deleted template was selected
+    if (state.user.titleTemplate === editKey) state.user.titleTemplate = 'rpg';
+    storage.saveUser(state.user);
+    modal.remove();
     renderProfile(container);
     import('../app.js').then(({ updateHeader }) => updateHeader());
   });
