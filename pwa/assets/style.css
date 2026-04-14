@@ -98,6 +98,57 @@
   --border:       #e2e8f0;
 }
 
+/* 7. 日系簡約 (Wabi) — warm parchment light */
+[data-theme="wabi"] {
+  --bg:           #f5f0e8;
+  --surface:      #faf7f2;
+  --surface-2:    #ede8df;
+  --surface-g:    rgba(250,247,242,0.92);
+  --primary:      #9b2335;
+  --primary-lt:   #c0392b;
+  --accent:       #7a6a4a;
+  --success:      #2d7a4a;
+  --danger:       #9b2335;
+  --text:         #1a1510;
+  --text-muted:   #6b5a48;
+  --border:       #d4cbbf;
+  --bg-card:      #faf7f2;
+}
+
+/* 8. Material Design 3 Dark */
+[data-theme="material"] {
+  --bg:           #1c1b1f;
+  --surface:      #2b2930;
+  --surface-2:    #36343b;
+  --surface-g:    rgba(43,41,48,0.92);
+  --primary:      #d0bcff;
+  --primary-lt:   #eaddff;
+  --accent:       #efb8c8;
+  --success:      #6fd08c;
+  --danger:       #f2b8b5;
+  --text:         #e6e1e5;
+  --text-muted:   #cac4d0;
+  --border:       #49454f;
+  --bg-card:      #2b2930;
+}
+
+/* 9. 賽博龐克 (Cyberpunk) — neon on near-black */
+[data-theme="cyberpunk"] {
+  --bg:           #050508;
+  --surface:      #0c0c14;
+  --surface-2:    #13131f;
+  --surface-g:    rgba(12,12,20,0.92);
+  --primary:      #00ff9f;
+  --primary-lt:   #80ffd4;
+  --accent:       #ff2d78;
+  --success:      #00ff9f;
+  --danger:       #ff2d78;
+  --text:         #d0f5e8;
+  --text-muted:   #4a9070;
+  --border:       #0f3025;
+  --bg-card:      #0c0c14;
+}
+
 /* ══════════════════════════════════════════════════════════════
    RESET & BASE
 ══════════════════════════════════════════════════════════════ */
@@ -617,6 +668,10 @@ nav {
 /* ══════════════════════════════════════════════════════════════
    SETTINGS — THEME PICKER
 ══════════════════════════════════════════════════════════════ */
+.theme-section-label {
+  font-size: 11px; font-weight: 600; letter-spacing: .06em;
+  color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;
+}
 .theme-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1497,4 +1552,149 @@ nav {
 .skip-dur-btn:hover { border-color: var(--primary); }
 .skip-dur-btn.active {
   background: var(--primary); border-color: var(--primary); color: #fff;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   THEME OVERRIDES — 日系簡約 (Wabi)
+   Warm parchment, serif font, minimal rounding, ink-style borders
+══════════════════════════════════════════════════════════════ */
+[data-theme="wabi"] body {
+  font-family: 'Hiragino Mincho Pro', 'Yu Mincho', 'BIZ UDPMincho',
+               'Noto Serif CJK TC', Georgia, serif;
+}
+[data-theme="wabi"] .card,
+[data-theme="wabi"] .task-card,
+[data-theme="wabi"] .plan-card {
+  border-radius: 4px;
+  box-shadow: 0 1px 4px rgba(26,21,16,0.1);
+  border: 1px solid var(--border);
+}
+[data-theme="wabi"] #header {
+  border-bottom: 1px solid var(--border);
+  box-shadow: none;
+}
+[data-theme="wabi"] nav {
+  border-top: 1px solid var(--border);
+  box-shadow: none;
+}
+[data-theme="wabi"] .btn-primary {
+  background: var(--primary);
+  border-radius: 2px;
+}
+[data-theme="wabi"] .badge {
+  border-radius: 2px;
+}
+[data-theme="wabi"] .xp-bar-fill,
+[data-theme="wabi"] .energy-bar-fill {
+  background: var(--primary);
+}
+[data-theme="wabi"] .hdr-title { color: var(--primary); }
+
+/* ══════════════════════════════════════════════════════════════
+   THEME OVERRIDES — Material Design 3 Dark
+   Large rounded cards, tinted surfaces, elevation shadows
+══════════════════════════════════════════════════════════════ */
+[data-theme="material"] body {
+  font-family: Roboto, 'Noto Sans', system-ui, sans-serif;
+}
+[data-theme="material"] .card {
+  border-radius: 28px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.35);
+  border: none;
+}
+[data-theme="material"] .task-card {
+  border-radius: 20px;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.3);
+}
+[data-theme="material"] .plan-card {
+  border-radius: 16px;
+}
+[data-theme="material"] .btn,
+[data-theme="material"] .btn-primary,
+[data-theme="material"] .btn-outline {
+  border-radius: 20px;
+}
+[data-theme="material"] .badge {
+  border-radius: 8px;
+}
+[data-theme="material"] nav {
+  border-radius: 28px 28px 0 0;
+  border-top: none;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.4);
+}
+[data-theme="material"] .modal-box {
+  border-radius: 28px;
+}
+[data-theme="material"] input,
+[data-theme="material"] select,
+[data-theme="material"] textarea {
+  border-radius: 12px;
+}
+[data-theme="material"] .xp-bar-fill { background: var(--primary); }
+[data-theme="material"] .hdr-title   { color: var(--primary); }
+
+/* ══════════════════════════════════════════════════════════════
+   THEME OVERRIDES — 賽博龐克 (Cyberpunk)
+   Sharp edges, neon glow, monospace numerics
+══════════════════════════════════════════════════════════════ */
+[data-theme="cyberpunk"] .card,
+[data-theme="cyberpunk"] .task-card,
+[data-theme="cyberpunk"] .plan-card {
+  border-radius: 0;
+  border: 1px solid rgba(0,255,159,0.25);
+  box-shadow: 0 0 10px rgba(0,255,159,0.08);
+}
+[data-theme="cyberpunk"] .btn-primary {
+  border-radius: 0;
+  box-shadow: 0 0 12px rgba(0,255,159,0.4);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+[data-theme="cyberpunk"] .btn-outline {
+  border-radius: 0;
+  border-color: rgba(0,255,159,0.4);
+}
+[data-theme="cyberpunk"] .badge {
+  border-radius: 0;
+}
+[data-theme="cyberpunk"] .modal-box {
+  border-radius: 0;
+  border: 1px solid rgba(0,255,159,0.4);
+  box-shadow: 0 0 30px rgba(0,255,159,0.15);
+}
+[data-theme="cyberpunk"] nav {
+  border-top: 1px solid rgba(0,255,159,0.2);
+  box-shadow: 0 -4px 20px rgba(0,255,159,0.08);
+}
+[data-theme="cyberpunk"] #header {
+  border-bottom: 1px solid rgba(0,255,159,0.2);
+}
+/* Neon glow on active/primary elements */
+[data-theme="cyberpunk"] .xp-bar-fill {
+  background: var(--primary);
+  box-shadow: 0 0 8px rgba(0,255,159,0.6);
+}
+[data-theme="cyberpunk"] .energy-bar-fill {
+  background: var(--primary);
+  box-shadow: 0 0 8px rgba(0,255,159,0.6);
+}
+[data-theme="cyberpunk"] .hdr-title {
+  color: var(--primary);
+  text-shadow: 0 0 8px rgba(0,255,159,0.5);
+}
+[data-theme="cyberpunk"] #hdr-level {
+  color: var(--primary);
+  text-shadow: 0 0 10px rgba(0,255,159,0.6);
+}
+/* Monospace for timer and numeric displays */
+[data-theme="cyberpunk"] #focus-timer,
+[data-theme="cyberpunk"] .stat-pill-val,
+[data-theme="cyberpunk"] .hdr-xp-text,
+[data-theme="cyberpunk"] .hdr-energy-text {
+  font-family: 'Courier New', Consolas, monospace;
+}
+/* Accent color on nav active */
+[data-theme="cyberpunk"] .nav-item.active {
+  color: var(--primary);
+  text-shadow: 0 0 8px rgba(0,255,159,0.5);
 }
