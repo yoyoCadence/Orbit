@@ -352,6 +352,7 @@ html.has-bg #app { background: transparent; }
 }
 .hdr-lv-label { font-size: 9px; font-weight: 600; opacity: 0.8; }
 .hdr-xp-section { flex: 1; }
+.hdr-bars-section { flex: 1; min-width: 0; }
 .hdr-xp-top {
   display: flex; justify-content: space-between; align-items: baseline;
   margin-bottom: 5px;
@@ -1435,5 +1436,65 @@ nav {
 }
 .title-tmpl-btn:hover { border-color: var(--primary); }
 .title-tmpl-btn.active {
+  background: var(--primary); border-color: var(--primary); color: #fff;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   HEADER — ENERGY BAR
+══════════════════════════════════════════════════════════════ */
+.hdr-bars-section {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;
+}
+.hdr-energy-row {
+  display: flex; align-items: center; gap: 6px;
+}
+.hdr-energy-label {
+  font-size: 11px; color: var(--text-muted); flex-shrink: 0;
+}
+.energy-bar-track {
+  flex: 1; height: 5px; background: var(--surface-2);
+  border-radius: 999px; overflow: hidden;
+}
+.energy-bar-fill {
+  height: 100%; border-radius: 999px;
+  background: #10b981;
+  transition: width .4s ease, background .3s;
+}
+.energy-bar-fill.energy-mid { background: #f59e0b; }
+.energy-bar-fill.energy-low { background: #ef4444; }
+.hdr-energy-text {
+  font-size: 11px; color: var(--text-muted); flex-shrink: 0; min-width: 24px; text-align: right;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   FOCUS — EARLY END CONFIRM (motivational quote)
+══════════════════════════════════════════════════════════════ */
+.motivational-quote {
+  background: var(--surface-2); border-left: 3px solid var(--primary);
+  border-radius: 8px; padding: 12px 14px;
+  font-size: 13px; color: var(--text-muted);
+  font-style: italic; line-height: 1.6; text-align: left;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   FOCUS — SKIP DURATION PICKER
+══════════════════════════════════════════════════════════════ */
+.skip-duration-section {
+  margin: 16px 0 4px;
+}
+.skip-duration-label {
+  font-size: 12px; color: var(--text-muted); margin-bottom: 8px;
+}
+.skip-duration-pills {
+  display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+}
+.skip-dur-btn {
+  background: var(--surface-2); border: 1px solid var(--border);
+  color: var(--text); border-radius: 20px;
+  padding: 6px 14px; font-size: 13px; cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.skip-dur-btn:hover { border-color: var(--primary); }
+.skip-dur-btn.active {
   background: var(--primary); border-color: var(--primary); color: #fff;
 }
