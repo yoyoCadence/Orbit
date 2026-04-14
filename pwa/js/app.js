@@ -99,6 +99,18 @@ export function updateHeader() {
   document.getElementById('hdr-title').textContent = getDisplayTitle(info.level, state.user);
   document.getElementById('hdr-xp-fill').style.width = info.percent + '%';
   document.getElementById('hdr-xp-text').textContent = `${info.currentXP} / ${info.needed} XP`;
+
+  // Energy bar
+  const energy = state.energy;
+  const energyPct = Math.round((energy.currentEnergy / (energy.maxEnergy || 100)) * 100);
+  const fill = document.getElementById('hdr-energy-fill');
+  const txt  = document.getElementById('hdr-energy-text');
+  if (fill) {
+    fill.style.width = energyPct + '%';
+    fill.className = 'energy-bar-fill' +
+      (energyPct >= 60 ? ' energy-high' : energyPct >= 30 ? ' energy-mid' : ' energy-low');
+  }
+  if (txt) txt.textContent = energy.currentEnergy;
 }
 
 // ─── Energy helpers ──────────────────────────────────────────────────────────
@@ -234,7 +246,10 @@ const SKIP_MESSAGES = [
 window.startFocus = function (taskId) {
   const task = state.tasks.find(t => t.id === taskId);
   if (!task) return;
-  if (focus.active) return;
+  if (focus.active) {
+    showToast('⚡ 已有任務進行中，請先完成或略過');
+    return;
+  }
 
   focus.active          = true;
   focus.taskId          = taskId;
@@ -279,21 +294,19 @@ function _tickFocus() {
 
 window.endFocus = function () {
   if (!focus.active) return;
-  clearInterval(focus.intervalId);
 
-  const durationMin = Math.floor(focus.elapsedSec / 60);
   const isEffective = focus.elapsedSec >= focus.minEffectiveSec;
 
-  document.getElementById('focus-overlay').classList.add('hidden');
-  document.getElementById('focus-pip').classList.add('hidden');
-
   if (!isEffective) {
-    // Below minimum: record as invalid session (no XP)
-    _submitFocusResult('invalid', durationMin);
+    // Show confirmation before recording invalid (timer keeps running behind modal)
+    _showEarlyEndConfirm();
     return;
   }
-  // Show result picker
-  _showResultPicker(durationMin);
+
+  clearInterval(focus.intervalId);
+  document.getElementById('focus-overlay').classList.add('hidden');
+  document.getElementById('focus-pip').classList.add('hidden');
+  _showResultPicker(Math.floor(focus.elapsedSec / 60));
 };
 
 /** 縮小 overlay，timer 繼續在背景跑。 */
@@ -331,10 +344,58 @@ window.togglePauseFocus = function () {
   }
 };
 
-/** 略過：已在 app 外完成任務後補打卡。顯示隨機激勵確認語。 */
+const MOTIVATIONAL_QUOTES = [
+  '再撐一下，大腦需要足夠時間進入心流！',
+  '困難往往在最後幾分鐘，堅持就是突破！',
+  '每一分鐘的投入都在重塑你的大腦神經迴路。',
+  '真正的成長發生在你想放棄的那一刻之後。',
+  '差一點就達標了，未來的你會感謝你留下來。',
+  '最後衝刺往往是最有價值的部分。',
+];
+
+function _showEarlyEndConfirm() {
+  const minMin  = Math.ceil(focus.minEffectiveSec / 60);
+  const quote   = MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)];
+
+  const modal   = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.id = 'early-end-confirm';
+  modal.innerHTML = `
+    <div class="modal-box" style="text-align:center">
+      <div style="font-size:36px;margin-bottom:12px">⏱️</div>
+      <p style="font-weight:600;margin-bottom:6px">未達最低時長（${minMin} 分鐘）</p>
+      <p style="color:var(--text-muted);font-size:13px;margin-bottom:14px">結束後本次不會累積 XP</p>
+      <div class="motivational-quote">"${quote}"</div>
+      <div class="skip-confirm-actions" style="margin-top:20px">
+        <button class="btn btn-primary" id="early-keep-going">繼續加油 💪</button>
+        <button class="btn btn-outline" id="early-end-confirm-btn">確定結束</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  modal.style.zIndex = '200';
+
+  modal.querySelector('#early-keep-going').addEventListener('click', () => modal.remove());
+
+  modal.querySelector('#early-end-confirm-btn').addEventListener('click', () => {
+    modal.remove();
+    clearInterval(focus.intervalId);
+    const dur = Math.floor(focus.elapsedSec / 60);
+    document.getElementById('focus-overlay').classList.add('hidden');
+    document.getElementById('focus-pip').classList.add('hidden');
+    _submitFocusResult('invalid', dur);
+  });
+}
+
+/** 略過：已在 app 外完成任務後補打卡。顯示確認語 + 時長選擇器。 */
 window.skipFocus = function () {
   if (!focus.active) return;
   const msg = SKIP_MESSAGES[Math.floor(Math.random() * SKIP_MESSAGES.length)];
+
+  // Preset durations (minutes); default to nearest preset ≥ minEffectiveSec
+  const DURATIONS = [15, 30, 45, 60, 90, 120, 180];
+  const minMin    = Math.ceil(focus.minEffectiveSec / 60);
+  let selected    = DURATIONS.find(d => d >= minMin) || DURATIONS[DURATIONS.length - 1];
 
   const modal = document.createElement('div');
   modal.className = 'modal-overlay';
@@ -343,8 +404,17 @@ window.skipFocus = function () {
     <div class="modal-box" style="text-align:center">
       <div style="font-size:36px;margin-bottom:14px">🌱</div>
       <p class="skip-confirm-msg">${msg}</p>
+      <div class="skip-duration-section">
+        <p class="skip-duration-label">選擇已完成的時長</p>
+        <div class="skip-duration-pills">
+          ${DURATIONS.map(m => {
+            const label = m >= 60 ? `${m / 60}h` : `${m}m`;
+            return `<button class="skip-dur-btn${m === selected ? ' active' : ''}" data-min="${m}">${label}</button>`;
+          }).join('')}
+        </div>
+      </div>
       <div class="skip-confirm-actions">
-        <button class="btn btn-primary" id="skip-yes">是，我完成了</button>
+        <button class="btn btn-primary" id="skip-yes">確認完成</button>
         <button class="btn btn-outline" id="skip-no">取消</button>
       </div>
     </div>
@@ -352,13 +422,20 @@ window.skipFocus = function () {
   document.body.appendChild(modal);
   modal.style.zIndex = '200'; // must be above focus-overlay (z-index:80)
 
+  modal.querySelectorAll('.skip-dur-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      modal.querySelectorAll('.skip-dur-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selected = parseInt(btn.dataset.min, 10);
+    });
+  });
+
   modal.querySelector('#skip-yes').addEventListener('click', () => {
     modal.remove();
     clearInterval(focus.intervalId);
-    const durationMin = Math.floor(focus.elapsedSec / 60);
     document.getElementById('focus-overlay').classList.add('hidden');
     document.getElementById('focus-pip').classList.add('hidden');
-    _submitFocusResult('complete', durationMin);
+    _submitFocusResult('complete', selected);
   });
   modal.querySelector('#skip-no').addEventListener('click', () => modal.remove());
 };
