@@ -1,7 +1,7 @@
 import { state }                                              from './state.js';
-import { storage, db, migrateV1toV2 }                        from './storage.js';
+import { storage, db, migrateV1toV2, migrateDefaultFlags }    from './storage.js';
 import { signIn, signUp, signInWithGoogle, signOut as authSignOut, getSession, onAuthStateChange } from './auth.js';
-import { getLevelInfo, getTitle }  from './leveling.js';
+import { getLevelInfo, getDisplayTitle } from './leveling.js';
 import {
   calcBaseXP, calcFinalXP, calcEnergyCost, calcEnergyGain,
   calcDailyStats, processStreakForDate, getDailyTaskXP,
@@ -48,13 +48,55 @@ function renderPage(hash) {
 window.navigate = function (page) { window.location.hash = '#' + page; };
 window.addEventListener('hashchange', () => renderPage(currentHash()));
 
+// ─── Swipe navigation ─────────────────────────────────────────────────────────
+
+const PAGE_ORDER = ['home', 'goals', 'review', 'profile', 'settings', 'leaderboard'];
+let _swipeStartX = 0, _swipeStartY = 0;
+
+document.addEventListener('touchstart', e => {
+  _swipeStartX = e.touches[0].clientX;
+  _swipeStartY = e.touches[0].clientY;
+}, { passive: true });
+
+document.addEventListener('touchend', e => {
+  if (window._isDragging) return;
+  const dx = e.changedTouches[0].clientX - _swipeStartX;
+  const dy = e.changedTouches[0].clientY - _swipeStartY;
+  // Only trigger for clearly horizontal swipes (not vertical scrolling)
+  if (Math.abs(dx) < 60 || Math.abs(dy) > Math.abs(dx) * 0.75) return;
+  const hash = currentHash();
+  const idx  = PAGE_ORDER.indexOf(hash);
+  if (idx === -1) return;
+  if (dx < 0 && idx < PAGE_ORDER.length - 1) window.navigate(PAGE_ORDER[idx + 1]);
+  else if (dx > 0 && idx > 0) window.navigate(PAGE_ORDER[idx - 1]);
+}, { passive: true });
+
+// ─── Daily Plan ───────────────────────────────────────────────────────────────
+
+window.addToDailyPlan = function (taskId) {
+  if (state.dailyPlan.includes(taskId)) {
+    showToast('任務已在計劃中');
+    return;
+  }
+  state.dailyPlan.push(taskId);
+  storage.saveDailyPlan(state.dailyPlan);
+  showToast('✓ 已加入本日計劃');
+  renderPage(currentHash());
+};
+
+window.removeFromDailyPlan = function (taskId) {
+  state.dailyPlan = state.dailyPlan.filter(id => id !== taskId);
+  storage.saveDailyPlan(state.dailyPlan);
+  renderPage(currentHash());
+};
+
 // ─── Header ──────────────────────────────────────────────────────────────────
 
 export function updateHeader() {
   if (!state.user) return;
   const info = getLevelInfo(state.user.totalXP || 0);
   document.getElementById('hdr-level').textContent = info.level;
-  document.getElementById('hdr-title').textContent = getTitle(info.level);
+  document.getElementById('hdr-title').textContent = getDisplayTitle(info.level, state.user);
   document.getElementById('hdr-xp-fill').style.width = info.percent + '%';
   document.getElementById('hdr-xp-text').textContent = `${info.currentXP} / ${info.needed} XP`;
 }
@@ -308,6 +350,7 @@ window.skipFocus = function () {
     </div>
   `;
   document.body.appendChild(modal);
+  modal.style.zIndex = '200'; // must be above focus-overlay (z-index:80)
 
   modal.querySelector('#skip-yes').addEventListener('click', () => {
     modal.remove();
@@ -448,7 +491,7 @@ function _commitSession(session, _task) {
 
   const newLevel = getLevelInfo(state.user.totalXP).level;
   if (newLevel > oldLevel) {
-    setTimeout(() => showLevelUp(newLevel, getTitle(newLevel)), 600);
+    setTimeout(() => showLevelUp(newLevel, getDisplayTitle(newLevel, state.user)), 600);
   }
 }
 
@@ -657,6 +700,32 @@ function showMainApp() {
   document.getElementById('main-app').classList.remove('hidden');
   updateHeader();
   renderPage(currentHash());
+  _startDayWatcher();
+}
+
+// ─── Cross-day watcher ────────────────────────────────────────────────────────
+
+let _dayWatcherStarted = false;
+
+function _startDayWatcher() {
+  if (_dayWatcherStarted) return;
+  _dayWatcherStarted = true;
+
+  let _lastDate = today();
+  setInterval(() => {
+    const current = today();
+    if (current !== _lastDate) {
+      _lastDate = current;
+      if (!state.user) return;
+      // Reset daily plan for new day
+      state.dailyPlan = [];
+      storage.saveDailyPlan([]);
+      // Show morning modal if energy not yet reset today
+      if (state.energy.lastResetDate !== current) {
+        showMorningModal();
+      }
+    }
+  }, 60_000); // check every minute
 }
 
 // ─── Theme & Background ───────────────────────────────────────────────────────
@@ -715,10 +784,11 @@ window.continueAsGuest = function () {
   _isGuest = true;
   hideLoading();
   document.getElementById('login-screen').classList.add('hidden');
-  state.user     = storage.getUser();
-  state.tasks    = storage.getTasks();
-  state.sessions = storage.getSessions();
-  state.energy   = storage.getEnergy();
+  state.user      = storage.getUser();
+  state.tasks     = storage.getTasks();
+  state.sessions  = storage.getSessions();
+  state.energy    = storage.getEnergy();
+  state.dailyPlan = storage.getDailyPlan();
   if (!state.tasks.length) {
     showSetup();
   } else {
@@ -801,10 +871,11 @@ async function loadAndStart(session) {
     console.warn('Supabase load failed, using localStorage cache:', e);
   }
 
-  state.user     = storage.getUser();
-  state.tasks    = storage.getTasks();
-  state.sessions = storage.getSessions();
-  state.energy   = storage.getEnergy();
+  state.user      = storage.getUser();
+  state.tasks     = storage.getTasks();
+  state.sessions  = storage.getSessions();
+  state.energy    = storage.getEnergy();
+  state.dailyPlan = storage.getDailyPlan();
 
   hideLoading();
   document.getElementById('login-screen').classList.add('hidden');
@@ -849,6 +920,7 @@ function handleSignOut() {
 
 async function init() {
   migrateV1toV2(today());
+  migrateDefaultFlags();         // tag pre-existing default tasks with isDefault:true
   document.documentElement.setAttribute('data-theme', storage.getTheme());
   _renderBg(storage.getBgImage());
 
@@ -864,10 +936,11 @@ async function init() {
   // If we have cached user data, show app immediately — don't wait for Supabase
   const cachedUser = storage.getUser();
   if (cachedUser) {
-    state.user     = cachedUser;
-    state.tasks    = storage.getTasks();
-    state.sessions = storage.getSessions();
-    state.energy   = storage.getEnergy();
+    state.user      = cachedUser;
+    state.tasks     = storage.getTasks();
+    state.sessions  = storage.getSessions();
+    state.energy    = storage.getEnergy();
+    state.dailyPlan = storage.getDailyPlan();
     hideLoading();
     processYesterdayStreak();
     if (state.energy.lastResetDate !== today()) {

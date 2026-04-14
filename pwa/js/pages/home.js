@@ -2,7 +2,7 @@ import { state }              from '../state.js';
 import { today, formatTime } from '../utils.js';
 import { calcDailyStats }    from '../engine.js';
 
-// ─── Value / impactType labels ───────────────────────────────────────────────
+// ─── Value / impactType labels ────────────────────────────────────────────────
 
 const VALUE_LABEL = { S: 'S級', A: 'A級', B: 'B級', D: '' };
 const VALUE_CLASS = { S: 'badge-s', A: 'badge-a', B: 'badge-b', D: 'badge-d' };
@@ -19,13 +19,19 @@ const IMPACT_COLOR = {
   entertainment: '#8b5cf6',
 };
 
-// ─── Main render ─────────────────────────────────────────────────────────────
+// ─── Module-level container ref (for drag re-render) ─────────────────────────
+
+let _container = null;
+
+// ─── Main render ──────────────────────────────────────────────────────────────
 
 export function renderHome(container) {
-  const todayStr   = today();
-  const todaySess  = state.sessions.filter(s => s.date === todayStr);
-  const stats      = calcDailyStats(state.sessions, todayStr);
-  const energy     = state.energy;
+  _container = container;
+
+  const todayStr  = today();
+  const todaySess = state.sessions.filter(s => s.date === todayStr);
+  const stats     = calcDailyStats(state.sessions, todayStr);
+  const energy    = state.energy;
 
   // Completion count per task today
   const counts = {};
@@ -37,9 +43,9 @@ export function renderHome(container) {
 
   // Effective day indicator
   const effectiveParts = [];
-  if (stats.productiveXP >= 50)  effectiveParts.push(`+成長XP`);
-  if (stats.hasASTask)            effectiveParts.push(`+A/S任務`);
-  if (stats.entertainmentMinutes <= 120) effectiveParts.push(`+娛樂合理`);
+  if (stats.productiveXP >= 50)          effectiveParts.push('+成長XP');
+  if (stats.hasASTask)                   effectiveParts.push('+A/S任務');
+  if (stats.entertainmentMinutes <= 120) effectiveParts.push('+娛樂合理');
   const effectiveAll = effectiveParts.length === 3;
 
   const streakIndicator = effectiveAll
@@ -47,7 +53,7 @@ export function renderHome(container) {
     : `<span class="streak-warn">未達有效日 (${effectiveParts.join(' ')})</span>`;
 
   // Stats bar
-  const energyPct = Math.round((energy.currentEnergy / energy.maxEnergy) * 100);
+  const energyPct   = Math.round((energy.currentEnergy / energy.maxEnergy) * 100);
   const energyClass = energyPct >= 60 ? 'energy-high' : energyPct >= 30 ? 'energy-mid' : 'energy-low';
 
   const statsBar = `
@@ -75,11 +81,18 @@ export function renderHome(container) {
     </div>
   `;
 
+  // Daily plan
+  const planIds   = state.dailyPlan || [];
+  const planTasks = planIds.map(id => state.tasks.find(t => t.id === id)).filter(Boolean);
+  const planHtml  = planTasks.length
+    ? planTasks.map(t => planCardHtml(t, counts[t.id] || 0)).join('')
+    : `<div class="plan-empty">點擊下方任務小卡加入計劃 👇</div>`;
+
   // Group tasks by section
-  const growthTasks  = state.tasks.filter(t => t.taskNature === 'growth');
-  const maintTasks   = state.tasks.filter(t =>
+  const growthTasks = state.tasks.filter(t => t.taskNature === 'growth');
+  const maintTasks  = state.tasks.filter(t =>
     t.taskNature === 'maintenance' || t.taskNature === 'obligation');
-  const recEntTasks  = state.tasks.filter(t =>
+  const recEntTasks = state.tasks.filter(t =>
     t.taskNature === 'recovery' || t.taskNature === 'entertainment');
 
   // Recent sessions (today, reversed)
@@ -92,19 +105,29 @@ export function renderHome(container) {
 
     <div class="effective-row">${streakIndicator}</div>
 
+    <!-- 本日計劃 -->
+    <div class="section-title">📋 本日計劃</div>
+    <div class="plan-list" id="plan-list">${planHtml}</div>
+
     ${growthTasks.length ? `
       <div class="section-title">🚀 成長任務</div>
-      <div class="task-grid">${growthTasks.map(t => taskCardHtml(t, counts[t.id] || 0)).join('')}</div>
+      <div class="task-grid" data-section="growth">
+        ${growthTasks.map(t => taskCardHtml(t, counts[t.id] || 0, planIds.includes(t.id))).join('')}
+      </div>
     ` : ''}
 
     ${maintTasks.length ? `
       <div class="section-title">⚙️ 維持 / 必要</div>
-      <div class="task-grid">${maintTasks.map(t => taskCardHtml(t, counts[t.id] || 0)).join('')}</div>
+      <div class="task-grid" data-section="maint">
+        ${maintTasks.map(t => taskCardHtml(t, counts[t.id] || 0, planIds.includes(t.id))).join('')}
+      </div>
     ` : ''}
 
     ${recEntTasks.length ? `
       <div class="section-title">🌿 恢復 / 娛樂</div>
-      <div class="task-grid">${recEntTasks.map(t => taskCardHtml(t, counts[t.id] || 0)).join('')}</div>
+      <div class="task-grid" data-section="rec">
+        ${recEntTasks.map(t => taskCardHtml(t, counts[t.id] || 0, planIds.includes(t.id))).join('')}
+      </div>
     ` : ''}
 
     ${state.tasks.length === 0 ? `
@@ -123,31 +146,70 @@ export function renderHome(container) {
     </div>
   `;
 
-  // Bind task card clicks
-  container.querySelectorAll('.task-card').forEach(card => {
-    card.addEventListener('click', () => {
+  // ── Bind: plan cards → complete task ─────────────────────────────────────────
+  container.querySelectorAll('.plan-card').forEach(card => {
+    card.addEventListener('click', e => {
+      if (e.target.closest('.plan-remove-btn')) return;
       const id  = card.dataset.taskId;
       const cat = card.dataset.category;
-      if (cat === 'focus') {
-        window.startFocus(id);
-      } else {
-        window.completeInstant(id);
-      }
+      if (cat === 'focus') window.startFocus(id);
+      else window.completeInstant(id);
     });
   });
 
-  // Bind session delete buttons
+  container.querySelectorAll('.plan-remove-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      window.removeFromDailyPlan(btn.dataset.removeId);
+    });
+  });
+
+  // ── Bind: regular task cards → add to plan ───────────────────────────────────
+  container.querySelectorAll('.task-card').forEach(card => {
+    card.addEventListener('click', e => {
+      if (e.target.closest('.drag-handle')) return;
+      window.addToDailyPlan(card.dataset.taskId);
+    });
+  });
+
+  // ── Bind: session delete buttons ─────────────────────────────────────────────
   container.querySelectorAll('.session-del-btn').forEach(btn => {
     btn.addEventListener('click', e => {
       e.stopPropagation();
       window.deleteSession(btn.dataset.sessionId);
     });
   });
+
+  // ── Setup drag-and-drop ───────────────────────────────────────────────────────
+  _setupDragAndDrop(container);
+}
+
+// ─── Plan card HTML ───────────────────────────────────────────────────────────
+
+function planCardHtml(task, countToday) {
+  const isFocus   = task.category === 'focus';
+  const xpLabel   = task.value !== 'D' ? `+${xpPreview(task)} XP` : '';
+  const doneClass = countToday > 0 ? 'plan-card-done' : '';
+  return `
+    <div class="plan-card ${doneClass}" data-task-id="${task.id}" data-category="${task.category}">
+      <span class="plan-task-emoji">
+        ${task.iconImg
+          ? `<img src="${task.iconImg}" class="plan-icon-img">`
+          : (task.emoji || '🎯')}
+      </span>
+      <div class="plan-task-info">
+        <div class="plan-task-name">${escHtml(task.name)}</div>
+        ${xpLabel ? `<div class="plan-task-xp">${xpLabel}${isFocus ? ' · 專注' : ''}</div>` : ''}
+      </div>
+      ${countToday > 0 ? `<span class="plan-count-badge">${countToday}</span>` : ''}
+      <button class="plan-remove-btn" data-remove-id="${task.id}" title="移除">✕</button>
+    </div>
+  `;
 }
 
 // ─── Task card HTML ──────────────────────────────────────────────────────────
 
-function taskCardHtml(task, countToday) {
+function taskCardHtml(task, countToday, inPlan) {
   const xpLabel    = task.value !== 'D'
     ? `+${xpPreview(task)} XP`
     : task.impactType === 'recovery' ? '回能' : '娛樂';
@@ -157,9 +219,10 @@ function taskCardHtml(task, countToday) {
   const isFocus    = task.category === 'focus';
 
   return `
-    <div class="task-card ${isFocus ? 'task-card-focus' : 'task-card-instant'}"
+    <div class="task-card ${isFocus ? 'task-card-focus' : 'task-card-instant'} ${inPlan ? 'task-card-in-plan' : ''}"
          data-task-id="${task.id}" data-category="${task.category}"
          style="--task-accent:${IMPACT_COLOR[task.impactType] || 'var(--primary)'}">
+      <div class="drag-handle" title="拖曳排序">⋮⋮</div>
       ${countToday > 0 ? `<span class="count-badge">${countToday}</span>` : ''}
       <div class="task-card-top">
         ${task.iconImg
@@ -173,7 +236,7 @@ function taskCardHtml(task, countToday) {
       <div class="task-name">${escHtml(task.name)}</div>
       <div class="task-footer">
         <span class="task-xp-label">${xpLabel}</span>
-        ${isFocus ? `<span class="focus-btn-label">▶ 專注</span>` : ''}
+        ${inPlan ? `<span class="plan-indicator">📋</span>` : (isFocus ? `<span class="focus-btn-label">▶ 專注</span>` : '')}
       </div>
     </div>
   `;
@@ -184,7 +247,7 @@ function taskCardHtml(task, countToday) {
 const RESULT_ICON = { complete: '✅', partial: '🔶', invalid: '❌', instant: '✓' };
 
 function sessionRowHtml(s) {
-  const icon = RESULT_ICON[s.result] || '✓';
+  const icon  = RESULT_ICON[s.result] || '✓';
   const xpStr = s.finalXP > 0
     ? `+${s.finalXP} XP`
     : s.energyGain > 0
@@ -219,4 +282,99 @@ function escHtml(str) {
   return String(str)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;')
     .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─── Drag & Drop (reorder tasks within sections) ──────────────────────────────
+
+let _dragCard   = null;
+let _dragClone  = null;
+let _dragTaskId = null;
+let _dragOffX   = 0;
+let _dragOffY   = 0;
+
+function _setupDragAndDrop(container) {
+  container.querySelectorAll('.drag-handle').forEach(handle => {
+    handle.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      const card = handle.closest('.task-card');
+      if (!card) return;
+
+      _dragTaskId = card.dataset.taskId;
+      _dragCard   = card;
+      window._isDragging = true;
+
+      const rect = card.getBoundingClientRect();
+      _dragOffX = e.clientX - rect.left;
+      _dragOffY = e.clientY - rect.top;
+
+      // Clone for visual drag
+      _dragClone = card.cloneNode(true);
+      _dragClone.style.cssText = `
+        position:fixed;
+        width:${rect.width}px;height:${rect.height}px;
+        top:${rect.top}px;left:${rect.left}px;
+        opacity:.88;pointer-events:none;z-index:500;
+        transform:scale(1.04) rotate(1deg);
+        box-shadow:0 10px 36px rgba(0,0,0,.45);
+        transition:transform .1s;
+      `;
+      document.body.appendChild(_dragClone);
+      card.classList.add('drag-placeholder');
+
+      handle.setPointerCapture(e.pointerId);
+    });
+
+    handle.addEventListener('pointermove', e => {
+      if (!_dragClone) return;
+      _dragClone.style.left = (e.clientX - _dragOffX) + 'px';
+      _dragClone.style.top  = (e.clientY - _dragOffY) + 'px';
+
+      // Highlight the card beneath
+      _clearDragOver(container);
+      const under = _cardUnder(e.clientX, e.clientY);
+      if (under && under !== _dragCard) under.classList.add('drag-over');
+    });
+
+    handle.addEventListener('pointerup', e => _endDrag(e, container));
+    handle.addEventListener('pointercancel', e => _endDrag(e, container));
+  });
+}
+
+function _endDrag(e, container) {
+  if (!_dragClone) return;
+
+  _dragClone.remove();
+  _dragClone = null;
+
+  if (_dragCard) _dragCard.classList.remove('drag-placeholder');
+  _clearDragOver(container);
+
+  // Determine drop target
+  const target = _cardUnder(e.clientX, e.clientY);
+  if (target && target !== _dragCard && _dragTaskId) {
+    const targetId = target.dataset.taskId;
+    const fromIdx  = state.tasks.findIndex(t => t.id === _dragTaskId);
+    const toIdx    = state.tasks.findIndex(t => t.id === targetId);
+    if (fromIdx !== -1 && toIdx !== -1) {
+      const [moved] = state.tasks.splice(fromIdx, 1);
+      state.tasks.splice(toIdx, 0, moved);
+      // Persist new order
+      import('../storage.js').then(({ storage: s }) => s.saveTasks(state.tasks));
+      // Re-render home
+      if (_container) renderHome(_container);
+    }
+  }
+
+  _dragCard   = null;
+  _dragTaskId = null;
+  setTimeout(() => { window._isDragging = false; }, 50);
+}
+
+function _cardUnder(x, y) {
+  const els = document.elementsFromPoint(x, y);
+  return els.find(el => el.classList.contains('task-card') && el !== _dragClone) || null;
+}
+
+function _clearDragOver(container) {
+  container.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
 }

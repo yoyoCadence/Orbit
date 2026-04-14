@@ -29,7 +29,7 @@ vi.mock('../../pwa/js/supabase.js', () => ({
 
 // ─── 被測模組（mock 完成後才 import）─────────────────────────────────────────
 
-import { storage, db, migrateV1toV2 } from '../../pwa/js/storage.js';
+import { storage, db, migrateV1toV2, migrateDefaultFlags } from '../../pwa/js/storage.js';
 
 // ─── 常數 ─────────────────────────────────────────────────────────────────────
 
@@ -620,6 +620,101 @@ describe('db.upsertEnergy()', () => {
       }),
       { onConflict: 'user_id' }
     );
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 資料遷移：migrateV1toV2()
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Daily Plan: getDailyPlan / saveDailyPlan
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('storage.getDailyPlan()', () => {
+  it('returns [] when nothing stored', () => {
+    expect(storage.getDailyPlan()).toEqual([]);
+  });
+
+  it('returns [] when stored plan is for a different date', () => {
+    lsSet('dailyPlan', { date: '2020-01-01', taskIds: ['t1', 't2'] });
+    expect(storage.getDailyPlan()).toEqual([]);
+  });
+
+  it('returns taskIds when plan date matches today', () => {
+    const today = new Date().toISOString().slice(0, 10);
+    lsSet('dailyPlan', { date: today, taskIds: ['a', 'b', 'c'] });
+    expect(storage.getDailyPlan()).toEqual(['a', 'b', 'c']);
+  });
+});
+
+describe('storage.saveDailyPlan()', () => {
+  it('saves plan with today date', () => {
+    const today = new Date().toISOString().slice(0, 10);
+    storage.saveDailyPlan(['x', 'y']);
+    const raw = lsGet('dailyPlan');
+    expect(raw.date).toBe(today);
+    expect(raw.taskIds).toEqual(['x', 'y']);
+  });
+
+  it('saved plan is retrievable via getDailyPlan()', () => {
+    storage.saveDailyPlan(['task-1', 'task-2']);
+    expect(storage.getDailyPlan()).toEqual(['task-1', 'task-2']);
+  });
+
+  it('overwrites a previously saved plan', () => {
+    storage.saveDailyPlan(['old']);
+    storage.saveDailyPlan(['new-1', 'new-2']);
+    expect(storage.getDailyPlan()).toEqual(['new-1', 'new-2']);
+  });
+});
+
+describe('storage.clearAll()', () => {
+  it('also removes dailyPlan', () => {
+    storage.saveDailyPlan(['t1']);
+    storage.clearAll();
+    expect(storage.getDailyPlan()).toEqual([]);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 資料遷移：migrateDefaultFlags()
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('migrateDefaultFlags()', () => {
+  it('no-op when no tasks stored', () => {
+    migrateDefaultFlags(); // should not throw
+    expect(lsGet('tasks')).toBeNull();
+  });
+
+  it('sets isDefault:true for known default task names', () => {
+    lsSet('tasks', [
+      { id: 't1', name: '運動 30 分鐘' },
+      { id: 't2', name: '深度學習 45 分鐘' },
+    ]);
+    migrateDefaultFlags();
+    const tasks = lsGet('tasks');
+    expect(tasks[0].isDefault).toBe(true);
+    expect(tasks[1].isDefault).toBe(true);
+  });
+
+  it('does not override isDefault when already set', () => {
+    lsSet('tasks', [
+      { id: 't1', name: '運動 30 分鐘', isDefault: false }, // explicitly false
+    ]);
+    migrateDefaultFlags();
+    // Should not change — only fills in undefined
+    const tasks = lsGet('tasks');
+    expect(tasks[0].isDefault).toBe(false);
+  });
+
+  it('leaves custom (non-default) tasks without isDefault', () => {
+    lsSet('tasks', [
+      { id: 't1', name: '我的自訂任務' },
+    ]);
+    migrateDefaultFlags();
+    const tasks = lsGet('tasks');
+    expect(tasks[0].isDefault).toBeUndefined();
   });
 });
 

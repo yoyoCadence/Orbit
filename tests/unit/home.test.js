@@ -13,10 +13,11 @@ import { renderHome } from '../../pwa/js/pages/home.js';
 
 // vi.mock is hoisted — use vi.hoisted() so mockState is available in factory
 const mockState = vi.hoisted(() => ({
-  user:     { name: 'Tester', totalXP: 0, streakDays: 3 },
-  tasks:    [],
-  sessions: [],
-  energy:   { currentEnergy: 80, maxEnergy: 100, lastResetDate: '2026-04-11' },
+  user:      { name: 'Tester', totalXP: 0, streakDays: 3 },
+  tasks:     [],
+  sessions:  [],
+  energy:    { currentEnergy: 80, maxEnergy: 100, lastResetDate: '2026-04-11' },
+  dailyPlan: [],
 }));
 
 vi.mock('../../pwa/js/state.js', () => ({ state: mockState }));
@@ -63,15 +64,18 @@ function makeContainer() {
 
 beforeEach(() => {
   // Reset state to defaults
-  mockState.tasks    = [];
-  mockState.sessions = [];
-  mockState.user     = { name: 'Tester', totalXP: 0, streakDays: 3 };
-  mockState.energy   = { currentEnergy: 80, maxEnergy: 100, lastResetDate: '2026-04-11' };
+  mockState.tasks     = [];
+  mockState.sessions  = [];
+  mockState.dailyPlan = [];
+  mockState.user      = { name: 'Tester', totalXP: 0, streakDays: 3 };
+  mockState.energy    = { currentEnergy: 80, maxEnergy: 100, lastResetDate: '2026-04-11' };
 
   // Reset window globals
-  window.completeInstant = vi.fn();
-  window.startFocus      = vi.fn();
-  window.deleteSession   = vi.fn();
+  window.completeInstant    = vi.fn();
+  window.startFocus         = vi.fn();
+  window.deleteSession      = vi.fn();
+  window.addToDailyPlan     = vi.fn();
+  window.removeFromDailyPlan = vi.fn();
 });
 
 describe('renderHome: stats bar', () => {
@@ -135,8 +139,9 @@ describe('renderHome: task rendering', () => {
     expect(c.querySelector('.count-badge').textContent).toBe('1');
   });
 
-  it('shows focus label for focus-category tasks', () => {
-    mockState.tasks = [makeTask({ category: 'focus', taskNature: 'growth' })];
+  it('shows focus label for focus-category tasks not in plan', () => {
+    mockState.tasks     = [makeTask({ category: 'focus', taskNature: 'growth' })];
+    mockState.dailyPlan = []; // not in plan → shows focus label
     const c = makeContainer();
     renderHome(c);
     expect(c.textContent).toContain('▶ 專注');
@@ -144,20 +149,42 @@ describe('renderHome: task rendering', () => {
 });
 
 describe('renderHome: task card clicks', () => {
-  it('clicking instant task calls window.completeInstant with task id', () => {
+  it('clicking a task card adds it to daily plan', () => {
     mockState.tasks = [makeTask({ id: 'instant-task', category: 'instant' })];
     const c = makeContainer();
     renderHome(c);
     c.querySelector('.task-card').click();
-    expect(window.completeInstant).toHaveBeenCalledWith('instant-task');
+    expect(window.addToDailyPlan).toHaveBeenCalledWith('instant-task');
   });
 
-  it('clicking focus task calls window.startFocus with task id', () => {
-    mockState.tasks = [makeTask({ id: 'focus-task', category: 'focus' })];
+  it('clicking a plan card (instant) calls window.completeInstant', () => {
+    const task = makeTask({ id: 'plan-instant', category: 'instant' });
+    mockState.tasks     = [task];
+    mockState.dailyPlan = ['plan-instant'];
     const c = makeContainer();
     renderHome(c);
-    c.querySelector('.task-card').click();
-    expect(window.startFocus).toHaveBeenCalledWith('focus-task');
+    c.querySelector('.plan-card').click();
+    expect(window.completeInstant).toHaveBeenCalledWith('plan-instant');
+  });
+
+  it('clicking a plan card (focus) calls window.startFocus', () => {
+    const task = makeTask({ id: 'plan-focus', category: 'focus' });
+    mockState.tasks     = [task];
+    mockState.dailyPlan = ['plan-focus'];
+    const c = makeContainer();
+    renderHome(c);
+    c.querySelector('.plan-card').click();
+    expect(window.startFocus).toHaveBeenCalledWith('plan-focus');
+  });
+
+  it('clicking plan remove button calls window.removeFromDailyPlan', () => {
+    const task = makeTask({ id: 'plan-remove', category: 'instant' });
+    mockState.tasks     = [task];
+    mockState.dailyPlan = ['plan-remove'];
+    const c = makeContainer();
+    renderHome(c);
+    c.querySelector('.plan-remove-btn').click();
+    expect(window.removeFromDailyPlan).toHaveBeenCalledWith('plan-remove');
   });
 });
 
