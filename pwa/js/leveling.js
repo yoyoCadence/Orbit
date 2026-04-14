@@ -61,19 +61,25 @@ export const TITLE_TEMPLATES = {
   },
 };
 
+/** Merge built-in templates with user's custom templates (custom overrides built-in by key). */
+export function getAllTemplates(customTemplates = {}) {
+  return { ...TITLE_TEMPLATES, ...customTemplates };
+}
+
 /** Return the tier title for a given level and template key (default: 'rpg'). */
-export function getTitle(level, template = 'rpg') {
-  const t = TITLE_TEMPLATES[template] || TITLE_TEMPLATES.rpg;
+export function getTitle(level, template = 'rpg', customTemplates = {}) {
+  const all = getAllTemplates(customTemplates);
+  const t   = all[template] || TITLE_TEMPLATES.rpg;
   return (t.tiers.find(([min]) => level >= min) || t.tiers.at(-1))[1];
 }
 
 /**
  * Returns the display title considering the user's custom title override and template.
- * Priority: customTitle > template-based title.
+ * Priority: customTitle > template-based title (including user's customTemplates).
  */
 export function getDisplayTitle(level, user) {
   if (user?.customTitle) return user.customTitle;
-  return getTitle(level, user?.titleTemplate || 'rpg');
+  return getTitle(level, user?.titleTemplate || 'rpg', user?.customTemplates || {});
 }
 
 // Preview table: XP required for next N levels starting from `fromLevel`
