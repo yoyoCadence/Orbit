@@ -1,7 +1,7 @@
 import { state }                                         from '../state.js';
 import { storage }                                        from '../storage.js';
 import { getLevelInfo, getDisplayTitle, xpTable,
-         TITLE_TEMPLATES, getAllTemplates }                from '../leveling.js';
+         getAllTemplates }                                 from '../leveling.js';
 
 export function renderProfile(container) {
   const user   = state.user;
@@ -46,7 +46,6 @@ export function renderProfile(container) {
   const allTemplates     = getAllTemplates(customTemplates);
 
   const templateBtns = Object.entries(allTemplates).map(([key, tmpl]) => {
-    const isCustom  = !!customTemplates[key];
     const isActive  = currentTemplate === key;
     return `
       <div class="title-tmpl-item">
