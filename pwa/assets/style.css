@@ -1407,6 +1407,7 @@ nav {
   padding: 2px 3px; border-radius: 4px;
   transition: opacity .15s;
   user-select: none; -webkit-user-select: none;
+  touch-action: none;
 }
 .task-card:hover .drag-handle { opacity: .75; }
 .drag-handle:active { cursor: grabbing; opacity: 1; }

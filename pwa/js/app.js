@@ -17,7 +17,7 @@ import { renderSettings }       from './pages/settings.js';
 import { renderLeaderboard }    from './pages/leaderboard.js';
 
 // ─── Version ─────────────────────────────────────────────────────────────────
-export const APP_VERSION = 'v1.2.0';
+export const APP_VERSION = 'v1.3.0';
 
 // ─── Auth session state ───────────────────────────────────────────────────────
 let _currentSession   = null;
