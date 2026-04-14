@@ -188,7 +188,7 @@ export function renderHome(container) {
 
 function planCardHtml(task, countToday) {
   const isFocus   = task.category === 'focus';
-  const xpLabel   = task.value !== 'D' ? `+${xpPreview(task)} XP` : '';
+  const xpLabel   = task.value !== 'D' ? `+${xpPreview(task)}${isFocus ? '+' : ''} XP` : '';
   const doneClass = countToday > 0 ? 'plan-card-done' : '';
   return `
     <div class="plan-card ${doneClass}" data-task-id="${task.id}" data-category="${task.category}">
@@ -210,13 +210,13 @@ function planCardHtml(task, countToday) {
 // ─── Task card HTML ──────────────────────────────────────────────────────────
 
 function taskCardHtml(task, countToday, inPlan) {
+  const isFocus    = task.category === 'focus';
   const xpLabel    = task.value !== 'D'
-    ? `+${xpPreview(task)} XP`
+    ? `+${xpPreview(task)}${isFocus ? '+' : ''} XP`
     : task.impactType === 'recovery' ? '回能' : '娛樂';
   const valueLabel = VALUE_LABEL[task.value] || '';
   const valueCls   = VALUE_CLASS[task.value]  || '';
   const natureLbl  = NATURE_LABEL[task.taskNature] || task.taskNature;
-  const isFocus    = task.category === 'focus';
 
   return `
     <div class="task-card ${isFocus ? 'task-card-focus' : 'task-card-instant'} ${inPlan ? 'task-card-in-plan' : ''}"
@@ -225,9 +225,11 @@ function taskCardHtml(task, countToday, inPlan) {
       <div class="drag-handle" title="拖曳排序">⋮⋮</div>
       ${countToday > 0 ? `<span class="count-badge">${countToday}</span>` : ''}
       <div class="task-card-top">
-        ${task.iconImg
-          ? `<img src="${task.iconImg}" class="task-icon-img">`
-          : `<span class="task-emoji">${task.emoji || '🎯'}</span>`}
+        <div class="task-icon-wrap${task.isDefault === false ? ' task-icon-custom' : ''}">
+          ${task.iconImg
+            ? `<img src="${task.iconImg}" class="task-icon-img">`
+            : `<span class="task-emoji">${task.emoji || '🎯'}</span>`}
+        </div>
         <div class="task-badges">
           ${valueLabel ? `<span class="badge ${valueCls}">${valueLabel}</span>` : ''}
           <span class="badge badge-nature">${natureLbl}</span>
@@ -269,12 +271,13 @@ function sessionRowHtml(s) {
 }
 
 // ─── XP preview (base, no streak) ────────────────────────────────────────────
+// Weight maps mirror engine.js exactly (include '1' key for number-stored values)
 
 function xpPreview(task) {
   if (task.value === 'D') return 0;
   const vw = { S: 3.2, A: 2.2, B: 1.2, D: 0 }[task.value] ?? 0;
-  const dw = { '0.4': 0.4, '0.7': 0.7, '1.0': 1.0 }[String(task.difficulty)] ?? 0;
-  const rw = { '1.0': 1.0, '1.2': 1.2, '1.4': 1.4 }[String(task.resistance)] ?? 0;
+  const dw = { '0.4': 0.4, '0.7': 0.7, '1': 1.0, '1.0': 1.0 }[String(task.difficulty)] ?? 0;
+  const rw = { '1': 1.0, '1.0': 1.0, '1.2': 1.2, '1.4': 1.4 }[String(task.resistance)] ?? 0;
   return Math.round(20 * vw * dw * rw);
 }
 
