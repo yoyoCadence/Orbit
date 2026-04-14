@@ -1,16 +1,17 @@
-import { state }                  from '../state.js';
-import { storage }                 from '../storage.js';
-import { getLevelInfo, getTitle, xpTable } from '../leveling.js';
+import { state }                                         from '../state.js';
+import { storage }                                        from '../storage.js';
+import { getLevelInfo, getDisplayTitle, xpTable,
+         TITLE_TEMPLATES }                                from '../leveling.js';
 
 export function renderProfile(container) {
   const user   = state.user;
   if (!user) return;
 
   const info   = getLevelInfo(user.totalXP || 0);
-  const title  = getTitle(info.level);
+  const title  = getDisplayTitle(info.level, user);
   const energy = state.energy;
 
-  const joined    = new Date(user.createdAt + 'T00:00:00');
+  const joined     = new Date(user.createdAt + 'T00:00:00');
   const daysActive = Math.max(1, Math.ceil((Date.now() - joined.getTime()) / 86400000));
   const activeDays = new Set(state.sessions.map(s => s.date)).size;
   const totalSessions = state.sessions.filter(s => s.result !== 'invalid').length;
@@ -24,15 +25,23 @@ export function renderProfile(container) {
   const energyCls = energyPct >= 60 ? 'energy-bar-high' : energyPct >= 30 ? 'energy-bar-mid' : 'energy-bar-low';
 
   // Streak label
-  const streakDays = user.streakDays || 0;
+  const streakDays  = user.streakDays || 0;
   const streakLabel = streakDays >= 30 ? '🔥🔥🔥' : streakDays >= 14 ? '🔥🔥' : streakDays >= 7 ? '🔥' : '';
 
-  // XP table
+  // XP table (6 levels from current)
   const tableRows = xpTable(info.level, 6).map(r => `
     <div class="xp-table-row ${r.from === info.level ? 'current-level' : ''}">
       <span>Lv.${r.from} → ${r.to}</span>
       <span>${r.from === info.level ? `${info.currentXP} / ` : ''}${r.xp} XP</span>
     </div>
+  `).join('');
+
+  // Title template picker
+  const currentTemplate = user.titleTemplate || 'rpg';
+  const templateBtns = Object.entries(TITLE_TEMPLATES).map(([key, tmpl]) => `
+    <button class="title-tmpl-btn ${currentTemplate === key ? 'active' : ''}" data-template="${key}">
+      ${tmpl.icon} ${tmpl.name}
+    </button>
   `).join('');
 
   container.innerHTML = `
@@ -60,6 +69,31 @@ export function renderProfile(container) {
       </div>
       <div class="xp-bar-track">
         <div class="xp-bar-fill" style="width:${info.percent}%"></div>
+      </div>
+    </div>
+
+    <!-- Title customization -->
+    <div class="card">
+      <div class="card-title">🏷️ 等級稱號</div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">
+        稱號會顯示在個人頁與排行榜。選擇主題後自動依等級更新，或輸入自訂稱號覆蓋。
+      </p>
+
+      <div class="title-tmpl-row">${templateBtns}</div>
+
+      <div class="form-group" style="margin-top:14px">
+        <label class="form-label">自訂稱號（選填，留空則使用主題稱號）</label>
+        <div style="display:flex;gap:8px">
+          <input class="form-input" id="custom-title-input"
+                 placeholder="輸入自訂稱號…" maxlength="20"
+                 value="${escHtml(user.customTitle || '')}">
+          <button class="btn btn-outline btn-sm" id="custom-title-save">儲存</button>
+          ${user.customTitle ? `<button class="btn btn-sm" style="background:rgba(239,68,68,0.15);color:var(--danger);border:1px solid rgba(239,68,68,0.3)" id="custom-title-clear">清除</button>` : ''}
+        </div>
+      </div>
+
+      <div style="font-size:12px;color:var(--text-muted);margin-top:6px">
+        目前稱號：<strong>${escHtml(title)}</strong>
       </div>
     </div>
 
@@ -106,7 +140,10 @@ export function renderProfile(container) {
     <div class="card">
       <div class="card-title">升等所需 XP</div>
       ${tableRows}
-      <div class="xp-table-note">Lv.1 需 ${xpTable(1,1)[0]?.xp ?? 120} XP，每級遞增。</div>
+      <div class="xp-table-note">
+        公式：XP(n) = 120 + 45×(n-1) + 10×(n-1)^1.35，每級遞增。<br>
+        S 任務完成約 90 XP、A 任務約 37–53 XP。
+      </div>
     </div>
   `;
 
@@ -129,6 +166,35 @@ export function renderProfile(container) {
   // Edit name
   document.getElementById('profile-name-display').addEventListener('click', () => {
     showNameModal(container);
+  });
+
+  // Template buttons
+  container.querySelectorAll('.title-tmpl-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.user.titleTemplate = btn.dataset.template;
+      state.user.customTitle   = '';   // clear custom override when picking a template
+      storage.saveUser(state.user);
+      renderProfile(container);
+      // Update header title
+      import('../app.js').then(({ updateHeader }) => updateHeader());
+    });
+  });
+
+  // Custom title save
+  document.getElementById('custom-title-save').addEventListener('click', () => {
+    const val = document.getElementById('custom-title-input').value.trim();
+    state.user.customTitle = val || '';
+    storage.saveUser(state.user);
+    renderProfile(container);
+    import('../app.js').then(({ updateHeader }) => updateHeader());
+  });
+
+  // Custom title clear
+  document.getElementById('custom-title-clear')?.addEventListener('click', () => {
+    state.user.customTitle = '';
+    storage.saveUser(state.user);
+    renderProfile(container);
+    import('../app.js').then(({ updateHeader }) => updateHeader());
   });
 }
 

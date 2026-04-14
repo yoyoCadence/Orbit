@@ -1355,3 +1355,84 @@ nav {
 .lb-score { text-align: right; flex-shrink: 0; }
 .lb-score-val { font-size: 15px; font-weight: 700; color: var(--primary-lt); }
 .lb-score-lbl { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+/* ══════════════════════════════════════════════════════════════
+   TODAY'S PLAN (本日計劃)
+══════════════════════════════════════════════════════════════ */
+.plan-list {
+  display: flex; flex-direction: column; gap: 8px;
+  margin-bottom: 6px;
+}
+.plan-empty {
+  text-align: center; color: var(--text-muted); font-size: 13px;
+  padding: 14px 0; opacity: .7;
+}
+.plan-card {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-left: 3px solid var(--primary);
+  border-radius: 12px; padding: 10px 12px;
+  cursor: pointer; transition: background .15s, opacity .15s;
+}
+.plan-card:active { opacity: .75; }
+.plan-card-done { border-left-color: #10b981; opacity: .7; }
+.plan-task-emoji { font-size: 22px; flex-shrink: 0; }
+.plan-icon-img   { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; }
+.plan-task-info  { flex: 1; min-width: 0; }
+.plan-task-name  { font-size: 14px; font-weight: 600; color: var(--text); }
+.plan-task-xp    { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.plan-count-badge {
+  background: var(--primary); color: #fff;
+  font-size: 11px; font-weight: 700;
+  border-radius: 999px; padding: 1px 7px; flex-shrink: 0;
+}
+.plan-remove-btn {
+  background: none; border: none; color: var(--text-muted);
+  font-size: 16px; cursor: pointer; padding: 2px 6px; flex-shrink: 0;
+  border-radius: 6px; transition: background .15s;
+}
+.plan-remove-btn:hover { background: rgba(239,68,68,.15); color: var(--danger); }
+
+/* In-plan indicator on task card */
+.task-card-in-plan { border-color: var(--primary); }
+.plan-indicator { font-size: 12px; }
+
+/* ══════════════════════════════════════════════════════════════
+   DRAG & DROP
+══════════════════════════════════════════════════════════════ */
+.drag-handle {
+  position: absolute; top: 6px; right: 6px;
+  color: var(--text-muted); font-size: 13px; line-height: 1;
+  cursor: grab; opacity: .4; letter-spacing: -1px;
+  padding: 2px 3px; border-radius: 4px;
+  transition: opacity .15s;
+  user-select: none; -webkit-user-select: none;
+}
+.task-card:hover .drag-handle { opacity: .75; }
+.drag-handle:active { cursor: grabbing; opacity: 1; }
+
+.task-card { position: relative; } /* needed for drag-handle absolute positioning */
+
+.drag-placeholder { opacity: .25 !important; }
+.drag-over {
+  outline: 2px dashed var(--primary);
+  outline-offset: 2px;
+  transform: scale(1.02);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PROFILE — TITLE TEMPLATE PICKER
+══════════════════════════════════════════════════════════════ */
+.title-tmpl-row {
+  display: flex; flex-wrap: wrap; gap: 8px;
+}
+.title-tmpl-btn {
+  background: var(--surface-2); border: 1px solid var(--border);
+  color: var(--text); border-radius: 20px;
+  padding: 6px 14px; font-size: 13px; cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.title-tmpl-btn:hover { border-color: var(--primary); }
+.title-tmpl-btn.active {
+  background: var(--primary); border-color: var(--primary); color: #fff;
+}

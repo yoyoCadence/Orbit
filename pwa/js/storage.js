@@ -44,7 +44,9 @@ export const db = {
         lastWeeklyBonusDate:  p.last_weekly_bonus_date || '',
         morningState:         p.morning_state,
         mode:                 p.mode,
-        isPublic:             p.is_public ?? false,
+        isPublic:             p.is_public    ?? false,
+        titleTemplate:        p.title_template || 'rpg',
+        customTitle:          p.custom_title  || '',
         createdAt:            p.created_at,
       });
     }
@@ -121,6 +123,8 @@ export const db = {
       morning_state:          user.morningState          || 'normal',
       mode:                   user.mode                  || 'normal',
       is_public:              user.isPublic              ?? false,
+      title_template:         user.titleTemplate         || 'rpg',
+      custom_title:           user.customTitle           || null,
     });
   },
 
@@ -248,12 +252,46 @@ export const storage = {
     ? localStorage.setItem(PREFIX + 'bgImage', d)
     : localStorage.removeItem(PREFIX + 'bgImage'),
 
+  // ── Daily Plan (local only, resets each day) ─────────────────────────────────
+  getDailyPlan: () => {
+    const data     = get('dailyPlan');
+    const todayStr = new Date().toISOString().slice(0, 10);
+    if (!data || data.date !== todayStr) return [];
+    return data.taskIds || [];
+  },
+  saveDailyPlan: (taskIds) => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    set('dailyPlan', { date: todayStr, taskIds });
+  },
+
   // ── Clear all local data (on sign-out) ────────────────────────────────────────
   clearAll: () => {
-    ['user','tasks','sessions','energy','goals','logs','theme','bgImage']
+    ['user','tasks','sessions','energy','goals','logs','theme','bgImage','dailyPlan']
       .forEach(k => localStorage.removeItem(PREFIX + k));
   },
 };
+
+// ─── Migration: tag existing default tasks with isDefault:true ───────────────
+
+const _DEFAULT_TASK_NAMES = new Set([
+  '高價值深度輸出','深度學習 45 分鐘','運動 30 分鐘','閱讀高品質內容 30 分鐘',
+  '例行工作處理','記帳 / 檢查支出','整理環境 10 分鐘','回覆必要訊息 / 行政處理',
+  '散步 20 分鐘','午休 / 冥想 / 伸展','追劇 / 看影片 30 分鐘','遊戲 30 分鐘',
+  '短影音 / 無目的滑手機 15 分鐘',
+]);
+
+export function migrateDefaultFlags() {
+  const tasks = get('tasks');
+  if (!tasks) return;
+  let changed = false;
+  tasks.forEach(t => {
+    if (t.isDefault === undefined && _DEFAULT_TASK_NAMES.has(t.name)) {
+      t.isDefault = true;
+      changed = true;
+    }
+  });
+  if (changed) set('tasks', tasks);
+}
 
 // ─── Migration: v1 (goals/logs) → v2 (tasks/sessions) ────────────────────────
 

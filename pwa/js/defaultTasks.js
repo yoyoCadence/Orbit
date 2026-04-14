@@ -12,7 +12,7 @@ export function createDefaultTasks() {
       value: 'S', difficulty: 1.0, resistance: 1.4,
       emoji: '✍️', iconImg: null,
       minEffectiveMinutes: 25, cooldownMinutes: 120, dailyXpCap: 300,
-      requiresReasonIfS: true,
+      isDefault: true, requiresReasonIfS: true,
       reason: '高品質輸出是核心成長槓桿，直接提升能力與作品',
       successCriteria: '完成一份可交付的輸出成果（文章/程式/設計/分析）',
       hasDeliverable: true,
@@ -24,7 +24,7 @@ export function createDefaultTasks() {
       value: 'A', difficulty: 1.0, resistance: 1.2,
       emoji: '🧠', iconImg: null,
       minEffectiveMinutes: 25, cooldownMinutes: 60, dailyXpCap: 200,
-      requiresReasonIfS: false,
+      isDefault: true, requiresReasonIfS: false,
       valueConfidence: 100, createdAt: now,
     },
     {
@@ -33,7 +33,7 @@ export function createDefaultTasks() {
       value: 'A', difficulty: 0.7, resistance: 1.2,
       emoji: '🏋️', iconImg: null,
       minEffectiveMinutes: 15, cooldownMinutes: 360, dailyXpCap: 200,
-      requiresReasonIfS: false,
+      isDefault: true, requiresReasonIfS: false,
       valueConfidence: 100, createdAt: now,
     },
     {
@@ -42,7 +42,7 @@ export function createDefaultTasks() {
       value: 'A', difficulty: 0.7, resistance: 1.2,
       emoji: '📚', iconImg: null,
       minEffectiveMinutes: 15, cooldownMinutes: 60, dailyXpCap: 200,
-      requiresReasonIfS: false,
+      isDefault: true, requiresReasonIfS: false,
       valueConfidence: 100, createdAt: now,
     },
 
@@ -53,7 +53,7 @@ export function createDefaultTasks() {
       value: 'B', difficulty: 0.7, resistance: 1.0,
       emoji: '💼', iconImg: null,
       minEffectiveMinutes: 15, cooldownMinutes: 30, dailyXpCap: 100,
-      requiresReasonIfS: false,
+      isDefault: true, requiresReasonIfS: false,
       valueConfidence: 100, createdAt: now,
     },
     {
@@ -62,7 +62,7 @@ export function createDefaultTasks() {
       value: 'B', difficulty: 0.4, resistance: 1.0,
       emoji: '💰', iconImg: null,
       minEffectiveMinutes: 0, cooldownMinutes: 720, dailyXpCap: 50,
-      requiresReasonIfS: false,
+      isDefault: true, requiresReasonIfS: false,
       valueConfidence: 100, createdAt: now,
     },
     {
@@ -71,7 +71,7 @@ export function createDefaultTasks() {
       value: 'B', difficulty: 0.4, resistance: 1.0,
       emoji: '🧹', iconImg: null,
       minEffectiveMinutes: 0, cooldownMinutes: 360, dailyXpCap: 50,
-      requiresReasonIfS: false,
+      isDefault: true, requiresReasonIfS: false,
       valueConfidence: 100, createdAt: now,
     },
     {
@@ -80,7 +80,7 @@ export function createDefaultTasks() {
       value: 'B', difficulty: 0.4, resistance: 1.0,
       emoji: '📬', iconImg: null,
       minEffectiveMinutes: 0, cooldownMinutes: 240, dailyXpCap: 50,
-      requiresReasonIfS: false,
+      isDefault: true, requiresReasonIfS: false,
       valueConfidence: 100, createdAt: now,
     },
 
@@ -91,7 +91,7 @@ export function createDefaultTasks() {
       value: 'D', difficulty: 0.4, resistance: 1.0,
       emoji: '🚶', iconImg: null,
       minEffectiveMinutes: 0, cooldownMinutes: 120, dailyXpCap: 0,
-      requiresReasonIfS: false,
+      isDefault: true, requiresReasonIfS: false,
       valueConfidence: 100, createdAt: now,
     },
     {
@@ -100,7 +100,7 @@ export function createDefaultTasks() {
       value: 'D', difficulty: 0.4, resistance: 1.0,
       emoji: '🧘', iconImg: null,
       minEffectiveMinutes: 0, cooldownMinutes: 180, dailyXpCap: 0,
-      requiresReasonIfS: false,
+      isDefault: true, requiresReasonIfS: false,
       valueConfidence: 100, createdAt: now,
     },
 
@@ -111,7 +111,7 @@ export function createDefaultTasks() {
       value: 'D', difficulty: 0.4, resistance: 1.0,
       emoji: '🎬', iconImg: null,
       minEffectiveMinutes: 0, cooldownMinutes: 0, dailyXpCap: 0,
-      requiresReasonIfS: false,
+      isDefault: true, requiresReasonIfS: false,
       valueConfidence: 100, createdAt: now,
     },
     {
@@ -120,7 +120,7 @@ export function createDefaultTasks() {
       value: 'D', difficulty: 0.4, resistance: 1.0,
       emoji: '🎮', iconImg: null,
       minEffectiveMinutes: 0, cooldownMinutes: 0, dailyXpCap: 0,
-      requiresReasonIfS: false,
+      isDefault: true, requiresReasonIfS: false,
       valueConfidence: 100, createdAt: now,
     },
     {
@@ -129,7 +129,7 @@ export function createDefaultTasks() {
       value: 'D', difficulty: 0.4, resistance: 1.0,
       emoji: '📱', iconImg: null,
       minEffectiveMinutes: 0, cooldownMinutes: 0, dailyXpCap: 0,
-      requiresReasonIfS: false,
+      isDefault: true, requiresReasonIfS: false,
       valueConfidence: 100, createdAt: now,
     },
   ];

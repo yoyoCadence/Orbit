@@ -6,8 +6,9 @@
 // energy  : { currentEnergy, maxEnergy, lastResetDate }
 
 export const state = {
-  user:     null,
-  tasks:    [],
-  sessions: [],
-  energy:   { currentEnergy: 100, maxEnergy: 100, lastResetDate: '' },
+  user:      null,
+  tasks:     [],
+  sessions:  [],
+  energy:    { currentEnergy: 100, maxEnergy: 100, lastResetDate: '' },
+  dailyPlan: [], // taskIds planned for today; resets each day
 };
