@@ -7,7 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   getTitle, getDisplayTitle, xpTable,
-  TITLE_TEMPLATES,
+  getAllTemplates, TITLE_TEMPLATES,
 } from '../../pwa/js/leveling.js';
 
 // ─── getTitle (RPG template, default) ────────────────────────────────────────
@@ -111,6 +111,106 @@ describe('TITLE_TEMPLATES', () => {
         expect(tmpl.tiers[i][0]).toBeLessThan(tmpl.tiers[i - 1][0]);
       }
     });
+  });
+});
+
+// ─── getAllTemplates ──────────────────────────────────────────────────────────
+
+describe('getAllTemplates', () => {
+  it('no custom → returns all 3 built-in keys', () => {
+    const all = getAllTemplates();
+    expect(Object.keys(all)).toEqual(expect.arrayContaining(['rpg', 'kny', 'business']));
+    expect(Object.keys(all)).toHaveLength(3);
+  });
+
+  it('custom templates are merged in', () => {
+    const custom = {
+      myTheme: { name: '我的主題', icon: '🌟', tiers: [[1, '新手']] },
+    };
+    const all = getAllTemplates(custom);
+    expect(all).toHaveProperty('myTheme');
+    expect(Object.keys(all)).toHaveLength(4);
+  });
+
+  it('custom key overrides built-in key with same name', () => {
+    const custom = {
+      rpg: { name: '自訂RPG', icon: '🗡️', tiers: [[1, '覆蓋稱號']] },
+    };
+    const all = getAllTemplates(custom);
+    expect(all.rpg.name).toBe('自訂RPG');
+    // total count stays 3 (override, not add)
+    expect(Object.keys(all)).toHaveLength(3);
+  });
+
+  it('built-in templates are not mutated', () => {
+    getAllTemplates({ rpg: { name: 'X', icon: '?', tiers: [] } });
+    expect(TITLE_TEMPLATES.rpg.name).toBe('RPG 冒險者');
+  });
+});
+
+// ─── getTitle with custom templates ──────────────────────────────────────────
+
+describe('getTitle with custom templates (3rd param)', () => {
+  const customTemplates = {
+    hero: {
+      name: '英雄',
+      icon: '🦸',
+      tiers: [
+        [50, '超級英雄'],
+        [10, '英雄'],
+        [1,  '見習英雄'],
+      ],
+    },
+  };
+
+  it('uses custom template when key matches', () => {
+    expect(getTitle(1, 'hero', customTemplates)).toBe('見習英雄');
+    expect(getTitle(10, 'hero', customTemplates)).toBe('英雄');
+    expect(getTitle(50, 'hero', customTemplates)).toBe('超級英雄');
+  });
+
+  it('unknown key falls back to rpg template', () => {
+    expect(getTitle(1, 'nonexistent', customTemplates)).toBe('初心者');
+  });
+
+  it('level between tiers uses the correct lower bound', () => {
+    // level 30 → still '英雄' (≥10 but <50)
+    expect(getTitle(30, 'hero', customTemplates)).toBe('英雄');
+  });
+});
+
+// ─── getDisplayTitle with customTemplates ────────────────────────────────────
+
+describe('getDisplayTitle with user.customTemplates', () => {
+  it('uses custom template title when user.titleTemplate points to custom key', () => {
+    const user = {
+      titleTemplate: 'hero',
+      customTitle: '',
+      customTemplates: {
+        hero: {
+          name: '英雄',
+          icon: '🦸',
+          tiers: [[1, '見習英雄']],
+        },
+      },
+    };
+    expect(getDisplayTitle(1, user)).toBe('見習英雄');
+  });
+
+  it('customTitle still takes priority over custom template', () => {
+    const user = {
+      titleTemplate: 'hero',
+      customTitle: '蓋過一切',
+      customTemplates: {
+        hero: { name: '英雄', icon: '🦸', tiers: [[1, '見習英雄']] },
+      },
+    };
+    expect(getDisplayTitle(1, user)).toBe('蓋過一切');
+  });
+
+  it('user with no customTemplates field still works', () => {
+    const user = { titleTemplate: 'rpg' };
+    expect(getDisplayTitle(5, user)).toBe('探索者');
   });
 });
 

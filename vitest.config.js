@@ -8,6 +8,7 @@ export default defineConfig({
     environmentMatchGlobs: [
       ['tests/unit/home.test.js',             'jsdom'],
       ['tests/unit/settings.test.js',         'jsdom'],
+      ['tests/unit/profile.test.js',          'jsdom'],
       ['tests/integration/storage.test.js',   'jsdom'],
     ],
     coverage: {

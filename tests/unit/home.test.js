@@ -223,6 +223,76 @@ describe('renderHome: session list', () => {
   });
 });
 
+// ─── xpPreview label on task cards ───────────────────────────────────────────
+
+describe('renderHome: xpPreview XP label', () => {
+  it('instant task shows "+N XP" label (no trailing +)', () => {
+    // A, difficulty=0.7, resistance=1.2 → round(20 × 2.2 × 0.7 × 1.2) = 37
+    mockState.tasks = [makeTask({ category: 'instant', value: 'A', difficulty: 0.7, resistance: 1.2 })];
+    const c = makeContainer();
+    renderHome(c);
+    const label = c.querySelector('.task-xp-label');
+    expect(label).not.toBeNull();
+    expect(label.textContent).toBe('+37 XP');
+  });
+
+  it('focus task shows "+N+ XP" label (trailing + for focus bonus)', () => {
+    mockState.tasks = [makeTask({ category: 'focus', value: 'A', difficulty: 0.7, resistance: 1.2 })];
+    const c = makeContainer();
+    renderHome(c);
+    const label = c.querySelector('.task-xp-label');
+    expect(label.textContent).toBe('+37+ XP');
+  });
+
+  it('entertainment D-value task shows "娛樂" label (not XP)', () => {
+    mockState.tasks = [makeTask({ value: 'D', impactType: 'entertainment', taskNature: 'entertainment' })];
+    const c = makeContainer();
+    renderHome(c);
+    const taskCard = c.querySelector('.task-card');
+    expect(taskCard).not.toBeNull();
+    const label = taskCard.querySelector('.task-xp-label');
+    expect(label.textContent).toBe('娛樂');
+  });
+
+  it('recovery D-value task shows "回能" label (not XP)', () => {
+    mockState.tasks = [makeTask({ value: 'D', impactType: 'recovery', taskNature: 'recovery' })];
+    const c = makeContainer();
+    renderHome(c);
+    const taskCard = c.querySelector('.task-card');
+    expect(taskCard).not.toBeNull();
+    const label = taskCard.querySelector('.task-xp-label');
+    expect(label.textContent).toBe('回能');
+  });
+
+  it('S task, max weights → correct XP', () => {
+    // S, difficulty=1.0, resistance=1.4 → round(20 × 3.2 × 1.0 × 1.4) = 90
+    mockState.tasks = [makeTask({ value: 'S', difficulty: 1.0, resistance: 1.4, taskNature: 'growth' })];
+    const c = makeContainer();
+    renderHome(c);
+    const label = c.querySelector('.task-xp-label');
+    expect(label.textContent).toBe('+90 XP');
+  });
+
+  it('difficulty stored as integer 1 (not string "1.0") still calculates correctly', () => {
+    // This was a bug: difficulty=1 (number) → String(1)='1', weight map needed '1' key
+    // B, difficulty=1 (integer), resistance=1.0 → round(20 × 1.2 × 1.0 × 1.0) = 24
+    mockState.tasks = [makeTask({ value: 'B', difficulty: 1, resistance: 1.0, taskNature: 'maintenance' })];
+    const c = makeContainer();
+    renderHome(c);
+    const label = c.querySelector('.task-xp-label');
+    expect(label.textContent).toBe('+24 XP');
+  });
+
+  it('resistance stored as integer 1 calculates correctly', () => {
+    // A, difficulty=0.7, resistance=1 (integer) → round(20 × 2.2 × 0.7 × 1.0) = 31
+    mockState.tasks = [makeTask({ value: 'A', difficulty: 0.7, resistance: 1, taskNature: 'growth' })];
+    const c = makeContainer();
+    renderHome(c);
+    const label = c.querySelector('.task-xp-label');
+    expect(label.textContent).toBe('+31 XP');
+  });
+});
+
 describe('renderHome: effective day indicator', () => {
   it('shows 今日有效 when all three conditions met', async () => {
     const { calcDailyStats } = await import('../../pwa/js/engine.js');
