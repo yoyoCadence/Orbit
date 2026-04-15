@@ -2,7 +2,8 @@
 // Sync reads/writes → localStorage (always available, used as cache)
 // Async background sync → Supabase (when authenticated + online)
 
-import { supabase } from './supabase.js';
+import { supabase }  from './supabase.js';
+import { today }     from './utils.js';
 
 const PREFIX = 'yoyo_';
 
@@ -255,12 +256,12 @@ export const storage = {
   // ── Daily Plan (local only, resets each day) ─────────────────────────────────
   getDailyPlan: () => {
     const data     = get('dailyPlan');
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = today();
     if (!data || data.date !== todayStr) return [];
     return data.taskIds || [];
   },
   saveDailyPlan: (taskIds) => {
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = today();
     set('dailyPlan', { date: todayStr, taskIds });
   },
 

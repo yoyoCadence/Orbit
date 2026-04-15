@@ -1,4 +1,5 @@
 import { state }               from '../state.js';
+import { today }               from '../utils.js';
 import { calcDailyStats, calcValueConfidence } from '../engine.js';
 
 // ─── Module-level view state ──────────────────────────────────────────────────
@@ -262,13 +263,13 @@ function buildMonthView() {
 
   const emptyCells = Array(leadingEmpties).fill('<div class="cal-cell cal-cell-empty"></div>').join('');
 
-  const today = new Date().toISOString().slice(0, 10);
+  const todayStr = today();
 
   const dayCells = allDates.map(dateStr => {
     const ds  = statsMap[dateStr];
     const day = parseInt(dateStr.slice(8), 10);
-    const isToday = dateStr === today;
-    const isFuture = dateStr > today;
+    const isToday = dateStr === todayStr;
+    const isFuture = dateStr > todayStr;
     const dotCls = isFuture ? 'cal-dot-future'
       : ds.isEffectiveDay     ? 'cal-dot-effective'
       : ds.productiveXP > 0  ? 'cal-dot-partial'

@@ -23,8 +23,9 @@ const mockState = vi.hoisted(() => ({
 vi.mock('../../pwa/js/state.js', () => ({ state: mockState }));
 
 vi.mock('../../pwa/js/utils.js', () => ({
-  today:      () => '2026-04-11',
-  formatTime: () => '10:00',
+  today:          () => '2026-04-11',
+  effectiveToday: () => '2026-04-11',
+  formatTime:     () => '10:00',
 }));
 
 vi.mock('../../pwa/js/engine.js', () => ({
