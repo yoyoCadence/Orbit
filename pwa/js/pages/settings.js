@@ -1,7 +1,7 @@
 import { state }                      from '../state.js';
 import { storage }                     from '../storage.js';
 import { applyTheme, applyBgImage, removeBgImage, APP_VERSION } from '../app.js';
-import { uid }                         from '../utils.js';
+import { uid, today }                  from '../utils.js';
 
 // ── Theme definitions ────────────────────────────────────────────────────────
 export const THEMES = [
@@ -564,7 +564,7 @@ function _showTaskModal(container, task) {
 
     // S daily limit check (new tasks only)
     if (!isEdit && value === 'S') {
-      const todayStr = new Date().toISOString().slice(0, 10);
+      const todayStr = today();
       const todayS = state.tasks.filter(t => t.value === 'S' && t.createdAt === todayStr).length;
       if (todayS >= 2) { alert('今日已新增 2 個 S 級任務（每日上限）。'); return; }
     }
