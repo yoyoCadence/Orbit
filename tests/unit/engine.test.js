@@ -20,6 +20,7 @@ import {
   getDailyTaskCount,
   calcValueConfidence,
   getMinEffectiveMinutes,
+  reorderTasks,
 } from '../../pwa/js/engine.js';
 
 // ─── Test fixtures ────────────────────────────────────────────────────────────
@@ -450,5 +451,53 @@ describe('calcValueConfidence', () => {
     const score = calcValueConfidence(task, []);
     expect(score).toBeGreaterThanOrEqual(0);
     expect(score).toBeLessThanOrEqual(100);
+  });
+});
+
+// ─── reorderTasks ─────────────────────────────────────────────────────────────
+
+describe('reorderTasks', () => {
+  const tasks = [
+    { id: 'a', name: 'Task A' },
+    { id: 'b', name: 'Task B' },
+    { id: 'c', name: 'Task C' },
+    { id: 'd', name: 'Task D' },
+  ];
+
+  it('moves a task forward (a → position of c)', () => {
+    const result = reorderTasks(tasks, 'a', 'c');
+    expect(result.map(t => t.id)).toEqual(['b', 'c', 'a', 'd']);
+  });
+
+  it('moves a task backward (d → position of b)', () => {
+    const result = reorderTasks(tasks, 'd', 'b');
+    expect(result.map(t => t.id)).toEqual(['a', 'd', 'b', 'c']);
+  });
+
+  it('same id returns copy with same order', () => {
+    const result = reorderTasks(tasks, 'b', 'b');
+    expect(result.map(t => t.id)).toEqual(['a', 'b', 'c', 'd']);
+  });
+
+  it('unknown fromId returns shallow copy unchanged', () => {
+    const result = reorderTasks(tasks, 'x', 'b');
+    expect(result.map(t => t.id)).toEqual(['a', 'b', 'c', 'd']);
+  });
+
+  it('unknown toId returns shallow copy unchanged', () => {
+    const result = reorderTasks(tasks, 'a', 'z');
+    expect(result.map(t => t.id)).toEqual(['a', 'b', 'c', 'd']);
+  });
+
+  it('does not mutate the original array', () => {
+    const original = [...tasks];
+    reorderTasks(tasks, 'a', 'c');
+    expect(tasks).toEqual(original);
+  });
+
+  it('works with a two-element array', () => {
+    const two = [{ id: '1' }, { id: '2' }];
+    expect(reorderTasks(two, '1', '2').map(t => t.id)).toEqual(['2', '1']);
+    expect(reorderTasks(two, '2', '1').map(t => t.id)).toEqual(['2', '1']);
   });
 });
