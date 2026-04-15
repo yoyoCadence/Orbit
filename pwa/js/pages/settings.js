@@ -212,6 +212,7 @@ function _renderView(container) {
       </div>
       <div class="account-divider"></div>
       <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px">版本 ${APP_VERSION}</div>
+      <button class="btn btn-outline btn-sm" id="tour-btn" style="margin-bottom:10px;width:100%">重啟新手教學</button>
       <button class="btn-text-danger" id="reset-btn">清除本機快取資料（重新登入後可從雲端還原）</button>
     </div>
   `;
@@ -304,6 +305,11 @@ function _setupListeners(container) {
       if (!el) return;
       el.textContent = session?.user?.email || '（遊客）';
     });
+  });
+
+  // Restart tour
+  container.querySelector('#tour-btn')?.addEventListener('click', () => {
+    window.startTour();
   });
 
   // Sign out
