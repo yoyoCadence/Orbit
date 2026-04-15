@@ -157,6 +157,25 @@ function _renderView(container) {
       </div>
     </div>
 
+    <!-- New day start time -->
+    <div class="card">
+      <div class="card-title">🌅 新的一天開始時間</div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">
+        凌晨到此時間前開啟 App，仍算前一天（適合夜貓子）。
+      </p>
+      <div class="mode-row">
+        <div class="mode-info">
+          <div class="mode-name">起始時間</div>
+          <div class="mode-desc">達此時間後才視為新的一天（預設 05:00）</div>
+        </div>
+        <select class="form-input" id="new-day-hour-select" style="width:90px;flex-shrink:0">
+          ${[0,1,2,3,4,5,6,7,8].map(h =>
+            `<option value="${h}" ${(state.user?.newDayHour ?? 5) === h ? 'selected' : ''}>${String(h).padStart(2,'0')}:00</option>`
+          ).join('')}
+        </select>
+      </div>
+    </div>
+
     <!-- Tasks -->
     <div class="card">
       <div class="card-title">🎯 任務管理</div>
@@ -242,6 +261,13 @@ function _setupListeners(container) {
     state.user.mode = newMode;
     storage.saveUser(state.user);
     _renderView(container);
+  });
+
+  // New day hour
+  container.querySelector('#new-day-hour-select')?.addEventListener('change', e => {
+    if (!state.user) return;
+    state.user.newDayHour = Number(e.target.value);
+    storage.saveUser(state.user);
   });
 
   // Task CRUD

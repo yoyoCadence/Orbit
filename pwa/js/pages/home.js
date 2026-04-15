@@ -1,5 +1,5 @@
 import { state }              from '../state.js';
-import { today, formatTime } from '../utils.js';
+import { effectiveToday, formatTime } from '../utils.js';
 import { calcDailyStats }    from '../engine.js';
 
 // ─── Value / impactType labels ────────────────────────────────────────────────
@@ -28,7 +28,7 @@ let _container = null;
 export function renderHome(container) {
   _container = container;
 
-  const todayStr  = today();
+  const todayStr  = effectiveToday(state.user?.newDayHour ?? 5);
   const todaySess = state.sessions.filter(s => s.date === todayStr);
   const stats     = calcDailyStats(state.sessions, todayStr);
   const energy    = state.energy;

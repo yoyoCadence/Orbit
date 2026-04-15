@@ -7,7 +7,10 @@ import {
   calcDailyStats, processStreakForDate, getDailyTaskXP,
   getDailyTaskCount, getMinEffectiveMinutes,
 } from './engine.js';
-import { uid, today }           from './utils.js';
+import { uid, today, effectiveToday } from './utils.js';
+
+/** Effective date for session recording — respects user's newDayHour threshold. */
+function _eToday() { return effectiveToday(state.user?.newDayHour ?? 5); }
 import { createDefaultTasks }   from './defaultTasks.js';
 import { renderHome }           from './pages/home.js';
 import { renderGoals }          from './pages/goals.js';
@@ -116,7 +119,7 @@ export function updateHeader() {
 // ─── Energy helpers ──────────────────────────────────────────────────────────
 
 export function getTodayEntertainmentMinutes() {
-  const todayStr = today();
+  const todayStr = _eToday();
   return state.sessions
     .filter(s => s.date === todayStr && s.impactType === 'entertainment')
     .reduce((sum, s) => sum + (s.durationMinutes || 0), 0);
@@ -124,7 +127,7 @@ export function getTodayEntertainmentMinutes() {
 
 /** Reset energy if we're on a new day. If morningState provided, set energy accordingly. */
 export function resetEnergyIfNewDay(morningState) {
-  const todayStr = today();
+  const todayStr = _eToday();
   if (state.energy.lastResetDate === todayStr) return;
 
   const energyMap = { good: 100, normal: 90, tired: 75 };
@@ -140,20 +143,22 @@ export function resetEnergyIfNewDay(morningState) {
 /** Check yesterday's stats and update streak (called once per day on launch). */
 function processYesterdayStreak() {
   if (!state.user) return;
-  const todayStr = today();
+  const todayStr = _eToday();
   if (state.user.lastStreakDate === todayStr) return;   // already processed today
 
-  const yesterday = new Date();
+  const d = new Date();
+  if (d.getHours() < (state.user.newDayHour ?? 5)) d.setDate(d.getDate() - 1);
+  const yesterday = new Date(d);
   yesterday.setDate(yesterday.getDate() - 1);
-  const yStr = yesterday.toISOString().slice(0, 10);
+  const yStr = yesterday.toLocaleDateString('sv');
 
   if (state.user.lastStreakDate === yStr) {
     // We had activity yesterday; check if it was effective
     const stats = calcDailyStats(state.sessions, yStr);
     state.user.streakDays = processStreakForDate(state.user.streakDays || 0, stats.isEffectiveDay);
   } else if (state.user.lastStreakDate && state.user.lastStreakDate < yStr) {
-    // Missed a day(s) — apply penalty
-    state.user.streakDays = Math.max(0, (state.user.streakDays || 0) - 2);
+    // Missed a day(s) — streak resets to 0
+    state.user.streakDays = 0;
   }
 
   state.user.lastStreakDate = todayStr;
@@ -166,7 +171,7 @@ window.completeInstant = function (taskId) {
   const task = state.tasks.find(t => t.id === taskId);
   if (!task || !state.user) return;
 
-  const todayStr = today();
+  const todayStr = _eToday();
 
   // Anti-grind: max 3 completions per task per day
   if (getDailyTaskCount(state.sessions, taskId, todayStr) >= 3) {
@@ -483,7 +488,7 @@ function _submitFocusResult(result, durationMin) {
 
   if (!task || !state.user) return;
 
-  const todayStr = today();
+  const todayStr = _eToday();
   const baseXP   = calcBaseXP(task);
   let   finalXP  = calcFinalXP(baseXP, result, state.user.streakDays || 0);
 
@@ -701,7 +706,7 @@ window.deleteSession = function (sessionId) {
 
 function checkWeeklyBonus() {
   if (!state.user) return;
-  const todayStr = today();
+  const todayStr = _eToday();
   const d = new Date(todayStr + 'T00:00:00');
   // Only check on Monday (day 1)
   if (d.getDay() !== 1) return;
@@ -711,7 +716,7 @@ function checkWeeklyBonus() {
   let effectiveDays = 0;
   for (let i = 1; i <= 7; i++) {
     const dd = new Date(d); dd.setDate(dd.getDate() - i);
-    const ds = dd.toISOString().slice(0, 10);
+    const ds = dd.toLocaleDateString('sv');
     const stats = calcDailyStats(state.sessions, ds);
     if (stats.isEffectiveDay) effectiveDays++;
   }
@@ -757,7 +762,7 @@ function showSetup() {
     state.user = {
       id: _currentSession?.user?.id || uid(), name, avatar: avatarData, totalXP: 0,
       streakDays: 0, lastStreakDate: '', lastWeeklyBonusDate: '',
-      morningState: 'normal', createdAt: today(),
+      morningState: 'normal', newDayHour: 5, createdAt: today(),
     };
     storage.saveUser(state.user);
 
@@ -788,9 +793,9 @@ function _startDayWatcher() {
   if (_dayWatcherStarted) return;
   _dayWatcherStarted = true;
 
-  let _lastDate = today();
+  let _lastDate = _eToday();
   setInterval(() => {
-    const current = today();
+    const current = _eToday();
     if (current !== _lastDate) {
       _lastDate = current;
       if (!state.user) return;
@@ -870,7 +875,7 @@ window.continueAsGuest = function () {
     showSetup();
   } else {
     processYesterdayStreak();
-    if (state.energy.lastResetDate !== today()) {
+    if (state.energy.lastResetDate !== _eToday()) {
       showMainApp(); showMorningModal();
     } else {
       showMainApp();
@@ -962,7 +967,7 @@ async function loadAndStart(session) {
     showSetup();
   } else {
     processYesterdayStreak();
-    if (state.energy.lastResetDate !== today()) {
+    if (state.energy.lastResetDate !== _eToday()) {
       showMainApp();
       showMorningModal();
     } else {
@@ -1020,7 +1025,7 @@ async function init() {
     state.dailyPlan = storage.getDailyPlan();
     hideLoading();
     processYesterdayStreak();
-    if (state.energy.lastResetDate !== today()) {
+    if (state.energy.lastResetDate !== _eToday()) {
       showMainApp(); showMorningModal();
     } else {
       showMainApp();
