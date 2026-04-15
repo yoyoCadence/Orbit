@@ -1,6 +1,6 @@
 import { state }              from '../state.js';
 import { effectiveToday, formatTime } from '../utils.js';
-import { calcDailyStats }    from '../engine.js';
+import { calcDailyStats, reorderTasks } from '../engine.js';
 
 // ─── Value / impactType labels ────────────────────────────────────────────────
 
@@ -288,12 +288,21 @@ function escHtml(str) {
 }
 
 // ─── Drag & Drop (reorder tasks within sections) ──────────────────────────────
+//
+// Uses Pointer Events + bounding-rect hit testing (reliable on mobile).
+// All mutable state is kept in the `_drag` object so there are no
+// scattered module-level variables.
 
-let _dragCard   = null;
-let _dragClone  = null;
-let _dragTaskId = null;
-let _dragOffX   = 0;
-let _dragOffY   = 0;
+const _drag = {
+  active:  false,
+  taskId:  null,
+  card:    null,
+  clone:   null,
+  offX:    0,
+  offY:    0,
+  lastX:   0,   // updated every pointermove; used in pointerup/cancel
+  lastY:   0,
+};
 
 function _setupDragAndDrop(container) {
   container.querySelectorAll('.drag-handle').forEach(handle => {
@@ -302,17 +311,18 @@ function _setupDragAndDrop(container) {
       const card = handle.closest('.task-card');
       if (!card) return;
 
-      _dragTaskId = card.dataset.taskId;
-      _dragCard   = card;
-      window._isDragging = true;
-
       const rect = card.getBoundingClientRect();
-      _dragOffX = e.clientX - rect.left;
-      _dragOffY = e.clientY - rect.top;
+      _drag.active = true;
+      _drag.taskId = card.dataset.taskId;
+      _drag.card   = card;
+      _drag.offX   = e.clientX - rect.left;
+      _drag.offY   = e.clientY - rect.top;
+      _drag.lastX  = e.clientX;
+      _drag.lastY  = e.clientY;
 
-      // Clone for visual drag
-      _dragClone = card.cloneNode(true);
-      _dragClone.style.cssText = `
+      // Clone for visual drag feedback
+      const clone = card.cloneNode(true);
+      clone.style.cssText = `
         position:fixed;
         width:${rect.width}px;height:${rect.height}px;
         top:${rect.top}px;left:${rect.left}px;
@@ -321,61 +331,69 @@ function _setupDragAndDrop(container) {
         box-shadow:0 10px 36px rgba(0,0,0,.45);
         transition:transform .1s;
       `;
-      document.body.appendChild(_dragClone);
+      document.body.appendChild(clone);
+      _drag.clone = clone;
       card.classList.add('drag-placeholder');
 
+      window._isDragging = true;
       handle.setPointerCapture(e.pointerId);
     });
 
     handle.addEventListener('pointermove', e => {
-      if (!_dragClone) return;
-      _dragClone.style.left = (e.clientX - _dragOffX) + 'px';
-      _dragClone.style.top  = (e.clientY - _dragOffY) + 'px';
+      if (!_drag.active) return;
+      _drag.lastX = e.clientX;
+      _drag.lastY = e.clientY;
 
-      // Highlight the card beneath
+      _drag.clone.style.left = (e.clientX - _drag.offX) + 'px';
+      _drag.clone.style.top  = (e.clientY - _drag.offY) + 'px';
+
       _clearDragOver(container);
-      const under = _cardUnder(e.clientX, e.clientY);
-      if (under && under !== _dragCard) under.classList.add('drag-over');
+      const under = _cardUnderPoint(container, e.clientX, e.clientY);
+      if (under && under !== _drag.card) under.classList.add('drag-over');
     });
 
-    handle.addEventListener('pointerup', e => _endDrag(e, container));
-    handle.addEventListener('pointercancel', e => _endDrag(e, container));
+    handle.addEventListener('pointerup',    () => _endDrag(container));
+    handle.addEventListener('pointercancel', () => _endDrag(container));
   });
 }
 
-function _endDrag(e, container) {
-  if (!_dragClone) return;
+function _endDrag(container) {
+  if (!_drag.active) return;
 
-  _dragClone.remove();
-  _dragClone = null;
-
-  if (_dragCard) _dragCard.classList.remove('drag-placeholder');
+  _drag.clone.remove();
+  _drag.card.classList.remove('drag-placeholder');
   _clearDragOver(container);
 
-  // Determine drop target
-  const target = _cardUnder(e.clientX, e.clientY);
-  if (target && target !== _dragCard && _dragTaskId) {
-    const targetId = target.dataset.taskId;
-    const fromIdx  = state.tasks.findIndex(t => t.id === _dragTaskId);
-    const toIdx    = state.tasks.findIndex(t => t.id === targetId);
-    if (fromIdx !== -1 && toIdx !== -1) {
-      const [moved] = state.tasks.splice(fromIdx, 1);
-      state.tasks.splice(toIdx, 0, moved);
-      // Persist new order
-      import('../storage.js').then(({ storage: s }) => s.saveTasks(state.tasks));
-      // Re-render home
-      if (_container) renderHome(_container);
-    }
+  // Use last known pointer position for hit testing (reliable vs. pointerup coords)
+  const target = _cardUnderPoint(container, _drag.lastX, _drag.lastY);
+  if (target && target !== _drag.card && _drag.taskId) {
+    const newTasks = reorderTasks(state.tasks, _drag.taskId, target.dataset.taskId);
+    state.tasks.splice(0, state.tasks.length, ...newTasks);
+    import('../storage.js').then(({ storage: s }) => s.saveTasks(state.tasks));
+    if (_container) renderHome(_container);
   }
 
-  _dragCard   = null;
-  _dragTaskId = null;
+  _drag.active = false;
+  _drag.taskId = null;
+  _drag.card   = null;
+  _drag.clone  = null;
   setTimeout(() => { window._isDragging = false; }, 50);
 }
 
-function _cardUnder(x, y) {
-  const els = document.elementsFromPoint(x, y);
-  return els.find(el => el.classList.contains('task-card') && el !== _dragClone) || null;
+/**
+ * Find the task card whose bounding rect contains (x, y), ignoring the
+ * drag clone (which has pointer-events:none but its rect still exists).
+ * Bounding-rect iteration is reliable on mobile where elementsFromPoint
+ * can miss elements behind fixed-position overlays.
+ */
+function _cardUnderPoint(container, x, y) {
+  const cards = container.querySelectorAll('.task-card');
+  for (const card of cards) {
+    if (card === _drag.card) continue;
+    const r = card.getBoundingClientRect();
+    if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return card;
+  }
+  return null;
 }
 
 function _clearDragOver(container) {

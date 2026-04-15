@@ -194,3 +194,21 @@ export function getMinEffectiveMinutes(difficulty) {
   if (difficulty <= 0.7) return 15;
   return 25;
 }
+
+// ─── Task ordering ────────────────────────────────────────────────────────────
+
+/**
+ * Reorder tasks by moving the task with `fromId` to the position of `toId`.
+ * Returns a new array; does not mutate the original.
+ * If either id is missing, returns a shallow copy of the original.
+ */
+export function reorderTasks(tasks, fromId, toId) {
+  if (fromId === toId) return [...tasks];
+  const fromIdx = tasks.findIndex(t => t.id === fromId);
+  const toIdx   = tasks.findIndex(t => t.id === toId);
+  if (fromIdx === -1 || toIdx === -1) return [...tasks];
+  const result = [...tasks];
+  const [moved] = result.splice(fromIdx, 1);
+  result.splice(toIdx, 0, moved);
+  return result;
+}
