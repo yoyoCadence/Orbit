@@ -4,8 +4,8 @@
  * startTour()   — begin (or restart) the tour
  * isTourDone()  — check if user already completed it
  *
- * Each step highlights one element via a spotlight (box-shadow trick).
- * A backdrop div blocks accidental page interaction while the tour is open.
+ * Each step optionally navigates to a page, then highlights one element
+ * via a spotlight (box-shadow trick) + tooltip.
  */
 
 const DONE_KEY = 'yoyo_tourDone';
@@ -19,6 +19,10 @@ function _markDone() {
 }
 
 // ─── Step definitions ─────────────────────────────────────────────────────────
+// `page`     — navigate here before showing the step (optional)
+// `selector` — element to spotlight; use specific selectors to avoid ambiguity
+//              with .page-dot spans which also carry data-page attributes
+// `tip`      — tooltip position: 'below' | 'above' | 'center'
 
 const STEPS = [
   {
@@ -28,19 +32,22 @@ const STEPS = [
     tip:      'below',
   },
   {
-    selector: '[data-page="home"]',
+    page:     'home',
+    selector: '#nav [data-page="home"]',
     title:    '今日頁',
     body:     '點擊任務小卡加入「今日計劃」，再點擊計劃卡完成任務、記錄 XP。',
     tip:      'above',
   },
   {
-    selector: '[data-page="review"]',
+    page:     'review',
+    selector: '#nav [data-page="review"]',
     title:    '週回顧',
     body:     '查看每日成長 XP、有效日統計，以及任務價值分佈趨勢。',
     tip:      'above',
   },
   {
-    selector: '[data-page="settings"]',
+    page:     'settings',
+    selector: '#nav [data-page="settings"]',
     title:    '設定',
     body:     '在設定中新增、編輯你的專屬任務清單，建立個人化成長系統。',
     tip:      'above',
@@ -73,7 +80,19 @@ function _showStep() {
   _clear();
   if (_step >= STEPS.length) { _markDone(); return; }
 
-  const s      = STEPS[_step];
+  const s = STEPS[_step];
+
+  // Navigate to the required page first, then wait two animation frames
+  // so renderPage() has time to update the DOM before we measure anything.
+  if (s.page) {
+    window.navigate(s.page);
+    requestAnimationFrame(() => requestAnimationFrame(() => _renderStep(s)));
+  } else {
+    _renderStep(s);
+  }
+}
+
+function _renderStep(s) {
   const isLast = _step === STEPS.length - 1;
 
   // Backdrop — blocks accidental page interaction
@@ -117,7 +136,7 @@ function _showStep() {
 
     _placeTooltip(r, s.tip, PAD);
   } else {
-    // Centered step: add extra darkening class to backdrop
+    // Centered step: extra darkening on backdrop, tooltip centered
     _backdrop.classList.add('tour-backdrop-center');
     _tooltip.classList.add('tour-tooltip-center');
   }
@@ -139,7 +158,6 @@ function _placeTooltip(r, tip, pad) {
   let top;
   if (tip === 'below') {
     top = r.bottom + pad + GAP;
-    // If it would overflow the bottom, flip above
     if (top + TOOLTIP_H > window.innerHeight - EDGE_MARGIN) {
       top = r.top - pad - GAP - TOOLTIP_H;
     }
