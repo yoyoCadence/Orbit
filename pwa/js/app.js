@@ -44,12 +44,39 @@ const ROUTES = {
 
 function currentHash() { return window.location.hash.slice(1) || 'home'; }
 
+// ─── Page slide animation + dot indicator ─────────────────────────────────────
+
+const PAGE_ORDER = ['home', 'goals', 'review', 'profile', 'settings', 'leaderboard'];
+let _prevPageIdx = -1;   // -1 = first render, skip animation
+
+function _updatePageDots(hash) {
+  const dots = document.querySelectorAll('.page-dot');
+  const idx  = PAGE_ORDER.indexOf(hash);
+  dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+}
+
 function renderPage(hash) {
-  const fn = ROUTES[hash] || renderHome;
-  fn(document.getElementById('content'));
+  const fn      = ROUTES[hash] || renderHome;
+  const content = document.getElementById('content');
+
+  fn(content);
+
   document.querySelectorAll('.nav-item').forEach(el => {
     el.classList.toggle('active', el.dataset.page === hash);
   });
+
+  // Slide animation — skip on first render
+  const newIdx = PAGE_ORDER.indexOf(hash);
+  if (_prevPageIdx !== -1 && newIdx !== _prevPageIdx) {
+    const cls = newIdx > _prevPageIdx ? 'page-slide-left' : 'page-slide-right';
+    content.classList.remove('page-slide-left', 'page-slide-right');
+    void content.offsetWidth;   // force reflow so re-adding the class re-triggers
+    content.classList.add(cls);
+    content.addEventListener('animationend', () => content.classList.remove(cls), { once: true });
+  }
+  _prevPageIdx = newIdx === -1 ? 0 : newIdx;
+
+  _updatePageDots(hash);
 }
 
 window.navigate = function (page) { window.location.hash = '#' + page; };
@@ -57,7 +84,6 @@ window.addEventListener('hashchange', () => renderPage(currentHash()));
 
 // ─── Swipe navigation ─────────────────────────────────────────────────────────
 
-const PAGE_ORDER = ['home', 'goals', 'review', 'profile', 'settings', 'leaderboard'];
 let _swipeStartX = 0, _swipeStartY = 0;
 
 document.addEventListener('touchstart', e => {
@@ -786,9 +812,27 @@ function showSetup() {
 function showMainApp() {
   document.getElementById('setup-screen').classList.add('hidden');
   document.getElementById('main-app').classList.remove('hidden');
+  _initPageDots();
   updateHeader();
   renderPage(currentHash());
   _startDayWatcher();
+}
+
+function _initPageDots() {
+  if (document.getElementById('page-dots')) return; // already injected
+  const nav  = document.getElementById('nav');
+  const dots = document.createElement('div');
+  dots.id    = 'page-dots';
+  dots.className = 'page-dots';
+  dots.innerHTML = PAGE_ORDER.map((p, i) =>
+    `<span class="page-dot${i === 0 ? ' active' : ''}" data-page="${p}"></span>`
+  ).join('');
+  nav.parentNode.insertBefore(dots, nav);
+
+  // Clicking a dot navigates to that page
+  dots.querySelectorAll('.page-dot').forEach(d => {
+    d.addEventListener('click', () => window.navigate(d.dataset.page));
+  });
 }
 
 // ─── Cross-day watcher ────────────────────────────────────────────────────────
