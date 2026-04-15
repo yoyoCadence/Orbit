@@ -250,3 +250,4 @@ pwa/
 - [ ] 等級稱號完整自訂（可編輯整套主題每一等稱號 + 新增主題）
 - [ ] 排行榜改為累積 XP 排名
 - [ ] Supabase Schema 調整：profiles 表新增 title_template / custom_title 欄位
+- [ ] CI E2E 測試：GitHub Actions 啟動 server + Playwright，同時建立獨立 Supabase test project 作為測試環境隔離（避免汙染 prod 資料）
