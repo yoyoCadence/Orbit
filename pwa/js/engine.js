@@ -104,11 +104,11 @@ export function calcDailyStats(sessions, date) {
   };
 }
 
-/** Update streak: +1 on effective day, -2 on failure (min 0) */
+/** Update streak: +1 on effective day, reset to 0 on failure */
 export function processStreakForDate(streakDays, isEffectiveDay) {
   return isEffectiveDay
     ? (streakDays || 0) + 1
-    : Math.max(0, (streakDays || 0) - 2);
+    : 0;
 }
 
 // ─── Level formula ────────────────────────────────────────────────────────────

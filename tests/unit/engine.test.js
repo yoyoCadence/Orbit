@@ -274,12 +274,12 @@ describe('processStreakForDate', () => {
     expect(processStreakForDate(5, true)).toBe(6);
   });
 
-  it('ineffective day → streak - 2', () => {
-    expect(processStreakForDate(5, false)).toBe(3);
+  it('ineffective day → streak resets to 0', () => {
+    expect(processStreakForDate(5, false)).toBe(0);
+    expect(processStreakForDate(30, false)).toBe(0);
   });
 
-  it('streak cannot go below 0', () => {
-    expect(processStreakForDate(1, false)).toBe(0);
+  it('streak already 0, ineffective → still 0', () => {
     expect(processStreakForDate(0, false)).toBe(0);
   });
 
