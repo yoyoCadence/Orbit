@@ -18,9 +18,13 @@ import { renderReview }         from './pages/review.js';
 import { renderProfile }        from './pages/profile.js';
 import { renderSettings }       from './pages/settings.js';
 import { renderLeaderboard }    from './pages/leaderboard.js';
+import { startTour } from './tour.js';
 
 // ─── Version ─────────────────────────────────────────────────────────────────
 export const APP_VERSION = 'v1.3.0';
+
+// Expose tour globally so settings page can call it
+window.startTour = startTour;
 
 // ─── Auth session state ───────────────────────────────────────────────────────
 let _currentSession   = null;
@@ -774,6 +778,8 @@ function showSetup() {
     showMainApp();
     // Ask morning state on first day
     showMorningModal();
+    // Show onboarding tour for new users (slight delay so page renders first)
+    setTimeout(() => startTour(), 600);
   });
 }
 

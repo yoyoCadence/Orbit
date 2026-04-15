@@ -1731,3 +1731,109 @@ nav {
   color: var(--primary);
   text-shadow: 0 0 8px rgba(0,255,159,0.5);
 }
+
+/* ─── Onboarding Tour ────────────────────────────────────────────────────────── */
+
+/* Blocks accidental page interaction during tour */
+.tour-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  pointer-events: all;
+  background: transparent;
+}
+
+/* Extra dim for the centered (no-spotlight) step */
+.tour-backdrop-center {
+  background: rgba(0, 0, 0, 0.72);
+}
+
+/* Spotlight — box-shadow creates the dark overlay around the hole */
+.tour-spot {
+  position: fixed;
+  z-index: 9001;
+  pointer-events: none;
+  border-radius: 10px;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.72);
+  outline: 2px solid var(--primary, #7c6af7);
+  outline-offset: 1px;
+  transition: all 0.25s ease;
+}
+
+/* Tooltip card */
+.tour-tooltip {
+  position: fixed;
+  z-index: 9010;
+  background: var(--card-bg, #1e1e3a);
+  border: 1px solid var(--border, #2e2e5a);
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
+  pointer-events: all;
+}
+
+/* Centered variant */
+.tour-tooltip-center {
+  position: fixed !important;
+  left: 50% !important;
+  top: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  width: 288px !important;
+}
+
+.tour-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--primary, #7c6af7);
+  margin-bottom: 8px;
+}
+
+.tour-body {
+  font-size: 13px;
+  color: var(--text-secondary, #aaaacc);
+  line-height: 1.55;
+  margin-bottom: 14px;
+}
+
+.tour-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tour-counter {
+  font-size: 12px;
+  color: var(--text-muted, #666688);
+  flex-shrink: 0;
+}
+
+.tour-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.tour-skip {
+  background: none;
+  border: none;
+  color: var(--text-muted, #666688);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+.tour-skip:hover { color: var(--text-secondary); }
+
+.tour-next {
+  background: var(--primary, #7c6af7);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.tour-next:hover { opacity: 0.88; }
