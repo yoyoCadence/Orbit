@@ -332,7 +332,7 @@ function _setupDragAndDrop(container) {
 
       _pressTimer = setTimeout(() => {
         _pressTimer = null;
-        _activateDrag(_pressData, container);
+        _activateDrag(_pressData);
         _pressData = null;
       }, 500);
     });
@@ -365,7 +365,7 @@ function _setupDragAndDrop(container) {
   });
 }
 
-function _activateDrag(pressData, container) {
+function _activateDrag(pressData) {
   const { card, pointerId, offX, offY, clientX, clientY } = pressData;
   if (navigator.vibrate) navigator.vibrate(50);
 
