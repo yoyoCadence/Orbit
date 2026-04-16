@@ -1487,23 +1487,16 @@ nav {
 .plan-indicator { font-size: 12px; }
 
 /* ══════════════════════════════════════════════════════════════
-   DRAG & DROP
+   DRAG & DROP  (long-press to drag)
 ══════════════════════════════════════════════════════════════ */
-.drag-handle {
-  position: absolute; top: 6px; right: 6px;
-  color: var(--text-muted); font-size: 13px; line-height: 1;
-  cursor: grab; opacity: .4; letter-spacing: -1px;
-  padding: 2px 3px; border-radius: 4px;
-  transition: opacity .15s;
-  user-select: none; -webkit-user-select: none;
-  touch-action: none;
-}
-.task-card:hover .drag-handle { opacity: .75; }
-.drag-handle:active { cursor: grabbing; opacity: 1; }
 
-.task-card { position: relative; } /* needed for drag-handle absolute positioning */
+/* Allow vertical scroll by default; pointer capture handles drag */
+.task-card { touch-action: pan-y; }
 
-.drag-placeholder { opacity: .25 !important; }
+/* Visual feedback while holding (500 ms hold activates drag) */
+.task-card:active { transform: scale(0.96); transition: transform .15s; }
+
+.drag-placeholder { opacity: .25 !important; transition: none !important; }
 .drag-over {
   outline: 2px dashed var(--primary);
   outline-offset: 2px;
