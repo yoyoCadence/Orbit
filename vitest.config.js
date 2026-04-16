@@ -9,6 +9,9 @@ export default defineConfig({
       ['tests/unit/home.test.js',             'jsdom'],
       ['tests/unit/settings.test.js',         'jsdom'],
       ['tests/unit/profile.test.js',          'jsdom'],
+      ['tests/unit/leaderboard.test.js',      'jsdom'],
+      ['tests/unit/review.test.js',           'jsdom'],
+      ['tests/unit/goals.test.js',            'jsdom'],
       ['tests/integration/storage.test.js',   'jsdom'],
     ],
     coverage: {

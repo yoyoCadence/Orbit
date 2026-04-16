@@ -94,6 +94,7 @@ export const db = {
         value:           s.value,
         resistance:      s.resistance,
         isProductiveXP:  s.is_productive_xp,
+        taskIconImg:     s.task_icon_img    || null,
       })));
     }
 
