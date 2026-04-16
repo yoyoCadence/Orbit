@@ -45,9 +45,10 @@ export const db = {
         lastWeeklyBonusDate:  p.last_weekly_bonus_date || '',
         morningState:         p.morning_state,
         mode:                 p.mode,
-        isPublic:             p.is_public    ?? false,
-        titleTemplate:        p.title_template || 'rpg',
-        customTitle:          p.custom_title  || '',
+        isPublic:             p.is_public       ?? false,
+        titleTemplate:        p.title_template  || 'rpg',
+        customTitle:          p.custom_title    || '',
+        newDayHour:           p.new_day_hour    ?? 5,
         createdAt:            p.created_at,
       });
     }
@@ -127,6 +128,7 @@ export const db = {
       is_public:              user.isPublic              ?? false,
       title_template:         user.titleTemplate         || 'rpg',
       custom_title:           user.customTitle           || null,
+      new_day_hour:           user.newDayHour            ?? 5,
     });
   },
 

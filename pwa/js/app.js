@@ -46,7 +46,7 @@ function currentHash() { return window.location.hash.slice(1) || 'home'; }
 
 // ─── Page slide animation + dot indicator ─────────────────────────────────────
 
-const PAGE_ORDER = ['home', 'goals', 'review', 'profile', 'settings', 'leaderboard'];
+const PAGE_ORDER = ['home', 'goals', 'review', 'profile', 'leaderboard', 'settings'];
 let _prevPageIdx = -1;   // -1 = first render, skip animation
 
 function _updatePageDots(hash) {
