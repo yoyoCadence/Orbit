@@ -185,7 +185,6 @@ describe('週視圖 — 無效次數', () => {
       makeSession({ id: 's-2', result: 'invalid', isProductiveXP: false, finalXP: 0 }),
     ];
     renderReview(container);
-    const invalidEl = container.querySelector('.time-dist-val:last-of-type, .time-dist-item:last-child .time-dist-val');
     // The third .time-dist-val is the invalid count
     const vals = container.querySelectorAll('.time-dist-val');
     expect(vals[2].textContent.trim()).toBe('2');
@@ -348,7 +347,6 @@ describe('月視圖 — 最長連勝', () => {
 
 describe('月視圖 — 本月最常完成任務', () => {
   it('本月有 session → 顯示任務名稱', () => {
-    const now = new Date();
     mockState.sessions = [
       makeSession({ id: 's-m1', date: localMonthDate(1), taskName: '運動', result: 'complete' }),
       makeSession({ id: 's-m2', date: localMonthDate(2), taskName: '運動', result: 'complete' }),
