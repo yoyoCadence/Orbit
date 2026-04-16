@@ -166,8 +166,8 @@ export function renderHome(container) {
 
   // ── Bind: regular task cards → add to plan ───────────────────────────────────
   container.querySelectorAll('.task-card').forEach(card => {
-    card.addEventListener('click', e => {
-      if (e.target.closest('.drag-handle')) return;
+    card.addEventListener('click', () => {
+      if (_drag.wasDragging) { _drag.wasDragging = false; return; }
       window.addToDailyPlan(card.dataset.taskId);
     });
   });
@@ -222,7 +222,6 @@ function taskCardHtml(task, countToday, inPlan) {
     <div class="task-card ${isFocus ? 'task-card-focus' : 'task-card-instant'} ${inPlan ? 'task-card-in-plan' : ''}"
          data-task-id="${task.id}" data-category="${task.category}"
          style="--task-accent:${IMPACT_COLOR[task.impactType] || 'var(--primary)'}">
-      <div class="drag-handle" title="拖曳排序">⋮⋮</div>
       ${countToday > 0 ? `<span class="count-badge">${countToday}</span>` : ''}
       <div class="task-card-top">
         <div class="task-icon-wrap${task.isDefault === false ? ' task-icon-custom' : ''}">
@@ -289,76 +288,117 @@ function escHtml(str) {
 
 // ─── Drag & Drop (reorder tasks within sections) ──────────────────────────────
 //
+// Long-press (500 ms) on any task card activates drag.
+// Moving >8 px before the timer fires cancels (treat as scroll).
 // Uses Pointer Events + bounding-rect hit testing (reliable on mobile).
-// All mutable state is kept in the `_drag` object so there are no
-// scattered module-level variables.
 
 const _drag = {
-  active:  false,
-  taskId:  null,
-  card:    null,
-  clone:   null,
-  offX:    0,
-  offY:    0,
-  lastX:   0,   // updated every pointermove; used in pointerup/cancel
-  lastY:   0,
+  active:      false,
+  wasDragging: false,  // suppresses the click that follows pointerup
+  taskId:      null,
+  card:        null,
+  clone:       null,
+  offX:        0,
+  offY:        0,
+  lastX:       0,
+  lastY:       0,
 };
 
 function _setupDragAndDrop(container) {
-  container.querySelectorAll('.drag-handle').forEach(handle => {
-    handle.addEventListener('pointerdown', e => {
-      e.preventDefault();
-      const card = handle.closest('.task-card');
-      if (!card) return;
+  let _pressTimer = null;
+  let _pressData  = null; // { card, pointerId, clientX, clientY, offX, offY }
+
+  function _cancelPress() {
+    clearTimeout(_pressTimer);
+    _pressTimer = null;
+    _pressData  = null;
+  }
+
+  container.querySelectorAll('.task-card').forEach(card => {
+
+    card.addEventListener('pointerdown', e => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      _cancelPress();
 
       const rect = card.getBoundingClientRect();
-      _drag.active = true;
-      _drag.taskId = card.dataset.taskId;
-      _drag.card   = card;
-      _drag.offX   = e.clientX - rect.left;
-      _drag.offY   = e.clientY - rect.top;
-      _drag.lastX  = e.clientX;
-      _drag.lastY  = e.clientY;
+      _pressData = {
+        card,
+        pointerId: e.pointerId,
+        clientX:   e.clientX,
+        clientY:   e.clientY,
+        offX:      e.clientX - rect.left,
+        offY:      e.clientY - rect.top,
+      };
 
-      // Clone for visual drag feedback
-      const clone = card.cloneNode(true);
-      clone.style.cssText = `
-        position:fixed;
-        width:${rect.width}px;height:${rect.height}px;
-        top:${rect.top}px;left:${rect.left}px;
-        opacity:.88;pointer-events:none;z-index:500;
-        transform:scale(1.04) rotate(1deg);
-        box-shadow:0 10px 36px rgba(0,0,0,.45);
-        transition:transform .1s;
-      `;
-      document.body.appendChild(clone);
-      _drag.clone = clone;
-      card.classList.add('drag-placeholder');
-
-      window._isDragging = true;
-      handle.setPointerCapture(e.pointerId);
+      _pressTimer = setTimeout(() => {
+        _pressTimer = null;
+        _activateDrag(_pressData);
+        _pressData = null;
+      }, 500);
     });
 
-    handle.addEventListener('pointermove', e => {
-      if (!_drag.active) return;
-      _drag.lastX = e.clientX;
-      _drag.lastY = e.clientY;
-
-      _drag.clone.style.left = (e.clientX - _drag.offX) + 'px';
-      _drag.clone.style.top  = (e.clientY - _drag.offY) + 'px';
-
-      _clearDragOver(container);
-      const under = _cardUnderPoint(container, e.clientX, e.clientY);
-      if (under && under !== _drag.card) under.classList.add('drag-over');
+    card.addEventListener('pointermove', e => {
+      if (_drag.active) {
+        _drag.lastX = e.clientX;
+        _drag.lastY = e.clientY;
+        _drag.clone.style.left = (e.clientX - _drag.offX) + 'px';
+        _drag.clone.style.top  = (e.clientY - _drag.offY) + 'px';
+        _clearDragOver(container);
+        const under = _cardUnderPoint(container, e.clientX, e.clientY);
+        if (under && under !== _drag.card) under.classList.add('drag-over');
+      } else if (_pressData) {
+        const dx = Math.abs(e.clientX - _pressData.clientX);
+        const dy = Math.abs(e.clientY - _pressData.clientY);
+        if (dx > 8 || dy > 8) _cancelPress();
+      }
     });
 
-    handle.addEventListener('pointerup',    () => _endDrag(container));
-    handle.addEventListener('pointercancel', () => _endDrag(container));
+    card.addEventListener('pointerup', () => {
+      _cancelPress();
+      if (_drag.active) _endDrag(container);
+    });
+
+    card.addEventListener('pointercancel', () => {
+      _cancelPress();
+      if (_drag.active) _endDrag(container);
+    });
   });
+}
+
+function _activateDrag(pressData) {
+  const { card, pointerId, offX, offY, clientX, clientY } = pressData;
+  if (navigator.vibrate) navigator.vibrate(50);
+
+  const rect = card.getBoundingClientRect();
+  _drag.active = true;
+  _drag.taskId = card.dataset.taskId;
+  _drag.card   = card;
+  _drag.offX   = offX;
+  _drag.offY   = offY;
+  _drag.lastX  = clientX;
+  _drag.lastY  = clientY;
+
+  const clone = card.cloneNode(true);
+  clone.style.cssText = `
+    position:fixed;
+    width:${rect.width}px;height:${rect.height}px;
+    top:${rect.top}px;left:${rect.left}px;
+    opacity:.88;pointer-events:none;z-index:500;
+    transform:scale(1.04) rotate(1deg);
+    box-shadow:0 10px 36px rgba(0,0,0,.45);
+    transition:transform .1s;
+  `;
+  document.body.appendChild(clone);
+  _drag.clone = clone;
+  card.classList.add('drag-placeholder');
+
+  window._isDragging = true;
+  card.setPointerCapture(pointerId);
 }
 
 function _endDrag(container) {
   if (!_drag.active) return;
+  _drag.wasDragging = true; // suppress the click event that follows pointerup
 
   _drag.clone.remove();
   _drag.card.classList.remove('drag-placeholder');
