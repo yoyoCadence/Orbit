@@ -49,11 +49,6 @@ function currentHash() { return window.location.hash.slice(1) || 'home'; }
 const PAGE_ORDER = ['home', 'goals', 'review', 'profile', 'leaderboard', 'settings'];
 let _prevPageIdx = -1;   // -1 = first render, skip animation
 
-function _updatePageDots(hash) {
-  const dots = document.querySelectorAll('.page-dot');
-  const idx  = PAGE_ORDER.indexOf(hash);
-  dots.forEach((d, i) => d.classList.toggle('active', i === idx));
-}
 
 function renderPage(hash) {
   const fn      = ROUTES[hash] || renderHome;
@@ -76,7 +71,6 @@ function renderPage(hash) {
   }
   _prevPageIdx = newIdx === -1 ? 0 : newIdx;
 
-  _updatePageDots(hash);
 }
 
 window.navigate = function (page) { window.location.hash = '#' + page; };
@@ -812,27 +806,9 @@ function showSetup() {
 function showMainApp() {
   document.getElementById('setup-screen').classList.add('hidden');
   document.getElementById('main-app').classList.remove('hidden');
-  _initPageDots();
   updateHeader();
   renderPage(currentHash());
   _startDayWatcher();
-}
-
-function _initPageDots() {
-  if (document.getElementById('page-dots')) return; // already injected
-  const nav  = document.getElementById('nav');
-  const dots = document.createElement('div');
-  dots.id    = 'page-dots';
-  dots.className = 'page-dots';
-  dots.innerHTML = PAGE_ORDER.map((p, i) =>
-    `<span class="page-dot${i === 0 ? ' active' : ''}" data-page="${p}"></span>`
-  ).join('');
-  nav.parentNode.insertBefore(dots, nav);
-
-  // Clicking a dot navigates to that page
-  dots.querySelectorAll('.page-dot').forEach(d => {
-    d.addEventListener('click', () => window.navigate(d.dataset.page));
-  });
 }
 
 // ─── Cross-day watcher ────────────────────────────────────────────────────────
