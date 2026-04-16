@@ -8,7 +8,7 @@ import { getLevelInfo } from '../leveling.js';
  * growthRate = weekXP / personalAvgWeekXP * 100
  * personalAvgWeekXP = totalXP / max(weeksActive, 1)
  */
-function calcGrowthRate(totalXP, weekXP, createdAt) {
+export function calcGrowthRate(totalXP, weekXP, createdAt) {
   const msPerWeek = 7 * 24 * 60 * 60 * 1000;
   const weeksActive = Math.max(1, (Date.now() - new Date(createdAt).getTime()) / msPerWeek);
   const avgWeekXP = totalXP / weeksActive;
@@ -16,7 +16,7 @@ function calcGrowthRate(totalXP, weekXP, createdAt) {
   return Math.round((weekXP / avgWeekXP) * 100);
 }
 
-function isNewUser(createdAt) {
+export function isNewUser(createdAt) {
   const days = (Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24);
   return days < 14;
 }
