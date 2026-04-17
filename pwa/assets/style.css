@@ -271,6 +271,42 @@ html.has-bg .levelup-box {
 html.has-bg #app { background: transparent; }
 
 /* ══════════════════════════════════════════════════════════════
+   PRO CARD (settings)
+══════════════════════════════════════════════════════════════ */
+.pro-card {
+  position: relative;
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--surface) 80%, var(--primary) 20%) 0%,
+    color-mix(in srgb, var(--surface) 90%, var(--accent)  10%) 100%);
+  border: 1px solid color-mix(in srgb, var(--primary) 40%, transparent);
+  overflow: hidden;
+}
+.pro-badge {
+  position: absolute; top: 12px; right: 12px;
+  background: var(--primary); color: #fff;
+  font-size: 10px; font-weight: 700; padding: 2px 8px;
+  border-radius: 99px; letter-spacing: .4px;
+}
+.pro-header {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
+}
+.pro-icon { font-size: 32px; line-height: 1; }
+.pro-title { font-size: 18px; font-weight: 800; color: var(--primary-lt); }
+.pro-sub   { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.pro-features {
+  list-style: none; padding: 0; margin: 0 0 16px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.pro-features li { font-size: 13px; color: var(--text); }
+.pro-cta-btn {
+  width: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  color: #fff; border: none; border-radius: 10px;
+  padding: 12px; font-size: 14px; font-weight: 700;
+  opacity: .55; cursor: not-allowed;
+}
+
+/* ══════════════════════════════════════════════════════════════
    ACCOUNT CARD (settings)
 ══════════════════════════════════════════════════════════════ */
 .account-row {
