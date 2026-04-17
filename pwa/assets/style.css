@@ -943,8 +943,9 @@ nav {
 /* ══════════════════════════════════════════════════════════════
    ANIMATIONS
 ══════════════════════════════════════════════════════════════ */
-@keyframes fadeIn  { from { opacity:0 } to { opacity:1 } }
-@keyframes slideUp { from { transform:translateY(100%) } to { transform:translateY(0) } }
+@keyframes fadeIn    { from { opacity:0 } to { opacity:1 } }
+@keyframes slideUp   { from { transform:translateY(100%) } to { transform:translateY(0) } }
+@keyframes slideDown { from { transform:translateY(-100%) } to { transform:translateY(0) } }
 @keyframes popIn   { from { transform:scale(0.5); opacity:0 } to { transform:scale(1); opacity:1 } }
 @keyframes xpFloat {
   0%   { opacity:1; transform:translateX(-50%) translateY(0); }
@@ -1409,6 +1410,30 @@ nav {
   margin-bottom: 16px; text-align: center;
 }
 .xp-preview-box strong { color: var(--primary-lt); }
+
+/* ── Version update banner ──────────────────────────────────────────────────── */
+#update-banner {
+  position: fixed;
+  top: env(safe-area-inset-top, 0); left: 0; right: 0;
+  z-index: 1000;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 10px 16px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 13px; font-weight: 500;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.35);
+  animation: slideDown 0.3s ease;
+}
+#update-banner button {
+  background: rgba(255,255,255,0.22);
+  border: none; color: #fff;
+  padding: 4px 12px; border-radius: 6px;
+  font-size: 12px; font-weight: 600; cursor: pointer;
+}
+#update-banner button:active { opacity: 0.75; }
+#update-banner .update-banner-close {
+  padding: 4px 8px; margin-left: 4px; background: transparent;
+}
 
 /* ── Sync status banner ─────────────────────────────────────────────────────── */
 #sync-banner {

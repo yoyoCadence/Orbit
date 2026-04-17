@@ -191,6 +191,21 @@
 <script>
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
+
+    // Show update banner when a new SW takes control (skipWaiting → controllerchange).
+    // prevController guard prevents banner on first install (controller was null).
+    const _prevController = navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!_prevController) return; // first-time install, not an update
+      if (document.getElementById('update-banner')) return; // already shown
+      const banner = document.createElement('div');
+      banner.id = 'update-banner';
+      banner.innerHTML =
+        '<span>🆕 新版本已就緒</span>' +
+        '<button onclick="location.reload()">重新整理</button>' +
+        '<button class="update-banner-close" onclick="this.parentElement.remove()">✕</button>';
+      document.body.prepend(banner);
+    });
   }
 </script>
 </body>
