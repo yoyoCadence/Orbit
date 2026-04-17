@@ -249,4 +249,41 @@ describe('renderLeaderboard — with data', () => {
     container.querySelector('[data-tab="week"]').click();
     expect(container.innerHTML).toContain('本週XP');
   });
+
+  it('累積XP tab button exists', async () => {
+    const rows = [makeRow()];
+    mockSelect.mockResolvedValueOnce({ data: rows, error: null });
+    await renderLeaderboard(container);
+    expect(container.querySelector('[data-tab="total"]')).not.toBeNull();
+  });
+
+  it('切換到累積XP tab → sub-label 顯示「累積XP」', async () => {
+    const rows = [makeRow({ total_xp: 1200, week_xp: 50 })];
+    mockSelect.mockResolvedValueOnce({ data: rows, error: null });
+    await renderLeaderboard(container);
+
+    container.querySelector('[data-tab="total"]').click();
+    expect(container.innerHTML).toContain('累積XP');
+    expect(container.innerHTML).toContain('1200');
+
+    // reset to week
+    container.querySelector('[data-tab="week"]').click();
+  });
+
+  it('累積XP tab 依 total_xp 降冪排列', async () => {
+    const rows = [
+      makeRow({ user_id: 'low',  name: 'Low',  total_xp: 100,  week_xp: 200 }),
+      makeRow({ user_id: 'high', name: 'High', total_xp: 5000, week_xp: 10  }),
+    ];
+    mockSelect.mockResolvedValueOnce({ data: rows, error: null });
+    await renderLeaderboard(container);
+
+    container.querySelector('[data-tab="total"]').click();
+    const names = [...container.querySelectorAll('.lb-name')].map(el => el.textContent.trim());
+    expect(names[0]).toContain('High'); // 5000 XP ranked first
+    expect(names[1]).toContain('Low');
+
+    // reset to week
+    container.querySelector('[data-tab="week"]').click();
+  });
 });

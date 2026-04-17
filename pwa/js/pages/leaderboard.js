@@ -23,7 +23,7 @@ export function isNewUser(createdAt) {
 
 // ─── Render ───────────────────────────────────────────────────────────────────
 
-let _tab = 'week'; // 'week' | 'growth'
+let _tab = 'week'; // 'week' | 'growth' | 'total'
 
 export async function renderLeaderboard(container) {
   container.innerHTML = `
@@ -80,7 +80,13 @@ function _renderContent(container, rows) {
     .filter(r => r.growthRate !== null)
     .sort((a, b) => b.growthRate - a.growthRate);
 
-  const activeRows  = _tab === 'week' ? weekRanked : growthRanked;
+  // ── Total XP ranking ─────────────────────────────────────────────────────
+  const totalRanked = [...rows]
+    .sort((a, b) => b.total_xp - a.total_xp);
+
+  const activeRows = _tab === 'week' ? weekRanked
+    : _tab === 'growth'              ? growthRanked
+    :                                  totalRanked;
   const modeLabel = rows[0]?.mode === 'advanced' ? '進階模式' : '普通模式';
 
   const listHtml = activeRows.length
@@ -88,10 +94,12 @@ function _renderContent(container, rows) {
         const isMe = r.user_id === myUserId;
         const lvl  = getLevelInfo(r.total_xp || 0).level;
         const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`;
-        const score = _tab === 'week'
-          ? `${r.week_xp} XP`
-          : `${r.growthRate}%`;
-        const subLabel = _tab === 'week' ? '本週XP' : '成長率';
+        const score = _tab === 'week'   ? `${r.week_xp} XP`
+          : _tab === 'growth'           ? `${r.growthRate}%`
+          :                               `${r.total_xp} XP`;
+        const subLabel = _tab === 'week' ? '本週XP'
+          : _tab === 'growth'            ? '成長率'
+          :                                '累積XP';
         const initial = (r.name || '?')[0].toUpperCase();
 
         return `
@@ -117,8 +125,9 @@ function _renderContent(container, rows) {
     <div class="section-title">🏆 排行榜</div>
 
     <div class="lb-tabs">
-      <button class="lb-tab ${_tab === 'week' ? 'active' : ''}" data-tab="week">📅 本週XP</button>
+      <button class="lb-tab ${_tab === 'week'   ? 'active' : ''}" data-tab="week">📅 本週XP</button>
       <button class="lb-tab ${_tab === 'growth' ? 'active' : ''}" data-tab="growth">📈 成長率</button>
+      <button class="lb-tab ${_tab === 'total'  ? 'active' : ''}" data-tab="total">🏅 累積XP</button>
     </div>
 
     <div style="font-size:11px;color:var(--text-muted);text-align:center;margin-bottom:8px">
