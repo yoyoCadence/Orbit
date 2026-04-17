@@ -1364,6 +1364,77 @@ nav {
 .morning-btn small  { font-size: 11px; color: var(--text-muted); }
 
 /* ══════════════════════════════════════════════════════════════
+   DAILY MORNING REPORT MODAL
+══════════════════════════════════════════════════════════════ */
+.rpt-box { overflow-y: auto; padding-bottom: 8px; }
+.rpt-header {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding-bottom: 14px; border-bottom: 1px solid var(--border); margin-bottom: 14px;
+}
+.rpt-date { font-size: 13px; color: var(--text-muted); }
+.rpt-badge {
+  font-size: 12px; font-weight: 700; padding: 3px 10px;
+  border-radius: 20px; letter-spacing: 0.3px;
+}
+.rpt-badge-ok      { background: #d1fae5; color: #065f46; }
+.rpt-badge-rest    { background: var(--surface-2); color: var(--text-muted); }
+.rpt-badge-partial { background: #dbeafe; color: #1e40af; }
+
+.rpt-stats-row {
+  display: flex; justify-content: space-around;
+  margin-bottom: 12px;
+}
+.rpt-stat { text-align: center; }
+.rpt-stat-val {
+  font-size: 22px; font-weight: 800; color: var(--primary); line-height: 1;
+}
+.rpt-stat-lbl { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+
+.rpt-value-row {
+  display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px;
+}
+.rpt-chip {
+  font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 12px;
+}
+.rpt-chip-s { background: #fef3c7; color: #92400e; }
+.rpt-chip-a { background: #ede9fe; color: #5b21b6; }
+.rpt-chip-b { background: #dbeafe; color: #1e40af; }
+.rpt-chip-c { background: var(--surface-2); color: var(--text-muted); }
+
+.rpt-section { margin-bottom: 14px; }
+.rpt-section-title {
+  font-size: 12px; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;
+}
+.rpt-task-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 0; border-bottom: 1px solid var(--border);
+}
+.rpt-task-row:last-child { border-bottom: none; }
+.rpt-task-name { flex: 1; font-size: 14px; color: var(--text); }
+.rpt-task-xp   { font-size: 13px; font-weight: 700; color: var(--primary); }
+.rpt-empty     { font-size: 13px; color: var(--text-muted); margin: 0; }
+
+.rpt-tip {
+  display: flex; gap: 8px; align-items: flex-start;
+  font-size: 13px; color: var(--text); margin-bottom: 6px;
+}
+.rpt-tip span:first-child { flex-shrink: 0; }
+
+.rpt-ai-section { opacity: 0.6; }
+.rpt-ai-badge {
+  font-size: 10px; font-weight: 700; padding: 2px 6px;
+  border-radius: 8px; background: var(--surface-2);
+  color: var(--text-muted); vertical-align: middle; margin-left: 4px;
+}
+.rpt-ai-text { font-size: 13px; color: var(--text-muted); margin: 0; }
+
+.rpt-cta {
+  width: 100%; margin-top: 14px;
+  padding: 14px; font-size: 15px; font-weight: 700;
+}
+
+/* ══════════════════════════════════════════════════════════════
    PROFILE — ENERGY & STREAK
 ══════════════════════════════════════════════════════════════ */
 .energy-section { margin-bottom: 18px; }

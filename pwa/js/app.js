@@ -612,6 +612,138 @@ function _commitSession(session, _task) {
   }
 }
 
+// ─── Daily morning report ────────────────────────────────────────────────────
+
+function _getYesterdayStr() {
+  const d = new Date();
+  if (d.getHours() < (state.user?.newDayHour ?? 5)) d.setDate(d.getDate() - 1);
+  const y = new Date(d);
+  y.setDate(y.getDate() - 1);
+  return y.toLocaleDateString('sv');
+}
+
+function _reportSuggestions(stats, ySessions) {
+  const tips = [];
+  if (ySessions.length === 0) {
+    tips.push({ icon: '🌟', text: '昨天是休息日，今天精力充沛，好好發揮！' });
+    return tips;
+  }
+  if (!stats.hasASTask) tips.push({ icon: '🎯', text: '今天安排一個 A 或 S 級的重要任務' });
+  if (stats.entertainmentMinutes > 120) {
+    const hrs = (stats.entertainmentMinutes / 60).toFixed(1);
+    tips.push({ icon: '⚖️', text: `昨天娛樂時間 ${hrs}hr，今天保持平衡` });
+  }
+  if (stats.productiveXP > 0 && stats.productiveXP < 50) {
+    tips.push({ icon: '📈', text: `再 ${50 - stats.productiveXP} XP 就達有效日，今天衝一波！` });
+  }
+  if (stats.isEffectiveDay && (state.user.streakDays || 0) > 0) {
+    tips.push({ icon: '🔥', text: `${state.user.streakDays} 天連勝中！繼續保持節奏` });
+  }
+  if (!stats.isEffectiveDay && (state.user.streakDays || 0) === 0) {
+    tips.push({ icon: '💪', text: '今天重新出發，完成一個有效日！' });
+  }
+  if (!tips.length) tips.push({ icon: '🌱', text: '保持穩定節奏，每天進步一點點' });
+  return tips.slice(0, 3);
+}
+
+function showDailyReport(onDone) {
+  const yStr     = _getYesterdayStr();
+  const ySess    = state.sessions.filter(s => s.date === yStr);
+  const stats    = calcDailyStats(state.sessions, yStr);
+  const totalXP  = ySess.reduce((sum, s) => sum + (s.finalXP || 0), 0);
+  const valid    = ySess.filter(s => s.result !== 'invalid');
+
+  // Value breakdown chips
+  const vc = { S: 0, A: 0, B: 0, C: 0 };
+  valid.forEach(s => { if (vc[s.value] !== undefined) vc[s.value]++; });
+  const valueHtml = Object.entries(vc)
+    .filter(([, n]) => n > 0)
+    .map(([v, n]) => `<span class="rpt-chip rpt-chip-${v.toLowerCase()}">${v}×${n}</span>`)
+    .join('');
+
+  // Top 3 tasks by XP
+  const taskMap = {};
+  valid.forEach(s => {
+    const k = s.taskId || s.taskName || '?';
+    if (!taskMap[k]) taskMap[k] = { name: s.taskName || '未知任務', emoji: s.taskEmoji || '📌', xp: 0 };
+    taskMap[k].xp += s.finalXP || 0;
+  });
+  const topTasks = Object.values(taskMap).sort((a, b) => b.xp - a.xp).slice(0, 3);
+  const tasksHtml = topTasks.length
+    ? topTasks.map(t => `
+        <div class="rpt-task-row">
+          <span>${t.emoji}</span>
+          <span class="rpt-task-name">${t.name}</span>
+          <span class="rpt-task-xp">+${t.xp} XP</span>
+        </div>`).join('')
+    : '<p class="rpt-empty">昨天沒有完成的任務</p>';
+
+  const tips = _reportSuggestions(stats, ySess);
+  const tipsHtml = tips.map(t =>
+    `<div class="rpt-tip"><span>${t.icon}</span><span>${t.text}</span></div>`
+  ).join('');
+
+  const badge = stats.isEffectiveDay
+    ? '<span class="rpt-badge rpt-badge-ok">✅ 有效日</span>'
+    : ySess.length === 0
+    ? '<span class="rpt-badge rpt-badge-rest">😴 休息日</span>'
+    : '<span class="rpt-badge rpt-badge-partial">⬆️ 成長中</span>';
+
+  const dateDisplay = new Date(yStr).toLocaleDateString('zh-TW',
+    { month: 'long', day: 'numeric', weekday: 'short' });
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.id = 'daily-report-modal';
+  modal.innerHTML = `
+    <div class="modal-box modal-box-tall rpt-box">
+      <div class="rpt-header">
+        <div class="rpt-date">${dateDisplay}・昨日總結</div>
+        ${badge}
+      </div>
+
+      <div class="rpt-stats-row">
+        <div class="rpt-stat">
+          <div class="rpt-stat-val">${totalXP}</div>
+          <div class="rpt-stat-lbl">XP 獲得</div>
+        </div>
+        <div class="rpt-stat">
+          <div class="rpt-stat-val">${valid.length}</div>
+          <div class="rpt-stat-lbl">完成任務</div>
+        </div>
+        <div class="rpt-stat">
+          <div class="rpt-stat-val">${state.user.streakDays || 0}🔥</div>
+          <div class="rpt-stat-lbl">連勝天數</div>
+        </div>
+      </div>
+
+      ${valueHtml ? `<div class="rpt-value-row">${valueHtml}</div>` : ''}
+
+      <div class="rpt-section">
+        <div class="rpt-section-title">📌 主要任務</div>
+        ${tasksHtml}
+      </div>
+
+      <div class="rpt-section">
+        <div class="rpt-section-title">💡 今日建議</div>
+        ${tipsHtml}
+      </div>
+
+      <div class="rpt-section rpt-ai-section">
+        <div class="rpt-section-title">🤖 AI 分析 <span class="rpt-ai-badge">即將推出</span></div>
+        <p class="rpt-ai-text">AI 將根據你的習慣模式，提供個人化學習建議。</p>
+      </div>
+
+      <button class="btn-primary rpt-cta" id="rpt-next-btn">☀️ 開始新的一天</button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  document.getElementById('rpt-next-btn').addEventListener('click', () => {
+    modal.remove();
+    onDone();
+  });
+}
+
 // ─── Morning state modal ─────────────────────────────────────────────────────
 
 function showMorningModal() {
@@ -841,7 +973,7 @@ function _startDayWatcher() {
       storage.saveDailyPlan([]);
       // Show morning modal if energy not yet reset today
       if (state.energy.lastResetDate !== current) {
-        showMorningModal();
+        showDailyReport(() => showMorningModal());
       }
     }
   }, 60_000); // check every minute
@@ -913,7 +1045,7 @@ window.continueAsGuest = function () {
   } else {
     processYesterdayStreak();
     if (state.energy.lastResetDate !== _eToday()) {
-      showMainApp(); showMorningModal();
+      showMainApp(); showDailyReport(() => showMorningModal());
     } else {
       showMainApp();
     }
@@ -1006,7 +1138,7 @@ async function loadAndStart(session) {
     processYesterdayStreak();
     if (state.energy.lastResetDate !== _eToday()) {
       showMainApp();
-      showMorningModal();
+      showDailyReport(() => showMorningModal());
     } else {
       showMainApp();
     }
@@ -1063,7 +1195,7 @@ async function init() {
     hideLoading();
     processYesterdayStreak();
     if (state.energy.lastResetDate !== _eToday()) {
-      showMainApp(); showMorningModal();
+      showMainApp(); showDailyReport(() => showMorningModal());
     } else {
       showMainApp();
     }
