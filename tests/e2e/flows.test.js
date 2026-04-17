@@ -17,7 +17,7 @@ import { test, expect } from '@playwright/test';
 
 // ─── 常數 ─────────────────────────────────────────────────────────────────────
 
-const TODAY = new Date().toISOString().slice(0, 10);
+const TODAY = new Date().toLocaleDateString('sv'); // matches app's today() — YYYY-MM-DD in local tz
 
 const GUEST_USER = {
   id: 'e2e-user', name: 'E2E Tester', totalXP: 0,
