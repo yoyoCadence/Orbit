@@ -19,6 +19,13 @@ export const THEMES_NEW = [
   { id: 'cyberpunk', name: '賽博龐克', icon: '⚡', colors: ['#00ff9f', '#ff2d78', '#050508'] },
 ];
 
+export const THEMES_CREATIVE = [
+  { id: 'pixel',   name: '像　　素', icon: '👾', colors: ['#39ff14', '#ffff00', '#0a0a0a'] },
+  { id: 'anime',   name: '動　　漫', icon: '🌸', colors: ['#ff6b9d', '#7ec8e3', '#fff5f8'] },
+  { id: 'gothic',  name: '哥德蘿莉', icon: '🖤', colors: ['#c41e3a', '#d4af37', '#0d0009'] },
+  { id: 'github',  name: 'GitHub',   icon: '🐙', colors: ['#1f6feb', '#2da44e', '#0d1117'] },
+];
+
 const EMOJI_LIST = [
   '🏃','🚶','🏋️','🧘','🚴','🏊','⚽','🏸','🎯','📚','💡','🎨','🎵','🎮',
   '🍎','🥗','🥤','💧','💊','🌙','😴','✍️','📝','💻','🤝','❤️','🧠','🌟',
@@ -76,8 +83,9 @@ function _renderView(container) {
   const currentTheme = storage.getTheme();
   const hasBg = !!storage.getBgImage();
 
-  const themeGrid    = THEMES.map(t => _themeCardHtml(t, currentTheme)).join('');
-  const themeGridNew = THEMES_NEW.map(t => _themeCardHtml(t, currentTheme)).join('');
+  const themeGrid         = THEMES.map(t => _themeCardHtml(t, currentTheme)).join('');
+  const themeGridNew      = THEMES_NEW.map(t => _themeCardHtml(t, currentTheme)).join('');
+  const themeGridCreative = THEMES_CREATIVE.map(t => _themeCardHtml(t, currentTheme)).join('');
 
   const isAdvanced = state.user?.mode === 'advanced';
   const tasksHtml = state.tasks.length
@@ -117,6 +125,8 @@ function _renderView(container) {
       <div class="theme-grid">${themeGrid}</div>
       <div class="theme-section-label" style="margin-top:16px">新風格</div>
       <div class="theme-grid">${themeGridNew}</div>
+      <div class="theme-section-label" style="margin-top:16px">創意主題</div>
+      <div class="theme-grid">${themeGridCreative}</div>
     </div>
 
     <!-- Background -->
