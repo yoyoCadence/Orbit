@@ -200,6 +200,25 @@ function _renderView(container) {
       </div>
     </div>
 
+    <!-- Pro subscription -->
+    <div class="card pro-card">
+      <div class="pro-badge">規劃中</div>
+      <div class="pro-header">
+        <span class="pro-icon">✨</span>
+        <div>
+          <div class="pro-title">Orbit Pro</div>
+          <div class="pro-sub">解鎖進階功能，支持獨立開發</div>
+        </div>
+      </div>
+      <ul class="pro-features">
+        <li>🤖 每日 AI 晨間報告與任務建議</li>
+        <li>🎨 獨家主題與頭貼框</li>
+        <li>📊 進階數據分析與週期報告</li>
+        <li>☁️ 優先雲端同步</li>
+      </ul>
+      <button class="btn pro-cta-btn" disabled>即將推出 — 敬請期待</button>
+    </div>
+
     <!-- Account -->
     <div class="card">
       <div class="card-title">👤 帳號</div>
