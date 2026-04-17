@@ -28,17 +28,11 @@ export function renderProfile(container) {
   const streakDays  = user.streakDays || 0;
   const streakLabel = streakDays >= 30 ? '🔥🔥🔥' : streakDays >= 14 ? '🔥🔥' : streakDays >= 7 ? '🔥' : '';
 
-  // XP table (6 levels from current) — show title at each level
-  const tableRows = xpTable(info.level, 6).map(r => {
-    const rowTitle = getDisplayTitle(r.from, user);
-    return `
-      <div class="xp-table-row ${r.from === info.level ? 'current-level' : ''}">
-        <span class="xp-table-lv">Lv.${r.from}</span>
-        <span class="xp-table-title">${escHtml(rowTitle)}</span>
-        <span class="xp-table-xp">${r.from === info.level ? `${info.currentXP} / ` : ''}${r.xp} XP</span>
-      </div>
-    `;
-  }).join('');
+  // XP table — initial 10 rows from current level
+  const XP_BATCH = 10;
+  const XP_MAX   = 100;
+  const tableRows = xpTable(info.level, Math.min(XP_BATCH, XP_MAX - info.level + 1))
+    .map(r => _xpTableRow(r, info, user)).join('');
 
   // Title template picker — built-in + user custom templates
   const currentTemplate  = user.titleTemplate || 'rpg';
@@ -156,7 +150,13 @@ export function renderProfile(container) {
     <!-- XP Table -->
     <div class="card">
       <div class="card-title">升等所需 XP</div>
-      ${tableRows}
+      <div id="xp-table-rows">${tableRows}</div>
+      ${info.level + XP_BATCH <= XP_MAX ? `
+        <button class="btn btn-outline btn-sm xp-more-btn"
+                data-from="${info.level}" data-shown="${XP_BATCH}"
+                style="width:100%;margin-top:8px">
+          顯示更多
+        </button>` : ''}
       <div class="xp-table-note">
         公式：XP(n) = 120 + 45×(n-1) + 10×(n-1)^1.35，每級遞增。<br>
         S 任務完成約 90 XP、A 任務約 37–53 XP。
@@ -217,6 +217,20 @@ export function renderProfile(container) {
     storage.saveUser(state.user);
     renderProfile(container);
     import('../app.js').then(({ updateHeader }) => updateHeader());
+  });
+
+  // XP table — show more
+  container.querySelector('.xp-more-btn')?.addEventListener('click', function () {
+    const fromLevel = parseInt(this.dataset.from);
+    const shown     = parseInt(this.dataset.shown);
+    const XP_BATCH  = 10;
+    const XP_MAX    = 100;
+    const nextStart = fromLevel + shown;
+    const nextCount = Math.min(XP_BATCH, XP_MAX - nextStart + 1);
+    const newRows   = xpTable(nextStart, nextCount).map(r => _xpTableRow(r, info, user)).join('');
+    document.getElementById('xp-table-rows').insertAdjacentHTML('beforeend', newRows);
+    this.dataset.shown = shown + nextCount;
+    if (nextStart + nextCount > XP_MAX) this.remove();
   });
 
   // Custom title clear
@@ -376,6 +390,17 @@ function showNameModal(container) {
     modal.remove();
     renderProfile(container);
   });
+}
+
+function _xpTableRow(r, info, user) {
+  const rowTitle = getDisplayTitle(r.from, user);
+  return `
+    <div class="xp-table-row ${r.from === info.level ? 'current-level' : ''}">
+      <span class="xp-table-lv">Lv.${r.from}</span>
+      <span class="xp-table-title">${escHtml(rowTitle)}</span>
+      <span class="xp-table-xp">${r.from === info.level ? `${info.currentXP} / ` : ''}${r.xp} XP</span>
+    </div>
+  `;
 }
 
 function escHtml(str) {
