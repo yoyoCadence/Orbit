@@ -16,7 +16,7 @@ export default defineConfig({
   },
 
   webServer: {
-    command: 'node pwa/server.js',
+    command: 'node pwa/server.cjs',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     stdout: 'ignore',
