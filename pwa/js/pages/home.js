@@ -164,6 +164,16 @@ export function renderHome(container) {
     });
   });
 
+  // ── Bind: task icon → show detail modal ─────────────────────────────────────
+  container.querySelectorAll('.task-icon-wrap').forEach(wrap => {
+    wrap.addEventListener('click', e => {
+      e.stopPropagation();
+      const taskId = wrap.closest('.task-card').dataset.taskId;
+      const task   = state.tasks.find(t => t.id === taskId);
+      if (task) showTaskDetail(task);
+    });
+  });
+
   // ── Bind: regular task cards → add to plan ───────────────────────────────────
   container.querySelectorAll('.task-card').forEach(card => {
     card.addEventListener('click', () => {
@@ -284,6 +294,100 @@ function escHtml(str) {
   return String(str)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;')
     .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─── Task detail modal ───────────────────────────────────────────────────────
+
+const DIFFICULTY_LABEL  = { '0.4': '低', '0.7': '中', '1': '高', '1.0': '高' };
+const RESISTANCE_LABEL  = { '1': '低', '1.0': '低', '1.2': '中', '1.4': '高' };
+
+function showTaskDetail(task) {
+  // Stats from sessions
+  const taskSess = state.sessions.filter(s => s.taskId === task.id && s.result !== 'invalid');
+  const totalDone = taskSess.length;
+  const avgDur = totalDone
+    ? Math.round(taskSess.reduce((s, x) => s + (x.durationMinutes || 0), 0) / totalDone)
+    : 0;
+  const lastSess = taskSess.length
+    ? taskSess.reduce((a, b) => (a.completedAt > b.completedAt ? a : b))
+    : null;
+  const lastDate = lastSess
+    ? new Date(lastSess.completedAt).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' })
+    : '—';
+
+  const confidence = task.valueConfidence ?? 100;
+  const confColor  = confidence >= 80 ? '#10b981' : confidence >= 60 ? '#f59e0b' : '#ef4444';
+  const iconHtml   = task.iconImg
+    ? `<img src="${task.iconImg}" style="width:48px;height:48px;border-radius:50%;object-fit:cover">`
+    : `<span style="font-size:40px;line-height:1">${task.emoji || '🎯'}</span>`;
+
+  const modal = document.createElement('div');
+  modal.className = 'modal';
+  modal.innerHTML = `
+    <div class="modal-box task-detail-box">
+      <div class="modal-header">
+        <span class="modal-title">任務細節</span>
+        <button class="modal-close-btn" aria-label="關閉">✕</button>
+      </div>
+
+      <div class="task-detail-hero">
+        ${iconHtml}
+        <div>
+          <div class="task-detail-name">${escHtml(task.name)}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+            ${task.value !== 'D' ? `<span class="badge ${VALUE_CLASS[task.value]}">${VALUE_LABEL[task.value]}</span>` : ''}
+            <span class="badge badge-nature">${NATURE_LABEL[task.taskNature] || task.taskNature}</span>
+            ${task.category === 'focus' ? '<span class="badge" style="background:rgba(124,58,237,.15);color:var(--primary-lt)">專注</span>' : ''}
+          </div>
+        </div>
+      </div>
+
+      <div class="task-detail-grid">
+        <div class="task-detail-cell">
+          <div class="task-detail-lbl">難度</div>
+          <div class="task-detail-val">${DIFFICULTY_LABEL[String(task.difficulty)] || '—'}</div>
+        </div>
+        <div class="task-detail-cell">
+          <div class="task-detail-lbl">阻力</div>
+          <div class="task-detail-val">${RESISTANCE_LABEL[String(task.resistance)] || '—'}</div>
+        </div>
+        <div class="task-detail-cell">
+          <div class="task-detail-lbl">完成次數</div>
+          <div class="task-detail-val">${totalDone}</div>
+        </div>
+        <div class="task-detail-cell">
+          <div class="task-detail-lbl">平均時長</div>
+          <div class="task-detail-val">${totalDone ? avgDur + ' 分' : '—'}</div>
+        </div>
+        <div class="task-detail-cell">
+          <div class="task-detail-lbl">上次完成</div>
+          <div class="task-detail-val">${lastDate}</div>
+        </div>
+        <div class="task-detail-cell">
+          <div class="task-detail-lbl">標籤信心</div>
+          <div class="task-detail-val" style="color:${confColor}">${confidence}%</div>
+        </div>
+      </div>
+
+      ${task.successCriteria ? `
+        <div class="task-detail-section">
+          <div class="task-detail-lbl">成功標準</div>
+          <div class="task-detail-text">${escHtml(task.successCriteria)}</div>
+        </div>` : ''}
+
+      ${task.reason ? `
+        <div class="task-detail-section">
+          <div class="task-detail-lbl">任務原因</div>
+          <div class="task-detail-text">${escHtml(task.reason)}</div>
+        </div>` : ''}
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  const close = () => modal.remove();
+  modal.querySelector('.modal-close-btn').addEventListener('click', close);
+  modal.addEventListener('click', e => { if (e.target === modal) close(); });
 }
 
 // ─── Drag & Drop (reorder tasks within sections) ──────────────────────────────
