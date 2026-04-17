@@ -3,7 +3,7 @@
 一個以「行為分類 × 積分機制」為核心的 PWA，幫助你區分哪些行為真正讓你成長，而不只是讓你「感覺有在做事」。
 
 **線上版：** https://yoyocadence.github.io/Orbit/  
-**目前版本：** v1.3.0 — [查看版本歷史](CHANGELOG.md)
+**目前版本：** v1.4.0 — [查看版本歷史](CHANGELOG.md)
 
 ---
 
@@ -118,11 +118,17 @@ energyCost = round(8 × difficultyEnergy × resistanceEnergy × valueEnergyFacto
 - **雲端同步** — 登入後資料即時同步 Supabase，換裝置不丟失
 - **今日首頁** — stats bar（XP / 連勝 / 精力 / 娛樂分鐘）、任務分三區塊、今日紀錄
 - **撤銷打卡** — 今日紀錄每筆可撤銷，自動扣回 XP 和精力
-- **focus 計時器** — 全螢幕計時、最低有效時間提示、三段式結果評估
-- **週回顧** — 每日 XP 長條圖、任務價值分佈、待校準任務清單
-- **個人頁** — 等級進度、精力條、streak 連勝
-- **設定** — 6 種主題、自訂背景圖、任務 CRUD
+- **focus 計時器** — 全螢幕計時、最低有效時間提示、三段式結果評估、略過可補打卡
+- **週回顧** — 每日 XP 長條圖、任務價值分佈、待校準任務清單；月曆視圖
+- **個人頁** — 等級進度（升等表 Show More）、精力條、streak 連勝、頭像上傳
+- **設定** — 10 種主題（含 4 種創意主題）、自訂背景圖、任務 CRUD
 - **普通 / 進階模式** — 普通模式鎖定預設任務防止刷分；進階模式全開放
+- **排行榜** — 本週 XP / 成長率 / 累積 XP 三種排名維度；需 opt-in
+- **等級稱號系統** — RPG / 鬼滅之刃 / 職場菁英模板，支援整套自訂
+- **每日晨間報告** — 跨日後顯示昨日 XP / 任務 / 連勝摘要，附規則式建議；AI 分析佔位
+- **任務細節 Modal** — 點 emoji 查看難度、阻力、XP 公式細節
+- **版本更新 Banner** — SW 更新後自動提示重整
+- **Header 頭像 + 等級** — 點擊跳轉個人頁
 - **PWA** — 可加入主畫面、離線可用（快取優先，背景同步）
 - **手機適配** — safe-area-inset 支援，Dynamic Island / notch 不遮擋
 
@@ -168,12 +174,13 @@ SUPABASE_ANON_KEY=your-anon-key
 pwa/
 ├── index.html
 ├── sw.js                   # Service Worker（orbit-v4）
-├── assets/style.css        # 全部樣式（含 6 主題）
+├── assets/style.css        # 全部樣式（含 10 主題）
 ├── db/                     # Supabase migration 版本控制
 │   ├── 001_schema.sql
 │   ├── 002_rls_policies.sql
 │   ├── 003_storage.sql
-│   └── 004_triggers.sql
+│   ├── 004_triggers.sql
+│   └── 005_profiles_extra_cols.sql
 └── js/
     ├── config.js           # Supabase URL / anon key
     ├── supabase.js         # Supabase client 初始化
@@ -246,18 +253,22 @@ pwa/
 - [x] 新增 App 主題風格：日系簡約、Material Design、賽博龐克
 - [x] 等級稱號完整自訂（可編輯整套主題每一等稱號 + 新增主題）
 - [x] 新手教學（Onboarding Tour）：5 步驟 spotlight 導覽，可從設定頁重啟
+- [x] 任務小卡長按顯示細節 Modal（難度、阻力、XP 公式）
+- [x] 版本更新偵測提示（Service Worker controllerchange → 可關閉 Banner）
+- [x] 排行榜累積 XP 第三 Tab
+- [x] Header 頭像 + Lv. 等級徽章（點擊跳轉個人頁）
+- [x] 個人頁升等表 Show More（每次 +10 列，最多 100）
+- [x] 付費訂閱 UI 佔位（設定頁 Pro 卡片，邏輯 TBD）
+- [x] 4 種創意主題：像素風格 / 日系動漫 / 哥德蘿莉 / GitHub
+- [x] 每日晨間報告：昨日 XP / 任務 / 連勝摘要，規則式建議，AI 分析佔位
+- [x] Supabase profiles 表新增 title_template / custom_title / is_public / new_day_hour 欄位
+- [x] 週回顧月曆視圖（月格 + 月統計 + 月導航）
 
 ### 待辦 / Backlog
 
 #### 功能
-- [ ] 任務小卡長按顯示細節說明與 XP 計算公式
-- [ ] 版本更新偵測提示（Service Worker updatefound 事件）
-- [ ] 排行榜新增累積 XP 排名（第三 tab）
-- [ ] 使用者頭像顯示於 header 等級條與排行榜
-- [ ] 個人頁「升等所需XP」顯示更多（Show More，每 10 等一區塊）
-- [ ] 付費訂閱 UI：設定頁顯示方案資訊，按鈕觸發「規劃中」訊息；穩定成長可獲免費 15 天會員（邏輯 TBD）
-- [ ] 主題新增：像素風格、日系動漫風格、哥德蘿莉風格、GitHub 手機 App 風格
+- [ ] 每日晨間報告接入 Claude API（AI 個人化分析）
+- [ ] 付費訂閱邏輯實作（穩定成長解鎖免費 15 天，方案 TBD）
 
 #### 基礎建設
-- [ ] Supabase Schema 調整：profiles 表新增 title_template / custom_title 欄位
-- [ ] CI E2E 測試：GitHub Actions 啟動 server + Playwright，同時建立獨立 Supabase test project 作為測試環境隔離（避免汙染 prod 資料）
+- [ ] CI E2E 測試：GitHub Actions 啟動 server + Playwright，建立獨立 Supabase test project 避免汙染 prod

@@ -5,6 +5,30 @@
 
 ---
 
+## [v1.4.0] — 2026-04-17
+
+### 新增
+- **每日晨間報告**：跨日後先顯示昨日摘要（XP、完成任務數、連勝天數、有效日徽章、S/A/B/C 分布、Top 3 任務），附規則式建議（最多 3 條），AI 分析佔位區塊
+- **Header 頭像 + 等級徽章**：點擊跳轉個人頁；登入後顯示大頭照縮圖，Lv. 標籤即時更新
+- **版本更新提示 Banner**：Service Worker `controllerchange` 後顯示可關閉的「新版本已就緒」橫幅
+- **排行榜累積 XP 第三 Tab**：三種排名維度（本週 XP / 成長率 / 累積 XP）
+- **任務細節 Modal**：點擊任務 emoji 查看難度、阻力、XP 公式、taskNature 等細節
+- **個人頁升等表「顯示更多」**：初始顯示 10 列，按需 +10，避免渲染過多 DOM
+- **付費訂閱 UI 佔位**：設定頁 Pro 卡片，列出功能特色，邏輯 TBD
+- **4 種創意主題**：像素風格 / 日系動漫 / 哥德蘿莉 / GitHub App 風格
+
+### 改進
+- 任務拖曳改為**長按 500ms 觸發**（移除拖曳把手圖示），與點擊事件不再衝突
+- 分頁指示改為 **Tab 底部高亮色塊**，移除小圓點（更乾淨、節省空間）
+- profiles 表新增 `title_template / custom_title / is_public / new_day_hour` 欄位（migration 005）
+
+### 修正
+- PAGE_ORDER 滑動順序與底部 Nav 排列不一致（#bug1）
+- 首次登入後稱號模板每日重置為預設值（profiles 表缺少欄位導致 fallback，#bug2）
+- `requestAnimationFrame` 未加入 ESLint globals，導致 tour.js 持續報 lint 錯誤
+
+---
+
 ## [v1.3.0] — 2026-04-15
 
 ### 新增
