@@ -251,12 +251,16 @@ test.describe('Focus 計時流程', () => {
   });
 
   test('未達最低有效時間提前結束 → focus overlay 關閉，不顯示 result picker', async ({ page }) => {
-    // FOCUS_TASK.minEffectiveMinutes = 1 → 需 60s，立刻按結束 → invalid
+    // 流程：end-btn → early-end-confirm modal → 確定結束 → overlay 關閉
     await addToPlanAndStartFocus(page);
     await page.waitForSelector('#focus-overlay:not(.hidden)', { timeout: 5000 });
+    // 點「結束」→ 彈出提前確認 modal（overlay 仍開著，timer 繼續）
     await page.locator('#focus-end-btn').click();
+    await page.waitForSelector('#early-end-confirm-btn', { timeout: 3000 });
+    // 點「確定結束」→ 才真正關閉
+    await page.locator('#early-end-confirm-btn').click();
     await expect(page.locator('#focus-overlay')).toBeHidden({ timeout: 3000 });
-    // result picker 不應出現
+    // 時間不足 → invalid，不顯示 result picker
     await expect(page.locator('#result-picker')).toHaveCount(0);
   });
 
@@ -264,6 +268,8 @@ test.describe('Focus 計時流程', () => {
     await addToPlanAndStartFocus(page);
     await page.waitForSelector('#focus-overlay:not(.hidden)', { timeout: 5000 });
     await page.locator('#focus-end-btn').click();
+    await page.waitForSelector('#early-end-confirm-btn', { timeout: 3000 });
+    await page.locator('#early-end-confirm-btn').click();
     await expect(page.locator('.log-item')).toBeVisible({ timeout: 3000 });
     await expect(page.locator('.log-item').first()).toContainText('0 XP');
   });
