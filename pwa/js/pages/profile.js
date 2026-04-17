@@ -176,6 +176,7 @@ export function renderProfile(container) {
       state.user.avatar = ev.target.result;
       storage.saveUser(state.user);
       renderProfile(container);
+      import('../app.js').then(({ updateHeader }) => updateHeader());
     };
     reader.readAsDataURL(file);
   });

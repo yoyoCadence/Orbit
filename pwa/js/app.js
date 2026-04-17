@@ -122,7 +122,18 @@ window.removeFromDailyPlan = function (taskId) {
 export function updateHeader() {
   if (!state.user) return;
   const info = getLevelInfo(state.user.totalXP || 0);
-  document.getElementById('hdr-level').textContent = info.level;
+
+  // Avatar
+  const avatarEl = document.getElementById('hdr-avatar');
+  if (avatarEl) {
+    if (state.user.avatar) {
+      avatarEl.innerHTML = `<img src="${state.user.avatar}" alt="avatar">`;
+    } else {
+      avatarEl.textContent = (state.user.name?.[0] || '?').toUpperCase();
+    }
+  }
+
+  document.getElementById('hdr-level').textContent = `Lv.${info.level}`;
   document.getElementById('hdr-title').textContent = getDisplayTitle(info.level, state.user);
   document.getElementById('hdr-xp-fill').style.width = info.percent + '%';
   document.getElementById('hdr-xp-text').textContent = `${info.currentXP} / ${info.needed} XP`;
