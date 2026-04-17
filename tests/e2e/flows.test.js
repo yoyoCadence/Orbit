@@ -167,6 +167,16 @@ test.describe('遊客模式', () => {
 });
 
 // ─── 即時任務打卡 ─────────────────────────────────────────────────────────────
+// 流程：點任務小卡 → 加入本日計劃 → 點計劃卡 → completeInstant
+
+/** 把任務加入計劃再點計劃卡完成（兩步式流程）。 */
+async function addToPlanAndComplete(page) {
+  // Step 1: click task name to add to daily plan (avoids .task-icon-wrap stopPropagation)
+  await page.locator('.task-card .task-name').first().click();
+  // Step 2: click the plan card that just appeared
+  await page.waitForSelector('.plan-card', { timeout: 5000 });
+  await page.locator('.plan-card').first().click();
+}
 
 test.describe('即時任務打卡', () => {
   test.beforeEach(async ({ page }) => {
@@ -182,25 +192,25 @@ test.describe('即時任務打卡', () => {
   });
 
   test('點擊即時任務顯示 XP float 動畫', async ({ page }) => {
-    await page.locator('.task-card').first().click();
+    await addToPlanAndComplete(page);
     await expect(page.locator('.xp-float')).toBeVisible({ timeout: 3000 });
   });
 
   test('完成任務後出現 count badge', async ({ page }) => {
-    await page.locator('.task-card').first().click();
+    await addToPlanAndComplete(page);
     await expect(page.locator('.count-badge')).toBeVisible({ timeout: 3000 });
     await expect(page.locator('.count-badge').first()).toHaveText('1');
   });
 
   test('完成任務後 session 出現在今日紀錄', async ({ page }) => {
-    await page.locator('.task-card').first().click();
+    await addToPlanAndComplete(page);
     await expect(page.locator('.log-item')).toBeVisible({ timeout: 3000 });
     await expect(page.locator('.log-item').first()).toContainText('喝水');
   });
 
   test('完成任務後 header XP 文字更新（不再是 0 / ...）', async ({ page }) => {
     const xpBefore = await page.locator('#hdr-xp-text').textContent();
-    await page.locator('.task-card').first().click();
+    await addToPlanAndComplete(page);
     await page.waitForTimeout(500);
     const xpAfter = await page.locator('#hdr-xp-text').textContent();
     expect(xpAfter).not.toBe(xpBefore);
@@ -208,6 +218,14 @@ test.describe('即時任務打卡', () => {
 });
 
 // ─── Focus 計時流程 ───────────────────────────────────────────────────────────
+// 流程：點任務小卡 → 加入本日計劃 → 點計劃卡 → startFocus
+
+/** 把 focus 任務加入計劃再點計劃卡啟動計時。 */
+async function addToPlanAndStartFocus(page) {
+  await page.locator('.task-card .task-name').first().click();
+  await page.waitForSelector('.plan-card', { timeout: 5000 });
+  await page.locator('.plan-card').first().click();
+}
 
 test.describe('Focus 計時流程', () => {
   test.beforeEach(async ({ page }) => {
@@ -218,14 +236,14 @@ test.describe('Focus 計時流程', () => {
   });
 
   test('點擊 focus 任務開啟 focus overlay', async ({ page }) => {
-    await page.locator('.task-card').first().click();
+    await addToPlanAndStartFocus(page);
     await expect(page.locator('#focus-overlay')).toBeVisible({ timeout: 3000 });
     await expect(page.locator('#focus-task-name')).toContainText('深度學習');
   });
 
   test('計時器數字會持續變化', async ({ page }) => {
-    await page.locator('.task-card').first().click();
-    await page.waitForSelector('#focus-overlay:not(.hidden)');
+    await addToPlanAndStartFocus(page);
+    await page.waitForSelector('#focus-overlay:not(.hidden)', { timeout: 5000 });
     const t1 = await page.locator('#focus-timer').textContent();
     await page.waitForTimeout(1200);
     const t2 = await page.locator('#focus-timer').textContent();
@@ -234,8 +252,8 @@ test.describe('Focus 計時流程', () => {
 
   test('未達最低有效時間提前結束 → focus overlay 關閉，不顯示 result picker', async ({ page }) => {
     // FOCUS_TASK.minEffectiveMinutes = 1 → 需 60s，立刻按結束 → invalid
-    await page.locator('.task-card').first().click();
-    await page.waitForSelector('#focus-overlay:not(.hidden)');
+    await addToPlanAndStartFocus(page);
+    await page.waitForSelector('#focus-overlay:not(.hidden)', { timeout: 5000 });
     await page.locator('#focus-end-btn').click();
     await expect(page.locator('#focus-overlay')).toBeHidden({ timeout: 3000 });
     // result picker 不應出現
@@ -243,8 +261,8 @@ test.describe('Focus 計時流程', () => {
   });
 
   test('未達最低有效時間 → 記錄為 invalid session（顯示「無效」）', async ({ page }) => {
-    await page.locator('.task-card').first().click();
-    await page.waitForSelector('#focus-overlay:not(.hidden)');
+    await addToPlanAndStartFocus(page);
+    await page.waitForSelector('#focus-overlay:not(.hidden)', { timeout: 5000 });
     await page.locator('#focus-end-btn').click();
     await expect(page.locator('.log-item')).toBeVisible({ timeout: 3000 });
     await expect(page.locator('.log-item').first()).toContainText('0 XP');
