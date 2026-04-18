@@ -292,8 +292,8 @@ describe('processStreakForDate', () => {
 // ─── xpRequired ──────────────────────────────────────────────────────────────
 
 describe('xpRequired', () => {
-  it('level 1 requires 120 XP', () => {
-    expect(xpRequired(1)).toBe(120);
+  it('level 1 requires 25 XP (v1.4.1 新公式)', () => {
+    expect(xpRequired(1)).toBe(25);
   });
 
   it('level 2 > level 1 (progression increases)', () => {

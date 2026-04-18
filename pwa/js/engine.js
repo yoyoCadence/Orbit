@@ -113,9 +113,21 @@ export function processStreakForDate(streakDays, isEffectiveDay) {
 
 // ─── Level formula ────────────────────────────────────────────────────────────
 
-/** XP required to advance from `level` to `level + 1` */
+/**
+ * XP required to advance from `level` to `level + 1`.
+ *
+ * 分段設計（v1.4.1 調整）：
+ *   Lv.1–20  （前期）：round((50 + 14×(level-1)) / 2)  — 線性，每級門檻約 25–158 XP
+ *   Lv.21+   （後期）：round((330 + 10n + 3n^1.3) / 2)  — n = level-20，幂次加速
+ *
+ * 舊公式（v1.0.0–v1.4.0）：round(120 + 45×(level-1) + 10×(level-1)^1.35)
+ */
 export function xpRequired(level) {
-  return Math.round(120 + 45 * (level - 1) + 10 * Math.pow(level - 1, 1.35));
+  if (level <= 20) {
+    return Math.round((50 + 14 * (level - 1)) / 2);
+  }
+  const n = level - 20;
+  return Math.round((330 + 10 * n + 3 * Math.pow(n, 1.3)) / 2);
 }
 
 /** Derive current level + progress from totalXP */
