@@ -420,6 +420,10 @@ function _setupDragAndDrop(container) {
 
   container.querySelectorAll('.task-card').forEach(card => {
 
+    // Prevent long-press context menu (Android "Copy/Paste", iOS callout)
+    // so the 500 ms drag timer fires cleanly without system UI interference.
+    card.addEventListener('contextmenu', e => e.preventDefault());
+
     card.addEventListener('pointerdown', e => {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       _cancelPress();
@@ -441,8 +445,11 @@ function _setupDragAndDrop(container) {
       }, 500);
     });
 
+    // passive: false so we can call preventDefault() during active drag,
+    // which stops the page from scrolling while the user is repositioning a card.
     card.addEventListener('pointermove', e => {
       if (_drag.active) {
+        e.preventDefault();           // block page scroll while dragging
         _drag.lastX = e.clientX;
         _drag.lastY = e.clientY;
         _drag.clone.style.left = (e.clientX - _drag.offX) + 'px';
@@ -455,7 +462,7 @@ function _setupDragAndDrop(container) {
         const dy = Math.abs(e.clientY - _pressData.clientY);
         if (dx > 8 || dy > 8) _cancelPress();
       }
-    });
+    }, { passive: false });
 
     card.addEventListener('pointerup', () => {
       _cancelPress();

@@ -1765,7 +1765,12 @@ nav {
 ══════════════════════════════════════════════════════════════ */
 
 /* Allow vertical scroll by default; pointer capture handles drag */
-.task-card { touch-action: pan-y; }
+/* Prevent system text-selection callout on long-press (iOS + Android) */
+.task-card {
+  touch-action: pan-y;
+  -webkit-touch-callout: none;   /* iOS: disable Copy/Lookup callout on long press */
+  -webkit-user-select: none;     /* WebKit prefix (older Safari / Chrome on iOS) */
+}
 
 /* Visual feedback while holding (500 ms hold activates drag) */
 .task-card:active { transform: scale(0.96); transition: transform .15s; }
