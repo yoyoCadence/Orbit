@@ -24,6 +24,9 @@ const GUEST_USER = {
   streakDays: 0, lastStreakDate: TODAY, lastWeeklyBonusDate: '',
   morningState: 'normal', mode: 'normal', isPublic: false,
   createdAt: TODAY,
+  // newDayHour:0 → effectiveToday(0) always equals today(); prevents daily-report
+  // modal from appearing when CI runs in UTC before 05:00 local time
+  newDayHour: 0,
 };
 
 const INSTANT_TASK = {

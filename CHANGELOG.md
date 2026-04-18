@@ -5,6 +5,16 @@
 
 ---
 
+## [CI] — 2026-04-17
+
+### 基礎建設
+- E2E job 加入 CI（`playwright install --with-deps chromium` → `npm run test:e2e`）
+- `pwa/server.js` 改名為 `pwa/server.cjs`，修正 `"type":"module"` 與 `require()` 的 ESM/CJS 衝突
+- E2E 測試更新為兩步式計劃流程（task card → plan card），補上 early-end-confirm 步驟
+- 共 18 個 E2E 測試，全部通過
+
+---
+
 ## [v1.3.0] — 2026-04-15
 
 ### 新增
