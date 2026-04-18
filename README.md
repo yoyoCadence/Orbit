@@ -250,14 +250,8 @@ pwa/
 ### 待辦 / Backlog
 
 #### 功能
-- [ ] 任務小卡長按顯示細節說明與 XP 計算公式
-- [ ] 版本更新偵測提示（Service Worker updatefound 事件）
-- [ ] 排行榜新增累積 XP 排名（第三 tab）
-- [ ] 使用者頭像顯示於 header 等級條與排行榜
-- [ ] 個人頁「升等所需XP」顯示更多（Show More，每 10 等一區塊）
-- [ ] 付費訂閱 UI：設定頁顯示方案資訊，按鈕觸發「規劃中」訊息；穩定成長可獲免費 15 天會員（邏輯 TBD）
-- [ ] 主題新增：像素風格、日系動漫風格、哥德蘿莉風格、GitHub 手機 App 風格
+- [ ] 每日晨間報告接入 Claude API（AI 個人化分析）
+- [ ] 付費訂閱邏輯實作（穩定成長解鎖免費 15 天，方案 TBD）
 
 #### 基礎建設
-- [ ] Supabase Schema 調整：profiles 表新增 title_template / custom_title 欄位
-- [ ] CI E2E 測試：GitHub Actions 啟動 server + Playwright，同時建立獨立 Supabase test project 作為測試環境隔離（避免汙染 prod 資料）
+- [x] CI E2E 測試（Playwright Chromium，完全 mock Supabase，18 個測試）
