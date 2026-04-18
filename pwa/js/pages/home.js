@@ -150,6 +150,8 @@ export function renderHome(container) {
   container.querySelectorAll('.plan-card').forEach(card => {
     card.addEventListener('click', e => {
       if (e.target.closest('.plan-remove-btn')) return;
+      if (e.target.closest('.plan-drag-handle')) return;
+      if (_planDrag.wasDragging) { _planDrag.wasDragging = false; return; }
       const id  = card.dataset.taskId;
       const cat = card.dataset.category;
       if (cat === 'focus') window.startFocus(id);
@@ -192,6 +194,7 @@ export function renderHome(container) {
 
   // ── Setup drag-and-drop ───────────────────────────────────────────────────────
   _setupDragAndDrop(container);
+  _setupPlanDragAndDrop(container);
 }
 
 // ─── Plan card HTML ───────────────────────────────────────────────────────────
@@ -202,6 +205,7 @@ function planCardHtml(task, countToday) {
   const doneClass = countToday > 0 ? 'plan-card-done' : '';
   return `
     <div class="plan-card ${doneClass}" data-task-id="${task.id}" data-category="${task.category}">
+      <div class="plan-drag-handle" title="拖曳排序">⠿</div>
       <span class="plan-task-emoji">
         ${task.iconImg
           ? `<img src="${task.iconImg}" class="plan-icon-img">`
@@ -392,6 +396,115 @@ function showTaskDetail(task) {
 
 // ─── Drag & Drop (reorder tasks within sections) ──────────────────────────────
 //
+// ─── Plan list drag-and-drop (drag handle → immediate drag, no long-press) ────
+//
+// The ⠿ handle has touch-action:none so vertical pointer events go to JS, not
+// the browser scroll handler. Dropping reorders state.dailyPlan and persists.
+
+const _planDrag = {
+  active:      false,
+  wasDragging: false,
+  taskId:      null,
+  card:        null,
+  clone:       null,
+  offY:        0,
+  lastY:       0,
+};
+
+function _setupPlanDragAndDrop(container) {
+  const planList = container.querySelector('#plan-list');
+  if (!planList) return;
+
+  planList.querySelectorAll('.plan-drag-handle').forEach(handle => {
+    handle.addEventListener('pointerdown', e => {
+      e.preventDefault();                          // prevent text selection & click
+      const card = handle.closest('.plan-card');
+      if (!card) return;
+
+      const rect = card.getBoundingClientRect();
+      _planDrag.active = true;
+      _planDrag.taskId = card.dataset.taskId;
+      _planDrag.card   = card;
+      _planDrag.offY   = e.clientY - rect.top;
+      _planDrag.lastY  = e.clientY;
+
+      const clone = card.cloneNode(true);
+      clone.style.cssText = [
+        'position:fixed',
+        `width:${rect.width}px`, `height:${rect.height}px`,
+        `left:${rect.left}px`,   `top:${rect.top}px`,
+        'opacity:.85', 'pointer-events:none', 'z-index:500',
+        'transform:scale(1.02)',
+        'box-shadow:0 8px 24px rgba(0,0,0,.35)',
+      ].join(';');
+      document.body.appendChild(clone);
+      _planDrag.clone = clone;
+      card.classList.add('plan-drag-placeholder');
+      handle.setPointerCapture(e.pointerId);
+    });
+
+    handle.addEventListener('pointermove', e => {
+      if (!_planDrag.active) return;
+      _planDrag.lastY = e.clientY;
+      _planDrag.clone.style.top = (e.clientY - _planDrag.offY) + 'px';
+      _clearPlanDragOver(planList);
+      const target = _planCardUnderY(planList, e.clientY);
+      if (target && target !== _planDrag.card) {
+        const mid = target.getBoundingClientRect();
+        target.classList.add(
+          e.clientY < mid.top + mid.height / 2
+            ? 'plan-drag-over-top'
+            : 'plan-drag-over-bottom'
+        );
+      }
+    }, { passive: false });
+
+    const _finish = () => { if (_planDrag.active) _endPlanDrag(planList); };
+    handle.addEventListener('pointerup',     _finish);
+    handle.addEventListener('pointercancel', _finish);
+  });
+}
+
+function _endPlanDrag(planList) {
+  _planDrag.wasDragging = true;
+  _planDrag.clone.remove();
+  _planDrag.card.classList.remove('plan-drag-placeholder');
+  _clearPlanDragOver(planList);
+
+  const target = _planCardUnderY(planList, _planDrag.lastY);
+  if (target && target !== _planDrag.card) {
+    const mid        = target.getBoundingClientRect();
+    const before     = _planDrag.lastY < mid.top + mid.height / 2;
+    const dragId     = _planDrag.taskId;
+    const targetId   = target.dataset.taskId;
+    const plan       = state.dailyPlan.filter(id => id !== dragId);
+    const idx        = plan.indexOf(targetId);
+    if (idx !== -1) plan.splice(before ? idx : idx + 1, 0, dragId);
+    state.dailyPlan  = plan;
+    import('../storage.js').then(({ storage: s }) => s.saveDailyPlan(plan));
+    if (_container) renderHome(_container);
+  }
+
+  _planDrag.active = false;
+  _planDrag.taskId = null;
+  _planDrag.card   = null;
+  _planDrag.clone  = null;
+  setTimeout(() => { _planDrag.wasDragging = false; }, 50);
+}
+
+function _planCardUnderY(planList, y) {
+  for (const card of planList.querySelectorAll('.plan-card')) {
+    const r = card.getBoundingClientRect();
+    if (y >= r.top && y <= r.bottom) return card;
+  }
+  return null;
+}
+
+function _clearPlanDragOver(planList) {
+  planList.querySelectorAll('.plan-drag-over-top, .plan-drag-over-bottom')
+    .forEach(el => el.classList.remove('plan-drag-over-top', 'plan-drag-over-bottom'));
+}
+
 // Long-press (500 ms) on any task card activates drag.
 // Moving >8 px before the timer fires cancels (treat as scroll).
 // Uses Pointer Events + bounding-rect hit testing (reliable on mobile).
