@@ -251,6 +251,10 @@ export const storage = {
   // ── Theme / Background (local only) ──────────────────────────────────────────
   getTheme:    ()  => get('theme') || 'dark-purple',
   saveTheme:   (t) => set('theme', t),
+  getRandomThemeEnabled: ()  => !!get('randomThemeEnabled'),
+  saveRandomThemeEnabled:(v) => set('randomThemeEnabled', !!v),
+  getRandomThemeDate:    ()  => get('randomThemeDate') || '',
+  saveRandomThemeDate:   (d) => set('randomThemeDate', d),
   getBgImage:  ()  => localStorage.getItem(PREFIX + 'bgImage') || null,
   saveBgImage: (d) => d
     ? localStorage.setItem(PREFIX + 'bgImage', d)
