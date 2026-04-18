@@ -1803,9 +1803,10 @@ nav {
 ══════════════════════════════════════════════════════════════ */
 
 /* Allow vertical scroll by default; pointer capture handles drag */
-/* Prevent system text-selection callout on long-press (iOS + Android) */
+/* touch-action:none lets pointermove fire for ALL directions (needed for drag).
+   Vertical scroll still works via section headers / gaps between cards. */
 .task-card {
-  touch-action: pan-y;
+  touch-action: none;
   -webkit-touch-callout: none;   /* iOS: disable Copy/Lookup callout on long press */
   -webkit-user-select: none;     /* WebKit prefix (older Safari / Chrome on iOS) */
 }
