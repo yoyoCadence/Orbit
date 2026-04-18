@@ -1756,6 +1756,18 @@ nav {
 }
 .plan-remove-btn:hover { background: rgba(239,68,68,.15); color: var(--danger); }
 
+/* Plan card drag handle */
+.plan-drag-handle {
+  font-size: 18px; color: var(--text-muted); flex-shrink: 0;
+  padding: 0 4px; cursor: grab; touch-action: none;
+  user-select: none; -webkit-user-select: none;
+  opacity: .45; transition: opacity .15s;
+}
+.plan-drag-handle:active { cursor: grabbing; opacity: .9; }
+.plan-drag-placeholder   { opacity: .25 !important; }
+.plan-drag-over-top      { border-top: 2px solid var(--primary) !important; }
+.plan-drag-over-bottom   { border-bottom: 2px solid var(--primary) !important; }
+
 /* In-plan indicator on task card */
 .task-card-in-plan { border-color: var(--primary); }
 .plan-indicator { font-size: 12px; }
