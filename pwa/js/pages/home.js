@@ -180,6 +180,8 @@ export function renderHome(container) {
   container.querySelectorAll('.swipe-detail-btn').forEach(btn => {
     btn.addEventListener('click', e => {
       e.stopPropagation();
+      // Close the swipe state before opening modal so closing modal leaves card clean
+      btn.closest('.task-card')?.classList.remove('swipe-open');
       const task = state.tasks.find(t => t.id === btn.dataset.taskId);
       if (task) showTaskDetail(task);
     });
