@@ -1161,11 +1161,37 @@ nav {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 14px;
-  padding: 14px 12px 12px;
+  padding: 0;                  /* padding moved to .task-card-body */
   cursor: pointer;
   transition: transform 0.12s, border-color 0.15s;
   border-left: 3px solid var(--task-accent, var(--primary));
   user-select: none;
+  overflow: hidden;            /* needed for swipe reveal clip */
+}
+/* Inner body — slides left on swipe */
+.task-card-body {
+  position: relative;
+  padding: 14px 12px 12px;
+  transition: transform .22s cubic-bezier(.4,0,.2,1);
+  will-change: transform;
+}
+.task-card.swipe-open .task-card-body {
+  transform: translateX(-72px);
+}
+/* 「詳細」action revealed from right */
+.swipe-detail-action {
+  position: absolute; right: 0; top: 0; bottom: 0; width: 72px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--primary);
+  border-radius: 0 11px 11px 0;
+  transform: translateX(100%);
+  transition: transform .22s cubic-bezier(.4,0,.2,1);
+}
+.task-card.swipe-open .swipe-detail-action { transform: translateX(0); }
+.swipe-detail-btn {
+  background: none; border: none; color: #fff;
+  font-size: 12px; font-weight: 700; cursor: pointer;
+  padding: 12px 6px; letter-spacing: .5px;
 }
 .task-card:active { transform: scale(0.97); }
 .task-card-focus  { background: color-mix(in srgb, var(--surface) 85%, var(--primary) 15%); }

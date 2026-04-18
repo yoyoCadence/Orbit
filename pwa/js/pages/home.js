@@ -176,10 +176,24 @@ export function renderHome(container) {
     });
   });
 
+  // ── Bind: swipe "詳細" buttons → show detail modal ───────────────────────────
+  container.querySelectorAll('.swipe-detail-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const task = state.tasks.find(t => t.id === btn.dataset.taskId);
+      if (task) showTaskDetail(task);
+    });
+  });
+
   // ── Bind: regular task cards → add to plan ───────────────────────────────────
   container.querySelectorAll('.task-card').forEach(card => {
     card.addEventListener('click', () => {
       if (_drag.wasDragging) { _drag.wasDragging = false; return; }
+      // If this card has a swipe open, close it instead of adding to plan
+      if (card.classList.contains('swipe-open')) {
+        card.classList.remove('swipe-open');
+        return;
+      }
       window.addToDailyPlan(card.dataset.taskId);
     });
   });
@@ -195,6 +209,7 @@ export function renderHome(container) {
   // ── Setup drag-and-drop ───────────────────────────────────────────────────────
   _setupDragAndDrop(container);
   _setupPlanDragAndDrop(container);
+  _setupCardSwipe(container);
 }
 
 // ─── Plan card HTML ───────────────────────────────────────────────────────────
@@ -236,22 +251,27 @@ function taskCardHtml(task, countToday, inPlan) {
     <div class="task-card ${isFocus ? 'task-card-focus' : 'task-card-instant'} ${inPlan ? 'task-card-in-plan' : ''}"
          data-task-id="${task.id}" data-category="${task.category}"
          style="--task-accent:${IMPACT_COLOR[task.impactType] || 'var(--primary)'}">
-      ${countToday > 0 ? `<span class="count-badge">${countToday}</span>` : ''}
-      <div class="task-card-top">
-        <div class="task-icon-wrap${task.isDefault === false ? ' task-icon-custom' : ''}">
-          ${task.iconImg
-            ? `<img src="${task.iconImg}" class="task-icon-img">`
-            : `<span class="task-emoji">${task.emoji || '🎯'}</span>`}
+      <div class="task-card-body">
+        ${countToday > 0 ? `<span class="count-badge">${countToday}</span>` : ''}
+        <div class="task-card-top">
+          <div class="task-icon-wrap${task.isDefault === false ? ' task-icon-custom' : ''}">
+            ${task.iconImg
+              ? `<img src="${task.iconImg}" class="task-icon-img">`
+              : `<span class="task-emoji">${task.emoji || '🎯'}</span>`}
+          </div>
+          <div class="task-badges">
+            ${valueLabel ? `<span class="badge ${valueCls}">${valueLabel}</span>` : ''}
+            <span class="badge badge-nature">${natureLbl}</span>
+          </div>
         </div>
-        <div class="task-badges">
-          ${valueLabel ? `<span class="badge ${valueCls}">${valueLabel}</span>` : ''}
-          <span class="badge badge-nature">${natureLbl}</span>
+        <div class="task-name">${escHtml(task.name)}</div>
+        <div class="task-footer">
+          <span class="task-xp-label">${xpLabel}</span>
+          ${inPlan ? `<span class="plan-indicator">📋</span>` : (isFocus ? `<span class="focus-btn-label">▶ 專注</span>` : '')}
         </div>
       </div>
-      <div class="task-name">${escHtml(task.name)}</div>
-      <div class="task-footer">
-        <span class="task-xp-label">${xpLabel}</span>
-        ${inPlan ? `<span class="plan-indicator">📋</span>` : (isFocus ? `<span class="focus-btn-label">▶ 專注</span>` : '')}
+      <div class="swipe-detail-action">
+        <button class="swipe-detail-btn" data-task-id="${task.id}">詳細</button>
       </div>
     </div>
   `;
@@ -392,6 +412,56 @@ function showTaskDetail(task) {
   const close = () => modal.remove();
   modal.querySelector('.modal-close-btn').addEventListener('click', close);
   modal.addEventListener('click', e => { if (e.target === modal) close(); });
+}
+
+// ─── Task card left-swipe to reveal "詳細" button ────────────────────────────
+//
+// Touch-only: trackstart records startX/Y; touchmove checks if horizontal swipe
+// (|dx| > |dy| × 1.5 and |dx| > 12 px threshold) and adds swipe-open class.
+// Tap anywhere outside the detail button closes open cards.
+
+function _setupCardSwipe(container) {
+  let _swipeOpen = null; // currently open card
+
+  const _closeSwipe = () => {
+    if (_swipeOpen) { _swipeOpen.classList.remove('swipe-open'); _swipeOpen = null; }
+  };
+
+  container.querySelectorAll('.task-card').forEach(card => {
+    let sx = 0, sy = 0, tracking = false;
+
+    card.addEventListener('touchstart', e => {
+      sx = e.touches[0].clientX;
+      sy = e.touches[0].clientY;
+      tracking = true;
+    }, { passive: true });
+
+    card.addEventListener('touchmove', e => {
+      if (!tracking) return;
+      const dx = e.touches[0].clientX - sx;
+      const dy = e.touches[0].clientY - sy;
+      if (Math.abs(dx) < 12) return;
+      tracking = false; // one decision per gesture
+      if (Math.abs(dx) > Math.abs(dy) * 1.5) {
+        if (dx < 0) {
+          // Left swipe → open this card, close previous
+          if (_swipeOpen && _swipeOpen !== card) _closeSwipe();
+          card.classList.add('swipe-open');
+          _swipeOpen = card;
+        } else {
+          // Right swipe → close
+          if (card === _swipeOpen) _closeSwipe();
+        }
+      }
+    }, { passive: true });
+
+    card.addEventListener('touchend', () => { tracking = false; }, { passive: true });
+  });
+
+  // Close swipe on tap outside any task card
+  container.addEventListener('click', e => {
+    if (_swipeOpen && !e.target.closest('.task-card')) _closeSwipe();
+  });
 }
 
 // ─── Drag & Drop (reorder tasks within sections) ──────────────────────────────
