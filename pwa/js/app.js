@@ -971,6 +971,8 @@ function _startDayWatcher() {
       // Reset daily plan for new day
       state.dailyPlan = [];
       storage.saveDailyPlan([]);
+      // Apply random theme for new day (if feature enabled)
+      applyRandomThemeForToday();
       // Show morning modal if energy not yet reset today
       if (state.energy.lastResetDate !== current) {
         showDailyReport(() => showMorningModal());
@@ -981,9 +983,24 @@ function _startDayWatcher() {
 
 // ─── Theme & Background ───────────────────────────────────────────────────────
 
+const _ALL_THEME_IDS = [
+  'dark-purple', 'aurora-blue', 'emerald', 'flame', 'neon-pink', 'light',
+  'wabi', 'material', 'cyberpunk', 'pixel', 'anime', 'gothic', 'github',
+];
+
 export function applyTheme(themeId) {
   document.documentElement.setAttribute('data-theme', themeId);
   storage.saveTheme(themeId);
+}
+
+/** Pick and apply a random theme for today, but only once per calendar day. */
+export function applyRandomThemeForToday() {
+  if (!storage.getRandomThemeEnabled()) return;
+  const todayStr = today();
+  if (storage.getRandomThemeDate() === todayStr) return; // already applied today
+  const id = _ALL_THEME_IDS[Math.floor(Math.random() * _ALL_THEME_IDS.length)];
+  applyTheme(id);
+  storage.saveRandomThemeDate(todayStr);
 }
 export function applyBgImage(dataUrl) {
   storage.saveBgImage(dataUrl);
@@ -1173,6 +1190,7 @@ async function init() {
   migrateV1toV2(today());
   migrateDefaultFlags();         // tag pre-existing default tasks with isDefault:true
   document.documentElement.setAttribute('data-theme', storage.getTheme());
+  applyRandomThemeForToday(); // overrides saved theme if random-theme feature is on
   _renderBg(storage.getBgImage());
 
   // Listen for future auth changes (sign-ins, sign-outs)

@@ -17,13 +17,17 @@ const mockState = vi.hoisted(() => ({
 }));
 
 const mockStorage = vi.hoisted(() => ({
-  getTheme:    vi.fn(() => 'dark-purple'),
-  getBgImage:  vi.fn(() => null),
-  saveUser:    vi.fn(),
-  saveTasks:   vi.fn(),
-  saveTheme:   vi.fn(),
-  saveBgImage: vi.fn(),
-  clearAll:    vi.fn(),
+  getTheme:              vi.fn(() => 'dark-purple'),
+  getBgImage:            vi.fn(() => null),
+  saveUser:              vi.fn(),
+  saveTasks:             vi.fn(),
+  saveTheme:             vi.fn(),
+  saveBgImage:           vi.fn(),
+  clearAll:              vi.fn(),
+  getRandomThemeEnabled: vi.fn(() => false),
+  saveRandomThemeEnabled:vi.fn(),
+  getRandomThemeDate:    vi.fn(() => ''),
+  saveRandomThemeDate:   vi.fn(),
 }));
 
 const mockApplyTheme = vi.hoisted(() => vi.fn());
@@ -52,9 +56,10 @@ vi.mock('../../pwa/js/supabase.js', () => ({
 vi.mock('../../pwa/js/state.js',   () => ({ state: mockState }));
 vi.mock('../../pwa/js/storage.js', () => ({ storage: mockStorage, db: {} }));
 vi.mock('../../pwa/js/app.js', () => ({
-  applyTheme:    mockApplyTheme,
-  applyBgImage:  vi.fn(),
-  removeBgImage: vi.fn(),
+  applyTheme:              mockApplyTheme,
+  applyBgImage:            vi.fn(),
+  removeBgImage:           vi.fn(),
+  applyRandomThemeForToday: vi.fn(),
   APP_VERSION:   'v1.2.0',
 }));
 vi.mock('../../pwa/js/auth.js', () => ({

@@ -1,6 +1,6 @@
 import { state }                      from '../state.js';
 import { storage }                     from '../storage.js';
-import { applyTheme, applyBgImage, removeBgImage, APP_VERSION } from '../app.js';
+import { applyTheme, applyBgImage, removeBgImage, applyRandomThemeForToday, APP_VERSION } from '../app.js';
 import { uid, today }                  from '../utils.js';
 
 // ── Theme definitions ────────────────────────────────────────────────────────
@@ -80,7 +80,8 @@ function _themeCardHtml(t, currentTheme) {
 }
 
 function _renderView(container) {
-  const currentTheme = storage.getTheme();
+  const currentTheme          = storage.getTheme();
+  const randomThemeEnabled    = storage.getRandomThemeEnabled();
   const hasBg = !!storage.getBgImage();
 
   const themeGrid         = THEMES.map(t => _themeCardHtml(t, currentTheme)).join('');
@@ -121,6 +122,16 @@ function _renderView(container) {
     <!-- Theme -->
     <div class="card">
       <div class="card-title">🎨 App 主題</div>
+      <div class="mode-row" style="margin-bottom:14px">
+        <div class="mode-info">
+          <div class="mode-name">每日隨機主題</div>
+          <div class="mode-desc">每天自動套用一個隨機主題</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="random-theme-toggle" ${randomThemeEnabled ? 'checked' : ''}>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
       <div class="theme-section-label">經典主題</div>
       <div class="theme-grid">${themeGrid}</div>
       <div class="theme-section-label" style="margin-top:16px">新風格</div>
@@ -251,6 +262,18 @@ function _renderView(container) {
 
 // ── Listeners ────────────────────────────────────────────────────────────────
 function _setupListeners(container) {
+  // Random theme toggle
+  container.querySelector('#random-theme-toggle')?.addEventListener('change', e => {
+    const enabled = e.target.checked;
+    storage.saveRandomThemeEnabled(enabled);
+    if (enabled) {
+      // Clear the saved date so applyRandomThemeForToday() picks a fresh theme now
+      storage.saveRandomThemeDate('');
+      applyRandomThemeForToday();
+    }
+    _renderView(container);
+  });
+
   // Theme
   container.querySelectorAll('.theme-card').forEach(card => {
     card.addEventListener('click', () => {
