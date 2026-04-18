@@ -176,10 +176,26 @@ export function renderHome(container) {
     });
   });
 
+  // ── Bind: swipe "詳細" buttons → show detail modal ───────────────────────────
+  container.querySelectorAll('.swipe-detail-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      // Close the swipe state before opening modal so closing modal leaves card clean
+      btn.closest('.task-card')?.classList.remove('swipe-open');
+      const task = state.tasks.find(t => t.id === btn.dataset.taskId);
+      if (task) showTaskDetail(task);
+    });
+  });
+
   // ── Bind: regular task cards → add to plan ───────────────────────────────────
   container.querySelectorAll('.task-card').forEach(card => {
     card.addEventListener('click', () => {
       if (_drag.wasDragging) { _drag.wasDragging = false; return; }
+      // If this card has a swipe open, close it instead of adding to plan
+      if (card.classList.contains('swipe-open')) {
+        card.classList.remove('swipe-open');
+        return;
+      }
       window.addToDailyPlan(card.dataset.taskId);
     });
   });
@@ -195,6 +211,7 @@ export function renderHome(container) {
   // ── Setup drag-and-drop ───────────────────────────────────────────────────────
   _setupDragAndDrop(container);
   _setupPlanDragAndDrop(container);
+  _setupCardSwipe(container);
 }
 
 // ─── Plan card HTML ───────────────────────────────────────────────────────────
@@ -236,22 +253,27 @@ function taskCardHtml(task, countToday, inPlan) {
     <div class="task-card ${isFocus ? 'task-card-focus' : 'task-card-instant'} ${inPlan ? 'task-card-in-plan' : ''}"
          data-task-id="${task.id}" data-category="${task.category}"
          style="--task-accent:${IMPACT_COLOR[task.impactType] || 'var(--primary)'}">
-      ${countToday > 0 ? `<span class="count-badge">${countToday}</span>` : ''}
-      <div class="task-card-top">
-        <div class="task-icon-wrap${task.isDefault === false ? ' task-icon-custom' : ''}">
-          ${task.iconImg
-            ? `<img src="${task.iconImg}" class="task-icon-img">`
-            : `<span class="task-emoji">${task.emoji || '🎯'}</span>`}
+      <div class="task-card-body">
+        ${countToday > 0 ? `<span class="count-badge">${countToday}</span>` : ''}
+        <div class="task-card-top">
+          <div class="task-icon-wrap${task.isDefault === false ? ' task-icon-custom' : ''}">
+            ${task.iconImg
+              ? `<img src="${task.iconImg}" class="task-icon-img">`
+              : `<span class="task-emoji">${task.emoji || '🎯'}</span>`}
+          </div>
+          <div class="task-badges">
+            ${valueLabel ? `<span class="badge ${valueCls}">${valueLabel}</span>` : ''}
+            <span class="badge badge-nature">${natureLbl}</span>
+          </div>
         </div>
-        <div class="task-badges">
-          ${valueLabel ? `<span class="badge ${valueCls}">${valueLabel}</span>` : ''}
-          <span class="badge badge-nature">${natureLbl}</span>
+        <div class="task-name">${escHtml(task.name)}</div>
+        <div class="task-footer">
+          <span class="task-xp-label">${xpLabel}</span>
+          ${inPlan ? `<span class="plan-indicator">📋</span>` : (isFocus ? `<span class="focus-btn-label">▶ 專注</span>` : '')}
         </div>
       </div>
-      <div class="task-name">${escHtml(task.name)}</div>
-      <div class="task-footer">
-        <span class="task-xp-label">${xpLabel}</span>
-        ${inPlan ? `<span class="plan-indicator">📋</span>` : (isFocus ? `<span class="focus-btn-label">▶ 專注</span>` : '')}
+      <div class="swipe-detail-action">
+        <button class="swipe-detail-btn" data-task-id="${task.id}">詳細</button>
       </div>
     </div>
   `;
@@ -326,7 +348,7 @@ function showTaskDetail(task) {
     : `<span style="font-size:40px;line-height:1">${task.emoji || '🎯'}</span>`;
 
   const modal = document.createElement('div');
-  modal.className = 'modal';
+  modal.className = 'modal-overlay';
   modal.innerHTML = `
     <div class="modal-box task-detail-box">
       <div class="modal-header">
@@ -392,6 +414,67 @@ function showTaskDetail(task) {
   const close = () => modal.remove();
   modal.querySelector('.modal-close-btn').addEventListener('click', close);
   modal.addEventListener('click', e => { if (e.target === modal) close(); });
+}
+
+// ─── Task card left-swipe to reveal "詳細" button ────────────────────────────
+//
+// Touch-only: trackstart records startX/Y; touchmove checks if horizontal swipe
+// (|dx| > |dy| × 1.5 and |dx| > 12 px threshold) and adds swipe-open class.
+// Tap anywhere outside the detail button closes open cards.
+
+function _setupCardSwipe(container) {
+  let _swipeOpen    = null;  // currently open card
+  let _horizSwiped  = false; // block page-switch touchend on document
+
+  const _closeSwipe = () => {
+    if (_swipeOpen) { _swipeOpen.classList.remove('swipe-open'); _swipeOpen = null; }
+  };
+
+  container.querySelectorAll('.task-card').forEach(card => {
+    let sx = 0, sy = 0, tracking = false;
+
+    card.addEventListener('touchstart', e => {
+      sx = e.touches[0].clientX;
+      sy = e.touches[0].clientY;
+      tracking = true;
+      _horizSwiped = false;
+    }, { passive: true });
+
+    card.addEventListener('touchmove', e => {
+      if (!tracking) return;
+      const dx = e.touches[0].clientX - sx;
+      const dy = e.touches[0].clientY - sy;
+      if (Math.abs(dx) < 12) return;
+      tracking = false; // one decision per gesture
+      if (Math.abs(dx) > Math.abs(dy) * 1.5) {
+        _horizSwiped = true;  // flag: suppress page-switch on touchend
+        if (dx < 0) {
+          // Left swipe → open this card, close previous
+          if (_swipeOpen && _swipeOpen !== card) _closeSwipe();
+          card.classList.add('swipe-open');
+          _swipeOpen = card;
+        } else {
+          // Right swipe → close
+          if (card === _swipeOpen) _closeSwipe();
+        }
+      }
+    }, { passive: true });
+
+    // stopPropagation prevents the document-level page-switch touchend handler
+    // from seeing this event when we already handled it as a card swipe.
+    card.addEventListener('touchend', e => {
+      tracking = false;
+      if (_horizSwiped) {
+        e.stopPropagation();
+        _horizSwiped = false;
+      }
+    }, { passive: true });
+  });
+
+  // Close swipe on tap outside any task card
+  container.addEventListener('click', e => {
+    if (_swipeOpen && !e.target.closest('.task-card')) _closeSwipe();
+  });
 }
 
 // ─── Drag & Drop (reorder tasks within sections) ──────────────────────────────
@@ -528,8 +611,6 @@ function _setupDragAndDrop(container) {
   function _cancelPress() {
     clearTimeout(_pressTimer);
     _pressTimer = null;
-    // Restore browser-managed scroll on the card (was disabled on pointerdown)
-    if (_pressData?.card) _pressData.card.style.touchAction = '';
     _pressData  = null;
   }
 
@@ -542,13 +623,6 @@ function _setupDragAndDrop(container) {
     card.addEventListener('pointerdown', e => {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       _cancelPress();
-
-      // On touch, disable touch-action immediately so the browser hands over
-      // vertical pointer events to JS instead of consuming them as scroll.
-      // This is the only reliable way to let pointermove fire (and be
-      // cancellable) for vertical movement during the 500 ms press window.
-      // Scroll is restored in _cancelPress() if the user moves > 8 px first.
-      if (e.pointerType === 'touch') card.style.touchAction = 'none';
 
       const rect = card.getBoundingClientRect();
       _pressData = {
@@ -584,13 +658,11 @@ function _setupDragAndDrop(container) {
     });
 
     card.addEventListener('pointerup', () => {
-      if (_pressData?.card) _pressData.card.style.touchAction = ''; // restore if not cancelled
       _cancelPress();
       if (_drag.active) _endDrag(container);
     });
 
     card.addEventListener('pointercancel', () => {
-      if (_pressData?.card) _pressData.card.style.touchAction = '';
       _cancelPress();
       if (_drag.active) _endDrag(container);
     });
@@ -631,9 +703,6 @@ function _activateDrag(pressData) {
 function _endDrag(container) {
   if (!_drag.active) return;
   _drag.wasDragging = true; // suppress the click event that follows pointerup
-
-  // Restore touch-action that was set to 'none' on pointerdown
-  _drag.card.style.touchAction = '';
 
   _drag.clone.remove();
   _drag.card.classList.remove('drag-placeholder');
