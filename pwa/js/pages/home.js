@@ -415,6 +415,8 @@ function _setupDragAndDrop(container) {
   function _cancelPress() {
     clearTimeout(_pressTimer);
     _pressTimer = null;
+    // Restore browser-managed scroll on the card (was disabled on pointerdown)
+    if (_pressData?.card) _pressData.card.style.touchAction = '';
     _pressData  = null;
   }
 
@@ -427,6 +429,13 @@ function _setupDragAndDrop(container) {
     card.addEventListener('pointerdown', e => {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       _cancelPress();
+
+      // On touch, disable touch-action immediately so the browser hands over
+      // vertical pointer events to JS instead of consuming them as scroll.
+      // This is the only reliable way to let pointermove fire (and be
+      // cancellable) for vertical movement during the 500 ms press window.
+      // Scroll is restored in _cancelPress() if the user moves > 8 px first.
+      if (e.pointerType === 'touch') card.style.touchAction = 'none';
 
       const rect = card.getBoundingClientRect();
       _pressData = {
@@ -445,11 +454,8 @@ function _setupDragAndDrop(container) {
       }, 500);
     });
 
-    // passive: false so we can call preventDefault() during active drag,
-    // which stops the page from scrolling while the user is repositioning a card.
     card.addEventListener('pointermove', e => {
       if (_drag.active) {
-        e.preventDefault();           // block page scroll while dragging
         _drag.lastX = e.clientX;
         _drag.lastY = e.clientY;
         _drag.clone.style.left = (e.clientX - _drag.offX) + 'px';
@@ -460,16 +466,18 @@ function _setupDragAndDrop(container) {
       } else if (_pressData) {
         const dx = Math.abs(e.clientX - _pressData.clientX);
         const dy = Math.abs(e.clientY - _pressData.clientY);
-        if (dx > 8 || dy > 8) _cancelPress();
+        if (dx > 8 || dy > 8) _cancelPress(); // restores touch-action → scroll resumes
       }
-    }, { passive: false });
+    });
 
     card.addEventListener('pointerup', () => {
+      if (_pressData?.card) _pressData.card.style.touchAction = ''; // restore if not cancelled
       _cancelPress();
       if (_drag.active) _endDrag(container);
     });
 
     card.addEventListener('pointercancel', () => {
+      if (_pressData?.card) _pressData.card.style.touchAction = '';
       _cancelPress();
       if (_drag.active) _endDrag(container);
     });
@@ -510,6 +518,9 @@ function _activateDrag(pressData) {
 function _endDrag(container) {
   if (!_drag.active) return;
   _drag.wasDragging = true; // suppress the click event that follows pointerup
+
+  // Restore touch-action that was set to 'none' on pointerdown
+  _drag.card.style.touchAction = '';
 
   _drag.clone.remove();
   _drag.card.classList.remove('drag-placeholder');
