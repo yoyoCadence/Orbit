@@ -346,7 +346,7 @@ function showTaskDetail(task) {
     : `<span style="font-size:40px;line-height:1">${task.emoji || '🎯'}</span>`;
 
   const modal = document.createElement('div');
-  modal.className = 'modal';
+  modal.className = 'modal-overlay';
   modal.innerHTML = `
     <div class="modal-box task-detail-box">
       <div class="modal-header">
@@ -421,7 +421,8 @@ function showTaskDetail(task) {
 // Tap anywhere outside the detail button closes open cards.
 
 function _setupCardSwipe(container) {
-  let _swipeOpen = null; // currently open card
+  let _swipeOpen    = null;  // currently open card
+  let _horizSwiped  = false; // block page-switch touchend on document
 
   const _closeSwipe = () => {
     if (_swipeOpen) { _swipeOpen.classList.remove('swipe-open'); _swipeOpen = null; }
@@ -434,6 +435,7 @@ function _setupCardSwipe(container) {
       sx = e.touches[0].clientX;
       sy = e.touches[0].clientY;
       tracking = true;
+      _horizSwiped = false;
     }, { passive: true });
 
     card.addEventListener('touchmove', e => {
@@ -443,6 +445,7 @@ function _setupCardSwipe(container) {
       if (Math.abs(dx) < 12) return;
       tracking = false; // one decision per gesture
       if (Math.abs(dx) > Math.abs(dy) * 1.5) {
+        _horizSwiped = true;  // flag: suppress page-switch on touchend
         if (dx < 0) {
           // Left swipe → open this card, close previous
           if (_swipeOpen && _swipeOpen !== card) _closeSwipe();
@@ -455,7 +458,15 @@ function _setupCardSwipe(container) {
       }
     }, { passive: true });
 
-    card.addEventListener('touchend', () => { tracking = false; }, { passive: true });
+    // stopPropagation prevents the document-level page-switch touchend handler
+    // from seeing this event when we already handled it as a card swipe.
+    card.addEventListener('touchend', e => {
+      tracking = false;
+      if (_horizSwiped) {
+        e.stopPropagation();
+        _horizSwiped = false;
+      }
+    }, { passive: true });
   });
 
   // Close swipe on tap outside any task card
