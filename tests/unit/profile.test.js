@@ -476,3 +476,38 @@ describe('renderProfile: custom title input', () => {
     expect(mockStorage.saveUser).toHaveBeenCalled();
   });
 });
+
+// ─── Habit Heatmap ────────────────────────────────────────────────────────────
+
+describe('renderProfile: habit heatmap', () => {
+  it('renders heatmap grid', () => {
+    const c = makeContainer();
+    renderProfile(c);
+    expect(c.querySelector('.hm-grid')).not.toBeNull();
+  });
+
+  it('free user sees upgrade note', () => {
+    mockStorage.isProUser.mockReturnValue(false);
+    mockStorage.isTrialUser.mockReturnValue(false);
+    const c = makeContainer();
+    renderProfile(c);
+    expect(c.querySelector('.hm-upgrade-btn')).not.toBeNull();
+  });
+
+  it('Pro user does not see upgrade note', () => {
+    mockStorage.isProUser.mockReturnValue(true);
+    const c = makeContainer();
+    renderProfile(c);
+    expect(c.querySelector('.hm-upgrade-btn')).toBeNull();
+  });
+
+  it('colours active days based on XP', () => {
+    const today = new Date().toLocaleDateString('sv');
+    mockState.sessions = [
+      { date: today, finalXP: 120, isProductiveXP: true },
+    ];
+    const c = makeContainer();
+    renderProfile(c);
+    expect(c.querySelector('.hm-3,.hm-4')).not.toBeNull();
+  });
+});
