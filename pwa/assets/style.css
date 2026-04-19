@@ -395,7 +395,7 @@ html.has-bg #app { background: transparent; }
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
-  margin-bottom: 4px;
+  margin-bottom: 8px;
 }
 .pro-feat-item {
   display: flex;
@@ -407,7 +407,63 @@ html.has-bg #app { background: transparent; }
   border-radius: 8px;
   padding: 8px 10px;
 }
-.pro-feat-item-icon { font-size: 14px; flex-shrink: 0; }
+.pro-feat-item-icon  { font-size: 14px; flex-shrink: 0; }
+.pro-feat-item-label { flex: 1; min-width: 0; }
+.pro-feat-info-btn {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid var(--primary);
+  background: transparent;
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  opacity: 0.8;
+}
+.pro-feat-info-btn:active { opacity: 1; background: rgba(124,58,237,0.2); }
+
+/* Curiosity-gap teaser */
+.pro-feat-teaser {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  margin-bottom: 4px;
+  letter-spacing: 0.2px;
+}
+
+/* ── Feature info popover ─────────────────────────────────────────────────── */
+.pro-feat-popover {
+  position: absolute;
+  width: 240px;
+  background: var(--surface);
+  border: 1px solid rgba(124,58,237,0.4);
+  border-radius: 10px;
+  padding: 12px 14px;
+  z-index: 200;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  animation: proFadeIn 0.15s ease;
+}
+.pro-feat-popover.pro-feat-popover-out {
+  animation: proFadeOut 0.18s ease forwards;
+}
+.pro-feat-pop-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary-lt);
+  margin-bottom: 6px;
+}
+.pro-feat-pop-body {
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.55;
+}
 
 /* ── Anchor: yearly plan (always visible) ─────────────────────────────────── */
 .pro-anchor-plan {

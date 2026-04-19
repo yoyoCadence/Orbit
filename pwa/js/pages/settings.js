@@ -78,10 +78,10 @@ function _proSectionHtml() {
         </div>
       </div>
       <div class="pro-feat-grid">
-        <div class="pro-feat-item"><span class="pro-feat-item-icon">∞</span><span>完整歷史紀錄</span></div>
-        <div class="pro-feat-item"><span class="pro-feat-item-icon">🛡️</span><span>Streak Shield</span></div>
-        <div class="pro-feat-item"><span class="pro-feat-item-icon">📈</span><span>Habit Heatmap</span></div>
-        <div class="pro-feat-item"><span class="pro-feat-item-icon">📤</span><span>CSV 匯出</span></div>
+        <div class="pro-feat-item" data-feat="0"><span class="pro-feat-item-icon">∞</span><span class="pro-feat-item-label">完整歷史紀錄</span><button class="pro-feat-info-btn" data-feat="0" aria-label="說明">!</button></div>
+        <div class="pro-feat-item" data-feat="1"><span class="pro-feat-item-icon">🛡️</span><span class="pro-feat-item-label">Streak Shield</span><button class="pro-feat-info-btn" data-feat="1" aria-label="說明">!</button></div>
+        <div class="pro-feat-item" data-feat="2"><span class="pro-feat-item-icon">📈</span><span class="pro-feat-item-label">Habit Heatmap</span><button class="pro-feat-info-btn" data-feat="2" aria-label="說明">!</button></div>
+        <div class="pro-feat-item" data-feat="3"><span class="pro-feat-item-icon">📤</span><span class="pro-feat-item-label">CSV 匯出</span><button class="pro-feat-info-btn" data-feat="3" aria-label="說明">!</button></div>
       </div>`;
   }
 
@@ -99,13 +99,25 @@ function _proSectionHtml() {
     <div class="pro-section-divider"></div>` : '';
 
   // ── Feature highlights (2×2 grid) ────────────────────────────────────────
+  const FEAT_DETAILS = [
+    { icon: '∞', label: '完整歷史紀錄',
+      detail: '免費版僅保留 30 天紀錄。Pro 永久保留所有打卡與 XP 歷程，讓你看見真實的成長曲線。' },
+    { icon: '🛡️', label: 'Streak Shield',
+      detail: '每月獲得 2 張保護卡。偶爾忘記打卡？用盾牌抵擋中斷，連勝不歸零。' },
+    { icon: '📈', label: 'Habit Heatmap',
+      detail: '完整熱力圖顯示全年每日活躍度。免費版僅 90 天。一眼看出哪幾週你最拼。' },
+    { icon: '📤', label: 'CSV 匯出',
+      detail: '一鍵匯出所有打卡紀錄為 CSV，可匯入 Excel / Notion 做進一步分析，資料永遠是你的。' },
+  ];
+  const featItemsHtml = FEAT_DETAILS.map((f, i) => `
+    <div class="pro-feat-item" data-feat="${i}">
+      <span class="pro-feat-item-icon">${f.icon}</span>
+      <span class="pro-feat-item-label">${f.label}</span>
+      <button class="pro-feat-info-btn" data-feat="${i}" aria-label="說明">!</button>
+    </div>`).join('');
   const featGrid = `
-    <div class="pro-feat-grid">
-      <div class="pro-feat-item"><span class="pro-feat-item-icon">∞</span><span>完整歷史紀錄</span></div>
-      <div class="pro-feat-item"><span class="pro-feat-item-icon">🛡️</span><span>Streak Shield</span></div>
-      <div class="pro-feat-item"><span class="pro-feat-item-icon">📈</span><span>Habit Heatmap</span></div>
-      <div class="pro-feat-item"><span class="pro-feat-item-icon">📤</span><span>CSV 匯出</span></div>
-    </div>
+    <div class="pro-feat-grid">${featItemsHtml}</div>
+    <div class="pro-feat-teaser">✦ 還有 Pro 專屬隱藏福利，升級後自行發現</div>
     <div class="pro-section-divider"></div>`;
 
   // ── Anchor: always-visible yearly plan ───────────────────────────────────
@@ -125,6 +137,35 @@ function _proSectionHtml() {
     <div class="pro-notice">升級後立即生效 · 試用期間資料全部保留</div>`;
 
   return `${trialHtml}${featGrid}${anchorHtml}`;
+}
+
+// ── Feature info popover ─────────────────────────────────────────────────────
+function _showFeatPopover(anchor, feat) {
+  document.getElementById('pro-feat-popover')?.remove();
+
+  const pop = document.createElement('div');
+  pop.id = 'pro-feat-popover';
+  pop.className = 'pro-feat-popover';
+  pop.innerHTML = `
+    <div class="pro-feat-pop-title">${feat.icon} ${feat.label}</div>
+    <div class="pro-feat-pop-body">${feat.detail}</div>
+  `;
+  document.body.appendChild(pop);
+
+  // Position below the anchor button
+  const rect = anchor.getBoundingClientRect();
+  const popW = 240;
+  let left = rect.left + rect.width / 2 - popW / 2;
+  left = Math.max(12, Math.min(left, window.innerWidth - popW - 12));
+  pop.style.top  = `${rect.bottom + window.scrollY + 8}px`;
+  pop.style.left = `${left}px`;
+
+  const dismiss = () => {
+    pop.classList.add('pro-feat-popover-out');
+    setTimeout(() => pop.remove(), 180);
+    document.removeEventListener('click', dismiss);
+  };
+  setTimeout(() => document.addEventListener('click', dismiss), 0);
 }
 
 // ── Pro bottom sheet ─────────────────────────────────────────────────────────
@@ -488,6 +529,27 @@ function _setupListeners(container) {
   // Restart tour
   container.querySelector('#tour-btn')?.addEventListener('click', () => {
     window.startTour();
+  });
+
+  // Feature info buttons → popover
+  const FEAT_DETAILS_LABELS = [
+    { icon: '∞', label: '完整歷史紀錄',
+      detail: '免費版僅保留 30 天紀錄。Pro 永久保留所有打卡與 XP 歷程，讓你看見真實的成長曲線。' },
+    { icon: '🛡️', label: 'Streak Shield',
+      detail: '每月獲得 2 張保護卡。偶爾忘記打卡？用盾牌抵擋中斷，連勝不歸零。' },
+    { icon: '📈', label: 'Habit Heatmap',
+      detail: '完整熱力圖顯示全年每日活躍度。免費版僅 90 天。一眼看出哪幾週你最拼。' },
+    { icon: '📤', label: 'CSV 匯出',
+      detail: '一鍵匯出所有打卡紀錄為 CSV，可匯入 Excel / Notion 做進一步分析，資料永遠是你的。' },
+  ];
+  container.querySelectorAll('.pro-feat-info-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const idx = Number(btn.dataset.feat);
+      const feat = FEAT_DETAILS_LABELS[idx];
+      if (!feat) return;
+      _showFeatPopover(btn, feat);
+    });
   });
 
   // Pro anchor + sheet
