@@ -364,9 +364,9 @@ test.describe('設定頁隨機主題 toggle', () => {
     await page.goto('/');
     await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
     await page.locator('[data-page="settings"]').click();
-    await page.waitForSelector('#random-theme-toggle', { timeout: 3000 });
-    const toggle = page.locator('#random-theme-toggle');
-    await toggle.check();
+    // Wait for settings page to render; the toggle input is CSS-hidden (toggle-switch design)
+    await expect(page.locator('button:has-text("登出")')).toBeVisible({ timeout: 5000 });
+    await page.locator('#random-theme-toggle').check({ force: true });
     const enabled = await page.evaluate(() => localStorage.getItem('yoyo_randomThemeEnabled'));
     expect(enabled).toBe('true');
   });
