@@ -306,6 +306,82 @@ html.has-bg #app { background: transparent; }
   opacity: .55; cursor: not-allowed;
 }
 
+/* ── Pro card new header ───────────────────────────────────────────────────── */
+.pro-card-header {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+}
+.pro-card-icon { font-size: 28px; color: var(--accent); }
+.pro-card-title { font-size: 18px; font-weight: 800; color: var(--primary-lt); }
+.pro-card-sub   { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+/* ── Active Pro banner ────────────────────────────────────────────────────── */
+.pro-active-banner {
+  display: flex; align-items: center; gap: 12px;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  border-radius: 10px; padding: 12px 14px; margin-bottom: 14px;
+}
+.pro-active-icon { font-size: 22px; color: #fff; }
+.pro-active-title { font-size: 14px; font-weight: 700; color: #fff; }
+.pro-active-sub   { font-size: 11px; color: rgba(255,255,255,0.8); margin-top: 2px; }
+
+/* ── Trial progress ───────────────────────────────────────────────────────── */
+.pro-trial-status { margin-bottom: 14px; }
+.pro-trial-top {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 6px;
+}
+.pro-trial-label { font-size: 12px; color: var(--text-muted); }
+.pro-trial-days  { font-size: 12px; color: var(--accent); }
+.pro-trial-days strong { font-size: 15px; font-weight: 800; }
+.pro-trial-bar-track {
+  height: 5px; background: rgba(255,255,255,0.1); border-radius: 99px; overflow: hidden;
+}
+.pro-trial-bar-fill {
+  height: 100%; border-radius: 99px;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  transition: width 0.4s ease;
+}
+
+/* ── Feature list ─────────────────────────────────────────────────────────── */
+.pro-feats { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.pro-feat-row { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; }
+.pro-feat-icon { font-size: 15px; flex-shrink: 0; width: 20px; text-align: center; }
+.pro-feat-text { color: var(--text); line-height: 1.4; }
+.pro-feat-note { color: var(--text-muted); font-size: 11px; }
+
+/* ── Pricing plans ────────────────────────────────────────────────────────── */
+.pro-plans {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px;
+}
+.pro-plan-card {
+  position: relative;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px; padding: 12px 8px; text-align: center;
+}
+.pro-plan-card.pro-plan-featured {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 15%, transparent);
+}
+.pro-plan-badge {
+  position: absolute; top: -8px; left: 50%; transform: translateX(-50%);
+  background: var(--accent); color: #000;
+  font-size: 9px; font-weight: 800; padding: 2px 7px; border-radius: 99px;
+  white-space: nowrap;
+}
+.pro-plan-label { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+.pro-plan-price { font-size: 16px; font-weight: 800; color: var(--primary-lt); }
+.pro-plan-unit  { font-size: 10px; font-weight: 400; color: var(--text-muted); }
+.pro-plan-desc  { font-size: 10px; color: var(--text-muted); margin: 4px 0 8px; }
+.pro-plan-btn {
+  width: 100%; padding: 6px 0; font-size: 11px; font-weight: 700;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  color: #fff; border: none; border-radius: 6px; cursor: pointer;
+}
+.pro-plan-btn:active { opacity: 0.8; }
+.pro-notice {
+  font-size: 11px; color: var(--text-muted); text-align: center;
+}
+
 /* ══════════════════════════════════════════════════════════════
    ACCOUNT CARD (settings)
 ══════════════════════════════════════════════════════════════ */

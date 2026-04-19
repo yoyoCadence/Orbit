@@ -57,6 +57,78 @@ const RESISTANCE_OPTIONS = [
   { v: '1.4', l: '高（很想拖延或逃避）' },
 ];
 
+// ── Pro upgrade section ───────────────────────────────────────────────────────
+function _proSectionHtml() {
+  const isPro   = storage.isProUser();
+  const isTrial = storage.isTrialUser();
+  const daysLeft = storage.getTrialDaysRemaining();
+  const expiry  = storage.getProExpiry();
+
+  const features = [
+    ['∞', '完整歷史紀錄', '免費限 30 天'],
+    ['🎨', '全部 13 種主題 + 每日隨機', '免費限 5 種'],
+    ['🛡️', 'Streak Shield 保護卡（每月 2 張）', ''],
+    ['📈', 'Habit Heatmap 完整成長足跡', '免費限 90 天'],
+    ['📊', '進階數據分析（效率 / 最佳時段）', ''],
+    ['📤', '資料匯出（CSV）', ''],
+  ];
+
+  const featuresHtml = features.map(([icon, text, note]) => `
+    <div class="pro-feat-row">
+      <span class="pro-feat-icon">${icon}</span>
+      <span class="pro-feat-text">${text}${note ? `<span class="pro-feat-note"> · 免費：${note}</span>` : ''}</span>
+    </div>`).join('');
+
+  // ── Active Pro (paid, not trial) ─────────────────────────────────────────
+  if (isPro && !isTrial) {
+    const expiryStr = expiry
+      ? `有效期至 ${new Date(expiry).toLocaleDateString('zh-TW')}`
+      : '終身方案';
+    return `
+      <div class="pro-active-banner">
+        <span class="pro-active-icon">✦</span>
+        <div>
+          <div class="pro-active-title">你已是 Orbit Pro 用戶</div>
+          <div class="pro-active-sub">${expiryStr}</div>
+        </div>
+      </div>
+      <div class="pro-feats">${featuresHtml}</div>`;
+  }
+
+  // ── Trial active ──────────────────────────────────────────────────────────
+  const trialHtml = isTrial ? `
+    <div class="pro-trial-status">
+      <div class="pro-trial-top">
+        <span class="pro-trial-label">免費試用中</span>
+        <span class="pro-trial-days"><strong>${daysLeft}</strong> 天後到期</span>
+      </div>
+      <div class="pro-trial-bar-track">
+        <div class="pro-trial-bar-fill" style="width:${Math.round((15 - daysLeft) / 15 * 100)}%"></div>
+      </div>
+    </div>` : '';
+
+  // ── Pricing plans ─────────────────────────────────────────────────────────
+  const plans = [
+    { id: 'monthly',  label: '月費', price: 'NT$99',   unit: '/月',   badge: '',        desc: '隨時取消' },
+    { id: 'yearly',   label: '年費', price: 'NT$699',  unit: '/年',   badge: '省 41%',  desc: '約 NT$58/月' },
+    { id: 'lifetime', label: '終身', price: 'NT$1,999', unit: '一次', badge: '最划算', desc: '永久使用' },
+  ];
+  const plansHtml = plans.map(p => `
+    <div class="pro-plan-card ${p.badge === '省 41%' ? 'pro-plan-featured' : ''}">
+      ${p.badge ? `<div class="pro-plan-badge">${p.badge}</div>` : ''}
+      <div class="pro-plan-label">${p.label}</div>
+      <div class="pro-plan-price">${p.price}<span class="pro-plan-unit">${p.unit}</span></div>
+      <div class="pro-plan-desc">${p.desc}</div>
+      <button class="btn pro-plan-btn" data-plan="${p.id}">選擇方案</button>
+    </div>`).join('');
+
+  return `
+    ${trialHtml}
+    <div class="pro-feats">${featuresHtml}</div>
+    <div class="pro-plans">${plansHtml}</div>
+    <div class="pro-notice">升級後立即生效 · 試用期間已有資料全部保留</div>`;
+}
+
 // ── Main render ──────────────────────────────────────────────────────────────
 export function renderSettings(container) {
   _renderView(container);
@@ -223,21 +295,14 @@ function _renderView(container) {
 
     <!-- Pro subscription -->
     <div class="card pro-card">
-      <div class="pro-badge">規劃中</div>
-      <div class="pro-header">
-        <span class="pro-icon">✨</span>
+      <div class="pro-card-header">
+        <span class="pro-card-icon">✦</span>
         <div>
-          <div class="pro-title">Orbit Pro</div>
-          <div class="pro-sub">解鎖進階功能，支持獨立開發</div>
+          <div class="pro-card-title">Orbit Pro</div>
+          <div class="pro-card-sub">解鎖進階功能，支持獨立開發</div>
         </div>
       </div>
-      <ul class="pro-features">
-        <li>🤖 每日 AI 晨間報告與任務建議</li>
-        <li>🎨 獨家主題與頭貼框</li>
-        <li>📊 進階數據分析與週期報告</li>
-        <li>☁️ 優先雲端同步</li>
-      </ul>
-      <button class="btn pro-cta-btn" disabled>即將推出 — 敬請期待</button>
+      ${_proSectionHtml()}
     </div>
 
     <!-- Account -->
@@ -362,6 +427,13 @@ function _setupListeners(container) {
   // Restart tour
   container.querySelector('#tour-btn')?.addEventListener('click', () => {
     window.startTour();
+  });
+
+  // Pro plan buttons
+  container.querySelectorAll('.pro-plan-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      window.showToast('金流整合即將上線，敬請期待！');
+    });
   });
 
   // Sign out

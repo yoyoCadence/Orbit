@@ -28,6 +28,10 @@ const mockStorage = vi.hoisted(() => ({
   saveRandomThemeEnabled:vi.fn(),
   getRandomThemeDate:    vi.fn(() => ''),
   saveRandomThemeDate:   vi.fn(),
+  isProUser:             vi.fn(() => false),
+  isTrialUser:           vi.fn(() => false),
+  getTrialDaysRemaining: vi.fn(() => 0),
+  getProExpiry:          vi.fn(() => null),
 }));
 
 const mockApplyTheme        = vi.hoisted(() => vi.fn());
