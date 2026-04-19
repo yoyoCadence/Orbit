@@ -542,9 +542,9 @@ function _setupPlanDragAndDrop(container) {
       }
     }, { passive: false });
 
-    const _finish = () => { if (_planDrag.active) _endPlanDrag(planList); };
-    handle.addEventListener('pointerup',     _finish);
-    handle.addEventListener('pointercancel', _finish);
+    handle.addEventListener('pointerup',     () => { if (_planDrag.active) _endPlanDrag(planList); });
+    // pointercancel never fires a subsequent click, so clear the flag immediately
+    handle.addEventListener('pointercancel', () => { if (_planDrag.active) { _endPlanDrag(planList); _planDrag.wasDragging = false; } });
   });
 }
 

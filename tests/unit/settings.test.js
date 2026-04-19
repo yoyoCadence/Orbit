@@ -30,7 +30,8 @@ const mockStorage = vi.hoisted(() => ({
   saveRandomThemeDate:   vi.fn(),
 }));
 
-const mockApplyTheme = vi.hoisted(() => vi.fn());
+const mockApplyTheme        = vi.hoisted(() => vi.fn());
+const mockApplyRandomTheme  = vi.hoisted(() => vi.fn());
 
 // Mock supabase first to prevent CDN URL import failure in Node.js
 vi.mock('../../pwa/js/supabase.js', () => ({
@@ -59,7 +60,7 @@ vi.mock('../../pwa/js/app.js', () => ({
   applyTheme:              mockApplyTheme,
   applyBgImage:            vi.fn(),
   removeBgImage:           vi.fn(),
-  applyRandomThemeForToday: vi.fn(),
+  applyRandomThemeForToday: mockApplyRandomTheme,
   APP_VERSION:   'v1.2.0',
 }));
 vi.mock('../../pwa/js/auth.js', () => ({
@@ -265,5 +266,38 @@ describe('renderSettings: sign out button', () => {
     expect(btn).not.toBeNull();
     btn.click();
     expect(window.signOut).toHaveBeenCalled();
+  });
+});
+
+describe('renderSettings: random theme toggle', () => {
+  it('toggle is checked when getRandomThemeEnabled returns true', () => {
+    mockStorage.getRandomThemeEnabled.mockReturnValue(true);
+    const c = makeContainer();
+    renderSettings(c);
+    const toggle = c.querySelector('#random-theme-toggle');
+    expect(toggle.checked).toBe(true);
+  });
+
+  it('turning ON calls saveRandomThemeEnabled(true), saveRandomThemeDate(""), and applyRandomThemeForToday()', () => {
+    mockStorage.getRandomThemeEnabled.mockReturnValue(false);
+    const c = makeContainer();
+    renderSettings(c);
+    const toggle = c.querySelector('#random-theme-toggle');
+    toggle.checked = true;
+    toggle.dispatchEvent(new Event('change'));
+    expect(mockStorage.saveRandomThemeEnabled).toHaveBeenCalledWith(true);
+    expect(mockStorage.saveRandomThemeDate).toHaveBeenCalledWith('');
+    expect(mockApplyRandomTheme).toHaveBeenCalled();
+  });
+
+  it('turning OFF calls saveRandomThemeEnabled(false) and does not call applyRandomThemeForToday()', () => {
+    mockStorage.getRandomThemeEnabled.mockReturnValue(true);
+    const c = makeContainer();
+    renderSettings(c);
+    const toggle = c.querySelector('#random-theme-toggle');
+    toggle.checked = false;
+    toggle.dispatchEvent(new Event('change'));
+    expect(mockStorage.saveRandomThemeEnabled).toHaveBeenCalledWith(false);
+    expect(mockApplyRandomTheme).not.toHaveBeenCalled();
   });
 });

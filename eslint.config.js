@@ -31,6 +31,8 @@ export default [
         crypto: 'readonly',
         HTMLElement: 'readonly',
         Event: 'readonly',
+        Touch: 'readonly',
+        TouchEvent: 'readonly',
         requestAnimationFrame: 'readonly',
       },
     },
