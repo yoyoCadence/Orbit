@@ -220,13 +220,37 @@ window.useStreakShield = function () {
   state.user.streakDays = prevStreak;
   state.user.streakShieldCount = Math.max(0, (state.user.streakShieldCount || 0) - 1);
   localStorage.removeItem('orbit_shield_pending');
+  sessionStorage.removeItem('orbit_shield_dismissed');
   storage.saveUser(state.user);
   db.upsertProfile(state.user);
   renderPage(currentHash());
+  showToast(`🛡 保護卡使用成功！連勝紀錄維持 ${prevStreak} 天 🔥`);
 };
 
 window.dismissStreakShield = function () {
-  localStorage.removeItem('orbit_shield_pending');
+  // Show custom confirm —放棄後 pending 仍保留，讓使用者可從 🛡 pill 重新使用
+  const overlay = document.createElement('div');
+  overlay.className = 'shield-confirm-overlay';
+  overlay.innerHTML = `
+    <div class="shield-confirm-box">
+      <div class="shield-confirm-title">確定放棄保護卡？</div>
+      <div class="shield-confirm-sub">放棄後仍可點連勝區的 🛡 重新使用</div>
+      <div class="shield-confirm-btns">
+        <button class="shield-confirm-cancel" onclick="this.closest('.shield-confirm-overlay').remove()">取消</button>
+        <button class="shield-confirm-ok" id="shield-confirm-ok-btn">確定放棄</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#shield-confirm-ok-btn').onclick = () => {
+    overlay.remove();
+    sessionStorage.setItem('orbit_shield_dismissed', '1');
+    renderPage(currentHash());
+  };
+};
+
+window.reshowShieldBanner = function () {
+  sessionStorage.removeItem('orbit_shield_dismissed');
   renderPage(currentHash());
 };
 

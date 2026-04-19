@@ -58,7 +58,8 @@ export function renderHome(container) {
     try { return JSON.parse(localStorage.getItem('orbit_shield_pending') || 'null'); }
     catch { return null; }
   })();
-  const shieldBanner = shieldPending ? `
+  const shieldDismissed = sessionStorage.getItem('orbit_shield_dismissed') === '1';
+  const shieldBanner = (shieldPending && !shieldDismissed) ? `
     <div class="shield-banner">
       <div class="shield-banner-top">
         <span class="shield-banner-icon">🛡</span>
@@ -89,8 +90,9 @@ export function renderHome(container) {
         <span class="stat-pill-icon">🔥</span>
         <span class="stat-pill-val">${state.user?.streakDays || 0}</span>
         <span class="stat-pill-lbl">連勝</span>
-        <span class="stat-pill-shield-wrap">
-          <span class="stat-pill-shield ${storage.isProUser() ? '' : 'stat-pill-shield-locked'}">🛡${state.user?.streakShieldCount ?? 0}</span><button class="stat-pill-shield-info" onclick="showShieldInfo(this)" aria-label="保護卡說明">?</button>
+        <span class="stat-pill-shield-wrap ${shieldPending ? 'shield-pill-pending' : ''}"
+              ${shieldPending ? 'onclick="reshowShieldBanner()" title="點擊重新使用保護卡"' : ''}>
+          <span class="stat-pill-shield ${storage.isProUser() ? '' : 'stat-pill-shield-locked'}">🛡${state.user?.streakShieldCount ?? 0}</span><button class="stat-pill-shield-info" onclick="event.stopPropagation();showShieldInfo(this)" aria-label="保護卡說明">?</button>
         </span>
       </div>
       <div class="stat-pill ${energyClass}">
