@@ -189,7 +189,8 @@ export function renderHome(container) {
 
   // ── Bind: regular task cards → add to plan ───────────────────────────────────
   container.querySelectorAll('.task-card').forEach(card => {
-    card.addEventListener('click', () => {
+    card.addEventListener('click', e => {
+      if (e.target.closest('.task-drag-handle')) return;
       if (_drag.wasDragging) { _drag.wasDragging = false; return; }
       // If this card has a swipe open, close it instead of adding to plan
       if (card.classList.contains('swipe-open')) {
@@ -253,6 +254,7 @@ function taskCardHtml(task, countToday, inPlan) {
     <div class="task-card ${isFocus ? 'task-card-focus' : 'task-card-instant'} ${inPlan ? 'task-card-in-plan' : ''}"
          data-task-id="${task.id}" data-category="${task.category}"
          style="--task-accent:${IMPACT_COLOR[task.impactType] || 'var(--primary)'}">
+      <div class="task-drag-handle" title="拖曳排序">⠿</div>
       <div class="task-card-body">
         ${countToday > 0 ? `<span class="count-badge">${countToday}</span>` : ''}
         <div class="task-card-top">
@@ -605,73 +607,51 @@ const _drag = {
 };
 
 function _setupDragAndDrop(container) {
-  let _pressTimer = null;
-  let _pressData  = null; // { card, pointerId, clientX, clientY, offX, offY }
+  container.querySelectorAll('.task-drag-handle').forEach(handle => {
+    const card = handle.closest('.task-card');
+    if (!card) return;
 
-  function _cancelPress() {
-    clearTimeout(_pressTimer);
-    _pressTimer = null;
-    if (_pressData?.card) _pressData.card.style.touchAction = '';
-    _pressData  = null;
-  }
+    handle.addEventListener('contextmenu', e => e.preventDefault());
 
-  container.querySelectorAll('.task-card').forEach(card => {
-
-    // Prevent long-press context menu (Android "Copy/Paste", iOS callout)
-    // so the 500 ms drag timer fires cleanly without system UI interference.
-    card.addEventListener('contextmenu', e => e.preventDefault());
-
-    card.addEventListener('pointerdown', e => {
+    handle.addEventListener('pointerdown', e => {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
-      _cancelPress();
-
+      e.preventDefault();
+      e.stopPropagation();
       const rect = card.getBoundingClientRect();
-      _pressData = {
+      _activateDrag({
         card,
+        handle,
         pointerId: e.pointerId,
         clientX:   e.clientX,
         clientY:   e.clientY,
         offX:      e.clientX - rect.left,
         offY:      e.clientY - rect.top,
-      };
-
-      _pressTimer = setTimeout(() => {
-        _pressTimer = null;
-        _activateDrag(_pressData);
-        _pressData = null;
-      }, 500);
+      });
     });
 
-    card.addEventListener('pointermove', e => {
-      if (_drag.active) {
-        _drag.lastX = e.clientX;
-        _drag.lastY = e.clientY;
-        _drag.clone.style.left = (e.clientX - _drag.offX) + 'px';
-        _drag.clone.style.top  = (e.clientY - _drag.offY) + 'px';
-        _clearDragOver(container);
-        const under = _cardUnderPoint(container, e.clientX, e.clientY);
-        if (under && under !== _drag.card) under.classList.add('drag-over');
-      } else if (_pressData) {
-        const dx = Math.abs(e.clientX - _pressData.clientX);
-        const dy = Math.abs(e.clientY - _pressData.clientY);
-        if (dx > 8 || dy > 8) _cancelPress(); // restores touch-action → scroll resumes
-      }
+    handle.addEventListener('pointermove', e => {
+      if (!_drag.active) return;
+      _drag.lastX = e.clientX;
+      _drag.lastY = e.clientY;
+      _drag.clone.style.left = (e.clientX - _drag.offX) + 'px';
+      _drag.clone.style.top  = (e.clientY - _drag.offY) + 'px';
+      _clearDragOver(container);
+      const under = _cardUnderPoint(container, e.clientX, e.clientY);
+      if (under && under !== _drag.card) under.classList.add('drag-over');
     });
 
-    card.addEventListener('pointerup', () => {
-      _cancelPress();
+    handle.addEventListener('pointerup', () => {
       if (_drag.active) _endDrag(container);
     });
 
-    card.addEventListener('pointercancel', () => {
-      _cancelPress();
+    handle.addEventListener('pointercancel', () => {
       if (_drag.active) _endDrag(container);
     });
   });
 }
 
 function _activateDrag(pressData) {
-  const { card, pointerId, offX, offY, clientX, clientY } = pressData;
+  const { card, handle, pointerId, offX, offY, clientX, clientY } = pressData;
   if (navigator.vibrate) navigator.vibrate(50);
 
   const rect = card.getBoundingClientRect();
@@ -697,9 +677,8 @@ function _activateDrag(pressData) {
   _drag.clone = clone;
   card.classList.add('drag-placeholder');
 
-  card.style.touchAction = 'none'; // lock out browser scroll for this gesture
   window._isDragging = true;
-  card.setPointerCapture(pointerId);
+  handle.setPointerCapture(pointerId);
 }
 
 function _endDrag(container) {
@@ -707,7 +686,6 @@ function _endDrag(container) {
   _drag.wasDragging = true; // suppress the click event that follows pointerup
 
   _drag.clone.remove();
-  _drag.card.style.touchAction = '';
   _drag.card.classList.remove('drag-placeholder');
   _clearDragOver(container);
 
