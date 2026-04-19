@@ -57,6 +57,180 @@ const RESISTANCE_OPTIONS = [
   { v: '1.4', l: '高（很想拖延或逃避）' },
 ];
 
+// ── Pro upgrade section ───────────────────────────────────────────────────────
+function _proSectionHtml() {
+  const isPro    = storage.isProUser();
+  const isTrial  = storage.isTrialUser();
+  const daysLeft = storage.getTrialDaysRemaining();
+  const expiry   = storage.getProExpiry();
+
+  // ── Active Pro (paid, not trial) ─────────────────────────────────────────
+  if (isPro && !isTrial) {
+    const expiryStr = expiry
+      ? `有效期至 ${new Date(expiry).toLocaleDateString('zh-TW')}`
+      : '終身方案';
+    return `
+      <div class="pro-active-banner">
+        <span class="pro-active-icon">✦</span>
+        <div>
+          <div class="pro-active-title">你已是 Orbit Pro 用戶</div>
+          <div class="pro-active-sub">${expiryStr}</div>
+        </div>
+      </div>
+      <div class="pro-feat-grid">
+        <div class="pro-feat-item" data-feat="0"><span class="pro-feat-item-icon">∞</span><span class="pro-feat-item-label">完整歷史紀錄</span><button class="pro-feat-info-btn" data-feat="0" aria-label="說明">!</button></div>
+        <div class="pro-feat-item" data-feat="1"><span class="pro-feat-item-icon">🛡️</span><span class="pro-feat-item-label">Streak Shield</span><button class="pro-feat-info-btn" data-feat="1" aria-label="說明">!</button></div>
+        <div class="pro-feat-item" data-feat="2"><span class="pro-feat-item-icon">📈</span><span class="pro-feat-item-label">Habit Heatmap</span><button class="pro-feat-info-btn" data-feat="2" aria-label="說明">!</button></div>
+        <div class="pro-feat-item" data-feat="3"><span class="pro-feat-item-icon">📤</span><span class="pro-feat-item-label">CSV 匯出</span><button class="pro-feat-info-btn" data-feat="3" aria-label="說明">!</button></div>
+      </div>`;
+  }
+
+  // ── Trial countdown bar ───────────────────────────────────────────────────
+  const trialHtml = isTrial ? `
+    <div class="pro-trial-status">
+      <div class="pro-trial-top">
+        <span class="pro-trial-label">免費試用中</span>
+        <span class="pro-trial-days"><strong>${daysLeft}</strong> 天後到期</span>
+      </div>
+      <div class="pro-trial-bar-track">
+        <div class="pro-trial-bar-fill" style="width:${Math.round((15 - daysLeft) / 15 * 100)}%"></div>
+      </div>
+    </div>
+    <div class="pro-section-divider"></div>` : '';
+
+  // ── Feature highlights (2×2 grid) ────────────────────────────────────────
+  const FEAT_DETAILS = [
+    { icon: '∞', label: '完整歷史紀錄',
+      detail: '免費版僅保留 30 天紀錄。Pro 永久保留所有打卡與 XP 歷程，讓你看見真實的成長曲線。' },
+    { icon: '🛡️', label: 'Streak Shield',
+      detail: '每月獲得 2 張保護卡。偶爾忘記打卡？用盾牌抵擋中斷，連勝不歸零。' },
+    { icon: '📈', label: 'Habit Heatmap',
+      detail: '完整熱力圖顯示全年每日活躍度。免費版僅 90 天。一眼看出哪幾週你最拼。' },
+    { icon: '📤', label: 'CSV 匯出',
+      detail: '一鍵匯出所有打卡紀錄為 CSV，可匯入 Excel / Notion 做進一步分析，資料永遠是你的。' },
+  ];
+  const featItemsHtml = FEAT_DETAILS.map((f, i) => `
+    <div class="pro-feat-item" data-feat="${i}">
+      <span class="pro-feat-item-icon">${f.icon}</span>
+      <span class="pro-feat-item-label">${f.label}</span>
+      <button class="pro-feat-info-btn" data-feat="${i}" aria-label="說明">!</button>
+    </div>`).join('');
+  const featGrid = `
+    <div class="pro-feat-grid">${featItemsHtml}</div>
+    <div class="pro-feat-teaser">✦ 還有 Pro 專屬隱藏福利，升級後自行發現</div>
+    <div class="pro-section-divider"></div>`;
+
+  // ── Anchor: always-visible yearly plan ───────────────────────────────────
+  const anchorHtml = `
+    <div class="pro-anchor-plan">
+      <div class="pro-anchor-badge">最多人選擇</div>
+      <div class="pro-anchor-row">
+        <div class="pro-anchor-info">
+          <div class="pro-anchor-label">年費方案</div>
+          <div class="pro-anchor-price">NT$699<span class="pro-anchor-unit">/年</span></div>
+          <div class="pro-anchor-desc">≈ NT$58/月 &nbsp;·&nbsp; 省 41%</div>
+        </div>
+        <button class="pro-anchor-btn" id="pro-subscribe-yearly">立即訂閱</button>
+      </div>
+      <button class="pro-view-all-btn" id="pro-view-all">查看全部方案 ↓</button>
+    </div>
+    <div class="pro-notice">升級後立即生效 · 試用期間資料全部保留</div>`;
+
+  return `${trialHtml}${featGrid}${anchorHtml}`;
+}
+
+// ── Feature info popover ─────────────────────────────────────────────────────
+function _showFeatPopover(anchor, feat) {
+  document.getElementById('pro-feat-popover')?.remove();
+
+  const pop = document.createElement('div');
+  pop.id = 'pro-feat-popover';
+  pop.className = 'pro-feat-popover';
+  pop.innerHTML = `
+    <div class="pro-feat-pop-title">${feat.icon} ${feat.label}</div>
+    <div class="pro-feat-pop-body">${feat.detail}</div>
+  `;
+  document.body.appendChild(pop);
+
+  // Position below the anchor button
+  const rect = anchor.getBoundingClientRect();
+  const popW = 240;
+  let left = rect.left + rect.width / 2 - popW / 2;
+  left = Math.max(12, Math.min(left, window.innerWidth - popW - 12));
+  pop.style.top  = `${rect.bottom + window.scrollY + 8}px`;
+  pop.style.left = `${left}px`;
+
+  const dismiss = () => {
+    pop.classList.add('pro-feat-popover-out');
+    setTimeout(() => pop.remove(), 180);
+    document.removeEventListener('click', dismiss);
+  };
+  setTimeout(() => document.addEventListener('click', dismiss), 0);
+}
+
+// ── Pro bottom sheet ─────────────────────────────────────────────────────────
+function _showProSheet() {
+  if (document.getElementById('pro-sheet-overlay')) return;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'pro-sheet-overlay';
+  overlay.className = 'pro-sheet-overlay';
+
+  overlay.innerHTML = `
+    <div class="pro-sheet" id="pro-sheet">
+      <div class="pro-sheet-handle"></div>
+      <div class="pro-sheet-title">選擇 Orbit Pro 方案</div>
+      <div class="pro-sheet-sub">升級後立即生效，隨時可取消</div>
+
+      <div class="pro-sheet-plan pro-sheet-featured" data-plan="yearly">
+        <div class="pro-sheet-plan-badge">省 41%</div>
+        <div class="pro-sheet-plan-info">
+          <div class="pro-sheet-plan-label">年費方案</div>
+          <div class="pro-sheet-plan-price">NT$699<span class="pro-sheet-plan-unit">/年</span></div>
+          <div class="pro-sheet-plan-desc">≈ NT$58/月</div>
+        </div>
+        <button class="pro-sheet-plan-btn pro-sheet-btn-primary" data-plan="yearly">選擇</button>
+      </div>
+
+      <div class="pro-sheet-plan" data-plan="monthly">
+        <div class="pro-sheet-plan-info">
+          <div class="pro-sheet-plan-label">月費方案</div>
+          <div class="pro-sheet-plan-price">NT$99<span class="pro-sheet-plan-unit">/月</span></div>
+          <div class="pro-sheet-plan-desc">隨時取消</div>
+        </div>
+        <button class="pro-sheet-plan-btn pro-sheet-btn-secondary" data-plan="monthly">選擇</button>
+      </div>
+
+      <div class="pro-sheet-plan" data-plan="lifetime">
+        <div class="pro-sheet-plan-info">
+          <div class="pro-sheet-plan-label">終身方案</div>
+          <div class="pro-sheet-plan-price">NT$1,999<span class="pro-sheet-plan-unit"> 一次</span></div>
+          <div class="pro-sheet-plan-desc">永久使用，不再續費</div>
+        </div>
+        <button class="pro-sheet-plan-btn pro-sheet-btn-secondary" data-plan="lifetime">選擇</button>
+      </div>
+
+      <div class="pro-sheet-notice">金流整合即將上線，敬請期待</div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  const close = () => {
+    overlay.classList.add('pro-sheet-overlay-out');
+    document.getElementById('pro-sheet')?.classList.add('pro-sheet-out');
+    setTimeout(() => overlay.remove(), 280);
+  };
+
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  overlay.querySelectorAll('.pro-sheet-plan-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      window.showToast('金流整合即將上線，敬請期待！');
+      close();
+    });
+  });
+}
+
 // ── Main render ──────────────────────────────────────────────────────────────
 export function renderSettings(container) {
   _renderView(container);
@@ -223,21 +397,14 @@ function _renderView(container) {
 
     <!-- Pro subscription -->
     <div class="card pro-card">
-      <div class="pro-badge">規劃中</div>
-      <div class="pro-header">
-        <span class="pro-icon">✨</span>
+      <div class="pro-card-header">
+        <span class="pro-card-icon">✦</span>
         <div>
-          <div class="pro-title">Orbit Pro</div>
-          <div class="pro-sub">解鎖進階功能，支持獨立開發</div>
+          <div class="pro-card-title">Orbit Pro</div>
+          <div class="pro-card-sub">解鎖進階功能，支持獨立開發</div>
         </div>
       </div>
-      <ul class="pro-features">
-        <li>🤖 每日 AI 晨間報告與任務建議</li>
-        <li>🎨 獨家主題與頭貼框</li>
-        <li>📊 進階數據分析與週期報告</li>
-        <li>☁️ 優先雲端同步</li>
-      </ul>
-      <button class="btn pro-cta-btn" disabled>即將推出 — 敬請期待</button>
+      ${_proSectionHtml()}
     </div>
 
     <!-- Account -->
@@ -362,6 +529,35 @@ function _setupListeners(container) {
   // Restart tour
   container.querySelector('#tour-btn')?.addEventListener('click', () => {
     window.startTour();
+  });
+
+  // Feature info buttons → popover
+  const FEAT_DETAILS_LABELS = [
+    { icon: '∞', label: '完整歷史紀錄',
+      detail: '免費版僅保留 30 天紀錄。Pro 永久保留所有打卡與 XP 歷程，讓你看見真實的成長曲線。' },
+    { icon: '🛡️', label: 'Streak Shield',
+      detail: '每月獲得 2 張保護卡。偶爾忘記打卡？用盾牌抵擋中斷，連勝不歸零。' },
+    { icon: '📈', label: 'Habit Heatmap',
+      detail: '完整熱力圖顯示全年每日活躍度。免費版僅 90 天。一眼看出哪幾週你最拼。' },
+    { icon: '📤', label: 'CSV 匯出',
+      detail: '一鍵匯出所有打卡紀錄為 CSV，可匯入 Excel / Notion 做進一步分析，資料永遠是你的。' },
+  ];
+  container.querySelectorAll('.pro-feat-info-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const idx = Number(btn.dataset.feat);
+      const feat = FEAT_DETAILS_LABELS[idx];
+      if (!feat) return;
+      _showFeatPopover(btn, feat);
+    });
+  });
+
+  // Pro anchor + sheet
+  container.querySelector('#pro-subscribe-yearly')?.addEventListener('click', () => {
+    window.showToast('金流整合即將上線，敬請期待！');
+  });
+  container.querySelector('#pro-view-all')?.addEventListener('click', () => {
+    _showProSheet();
   });
 
   // Sign out

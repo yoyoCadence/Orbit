@@ -21,7 +21,7 @@ import { renderLeaderboard }    from './pages/leaderboard.js';
 import { startTour } from './tour.js';
 
 // ─── Version ─────────────────────────────────────────────────────────────────
-export const APP_VERSION = 'v1.7.0';
+export const APP_VERSION = 'v1.8.0';
 
 // Expose tour globally so settings page can call it
 window.startTour = startTour;

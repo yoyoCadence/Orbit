@@ -306,6 +306,320 @@ html.has-bg #app { background: transparent; }
   opacity: .55; cursor: not-allowed;
 }
 
+/* ── Pro card new header ───────────────────────────────────────────────────── */
+.pro-card-header {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+}
+.pro-card-icon { font-size: 28px; color: var(--accent); }
+.pro-card-title { font-size: 18px; font-weight: 800; color: var(--primary-lt); }
+.pro-card-sub   { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+/* ── Active Pro banner ────────────────────────────────────────────────────── */
+.pro-active-banner {
+  display: flex; align-items: center; gap: 12px;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  border-radius: 10px; padding: 12px 14px; margin-bottom: 14px;
+}
+.pro-active-icon { font-size: 22px; color: #fff; }
+.pro-active-title { font-size: 14px; font-weight: 700; color: #fff; }
+.pro-active-sub   { font-size: 11px; color: rgba(255,255,255,0.8); margin-top: 2px; }
+
+/* ── Trial progress ───────────────────────────────────────────────────────── */
+.pro-trial-status { margin-bottom: 14px; }
+.pro-trial-top {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 6px;
+}
+.pro-trial-label { font-size: 12px; color: var(--text-muted); }
+.pro-trial-days  { font-size: 12px; color: var(--accent); }
+.pro-trial-days strong { font-size: 15px; font-weight: 800; }
+.pro-trial-bar-track {
+  height: 5px; background: rgba(255,255,255,0.1); border-radius: 99px; overflow: hidden;
+}
+.pro-trial-bar-fill {
+  height: 100%; border-radius: 99px;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  transition: width 0.4s ease;
+}
+
+/* ── Feature list ─────────────────────────────────────────────────────────── */
+.pro-feats { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.pro-feat-row { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; }
+.pro-feat-icon { font-size: 15px; flex-shrink: 0; width: 20px; text-align: center; }
+.pro-feat-text { color: var(--text); line-height: 1.4; }
+.pro-feat-note { color: var(--text-muted); font-size: 11px; }
+
+/* ── Pricing plans ────────────────────────────────────────────────────────── */
+.pro-plans {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px;
+}
+.pro-plan-card {
+  position: relative;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px; padding: 12px 8px; text-align: center;
+}
+.pro-plan-card.pro-plan-featured {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 15%, transparent);
+}
+.pro-plan-badge {
+  position: absolute; top: -8px; left: 50%; transform: translateX(-50%);
+  background: var(--accent); color: #000;
+  font-size: 9px; font-weight: 800; padding: 2px 7px; border-radius: 99px;
+  white-space: nowrap;
+}
+.pro-plan-label { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+.pro-plan-price { font-size: 16px; font-weight: 800; color: var(--primary-lt); }
+.pro-plan-unit  { font-size: 10px; font-weight: 400; color: var(--text-muted); }
+.pro-plan-desc  { font-size: 10px; color: var(--text-muted); margin: 4px 0 8px; }
+.pro-plan-btn {
+  width: 100%; padding: 6px 0; font-size: 11px; font-weight: 700;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  color: #fff; border: none; border-radius: 6px; cursor: pointer;
+}
+.pro-plan-btn:active { opacity: 0.8; }
+.pro-notice {
+  font-size: 11px; color: var(--text-muted); text-align: center;
+  margin-top: 8px;
+}
+
+/* ── Pro section divider ──────────────────────────────────────────────────── */
+.pro-section-divider {
+  height: 1px;
+  background: rgba(255,255,255,0.07);
+  margin: 14px 0;
+}
+
+/* ── Feature 2×2 grid ─────────────────────────────────────────────────────── */
+.pro-feat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.pro-feat-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--text);
+  background: rgba(255,255,255,0.04);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.pro-feat-item-icon  { font-size: 14px; flex-shrink: 0; }
+.pro-feat-item-label { flex: 1; min-width: 0; }
+.pro-feat-info-btn {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid var(--primary);
+  background: transparent;
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  opacity: 0.8;
+}
+.pro-feat-info-btn:active { opacity: 1; background: rgba(124,58,237,0.2); }
+
+/* Curiosity-gap teaser */
+.pro-feat-teaser {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  margin-bottom: 4px;
+  letter-spacing: 0.2px;
+}
+
+/* ── Feature info popover ─────────────────────────────────────────────────── */
+.pro-feat-popover {
+  position: absolute;
+  width: 240px;
+  background: var(--surface);
+  border: 1px solid rgba(124,58,237,0.4);
+  border-radius: 10px;
+  padding: 12px 14px;
+  z-index: 200;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  animation: proFadeIn 0.15s ease;
+}
+.pro-feat-popover.pro-feat-popover-out {
+  animation: proFadeOut 0.18s ease forwards;
+}
+.pro-feat-pop-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary-lt);
+  margin-bottom: 6px;
+}
+.pro-feat-pop-body {
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.55;
+}
+
+/* ── Anchor: yearly plan (always visible) ─────────────────────────────────── */
+.pro-anchor-plan {
+  background: linear-gradient(135deg, rgba(124,58,237,0.14), rgba(245,158,11,0.07));
+  border: 1px solid var(--primary);
+  border-radius: 12px;
+  padding: 14px;
+  position: relative;
+}
+.pro-anchor-badge {
+  display: inline-block;
+  background: var(--primary);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 99px;
+  margin-bottom: 10px;
+  letter-spacing: 0.4px;
+}
+.pro-anchor-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.pro-anchor-info { flex: 1; min-width: 0; }
+.pro-anchor-label { font-size: 11px; color: var(--text-muted); margin-bottom: 2px; }
+.pro-anchor-price {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--primary-lt);
+  line-height: 1.2;
+}
+.pro-anchor-unit { font-size: 12px; font-weight: 400; color: var(--text-muted); }
+.pro-anchor-desc { font-size: 11px; color: var(--accent); margin-top: 3px; font-weight: 600; }
+.pro-anchor-btn {
+  flex-shrink: 0;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.pro-anchor-btn:active { opacity: 0.85; }
+.pro-view-all-btn {
+  display: block;
+  width: 100%;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 10px;
+  padding: 4px 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.pro-view-all-btn:active { opacity: 0.7; }
+
+/* ── Pro bottom sheet ─────────────────────────────────────────────────────── */
+.pro-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 150;
+  backdrop-filter: blur(3px);
+  animation: proFadeIn 0.2s ease;
+}
+.pro-sheet-overlay.pro-sheet-overlay-out {
+  animation: proFadeOut 0.28s ease forwards;
+}
+@keyframes proFadeIn  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes proFadeOut { from { opacity: 1; } to { opacity: 0; } }
+
+.pro-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border-radius: 20px 20px 0 0;
+  padding: 14px 20px env(safe-area-inset-bottom, 24px);
+  z-index: 151;
+  animation: proSlideUp 0.3s cubic-bezier(0.32,0.72,0,1);
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.pro-sheet.pro-sheet-out {
+  animation: proSlideDown 0.28s cubic-bezier(0.32,0.72,0,1) forwards;
+}
+@keyframes proSlideUp   { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes proSlideDown { from { transform: translateY(0); } to { transform: translateY(100%); } }
+
+.pro-sheet-handle {
+  width: 36px;
+  height: 4px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 99px;
+  margin: 0 auto 16px;
+}
+.pro-sheet-title { font-size: 16px; font-weight: 800; color: var(--primary-lt); margin-bottom: 2px; }
+.pro-sheet-sub   { font-size: 12px; color: var(--text-muted); margin-bottom: 14px; }
+
+.pro-sheet-plan {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  position: relative;
+}
+.pro-sheet-featured {
+  border-color: var(--primary);
+  background: rgba(124,58,237,0.09);
+}
+.pro-sheet-plan-badge {
+  position: absolute;
+  top: -8px;
+  right: 12px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 99px;
+}
+.pro-sheet-plan-info { flex: 1; min-width: 0; }
+.pro-sheet-plan-label { font-size: 11px; color: var(--text-muted); margin-bottom: 2px; }
+.pro-sheet-plan-price {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--primary-lt);
+  line-height: 1.2;
+}
+.pro-sheet-plan-unit  { font-size: 11px; font-weight: 400; color: var(--text-muted); }
+.pro-sheet-plan-desc  { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.pro-sheet-plan-btn   {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+}
+.pro-sheet-btn-primary  { background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; }
+.pro-sheet-btn-secondary { background: rgba(255,255,255,0.08); color: var(--text); }
+.pro-sheet-plan-btn:active { opacity: 0.8; }
+.pro-sheet-notice { font-size: 11px; color: var(--text-muted); text-align: center; margin-top: 10px; padding-bottom: 8px; }
+
 /* ══════════════════════════════════════════════════════════════
    ACCOUNT CARD (settings)
 ══════════════════════════════════════════════════════════════ */
