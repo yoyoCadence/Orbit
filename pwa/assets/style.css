@@ -1108,6 +1108,146 @@ nav {
 }
 .history-lock-btn:active { opacity: 0.85; }
 
+/* ── Streak Shield banner ─────────────────────────────────────────────────── */
+.stat-pill-shield-wrap {
+  display: flex; align-items: center; gap: 2px; margin-left: 2px;
+}
+.stat-pill-shield {
+  font-size: 10px; color: #fbbf24; line-height: 1;
+}
+.stat-pill-shield-locked {
+  color: var(--text-muted);
+}
+.stat-pill-shield-info {
+  font-size: 9px; line-height: 1;
+  width: 14px; height: 14px;
+  border-radius: 50%; border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.06);
+  color: var(--text-muted);
+  cursor: pointer; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.shield-info-popover {
+  background: #1e2030;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 12px;
+  padding: 12px 14px;
+  min-width: 180px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.7);
+}
+.shield-info-title {
+  font-size: 13px; font-weight: 700; color: #fbbf24; margin-bottom: 6px;
+}
+.shield-info-body {
+  font-size: 12px; color: var(--text-muted); margin-bottom: 4px; line-height: 1.5;
+}
+.shield-info-pro {
+  font-size: 11px; color: var(--primary); margin-top: 6px; font-weight: 600;
+}
+
+.streak-shield-row {
+  display: flex; align-items: center; gap: 6px;
+  margin-top: 8px;
+}
+.streak-shield-row .stat-pill-shield {
+  font-size: 13px;
+}
+
+.pro-card-highlight {
+  animation: pro-card-glow 1.8s ease-out;
+}
+@keyframes pro-card-glow {
+  0%   { box-shadow: 0 0 0 0 rgba(99,102,241,0.6); }
+  30%  { box-shadow: 0 0 0 10px rgba(99,102,241,0.25); }
+  100% { box-shadow: 0 0 0 0 rgba(99,102,241,0); }
+}
+
+.shield-pill-pending {
+  cursor: pointer;
+  animation: shield-pulse 1.8s ease-in-out infinite;
+}
+@keyframes shield-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+
+/* ── Shield confirm dialog ───────────────────────────────────────────────── */
+.shield-confirm-overlay {
+  position: fixed; inset: 0; z-index: 9998;
+  background: rgba(0,0,0,0.55);
+  display: flex; align-items: center; justify-content: center;
+}
+.shield-confirm-box {
+  background: #1e2030;
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 16px;
+  padding: 20px;
+  width: min(320px, 88vw);
+  text-align: center;
+}
+.shield-confirm-title {
+  font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 6px;
+}
+.shield-confirm-sub {
+  font-size: 12px; color: var(--text-muted); margin-bottom: 18px;
+}
+.shield-confirm-btns { display: flex; gap: 10px; }
+.shield-confirm-cancel {
+  flex: 1; padding: 11px;
+  background: rgba(255,255,255,0.07);
+  color: var(--text); border: none; border-radius: 10px;
+  font-size: 14px; cursor: pointer;
+}
+.shield-confirm-ok {
+  flex: 1; padding: 11px;
+  background: rgba(239,68,68,0.2);
+  color: #f87171; border: 1px solid rgba(239,68,68,0.3);
+  border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer;
+}
+
+.shield-banner {
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 4px;
+  background: linear-gradient(135deg, rgba(251,191,36,0.10), rgba(245,158,11,0.06));
+  animation: shield-banner-enter 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both,
+             shield-banner-glow 1.2s ease-out 0.4s;
+}
+@keyframes shield-banner-enter {
+  from { opacity: 0; transform: translateY(-14px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes shield-banner-glow {
+  0%   { box-shadow: 0 0 0 0 rgba(251,191,36,0.5); }
+  50%  { box-shadow: 0 0 0 8px rgba(251,191,36,0.15); }
+  100% { box-shadow: 0 0 0 0 rgba(251,191,36,0); }
+}
+.shield-banner-top {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 12px;
+}
+.shield-banner-icon { font-size: 28px; flex-shrink: 0; }
+.shield-banner-title {
+  font-size: 15px; font-weight: 700; color: #fbbf24; margin-bottom: 2px;
+}
+.shield-banner-sub { font-size: 12px; color: var(--text-muted); }
+.shield-banner-btns { display: flex; gap: 8px; }
+.shield-use-btn {
+  flex: 1;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff; border: none; border-radius: 10px;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+}
+.shield-use-btn:active { opacity: 0.85; }
+.shield-skip-btn {
+  padding: 10px 16px;
+  background: rgba(255,255,255,0.06);
+  color: var(--text-muted); border: none; border-radius: 10px;
+  font-size: 13px; cursor: pointer;
+}
+.shield-skip-btn:active { opacity: 0.7; }
+
 /* ══════════════════════════════════════════════════════════════
    PROFILE
 ══════════════════════════════════════════════════════════════ */

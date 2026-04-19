@@ -28,7 +28,9 @@ const mockState = vi.hoisted(() => ({
 }));
 
 const mockStorage = vi.hoisted(() => ({
-  saveUser: vi.fn(),
+  saveUser:    vi.fn(),
+  isProUser:   vi.fn(() => false),
+  isTrialUser: vi.fn(() => false),
 }));
 
 // Prevent CDN import failure in Node

@@ -78,7 +78,7 @@ export function renderGoals(container) {
           <div class="history-lock-desc">免費版顯示近 ${FREE_DAYS} 天 · 升級後立即完整呈現</div>
         </div>
       </div>
-      <button class="history-lock-btn" onclick="window.navigate('settings')">查看 Pro 方案 →</button>
+      <button class="history-lock-btn" onclick="sessionStorage.setItem('orbit_pro_highlight','1'); window.navigate('settings'); setTimeout(() => window._scrollToProCard?.(), 300)">查看 Pro 方案 →</button>
     </div>
   ` : '';
 

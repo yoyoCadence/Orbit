@@ -1,6 +1,7 @@
 import { state }              from '../state.js';
 import { effectiveToday, formatTime } from '../utils.js';
 import { calcDailyStats, reorderTasks } from '../engine.js';
+import { storage } from '../storage.js';
 
 // ─── Value / impactType labels ────────────────────────────────────────────────
 
@@ -52,6 +53,28 @@ export function renderHome(container) {
     ? `<span class="streak-ok">今日有效 🔥</span>`
     : `<span class="streak-warn">未達有效日 (${effectiveParts.join(' ')})</span>`;
 
+  // Streak shield banner
+  const shieldPending = (() => {
+    try { return JSON.parse(localStorage.getItem('orbit_shield_pending') || 'null'); }
+    catch { return null; }
+  })();
+  const shieldDismissed = sessionStorage.getItem('orbit_shield_dismissed') === '1';
+  const shieldBanner = (shieldPending && !shieldDismissed) ? `
+    <div class="shield-banner">
+      <div class="shield-banner-top">
+        <span class="shield-banner-icon">🛡</span>
+        <div>
+          <div class="shield-banner-title">連勝中斷了！</div>
+          <div class="shield-banner-sub">${shieldPending.prevStreak} 天連勝 · 剩 ${state.user?.streakShieldCount ?? 0} 張保護卡</div>
+        </div>
+      </div>
+      <div class="shield-banner-btns">
+        <button class="shield-use-btn" onclick="useStreakShield()">使用保護卡恢復 🛡</button>
+        <button class="shield-skip-btn" onclick="dismissStreakShield()">放棄</button>
+      </div>
+    </div>
+  ` : '';
+
   // Stats bar
   const energyPct   = Math.round((energy.currentEnergy / energy.maxEnergy) * 100);
   const energyClass = energyPct >= 60 ? 'energy-high' : energyPct >= 30 ? 'energy-mid' : 'energy-low';
@@ -67,6 +90,10 @@ export function renderHome(container) {
         <span class="stat-pill-icon">🔥</span>
         <span class="stat-pill-val">${state.user?.streakDays || 0}</span>
         <span class="stat-pill-lbl">連勝</span>
+        <span class="stat-pill-shield-wrap ${shieldPending ? 'shield-pill-pending' : ''}"
+              ${shieldPending ? 'onclick="reshowShieldBanner()" title="點擊重新使用保護卡"' : ''}>
+          <span class="stat-pill-shield ${storage.isProUser() ? '' : 'stat-pill-shield-locked'}">🛡${state.user?.streakShieldCount ?? 0}</span><button class="stat-pill-shield-info" onclick="event.stopPropagation();showShieldInfo(this)" aria-label="保護卡說明">?</button>
+        </span>
       </div>
       <div class="stat-pill ${energyClass}">
         <span class="stat-pill-icon">⚡</span>
@@ -100,6 +127,8 @@ export function renderHome(container) {
 
   container.innerHTML = `
     <div class="date-badge">📅 ${dateLabel}</div>
+
+    ${shieldBanner}
 
     ${statsBar}
 
@@ -232,6 +261,14 @@ export function renderHome(container) {
   _setupDragAndDrop(container);
   _setupPlanDragAndDrop(container);
   _setupCardSwipe(container);
+
+  // Scroll to top when redirected from profile shield button
+  if (sessionStorage.getItem('orbit_shield_scroll_top') === '1') {
+    sessionStorage.removeItem('orbit_shield_scroll_top');
+    requestAnimationFrame(() => {
+      document.getElementById('content')?.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
 }
 
 // ─── Plan card HTML ───────────────────────────────────────────────────────────

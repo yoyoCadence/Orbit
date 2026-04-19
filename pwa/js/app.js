@@ -181,6 +181,13 @@ function processYesterdayStreak() {
   const todayStr = _eToday();
   if (state.user.lastStreakDate === todayStr) return;   // already processed today
 
+  // Monthly reset of streak shields (Pro only)
+  const currentMonth = todayStr.slice(0, 7);
+  if (storage.isProUser() && (state.user.streakShieldResetMonth || '') !== currentMonth) {
+    state.user.streakShieldCount = 2;
+    state.user.streakShieldResetMonth = currentMonth;
+  }
+
   const d = new Date();
   if (d.getHours() < (state.user.newDayHour ?? 5)) d.setDate(d.getDate() - 1);
   const yesterday = new Date(d);
@@ -192,13 +199,80 @@ function processYesterdayStreak() {
     const stats = calcDailyStats(state.sessions, yStr);
     state.user.streakDays = processStreakForDate(state.user.streakDays || 0, stats.isEffectiveDay);
   } else if (state.user.lastStreakDate && state.user.lastStreakDate < yStr) {
-    // Missed a day(s) — streak resets to 0
+    // Missed a day(s) — streak resets to 0; offer shield to Pro users
+    const prevStreak = state.user.streakDays || 0;
     state.user.streakDays = 0;
+    if (storage.isProUser() && (state.user.streakShieldCount || 0) > 0 && prevStreak >= 2) {
+      localStorage.setItem('orbit_shield_pending', JSON.stringify({ prevStreak }));
+    }
   }
 
   state.user.lastStreakDate = todayStr;
   storage.saveUser(state.user);
 }
+
+// ─── Streak Shield ────────────────────────────────────────────────────────────
+
+window.useStreakShield = function () {
+  const raw = localStorage.getItem('orbit_shield_pending');
+  if (!raw || !state.user) return;
+  const { prevStreak } = JSON.parse(raw);
+  state.user.streakDays = prevStreak;
+  state.user.streakShieldCount = Math.max(0, (state.user.streakShieldCount || 0) - 1);
+  localStorage.removeItem('orbit_shield_pending');
+  sessionStorage.removeItem('orbit_shield_dismissed');
+  storage.saveUser(state.user);
+  db.upsertProfile(state.user);
+  renderPage(currentHash());
+  showToast(`🛡 保護卡使用成功！連勝紀錄維持 ${prevStreak} 天 🔥`);
+};
+
+window.dismissStreakShield = function () {
+  // Show custom confirm —放棄後 pending 仍保留，讓使用者可從 🛡 pill 重新使用
+  const overlay = document.createElement('div');
+  overlay.className = 'shield-confirm-overlay';
+  overlay.innerHTML = `
+    <div class="shield-confirm-box">
+      <div class="shield-confirm-title">確定放棄保護卡？</div>
+      <div class="shield-confirm-sub">放棄後仍可點連勝區的 🛡 重新使用</div>
+      <div class="shield-confirm-btns">
+        <button class="shield-confirm-cancel" onclick="this.closest('.shield-confirm-overlay').remove()">取消</button>
+        <button class="shield-confirm-ok" id="shield-confirm-ok-btn">確定放棄</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#shield-confirm-ok-btn').onclick = () => {
+    overlay.remove();
+    sessionStorage.setItem('orbit_shield_dismissed', '1');
+    renderPage(currentHash());
+  };
+};
+
+window.reshowShieldBanner = function () {
+  sessionStorage.removeItem('orbit_shield_dismissed');
+  sessionStorage.setItem('orbit_shield_scroll_top', '1');
+  window.navigate('home');
+};
+
+window.showShieldInfo = function (anchor) {
+  document.querySelectorAll('.shield-info-popover').forEach(el => el.remove());
+  const isPro = storage.isProUser();
+  const pop = document.createElement('div');
+  pop.className = 'shield-info-popover';
+  pop.innerHTML = `
+    <div class="shield-info-title">🛡 連勝保護卡</div>
+    <div class="shield-info-body">連勝中斷時可消耗 1 張，<br>恢復中斷前的天數。</div>
+    <div class="shield-info-body">每月自動重置為 2 張。</div>
+    <div class="shield-info-pro">✦ Pro 專屬功能</div>
+  `;
+  const rect = anchor.getBoundingClientRect();
+  pop.style.cssText = `position:fixed;top:${rect.bottom + 6}px;left:${Math.max(8, rect.left - 100)}px;z-index:9999`;
+  document.body.appendChild(pop);
+  setTimeout(() => document.addEventListener('click', function h() {
+    pop.remove(); document.removeEventListener('click', h);
+  }), 10);
+};
 
 // ─── Instant task completion ─────────────────────────────────────────────────
 

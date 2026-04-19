@@ -256,7 +256,7 @@ function buildMonthView() {
             <div class="history-lock-desc">免費版可查看近 ${FREE_MONTHS} 個月 · Pro 無限歷史</div>
           </div>
         </div>
-        <button class="history-lock-btn" onclick="window.navigate('settings')">查看 Pro 方案 →</button>
+        <button class="history-lock-btn" onclick="sessionStorage.setItem('orbit_pro_highlight','1'); window.navigate('settings'); setTimeout(() => window._scrollToProCard?.(), 300)">查看 Pro 方案 →</button>
       </div>
     `;
   }

@@ -396,7 +396,7 @@ function _renderView(container) {
     </div>
 
     <!-- Pro subscription -->
-    <div class="card pro-card">
+    <div class="card pro-card" id="pro-card">
       <div class="pro-card-header">
         <span class="pro-card-icon">✦</span>
         <div>
@@ -559,6 +559,18 @@ function _setupListeners(container) {
   container.querySelector('#pro-view-all')?.addEventListener('click', () => {
     _showProSheet();
   });
+
+  // Expose so other pages (goals, review) can scroll to Pro section after navigating here
+  window._scrollToProCard = () => {
+    const card = document.getElementById('pro-card');
+    if (!card) return;
+    document.getElementById('content')?.scrollTo({ top: card.offsetTop - 16, behavior: 'smooth' });
+    if (sessionStorage.getItem('orbit_pro_highlight') === '1') {
+      sessionStorage.removeItem('orbit_pro_highlight');
+      card.classList.add('pro-card-highlight');
+      setTimeout(() => card.classList.remove('pro-card-highlight'), 1800);
+    }
+  };
 
   // Sign out
   container.querySelector('#signout-btn')?.addEventListener('click', () => {
