@@ -856,7 +856,8 @@ window.closeLevelUp = function () {
 };
 
 window.signOut = async function () {
-  await authSignOut();   // triggers SIGNED_OUT → handleSignOut
+  try { await authSignOut(); } catch (e) { console.error('signOut error:', e); }
+  handleSignOut();
 };
 
 window.deleteSession = function (sessionId) {
@@ -1193,6 +1194,7 @@ async function loadAndStart(session) {
 }
 
 function handleSignOut() {
+  if (!_currentSession && !storage.getUser()) return; // already signed out
   _currentSession   = null;
   _isGuest          = false;
   _loginListenerSet = false;
