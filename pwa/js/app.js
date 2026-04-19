@@ -251,10 +251,8 @@ window.dismissStreakShield = function () {
 
 window.reshowShieldBanner = function () {
   sessionStorage.removeItem('orbit_shield_dismissed');
+  sessionStorage.setItem('orbit_shield_scroll_top', '1');
   window.navigate('home');
-  setTimeout(() => {
-    document.getElementById('app')?.scrollTo({ top: 0, behavior: 'smooth' });
-  }, 80);
 };
 
 window.showShieldInfo = function (anchor) {

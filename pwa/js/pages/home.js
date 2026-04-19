@@ -261,6 +261,14 @@ export function renderHome(container) {
   _setupDragAndDrop(container);
   _setupPlanDragAndDrop(container);
   _setupCardSwipe(container);
+
+  // Scroll to top when redirected from profile shield button
+  if (sessionStorage.getItem('orbit_shield_scroll_top') === '1') {
+    sessionStorage.removeItem('orbit_shield_scroll_top');
+    requestAnimationFrame(() => {
+      document.getElementById('app')?.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
 }
 
 // ─── Plan card HTML ───────────────────────────────────────────────────────────
