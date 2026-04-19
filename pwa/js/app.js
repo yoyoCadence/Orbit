@@ -1217,6 +1217,14 @@ function handleSignOut() {
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
+// Fix Chrome viewport: window.innerHeight always equals the real visible height,
+// unlike 100dvh which Chrome calculates including the collapsible address bar.
+function _syncAppHeight() {
+  document.documentElement.style.setProperty('--app-height', window.innerHeight + 'px');
+}
+_syncAppHeight();
+window.addEventListener('resize', _syncAppHeight);
+
 async function init() {
   migrateV1toV2(today());
   migrateDefaultFlags();         // tag pre-existing default tasks with isDefault:true
