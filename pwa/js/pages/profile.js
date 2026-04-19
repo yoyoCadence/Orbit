@@ -124,6 +124,11 @@ export function renderProfile(container) {
         <div class="streak-big">${streakDays} ${streakLabel}</div>
         <div class="streak-lbl">連勝天數</div>
         <div class="streak-hint">連勝 XP 加成：×${(1 + 0.02 * Math.floor(streakDays / 5)).toFixed(2).replace(/\.?0+$/, '')}</div>
+        <div class="streak-shield-row ${(() => { try { return localStorage.getItem('orbit_shield_pending') ? 'shield-pill-pending' : ''; } catch { return ''; } })()}"
+             onclick="${(() => { try { return localStorage.getItem('orbit_shield_pending') ? 'reshowShieldBanner()' : ''; } catch { return ''; } })()}">
+          <span class="stat-pill-shield ${storage.isProUser() ? '' : 'stat-pill-shield-locked'}">🛡 ${user.streakShieldCount ?? 0} 張保護卡</span>
+          <button class="stat-pill-shield-info" onclick="event.stopPropagation();showShieldInfo(this)" aria-label="保護卡說明">?</button>
+        </div>
       </div>
     </div>
 

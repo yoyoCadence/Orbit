@@ -1145,6 +1145,14 @@ nav {
   font-size: 11px; color: var(--primary); margin-top: 6px; font-weight: 600;
 }
 
+.streak-shield-row {
+  display: flex; align-items: center; gap: 6px;
+  margin-top: 8px;
+}
+.streak-shield-row .stat-pill-shield {
+  font-size: 13px;
+}
+
 .shield-pill-pending {
   cursor: pointer;
   animation: shield-pulse 1.8s ease-in-out infinite;
