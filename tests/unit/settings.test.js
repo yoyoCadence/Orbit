@@ -139,6 +139,33 @@ describe('renderSettings: theme grid', () => {
     card.click();
     expect(mockApplyTheme).toHaveBeenCalledWith('emerald');
   });
+
+  it('locks non-free themes for free users', () => {
+    mockStorage.isProUser.mockReturnValue(false);
+    mockStorage.isTrialUser.mockReturnValue(false);
+    const c = makeContainer();
+    renderSettings(c);
+    expect(c.querySelector('[data-theme-id="light"][data-locked]')).not.toBeNull();
+    expect(c.querySelector('[data-theme-id="wabi"][data-locked]')).not.toBeNull();
+    expect(c.querySelector('[data-theme-id="emerald"][data-locked]')).toBeNull();
+  });
+
+  it('locked theme cards do not call applyTheme when clicked', () => {
+    mockStorage.isProUser.mockReturnValue(false);
+    mockStorage.isTrialUser.mockReturnValue(false);
+    const c = makeContainer();
+    renderSettings(c);
+    const locked = c.querySelector('[data-theme-id="github"][data-locked]');
+    locked.click();
+    expect(mockApplyTheme).not.toHaveBeenCalled();
+  });
+
+  it('Pro user sees all themes unlocked', () => {
+    mockStorage.isProUser.mockReturnValue(true);
+    const c = makeContainer();
+    renderSettings(c);
+    expect(c.querySelector('[data-locked]')).toBeNull();
+  });
 });
 
 describe('renderSettings: mode toggle', () => {
@@ -274,15 +301,27 @@ describe('renderSettings: sign out button', () => {
 });
 
 describe('renderSettings: random theme toggle', () => {
-  it('toggle is checked when getRandomThemeEnabled returns true', () => {
+  it('shows lock button (not toggle) for free users', () => {
+    mockStorage.isProUser.mockReturnValue(false);
+    mockStorage.isTrialUser.mockReturnValue(false);
+    const c = makeContainer();
+    renderSettings(c);
+    expect(c.querySelector('#random-theme-toggle')).toBeNull();
+    expect(c.querySelector('#random-theme-lock')).not.toBeNull();
+  });
+
+  it('toggle is checked when Pro user has getRandomThemeEnabled true', () => {
+    mockStorage.isProUser.mockReturnValue(true);
     mockStorage.getRandomThemeEnabled.mockReturnValue(true);
     const c = makeContainer();
     renderSettings(c);
     const toggle = c.querySelector('#random-theme-toggle');
+    expect(toggle).not.toBeNull();
     expect(toggle.checked).toBe(true);
   });
 
   it('turning ON calls saveRandomThemeEnabled(true), saveRandomThemeDate(""), and applyRandomThemeForToday()', () => {
+    mockStorage.isProUser.mockReturnValue(true);
     mockStorage.getRandomThemeEnabled.mockReturnValue(false);
     const c = makeContainer();
     renderSettings(c);
@@ -295,6 +334,7 @@ describe('renderSettings: random theme toggle', () => {
   });
 
   it('turning OFF calls saveRandomThemeEnabled(false) and does not call applyRandomThemeForToday()', () => {
+    mockStorage.isProUser.mockReturnValue(true);
     mockStorage.getRandomThemeEnabled.mockReturnValue(true);
     const c = makeContainer();
     renderSettings(c);

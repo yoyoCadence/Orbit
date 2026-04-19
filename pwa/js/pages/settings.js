@@ -236,7 +236,28 @@ export function renderSettings(container) {
   _renderView(container);
 }
 
-function _themeCardHtml(t, currentTheme) {
+function _goToProCard() {
+  sessionStorage.setItem('orbit_pro_highlight', '1');
+  setTimeout(() => window._scrollToProCard?.(), 50);
+}
+
+function _themeCardHtml(t, currentTheme, locked = false) {
+  if (locked) {
+    return `
+    <div class="theme-card theme-card--locked" data-theme-id="${t.id}" data-locked="true">
+      <div class="theme-preview">
+        <div class="tp-bg" style="background:${t.colors[2]}">
+          <div class="tp-surface">
+            <div class="tp-primary" style="background:${t.colors[0]}"></div>
+            <div class="tp-accent"  style="background:${t.colors[1]}"></div>
+          </div>
+        </div>
+        <div class="theme-lock-overlay"><span class="theme-lock-badge">✦ Pro</span></div>
+      </div>
+      <div class="theme-name">${t.icon} ${t.name}</div>
+    </div>
+  `;
+  }
   return `
     <div class="theme-card ${t.id === currentTheme ? 'active' : ''}" data-theme-id="${t.id}">
       <div class="theme-preview">
@@ -258,9 +279,11 @@ function _renderView(container) {
   const randomThemeEnabled    = storage.getRandomThemeEnabled();
   const hasBg = !!storage.getBgImage();
 
-  const themeGrid         = THEMES.map(t => _themeCardHtml(t, currentTheme)).join('');
-  const themeGridNew      = THEMES_NEW.map(t => _themeCardHtml(t, currentTheme)).join('');
-  const themeGridCreative = THEMES_CREATIVE.map(t => _themeCardHtml(t, currentTheme)).join('');
+  const isPro             = storage.isProUser() || storage.isTrialUser();
+  const FREE_IDS          = new Set(['dark-purple', 'aurora-blue', 'emerald', 'flame', 'neon-pink']);
+  const themeGrid         = THEMES.map(t => _themeCardHtml(t, currentTheme, !isPro && !FREE_IDS.has(t.id))).join('');
+  const themeGridNew      = THEMES_NEW.map(t => _themeCardHtml(t, currentTheme, !isPro)).join('');
+  const themeGridCreative = THEMES_CREATIVE.map(t => _themeCardHtml(t, currentTheme, !isPro)).join('');
 
   const isAdvanced = state.user?.mode === 'advanced';
   const tasksHtml = state.tasks.length
@@ -298,13 +321,16 @@ function _renderView(container) {
       <div class="card-title">🎨 App 主題</div>
       <div class="mode-row" style="margin-bottom:14px">
         <div class="mode-info">
-          <div class="mode-name">每日隨機主題</div>
+          <div class="mode-name">每日隨機主題${!isPro ? ' <span class="theme-lock-badge" style="vertical-align:middle;margin-left:4px">✦ Pro</span>' : ''}</div>
           <div class="mode-desc">每天自動套用一個隨機主題</div>
         </div>
-        <label class="toggle-switch">
-          <input type="checkbox" id="random-theme-toggle" ${randomThemeEnabled ? 'checked' : ''}>
-          <span class="toggle-slider"></span>
-        </label>
+        ${isPro
+          ? `<label class="toggle-switch">
+               <input type="checkbox" id="random-theme-toggle" ${randomThemeEnabled ? 'checked' : ''}>
+               <span class="toggle-slider"></span>
+             </label>`
+          : `<button class="theme-toggle-lock" id="random-theme-lock" aria-label="升級 Pro 解鎖">🔒</button>`
+        }
       </div>
       <div class="theme-section-label">經典主題</div>
       <div class="theme-grid">${themeGrid}</div>
@@ -442,12 +468,16 @@ function _setupListeners(container) {
   });
 
   // Theme
-  container.querySelectorAll('.theme-card').forEach(card => {
+  container.querySelectorAll('.theme-card:not([data-locked])').forEach(card => {
     card.addEventListener('click', () => {
       applyTheme(card.dataset.themeId);
       _renderView(container);
     });
   });
+  container.querySelectorAll('.theme-card[data-locked]').forEach(card => {
+    card.addEventListener('click', _goToProCard);
+  });
+  container.querySelector('#random-theme-lock')?.addEventListener('click', _goToProCard);
 
   // Background
   container.querySelector('#bg-upload-btn')?.addEventListener('click', () => {

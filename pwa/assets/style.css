@@ -1392,6 +1392,23 @@ nav {
   position: absolute; top: 5px; right: 7px;
   color: var(--primary-lt); font-size: 14px; font-weight: 700;
 }
+.theme-card--locked { opacity: 0.65; }
+.theme-card--locked:active { transform: scale(0.97); }
+.theme-lock-overlay {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.38); border-radius: 8px;
+}
+.theme-lock-badge {
+  font-size: 10px; font-weight: 700; color: #fff;
+  background: var(--primary); padding: 2px 7px;
+  border-radius: 99px; letter-spacing: .3px;
+}
+.theme-toggle-lock {
+  background: none; border: none; font-size: 18px;
+  cursor: pointer; padding: 4px; line-height: 1;
+  color: var(--text-muted);
+}
 
 /* ══════════════════════════════════════════════════════════════
    SETTINGS — BACKGROUND

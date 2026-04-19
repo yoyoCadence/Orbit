@@ -21,7 +21,7 @@ import { renderLeaderboard }    from './pages/leaderboard.js';
 import { startTour } from './tour.js';
 
 // ─── Version ─────────────────────────────────────────────────────────────────
-export const APP_VERSION = 'v1.8.0';
+export const APP_VERSION = 'v1.9.0';
 
 // Expose tour globally so settings page can call it
 window.startTour = startTour;
@@ -257,7 +257,6 @@ window.reshowShieldBanner = function () {
 
 window.showShieldInfo = function (anchor) {
   document.querySelectorAll('.shield-info-popover').forEach(el => el.remove());
-  const isPro = storage.isProUser();
   const pop = document.createElement('div');
   pop.className = 'shield-info-popover';
   pop.innerHTML = `
@@ -1091,9 +1090,10 @@ export function applyTheme(themeId) {
   storage.saveTheme(themeId);
 }
 
-/** Pick and apply a random theme for today, but only once per calendar day. */
+/** Pick and apply a random theme for today, but only once per calendar day. Pro only. */
 export function applyRandomThemeForToday() {
   if (!storage.getRandomThemeEnabled()) return;
+  if (!storage.isProUser() && !storage.isTrialUser()) return;
   const todayStr = today();
   if (storage.getRandomThemeDate() === todayStr) return; // already applied today
   const id = _ALL_THEME_IDS[Math.floor(Math.random() * _ALL_THEME_IDS.length)];
