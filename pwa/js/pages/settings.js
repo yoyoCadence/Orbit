@@ -562,7 +562,14 @@ function _setupListeners(container) {
 
   // Expose so other pages (goals, review) can scroll to Pro section after navigating here
   window._scrollToProCard = () => {
-    document.getElementById('pro-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const card = document.getElementById('pro-card');
+    if (!card) return;
+    document.getElementById('content')?.scrollTo({ top: card.offsetTop - 16, behavior: 'smooth' });
+    if (sessionStorage.getItem('orbit_pro_highlight') === '1') {
+      sessionStorage.removeItem('orbit_pro_highlight');
+      card.classList.add('pro-card-highlight');
+      setTimeout(() => card.classList.remove('pro-card-highlight'), 1800);
+    }
   };
 
   // Sign out
