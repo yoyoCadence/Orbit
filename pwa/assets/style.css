@@ -252,6 +252,7 @@ body {
   max-width: 430px;
   margin: 0 auto;
   height: 100dvh;
+  height: var(--app-height, 100dvh);
   display: flex;
   flex-direction: column;
   position: relative;
