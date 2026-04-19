@@ -449,6 +449,10 @@ html.has-bg #app { background: transparent; }
   margin-bottom: 4px;
   letter-spacing: 0.2px;
 }
+.pro-feat-teaser--active {
+  color: rgba(251, 191, 36, 0.8);
+  margin-top: 10px;
+}
 
 /* ── Feature info popover ─────────────────────────────────────────────────── */
 .pro-feat-popover {
