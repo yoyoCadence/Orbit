@@ -266,7 +266,7 @@ export function renderHome(container) {
   if (sessionStorage.getItem('orbit_shield_scroll_top') === '1') {
     sessionStorage.removeItem('orbit_shield_scroll_top');
     requestAnimationFrame(() => {
-      document.getElementById('app')?.scrollTo({ top: 0, behavior: 'smooth' });
+      document.getElementById('content')?.scrollTo({ top: 0, behavior: 'smooth' });
     });
   }
 }
