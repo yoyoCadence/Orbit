@@ -5,6 +5,15 @@
 
 ---
 
+## [v1.7.0] — 2026-04-19
+
+### 新增
+- **15 天免費試用流程（SUB-02）**：新用戶首次登入後自動開啟 Pro 試用，`trial_started_at` 寫入 `profiles`；`is_pro=true`、`pro_expires_at=now+15d` 同步設定
+- **試用提醒 banner**：試用剩餘 5 天以內（第 10 天起）在頂部顯示軟提醒 banner，可一鍵點擊升級或當日關閉（不重複打擾）
+- `storage.isTrialUser()` / `storage.getTrialDaysRemaining()` 試用狀態 helper
+
+---
+
 ## [v1.6.0] — 2026-04-19
 
 ### 新增

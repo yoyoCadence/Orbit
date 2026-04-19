@@ -203,6 +203,25 @@ export const db = {
     await supabase.from('sessions').delete().eq('id', id);
   },
 
+  async startTrial(userId) {
+    const session = await this._session();
+    if (!session) return;
+    const now    = new Date().toISOString();
+    const expiry = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString();
+    await supabase.from('profiles').update({
+      is_pro:           true,
+      pro_expires_at:   expiry,
+      trial_started_at: now,
+    }).eq('user_id', userId);
+    const user = get('user');
+    if (user) {
+      user.isPro          = true;
+      user.proExpiresAt   = expiry;
+      user.trialStartedAt = now;
+      set('user', user);
+    }
+  },
+
   async upsertEnergy(energy) {
     const session = await this._session();
     if (!session) return;
@@ -254,7 +273,7 @@ export const storage = {
   getGoals:   ()  => get('goals') ?? [],
   getLogs:    ()  => get('logs')  ?? [],
 
-  // ── Pro status (read from local cache, written by loadFromRemote) ───────────
+  // ── Pro / Trial status ───────────────────────────────────────────────────────
   isProUser: () => {
     const user = get('user');
     if (!user || !user.isPro) return false;
@@ -262,6 +281,20 @@ export const storage = {
     return new Date(user.proExpiresAt) > new Date();
   },
   getProExpiry: () => get('user')?.proExpiresAt || null,
+  isTrialUser: () => {
+    const user = get('user');
+    if (!user?.trialStartedAt) return false;
+    const end = new Date(user.trialStartedAt).getTime() + 15 * 24 * 60 * 60 * 1000;
+    return Date.now() < end;
+  },
+  getTrialDaysRemaining: () => {
+    const user = get('user');
+    if (!user?.trialStartedAt) return 0;
+    const end = new Date(user.trialStartedAt).getTime() + 15 * 24 * 60 * 60 * 1000;
+    return Math.max(0, Math.ceil((end - Date.now()) / (24 * 60 * 60 * 1000)));
+  },
+  getTrialBannerDismissDate:  ()  => get('trialBannerDismiss') || '',
+  saveTrialBannerDismissDate: (d) => set('trialBannerDismiss', d),
 
   // ── Theme / Background (local only) ──────────────────────────────────────────
   getTheme:    ()  => get('theme') || 'dark-purple',
@@ -289,7 +322,7 @@ export const storage = {
 
   // ── Clear all local data (on sign-out) ────────────────────────────────────────
   clearAll: () => {
-    ['user','tasks','sessions','energy','goals','logs','theme','bgImage','dailyPlan']
+    ['user','tasks','sessions','energy','goals','logs','theme','bgImage','dailyPlan','trialBannerDismiss']
       .forEach(k => localStorage.removeItem(PREFIX + k));
   },
 };

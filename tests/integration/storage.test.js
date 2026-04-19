@@ -824,3 +824,61 @@ describe('storage.getProExpiry()', () => {
     expect(storage.getProExpiry()).toBe(expiry);
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// storage.isTrialUser() / storage.getTrialDaysRemaining()
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('storage.isTrialUser()', () => {
+  beforeEach(() => localStorage.clear());
+
+  it('returns false when no user stored', () => {
+    expect(storage.isTrialUser()).toBe(false);
+  });
+
+  it('returns false when trialStartedAt is null', () => {
+    localStorage.setItem('yoyo_user', JSON.stringify({ trialStartedAt: null }));
+    expect(storage.isTrialUser()).toBe(false);
+  });
+
+  it('returns true when trial started recently (day 1)', () => {
+    const now = new Date().toISOString();
+    localStorage.setItem('yoyo_user', JSON.stringify({ trialStartedAt: now }));
+    expect(storage.isTrialUser()).toBe(true);
+  });
+
+  it('returns false when trial started more than 15 days ago', () => {
+    const past = new Date(Date.now() - 16 * 24 * 60 * 60 * 1000).toISOString();
+    localStorage.setItem('yoyo_user', JSON.stringify({ trialStartedAt: past }));
+    expect(storage.isTrialUser()).toBe(false);
+  });
+});
+
+describe('storage.getTrialDaysRemaining()', () => {
+  beforeEach(() => localStorage.clear());
+
+  it('returns 0 when no trialStartedAt', () => {
+    expect(storage.getTrialDaysRemaining()).toBe(0);
+  });
+
+  it('returns ~15 on day 1 of trial', () => {
+    const now = new Date().toISOString();
+    localStorage.setItem('yoyo_user', JSON.stringify({ trialStartedAt: now }));
+    expect(storage.getTrialDaysRemaining()).toBeGreaterThanOrEqual(14);
+    expect(storage.getTrialDaysRemaining()).toBeLessThanOrEqual(15);
+  });
+
+  it('returns 0 when trial has expired', () => {
+    const past = new Date(Date.now() - 16 * 24 * 60 * 60 * 1000).toISOString();
+    localStorage.setItem('yoyo_user', JSON.stringify({ trialStartedAt: past }));
+    expect(storage.getTrialDaysRemaining()).toBe(0);
+  });
+
+  it('returns ~5 when 10 days into trial', () => {
+    const tenDaysAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString();
+    localStorage.setItem('yoyo_user', JSON.stringify({ trialStartedAt: tenDaysAgo }));
+    const remaining = storage.getTrialDaysRemaining();
+    expect(remaining).toBeGreaterThanOrEqual(4);
+    expect(remaining).toBeLessThanOrEqual(5);
+  });
+});
