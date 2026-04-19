@@ -771,3 +771,56 @@ describe('migrateV1toV2()', () => {
     expect(sessions[0].isProductiveXP).toBe(true);
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// storage.isProUser() / storage.getProExpiry()
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('storage.isProUser()', () => {
+  beforeEach(() => localStorage.clear());
+
+  it('returns false when no user in localStorage', () => {
+    expect(storage.isProUser()).toBe(false);
+  });
+
+  it('returns false when isPro is false', () => {
+    localStorage.setItem('yoyo_user', JSON.stringify({ isPro: false }));
+    expect(storage.isProUser()).toBe(false);
+  });
+
+  it('returns true when isPro is true and proExpiresAt is null (lifetime)', () => {
+    localStorage.setItem('yoyo_user', JSON.stringify({ isPro: true, proExpiresAt: null }));
+    expect(storage.isProUser()).toBe(true);
+  });
+
+  it('returns true when isPro is true and proExpiresAt is in the future', () => {
+    const future = new Date(Date.now() + 86400_000).toISOString();
+    localStorage.setItem('yoyo_user', JSON.stringify({ isPro: true, proExpiresAt: future }));
+    expect(storage.isProUser()).toBe(true);
+  });
+
+  it('returns false when isPro is true but proExpiresAt is in the past', () => {
+    const past = new Date(Date.now() - 86400_000).toISOString();
+    localStorage.setItem('yoyo_user', JSON.stringify({ isPro: true, proExpiresAt: past }));
+    expect(storage.isProUser()).toBe(false);
+  });
+});
+
+describe('storage.getProExpiry()', () => {
+  beforeEach(() => localStorage.clear());
+
+  it('returns null when no user stored', () => {
+    expect(storage.getProExpiry()).toBeNull();
+  });
+
+  it('returns null when proExpiresAt is not set', () => {
+    localStorage.setItem('yoyo_user', JSON.stringify({ isPro: true }));
+    expect(storage.getProExpiry()).toBeNull();
+  });
+
+  it('returns the stored proExpiresAt string', () => {
+    const expiry = '2027-01-01T00:00:00.000Z';
+    localStorage.setItem('yoyo_user', JSON.stringify({ isPro: true, proExpiresAt: expiry }));
+    expect(storage.getProExpiry()).toBe(expiry);
+  });
+});
