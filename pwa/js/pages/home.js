@@ -611,6 +611,7 @@ function _setupDragAndDrop(container) {
   function _cancelPress() {
     clearTimeout(_pressTimer);
     _pressTimer = null;
+    if (_pressData?.card) _pressData.card.style.touchAction = '';
     _pressData  = null;
   }
 
@@ -696,6 +697,7 @@ function _activateDrag(pressData) {
   _drag.clone = clone;
   card.classList.add('drag-placeholder');
 
+  card.style.touchAction = 'none'; // lock out browser scroll for this gesture
   window._isDragging = true;
   card.setPointerCapture(pointerId);
 }
@@ -705,6 +707,7 @@ function _endDrag(container) {
   _drag.wasDragging = true; // suppress the click event that follows pointerup
 
   _drag.clone.remove();
+  _drag.card.style.touchAction = '';
   _drag.card.classList.remove('drag-placeholder');
   _clearDragOver(container);
 

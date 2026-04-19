@@ -2137,13 +2137,12 @@ nav {
    DRAG & DROP  (long-press to drag)
 ══════════════════════════════════════════════════════════════ */
 
-/* Allow vertical scroll by default; pointer capture handles drag */
-/* touch-action:none lets pointermove fire for ALL directions (needed for drag).
-   Vertical scroll still works via section headers / gaps between cards. */
+/* pan-y: browser handles vertical scroll normally.
+   touch-action:none is applied inline only when drag activates (500ms hold). */
 .task-card {
-  touch-action: none;
-  -webkit-touch-callout: none;   /* iOS: disable Copy/Lookup callout on long press */
-  -webkit-user-select: none;     /* WebKit prefix (older Safari / Chrome on iOS) */
+  touch-action: pan-y;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
 }
 
 /* Visual feedback while holding (500 ms hold activates drag) */
