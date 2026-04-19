@@ -82,7 +82,8 @@ function _proSectionHtml() {
         <div class="pro-feat-item" data-feat="1"><span class="pro-feat-item-icon">🛡️</span><span class="pro-feat-item-label">Streak Shield</span><button class="pro-feat-info-btn" data-feat="1" aria-label="說明">!</button></div>
         <div class="pro-feat-item" data-feat="2"><span class="pro-feat-item-icon">📈</span><span class="pro-feat-item-label">Habit Heatmap</span><button class="pro-feat-info-btn" data-feat="2" aria-label="說明">!</button></div>
         <div class="pro-feat-item" data-feat="3"><span class="pro-feat-item-icon">📤</span><span class="pro-feat-item-label">CSV 匯出</span><button class="pro-feat-info-btn" data-feat="3" aria-label="說明">!</button></div>
-      </div>`;
+      </div>
+      <div class="pro-feat-teaser pro-feat-teaser--active">✦ 更多功能持續釋出中，感謝你成為早期支持者</div>`;
   }
 
   // ── Trial countdown bar ───────────────────────────────────────────────────
