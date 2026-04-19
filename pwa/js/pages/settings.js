@@ -59,25 +59,10 @@ const RESISTANCE_OPTIONS = [
 
 // ── Pro upgrade section ───────────────────────────────────────────────────────
 function _proSectionHtml() {
-  const isPro   = storage.isProUser();
-  const isTrial = storage.isTrialUser();
+  const isPro    = storage.isProUser();
+  const isTrial  = storage.isTrialUser();
   const daysLeft = storage.getTrialDaysRemaining();
-  const expiry  = storage.getProExpiry();
-
-  const features = [
-    ['∞', '完整歷史紀錄', '免費限 30 天'],
-    ['🎨', '全部 13 種主題 + 每日隨機', '免費限 5 種'],
-    ['🛡️', 'Streak Shield 保護卡（每月 2 張）', ''],
-    ['📈', 'Habit Heatmap 完整成長足跡', '免費限 90 天'],
-    ['📊', '進階數據分析（效率 / 最佳時段）', ''],
-    ['📤', '資料匯出（CSV）', ''],
-  ];
-
-  const featuresHtml = features.map(([icon, text, note]) => `
-    <div class="pro-feat-row">
-      <span class="pro-feat-icon">${icon}</span>
-      <span class="pro-feat-text">${text}${note ? `<span class="pro-feat-note"> · 免費：${note}</span>` : ''}</span>
-    </div>`).join('');
+  const expiry   = storage.getProExpiry();
 
   // ── Active Pro (paid, not trial) ─────────────────────────────────────────
   if (isPro && !isTrial) {
@@ -92,10 +77,15 @@ function _proSectionHtml() {
           <div class="pro-active-sub">${expiryStr}</div>
         </div>
       </div>
-      <div class="pro-feats">${featuresHtml}</div>`;
+      <div class="pro-feat-grid">
+        <div class="pro-feat-item"><span class="pro-feat-item-icon">∞</span><span>完整歷史紀錄</span></div>
+        <div class="pro-feat-item"><span class="pro-feat-item-icon">🛡️</span><span>Streak Shield</span></div>
+        <div class="pro-feat-item"><span class="pro-feat-item-icon">📈</span><span>Habit Heatmap</span></div>
+        <div class="pro-feat-item"><span class="pro-feat-item-icon">📤</span><span>CSV 匯出</span></div>
+      </div>`;
   }
 
-  // ── Trial active ──────────────────────────────────────────────────────────
+  // ── Trial countdown bar ───────────────────────────────────────────────────
   const trialHtml = isTrial ? `
     <div class="pro-trial-status">
       <div class="pro-trial-top">
@@ -105,28 +95,99 @@ function _proSectionHtml() {
       <div class="pro-trial-bar-track">
         <div class="pro-trial-bar-fill" style="width:${Math.round((15 - daysLeft) / 15 * 100)}%"></div>
       </div>
-    </div>` : '';
+    </div>
+    <div class="pro-section-divider"></div>` : '';
 
-  // ── Pricing plans ─────────────────────────────────────────────────────────
-  const plans = [
-    { id: 'monthly',  label: '月費', price: 'NT$99',   unit: '/月',   badge: '',        desc: '隨時取消' },
-    { id: 'yearly',   label: '年費', price: 'NT$699',  unit: '/年',   badge: '省 41%',  desc: '約 NT$58/月' },
-    { id: 'lifetime', label: '終身', price: 'NT$1,999', unit: '一次', badge: '最划算', desc: '永久使用' },
-  ];
-  const plansHtml = plans.map(p => `
-    <div class="pro-plan-card ${p.badge === '省 41%' ? 'pro-plan-featured' : ''}">
-      ${p.badge ? `<div class="pro-plan-badge">${p.badge}</div>` : ''}
-      <div class="pro-plan-label">${p.label}</div>
-      <div class="pro-plan-price">${p.price}<span class="pro-plan-unit">${p.unit}</span></div>
-      <div class="pro-plan-desc">${p.desc}</div>
-      <button class="btn pro-plan-btn" data-plan="${p.id}">選擇方案</button>
-    </div>`).join('');
+  // ── Feature highlights (2×2 grid) ────────────────────────────────────────
+  const featGrid = `
+    <div class="pro-feat-grid">
+      <div class="pro-feat-item"><span class="pro-feat-item-icon">∞</span><span>完整歷史紀錄</span></div>
+      <div class="pro-feat-item"><span class="pro-feat-item-icon">🛡️</span><span>Streak Shield</span></div>
+      <div class="pro-feat-item"><span class="pro-feat-item-icon">📈</span><span>Habit Heatmap</span></div>
+      <div class="pro-feat-item"><span class="pro-feat-item-icon">📤</span><span>CSV 匯出</span></div>
+    </div>
+    <div class="pro-section-divider"></div>`;
 
-  return `
-    ${trialHtml}
-    <div class="pro-feats">${featuresHtml}</div>
-    <div class="pro-plans">${plansHtml}</div>
-    <div class="pro-notice">升級後立即生效 · 試用期間已有資料全部保留</div>`;
+  // ── Anchor: always-visible yearly plan ───────────────────────────────────
+  const anchorHtml = `
+    <div class="pro-anchor-plan">
+      <div class="pro-anchor-badge">最多人選擇</div>
+      <div class="pro-anchor-row">
+        <div class="pro-anchor-info">
+          <div class="pro-anchor-label">年費方案</div>
+          <div class="pro-anchor-price">NT$699<span class="pro-anchor-unit">/年</span></div>
+          <div class="pro-anchor-desc">≈ NT$58/月 &nbsp;·&nbsp; 省 41%</div>
+        </div>
+        <button class="pro-anchor-btn" id="pro-subscribe-yearly">立即訂閱</button>
+      </div>
+      <button class="pro-view-all-btn" id="pro-view-all">查看全部方案 ↓</button>
+    </div>
+    <div class="pro-notice">升級後立即生效 · 試用期間資料全部保留</div>`;
+
+  return `${trialHtml}${featGrid}${anchorHtml}`;
+}
+
+// ── Pro bottom sheet ─────────────────────────────────────────────────────────
+function _showProSheet() {
+  if (document.getElementById('pro-sheet-overlay')) return;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'pro-sheet-overlay';
+  overlay.className = 'pro-sheet-overlay';
+
+  overlay.innerHTML = `
+    <div class="pro-sheet" id="pro-sheet">
+      <div class="pro-sheet-handle"></div>
+      <div class="pro-sheet-title">選擇 Orbit Pro 方案</div>
+      <div class="pro-sheet-sub">升級後立即生效，隨時可取消</div>
+
+      <div class="pro-sheet-plan pro-sheet-featured" data-plan="yearly">
+        <div class="pro-sheet-plan-badge">省 41%</div>
+        <div class="pro-sheet-plan-info">
+          <div class="pro-sheet-plan-label">年費方案</div>
+          <div class="pro-sheet-plan-price">NT$699<span class="pro-sheet-plan-unit">/年</span></div>
+          <div class="pro-sheet-plan-desc">≈ NT$58/月</div>
+        </div>
+        <button class="pro-sheet-plan-btn pro-sheet-btn-primary" data-plan="yearly">選擇</button>
+      </div>
+
+      <div class="pro-sheet-plan" data-plan="monthly">
+        <div class="pro-sheet-plan-info">
+          <div class="pro-sheet-plan-label">月費方案</div>
+          <div class="pro-sheet-plan-price">NT$99<span class="pro-sheet-plan-unit">/月</span></div>
+          <div class="pro-sheet-plan-desc">隨時取消</div>
+        </div>
+        <button class="pro-sheet-plan-btn pro-sheet-btn-secondary" data-plan="monthly">選擇</button>
+      </div>
+
+      <div class="pro-sheet-plan" data-plan="lifetime">
+        <div class="pro-sheet-plan-info">
+          <div class="pro-sheet-plan-label">終身方案</div>
+          <div class="pro-sheet-plan-price">NT$1,999<span class="pro-sheet-plan-unit"> 一次</span></div>
+          <div class="pro-sheet-plan-desc">永久使用，不再續費</div>
+        </div>
+        <button class="pro-sheet-plan-btn pro-sheet-btn-secondary" data-plan="lifetime">選擇</button>
+      </div>
+
+      <div class="pro-sheet-notice">金流整合即將上線，敬請期待</div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  const close = () => {
+    overlay.classList.add('pro-sheet-overlay-out');
+    document.getElementById('pro-sheet')?.classList.add('pro-sheet-out');
+    setTimeout(() => overlay.remove(), 280);
+  };
+
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  overlay.querySelectorAll('.pro-sheet-plan-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      window.showToast('金流整合即將上線，敬請期待！');
+      close();
+    });
+  });
 }
 
 // ── Main render ──────────────────────────────────────────────────────────────
@@ -429,11 +490,12 @@ function _setupListeners(container) {
     window.startTour();
   });
 
-  // Pro plan buttons
-  container.querySelectorAll('.pro-plan-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      window.showToast('金流整合即將上線，敬請期待！');
-    });
+  // Pro anchor + sheet
+  container.querySelector('#pro-subscribe-yearly')?.addEventListener('click', () => {
+    window.showToast('金流整合即將上線，敬請期待！');
+  });
+  container.querySelector('#pro-view-all')?.addEventListener('click', () => {
+    _showProSheet();
   });
 
   // Sign out
