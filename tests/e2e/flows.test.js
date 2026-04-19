@@ -297,3 +297,77 @@ test.describe('設定頁', () => {
     await expect(page.locator('.theme-btn, [data-theme]').first()).toBeVisible({ timeout: 3000 });
   });
 });
+
+// ─── 計劃區塊出現 ──────────────────────────────────────────────────────────────
+
+test.describe('加入計劃流程', () => {
+  test.beforeEach(async ({ page }) => {
+    await mockSupabase(page);
+    await seedStorage(page, [INSTANT_TASK]);
+    await page.goto('/');
+    await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
+  });
+
+  test('點擊任務卡後計劃卡出現', async ({ page }) => {
+    await page.locator('.task-card .task-name').first().click();
+    await expect(page.locator('.plan-card')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.plan-card').first()).toContainText('喝水');
+  });
+});
+
+// ─── Focus 計時暫停 / 繼續 ────────────────────────────────────────────────────
+
+test.describe('Focus 計時暫停與繼續', () => {
+  test.beforeEach(async ({ page }) => {
+    await mockSupabase(page);
+    await seedStorage(page, [FOCUS_TASK]);
+    await page.goto('/');
+    await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
+    await addToPlanAndStartFocus(page);
+    await page.waitForSelector('#focus-overlay:not(.hidden)', { timeout: 5000 });
+  });
+
+  test('暫停後計時器停止跳動，繼續後恢復跳動', async ({ page }) => {
+    // Wait for timer to start ticking
+    await page.waitForTimeout(1200);
+    // Pause
+    await page.locator('#focus-pause-btn').click();
+    const pausedValue = await page.locator('#focus-timer').textContent();
+    // Wait while paused — timer should not change
+    await page.waitForTimeout(1500);
+    const stillPaused = await page.locator('#focus-timer').textContent();
+    expect(stillPaused).toBe(pausedValue);
+    // Resume
+    await page.locator('#focus-pause-btn').click();
+    await page.waitForTimeout(1200);
+    const afterResume = await page.locator('#focus-timer').textContent();
+    expect(afterResume).not.toBe(stillPaused);
+  });
+
+  test('暫停按鈕文字在暫停時改為「繼續」', async ({ page }) => {
+    await page.locator('#focus-pause-btn').click();
+    await expect(page.locator('#focus-pause-btn')).toContainText('繼續');
+  });
+});
+
+// ─── 設定頁隨機主題 toggle ────────────────────────────────────────────────────
+
+test.describe('設定頁隨機主題 toggle', () => {
+  test('開啟 toggle 後 localStorage 寫入 randomThemeEnabled=true 與清空 randomThemeDate', async ({ page }) => {
+    await mockSupabase(page);
+    await seedStorage(page, [INSTANT_TASK]);
+    // Seed randomThemeEnabled=false so the toggle starts unchecked
+    await page.addInitScript(() => {
+      localStorage.setItem('yoyo_randomThemeEnabled', 'false');
+      localStorage.setItem('yoyo_randomThemeDate', '');
+    });
+    await page.goto('/');
+    await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
+    await page.locator('[data-page="settings"]').click();
+    await page.waitForSelector('#random-theme-toggle', { timeout: 3000 });
+    const toggle = page.locator('#random-theme-toggle');
+    await toggle.check();
+    const enabled = await page.evaluate(() => localStorage.getItem('yoyo_randomThemeEnabled'));
+    expect(enabled).toBe('true');
+  });
+});
