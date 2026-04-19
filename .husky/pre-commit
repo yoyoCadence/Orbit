@@ -1,0 +1,2 @@
+# pre-commit: intentionally empty
+# Checks run on pre-push instead (lint + unit tests)
