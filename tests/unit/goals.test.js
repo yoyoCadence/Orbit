@@ -17,7 +17,26 @@ const mockState = vi.hoisted(() => ({
   sessions: [],
 }));
 
-vi.mock('../../pwa/js/state.js', () => ({ state: mockState }));
+const mockStorage = vi.hoisted(() => ({
+  isProUser:  vi.fn(() => false),
+  isTrialUser: vi.fn(() => false),
+}));
+
+vi.mock('../../pwa/js/supabase.js', () => ({
+  supabase: {
+    auth: {
+      getSession:        vi.fn(() => Promise.resolve({ data: { session: null } })),
+      onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
+    },
+    from: vi.fn(() => ({
+      select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(),
+      single: vi.fn(() => Promise.resolve({ data: null, error: null })),
+    })),
+  },
+}));
+
+vi.mock('../../pwa/js/state.js',   () => ({ state: mockState }));
+vi.mock('../../pwa/js/storage.js', () => ({ storage: mockStorage, db: {} }));
 
 vi.mock('../../pwa/js/utils.js', () => ({
   today:      () => '2026-04-16',
@@ -211,5 +230,40 @@ describe('renderGoals — XSS escaping', () => {
     expect(container.querySelector('.log-name').textContent).toBe('task "A"');
     // Ensure the outer HTML structure is intact (no broken tags)
     expect(container.querySelector('.log-item')).not.toBeNull();
+  });
+});
+
+// ─── 免費版歷史限制 ───────────────────────────────────────────────────────────
+
+describe('renderGoals — 免費版歷史限制', () => {
+  beforeEach(() => { mockStorage.isProUser.mockReturnValue(false); });
+  afterEach(()  => { mockStorage.isProUser.mockReturnValue(true); });
+
+  it('近期 session（今天）— 免費版可見，不顯示 history-lock-card', () => {
+    mockState.sessions = [makeSession({ date: '2026-04-16' })];
+    renderGoals(container);
+    expect(container.querySelector('.date-group')).not.toBeNull();
+    expect(container.querySelector('.history-lock-card')).toBeNull();
+  });
+
+  it('31 天前 session — 免費版隱藏並顯示 history-lock-card', () => {
+    const oldDate = new Date();
+    oldDate.setDate(oldDate.getDate() - 31);
+    const dateStr = oldDate.toLocaleDateString('sv');
+    mockState.sessions = [makeSession({ id: 's-old', date: dateStr })];
+    renderGoals(container);
+    expect(container.querySelector('.history-lock-card')).not.toBeNull();
+    expect(container.querySelectorAll('.date-group').length).toBe(0);
+  });
+
+  it('Pro 用戶 — 31 天前 session 可見，無 history-lock-card', () => {
+    mockStorage.isProUser.mockReturnValue(true);
+    const oldDate = new Date();
+    oldDate.setDate(oldDate.getDate() - 31);
+    const dateStr = oldDate.toLocaleDateString('sv');
+    mockState.sessions = [makeSession({ id: 's-old', date: dateStr })];
+    renderGoals(container);
+    expect(container.querySelector('.date-group')).not.toBeNull();
+    expect(container.querySelector('.history-lock-card')).toBeNull();
   });
 });

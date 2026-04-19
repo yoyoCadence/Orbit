@@ -22,7 +22,26 @@ const mockState = vi.hoisted(() => ({
   sessions: [],
 }));
 
-vi.mock('../../pwa/js/state.js', () => ({ state: mockState }));
+const mockStorage = vi.hoisted(() => ({
+  isProUser:  vi.fn(() => false),
+  isTrialUser: vi.fn(() => false),
+}));
+
+vi.mock('../../pwa/js/supabase.js', () => ({
+  supabase: {
+    auth: {
+      getSession:        vi.fn(() => Promise.resolve({ data: { session: null } })),
+      onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
+    },
+    from: vi.fn(() => ({
+      select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(),
+      single: vi.fn(() => Promise.resolve({ data: null, error: null })),
+    })),
+  },
+}));
+
+vi.mock('../../pwa/js/state.js',   () => ({ state: mockState }));
+vi.mock('../../pwa/js/storage.js', () => ({ storage: mockStorage, db: {} }));
 
 // Mock utils — today() returns real local date so month calendar aligns with
 // the module's _viewYear/_viewMonth (both initialized from new Date())
@@ -90,6 +109,7 @@ beforeEach(() => {
   mockState.sessions = [];
   mockState.tasks    = [];
   mockState.user     = { name: 'Tester', streakDays: 5, mode: 'normal' };
+  mockStorage.isProUser.mockReturnValue(true); // existing tests predate Pro gating
 
   container = document.createElement('div');
   document.body.appendChild(container);
@@ -354,5 +374,35 @@ describe('月視圖 — 本月最常完成任務', () => {
     window._reviewSetMode('month');
     expect(container.innerHTML).toContain('運動');
     expect(container.querySelectorAll('.top-task-row').length).toBeGreaterThan(0);
+  });
+});
+
+describe('月視圖 — 免費版歷史限制', () => {
+  beforeEach(() => {
+    mockStorage.isProUser.mockReturnValue(false);
+    window._reviewSetMode('month');
+  });
+
+  it('目前月份（monthsAgo=0）— 免費版可看，不顯示 history-lock-card', () => {
+    expect(container.querySelector('.history-lock-card')).toBeNull();
+  });
+
+  it('鎖定月份 — 顯示 history-lock-card', () => {
+    // Navigate back FREE_MONTHS times to reach a locked month
+    for (let i = 0; i < 3; i++) window._reviewPrevMonth();
+    expect(container.querySelector('.history-lock-card')).not.toBeNull();
+  });
+
+  it('鎖定月份 — prevMonth 按鈕不再繼續往前導航', () => {
+    for (let i = 0; i < 3; i++) window._reviewPrevMonth();
+    const labelBefore = container.querySelector('.month-nav-label').textContent;
+    window._reviewPrevMonth(); // should be blocked
+    const labelAfter = container.querySelector('.month-nav-label').textContent;
+    expect(labelAfter).toBe(labelBefore);
+  });
+
+  afterAll(() => {
+    // Restore navigation to current month for subsequent tests
+    for (let i = 0; i < 3; i++) window._reviewNextMonth();
   });
 });

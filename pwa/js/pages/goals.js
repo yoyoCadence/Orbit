@@ -1,10 +1,14 @@
 import { state }                    from '../state.js';
-import { formatTime, formatDate } from '../utils.js';
+import { storage }                   from '../storage.js';
+import { formatTime, formatDate }    from '../utils.js';
 
 const RESULT_ICON  = { complete: '✅', partial: '🔶', invalid: '❌', instant: '✓' };
 const RESULT_LABEL = { complete: '完成', partial: '部分完成', invalid: '無效', instant: '完成' };
 
+const FREE_DAYS = 30; // free tier history depth
+
 export function renderGoals(container) {
+  const isPro       = storage.isProUser();
   const allSessions = [...state.sessions].reverse();
 
   if (allSessions.length === 0) {
@@ -18,9 +22,17 @@ export function renderGoals(container) {
     return;
   }
 
+  // Calculate free-tier cutoff (YYYY-MM-DD, local time)
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - FREE_DAYS);
+  const cutoff = cutoffDate.toLocaleDateString('sv');
+
+  const visible = isPro ? allSessions : allSessions.filter(s => s.date >= cutoff);
+  const hidden  = isPro ? [] : allSessions.filter(s => s.date < cutoff);
+
   // Group by date
   const grouped = {};
-  allSessions.forEach(s => {
+  visible.forEach(s => {
     if (!grouped[s.date]) grouped[s.date] = [];
     grouped[s.date].push(s);
   });
@@ -57,9 +69,23 @@ export function renderGoals(container) {
     `;
   }).join('');
 
+  const lockCardHtml = hidden.length > 0 ? `
+    <div class="history-lock-card">
+      <div class="history-lock-top">
+        <span class="history-lock-icon">🔒</span>
+        <div>
+          <div class="history-lock-title">還有 ${hidden.length} 筆更早的紀錄</div>
+          <div class="history-lock-desc">免費版顯示近 ${FREE_DAYS} 天 · 升級後立即完整呈現</div>
+        </div>
+      </div>
+      <button class="history-lock-btn" onclick="window.navigate('settings')">查看 Pro 方案 →</button>
+    </div>
+  ` : '';
+
   container.innerHTML = `
     <div class="section-title">📋 完成紀錄</div>
     ${groupsHtml}
+    ${lockCardHtml}
   `;
 }
 

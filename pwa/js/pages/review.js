@@ -1,6 +1,9 @@
 import { state }               from '../state.js';
+import { storage }             from '../storage.js';
 import { today }               from '../utils.js';
 import { calcDailyStats, calcValueConfidence } from '../engine.js';
+
+const FREE_MONTHS = 3; // free tier month-view depth
 
 // ─── Module-level view state ──────────────────────────────────────────────────
 let _viewMode  = 'week';
@@ -10,8 +13,12 @@ let _viewMonth = new Date().getMonth(); // 0-indexed
 // Expose navigation handlers on window so inline HTML onclick can reach them
 window._reviewSetMode = (mode) => { _viewMode = mode; _rerender(); };
 window._reviewPrevMonth = () => {
-  _viewMonth--;
-  if (_viewMonth < 0) { _viewMonth = 11; _viewYear--; }
+  let m = _viewMonth - 1, y = _viewYear;
+  if (m < 0) { m = 11; y--; }
+  const now = new Date();
+  const monthsAgo = (now.getFullYear() - y) * 12 + (now.getMonth() - m);
+  if (!storage.isProUser() && monthsAgo > FREE_MONTHS) return;
+  _viewMonth = m; _viewYear = y;
   _rerender();
 };
 window._reviewNextMonth = () => {
@@ -217,9 +224,42 @@ function buildMonthView() {
   const year  = _viewYear;
   const month = _viewMonth; // 0-indexed
 
+  // Lock check for free users
+  const now = new Date();
+  const monthsAgo = (now.getFullYear() - year) * 12 + (now.getMonth() - month);
+  const isPro = storage.isProUser();
+  const isLocked = !isPro && monthsAgo >= FREE_MONTHS;
+
   const monthLabel = new Date(year, month, 1).toLocaleDateString('zh-TW', {
     year: 'numeric', month: 'long',
   });
+  const isCurrentOrFuture = (year > now.getFullYear()) ||
+    (year === now.getFullYear() && month >= now.getMonth());
+  const navHtml = `
+    <div class="month-nav">
+      <button class="month-nav-btn" onclick="window._reviewPrevMonth()">‹</button>
+      <span class="month-nav-label">${monthLabel}</span>
+      <button class="month-nav-btn" onclick="window._reviewNextMonth()"
+              ${isCurrentOrFuture ? 'disabled' : ''}>›</button>
+    </div>
+  `;
+
+  if (isLocked) {
+    return `
+      <div class="section-title">📅 月視圖</div>
+      ${navHtml}
+      <div class="history-lock-card">
+        <div class="history-lock-top">
+          <span class="history-lock-icon">🔒</span>
+          <div>
+            <div class="history-lock-title">${FREE_MONTHS} 個月前的月份已鎖定</div>
+            <div class="history-lock-desc">免費版可查看近 ${FREE_MONTHS} 個月 · Pro 無限歷史</div>
+          </div>
+        </div>
+        <button class="history-lock-btn" onclick="window.navigate('settings')">查看 Pro 方案 →</button>
+      </div>
+    `;
+  }
 
   // All days in this month
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -301,21 +341,9 @@ function buildMonthView() {
          </div>`).join('')
     : '<div style="color:var(--text-muted);font-size:13px">本月尚無完成任務</div>';
 
-  // Disable "next month" if it would be in the future
-  const now = new Date();
-  const isCurrentOrFuture = (year > now.getFullYear()) ||
-    (year === now.getFullYear() && month >= now.getMonth());
-
   return `
     <div class="section-title">📅 月視圖</div>
-
-    <!-- Month navigation -->
-    <div class="month-nav">
-      <button class="month-nav-btn" onclick="window._reviewPrevMonth()">‹</button>
-      <span class="month-nav-label">${monthLabel}</span>
-      <button class="month-nav-btn" onclick="window._reviewNextMonth()"
-              ${isCurrentOrFuture ? 'disabled' : ''}>›</button>
-    </div>
+    ${navHtml}
 
     <!-- Monthly summary -->
     <div class="review-summary">
