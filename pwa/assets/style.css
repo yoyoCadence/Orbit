@@ -1077,6 +1077,37 @@ nav {
 .date-group-label { font-size: 15px; font-weight: 600; }
 .date-group-xp    { font-size: 13px; font-weight: 600; color: var(--accent); }
 
+/* ── History lock card ────────────────────────────────────────────────────── */
+.history-lock-card {
+  border: 1px dashed rgba(255,255,255,0.15);
+  border-radius: 14px;
+  padding: 16px;
+  margin-top: 8px;
+  background: rgba(255,255,255,0.03);
+  text-align: center;
+}
+.history-lock-top {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 12px; text-align: left;
+}
+.history-lock-icon { font-size: 24px; flex-shrink: 0; }
+.history-lock-title {
+  font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 2px;
+}
+.history-lock-desc { font-size: 12px; color: var(--text-muted); }
+.history-lock-btn {
+  display: inline-block;
+  padding: 9px 20px;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 13px; font-weight: 700;
+  cursor: pointer;
+  width: 100%;
+}
+.history-lock-btn:active { opacity: 0.85; }
+
 /* ══════════════════════════════════════════════════════════════
    PROFILE
 ══════════════════════════════════════════════════════════════ */
