@@ -1696,6 +1696,27 @@ nav {
 #sync-banner.syncing { background: rgba(124,58,237,0.18); color: var(--text-muted); }
 #sync-banner.synced  { background: rgba(16,185,129,0.15); color: #10b981; }
 
+/* ── Trial reminder banner ──────────────────────────────────────────────────── */
+#trial-banner {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; font-size: 12px;
+  background: rgba(245,158,11,0.15); color: #f59e0b;
+  border-bottom: 1px solid rgba(245,158,11,0.2);
+}
+#trial-banner.hidden { display: none; }
+.trial-banner-text { flex: 1; }
+.trial-banner-text strong { font-weight: 700; }
+.trial-banner-cta {
+  background: #f59e0b; color: #000;
+  border: none; border-radius: 6px;
+  padding: 3px 10px; font-size: 11px; font-weight: 700; cursor: pointer;
+}
+.trial-banner-cta:active { opacity: 0.8; }
+.trial-banner-close {
+  background: transparent; border: none;
+  color: #f59e0b; font-size: 14px; cursor: pointer; padding: 2px 4px;
+}
+
 /* count badge on task card */
 .count-badge {
   position: absolute; top: 8px; right: 8px;

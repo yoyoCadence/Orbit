@@ -21,7 +21,7 @@ import { renderLeaderboard }    from './pages/leaderboard.js';
 import { startTour } from './tour.js';
 
 // ─── Version ─────────────────────────────────────────────────────────────────
-export const APP_VERSION = 'v1.6.0';
+export const APP_VERSION = 'v1.7.0';
 
 // Expose tour globally so settings page can call it
 window.startTour = startTour;
@@ -812,6 +812,28 @@ export function showSyncBanner(state) {
   }
 }
 
+// ─── Trial banner ────────────────────────────────────────────────────────────
+
+function _showTrialBanner() {
+  const banner = document.getElementById('trial-banner');
+  if (!banner) return;
+  if (!storage.isTrialUser()) { banner.classList.add('hidden'); return; }
+  const daysLeft = storage.getTrialDaysRemaining();
+  if (daysLeft > 5) { banner.classList.add('hidden'); return; }
+  if (storage.getTrialBannerDismissDate() === today()) { banner.classList.add('hidden'); return; }
+
+  banner.innerHTML =
+    `<span class="trial-banner-text">✦ Pro 試用剩餘 <strong>${daysLeft}</strong> 天</span>` +
+    `<button class="trial-banner-cta" onclick="window.navigate('settings')">升級 Pro</button>` +
+    `<button class="trial-banner-close" onclick="window._dismissTrialBanner()">✕</button>`;
+  banner.classList.remove('hidden');
+}
+
+window._dismissTrialBanner = function () {
+  storage.saveTrialBannerDismissDate(today());
+  document.getElementById('trial-banner')?.classList.add('hidden');
+};
+
 // ─── Toast ────────────────────────────────────────────────────────────────────
 
 export function showToast(text) {
@@ -952,6 +974,7 @@ function showMainApp() {
   updateHeader();
   renderPage(currentHash());
   _startDayWatcher();
+  _showTrialBanner();
 }
 
 // ─── Cross-day watcher ────────────────────────────────────────────────────────
@@ -1144,6 +1167,12 @@ async function loadAndStart(session) {
   state.sessions  = storage.getSessions();
   state.energy    = storage.getEnergy();
   state.dailyPlan = storage.getDailyPlan();
+
+  // Start 15-day Pro trial for new authenticated users
+  if (state.user && !state.user.trialStartedAt) {
+    await db.startTrial(session.user.id);
+    state.user = storage.getUser() ?? state.user;
+  }
 
   hideLoading();
   document.getElementById('login-screen').classList.add('hidden');
