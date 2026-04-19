@@ -345,3 +345,59 @@ describe('renderSettings: random theme toggle', () => {
     expect(mockApplyRandomTheme).not.toHaveBeenCalled();
   });
 });
+
+describe('renderSettings: Pro section content', () => {
+  it('free user sees feature grid with hidden-benefits teaser', () => {
+    mockStorage.isProUser.mockReturnValue(false);
+    mockStorage.isTrialUser.mockReturnValue(false);
+    const c = makeContainer();
+    renderSettings(c);
+    expect(c.querySelector('.pro-feat-grid')).not.toBeNull();
+    expect(c.querySelector('#pro-card').textContent).toContain('還有 Pro 專屬隱藏福利');
+  });
+
+  it('free user does not see pro-active-banner', () => {
+    mockStorage.isProUser.mockReturnValue(false);
+    mockStorage.isTrialUser.mockReturnValue(false);
+    const c = makeContainer();
+    renderSettings(c);
+    expect(c.querySelector('.pro-active-banner')).toBeNull();
+  });
+
+  it('trial user sees trial countdown bar', () => {
+    mockStorage.isProUser.mockReturnValue(false);
+    mockStorage.isTrialUser.mockReturnValue(true);
+    mockStorage.getTrialDaysRemaining.mockReturnValue(10);
+    const c = makeContainer();
+    renderSettings(c);
+    expect(c.querySelector('.pro-trial-status')).not.toBeNull();
+    expect(c.querySelector('#pro-card').textContent).toContain('10');
+  });
+
+  it('Pro user sees pro-active-banner with active teaser', () => {
+    mockStorage.isProUser.mockReturnValue(true);
+    mockStorage.isTrialUser.mockReturnValue(false);
+    const c = makeContainer();
+    renderSettings(c);
+    expect(c.querySelector('.pro-active-banner')).not.toBeNull();
+    expect(c.querySelector('.pro-feat-teaser--active')).not.toBeNull();
+    expect(c.querySelector('.pro-feat-teaser--active').textContent).toContain('更多功能持續釋出中');
+  });
+
+  it('Pro user does not see hidden-benefits teaser (that is for free users)', () => {
+    mockStorage.isProUser.mockReturnValue(true);
+    mockStorage.isTrialUser.mockReturnValue(false);
+    const c = makeContainer();
+    renderSettings(c);
+    expect(c.querySelector('#pro-card').textContent).not.toContain('還有 Pro 專屬隱藏福利');
+  });
+
+  it('Pro user sees termination info: 終身方案 when no expiry', () => {
+    mockStorage.isProUser.mockReturnValue(true);
+    mockStorage.isTrialUser.mockReturnValue(false);
+    mockStorage.getProExpiry.mockReturnValue(null);
+    const c = makeContainer();
+    renderSettings(c);
+    expect(c.querySelector('.pro-active-sub').textContent).toContain('終身方案');
+  });
+});
