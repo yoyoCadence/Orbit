@@ -1108,6 +1108,75 @@ nav {
 }
 .history-lock-btn:active { opacity: 0.85; }
 
+/* ── Streak Shield banner ─────────────────────────────────────────────────── */
+.stat-pill-shield-wrap {
+  display: flex; align-items: center; gap: 2px; margin-left: 2px;
+}
+.stat-pill-shield {
+  font-size: 10px; color: #fbbf24; line-height: 1;
+}
+.stat-pill-shield-locked {
+  color: var(--text-muted);
+}
+.stat-pill-shield-info {
+  font-size: 9px; line-height: 1;
+  width: 14px; height: 14px;
+  border-radius: 50%; border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.06);
+  color: var(--text-muted);
+  cursor: pointer; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.shield-info-popover {
+  background: #1e2030;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 12px;
+  padding: 12px 14px;
+  min-width: 180px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.7);
+}
+.shield-info-title {
+  font-size: 13px; font-weight: 700; color: #fbbf24; margin-bottom: 6px;
+}
+.shield-info-body {
+  font-size: 12px; color: var(--text-muted); margin-bottom: 4px; line-height: 1.5;
+}
+.shield-info-pro {
+  font-size: 11px; color: var(--primary); margin-top: 6px; font-weight: 600;
+}
+
+.shield-banner {
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 4px;
+  background: linear-gradient(135deg, rgba(251,191,36,0.10), rgba(245,158,11,0.06));
+}
+.shield-banner-top {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 12px;
+}
+.shield-banner-icon { font-size: 28px; flex-shrink: 0; }
+.shield-banner-title {
+  font-size: 15px; font-weight: 700; color: #fbbf24; margin-bottom: 2px;
+}
+.shield-banner-sub { font-size: 12px; color: var(--text-muted); }
+.shield-banner-btns { display: flex; gap: 8px; }
+.shield-use-btn {
+  flex: 1;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff; border: none; border-radius: 10px;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+}
+.shield-use-btn:active { opacity: 0.85; }
+.shield-skip-btn {
+  padding: 10px 16px;
+  background: rgba(255,255,255,0.06);
+  color: var(--text-muted); border: none; border-radius: 10px;
+  font-size: 13px; cursor: pointer;
+}
+.shield-skip-btn:active { opacity: 0.7; }
+
 /* ══════════════════════════════════════════════════════════════
    PROFILE
 ══════════════════════════════════════════════════════════════ */

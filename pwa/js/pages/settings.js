@@ -396,7 +396,7 @@ function _renderView(container) {
     </div>
 
     <!-- Pro subscription -->
-    <div class="card pro-card">
+    <div class="card pro-card" id="pro-card">
       <div class="pro-card-header">
         <span class="pro-card-icon">✦</span>
         <div>
@@ -559,6 +559,11 @@ function _setupListeners(container) {
   container.querySelector('#pro-view-all')?.addEventListener('click', () => {
     _showProSheet();
   });
+
+  // Expose so other pages (goals, review) can scroll to Pro section after navigating here
+  window._scrollToProCard = () => {
+    document.getElementById('pro-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   // Sign out
   container.querySelector('#signout-btn')?.addEventListener('click', () => {

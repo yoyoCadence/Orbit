@@ -20,6 +20,24 @@ const mockState = vi.hoisted(() => ({
   dailyPlan: [],
 }));
 
+vi.mock('../../pwa/js/supabase.js', () => ({
+  supabase: {
+    auth: {
+      getSession:        vi.fn(() => Promise.resolve({ data: { session: null } })),
+      onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
+    },
+    from: vi.fn(() => ({
+      select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(),
+      single: vi.fn(() => Promise.resolve({ data: null, error: null })),
+    })),
+  },
+}));
+
+vi.mock('../../pwa/js/storage.js', () => ({
+  storage: { isProUser: vi.fn(() => false), isTrialUser: vi.fn(() => false) },
+  db: {},
+}));
+
 vi.mock('../../pwa/js/state.js', () => ({ state: mockState }));
 
 vi.mock('../../pwa/js/utils.js', () => ({
@@ -35,6 +53,7 @@ vi.mock('../../pwa/js/engine.js', () => ({
     entertainmentMinutes: 0,
     isEffectiveDay:       false,
   })),
+  reorderTasks: vi.fn(tasks => tasks),
 }));
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

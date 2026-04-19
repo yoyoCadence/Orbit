@@ -181,6 +181,13 @@ function processYesterdayStreak() {
   const todayStr = _eToday();
   if (state.user.lastStreakDate === todayStr) return;   // already processed today
 
+  // Monthly reset of streak shields (Pro only)
+  const currentMonth = todayStr.slice(0, 7);
+  if (storage.isProUser() && (state.user.streakShieldResetMonth || '') !== currentMonth) {
+    state.user.streakShieldCount = 2;
+    state.user.streakShieldResetMonth = currentMonth;
+  }
+
   const d = new Date();
   if (d.getHours() < (state.user.newDayHour ?? 5)) d.setDate(d.getDate() - 1);
   const yesterday = new Date(d);
@@ -192,13 +199,55 @@ function processYesterdayStreak() {
     const stats = calcDailyStats(state.sessions, yStr);
     state.user.streakDays = processStreakForDate(state.user.streakDays || 0, stats.isEffectiveDay);
   } else if (state.user.lastStreakDate && state.user.lastStreakDate < yStr) {
-    // Missed a day(s) — streak resets to 0
+    // Missed a day(s) — streak resets to 0; offer shield to Pro users
+    const prevStreak = state.user.streakDays || 0;
     state.user.streakDays = 0;
+    if (storage.isProUser() && (state.user.streakShieldCount || 0) > 0 && prevStreak >= 2) {
+      localStorage.setItem('orbit_shield_pending', JSON.stringify({ prevStreak }));
+    }
   }
 
   state.user.lastStreakDate = todayStr;
   storage.saveUser(state.user);
 }
+
+// ─── Streak Shield ────────────────────────────────────────────────────────────
+
+window.useStreakShield = function () {
+  const raw = localStorage.getItem('orbit_shield_pending');
+  if (!raw || !state.user) return;
+  const { prevStreak } = JSON.parse(raw);
+  state.user.streakDays = prevStreak;
+  state.user.streakShieldCount = Math.max(0, (state.user.streakShieldCount || 0) - 1);
+  localStorage.removeItem('orbit_shield_pending');
+  storage.saveUser(state.user);
+  db.upsertProfile(state.user);
+  renderPage(currentHash());
+};
+
+window.dismissStreakShield = function () {
+  localStorage.removeItem('orbit_shield_pending');
+  renderPage(currentHash());
+};
+
+window.showShieldInfo = function (anchor) {
+  document.querySelectorAll('.shield-info-popover').forEach(el => el.remove());
+  const isPro = storage.isProUser();
+  const pop = document.createElement('div');
+  pop.className = 'shield-info-popover';
+  pop.innerHTML = `
+    <div class="shield-info-title">🛡 連勝保護卡</div>
+    <div class="shield-info-body">連勝中斷時可消耗 1 張，<br>恢復中斷前的天數。</div>
+    <div class="shield-info-body">每月自動重置為 2 張。</div>
+    <div class="shield-info-pro">✦ Pro 專屬功能</div>
+  `;
+  const rect = anchor.getBoundingClientRect();
+  pop.style.cssText = `position:fixed;top:${rect.bottom + 6}px;left:${Math.max(8, rect.left - 100)}px;z-index:9999`;
+  document.body.appendChild(pop);
+  setTimeout(() => document.addEventListener('click', function h() {
+    pop.remove(); document.removeEventListener('click', h);
+  }), 10);
+};
 
 // ─── Instant task completion ─────────────────────────────────────────────────
 
