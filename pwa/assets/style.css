@@ -1202,6 +1202,17 @@ nav {
   padding: 14px 16px;
   margin-bottom: 4px;
   background: linear-gradient(135deg, rgba(251,191,36,0.10), rgba(245,158,11,0.06));
+  animation: shield-banner-enter 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both,
+             shield-banner-glow 1.2s ease-out 0.4s;
+}
+@keyframes shield-banner-enter {
+  from { opacity: 0; transform: translateY(-14px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes shield-banner-glow {
+  0%   { box-shadow: 0 0 0 0 rgba(251,191,36,0.5); }
+  50%  { box-shadow: 0 0 0 8px rgba(251,191,36,0.15); }
+  100% { box-shadow: 0 0 0 0 rgba(251,191,36,0); }
 }
 .shield-banner-top {
   display: flex; align-items: center; gap: 12px; margin-bottom: 12px;
