@@ -33,6 +33,7 @@ export default [
         Event: 'readonly',
         Touch: 'readonly',
         TouchEvent: 'readonly',
+        MutationObserver: 'readonly',
         requestAnimationFrame: 'readonly',
       },
     },
