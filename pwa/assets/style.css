@@ -1154,12 +1154,13 @@ nav {
 }
 
 .pro-card-highlight {
-  animation: pro-card-glow 1.8s ease-out;
+  animation: pro-card-glow 2s ease-out forwards;
 }
 @keyframes pro-card-glow {
-  0%   { box-shadow: 0 0 0 0 rgba(99,102,241,0.6); }
-  30%  { box-shadow: 0 0 0 10px rgba(99,102,241,0.25); }
-  100% { box-shadow: 0 0 0 0 rgba(99,102,241,0); }
+  0%   { box-shadow: 0 0 0 0 rgba(251,191,36,0); }
+  18%  { box-shadow: 0 0 0 3px rgba(251,191,36,0.9), 0 0 22px rgba(251,191,36,0.28); }
+  55%  { box-shadow: 0 0 0 2px rgba(251,191,36,0.45), 0 0 10px rgba(251,191,36,0.12); }
+  100% { box-shadow: 0 0 0 0 rgba(251,191,36,0); }
 }
 
 .shield-pill-pending {

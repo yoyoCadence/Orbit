@@ -594,11 +594,17 @@ function _setupListeners(container) {
   window._scrollToProCard = () => {
     const card = document.getElementById('pro-card');
     if (!card) return;
-    document.getElementById('content')?.scrollTo({ top: card.offsetTop - 16, behavior: 'smooth' });
+    const content = document.getElementById('content');
+    content?.scrollTo({ top: card.offsetTop - 16, behavior: 'smooth' });
     if (sessionStorage.getItem('orbit_pro_highlight') === '1') {
       sessionStorage.removeItem('orbit_pro_highlight');
-      card.classList.add('pro-card-highlight');
-      setTimeout(() => card.classList.remove('pro-card-highlight'), 1800);
+      const flash = () => {
+        card.classList.add('pro-card-highlight');
+        setTimeout(() => card.classList.remove('pro-card-highlight'), 2000);
+      };
+      // Start flash after scroll settles; scrollend fires on completion, fallback after 600ms
+      const fallback = setTimeout(flash, 600);
+      content?.addEventListener('scrollend', () => { clearTimeout(fallback); flash(); }, { once: true });
     }
   };
 
