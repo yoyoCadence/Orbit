@@ -84,6 +84,7 @@ beforeEach(() => {
   mockState.user     = freshUser();
   mockState.sessions = [];
   mockState.energy   = { currentEnergy: 80, maxEnergy: 100 };
+  window.navigate    = vi.fn();
   vi.clearAllMocks();
 });
 
@@ -181,7 +182,6 @@ describe('renderProfile: template picker', () => {
     const c = makeContainer();
     renderProfile(c);
     const btns = c.querySelectorAll('.title-tmpl-btn');
-    // 3 built-in templates: rpg, kny, business
     expect(btns.length).toBe(3);
   });
 
@@ -194,16 +194,37 @@ describe('renderProfile: template picker', () => {
     expect(active.dataset.template).toBe('kny');
   });
 
-  it('clicking a template button updates user.titleTemplate and saves', () => {
+  it('free user sees all template buttons locked', () => {
+    mockStorage.isProUser.mockReturnValue(false);
+    mockStorage.isTrialUser.mockReturnValue(false);
     const c = makeContainer();
     renderProfile(c);
-    const btn = c.querySelector('[data-template="business"]');
-    btn.click();
+    const locked = c.querySelectorAll('.title-tmpl-btn[data-locked]');
+    expect(locked.length).toBe(3);
+    expect(c.querySelectorAll('.title-tmpl-edit-btn').length).toBe(0);
+    expect(document.getElementById('add-template-btn')).toBeNull();
+  });
+
+  it('free user clicking a locked template navigates to settings Pro section', () => {
+    mockStorage.isProUser.mockReturnValue(false);
+    const c = makeContainer();
+    renderProfile(c);
+    c.querySelector('[data-template="business"]').click();
+    expect(window.navigate).toHaveBeenCalledWith('settings');
+    expect(mockState.user.titleTemplate).toBe('rpg'); // unchanged
+  });
+
+  it('Pro user: clicking a template button updates user.titleTemplate and saves', () => {
+    mockStorage.isProUser.mockReturnValue(true);
+    const c = makeContainer();
+    renderProfile(c);
+    c.querySelector('[data-template="business"]').click();
     expect(mockState.user.titleTemplate).toBe('business');
     expect(mockStorage.saveUser).toHaveBeenCalled();
   });
 
-  it('clicking a template button clears customTitle', () => {
+  it('Pro user: clicking a template button clears customTitle', () => {
+    mockStorage.isProUser.mockReturnValue(true);
     mockState.user.customTitle = '舊稱號';
     const c = makeContainer();
     renderProfile(c);
@@ -211,36 +232,38 @@ describe('renderProfile: template picker', () => {
     expect(mockState.user.customTitle).toBe('');
   });
 
-  it('renders edit (✏️) button for each template', () => {
+  it('Pro user: renders edit (✏️) button for each template', () => {
+    mockStorage.isProUser.mockReturnValue(true);
     const c = makeContainer();
     renderProfile(c);
-    const editBtns = c.querySelectorAll('.title-tmpl-edit-btn');
-    expect(editBtns.length).toBe(3);
+    expect(c.querySelectorAll('.title-tmpl-edit-btn').length).toBe(3);
   });
 
   it('custom template also appears in template list', () => {
+    mockStorage.isProUser.mockReturnValue(true);
     mockState.user.customTemplates = {
       custom_123: { name: '我的英雄', icon: '🦸', tiers: [[1, '見習英雄']] },
     };
     const c = makeContainer();
     renderProfile(c);
     const btns = c.querySelectorAll('.title-tmpl-btn');
-    expect(btns.length).toBe(4); // 3 built-in + 1 custom
-    const labels = Array.from(btns).map(b => b.textContent);
-    expect(labels.some(l => l.includes('我的英雄'))).toBe(true);
+    expect(btns.length).toBe(4);
+    expect(Array.from(btns).some(b => b.textContent.includes('我的英雄'))).toBe(true);
   });
 });
 
 // ─── Template editor modal: open / add new (#15) ────────────────────────────
 
 describe('renderProfile: add template modal', () => {
-  it('"新增自訂主題" button exists', () => {
+  it('"新增自訂主題" button exists for Pro user', () => {
+    mockStorage.isProUser.mockReturnValue(true);
     const c = makeContainer();
     renderProfile(c);
     expect(document.getElementById('add-template-btn')).not.toBeNull();
   });
 
   it('clicking "新增自訂主題" opens the editor modal', () => {
+    mockStorage.isProUser.mockReturnValue(true);
     const c = makeContainer();
     renderProfile(c);
     document.getElementById('add-template-btn').click();
@@ -248,6 +271,7 @@ describe('renderProfile: add template modal', () => {
   });
 
   it('new-template modal has empty name and icon fields', () => {
+    mockStorage.isProUser.mockReturnValue(true);
     const c = makeContainer();
     renderProfile(c);
     document.getElementById('add-template-btn').click();
@@ -257,6 +281,7 @@ describe('renderProfile: add template modal', () => {
   });
 
   it('saving a new template stores it in user.customTemplates', () => {
+    mockStorage.isProUser.mockReturnValue(true);
     const c = makeContainer();
     renderProfile(c);
     document.getElementById('add-template-btn').click();
@@ -290,17 +315,18 @@ describe('renderProfile: add template modal', () => {
   });
 
   it('save with empty name shows alert and does not save', () => {
+    mockStorage.isProUser.mockReturnValue(true);
     window.alert = vi.fn();
     const c = makeContainer();
     renderProfile(c);
     document.getElementById('add-template-btn').click();
-    // Leave name empty
     document.getElementById('template-editor-modal').querySelector('#tmpl-save-btn').click();
     expect(window.alert).toHaveBeenCalled();
     expect(Object.keys(mockState.user.customTemplates).length).toBe(0);
   });
 
   it('closing modal by ✕ removes the modal', () => {
+    mockStorage.isProUser.mockReturnValue(true);
     const c = makeContainer();
     renderProfile(c);
     document.getElementById('add-template-btn').click();
@@ -314,6 +340,7 @@ describe('renderProfile: add template modal', () => {
 
 describe('renderProfile: edit template modal', () => {
   it('clicking ✏️ on a built-in template opens the editor', () => {
+    mockStorage.isProUser.mockReturnValue(true);
     const c = makeContainer();
     renderProfile(c);
     c.querySelector('[data-edit-template="rpg"]').click();
@@ -321,6 +348,7 @@ describe('renderProfile: edit template modal', () => {
   });
 
   it('edit modal pre-fills template name and icon', () => {
+    mockStorage.isProUser.mockReturnValue(true);
     const c = makeContainer();
     renderProfile(c);
     c.querySelector('[data-edit-template="rpg"]').click();
@@ -330,6 +358,7 @@ describe('renderProfile: edit template modal', () => {
   });
 
   it('editing a built-in template creates a custom override with the same key', () => {
+    mockStorage.isProUser.mockReturnValue(true);
     const c = makeContainer();
     renderProfile(c);
     c.querySelector('[data-edit-template="rpg"]').click();
@@ -343,6 +372,7 @@ describe('renderProfile: edit template modal', () => {
   });
 
   it('delete button is only visible for custom templates', () => {
+    mockStorage.isProUser.mockReturnValue(true);
     // Built-in template: no delete button
     const c = makeContainer();
     renderProfile(c);
@@ -360,6 +390,7 @@ describe('renderProfile: edit template modal', () => {
   });
 
   it('deleting a custom template removes it from user.customTemplates', () => {
+    mockStorage.isProUser.mockReturnValue(true);
     window.confirm = vi.fn(() => true);
     mockState.user.customTemplates = {
       custom_abc: { name: '自訂', icon: '✨', tiers: [[1, 'A']] },
@@ -374,6 +405,7 @@ describe('renderProfile: edit template modal', () => {
   });
 
   it('deleting the active custom template falls back to rpg', () => {
+    mockStorage.isProUser.mockReturnValue(true);
     window.confirm = vi.fn(() => true);
     mockState.user.titleTemplate   = 'custom_abc';
     mockState.user.customTemplates = {
@@ -388,6 +420,7 @@ describe('renderProfile: edit template modal', () => {
   });
 
   it('cancelling delete confirm does not remove template', () => {
+    mockStorage.isProUser.mockReturnValue(true);
     window.confirm = vi.fn(() => false);
     mockState.user.customTemplates = {
       custom_abc: { name: '自訂', icon: '✨', tiers: [[1, 'A']] },
