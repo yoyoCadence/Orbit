@@ -13,6 +13,7 @@ export default [
         document: 'readonly',
         navigator: 'readonly',
         localStorage: 'readonly',
+        sessionStorage: 'readonly',
         console: 'readonly',
         fetch: 'readonly',
         URL: 'readonly',
