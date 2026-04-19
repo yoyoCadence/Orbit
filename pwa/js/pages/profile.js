@@ -163,6 +163,12 @@ export function renderProfile(container) {
       </div>
     </div>
 
+    <!-- Habit Heatmap -->
+    <div class="card">
+      <div class="card-title">📊 習慣熱力圖</div>
+      ${_heatmapHtml(state.sessions, isPro)}
+    </div>
+
     <!-- XP Table -->
     <div class="card">
       <div class="card-title">升等所需 XP</div>
@@ -259,6 +265,57 @@ export function renderProfile(container) {
     renderProfile(container);
     import('../app.js').then(({ updateHeader }) => updateHeader());
   });
+
+  // Scroll heatmap to rightmost (newest) on render
+  const hmScroll = container.querySelector('.hm-scroll');
+  if (hmScroll) hmScroll.scrollLeft = hmScroll.scrollWidth;
+}
+
+function _heatmapHtml(sessions, isPro) {
+  const days = isPro ? 365 : 90;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const xpByDate = {};
+  for (const s of sessions) {
+    if (s.isProductiveXP && s.finalXP > 0) {
+      xpByDate[s.date] = (xpByDate[s.date] || 0) + s.finalXP;
+    }
+  }
+
+  const start = new Date(today);
+  start.setDate(start.getDate() - (days - 1));
+  const startDow = start.getDay();
+
+  const cells = [];
+  for (let p = 0; p < startDow; p++) cells.push(null);
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const ds = d.toLocaleDateString('sv');
+    const xp = xpByDate[ds] || 0;
+    const level = xp === 0 ? 0 : xp < 50 ? 1 : xp < 100 ? 2 : xp < 200 ? 3 : 4;
+    cells.push({ ds, xp, level, isToday: i === 0 });
+  }
+
+  const gridCells = cells.map(c => {
+    if (!c) return `<div class="hm-cell hm-0 hm-pad"></div>`;
+    return `<div class="hm-cell hm-${c.level}${c.isToday ? ' hm-today' : ''}" title="${c.ds}&#10;${c.xp} XP"></div>`;
+  }).join('');
+
+  const legend = [0, 1, 2, 3, 4].map(l => `<div class="hm-cell hm-${l}"></div>`).join('');
+
+  const note = isPro
+    ? `<span style="font-size:11px;color:var(--text-muted)">近 365 天</span>`
+    : `<span style="font-size:11px;color:var(--text-muted)">近 90 天・<button class="hm-upgrade-btn" onclick="sessionStorage.setItem('orbit_pro_highlight','1');window.navigate('settings');setTimeout(()=>window._scrollToProCard?.(),300)">Pro 查看完整年度 →</button></span>`;
+
+  return `
+    <div class="hm-scroll"><div class="hm-grid">${gridCells}</div></div>
+    <div class="hm-footer">
+      <div class="hm-legend"><span class="hm-lbl">少</span>${legend}<span class="hm-lbl">多</span></div>
+      ${note}
+    </div>
+  `;
 }
 
 function _goToProCard() {
