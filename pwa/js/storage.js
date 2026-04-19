@@ -50,6 +50,9 @@ export const db = {
         customTitle:          p.custom_title    || '',
         newDayHour:           p.new_day_hour    ?? 5,
         createdAt:            p.created_at,
+        isPro:                p.is_pro          ?? false,
+        proExpiresAt:         p.pro_expires_at  || null,
+        trialStartedAt:       p.trial_started_at || null,
       });
     }
 
@@ -129,6 +132,9 @@ export const db = {
       title_template:         user.titleTemplate         || 'rpg',
       custom_title:           user.customTitle           || null,
       new_day_hour:           user.newDayHour            ?? 5,
+      is_pro:                 user.isPro                 ?? false,
+      pro_expires_at:         user.proExpiresAt          ?? null,
+      trial_started_at:       user.trialStartedAt        ?? null,
     });
   },
 
@@ -247,6 +253,15 @@ export const storage = {
   // ── Legacy (migration read-only) ─────────────────────────────────────────────
   getGoals:   ()  => get('goals') ?? [],
   getLogs:    ()  => get('logs')  ?? [],
+
+  // ── Pro status (read from local cache, written by loadFromRemote) ───────────
+  isProUser: () => {
+    const user = get('user');
+    if (!user || !user.isPro) return false;
+    if (!user.proExpiresAt) return true;            // lifetime Pro
+    return new Date(user.proExpiresAt) > new Date();
+  },
+  getProExpiry: () => get('user')?.proExpiresAt || null,
 
   // ── Theme / Background (local only) ──────────────────────────────────────────
   getTheme:    ()  => get('theme') || 'dark-purple',

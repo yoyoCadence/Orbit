@@ -5,6 +5,16 @@
 
 ---
 
+## [v1.6.0] — 2026-04-19
+
+### 新增
+- **Pro 狀態管理模組（SUB-01）**：`profiles` 表新增 `is_pro`、`pro_expires_at`、`trial_started_at` 欄位；`storage.js` 新增 `isProUser()` / `getProExpiry()` helper，所有 Pro 功能 gate 統一走此介面
+
+### 改進
+- Service Worker cache name 從 `orbit-v4` 更新為 `orbit-v1.6.0`，確保版本號與 app 同步
+
+---
+
 ## [v1.5.0] — 2026-04-18
 
 ### 新增

@@ -34,6 +34,7 @@ export default [
         Touch: 'readonly',
         TouchEvent: 'readonly',
         requestAnimationFrame: 'readonly',
+        MutationObserver: 'readonly',
       },
     },
     rules: {
