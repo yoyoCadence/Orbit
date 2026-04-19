@@ -35,12 +35,23 @@ export function renderProfile(container) {
     .map(r => _xpTableRow(r, info, user)).join('');
 
   // Title template picker — built-in + user custom templates
+  const isPro            = storage.isProUser() || storage.isTrialUser();
   const currentTemplate  = user.titleTemplate || 'rpg';
   const customTemplates  = user.customTemplates || {};
   const allTemplates     = getAllTemplates(customTemplates);
 
   const templateBtns = Object.entries(allTemplates).map(([key, tmpl]) => {
-    const isActive  = currentTemplate === key;
+    const isActive = currentTemplate === key;
+    if (!isPro) {
+      return `
+        <div class="title-tmpl-item">
+          <button class="title-tmpl-btn ${isActive ? 'active' : ''}" data-template="${key}" data-locked="true">
+            ${tmpl.icon} ${tmpl.name}
+            <span class="pro-badge--inline" style="margin-left:4px">✦ Pro</span>
+          </button>
+        </div>
+      `;
+    }
     return `
       <div class="title-tmpl-item">
         <button class="title-tmpl-btn ${isActive ? 'active' : ''}" data-template="${key}">
@@ -83,14 +94,14 @@ export function renderProfile(container) {
     <div class="card">
       <div class="card-title">🏷️ 等級稱號</div>
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">
-        選擇主題後自動依等級更新。點 ✏️ 可編輯任意主題的每一等稱號，或新增全新主題。
+        ${isPro
+          ? '選擇主題後自動依等級更新。點 ✏️ 可編輯任意主題的每一等稱號，或新增全新主題。'
+          : '可在下方輸入覆蓋稱號。升級 Pro 可一鍵套用預設主題或建立自訂主題。'}
       </p>
 
       <div class="title-tmpl-list">${templateBtns}</div>
 
-      <button class="btn btn-outline btn-sm" id="add-template-btn" style="margin-top:10px;width:100%">
-        ＋ 新增自訂主題
-      </button>
+      ${isPro ? `<button class="btn btn-outline btn-sm" id="add-template-btn" style="margin-top:10px;width:100%">＋ 新增自訂主題</button>` : ''}
 
       <div class="form-group" style="margin-top:14px">
         <label class="form-label">覆蓋稱號（選填，留空則使用主題稱號）</label>
@@ -192,7 +203,7 @@ export function renderProfile(container) {
   });
 
   // Template select buttons
-  container.querySelectorAll('.title-tmpl-btn').forEach(btn => {
+  container.querySelectorAll('.title-tmpl-btn:not([data-locked])').forEach(btn => {
     btn.addEventListener('click', () => {
       state.user.titleTemplate = btn.dataset.template;
       state.user.customTitle   = '';
@@ -201,8 +212,11 @@ export function renderProfile(container) {
       import('../app.js').then(({ updateHeader }) => updateHeader());
     });
   });
+  container.querySelectorAll('.title-tmpl-btn[data-locked]').forEach(btn => {
+    btn.addEventListener('click', _goToProCard);
+  });
 
-  // Template edit buttons (✏️)
+  // Template edit buttons (✏️) — Pro only
   container.querySelectorAll('.title-tmpl-edit-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const key = btn.dataset.editTemplate;
@@ -210,8 +224,8 @@ export function renderProfile(container) {
     });
   });
 
-  // Add new template
-  document.getElementById('add-template-btn').addEventListener('click', () => {
+  // Add new template — Pro only
+  document.getElementById('add-template-btn')?.addEventListener('click', () => {
     showTemplateEditor(container, null);
   });
 
@@ -245,6 +259,12 @@ export function renderProfile(container) {
     renderProfile(container);
     import('../app.js').then(({ updateHeader }) => updateHeader());
   });
+}
+
+function _goToProCard() {
+  sessionStorage.setItem('orbit_pro_highlight', '1');
+  window.navigate('settings');
+  setTimeout(() => window._scrollToProCard?.(), 300);
 }
 
 // ─── TIER_LEVELS: the 11 threshold levels in all built-in templates ───────────
