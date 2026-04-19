@@ -252,7 +252,7 @@ function _themeCardHtml(t, currentTheme, locked = false) {
             <div class="tp-accent"  style="background:${t.colors[1]}"></div>
           </div>
         </div>
-        <div class="theme-lock-overlay"><span class="theme-lock-badge">✦ Pro</span></div>
+        <div class="theme-lock-overlay"><span class="pro-badge--inline">✦ Pro</span></div>
       </div>
       <div class="theme-name">${t.icon} ${t.name}</div>
     </div>
@@ -321,7 +321,7 @@ function _renderView(container) {
       <div class="card-title">🎨 App 主題</div>
       <div class="mode-row" style="margin-bottom:14px">
         <div class="mode-info">
-          <div class="mode-name">每日隨機主題${!isPro ? ' <span class="theme-lock-badge" style="vertical-align:middle;margin-left:4px">✦ Pro</span>' : ''}</div>
+          <div class="mode-name">每日隨機主題${!isPro ? ' <span class="pro-badge--inline" style="margin-left:4px">✦ Pro</span>' : ''}</div>
           <div class="mode-desc">每天自動套用一個隨機主題</div>
         </div>
         ${isPro

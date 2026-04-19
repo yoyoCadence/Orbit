@@ -288,6 +288,17 @@ html.has-bg #app { background: transparent; }
   font-size: 10px; font-weight: 700; padding: 2px 8px;
   border-radius: 99px; letter-spacing: .4px;
 }
+.pro-badge--inline {
+  display: inline-block; vertical-align: middle;
+  background: var(--primary); color: #fff;
+  font-size: 10px; font-weight: 700; padding: 1px 6px;
+  border-radius: 99px; letter-spacing: .3px; line-height: 1.6;
+}
+.feature-locked {
+  opacity: 0.45;
+  pointer-events: none;
+  user-select: none;
+}
 .pro-header {
   display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
 }
@@ -1399,11 +1410,6 @@ nav {
   position: absolute; inset: 0;
   display: flex; align-items: center; justify-content: center;
   background: rgba(0,0,0,0.38); border-radius: 8px;
-}
-.theme-lock-badge {
-  font-size: 10px; font-weight: 700; color: #fff;
-  background: var(--primary); padding: 2px 7px;
-  border-radius: 99px; letter-spacing: .3px;
 }
 .theme-toggle-lock {
   background: none; border: none; font-size: 18px;
