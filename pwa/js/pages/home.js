@@ -110,21 +110,30 @@ export function renderHome(container) {
     <div class="plan-list" id="plan-list">${planHtml}</div>
 
     ${growthTasks.length ? `
-      <div class="section-title">🚀 成長任務</div>
+      <div class="section-title-row">
+        <span>🚀 成長任務</span>
+        <button class="task-edit-btn" data-section="growth">編輯</button>
+      </div>
       <div class="task-grid" data-section="growth">
         ${growthTasks.map(t => taskCardHtml(t, counts[t.id] || 0, planIds.includes(t.id))).join('')}
       </div>
     ` : ''}
 
     ${maintTasks.length ? `
-      <div class="section-title">⚙️ 維持 / 必要</div>
+      <div class="section-title-row">
+        <span>⚙️ 維持 / 必要</span>
+        <button class="task-edit-btn" data-section="maint">編輯</button>
+      </div>
       <div class="task-grid" data-section="maint">
         ${maintTasks.map(t => taskCardHtml(t, counts[t.id] || 0, planIds.includes(t.id))).join('')}
       </div>
     ` : ''}
 
     ${recEntTasks.length ? `
-      <div class="section-title">🌿 恢復 / 娛樂</div>
+      <div class="section-title-row">
+        <span>🌿 恢復 / 娛樂</span>
+        <button class="task-edit-btn" data-section="rec">編輯</button>
+      </div>
       <div class="task-grid" data-section="rec">
         ${recEntTasks.map(t => taskCardHtml(t, counts[t.id] || 0, planIds.includes(t.id))).join('')}
       </div>
@@ -198,6 +207,16 @@ export function renderHome(container) {
         return;
       }
       window.addToDailyPlan(card.dataset.taskId);
+    });
+  });
+
+  // ── Bind: section edit-mode toggles ──────────────────────────────────────────
+  container.querySelectorAll('.task-edit-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const grid = container.querySelector(`.task-grid[data-section="${btn.dataset.section}"]`);
+      if (!grid) return;
+      const editing = grid.classList.toggle('edit-mode');
+      btn.textContent = editing ? '完成' : '編輯';
     });
   });
 
