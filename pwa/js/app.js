@@ -251,7 +251,7 @@ window.dismissStreakShield = function () {
 
 window.reshowShieldBanner = function () {
   sessionStorage.removeItem('orbit_shield_dismissed');
-  renderPage(currentHash());
+  window.navigate('home');
 };
 
 window.showShieldInfo = function (anchor) {
