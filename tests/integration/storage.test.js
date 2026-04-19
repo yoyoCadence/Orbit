@@ -642,7 +642,7 @@ describe('storage.getDailyPlan()', () => {
   });
 
   it('returns taskIds when plan date matches today', () => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = new Date().toLocaleDateString('sv');
     lsSet('dailyPlan', { date: today, taskIds: ['a', 'b', 'c'] });
     expect(storage.getDailyPlan()).toEqual(['a', 'b', 'c']);
   });
@@ -650,7 +650,7 @@ describe('storage.getDailyPlan()', () => {
 
 describe('storage.saveDailyPlan()', () => {
   it('saves plan with today date', () => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = new Date().toLocaleDateString('sv');
     storage.saveDailyPlan(['x', 'y']);
     const raw = lsGet('dailyPlan');
     expect(raw.date).toBe(today);

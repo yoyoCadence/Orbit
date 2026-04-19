@@ -479,3 +479,94 @@ describe('renderHome: showTaskDetail modal', () => {
     expect([...vals].some(v => v.textContent === '中')).toBe(true);
   });
 });
+
+describe('renderHome: streak shield banner', () => {
+  afterEach(() => {
+    document.body.innerHTML = '';
+    localStorage.removeItem('orbit_shield_pending');
+    sessionStorage.removeItem('orbit_shield_dismissed');
+  });
+
+  it('shows shield banner when orbit_shield_pending is set', () => {
+    localStorage.setItem('orbit_shield_pending', JSON.stringify({ prevStreak: 7 }));
+    const c = makeContainer();
+    renderHome(c);
+    expect(c.querySelector('.shield-banner')).not.toBeNull();
+    expect(c.querySelector('.shield-banner').textContent).toContain('連勝中斷了');
+  });
+
+  it('shows prevStreak count in shield banner', () => {
+    localStorage.setItem('orbit_shield_pending', JSON.stringify({ prevStreak: 12 }));
+    const c = makeContainer();
+    renderHome(c);
+    expect(c.querySelector('.shield-banner-sub').textContent).toContain('12 天連勝');
+  });
+
+  it('hides shield banner when orbit_shield_dismissed is set', () => {
+    localStorage.setItem('orbit_shield_pending', JSON.stringify({ prevStreak: 5 }));
+    sessionStorage.setItem('orbit_shield_dismissed', '1');
+    const c = makeContainer();
+    renderHome(c);
+    expect(c.querySelector('.shield-banner')).toBeNull();
+  });
+
+  it('no shield banner when orbit_shield_pending is absent', () => {
+    const c = makeContainer();
+    renderHome(c);
+    expect(c.querySelector('.shield-banner')).toBeNull();
+  });
+
+  it('shield pill has shield-pill-pending class when pending', () => {
+    localStorage.setItem('orbit_shield_pending', JSON.stringify({ prevStreak: 3 }));
+    const c = makeContainer();
+    renderHome(c);
+    expect(c.querySelector('.shield-pill-pending')).not.toBeNull();
+  });
+});
+
+describe('renderHome: section edit-mode toggle', () => {
+  afterEach(() => { document.body.innerHTML = ''; });
+
+  it('each section with tasks has an edit button', () => {
+    mockState.tasks = [
+      makeTask({ id: 'g1', taskNature: 'growth', impactType: 'task' }),
+      makeTask({ id: 'm1', taskNature: 'maintenance', impactType: 'task' }),
+      makeTask({ id: 'r1', taskNature: 'recovery', impactType: 'recovery' }),
+    ];
+    const c = makeContainer();
+    renderHome(c);
+    const btns = c.querySelectorAll('.task-edit-btn');
+    expect(btns.length).toBe(3);
+  });
+
+  it('clicking edit button toggles edit-mode class on matching task-grid', () => {
+    mockState.tasks = [makeTask({ id: 'g1', taskNature: 'growth', impactType: 'task' })];
+    const c = makeContainer();
+    renderHome(c);
+    const btn = c.querySelector('.task-edit-btn[data-section="growth"]');
+    const grid = c.querySelector('.task-grid[data-section="growth"]');
+    expect(grid.classList.contains('edit-mode')).toBe(false);
+    btn.click();
+    expect(grid.classList.contains('edit-mode')).toBe(true);
+  });
+
+  it('edit button text changes to "完成" when in edit mode', () => {
+    mockState.tasks = [makeTask({ id: 'g1', taskNature: 'growth', impactType: 'task' })];
+    const c = makeContainer();
+    renderHome(c);
+    const btn = c.querySelector('.task-edit-btn[data-section="growth"]');
+    btn.click();
+    expect(btn.textContent).toBe('完成');
+  });
+
+  it('clicking again exits edit-mode and restores "編輯" label', () => {
+    mockState.tasks = [makeTask({ id: 'g1', taskNature: 'growth', impactType: 'task' })];
+    const c = makeContainer();
+    renderHome(c);
+    const btn = c.querySelector('.task-edit-btn[data-section="growth"]');
+    btn.click();
+    btn.click();
+    expect(btn.textContent).toBe('編輯');
+    expect(c.querySelector('.task-grid[data-section="growth"]').classList.contains('edit-mode')).toBe(false);
+  });
+});
