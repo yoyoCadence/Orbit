@@ -21,7 +21,7 @@ import { renderLeaderboard }    from './pages/leaderboard.js';
 import { startTour } from './tour.js';
 
 // ─── Version ─────────────────────────────────────────────────────────────────
-export const APP_VERSION = 'v1.12.0';
+export const APP_VERSION = 'v1.14.0';
 
 // Expose tour globally so settings page can call it
 window.startTour = startTour;
@@ -207,6 +207,19 @@ function processYesterdayStreak() {
     }
   }
 
+  // SUB-16: 60-day streak → 30-day free Pro (granted once per account)
+  if (
+    state.user.streakDays >= 60 &&
+    !storage.isProUser() &&
+    !storage.isTrialUser() &&
+    !state.user.streakUnlockUsed
+  ) {
+    state.user.isPro           = true;
+    state.user.proExpiresAt    = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    state.user.streakUnlockUsed = true;
+    sessionStorage.setItem('orbit_streak_unlock_new', '1');
+  }
+
   state.user.lastStreakDate = todayStr;
   storage.saveUser(state.user);
 }
@@ -273,6 +286,32 @@ window.showShieldInfo = function (anchor) {
     pop.remove(); document.removeEventListener('click', h);
   }), 10);
 };
+
+// ─── Streak unlock celebration modal (SUB-16) ─────────────────────────────────
+
+function showStreakUnlockModal() {
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.id = 'streak-unlock-modal';
+  modal.innerHTML = `
+    <div class="modal-box" style="text-align:center">
+      <div class="su-icon">🏆</div>
+      <div class="su-title">60天連勝達成！</div>
+      <div class="su-body">你的堅持獲得了回報！<br>解鎖 <strong>30天免費 Pro</strong>！</div>
+      <div class="su-perks">
+        <div class="su-perk">🛡 每月 2 張 Streak Shield</div>
+        <div class="su-perk">📊 完整 Habit Heatmap</div>
+        <div class="su-perk">📈 進階數據儀表板</div>
+      </div>
+      <button class="btn btn-primary su-btn" id="su-close-btn">🎉 太棒了！</button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  document.getElementById('su-close-btn').addEventListener('click', () => {
+    modal.remove();
+    renderPage(currentHash());
+  });
+}
 
 // ─── Instant task completion ─────────────────────────────────────────────────
 
@@ -1050,6 +1089,10 @@ function showMainApp() {
   renderPage(currentHash());
   _startDayWatcher();
   _showTrialBanner();
+  if (sessionStorage.getItem('orbit_streak_unlock_new')) {
+    sessionStorage.removeItem('orbit_streak_unlock_new');
+    setTimeout(showStreakUnlockModal, 800);
+  }
 }
 
 // ─── Cross-day watcher ────────────────────────────────────────────────────────

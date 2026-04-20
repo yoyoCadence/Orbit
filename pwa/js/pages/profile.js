@@ -143,6 +143,17 @@ export function renderProfile(container) {
           <span class="stat-pill-shield ${storage.isProUser() ? '' : 'stat-pill-shield-locked'}">🛡 ${user.streakShieldCount ?? 0} 張保護卡</span>
           <button class="stat-pill-shield-info" onclick="event.stopPropagation();showShieldInfo(this)" aria-label="保護卡說明">?</button>
         </div>
+        ${!isPro && !user.streakUnlockUsed ? `
+        <div class="streak-unlock-row">
+          <div class="streak-unlock-label">
+            <span>🔓 連勝解鎖 Pro</span>
+            <span class="streak-unlock-count">${Math.min(streakDays, 60)}/60 天</span>
+          </div>
+          <div class="streak-unlock-track">
+            <div class="streak-unlock-fill" style="width:${Math.min(100, Math.round(streakDays / 60 * 100))}%"></div>
+          </div>
+          <div class="streak-unlock-hint">達到 60 天連勝，免費獲得 30 天 Pro</div>
+        </div>` : ''}
       </div>
     </div>
 

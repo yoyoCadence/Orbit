@@ -597,6 +597,69 @@ describe('renderProfile: advanced dashboard', () => {
   });
 });
 
+// ─── Streak unlock progress (SUB-16) ─────────────────────────────────────────
+
+describe('renderProfile: streak unlock progress', () => {
+  it('free user with no streak sees progress bar at 0/60', () => {
+    mockStorage.isProUser.mockReturnValue(false);
+    mockStorage.isTrialUser.mockReturnValue(false);
+    mockState.user = freshUser({ streakDays: 0, streakUnlockUsed: false });
+    const c = makeContainer();
+    renderProfile(c);
+    expect(c.querySelector('.streak-unlock-row')).not.toBeNull();
+    expect(c.textContent).toContain('0/60');
+  });
+
+  it('free user with 30-day streak shows 30/60', () => {
+    mockStorage.isProUser.mockReturnValue(false);
+    mockStorage.isTrialUser.mockReturnValue(false);
+    mockState.user = freshUser({ streakDays: 30, streakUnlockUsed: false });
+    const c = makeContainer();
+    renderProfile(c);
+    expect(c.textContent).toContain('30/60');
+    const fill = c.querySelector('.streak-unlock-fill');
+    expect(fill.style.width).toBe('50%');
+  });
+
+  it('free user with streak >= 60 shows 60/60 and 100% fill', () => {
+    mockStorage.isProUser.mockReturnValue(false);
+    mockStorage.isTrialUser.mockReturnValue(false);
+    mockState.user = freshUser({ streakDays: 75, streakUnlockUsed: false });
+    const c = makeContainer();
+    renderProfile(c);
+    expect(c.textContent).toContain('60/60');
+    const fill = c.querySelector('.streak-unlock-fill');
+    expect(fill.style.width).toBe('100%');
+  });
+
+  it('user who already received streak unlock does not see progress bar', () => {
+    mockStorage.isProUser.mockReturnValue(false);
+    mockStorage.isTrialUser.mockReturnValue(false);
+    mockState.user = freshUser({ streakDays: 60, streakUnlockUsed: true });
+    const c = makeContainer();
+    renderProfile(c);
+    expect(c.querySelector('.streak-unlock-row')).toBeNull();
+  });
+
+  it('Pro user does not see streak unlock progress bar', () => {
+    mockStorage.isProUser.mockReturnValue(true);
+    mockStorage.isTrialUser.mockReturnValue(false);
+    mockState.user = freshUser({ streakDays: 10, streakUnlockUsed: false });
+    const c = makeContainer();
+    renderProfile(c);
+    expect(c.querySelector('.streak-unlock-row')).toBeNull();
+  });
+
+  it('trial user does not see streak unlock progress bar', () => {
+    mockStorage.isProUser.mockReturnValue(true);
+    mockStorage.isTrialUser.mockReturnValue(true);
+    mockState.user = freshUser({ streakDays: 10, streakUnlockUsed: false });
+    const c = makeContainer();
+    renderProfile(c);
+    expect(c.querySelector('.streak-unlock-row')).toBeNull();
+  });
+});
+
 describe('renderProfile: createdAt null safety', () => {
   afterEach(() => { document.body.innerHTML = ''; });
 
