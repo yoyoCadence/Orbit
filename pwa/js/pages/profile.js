@@ -152,7 +152,7 @@ export function renderProfile(container) {
           <div class="streak-unlock-track">
             <div class="streak-unlock-fill" style="width:${Math.min(100, Math.round(streakDays / 45 * 100))}%"></div>
           </div>
-          <div class="streak-unlock-hint">達到 60 天連勝，免費獲得 30 天 Pro</div>
+          <div class="streak-unlock-hint">達到 45 天連勝，免費獲得 30 天 Pro</div>
         </div>` : ''}
       </div>
     </div>
@@ -179,13 +179,15 @@ export function renderProfile(container) {
 
     <!-- Habit Heatmap -->
     <div class="card">
+      <span class="pro-badge--corner">✦ Pro 專屬</span>
       <div class="card-title">📊 習慣熱力圖</div>
       ${_heatmapHtml(state.sessions, isPro, user.newDayHour ?? 5)}
     </div>
 
     <!-- Advanced Dashboard (Pro) -->
     <div class="card">
-      <div class="card-title">📈 進階數據儀表板 ${isPro ? '' : '<span class="pro-badge--inline">✦ Pro</span>'}</div>
+      <span class="pro-badge--corner">✦ Pro 專屬</span>
+      <div class="card-title">📈 進階數據儀表板</div>
       ${_dashboardHtml(state.sessions, isPro, user)}
     </div>
 

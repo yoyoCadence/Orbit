@@ -293,6 +293,14 @@ html.has-bg #app { background: transparent; }
   background: var(--primary); color: #fff;
   font-size: 10px; font-weight: 700; padding: 1px 6px;
   border-radius: 99px; letter-spacing: .3px; line-height: 1.6;
+  text-transform: none;
+}
+.pro-badge--corner {
+  position: absolute; top: 12px; right: 12px;
+  background: var(--primary); color: #fff;
+  font-size: 10px; font-weight: 700; padding: 2px 8px;
+  border-radius: 99px; letter-spacing: .3px; line-height: 1.6;
+  pointer-events: none;
 }
 .feature-locked {
   opacity: 0.45;
@@ -934,6 +942,7 @@ nav {
    CARDS & LAYOUT
 ══════════════════════════════════════════════════════════════ */
 .card {
+  position: relative;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
