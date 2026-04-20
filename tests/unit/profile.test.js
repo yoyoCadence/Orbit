@@ -600,34 +600,34 @@ describe('renderProfile: advanced dashboard', () => {
 // ─── Streak unlock progress (SUB-16) ─────────────────────────────────────────
 
 describe('renderProfile: streak unlock progress', () => {
-  it('free user with no streak sees progress bar at 0/60', () => {
+  it('free user with no streak sees progress bar at 0/45', () => {
     mockStorage.isProUser.mockReturnValue(false);
     mockStorage.isTrialUser.mockReturnValue(false);
     mockState.user = freshUser({ streakDays: 0, streakUnlockUsed: false });
     const c = makeContainer();
     renderProfile(c);
     expect(c.querySelector('.streak-unlock-row')).not.toBeNull();
-    expect(c.textContent).toContain('0/60');
+    expect(c.textContent).toContain('0/45');
   });
 
-  it('free user with 30-day streak shows 30/60', () => {
+  it('free user with 30-day streak shows 30/45', () => {
     mockStorage.isProUser.mockReturnValue(false);
     mockStorage.isTrialUser.mockReturnValue(false);
     mockState.user = freshUser({ streakDays: 30, streakUnlockUsed: false });
     const c = makeContainer();
     renderProfile(c);
-    expect(c.textContent).toContain('30/60');
+    expect(c.textContent).toContain('30/45');
     const fill = c.querySelector('.streak-unlock-fill');
-    expect(fill.style.width).toBe('50%');
+    expect(fill.style.width).toBe('67%');
   });
 
-  it('free user with streak >= 60 shows 60/60 and 100% fill', () => {
+  it('free user with streak >= 45 shows 45/45 and 100% fill', () => {
     mockStorage.isProUser.mockReturnValue(false);
     mockStorage.isTrialUser.mockReturnValue(false);
     mockState.user = freshUser({ streakDays: 75, streakUnlockUsed: false });
     const c = makeContainer();
     renderProfile(c);
-    expect(c.textContent).toContain('60/60');
+    expect(c.textContent).toContain('45/45');
     const fill = c.querySelector('.streak-unlock-fill');
     expect(fill.style.width).toBe('100%');
   });

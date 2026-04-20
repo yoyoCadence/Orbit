@@ -412,7 +412,7 @@ describe('renderSettings: streak unlock progress in Pro section', () => {
     const c = makeContainer();
     renderSettings(c);
     expect(c.querySelector('.streak-unlock-row')).not.toBeNull();
-    expect(c.textContent).toContain('20/60');
+    expect(c.textContent).toContain('20/45');
   });
 
   it('free user with streakUnlockUsed=true does not see the bar', () => {

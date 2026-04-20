@@ -143,10 +143,10 @@ function _proSectionHtml() {
     <div class="streak-unlock-row" style="margin-bottom:16px">
       <div class="streak-unlock-label">
         <span>🔓 連勝解鎖 Pro</span>
-        <span class="streak-unlock-count">${Math.min(streakDays, 60)}/60 天</span>
+        <span class="streak-unlock-count">${Math.min(streakDays, 45)}/45 天</span>
       </div>
       <div class="streak-unlock-track">
-        <div class="streak-unlock-fill" style="width:${Math.min(100, Math.round(streakDays / 60 * 100))}%"></div>
+        <div class="streak-unlock-fill" style="width:${Math.min(100, Math.round(streakDays / 45 * 100))}%"></div>
       </div>
       <div class="streak-unlock-hint">達成 60 天連勝，自動解鎖 30 天免費 Pro！</div>
     </div>

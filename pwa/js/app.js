@@ -207,9 +207,9 @@ function processYesterdayStreak() {
     }
   }
 
-  // SUB-16: 60-day streak → 30-day free Pro (granted once per account)
+  // SUB-16: 45-day streak → 30-day free Pro (granted once per account)
   if (
-    state.user.streakDays >= 60 &&
+    state.user.streakDays >= 45 &&
     !storage.isProUser() &&
     !storage.isTrialUser() &&
     !state.user.streakUnlockUsed
