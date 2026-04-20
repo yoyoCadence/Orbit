@@ -352,7 +352,6 @@ function _dashboardHtml(sessions, isPro, user) {
   const recent     = sessions.filter(s => last30.has(s.date));
   const taskSess   = recent.filter(s => s.impactType === 'task' && s.value !== 'D');
   const doneCount  = taskSess.filter(s => s.result === 'complete' || s.result === 'instant').length;
-  const partCount  = taskSess.filter(s => s.result === 'partial').length;
   const totalCount = taskSess.length;
   const compRate   = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
   const xp30       = recent.filter(s => s.isProductiveXP).reduce((a, s) => a + s.finalXP, 0);
