@@ -1877,6 +1877,14 @@ nav {
 .focus-dur-btn:hover {
   background: var(--primary); color: #fff; border-color: var(--primary);
 }
+.focus-dur-hint {
+  font-size: 12px; color: var(--text-muted);
+  margin-bottom: 10px; text-align: center;
+}
+.focus-dur-warn {
+  font-size: 12px; color: #f59e0b;
+  margin-bottom: 10px; min-height: 18px; text-align: center;
+}
 .focus-dur-custom-row {
   display: flex; align-items: center; gap: 8px;
   margin-bottom: 16px;

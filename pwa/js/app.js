@@ -416,6 +416,25 @@ function _showDurationPicker(taskId, task) {
   const picker = document.getElementById('focus-duration-picker');
   const defaultMin = state.user?.focusDefaultMinutes ?? null;
   const customInput = document.getElementById('focus-dur-custom');
+  const minEffectiveMin = getMinEffectiveMinutes(task.difficulty);
+
+  // Show recommended minimum hint
+  let hintEl = picker.querySelector('.focus-dur-hint');
+  if (!hintEl) {
+    hintEl = document.createElement('div');
+    hintEl.className = 'focus-dur-hint';
+    picker.querySelector('.focus-dur-presets').insertAdjacentElement('beforebegin', hintEl);
+  }
+  hintEl.textContent = `💡 此任務建議最少 ${minEffectiveMin} 分鐘`;
+
+  // Warning element
+  let warnEl = picker.querySelector('.focus-dur-warn');
+  if (!warnEl) {
+    warnEl = document.createElement('div');
+    warnEl.className = 'focus-dur-warn';
+    picker.querySelector('.focus-dur-actions').insertAdjacentElement('beforebegin', warnEl);
+  }
+  warnEl.textContent = '';
 
   // Highlight saved default
   picker.querySelectorAll('.focus-dur-btn').forEach(btn => {
@@ -436,17 +455,28 @@ function _showDurationPicker(taskId, task) {
     return (!isNaN(v) && v > 0) ? v : null;
   }
 
+  function updateWarn() {
+    const min = getSelectedMin();
+    warnEl.textContent = (min && min < minEffectiveMin)
+      ? '⚠ 低於建議時間，對成長的實際幫助較低'
+      : '';
+  }
+
   picker.querySelectorAll('.focus-dur-btn').forEach(btn => {
     btn.onclick = () => {
       picker.querySelectorAll('.focus-dur-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       customInput.value = '';
+      updateWarn();
     };
   });
 
   customInput.oninput = () => {
     picker.querySelectorAll('.focus-dur-btn').forEach(b => b.classList.remove('active'));
+    updateWarn();
   };
+
+  updateWarn();
 
   document.getElementById('focus-dur-confirm').onclick = () => {
     const min = getSelectedMin();
