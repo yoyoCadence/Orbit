@@ -444,6 +444,10 @@ function _showDurationPicker(taskId, task) {
     };
   });
 
+  customInput.oninput = () => {
+    picker.querySelectorAll('.focus-dur-btn').forEach(b => b.classList.remove('active'));
+  };
+
   document.getElementById('focus-dur-confirm').onclick = () => {
     const min = getSelectedMin();
     picker.classList.add('hidden');
