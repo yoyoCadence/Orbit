@@ -21,7 +21,7 @@ import { renderLeaderboard }    from './pages/leaderboard.js';
 import { startTour } from './tour.js';
 
 // ─── Version ─────────────────────────────────────────────────────────────────
-export const APP_VERSION = 'v1.14.0';
+export const APP_VERSION = 'v1.15.0';
 
 // Expose tour globally so settings page can call it
 window.startTour = startTour;
@@ -405,35 +405,121 @@ window.startFocus = function (taskId) {
     return;
   }
 
+  if (storage.isProUser()) {
+    _showDurationPicker(taskId, task);
+  } else {
+    _launchFocus(taskId, task, null);
+  }
+};
+
+function _showDurationPicker(taskId, task) {
+  const picker = document.getElementById('focus-duration-picker');
+  const defaultMin = state.user?.focusDefaultMinutes ?? null;
+  const customInput = document.getElementById('focus-dur-custom');
+
+  // Highlight saved default
+  picker.querySelectorAll('.focus-dur-btn').forEach(btn => {
+    btn.classList.toggle('active', Number(btn.dataset.min) === defaultMin);
+  });
+  if (defaultMin && !picker.querySelector(`.focus-dur-btn[data-min="${defaultMin}"]`)) {
+    customInput.value = defaultMin;
+  } else {
+    customInput.value = '';
+  }
+
+  picker.classList.remove('hidden');
+
+  function getSelectedMin() {
+    const active = picker.querySelector('.focus-dur-btn.active');
+    if (active) return Number(active.dataset.min);
+    const v = parseInt(customInput.value, 10);
+    return (!isNaN(v) && v > 0) ? v : null;
+  }
+
+  picker.querySelectorAll('.focus-dur-btn').forEach(btn => {
+    btn.onclick = () => {
+      picker.querySelectorAll('.focus-dur-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      customInput.value = '';
+    };
+  });
+
+  document.getElementById('focus-dur-confirm').onclick = () => {
+    const min = getSelectedMin();
+    picker.classList.add('hidden');
+    if (min) {
+      state.user.focusDefaultMinutes = min;
+      storage.upsertProfile(state.user);
+    }
+    _launchFocus(taskId, task, min ?? null);
+  };
+
+  document.getElementById('focus-dur-skip').onclick = () => {
+    picker.classList.add('hidden');
+    _launchFocus(taskId, task, null);
+  };
+}
+
+function _launchFocus(taskId, task, targetMin) {
   focus.active          = true;
   focus.taskId          = taskId;
   focus.startTime       = Date.now();
   focus.elapsedSec      = 0;
+  focus.targetSec       = targetMin ? targetMin * 60 : null;
   focus.minEffectiveSec = getMinEffectiveMinutes(task.difficulty) * 60;
 
-  const overlay = document.getElementById('focus-overlay');
   document.getElementById('focus-task-name').textContent = task.name;
   document.getElementById('focus-task-emoji').textContent = task.emoji || '🎯';
-  overlay.classList.remove('hidden');
 
+  const modeEl = document.getElementById('focus-timer-mode');
+  if (focus.targetSec) {
+    modeEl.textContent = `目標 ${targetMin} 分鐘`;
+    modeEl.className = 'focus-timer-mode focus-timer-mode--countdown';
+  } else {
+    modeEl.textContent = '';
+    modeEl.className = 'focus-timer-mode';
+  }
+
+  document.getElementById('focus-overlay').classList.remove('hidden');
   focus.intervalId = setInterval(_tickFocus, 1000);
   _tickFocus();
-};
+}
 
 function _tickFocus() {
   focus.elapsedSec = Math.floor((Date.now() - focus.startTime) / 1000);
-  const min = Math.floor(focus.elapsedSec / 60);
-  const sec = focus.elapsedSec % 60;
-  const timeStr = `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+
+  // Countdown mode: auto-end when target reached
+  if (focus.targetSec && focus.elapsedSec >= focus.targetSec) {
+    clearInterval(focus.intervalId);
+    document.getElementById('focus-timer').textContent = '00:00';
+    document.getElementById('focus-overlay').classList.add('hidden');
+    document.getElementById('focus-pip').classList.add('hidden');
+    _playFocusChime('end');
+    _showResultPicker(Math.floor(focus.targetSec / 60));
+    return;
+  }
+
+  let displaySec, timeStr;
+  if (focus.targetSec) {
+    displaySec = focus.targetSec - focus.elapsedSec;
+    const min = Math.floor(displaySec / 60);
+    const sec = displaySec % 60;
+    timeStr = `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+  } else {
+    const min = Math.floor(focus.elapsedSec / 60);
+    const sec = focus.elapsedSec % 60;
+    timeStr = `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+  }
   document.getElementById('focus-timer').textContent = timeStr;
 
-  // 同步更新背景計時 pip
   const pipTimer = document.getElementById('focus-pip-timer');
   if (pipTimer) pipTimer.textContent = timeStr;
 
   const minEl = document.getElementById('focus-min-effective');
   const minSec = focus.minEffectiveSec;
+  const justReached = focus.elapsedSec === minSec;
   if (focus.elapsedSec >= minSec) {
+    if (justReached) _playFocusChime('milestone');
     minEl.textContent = '達到最低有效時間 ✓';
     minEl.className = 'focus-min-reached';
     document.getElementById('focus-end-btn').disabled = false;
@@ -442,8 +528,28 @@ function _tickFocus() {
     const rm = Math.floor(remain / 60), rs = remain % 60;
     minEl.textContent = `最低有效時間：還需 ${rm}:${String(rs).padStart(2,'0')}`;
     minEl.className = 'focus-min-pending';
-    document.getElementById('focus-end-btn').disabled = false; // allow early end, XP = 0
+    document.getElementById('focus-end-btn').disabled = false;
   }
+}
+
+function _playFocusChime(type) {
+  if (!storage.isProUser() || state.user?.focusSoundEnabled === false) return;
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const freqs = type === 'end' ? [528, 660, 784] : [528, 660];
+    freqs.forEach((freq, i) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.25);
+      gain.gain.setValueAtTime(0.25, ctx.currentTime + i * 0.25);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.25 + 1.2);
+      osc.start(ctx.currentTime + i * 0.25);
+      osc.stop(ctx.currentTime + i * 0.25 + 1.2);
+    });
+  } catch { /* AudioContext not available */ }
 }
 
 window.endFocus = function () {
@@ -595,6 +701,7 @@ window.skipFocus = function () {
 };
 
 function _showResultPicker(durationMin) {
+  const isPro = storage.isProUser();
   const modal = document.createElement('div');
   modal.className = 'modal-overlay';
   modal.id = 'result-picker';
@@ -620,18 +727,24 @@ function _showResultPicker(durationMin) {
           <span class="result-desc">大部分時間失焦</span>
         </button>
       </div>
+      ${isPro ? `
+      <div class="focus-note-row">
+        <textarea id="focus-note-input" class="focus-note-input"
+          placeholder="備注這次專注…（選填）" maxlength="200" rows="2"></textarea>
+      </div>` : ''}
     </div>
   `;
   document.body.appendChild(modal);
   modal.querySelectorAll('.result-btn').forEach(btn => {
     btn.addEventListener('click', () => {
+      const note = isPro ? (modal.querySelector('#focus-note-input')?.value.trim() || '') : '';
       modal.remove();
-      _submitFocusResult(btn.dataset.result, durationMin);
+      _submitFocusResult(btn.dataset.result, durationMin, note);
     });
   });
 }
 
-function _submitFocusResult(result, durationMin) {
+function _submitFocusResult(result, durationMin, note = '') {
   const task = state.tasks.find(t => t.id === focus.taskId);
   focus.active = false;
 
@@ -678,6 +791,7 @@ function _submitFocusResult(result, durationMin) {
     value:           task.value,
     resistance:      task.resistance,
     isProductiveXP,
+    ...(note ? { note } : {}),
   };
 
   _commitSession(session, task);

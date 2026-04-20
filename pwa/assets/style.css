@@ -1852,6 +1852,60 @@ nav {
 }
 .focus-skip-btn:hover { color: var(--text); }
 
+/* Focus timer mode label (countdown indicator) */
+.focus-timer-mode {
+  font-size: 12px; color: var(--text-muted);
+  margin-top: -10px; margin-bottom: 10px;
+}
+.focus-timer-mode--countdown {
+  color: var(--primary-lt); font-weight: 600;
+}
+
+/* Duration picker modal */
+.focus-dur-presets {
+  display: flex; gap: 8px; justify-content: center;
+  margin-bottom: 12px; flex-wrap: wrap;
+}
+.focus-dur-btn {
+  background: var(--surface-2, rgba(255,255,255,.06));
+  border: 1px solid var(--border);
+  border-radius: 20px; padding: 6px 16px;
+  font-size: 14px; font-weight: 600; color: var(--text);
+  cursor: pointer; transition: background 0.15s, border-color 0.15s;
+}
+.focus-dur-btn.active,
+.focus-dur-btn:hover {
+  background: var(--primary); color: #fff; border-color: var(--primary);
+}
+.focus-dur-custom-row {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 16px;
+}
+.focus-dur-custom-row .form-input { flex: 1; }
+.focus-dur-actions {
+  display: flex; flex-direction: column; gap: 8px;
+}
+
+/* Session note textarea */
+.focus-note-row {
+  margin-top: 14px; border-top: 1px solid var(--border); padding-top: 12px;
+}
+.focus-note-input {
+  width: 100%; background: var(--surface-2, rgba(255,255,255,.06));
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 10px; font-size: 13px; color: var(--text);
+  resize: none; box-sizing: border-box;
+  font-family: inherit;
+}
+.focus-note-input:focus { outline: none; border-color: var(--primary); }
+.focus-note-input::placeholder { color: var(--text-muted); }
+
+/* Session note display in log */
+.log-note {
+  font-size: 12px; color: var(--text-muted);
+  margin-top: 3px; font-style: italic;
+}
+
 /* 略過確認 modal 內容 */
 .skip-confirm-msg {
   font-size: 15px; font-weight: 600; color: var(--text);

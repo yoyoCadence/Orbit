@@ -52,6 +52,7 @@ export function renderGoals(container) {
           <div class="log-info">
             <div class="log-name">${escHtml(s.taskName)}</div>
             <div class="log-time">${formatTime(s.completedAt)}${dur} · ${RESULT_LABEL[s.result] || ''}</div>
+            ${s.note ? `<div class="log-note">💬 ${escHtml(s.note)}</div>` : ''}
           </div>
           <span class="log-xp ${s.result === 'invalid' ? 'log-xp-invalid' : ''}">${xpStr}</span>
         </div>

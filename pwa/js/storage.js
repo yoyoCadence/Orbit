@@ -56,6 +56,8 @@ export const db = {
         streakShieldCount:       p.streak_shield_count        ?? 2,
         streakShieldResetMonth:  p.streak_shield_reset_month  || '',
         streakUnlockUsed:        p.streak_unlock_used         ?? false,
+        focusDefaultMinutes:     p.focus_default_minutes      ?? null,
+        focusSoundEnabled:       p.focus_sound_enabled        ?? true,
       });
     }
 
@@ -141,6 +143,8 @@ export const db = {
       streak_shield_count:       user.streakShieldCount       ?? 2,
       streak_shield_reset_month: user.streakShieldResetMonth  || '',
       streak_unlock_used:        user.streakUnlockUsed        ?? false,
+      focus_default_minutes:     user.focusDefaultMinutes     ?? null,
+      focus_sound_enabled:       user.focusSoundEnabled       ?? true,
     });
   },
 

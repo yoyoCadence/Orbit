@@ -443,3 +443,55 @@ describe('renderSettings: streak unlock progress in Pro section', () => {
     expect(c.querySelector('.streak-unlock-row')).toBeNull();
   });
 });
+
+// ─── Focus Timer Pro settings (SUB-12) ───────────────────────────────────────
+
+describe('renderSettings: Focus Timer Pro settings card', () => {
+  it('Pro user sees focus timer Pro settings card', () => {
+    mockStorage.isProUser.mockReturnValue(true);
+    mockStorage.isTrialUser.mockReturnValue(false);
+    mockState.user = { name: 'T', mode: 'normal', isPublic: false, focusSoundEnabled: true };
+    const c = makeContainer();
+    renderSettings(c);
+    expect(c.querySelector('#focus-sound-toggle')).not.toBeNull();
+    expect(c.querySelector('#focus-default-min-select')).not.toBeNull();
+  });
+
+  it('trial user sees focus timer Pro settings card', () => {
+    mockStorage.isProUser.mockReturnValue(false);
+    mockStorage.isTrialUser.mockReturnValue(true);
+    mockStorage.getTrialDaysRemaining.mockReturnValue(10);
+    mockState.user = { name: 'T', mode: 'normal', isPublic: false };
+    const c = makeContainer();
+    renderSettings(c);
+    expect(c.querySelector('#focus-sound-toggle')).not.toBeNull();
+  });
+
+  it('free user does not see focus timer Pro settings card', () => {
+    mockStorage.isProUser.mockReturnValue(false);
+    mockStorage.isTrialUser.mockReturnValue(false);
+    mockState.user = { name: 'T', mode: 'normal', isPublic: false };
+    const c = makeContainer();
+    renderSettings(c);
+    expect(c.querySelector('#focus-sound-toggle')).toBeNull();
+    expect(c.querySelector('#focus-default-min-select')).toBeNull();
+  });
+
+  it('sound toggle reflects focusSoundEnabled=false', () => {
+    mockStorage.isProUser.mockReturnValue(true);
+    mockStorage.isTrialUser.mockReturnValue(false);
+    mockState.user = { name: 'T', mode: 'normal', isPublic: false, focusSoundEnabled: false };
+    const c = makeContainer();
+    renderSettings(c);
+    expect(c.querySelector('#focus-sound-toggle').checked).toBe(false);
+  });
+
+  it('default minutes select reflects saved focusDefaultMinutes', () => {
+    mockStorage.isProUser.mockReturnValue(true);
+    mockStorage.isTrialUser.mockReturnValue(false);
+    mockState.user = { name: 'T', mode: 'normal', isPublic: false, focusDefaultMinutes: 25 };
+    const c = makeContainer();
+    renderSettings(c);
+    expect(c.querySelector('#focus-default-min-select').value).toBe('25');
+  });
+});
