@@ -23,6 +23,7 @@ import {
   reorderTasks,
   calcHourDistribution,
   calcStreakMilestone,
+  calcTimeMultiplier,
 } from '../../pwa/js/engine.js';
 
 // ─── Test fixtures ────────────────────────────────────────────────────────────
@@ -600,4 +601,26 @@ describe('calcStreakMilestone', () => {
     expect(rate).toBeGreaterThan(0.01);
     expect(rate).toBeLessThanOrEqual(1);
   });
+});
+
+// ─── calcTimeMultiplier ───────────────────────────────────────────────────────
+
+describe('calcTimeMultiplier', () => {
+  it('exactly at minimum → 1x', () =>
+    expect(calcTimeMultiplier(25, 25)).toBe(1));
+
+  it('2x minimum → 2x', () =>
+    expect(calcTimeMultiplier(50, 25)).toBe(2));
+
+  it('half of minimum → 0.5x (below min still scales)', () =>
+    expect(calcTimeMultiplier(12, 25)).toBeCloseTo(0.48, 1));
+
+  it('capped at 4x', () =>
+    expect(calcTimeMultiplier(200, 25)).toBe(4));
+
+  it('null duration → 1', () =>
+    expect(calcTimeMultiplier(null, 25)).toBe(1));
+
+  it('zero minEffective → 1', () =>
+    expect(calcTimeMultiplier(30, 0)).toBe(1));
 });

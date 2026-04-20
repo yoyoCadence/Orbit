@@ -5,7 +5,7 @@ import { getLevelInfo, getDisplayTitle } from './leveling.js';
 import {
   calcBaseXP, calcFinalXP, calcEnergyCost, calcEnergyGain,
   calcDailyStats, processStreakForDate, getDailyTaskXP,
-  getDailyTaskCount, getMinEffectiveMinutes,
+  getDailyTaskCount, getMinEffectiveMinutes, calcTimeMultiplier,
 } from './engine.js';
 import { uid, today, effectiveToday } from './utils.js';
 
@@ -787,6 +787,12 @@ function _submitFocusResult(result, durationMin, note = '') {
   const todayStr = _eToday();
   const baseXP   = calcBaseXP(task);
   let   finalXP  = calcFinalXP(baseXP, result, state.user.streakDays || 0);
+
+  // Time multiplier: XP scales linearly with session duration (focus tasks only, capped at 4x)
+  if (result !== 'invalid' && task.impactType === 'task') {
+    const timeMult = calcTimeMultiplier(durationMin, getMinEffectiveMinutes(task.difficulty));
+    finalXP = Math.round(finalXP * timeMult);
+  }
 
   // B-class daily XP cap
   if (task.value === 'B') {
