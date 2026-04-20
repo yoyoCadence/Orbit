@@ -3,6 +3,8 @@ import { storage }                                        from '../storage.js';
 import { getLevelInfo, getDisplayTitle, xpTable,
          getAllTemplates }                                 from '../leveling.js';
 import { effectiveToday }                                 from '../utils.js';
+import { calcHourDistribution, calcStreakMilestone,
+         calcDailyStats }                                 from '../engine.js';
 
 export function renderProfile(container) {
   const user   = state.user;
@@ -170,6 +172,12 @@ export function renderProfile(container) {
       ${_heatmapHtml(state.sessions, isPro, user.newDayHour ?? 5)}
     </div>
 
+    <!-- Advanced Dashboard (Pro) -->
+    <div class="card">
+      <div class="card-title">📈 進階數據儀表板 ${isPro ? '' : '<span class="pro-badge--inline">✦ Pro</span>'}</div>
+      ${_dashboardHtml(state.sessions, isPro, user)}
+    </div>
+
     <!-- XP Table -->
     <div class="card">
       <div class="card-title">升等所需 XP</div>
@@ -315,6 +323,109 @@ function _heatmapHtml(sessions, isPro, newDayHour = 5) {
     <div class="hm-footer">
       <div class="hm-legend"><span class="hm-lbl">少</span>${legend}<span class="hm-lbl">多</span></div>
       ${note}
+    </div>
+  `;
+}
+
+function _dashboardHtml(sessions, isPro, user) {
+  if (!isPro) {
+    return `
+      <div style="text-align:center;padding:12px 0 4px">
+        <div style="font-size:28px;margin-bottom:6px">📊</div>
+        <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px">
+          任務效率、最佳作業時段、Streak 里程碑預測
+        </div>
+        <button class="btn btn-primary btn-sm"
+                onclick="sessionStorage.setItem('orbit_pro_highlight','1');window.navigate('settings');setTimeout(()=>window._scrollToProCard?.(),300)">
+          ✦ 升級 Pro 解鎖
+        </button>
+      </div>
+    `;
+  }
+
+  // --- Task efficiency (last 30 days) ---
+  const last30 = new Set();
+  for (let i = 0; i < 30; i++) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    last30.add(d.toLocaleDateString('sv'));
+  }
+  const recent     = sessions.filter(s => last30.has(s.date));
+  const taskSess   = recent.filter(s => s.impactType === 'task' && s.value !== 'D');
+  const doneCount  = taskSess.filter(s => s.result === 'complete' || s.result === 'instant').length;
+  const totalCount = taskSess.length;
+  const compRate   = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
+  const xp30       = recent.filter(s => s.isProductiveXP).reduce((a, s) => a + s.finalXP, 0);
+  const avgXP      = Math.round(xp30 / 30);
+
+  // --- Effective days streak metrics ---
+  const todayStr    = effectiveToday(user.newDayHour ?? 5);
+  let effectiveDays30 = 0;
+  for (let i = 0; i < 30; i++) {
+    const d = new Date(todayStr + 'T00:00:00'); d.setDate(d.getDate() - i);
+    if (calcDailyStats(sessions, d.toLocaleDateString('sv')).isEffectiveDay) effectiveDays30++;
+  }
+
+  // --- Hour distribution ---
+  const { morning, afternoon, evening, night } = calcHourDistribution(sessions);
+  const maxH = Math.max(morning, afternoon, evening, night, 1);
+  const timeBars = [
+    { label: '☀️ 早晨 6–12', xp: morning },
+    { label: '🌤 下午 12–18', xp: afternoon },
+    { label: '🌙 晚上 18–24', xp: evening },
+    { label: '🌃 凌晨 0–6',  xp: night },
+  ].map(({ label, xp }) => `
+    <div class="time-bar-row">
+      <span class="time-bar-lbl">${label}</span>
+      <div class="time-bar-track"><div class="time-bar-fill" style="width:${Math.round((xp / maxH) * 100)}%"></div></div>
+      <span class="time-bar-xp">${xp}</span>
+    </div>
+  `).join('');
+
+  // --- Streak milestone ---
+  const { next: milestone, daysNeeded, rate } = calcStreakMilestone(
+    user.streakDays || 0, sessions, todayStr
+  );
+  const milestoneHtml = milestone
+    ? `<div class="milestone-row">
+         <span>🎯 下一里程碑：<strong>${milestone} 天</strong></span>
+         <span class="milestone-eta">預計 <strong>${daysNeeded}</strong> 天後</span>
+       </div>
+       <div style="font-size:12px;color:var(--text-muted);margin-top:4px">
+         近30天有效日率 ${Math.round(rate * 100)}%，距目標差 ${milestone - (user.streakDays || 0)} 天
+       </div>`
+    : `<div style="font-size:14px;color:var(--primary-lt);font-weight:600">🏆 已達成所有里程碑！</div>`;
+
+  return `
+    <div class="dashboard-section">
+      <div class="dash-sub-title">📋 任務效率（近30天）</div>
+      <div class="dashboard-grid">
+        <div class="dash-metric">
+          <div class="dash-metric-val">${compRate}%</div>
+          <div class="dash-metric-lbl">完成率</div>
+        </div>
+        <div class="dash-metric">
+          <div class="dash-metric-val">${avgXP}</div>
+          <div class="dash-metric-lbl">日均 XP</div>
+        </div>
+        <div class="dash-metric">
+          <div class="dash-metric-val">${doneCount}</div>
+          <div class="dash-metric-lbl">完成次數</div>
+        </div>
+        <div class="dash-metric">
+          <div class="dash-metric-val">${effectiveDays30}</div>
+          <div class="dash-metric-lbl">有效天</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dashboard-section">
+      <div class="dash-sub-title">⏰ 最佳作業時段</div>
+      ${timeBars}
+    </div>
+
+    <div class="dashboard-section">
+      <div class="dash-sub-title">🔥 Streak 里程碑預測</div>
+      ${milestoneHtml}
     </div>
   `;
 }
