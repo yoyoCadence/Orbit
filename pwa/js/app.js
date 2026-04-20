@@ -405,7 +405,7 @@ window.startFocus = function (taskId) {
     return;
   }
 
-  if (storage.isProUser()) {
+  if (storage.isProUser() || storage.isTrialUser()) {
     _showDurationPicker(taskId, task);
   } else {
     _launchFocus(taskId, task, null);
@@ -567,7 +567,7 @@ function _tickFocus() {
 }
 
 function _playFocusChime(type) {
-  if (!storage.isProUser() || state.user?.focusSoundEnabled === false) return;
+  if ((!storage.isProUser() && !storage.isTrialUser()) || state.user?.focusSoundEnabled === false) return;
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const freqs = type === 'end' ? [528, 660, 784] : [528, 660];
@@ -735,7 +735,7 @@ window.skipFocus = function () {
 };
 
 function _showResultPicker(durationMin) {
-  const isPro = storage.isProUser();
+  const isPro = storage.isProUser() || storage.isTrialUser();
   const modal = document.createElement('div');
   modal.className = 'modal-overlay';
   modal.id = 'result-picker';
