@@ -55,6 +55,7 @@ export const db = {
         trialStartedAt:       p.trial_started_at || null,
         streakShieldCount:       p.streak_shield_count        ?? 2,
         streakShieldResetMonth:  p.streak_shield_reset_month  || '',
+        streakUnlockUsed:        p.streak_unlock_used         ?? false,
       });
     }
 
@@ -139,6 +140,7 @@ export const db = {
       trial_started_at:       user.trialStartedAt        ?? null,
       streak_shield_count:       user.streakShieldCount       ?? 2,
       streak_shield_reset_month: user.streakShieldResetMonth  || '',
+      streak_unlock_used:        user.streakUnlockUsed        ?? false,
     });
   },
 

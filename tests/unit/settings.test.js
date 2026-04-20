@@ -401,3 +401,45 @@ describe('renderSettings: Pro section content', () => {
     expect(c.querySelector('.pro-active-sub').textContent).toContain('終身方案');
   });
 });
+
+// ─── Streak unlock teaser in Pro section (SUB-16) ─────────────────────────────
+
+describe('renderSettings: streak unlock progress in Pro section', () => {
+  it('free user sees streak unlock progress bar', () => {
+    mockStorage.isProUser.mockReturnValue(false);
+    mockStorage.isTrialUser.mockReturnValue(false);
+    mockState.user = { name: 'T', mode: 'normal', isPublic: false, streakDays: 20, streakUnlockUsed: false };
+    const c = makeContainer();
+    renderSettings(c);
+    expect(c.querySelector('.streak-unlock-row')).not.toBeNull();
+    expect(c.textContent).toContain('20/45');
+  });
+
+  it('free user with streakUnlockUsed=true does not see the bar', () => {
+    mockStorage.isProUser.mockReturnValue(false);
+    mockStorage.isTrialUser.mockReturnValue(false);
+    mockState.user = { name: 'T', mode: 'normal', isPublic: false, streakDays: 60, streakUnlockUsed: true };
+    const c = makeContainer();
+    renderSettings(c);
+    expect(c.querySelector('.streak-unlock-row')).toBeNull();
+  });
+
+  it('trial user does not see streak unlock progress bar', () => {
+    mockStorage.isProUser.mockReturnValue(true);
+    mockStorage.isTrialUser.mockReturnValue(true);
+    mockStorage.getTrialDaysRemaining.mockReturnValue(10);
+    mockState.user = { name: 'T', mode: 'normal', isPublic: false, streakDays: 5, streakUnlockUsed: false };
+    const c = makeContainer();
+    renderSettings(c);
+    expect(c.querySelector('.streak-unlock-row')).toBeNull();
+  });
+
+  it('Pro user does not see streak unlock progress bar', () => {
+    mockStorage.isProUser.mockReturnValue(true);
+    mockStorage.isTrialUser.mockReturnValue(false);
+    mockState.user = { name: 'T', mode: 'normal', isPublic: false, streakDays: 5, streakUnlockUsed: false };
+    const c = makeContainer();
+    renderSettings(c);
+    expect(c.querySelector('.streak-unlock-row')).toBeNull();
+  });
+});

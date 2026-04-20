@@ -137,7 +137,22 @@ function _proSectionHtml() {
     </div>
     <div class="pro-notice">升級後立即生效 · 試用期間資料全部保留</div>`;
 
-  return `${trialHtml}${featGrid}${anchorHtml}`;
+  // ── Streak unlock progress (free, non-trial, not yet unlocked) ──────────────
+  const streakDays = state.user?.streakDays || 0;
+  const streakUnlockHtml = (!isPro && !isTrial && !state.user?.streakUnlockUsed) ? `
+    <div class="streak-unlock-row" style="margin-bottom:16px">
+      <div class="streak-unlock-label">
+        <span>🔓 連勝解鎖 Pro</span>
+        <span class="streak-unlock-count">${Math.min(streakDays, 45)}/45 天</span>
+      </div>
+      <div class="streak-unlock-track">
+        <div class="streak-unlock-fill" style="width:${Math.min(100, Math.round(streakDays / 45 * 100))}%"></div>
+      </div>
+      <div class="streak-unlock-hint">達成 60 天連勝，自動解鎖 30 天免費 Pro！</div>
+    </div>
+    <div class="pro-section-divider"></div>` : '';
+
+  return `${trialHtml}${streakUnlockHtml}${featGrid}${anchorHtml}`;
 }
 
 // ── Feature info popover ─────────────────────────────────────────────────────
