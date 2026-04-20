@@ -91,11 +91,15 @@ beforeEach(() => {
   mockState.energy    = { currentEnergy: 80, maxEnergy: 100, lastResetDate: '2026-04-11' };
 
   // Reset window globals
-  window.completeInstant    = vi.fn();
-  window.startFocus         = vi.fn();
-  window.deleteSession      = vi.fn();
-  window.addToDailyPlan     = vi.fn();
-  window.removeFromDailyPlan = vi.fn();
+  window.completeInstant      = vi.fn();
+  window.startFocus           = vi.fn();
+  window.deleteSession        = vi.fn();
+  window.addToDailyPlan       = vi.fn();
+  window.removeFromDailyPlan  = vi.fn();
+  window.useStreakShield       = vi.fn();
+  window.dismissStreakShield   = vi.fn();
+  window.reshowShieldBanner    = vi.fn();
+  window.showShieldInfo        = vi.fn();
 });
 
 describe('renderHome: stats bar', () => {
@@ -521,6 +525,22 @@ describe('renderHome: streak shield banner', () => {
     const c = makeContainer();
     renderHome(c);
     expect(c.querySelector('.shield-pill-pending')).not.toBeNull();
+  });
+
+  it('clicking shield-use-btn calls window.useStreakShield', () => {
+    localStorage.setItem('orbit_shield_pending', JSON.stringify({ prevStreak: 7 }));
+    const c = makeContainer();
+    renderHome(c);
+    c.querySelector('.shield-use-btn').click();
+    expect(window.useStreakShield).toHaveBeenCalled();
+  });
+
+  it('clicking shield-skip-btn calls window.dismissStreakShield', () => {
+    localStorage.setItem('orbit_shield_pending', JSON.stringify({ prevStreak: 7 }));
+    const c = makeContainer();
+    renderHome(c);
+    c.querySelector('.shield-skip-btn').click();
+    expect(window.dismissStreakShield).toHaveBeenCalled();
   });
 });
 

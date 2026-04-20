@@ -510,4 +510,46 @@ describe('renderProfile: habit heatmap', () => {
     renderProfile(c);
     expect(c.querySelector('.hm-3,.hm-4')).not.toBeNull();
   });
+
+  it('respects newDayHour: session from calendar-yesterday shows as today when newDayHour is in the future', () => {
+    // newDayHour=23 means "new day starts at 23:00". Since current time is < 23, effective today = yesterday.
+    // A session from yesterday (calendar) should appear as the last heatmap cell (today effective).
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toLocaleDateString('sv');
+    mockState.user = freshUser({ newDayHour: 23 });
+    mockState.sessions = [{ date: yesterdayStr, finalXP: 80, isProductiveXP: true }];
+    const c = makeContainer();
+    renderProfile(c);
+    // hm-today marks the effective-today cell; it should have level ≥ 2 (XP=80 → level 2)
+    const todayCell = c.querySelector('.hm-today');
+    expect(todayCell).not.toBeNull();
+    expect(todayCell.classList.contains('hm-0')).toBe(false);
+  });
+});
+
+describe('renderProfile: createdAt null safety', () => {
+  afterEach(() => { document.body.innerHTML = ''; });
+
+  it('createdAt: null → daysActive stat shows a number (not NaN)', () => {
+    mockState.user = freshUser({ createdAt: null });
+    const c = makeContainer();
+    renderProfile(c);
+    // daysActive is the 4th .stat-value (totalXP / totalSessions / activeDays / daysActive)
+    const statValues = c.querySelectorAll('.stat-value');
+    const daysActiveEl = statValues[3];
+    expect(daysActiveEl).not.toBeNull();
+    expect(daysActiveEl.textContent).not.toContain('NaN');
+    expect(Number(daysActiveEl.textContent)).toBeGreaterThanOrEqual(1);
+  });
+
+  it('createdAt: undefined → daysActive stat shows a number (not NaN)', () => {
+    const u = freshUser();
+    delete u.createdAt;
+    mockState.user = u;
+    const c = makeContainer();
+    renderProfile(c);
+    const statValues = c.querySelectorAll('.stat-value');
+    expect(statValues[3].textContent).not.toContain('NaN');
+  });
 });
