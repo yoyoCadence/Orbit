@@ -449,7 +449,7 @@ function _showDurationPicker(taskId, task) {
     picker.classList.add('hidden');
     if (min) {
       state.user.focusDefaultMinutes = min;
-      storage.upsertProfile(state.user);
+      storage.saveUser(state.user);
     }
     _launchFocus(taskId, task, min ?? null);
   };

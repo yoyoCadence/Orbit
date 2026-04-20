@@ -562,14 +562,14 @@ function _setupListeners(container) {
   container.querySelector('#focus-sound-toggle')?.addEventListener('change', e => {
     if (!state.user) return;
     state.user.focusSoundEnabled = e.target.checked;
-    storage.upsertProfile(state.user);
+    storage.saveUser(state.user);
   });
 
   // Focus default minutes (Pro)
   container.querySelector('#focus-default-min-select')?.addEventListener('change', e => {
     if (!state.user) return;
     state.user.focusDefaultMinutes = e.target.value ? Number(e.target.value) : null;
-    storage.upsertProfile(state.user);
+    storage.saveUser(state.user);
   });
 
   // New day hour
