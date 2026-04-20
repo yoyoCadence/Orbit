@@ -252,7 +252,7 @@ function buildMonthView() {
         <div class="history-lock-top">
           <span class="history-lock-icon">🔒</span>
           <div>
-            <div class="history-lock-title">${FREE_MONTHS} 個月前的月份已鎖定</div>
+            <div class="history-lock-title">${FREE_MONTHS} 個月前的月份已鎖定 <span class="pro-badge--inline">✦ Pro 專屬</span></div>
             <div class="history-lock-desc">免費版可查看近 ${FREE_MONTHS} 個月 · Pro 無限歷史</div>
           </div>
         </div>

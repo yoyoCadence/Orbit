@@ -148,7 +148,7 @@ function _proSectionHtml() {
       <div class="streak-unlock-track">
         <div class="streak-unlock-fill" style="width:${Math.min(100, Math.round(streakDays / 45 * 100))}%"></div>
       </div>
-      <div class="streak-unlock-hint">達成 60 天連勝，自動解鎖 30 天免費 Pro！</div>
+      <div class="streak-unlock-hint">達成 45 天連勝，自動解鎖 30 天免費 Pro！</div>
     </div>
     <div class="pro-section-divider"></div>` : '';
 
@@ -337,7 +337,7 @@ function _renderView(container) {
       <div class="card-title">🎨 App 主題</div>
       <div class="mode-row" style="margin-bottom:14px">
         <div class="mode-info">
-          <div class="mode-name">每日隨機主題${!isPro ? ' <span class="pro-badge--inline" style="margin-left:4px">✦ Pro</span>' : ''}</div>
+          <div class="mode-name">每日隨機主題</div>
           <div class="mode-desc">每天自動套用一個隨機主題</div>
         </div>
         ${isPro

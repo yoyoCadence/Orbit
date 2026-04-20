@@ -296,12 +296,13 @@ function showStreakUnlockModal() {
   modal.innerHTML = `
     <div class="modal-box" style="text-align:center">
       <div class="su-icon">🏆</div>
-      <div class="su-title">60天連勝達成！</div>
+      <div class="su-title">45天連勝達成！</div>
       <div class="su-body">你的堅持獲得了回報！<br>解鎖 <strong>30天免費 Pro</strong>！</div>
       <div class="su-perks">
         <div class="su-perk">🛡 每月 2 張 Streak Shield</div>
         <div class="su-perk">📊 完整 Habit Heatmap</div>
         <div class="su-perk">📈 進階數據儀表板</div>
+        <div class="su-perk" style="opacity:0.6">✦ 還有 Pro 專屬隱藏福利，升級後自行發現</div>
       </div>
       <button class="btn btn-primary su-btn" id="su-close-btn">🎉 太棒了！</button>
     </div>

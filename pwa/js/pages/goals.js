@@ -74,7 +74,7 @@ export function renderGoals(container) {
       <div class="history-lock-top">
         <span class="history-lock-icon">🔒</span>
         <div>
-          <div class="history-lock-title">還有 ${hidden.length} 筆更早的紀錄</div>
+          <div class="history-lock-title">還有 ${hidden.length} 筆更早的紀錄 <span class="pro-badge--inline">✦ Pro 專屬</span></div>
           <div class="history-lock-desc">免費版顯示近 ${FREE_DAYS} 天 · 升級後立即完整呈現</div>
         </div>
       </div>
