@@ -152,6 +152,30 @@
     </nav>
   </div>
 
+  <!-- ── Focus duration picker (Pro) ── -->
+  <div id="focus-duration-picker" class="modal-overlay hidden">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span class="modal-title">⏱ 設定專注時長</span>
+        <span class="pro-badge--inline">✦ Pro 專屬</span>
+      </div>
+      <div class="focus-dur-presets">
+        <button class="focus-dur-btn" data-min="15">15 分</button>
+        <button class="focus-dur-btn" data-min="25">25 分</button>
+        <button class="focus-dur-btn" data-min="45">45 分</button>
+        <button class="focus-dur-btn" data-min="90">90 分</button>
+      </div>
+      <div class="focus-dur-custom-row">
+        <input id="focus-dur-custom" class="form-input" type="number" min="1" max="240" placeholder="自訂分鐘數">
+        <span style="color:var(--text-muted);font-size:13px">分鐘</span>
+      </div>
+      <div class="focus-dur-actions">
+        <button class="btn btn-primary" id="focus-dur-confirm">開始倒數</button>
+        <button class="btn btn-outline" id="focus-dur-skip">自由計時</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ── Focus timer overlay ── -->
   <div id="focus-overlay" class="hidden">
     <div class="focus-box">
@@ -161,6 +185,7 @@
         <span id="focus-task-name" class="focus-task-name">任務名稱</span>
       </div>
       <div id="focus-timer" class="focus-timer">00:00</div>
+      <div id="focus-timer-mode" class="focus-timer-mode"></div>
       <div id="focus-min-effective" class="focus-min-pending">最低有效時間計算中…</div>
       <div class="focus-controls">
         <button id="focus-pause-btn" class="btn btn-outline focus-pause-btn" onclick="window.togglePauseFocus()">⏸ 暫停</button>

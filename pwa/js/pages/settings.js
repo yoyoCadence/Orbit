@@ -394,6 +394,35 @@ function _renderView(container) {
       </div>
     </div>
 
+    <!-- Focus Timer Pro settings -->
+    ${(storage.isProUser() || storage.isTrialUser()) ? `
+    <div class="card">
+      <span class="pro-badge--corner">✦ Pro 專屬</span>
+      <div class="card-title">⏱ 專注計時 Pro 設定</div>
+      <div class="mode-row" style="margin-bottom:12px">
+        <div class="mode-info">
+          <div class="mode-name">完成音效</div>
+          <div class="mode-desc">倒數結束或達到有效時間時播放提示音</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="focus-sound-toggle" ${state.user?.focusSoundEnabled !== false ? 'checked' : ''}>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="mode-row">
+        <div class="mode-info">
+          <div class="mode-name">預設時長</div>
+          <div class="mode-desc">開始專注時的預設倒數分鐘數</div>
+        </div>
+        <select class="form-input" id="focus-default-min-select" style="width:90px;flex-shrink:0">
+          <option value="">不設定</option>
+          ${[15, 25, 45, 90].map(m =>
+            `<option value="${m}" ${(state.user?.focusDefaultMinutes ?? '') == m ? 'selected' : ''}>${m} 分</option>`
+          ).join('')}
+        </select>
+      </div>
+    </div>` : ''}
+
     <!-- New day start time -->
     <div class="card">
       <div class="card-title">🌅 新的一天開始時間</div>
@@ -527,6 +556,20 @@ function _setupListeners(container) {
     state.user.mode = newMode;
     storage.saveUser(state.user);
     _renderView(container);
+  });
+
+  // Focus sound toggle (Pro)
+  container.querySelector('#focus-sound-toggle')?.addEventListener('change', e => {
+    if (!state.user) return;
+    state.user.focusSoundEnabled = e.target.checked;
+    storage.saveUser(state.user);
+  });
+
+  // Focus default minutes (Pro)
+  container.querySelector('#focus-default-min-select')?.addEventListener('change', e => {
+    if (!state.user) return;
+    state.user.focusDefaultMinutes = e.target.value ? Number(e.target.value) : null;
+    storage.saveUser(state.user);
   });
 
   // New day hour

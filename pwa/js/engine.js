@@ -207,6 +207,11 @@ export function getMinEffectiveMinutes(difficulty) {
   return 25;
 }
 
+export function calcTimeMultiplier(durationMin, minEffectiveMin) {
+  if (!durationMin || durationMin <= 0 || !minEffectiveMin) return 1;
+  return Math.min(durationMin / minEffectiveMin, 4);
+}
+
 // ─── Advanced dashboard analytics ────────────────────────────────────────────
 
 /**
