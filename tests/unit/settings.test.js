@@ -29,6 +29,7 @@ const mockStorage = vi.hoisted(() => ({
   getRandomThemeDate:    vi.fn(() => ''),
   saveRandomThemeDate:   vi.fn(),
   isProUser:             vi.fn(() => false),
+  isPaidProUser:         vi.fn(() => false),
   isTrialUser:           vi.fn(() => false),
   getTrialDaysRemaining: vi.fn(() => 0),
   getProExpiry:          vi.fn(() => null),
@@ -109,6 +110,11 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockStorage.getTheme.mockReturnValue('dark-purple');
   mockStorage.getBgImage.mockReturnValue(null);
+  mockStorage.isProUser.mockReturnValue(false);
+  mockStorage.isPaidProUser.mockReturnValue(false);
+  mockStorage.isTrialUser.mockReturnValue(false);
+  mockStorage.getTrialDaysRemaining.mockReturnValue(0);
+  mockStorage.getProExpiry.mockReturnValue(null);
 });
 
 afterEach(() => {
@@ -376,6 +382,7 @@ describe('renderSettings: Pro section content', () => {
 
   it('Pro user sees pro-active-banner with active teaser', () => {
     mockStorage.isProUser.mockReturnValue(true);
+    mockStorage.isPaidProUser.mockReturnValue(true);
     mockStorage.isTrialUser.mockReturnValue(false);
     const c = makeContainer();
     renderSettings(c);
@@ -386,6 +393,7 @@ describe('renderSettings: Pro section content', () => {
 
   it('Pro user does not see hidden-benefits teaser (that is for free users)', () => {
     mockStorage.isProUser.mockReturnValue(true);
+    mockStorage.isPaidProUser.mockReturnValue(true);
     mockStorage.isTrialUser.mockReturnValue(false);
     const c = makeContainer();
     renderSettings(c);
@@ -393,6 +401,7 @@ describe('renderSettings: Pro section content', () => {
   });
 
   it('Pro user sees termination info: 終身方案 when no expiry', () => {
+    mockStorage.isPaidProUser.mockReturnValue(true);
     mockStorage.isProUser.mockReturnValue(true);
     mockStorage.isTrialUser.mockReturnValue(false);
     mockStorage.getProExpiry.mockReturnValue(null);
@@ -458,7 +467,7 @@ describe('renderSettings: Focus Timer Pro settings card', () => {
   });
 
   it('trial user sees focus timer Pro settings card', () => {
-    mockStorage.isProUser.mockReturnValue(false);
+    mockStorage.isProUser.mockReturnValue(true);
     mockStorage.isTrialUser.mockReturnValue(true);
     mockStorage.getTrialDaysRemaining.mockReturnValue(10);
     mockState.user = { name: 'T', mode: 'normal', isPublic: false };

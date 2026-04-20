@@ -38,7 +38,7 @@ export function renderProfile(container) {
     .map(r => _xpTableRow(r, info, user)).join('');
 
   // Title template picker — built-in + user custom templates
-  const isPro            = storage.isProUser() || storage.isTrialUser();
+  const isPro            = storage.isProUser();
   const currentTemplate  = user.titleTemplate || 'rpg';
   const customTemplates  = user.customTemplates || {};
   const allTemplates     = getAllTemplates(customTemplates);

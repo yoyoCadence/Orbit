@@ -284,19 +284,22 @@ export const storage = {
   getLogs:    ()  => get('logs')  ?? [],
 
   // ── Pro / Trial status ───────────────────────────────────────────────────────
-  isProUser: () => {
+  isPaidProUser: () => {
     const user = get('user');
     if (!user || !user.isPro) return false;
     if (!user.proExpiresAt) return true;            // lifetime Pro
     return new Date(user.proExpiresAt) > new Date();
   },
-  getProExpiry: () => get('user')?.proExpiresAt || null,
   isTrialUser: () => {
     const user = get('user');
     if (!user?.trialStartedAt) return false;
     const end = new Date(user.trialStartedAt).getTime() + 15 * 24 * 60 * 60 * 1000;
     return Date.now() < end;
   },
+  isProUser() {
+    return this.isPaidProUser() || this.isTrialUser();
+  },
+  getProExpiry: () => get('user')?.proExpiresAt || null,
   getTrialDaysRemaining: () => {
     const user = get('user');
     if (!user?.trialStartedAt) return 0;

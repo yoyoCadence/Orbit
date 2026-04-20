@@ -30,6 +30,7 @@ const mockState = vi.hoisted(() => ({
 const mockStorage = vi.hoisted(() => ({
   saveUser:    vi.fn(),
   isProUser:   vi.fn(() => false),
+  isPaidProUser: vi.fn(() => false),
   isTrialUser: vi.fn(() => false),
 }));
 
