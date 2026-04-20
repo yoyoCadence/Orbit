@@ -207,6 +207,51 @@ export function getMinEffectiveMinutes(difficulty) {
   return 25;
 }
 
+// ─── Advanced dashboard analytics ────────────────────────────────────────────
+
+/**
+ * XP earned by local-time bucket (derived from completedAt).
+ * morning: 6–12, afternoon: 12–18, evening: 18–24, night: 0–6
+ */
+export function calcHourDistribution(sessions) {
+  const buckets = { morning: 0, afternoon: 0, evening: 0, night: 0 };
+  for (const s of sessions) {
+    if (!s.isProductiveXP || !s.finalXP || !s.completedAt) continue;
+    const h = new Date(s.completedAt).getHours();
+    if      (h >= 6  && h < 12) buckets.morning   += s.finalXP;
+    else if (h >= 12 && h < 18) buckets.afternoon += s.finalXP;
+    else if (h >= 18)           buckets.evening   += s.finalXP;
+    else                        buckets.night     += s.finalXP;
+  }
+  return buckets;
+}
+
+/**
+ * Predict the next streak milestone and estimated calendar days to reach it.
+ * @param {number} streakDays   current streak
+ * @param {Session[]} sessions
+ * @param {string} todayStr     'YYYY-MM-DD' (effectiveToday)
+ * @returns {{ next: number|null, daysNeeded: number, rate: number }}
+ */
+export function calcStreakMilestone(streakDays, sessions, todayStr) {
+  const MILESTONES = [7, 14, 30, 60, 100, 200, 365];
+  const next = MILESTONES.find(m => m > (streakDays || 0)) ?? null;
+
+  // Effective-day rate over last 30 calendar days
+  const today = new Date(todayStr + 'T00:00:00');
+  let effectiveDays = 0;
+  for (let i = 0; i < 30; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const ds = d.toLocaleDateString('sv');
+    if (calcDailyStats(sessions, ds).isEffectiveDay) effectiveDays++;
+  }
+  const rate = Math.max(effectiveDays / 30, 0.01);
+
+  if (next === null) return { next: null, daysNeeded: 0, rate };
+  return { next, daysNeeded: Math.ceil((next - (streakDays || 0)) / rate), rate };
+}
+
 // ─── Task ordering ────────────────────────────────────────────────────────────
 
 /**

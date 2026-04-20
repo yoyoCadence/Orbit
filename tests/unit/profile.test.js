@@ -528,6 +528,75 @@ describe('renderProfile: habit heatmap', () => {
   });
 });
 
+// ─── Advanced Dashboard (SUB-11) ─────────────────────────────────────────────
+
+describe('renderProfile: advanced dashboard', () => {
+  it('free user sees upgrade button, not the metrics grid', () => {
+    mockStorage.isProUser.mockReturnValue(false);
+    mockStorage.isTrialUser.mockReturnValue(false);
+    const c = makeContainer();
+    renderProfile(c);
+    expect(c.querySelector('.dashboard-grid')).toBeNull();
+    expect(c.textContent).toContain('升級 Pro 解鎖');
+  });
+
+  it('Pro user sees dashboard-grid metrics', () => {
+    mockStorage.isProUser.mockReturnValue(true);
+    const c = makeContainer();
+    renderProfile(c);
+    expect(c.querySelector('.dashboard-grid')).not.toBeNull();
+  });
+
+  it('Pro user sees four time-bar-row elements', () => {
+    mockStorage.isProUser.mockReturnValue(true);
+    const c = makeContainer();
+    renderProfile(c);
+    expect(c.querySelectorAll('.time-bar-row').length).toBe(4);
+  });
+
+  it('Pro user sees milestone prediction section', () => {
+    mockStorage.isProUser.mockReturnValue(true);
+    mockState.user = freshUser({ streakDays: 3 });
+    const c = makeContainer();
+    renderProfile(c);
+    expect(c.textContent).toContain('里程碑');
+  });
+
+  it('Pro user with streak >= 365 sees 已達成所有里程碑', () => {
+    mockStorage.isProUser.mockReturnValue(true);
+    mockState.user = freshUser({ streakDays: 365 });
+    const c = makeContainer();
+    renderProfile(c);
+    expect(c.textContent).toContain('已達成所有里程碑');
+  });
+
+  it('dashboard metrics show 0% completion rate with no sessions', () => {
+    mockStorage.isProUser.mockReturnValue(true);
+    mockState.sessions = [];
+    const c = makeContainer();
+    renderProfile(c);
+    const metrics = c.querySelectorAll('.dash-metric-val');
+    expect(metrics[0].textContent).toBe('0%');
+  });
+
+  it('dashboard completion rate reflects complete sessions', () => {
+    mockStorage.isProUser.mockReturnValue(true);
+    const today = new Date().toLocaleDateString('sv');
+    mockState.sessions = [
+      { date: today, impactType: 'task', value: 'A', result: 'complete',
+        isProductiveXP: true, finalXP: 60, durationMinutes: 30,
+        completedAt: today + 'T10:00:00Z' },
+      { date: today, impactType: 'task', value: 'A', result: 'invalid',
+        isProductiveXP: false, finalXP: 0, durationMinutes: 5,
+        completedAt: today + 'T11:00:00Z' },
+    ];
+    const c = makeContainer();
+    renderProfile(c);
+    const metrics = c.querySelectorAll('.dash-metric-val');
+    expect(metrics[0].textContent).toBe('50%');
+  });
+});
+
 describe('renderProfile: createdAt null safety', () => {
   afterEach(() => { document.body.innerHTML = ''; });
 

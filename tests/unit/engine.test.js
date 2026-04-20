@@ -21,6 +21,8 @@ import {
   calcValueConfidence,
   getMinEffectiveMinutes,
   reorderTasks,
+  calcHourDistribution,
+  calcStreakMilestone,
 } from '../../pwa/js/engine.js';
 
 // ─── Test fixtures ────────────────────────────────────────────────────────────
@@ -499,5 +501,103 @@ describe('reorderTasks', () => {
     const two = [{ id: '1' }, { id: '2' }];
     expect(reorderTasks(two, '1', '2').map(t => t.id)).toEqual(['2', '1']);
     expect(reorderTasks(two, '2', '1').map(t => t.id)).toEqual(['2', '1']);
+  });
+});
+
+// ─── calcHourDistribution ─────────────────────────────────────────────────────
+
+describe('calcHourDistribution', () => {
+  // Build a completedAt ISO string whose LOCAL hour equals `hour`
+  const makeHourSession = (hour, xp = 50) => {
+    const d = new Date();
+    d.setHours(hour, 0, 0, 0);
+    return { isProductiveXP: true, finalXP: xp, completedAt: d.toISOString() };
+  };
+
+  it('returns all-zero buckets for empty sessions', () => {
+    const result = calcHourDistribution([]);
+    expect(result).toEqual({ morning: 0, afternoon: 0, evening: 0, night: 0 });
+  });
+
+  it('ignores sessions without completedAt', () => {
+    const result = calcHourDistribution([{ isProductiveXP: true, finalXP: 100 }]);
+    expect(result).toEqual({ morning: 0, afternoon: 0, evening: 0, night: 0 });
+  });
+
+  it('ignores sessions where isProductiveXP is false', () => {
+    const result = calcHourDistribution([
+      { isProductiveXP: false, finalXP: 100, completedAt: '2026-04-20T10:00:00Z' },
+    ]);
+    expect(result).toEqual({ morning: 0, afternoon: 0, evening: 0, night: 0 });
+  });
+
+  it('accumulates XP across sessions in the same bucket', () => {
+    const sessions = [makeHourSession(8, 30), makeHourSession(9, 20)];
+    const result = calcHourDistribution(sessions);
+    expect(result.morning).toBe(50);
+  });
+
+  it('routes hour 6 → morning, 12 → afternoon, 18 → evening, 2 → night', () => {
+    const sessions = [
+      makeHourSession(6, 10),
+      makeHourSession(12, 20),
+      makeHourSession(18, 30),
+      makeHourSession(2, 40),
+    ];
+    const { morning, afternoon, evening, night } = calcHourDistribution(sessions);
+    expect(morning).toBe(10);
+    expect(afternoon).toBe(20);
+    expect(evening).toBe(30);
+    expect(night).toBe(40);
+  });
+});
+
+// ─── calcStreakMilestone ──────────────────────────────────────────────────────
+
+describe('calcStreakMilestone', () => {
+  const todayStr = '2026-04-20';
+
+  it('returns the first milestone above current streak', () => {
+    const { next } = calcStreakMilestone(0, [], todayStr);
+    expect(next).toBe(7);
+  });
+
+  it('streak = 7 → next milestone is 14', () => {
+    const { next } = calcStreakMilestone(7, [], todayStr);
+    expect(next).toBe(14);
+  });
+
+  it('streak = 365 → next is null (all milestones done)', () => {
+    const { next } = calcStreakMilestone(365, [], todayStr);
+    expect(next).toBeNull();
+  });
+
+  it('daysNeeded is positive integer when next milestone exists', () => {
+    const { daysNeeded } = calcStreakMilestone(3, [], todayStr);
+    expect(daysNeeded).toBeGreaterThan(0);
+    expect(Number.isInteger(daysNeeded)).toBe(true);
+  });
+
+  it('rate uses minimum floor of 0.01 when no effective days', () => {
+    const { rate } = calcStreakMilestone(0, [], todayStr);
+    expect(rate).toBe(0.01);
+  });
+
+  it('rate increases with more effective days in last 30', () => {
+    // Build 15 effective sessions (one A-task complete each day)
+    const sessions = [];
+    for (let i = 0; i < 15; i++) {
+      const d = new Date(todayStr + 'T00:00:00');
+      d.setDate(d.getDate() - i);
+      const ds = d.toLocaleDateString('sv');
+      sessions.push({
+        date: ds, impactType: 'task', value: 'A',
+        result: 'complete', isProductiveXP: true, finalXP: 60,
+        durationMinutes: 30, completedAt: ds + 'T10:00:00Z',
+      });
+    }
+    const { rate } = calcStreakMilestone(0, sessions, todayStr);
+    expect(rate).toBeGreaterThan(0.01);
+    expect(rate).toBeLessThanOrEqual(1);
   });
 });
