@@ -216,6 +216,7 @@ function processYesterdayStreak() {
 window.useStreakShield = function () {
   const raw = localStorage.getItem('orbit_shield_pending');
   if (!raw || !state.user) return;
+  if (!storage.isProUser()) return;
   const { prevStreak } = JSON.parse(raw);
   state.user.streakDays = prevStreak;
   state.user.streakShieldCount = Math.max(0, (state.user.streakShieldCount || 0) - 1);

@@ -2,6 +2,7 @@ import { state }                                         from '../state.js';
 import { storage }                                        from '../storage.js';
 import { getLevelInfo, getDisplayTitle, xpTable,
          getAllTemplates }                                 from '../leveling.js';
+import { effectiveToday }                                 from '../utils.js';
 
 export function renderProfile(container) {
   const user   = state.user;
@@ -11,7 +12,7 @@ export function renderProfile(container) {
   const title  = getDisplayTitle(info.level, user);
   const energy = state.energy;
 
-  const joined     = new Date(user.createdAt + 'T00:00:00');
+  const joined     = new Date((user.createdAt ?? new Date().toISOString().slice(0, 10)) + 'T00:00:00');
   const daysActive = Math.max(1, Math.ceil((Date.now() - joined.getTime()) / 86400000));
   const activeDays = new Set(state.sessions.map(s => s.date)).size;
   const totalSessions = state.sessions.filter(s => s.result !== 'invalid').length;
@@ -166,7 +167,7 @@ export function renderProfile(container) {
     <!-- Habit Heatmap -->
     <div class="card">
       <div class="card-title">📊 習慣熱力圖</div>
-      ${_heatmapHtml(state.sessions, isPro)}
+      ${_heatmapHtml(state.sessions, isPro, user.newDayHour ?? 5)}
     </div>
 
     <!-- XP Table -->
@@ -271,10 +272,10 @@ export function renderProfile(container) {
   if (hmScroll) hmScroll.scrollLeft = hmScroll.scrollWidth;
 }
 
-function _heatmapHtml(sessions, isPro) {
+function _heatmapHtml(sessions, isPro, newDayHour = 5) {
   const days = isPro ? 365 : 90;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const todayStr = effectiveToday(newDayHour);
+  const today = new Date(todayStr + 'T00:00:00');
 
   const xpByDate = {};
   for (const s of sessions) {

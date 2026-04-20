@@ -69,8 +69,8 @@ export function renderHome(container) {
         </div>
       </div>
       <div class="shield-banner-btns">
-        <button class="shield-use-btn" onclick="useStreakShield()">使用保護卡恢復 🛡</button>
-        <button class="shield-skip-btn" onclick="dismissStreakShield()">放棄</button>
+        <button class="shield-use-btn">使用保護卡恢復 🛡</button>
+        <button class="shield-skip-btn">放棄</button>
       </div>
     </div>
   ` : '';
@@ -91,8 +91,8 @@ export function renderHome(container) {
         <span class="stat-pill-val">${state.user?.streakDays || 0}</span>
         <span class="stat-pill-lbl">連勝</span>
         <span class="stat-pill-shield-wrap ${shieldPending ? 'shield-pill-pending' : ''}"
-              ${shieldPending ? 'onclick="reshowShieldBanner()" title="點擊重新使用保護卡"' : ''}>
-          <span class="stat-pill-shield ${storage.isProUser() ? '' : 'stat-pill-shield-locked'}">🛡${state.user?.streakShieldCount ?? 0}</span><button class="stat-pill-shield-info" onclick="event.stopPropagation();showShieldInfo(this)" aria-label="保護卡說明">?</button>
+              ${shieldPending ? 'data-reshow="1" title="點擊重新使用保護卡"' : ''}>
+          <span class="stat-pill-shield ${storage.isProUser() ? '' : 'stat-pill-shield-locked'}">🛡${state.user?.streakShieldCount ?? 0}</span><button class="stat-pill-shield-info" aria-label="保護卡說明">?</button>
         </span>
       </div>
       <div class="stat-pill ${energyClass}">
@@ -255,6 +255,15 @@ export function renderHome(container) {
       e.stopPropagation();
       window.deleteSession(btn.dataset.sessionId);
     });
+  });
+
+  // ── Bind: streak shield banner buttons ───────────────────────────────────────
+  container.querySelector('.shield-use-btn')?.addEventListener('click', () => window.useStreakShield());
+  container.querySelector('.shield-skip-btn')?.addEventListener('click', () => window.dismissStreakShield());
+  container.querySelector('.stat-pill-shield-wrap[data-reshow]')?.addEventListener('click', () => window.reshowShieldBanner());
+  container.querySelector('.stat-pill-shield-info')?.addEventListener('click', e => {
+    e.stopPropagation();
+    window.showShieldInfo(e.currentTarget);
   });
 
   // ── Setup drag-and-drop ───────────────────────────────────────────────────────
