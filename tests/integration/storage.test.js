@@ -773,35 +773,67 @@ describe('migrateV1toV2()', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// storage.isProUser() / storage.getProExpiry()
+// storage.isPaidProUser() / storage.isProUser() / storage.getProExpiry()
 // ═══════════════════════════════════════════════════════════════════════════════
 
-describe('storage.isProUser()', () => {
+describe('storage.isPaidProUser()', () => {
   beforeEach(() => localStorage.clear());
 
   it('returns false when no user in localStorage', () => {
-    expect(storage.isProUser()).toBe(false);
+    expect(storage.isPaidProUser()).toBe(false);
   });
 
   it('returns false when isPro is false', () => {
     localStorage.setItem('yoyo_user', JSON.stringify({ isPro: false }));
-    expect(storage.isProUser()).toBe(false);
+    expect(storage.isPaidProUser()).toBe(false);
   });
 
   it('returns true when isPro is true and proExpiresAt is null (lifetime)', () => {
     localStorage.setItem('yoyo_user', JSON.stringify({ isPro: true, proExpiresAt: null }));
-    expect(storage.isProUser()).toBe(true);
+    expect(storage.isPaidProUser()).toBe(true);
   });
 
   it('returns true when isPro is true and proExpiresAt is in the future', () => {
     const future = new Date(Date.now() + 86400_000).toISOString();
     localStorage.setItem('yoyo_user', JSON.stringify({ isPro: true, proExpiresAt: future }));
-    expect(storage.isProUser()).toBe(true);
+    expect(storage.isPaidProUser()).toBe(true);
   });
 
   it('returns false when isPro is true but proExpiresAt is in the past', () => {
     const past = new Date(Date.now() - 86400_000).toISOString();
     localStorage.setItem('yoyo_user', JSON.stringify({ isPro: true, proExpiresAt: past }));
+    expect(storage.isPaidProUser()).toBe(false);
+  });
+
+  it('returns false for trial-only user', () => {
+    const start = new Date(Date.now() - 86400_000).toISOString();
+    localStorage.setItem('yoyo_user', JSON.stringify({ trialStartedAt: start }));
+    expect(storage.isPaidProUser()).toBe(false);
+  });
+});
+
+describe('storage.isProUser() — includes trial', () => {
+  beforeEach(() => localStorage.clear());
+
+  it('returns false for free user', () => {
+    localStorage.setItem('yoyo_user', JSON.stringify({ isPro: false }));
+    expect(storage.isProUser()).toBe(false);
+  });
+
+  it('returns true for paid Pro', () => {
+    localStorage.setItem('yoyo_user', JSON.stringify({ isPro: true, proExpiresAt: null }));
+    expect(storage.isProUser()).toBe(true);
+  });
+
+  it('returns true for active trial user', () => {
+    const start = new Date(Date.now() - 86400_000).toISOString();
+    localStorage.setItem('yoyo_user', JSON.stringify({ trialStartedAt: start }));
+    expect(storage.isProUser()).toBe(true);
+  });
+
+  it('returns false for expired trial user', () => {
+    const start = new Date(Date.now() - 20 * 86400_000).toISOString();
+    localStorage.setItem('yoyo_user', JSON.stringify({ trialStartedAt: start }));
     expect(storage.isProUser()).toBe(false);
   });
 });

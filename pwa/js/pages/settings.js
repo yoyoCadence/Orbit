@@ -65,7 +65,7 @@ function _proSectionHtml() {
   const expiry   = storage.getProExpiry();
 
   // ── Active Pro (paid, not trial) ─────────────────────────────────────────
-  if (isPro && !isTrial) {
+  if (storage.isPaidProUser()) {
     const expiryStr = expiry
       ? `有效期至 ${new Date(expiry).toLocaleDateString('zh-TW')}`
       : '終身方案';
@@ -139,7 +139,7 @@ function _proSectionHtml() {
 
   // ── Streak unlock progress (free, non-trial, not yet unlocked) ──────────────
   const streakDays = state.user?.streakDays || 0;
-  const streakUnlockHtml = (!isPro && !isTrial && !state.user?.streakUnlockUsed) ? `
+  const streakUnlockHtml = (!isPro && !state.user?.streakUnlockUsed) ? `
     <div class="streak-unlock-row" style="margin-bottom:16px">
       <div class="streak-unlock-label">
         <span>🔓 連勝解鎖 Pro</span>
@@ -295,7 +295,7 @@ function _renderView(container) {
   const randomThemeEnabled    = storage.getRandomThemeEnabled();
   const hasBg = !!storage.getBgImage();
 
-  const isPro             = storage.isProUser() || storage.isTrialUser();
+  const isPro             = storage.isProUser();
   const FREE_IDS          = new Set(['dark-purple', 'aurora-blue', 'emerald', 'flame', 'neon-pink']);
   const themeGrid         = THEMES.map(t => _themeCardHtml(t, currentTheme, !isPro && !FREE_IDS.has(t.id))).join('');
   const themeGridNew      = THEMES_NEW.map(t => _themeCardHtml(t, currentTheme, !isPro)).join('');
@@ -395,7 +395,7 @@ function _renderView(container) {
     </div>
 
     <!-- Focus Timer Pro settings -->
-    ${(storage.isProUser() || storage.isTrialUser()) ? `
+    ${(storage.isProUser()) ? `
     <div class="card">
       <span class="pro-badge--corner">✦ Pro 專屬</span>
       <div class="card-title">⏱ 專注計時 Pro 設定</div>

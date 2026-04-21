@@ -211,7 +211,6 @@ function processYesterdayStreak() {
   if (
     state.user.streakDays >= 45 &&
     !storage.isProUser() &&
-    !storage.isTrialUser() &&
     !state.user.streakUnlockUsed
   ) {
     state.user.isPro           = true;
@@ -405,7 +404,7 @@ window.startFocus = function (taskId) {
     return;
   }
 
-  if (storage.isProUser() || storage.isTrialUser()) {
+  if (storage.isProUser()) {
     _showDurationPicker(taskId, task);
   } else {
     _launchFocus(taskId, task, null);
@@ -567,7 +566,7 @@ function _tickFocus() {
 }
 
 function _playFocusChime(type) {
-  if ((!storage.isProUser() && !storage.isTrialUser()) || state.user?.focusSoundEnabled === false) return;
+  if (!storage.isProUser() || state.user?.focusSoundEnabled === false) return;
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const freqs = type === 'end' ? [528, 660, 784] : [528, 660];
@@ -735,7 +734,7 @@ window.skipFocus = function () {
 };
 
 function _showResultPicker(durationMin) {
-  const isPro = storage.isProUser() || storage.isTrialUser();
+  const isPro = storage.isProUser();
   const modal = document.createElement('div');
   modal.className = 'modal-overlay';
   modal.id = 'result-picker';
@@ -1292,7 +1291,7 @@ export function applyTheme(themeId) {
 /** Pick and apply a random theme for today, but only once per calendar day. Pro only. */
 export function applyRandomThemeForToday() {
   if (!storage.getRandomThemeEnabled()) return;
-  if (!storage.isProUser() && !storage.isTrialUser()) return;
+  if (!storage.isProUser()) return;
   const todayStr = today();
   if (storage.getRandomThemeDate() === todayStr) return; // already applied today
   const id = _ALL_THEME_IDS[Math.floor(Math.random() * _ALL_THEME_IDS.length)];

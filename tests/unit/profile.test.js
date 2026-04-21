@@ -30,6 +30,7 @@ const mockState = vi.hoisted(() => ({
 const mockStorage = vi.hoisted(() => ({
   saveUser:    vi.fn(),
   isProUser:   vi.fn(() => false),
+  isPaidProUser: vi.fn(() => false),
   isTrialUser: vi.fn(() => false),
 }));
 
@@ -512,19 +513,20 @@ describe('renderProfile: habit heatmap', () => {
   });
 
   it('respects newDayHour: session from calendar-yesterday shows as today when newDayHour is in the future', () => {
-    // newDayHour=23 means "new day starts at 23:00". Since current time is < 23, effective today = yesterday.
-    // A session from yesterday (calendar) should appear as the last heatmap cell (today effective).
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toLocaleDateString('sv');
-    mockState.user = freshUser({ newDayHour: 23 });
-    mockState.sessions = [{ date: yesterdayStr, finalXP: 80, isProductiveXP: true }];
-    const c = makeContainer();
-    renderProfile(c);
-    // hm-today marks the effective-today cell; it should have level ≥ 2 (XP=80 → level 2)
-    const todayCell = c.querySelector('.hm-today');
-    expect(todayCell).not.toBeNull();
-    expect(todayCell.classList.contains('hm-0')).toBe(false);
+    // Pin time to 12:00 so hour(12) < newDayHour(23) is always true, making effective today = yesterday.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2025-06-15T12:00:00'));
+    try {
+      mockState.user = freshUser({ newDayHour: 23 });
+      mockState.sessions = [{ date: '2025-06-14', finalXP: 80, isProductiveXP: true }];
+      const c = makeContainer();
+      renderProfile(c);
+      const todayCell = c.querySelector('.hm-today');
+      expect(todayCell).not.toBeNull();
+      expect(todayCell.classList.contains('hm-0')).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
