@@ -1,6 +1,6 @@
 // Service Worker — network-first for JS/CSS/HTML, cache-first for images
 // Bump CACHE version on every deploy so users always get fresh code.
-const CACHE = 'orbit-v1.15.0';
+const CACHE = 'orbit-v1.16.0';
 
 const SHELL = [
   './',
@@ -20,7 +20,31 @@ const SHELL = [
   './js/pages/goals.js',
   './js/pages/review.js',
   './js/pages/profile.js',
+  './js/pages/personalSpace.js',
   './js/pages/settings.js',
+  './js/platform/storageBridge.js',
+  './js/platform/notifications.js',
+  './js/platform/haptics.js',
+  './js/platform/share.js',
+  './js/platform/purchases.js',
+  './js/personalSpace/index.js',
+  './js/personalSpace/sceneRuntime.js',
+  './js/personalSpace/economy.js',
+  './js/personalSpace/unlockRules.js',
+  './js/personalSpace/gameState.js',
+  './js/personalSpace/assetRegistry.js',
+  './js/personalSpace/interactionBus.js',
+  './js/personalSpace/avatar/avatarController.js',
+  './js/personalSpace/avatar/animationController.js',
+  './js/personalSpace/avatar/movementController.js',
+  './js/personalSpace/npc/aiCompanionController.js',
+  './js/personalSpace/npc/behaviorPlanner.js',
+  './js/personalSpace/world/roomScene.js',
+  './js/personalSpace/world/officeScene.js',
+  './js/personalSpace/world/furnitureAnchors.js',
+  './js/personalSpace/ui/shopPanel.js',
+  './js/personalSpace/ui/dialogBubble.js',
+  './js/personalSpace/ui/hudOverlay.js',
 ];
 
 // Precache on install

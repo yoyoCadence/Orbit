@@ -18,10 +18,11 @@ import { renderReview }         from './pages/review.js';
 import { renderProfile }        from './pages/profile.js';
 import { renderSettings }       from './pages/settings.js';
 import { renderLeaderboard }    from './pages/leaderboard.js';
+import { renderPersonalSpace }  from './pages/personalSpace.js';
 import { startTour } from './tour.js';
 
 // ─── Version ─────────────────────────────────────────────────────────────────
-export const APP_VERSION = 'v1.15.0';
+export const APP_VERSION = 'v1.16.0';
 
 // Expose tour globally so settings page can call it
 window.startTour = startTour;
@@ -38,6 +39,7 @@ const ROUTES = {
   goals:       renderGoals,
   review:      renderReview,
   profile:     renderProfile,
+  personalSpace: renderPersonalSpace,
   settings:    renderSettings,
   leaderboard: renderLeaderboard,
 };
@@ -46,7 +48,7 @@ function currentHash() { return window.location.hash.slice(1) || 'home'; }
 
 // ─── Page slide animation + dot indicator ─────────────────────────────────────
 
-const PAGE_ORDER = ['home', 'goals', 'review', 'profile', 'leaderboard', 'settings'];
+const PAGE_ORDER = ['home', 'goals', 'review', 'profile', 'personalSpace', 'leaderboard', 'settings'];
 let _prevPageIdx = -1;   // -1 = first render, skip animation
 
 
