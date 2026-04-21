@@ -3,6 +3,20 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [v1.16.0] - 2026-04-21
+
+### Added
+- Life-sim foundation documentation sync: README、ROADMAP 與相關設計文件開始反映 Orbit 從成長打卡工具升級到 self-growth life sim 的方向
+- Shared agent workflow baseline: 新增 `AGENTS.md`，明確定義 baseline-first、scope control、task lifecycle、documentation synchronization
+- Personal space module skeleton: 新增 `pwa/js/personalSpace/`，包含 economy、unlock rules、game state、sceneRuntime、assetRegistry、interactionBus，以及 avatar / npc / world / ui 子模組骨架
+- Platform adapter skeleton: 新增 `pwa/js/platform/`，包含 notifications、haptics、share、purchases、storageBridge 的 web fallback / placeholder 介面
+- Personal space route and page: 新增 `personalSpace` 頁面、底部導覽入口、scene placeholder、level unlock 顯示與 Gold 估算 UI
+- Personal space unit coverage: 新增 `tests/unit/personalSpace.test.js`
+
+### Changed
+- Service Worker cache 與 precache 清單同步到 `v1.16.0`
+- 文件系統開始區分 README、AGENTS、ROADMAP、CHANGELOG 與 tasks.md 的工作流角色
+
 ---
 
 ## [v1.8.0] — 2026-04-19

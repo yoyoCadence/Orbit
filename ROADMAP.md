@@ -1,5 +1,7 @@
 # Orbit Roadmap
 
+> 2026-04-21 sync note: v1.16.0 已完成 life-sim foundation 基線，包含 personalSpace 模組骨架、platform adapters、個人空間 page route，以及對應文件同步。v1.16.x 後續工作仍以 SUB-13 為主。
+
 目前版本：**v1.15.0**
 
 這份文件記錄 Orbit 的公開功能規劃方向。功能依優先順序排列，會隨專案進展持續更新。
@@ -43,3 +45,4 @@
 - v1.4.x  — 每日隨機主題、任務左滑詳細、拖曳排序、Header 頭像、新手教學
 
 完整版本歷史請見 [CHANGELOG.md](CHANGELOG.md)。
+
