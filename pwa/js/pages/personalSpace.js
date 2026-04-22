@@ -107,7 +107,7 @@ export function renderPersonalSpace(container) {
     const item = starterCatalog.find(entry => entry.id === itemId);
     if (!item || item.isOwned || !item.canAfford) return;
 
-    container.dispatchEvent(new CustomEvent(PERSONAL_SPACE_PURCHASE_REQUEST_EVENT, {
+    container.dispatchEvent(new window.CustomEvent(PERSONAL_SPACE_PURCHASE_REQUEST_EVENT, {
       bubbles: true,
       detail: {
         itemId: item.id,
