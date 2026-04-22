@@ -13,6 +13,31 @@
 
 ## Backlog
 
+- [ ] **PS-203** 將個人空間的場景切換器改為二層分類選單
+  - 目標：把目前平鋪式切換按鈕改為 `住處 / 上班 / 回顧` 第一層分類，第二層顯示對應場景，保留快速直達能力並降低迷路風險
+  - 範圍：`pwa/js/pages/personalSpace.js`、`pwa/js/personalSpace/unlockRules.js`、相關樣式
+  - 完成條件：使用者可先選分類，再選場景；舊辦公樓層與未來可回購租屋處會被歸到 `回顧`
+
+- [ ] **PS-204** 為 personal space 建立 scene graph / exit node 資料模型
+  - 目標：定義門、出口、電梯、目標場景與入口落點，讓場景切換不只靠 UI 選單，也能靠場景內互動完成
+  - 範圍：`pwa/js/personalSpace/world/`、`sceneRuntime.js`、`interactionBus.js`
+  - 完成條件：租屋處與公司一樓可透過出口切換；辦公樓層與豪宅可定義門 / 電梯出口與目標地點
+
+- [ ] **PS-205** 定義公司大樓與豪宅的樓層圖 / 房間拓樸資料
+  - 目標：把公司與豪宅的樓層、房間、相鄰關係資料化，支撐未來地圖視窗與可變格局
+  - 範圍：`pwa/js/personalSpace/world/`、相關文件
+  - 完成條件：公司與豪宅都有可查閱的 floor-map schema，未來改哪層是什麼房間時不需要重寫 scene runtime
+
+- [ ] **PS-206** 為 personal space 新增地圖視窗入口
+  - 目標：提供公司 / 豪宅整層設計圖視窗，讓使用者可查閱空間結構但不取代主要切換方式
+  - 範圍：`pwa/js/pages/personalSpace.js`、`pwa/js/personalSpace/ui/`、相關樣式
+  - 完成條件：公司與豪宅可透過地圖圖示開啟總圖視窗，顯示樓層與房間配置
+
+- [ ] **PS-207** 將舊辦公樓層與租屋處正式納入 memory property 規則
+  - 目標：讓舊辦公樓層可回顧且有其他員工工作的視覺語意，並為未來買回最初租屋處保留正式資料規則
+  - 範圍：`unlockRules.js`、`gameState.js`、`world/`、相關文件
+  - 完成條件：memory property 不再只是 UI 語意，而有明確資料分類與保存規則
+
 - [ ] **PS-202** 為 personal space 建立 furniture ownership / placement 的本地資料模型
   - 目標：把「已擁有」與「已擺放」拆開，避免之後 UI 和 scene runtime 耦合
   - 對應 roadmap：Phase 2
@@ -53,7 +78,10 @@
 
 ## Next
 
-- [ ] 目前無待排序的下一個正式任務
+- [ ] **PS-203** 將個人空間的場景切換器改為二層分類選單
+  - 目標：把目前平鋪式切換按鈕改為 `住處 / 上班 / 回顧` 第一層分類，第二層顯示對應場景，保留快速直達能力並降低迷路風險
+  - 範圍：`pwa/js/pages/personalSpace.js`、`pwa/js/personalSpace/unlockRules.js`、相關樣式
+  - 完成條件：使用者可先選分類，再選場景；舊辦公樓層與未來可回購租屋處會被歸到 `回顧`
 
 ---
 
