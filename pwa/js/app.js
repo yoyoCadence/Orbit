@@ -1491,13 +1491,17 @@ function handleSignOut() {
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
-// Fix Chrome viewport: window.innerHeight always equals the real visible height,
-// unlike 100dvh which Chrome calculates including the collapsible address bar.
+// Sync the app shell to the real visible viewport height on mobile browsers.
+// visualViewport is more reliable on Chrome when the address bar expands/collapses.
 function _syncAppHeight() {
-  document.documentElement.style.setProperty('--app-height', window.innerHeight + 'px');
+  const viewportHeight = window.visualViewport?.height || window.innerHeight;
+  document.documentElement.style.setProperty('--app-height', Math.round(viewportHeight) + 'px');
 }
 _syncAppHeight();
 window.addEventListener('resize', _syncAppHeight);
+window.addEventListener('orientationchange', _syncAppHeight);
+window.visualViewport?.addEventListener('resize', _syncAppHeight);
+window.visualViewport?.addEventListener('scroll', _syncAppHeight);
 
 async function init() {
   migrateV1toV2(today());

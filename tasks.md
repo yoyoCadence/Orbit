@@ -57,10 +57,7 @@
 
 ## Next
 
-- [ ] **PS-102** 建立最小可用的個人空間商店資料流
-  - 目標：把現有 `STARTER_CATALOG` 與 personal space 頁面接起來
-  - 範圍：`pwa/js/personalSpace/economy.js`、`pwa/js/personalSpace/ui/shopPanel.js`、`pwa/js/pages/personalSpace.js`
-  - 完成條件：頁面可列出 starter catalog，且保留購買事件接點
+- [ ] 目前無待排序的下一個正式任務
 
 ---
 
@@ -71,6 +68,9 @@
 ---
 
 ## Done
+
+- [x] **PS-102** 建立最小可用的個人空間商店資料流
+  - 完成：頁面已列出 `STARTER_CATALOG`，並保留 starter shop 的購買事件接點供下一步實作寫入流程
 
 - [x] **PS-101** 個人空間頁面接入真實 `spentGold / ownedItems` 本地狀態
   - 完成：`personalSpace` 頁面已接入本地 `spentGold / ownedItems`，available gold 會扣除已花費，並顯示已擁有物件快照

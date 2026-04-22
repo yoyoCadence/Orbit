@@ -1,11 +1,13 @@
 import { state } from '../state.js';
 import { buildPersonalSpaceViewModel } from '../personalSpace/index.js';
+import { buildStarterCatalogView } from '../personalSpace/economy.js';
 import { createSceneRuntime } from '../personalSpace/sceneRuntime.js';
 import { renderDialogBubblePlaceholder } from '../personalSpace/ui/dialogBubble.js';
 import { renderHudOverlayPlaceholder } from '../personalSpace/ui/hudOverlay.js';
-import { renderShopPanelPlaceholder } from '../personalSpace/ui/shopPanel.js';
+import { renderShopPanel, SHOP_PURCHASE_ACTION } from '../personalSpace/ui/shopPanel.js';
 
 let activeRuntime = null;
+export const PERSONAL_SPACE_PURCHASE_REQUEST_EVENT = 'orbit:personal-space-purchase-request';
 
 export function renderPersonalSpace(container) {
   const user = state.user;
@@ -17,6 +19,7 @@ export function renderPersonalSpace(container) {
   }
 
   const model = buildPersonalSpaceViewModel(user);
+  const starterCatalog = buildStarterCatalogView(model.ownedItems, model.gold.available);
   const nextUnlock = model.nextUnlock;
   const unlockedItems = model.unlockedMilestones
     .map(item => `<li>Lv.${item.level} · ${escapeHtml(item.label)}</li>`)
@@ -90,11 +93,30 @@ export function renderPersonalSpace(container) {
     </div>
 
     <div class="space-placeholder-grid">
-      ${renderShopPanelPlaceholder()}
+      ${renderShopPanel(starterCatalog)}
       ${renderDialogBubblePlaceholder()}
       ${renderHudOverlayPlaceholder()}
     </div>
   `;
+
+  container.querySelector('.space-shop-panel')?.addEventListener('click', event => {
+    const purchaseButton = event.target.closest(`[data-action="${SHOP_PURCHASE_ACTION}"]`);
+    if (!purchaseButton) return;
+
+    const itemId = purchaseButton.dataset.itemId;
+    const item = starterCatalog.find(entry => entry.id === itemId);
+    if (!item || item.isOwned || !item.canAfford) return;
+
+    container.dispatchEvent(new window.CustomEvent(PERSONAL_SPACE_PURCHASE_REQUEST_EVENT, {
+      bubbles: true,
+      detail: {
+        itemId: item.id,
+        itemName: item.name,
+        price: item.price,
+        source: 'starter-shop',
+      },
+    }));
+  });
 
   const sceneContainer = container.querySelector('#personal-space-scene');
   activeRuntime = createSceneRuntime(sceneContainer, {

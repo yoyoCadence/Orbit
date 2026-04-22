@@ -7,6 +7,7 @@
 
 ### Changed
 - Personal space page now loads persisted `spentGold` and `ownedItems` from local state, deducts spent gold from available gold, and shows a small owned-item snapshot on the page
+- Personal space page now renders the starter shop catalog, shows starter item prices and ownership state, and emits a purchase request event hook for future write flow
 
 ## [v1.16.0] - 2026-04-21
 
