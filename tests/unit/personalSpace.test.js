@@ -29,6 +29,8 @@ describe('renderPersonalSpace', () => {
     expect(container.querySelector('#personal-space-scene')).not.toBeNull();
     expect(container.textContent).toContain('Starter Shop');
     expect(container.textContent).toContain('Small Plant');
+    expect(container.querySelector('.space-scene-window')).not.toBeNull();
+    expect(container.querySelectorAll('.space-scene-item').length).toBeGreaterThan(0);
   });
 
   it('loads spent gold and owned items from persisted personal space state', () => {
@@ -67,5 +69,24 @@ describe('renderPersonalSpace', () => {
       price: 100,
       source: 'starter-shop',
     });
+  });
+
+  it('renders a richer 2d scene state for office-stage progression', () => {
+    savePersonalSpaceState({
+      selectedSceneId: 'company-building',
+      ownedItems: [
+        { id: 'small-plant', name: 'Small Plant' },
+        { id: 'desk-lamp', name: 'Desk Lamp' },
+        { id: 'wall-art', name: 'Wall Art' },
+      ],
+    });
+    state.user.totalXP = 2400;
+
+    renderPersonalSpace(container);
+
+    expect(container.querySelector('.space-scene-placeholder--office')).not.toBeNull();
+    expect(container.querySelector('[data-scene-id="company-building"]')).not.toBeNull();
+    expect(container.textContent).toContain('Company Building Corner');
+    expect(container.textContent).toContain('3 owned items');
   });
 });

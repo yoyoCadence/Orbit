@@ -121,6 +121,10 @@ export function renderPersonalSpace(container) {
   const sceneContainer = container.querySelector('#personal-space-scene');
   activeRuntime = createSceneRuntime(sceneContainer, {
     label: nextUnlock ? nextUnlock.label : 'Unlocked Personal Space',
+    level: model.level,
+    stage: model.stage,
+    sceneId: model.personalSpaceState.selectedSceneId,
+    ownedItemCount: model.ownedItemCount,
   });
   activeRuntime.mount();
 }
