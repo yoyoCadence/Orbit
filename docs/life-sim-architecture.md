@@ -93,6 +93,142 @@ Guiding rules:
 
 This lets the team validate product shape before expanding persistence complexity.
 
+## Personal Space Navigation Model
+
+The personal-space layer should support two navigation modes at the same time:
+
+1. direct scene switching
+2. in-scene exit interaction
+
+These solve different user needs.
+
+### Direct Scene Switching
+
+Direct switching is the anti-confusion path.
+
+It should stay available even after richer scene interactions exist so users can:
+
+- jump quickly to a target scene
+- compare spaces without extra taps
+- recover if they feel lost
+- test stage progression efficiently
+
+Recommended UI shape:
+
+- first layer: `住處 / 上班 / 回顧`
+- second layer: scenes within the selected category
+
+Meaning of each category:
+
+- `住處`
+  Active residence scenes for the current stage
+- `上班`
+  Active workplace scenes and unlocked office floors
+- `回顧`
+  Memory-property scenes such as older office floors or buy-back rental space
+
+### In-Scene Exit Interaction
+
+Direct switching should not be the only way to move.
+
+Scene layouts should also expose exit nodes so navigation feels spatial:
+
+- rental room -> door -> company first floor
+- office floors -> elevator -> another office floor
+- estate room -> door -> adjacent estate room
+- estate floor -> elevator -> another estate floor
+
+For near-term implementation, prefer lightweight transition feedback:
+
+- tap exit
+- highlight exit
+- show destination label
+- transition scene
+
+Do not block this work on full avatar pathfinding.
+
+## Scene Graph and Building Graph
+
+To keep future layout changes cheap, the system should separate:
+
+### Scene Registry
+
+Describes an individual scene:
+
+- id
+- label
+- category (`home` / `work` / `memory`)
+- family (`rental` / `office` / `estate`)
+- stage visibility
+- visual pack
+
+### Exit Registry
+
+Describes interactive exits inside a scene:
+
+- exit id
+- source scene id
+- destination scene id
+- exit type (`door` / `elevator` / `portal`)
+- destination label
+- optional placement metadata
+
+### Arrival Rules
+
+Describes where the player should appear after entering from a specific exit.
+
+This keeps future avatar/controller work decoupled from page rendering.
+
+### Building / Floor Map Registry
+
+Describes the whole structure of:
+
+- company building
+- estate
+
+It should define:
+
+- floors
+- rooms
+- adjacency
+- which scenes belong to which floor
+
+This is the source of truth for future map modal UI.
+
+## Memory Property Rules
+
+Orbit should preserve emotional continuity in its spaces.
+
+Two memory-property directions are important:
+
+### Older Office Floors
+
+When the primary workplace upgrades to a higher floor, previous work scenes should not disappear.
+
+They should be reclassified as revisitable memory properties:
+
+- still accessible from the `回顧` category
+- visually read as an older workplace
+- may show other employees continuing to work there
+
+This preserves the feeling that the company lives on without the player being frozen in old progression.
+
+### Original Rental Space
+
+After the user moves into the estate, the original rental should no longer remain an active residence.
+
+Later, the system should allow a buy-back moment where the rental returns as a memory property that preserves its final historical state.
+
+## Recommended Next Implementation Order
+
+The next personal-space work should be split into small tasks:
+
+1. remove redundant scene chips and keep scene UI focused on the visual layer
+2. replace flat scene pills with categorized switching (`住處 / 上班 / 回顧`)
+3. introduce exit-node metadata and lightweight destination transitions
+4. define office / estate building maps and a map modal surface
+5. connect ownership / placement state after the navigation graph is stable
+
 ## Companion System Split
 
 The companion architecture should stay split:
