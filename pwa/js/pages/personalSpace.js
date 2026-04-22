@@ -22,6 +22,10 @@ export function renderPersonalSpace(container) {
   const model = buildPersonalSpaceViewModel(user);
   const starterCatalog = buildStarterCatalogView(model.ownedItems, model.gold.available);
   const nextUnlock = model.nextUnlock;
+  const primaryWorkScene = model.sceneOptions.find(option => option.role === 'work' && option.id === model.activeWorkScene?.id);
+  const isMemoryScene = model.activeScene?.role === 'work' && model.activeScene?.id !== primaryWorkScene?.id;
+  const sceneInfoMarkup = buildSceneInfoMarkup(model, isMemoryScene);
+  const sceneTagMarkup = buildSceneTagMarkup(model, isMemoryScene);
   const sceneSwitcherMarkup = model.sceneOptions
     .map(option => `
       <button
@@ -30,6 +34,7 @@ export function renderPersonalSpace(container) {
         data-scene-switch="${escapeHtml(option.id)}"
       >
         ${escapeHtml(option.shortLabel)}
+        ${renderSceneSwitchBadge(option, model)}
       </button>
     `)
     .join('');
@@ -104,11 +109,14 @@ export function renderPersonalSpace(container) {
       <div class="space-scene-meta">
         <div>
           <div class="space-scene-meta-title">${escapeHtml(model.activeScene?.label || 'Current scene')}</div>
-          <div class="space-stat-copy">${describeSceneFlow(model.stage, model.activeScene?.role)}</div>
         </div>
-        <div class="space-scene-switcher">${sceneSwitcherMarkup}</div>
+        <div class="space-scene-meta-actions">
+          <div class="space-scene-switcher">${sceneSwitcherMarkup}</div>
+          ${sceneInfoMarkup}
+        </div>
       </div>
       <div id="personal-space-scene" class="space-scene-shell"></div>
+      <div class="space-scene-chip-row">${sceneTagMarkup}</div>
     </div>
 
     <div class="space-placeholder-grid">
@@ -159,6 +167,7 @@ export function renderPersonalSpace(container) {
     sceneLabel: model.activeScene?.label,
     sceneRole: model.activeScene?.role,
     ownedItemCount: model.ownedItemCount,
+    isMemoryScene,
   });
   activeRuntime.mount();
 }
@@ -171,24 +180,74 @@ function formatStage(stage) {
   }[stage] || 'Early Stage';
 }
 
-function describeSceneFlow(stage, role) {
-  if (stage === 'building' && role === 'home') {
-    return 'Building stage defaults to the company, but you can still return to your rental room.';
+function buildSceneInfoMarkup(model, isMemoryScene) {
+  const title = isMemoryScene ? '場景說明 / 回顧' : '場景說明';
+  const body = describeSceneInfo(model, isMemoryScene);
+
+  return `
+    <details class="space-scene-info">
+      <summary class="space-scene-info-toggle" aria-label="${title}">i</summary>
+      <div class="space-scene-info-panel">
+        <strong>${title}</strong>
+        <p>${escapeHtml(body)}</p>
+      </div>
+    </details>
+  `;
+}
+
+function buildSceneTagMarkup(model, isMemoryScene) {
+  const tags = [
+    `Lv.${model.level}`,
+    formatStage(model.stage),
+    model.activeScene?.role === 'work' ? '公司場景' : model.activeScene?.id?.startsWith('estate-') ? '豪宅場景' : '居住場景',
+  ];
+
+  if (isMemoryScene) {
+    tags.push('Memory Property');
+  } else if (model.activeScene?.role === 'work') {
+    tags.push('Current Workplace');
+  } else if (model.activeScene?.id?.startsWith('estate-')) {
+    tags.push('Primary Residence');
+  } else {
+    tags.push('Rental Home');
   }
 
-  if (stage === 'building') {
-    return 'You now work inside the company building and can move across unlocked office floors.';
+  return tags.map(tag => `<span class="space-scene-chip">${escapeHtml(tag)}</span>`).join('');
+}
+
+function describeSceneInfo(model, isMemoryScene) {
+  if (isMemoryScene) {
+    return '這個舊辦公樓層已轉為可回顧的 memory property。你仍可回來看看當年的工作環境，而這一層現在會有其他員工繼續工作。';
   }
 
-  if (stage === 'mastery' && role === 'work') {
-    return 'Your primary home is now the estate, but you still return to the company to work.';
+  if (model.stage === 'mastery' && model.activeScene?.role === 'work') {
+    return '你現在的主要居所已經是豪宅，但仍會回公司工作。公司場景代表身份與事業線，豪宅代表生活與個人空間。';
   }
 
-  if (stage === 'mastery') {
-    return 'Mastery stage shifts your main residence to a private estate with richer personal space.';
+  if (model.stage === 'mastery') {
+    return '掌控期會把主居所轉為豪宅，逐步解鎖更高級的私人辦公室、大客廳與遊戲房等空間。';
   }
 
-  return 'Survival stage keeps the focus on your rental room before the company building opens.';
+  if (model.stage === 'building' && model.activeScene?.role === 'work') {
+    return '建設期以公司為主進展。隨等級提升，你會在同一棟大樓裡往更高樓層與更高級辦公空間成長。';
+  }
+
+  if (model.stage === 'building') {
+    return '建設期仍可回租屋處，這符合真實生活節奏：白天進公司，晚上仍會回到原本的居所。';
+  }
+
+  return '生存期先從租屋處開始，重點是讓房間逐步變得更能住，再慢慢打開通往外部世界的入口。';
+}
+
+function renderSceneSwitchBadge(option, model) {
+  const isOlderWorkScene = option.role === 'work'
+    && model.activeWorkScene
+    && option.id !== model.activeWorkScene.id
+    && option.minLevel < model.activeWorkScene.minLevel;
+
+  if (!isOlderWorkScene) return '';
+
+  return '<span class="space-scene-switch-badge">回顧</span>';
 }
 
 function escapeHtml(value) {

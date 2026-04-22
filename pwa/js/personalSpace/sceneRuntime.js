@@ -14,23 +14,19 @@ export function createSceneRuntime(container, sceneModel = {}) {
           </div>
         `)
         .join('');
-      const progressMarkup = visualModel.progressTags
-        .map(tag => `<li>${tag}</li>`)
+      const workerMarkup = visualModel.workerSilhouettes
+        .map(worker => `<div class="space-scene-worker" style="${worker}"></div>`)
         .join('');
 
       container.innerHTML = `
         <div class="space-scene-placeholder space-scene-placeholder--${visualModel.palette}" data-scene-id="${visualModel.sceneId}">
           <div class="space-scene-grid"></div>
-          <div class="space-scene-copy">
-            <strong>${visualModel.title}</strong>
-            <span>${visualModel.copy}</span>
-            <ul class="space-scene-progress">${progressMarkup}</ul>
-          </div>
           <div class="space-scene-visual">
             <div class="space-scene-backdrop">
               <div class="space-scene-window space-scene-window--${visualModel.windowMood}"></div>
               <div class="space-scene-floor"></div>
               <div class="space-scene-silhouette space-scene-silhouette--${visualModel.silhouette}"></div>
+              ${workerMarkup}
               ${furnitureMarkup}
             </div>
           </div>
@@ -52,16 +48,16 @@ function buildSceneVisualModel(sceneModel) {
   const sceneRole = sceneModel.sceneRole || 'home';
   const sceneLabel = sceneModel.sceneLabel || sceneId;
   const ownedItemCount = sceneModel.ownedItemCount || 0;
+  const isMemoryScene = Boolean(sceneModel.isMemoryScene);
 
   return {
     sceneId,
-    title: sceneTitle(sceneId, sceneLabel),
-    copy: sceneCopy({ stage, sceneId, sceneRole, ownedItemCount }),
+    title: sceneLabel || sceneId,
     palette: paletteForScene(sceneId, sceneRole, stage),
     silhouette: silhouetteForScene(sceneId, sceneRole, stage),
     windowMood: windowMoodForScene(level, sceneRole),
     furniture: buildFurnitureLayout({ sceneId, sceneRole, ownedItemCount, level }),
-    progressTags: buildProgressTags({ level, stage, sceneRole, sceneId }),
+    workerSilhouettes: buildWorkerSilhouettes({ sceneRole, isMemoryScene }),
   };
 }
 
@@ -140,39 +136,12 @@ function buildEstateFurniture(sceneId, ownedItemCount) {
   return items;
 }
 
-function sceneTitle(sceneId, sceneLabel) {
-  return sceneLabel || sceneId;
-}
+function buildWorkerSilhouettes({ sceneRole, isMemoryScene }) {
+  if (sceneRole !== 'work' || !isMemoryScene) return [];
 
-function sceneCopy({ stage, sceneId, sceneRole, ownedItemCount }) {
-  if (sceneRole === 'work') {
-    if (sceneId === 'office-corner') {
-      return 'You have entered the company building. This is your first work corner, but home is still waiting when the day ends.';
-    }
-
-    if (sceneId === 'manager-room' || sceneId === 'large-office-suite') {
-      return 'Work now happens in a higher-floor executive space. Even after moving home, the company remains part of your identity.';
-    }
-
-    return `Your current workplace reflects a clearer professional identity, while still carrying ${ownedItemCount} personal-space progress signal${ownedItemCount === 1 ? '' : 's'}.`;
-  }
-
-  if (sceneId.startsWith('estate-')) {
-    return 'Mastery stage shifts your main residence to a private estate, where different rooms begin to represent comfort, identity, and personal expression.';
-  }
-
-  if (stage === 'building') {
-    return 'You still return to your rental room after work. It is no longer the whole world, but it still holds your everyday life.';
-  }
-
-  return 'Survival stage starts in a rental room. Growth first makes the room more livable before the wider city begins to open.';
-}
-
-function buildProgressTags({ level, stage, sceneRole, sceneId }) {
   return [
-    `Lv.${level} scene state`,
-    sceneRole === 'work' ? 'Workplace active' : sceneId.startsWith('estate-') ? 'Primary residence' : 'Rental home',
-    stage === 'mastery' ? 'Mastery stage' : stage === 'building' ? 'Building stage' : 'Survival stage',
+    'left: 62%; bottom: 22%; width: 6%; height: 22%;',
+    'left: 72%; bottom: 20%; width: 5%; height: 18%;',
   ];
 }
 

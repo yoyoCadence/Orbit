@@ -32,6 +32,8 @@ describe('renderPersonalSpace', () => {
     expect(container.querySelector('.space-scene-window')).not.toBeNull();
     expect(container.querySelectorAll('.space-scene-item').length).toBeGreaterThan(0);
     expect(container.textContent).toContain('Current Scene Layer');
+    expect(container.querySelector('.space-scene-info-toggle')).not.toBeNull();
+    expect(container.querySelector('.space-scene-chip-row')).not.toBeNull();
   });
 
   it('loads spent gold and owned items from persisted personal space state', () => {
@@ -103,5 +105,16 @@ describe('renderPersonalSpace', () => {
     expect(container.querySelector('[data-scene-id="estate-game-room"], [data-scene-id="estate-lounge"], [data-scene-id="estate-study"], [data-scene-id="estate-hall"]')).not.toBeNull();
     expect(container.textContent).toContain('豪宅');
     expect(container.textContent).toContain('主管室');
+  });
+
+  it('marks older office floors as memory property when revisiting them', () => {
+    state.user.totalXP = 10000;
+
+    renderPersonalSpace(container);
+    container.querySelector('[data-scene-switch="office-corner"]')?.click();
+
+    expect(container.textContent).toContain('Memory Property');
+    expect(container.textContent).toContain('回顧');
+    expect(container.querySelectorAll('.space-scene-worker').length).toBeGreaterThan(0);
   });
 });

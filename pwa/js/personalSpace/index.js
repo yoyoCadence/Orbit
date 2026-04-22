@@ -5,6 +5,7 @@ import {
   getAvailableSceneOptions,
   getCurrentSpaceStage,
   getNextSpaceUnlock,
+  getPrimaryWorkplaceScene,
   getUnlockedSpaceMilestones,
   resolveActiveScene,
 } from './unlockRules.js';
@@ -17,6 +18,7 @@ export function buildPersonalSpaceViewModel(user) {
   const stage = getCurrentSpaceStage(levelInfo.level);
   const sceneOptions = getAvailableSceneOptions(levelInfo.level);
   const activeScene = resolveActiveScene(levelInfo.level, personalSpaceState.selectedSceneId);
+  const activeWorkScene = getPrimaryWorkplaceScene(levelInfo.level);
 
   return {
     level: levelInfo.level,
@@ -31,6 +33,7 @@ export function buildPersonalSpaceViewModel(user) {
     stage,
     sceneOptions,
     activeScene,
+    activeWorkScene,
     unlockedMilestones: getUnlockedSpaceMilestones(levelInfo.level),
     nextUnlock: getNextSpaceUnlock(levelInfo.level),
     personalSpaceState,
