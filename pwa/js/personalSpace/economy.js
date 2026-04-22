@@ -23,6 +23,20 @@ export const STARTER_CATALOG = [
   { id: 'office-floor-upgrade', name: 'Office Floor Upgrade', category: 'spaceUpgrade', price: 2500 },
 ];
 
+export function buildStarterCatalogView(ownedItems = [], availableGold = 0) {
+  const ownedIds = new Set(
+    (Array.isArray(ownedItems) ? ownedItems : [])
+      .map(item => (typeof item === 'string' ? item : item?.id))
+      .filter(Boolean)
+  );
+
+  return STARTER_CATALOG.map(item => ({
+    ...item,
+    isOwned: ownedIds.has(item.id),
+    canAfford: availableGold >= item.price,
+  }));
+}
+
 export function goldReward(level) {
   return Math.round(60 + 12 * level + 8 * Math.sqrt(level));
 }

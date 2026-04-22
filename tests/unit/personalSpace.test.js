@@ -4,7 +4,7 @@
 
 import { describe, expect, it, beforeEach } from 'vitest';
 import { state } from '../../pwa/js/state.js';
-import { renderPersonalSpace } from '../../pwa/js/pages/personalSpace.js';
+import { PERSONAL_SPACE_PURCHASE_REQUEST_EVENT, renderPersonalSpace } from '../../pwa/js/pages/personalSpace.js';
 import { buildPersonalSpaceViewModel } from '../../pwa/js/personalSpace/index.js';
 import { savePersonalSpaceState } from '../../pwa/js/personalSpace/gameState.js';
 
@@ -27,7 +27,8 @@ describe('renderPersonalSpace', () => {
     expect(container.textContent).toContain('個人空間');
     expect(container.textContent).toContain('Available Gold');
     expect(container.querySelector('#personal-space-scene')).not.toBeNull();
-    expect(container.textContent).toContain('Future Shop');
+    expect(container.textContent).toContain('Starter Shop');
+    expect(container.textContent).toContain('Small Plant');
   });
 
   it('loads spent gold and owned items from persisted personal space state', () => {
@@ -49,5 +50,22 @@ describe('renderPersonalSpace', () => {
     expect(container.textContent).toContain('Owned Items');
     expect(container.textContent).toContain('Small Plant');
     expect(container.textContent).toContain('Desk Lamp');
+  });
+
+  it('emits a purchase request event when clicking a starter catalog item', () => {
+    let receivedDetail = null;
+    container.addEventListener(PERSONAL_SPACE_PURCHASE_REQUEST_EVENT, event => {
+      receivedDetail = event.detail;
+    });
+
+    renderPersonalSpace(container);
+    container.querySelector('[data-item-id="small-plant"]')?.click();
+
+    expect(receivedDetail).toEqual({
+      itemId: 'small-plant',
+      itemName: 'Small Plant',
+      price: 100,
+      source: 'starter-shop',
+    });
   });
 });
