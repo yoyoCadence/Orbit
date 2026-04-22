@@ -21,15 +21,49 @@ export function createDefaultPersonalSpaceState() {
   };
 }
 
+function normalizeOwnedItems(value) {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .map(item => {
+      if (typeof item === 'string') {
+        return { id: item };
+      }
+
+      if (!item || typeof item !== 'object' || typeof item.id !== 'string' || !item.id.trim()) {
+        return null;
+      }
+
+      return {
+        ...item,
+        id: item.id.trim(),
+      };
+    })
+    .filter(Boolean);
+}
+
+function normalizePersonalSpaceState(value) {
+  const defaults = createDefaultPersonalSpaceState();
+  const raw = value && typeof value === 'object' ? value : {};
+
+  return {
+    ...defaults,
+    ...raw,
+    spentGold: Number.isFinite(raw.spentGold) ? Math.max(0, raw.spentGold) : defaults.spentGold,
+    ownedItems: normalizeOwnedItems(raw.ownedItems),
+    hiddenStats: {
+      ...defaults.hiddenStats,
+      ...(raw.hiddenStats && typeof raw.hiddenStats === 'object' ? raw.hiddenStats : {}),
+    },
+  };
+}
+
 export function loadPersonalSpaceState() {
-  return readJSON(KEY, createDefaultPersonalSpaceState());
+  return normalizePersonalSpaceState(readJSON(KEY, null));
 }
 
 export function savePersonalSpaceState(nextState) {
-  const merged = {
-    ...createDefaultPersonalSpaceState(),
-    ...nextState,
-  };
+  const merged = normalizePersonalSpaceState(nextState);
   writeJSON(KEY, merged);
   return merged;
 }

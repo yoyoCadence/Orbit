@@ -21,6 +21,12 @@ export function renderPersonalSpace(container) {
   const unlockedItems = model.unlockedMilestones
     .map(item => `<li>Lv.${item.level} · ${escapeHtml(item.label)}</li>`)
     .join('');
+  const ownedItemsMarkup = model.ownedItems.length
+    ? model.ownedItems
+        .slice(0, 4)
+        .map(item => `<li>${escapeHtml(item.name || item.id)}</li>`)
+        .join('')
+    : '<li>No purchased items yet</li>';
 
   container.innerHTML = `
     <div class="section-title">🏠 個人空間</div>
@@ -49,7 +55,13 @@ export function renderPersonalSpace(container) {
       <div class="card space-stat-card">
         <div class="card-title">Available Gold</div>
         <div class="space-stat-value">${model.gold.available}</div>
-        <div class="space-stat-copy">Estimated from level rewards. Spent: ${model.gold.spent}</div>
+        <div class="space-stat-copy">Earned: ${model.gold.totalEarned}. Spent from local state: ${model.gold.spent}</div>
+      </div>
+
+      <div class="card space-stat-card">
+        <div class="card-title">Owned Items</div>
+        <div class="space-stat-value">${model.ownedItemCount}</div>
+        <div class="space-stat-copy">Persisted in local personal space state.</div>
       </div>
     </div>
 
@@ -64,6 +76,12 @@ export function renderPersonalSpace(container) {
         }
       </div>
       <ul class="space-unlock-list">${unlockedItems}</ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Owned Furnishing Snapshot</div>
+      <div class="space-stat-copy">Latest local ownership data loaded into this page.</div>
+      <ul class="space-unlock-list">${ownedItemsMarkup}</ul>
     </div>
 
     <div class="card">

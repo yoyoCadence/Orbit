@@ -57,11 +57,6 @@
 
 ## Next
 
-- [ ] **PS-101** 個人空間頁面接入真實 `spentGold / ownedItems` 本地狀態
-  - 目標：讓 `personalSpace` 頁面的 Gold 顯示不再只是估算，而是能扣除已購買物件花費
-  - 範圍：`pwa/js/personalSpace/gameState.js`、`pwa/js/personalSpace/index.js`、`pwa/js/pages/personalSpace.js`
-  - 完成條件：頁面可從本地狀態讀取 `spentGold` 與 `ownedItems`，並正確顯示 available gold
-
 - [ ] **PS-102** 建立最小可用的個人空間商店資料流
   - 目標：把現有 `STARTER_CATALOG` 與 personal space 頁面接起來
   - 範圍：`pwa/js/personalSpace/economy.js`、`pwa/js/personalSpace/ui/shopPanel.js`、`pwa/js/pages/personalSpace.js`
@@ -76,6 +71,9 @@
 ---
 
 ## Done
+
+- [x] **PS-101** 個人空間頁面接入真實 `spentGold / ownedItems` 本地狀態
+  - 完成：`personalSpace` 頁面已接入本地 `spentGold / ownedItems`，available gold 會扣除已花費，並顯示已擁有物件快照
 
 - [x] **DOC-001** 補齊 Orbit life-sim foundation 文件基線
   - 完成內容：README 加入 product positioning、design philosophy、personal space、Gold economy、AI companion、hidden stats、platform expansion、life-sim roadmap

@@ -7,6 +7,7 @@ export function buildPersonalSpaceViewModel(user) {
   const levelInfo = getLevelInfo(user?.totalXP || 0);
   const personalSpaceState = loadPersonalSpaceState();
   const spentGold = personalSpaceState.spentGold || 0;
+  const ownedItems = personalSpaceState.ownedItems || [];
 
   return {
     level: levelInfo.level,
@@ -16,6 +17,8 @@ export function buildPersonalSpaceViewModel(user) {
       spent: spentGold,
       available: estimateAvailableGold(levelInfo.level, spentGold),
     },
+    ownedItems,
+    ownedItemCount: ownedItems.length,
     stage: getCurrentSpaceStage(levelInfo.level),
     unlockedMilestones: getUnlockedSpaceMilestones(levelInfo.level),
     nextUnlock: getNextSpaceUnlock(levelInfo.level),
