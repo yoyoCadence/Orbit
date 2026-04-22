@@ -13,10 +13,6 @@
 
 ## Backlog
 
-- [ ] **PS-201** 將個人空間頁面的 scene placeholder 升級為可描述場景狀態的 2D 視覺層
-  - 目標：先做輕量 scene representation，不直接進完整 3D
-  - 對應 roadmap：Phase 2
-
 - [ ] **PS-202** 為 personal space 建立 furniture ownership / placement 的本地資料模型
   - 目標：把「已擁有」與「已擺放」拆開，避免之後 UI 和 scene runtime 耦合
   - 對應 roadmap：Phase 2
@@ -68,6 +64,9 @@
 ---
 
 ## Done
+
+- [x] **PS-201** 將個人空間頁面的 scene placeholder 升級為可描述場景狀態的 2D 視覺層
+  - 完成：個人空間頁面已從純文字 placeholder 升級為會反映 stage / scene / owned items 的輕量 2D scene layer
 
 - [x] **PS-102** 建立最小可用的個人空間商店資料流
   - 完成：頁面已列出 `STARTER_CATALOG`，並保留 starter shop 的購買事件接點供下一步實作寫入流程

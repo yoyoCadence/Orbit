@@ -1,13 +1,24 @@
 import { getLevelInfo } from '../leveling.js';
 import { estimateAvailableGold, getTotalGoldForLevel } from './economy.js';
 import { loadPersonalSpaceState } from './gameState.js';
-import { getCurrentSpaceStage, getNextSpaceUnlock, getUnlockedSpaceMilestones } from './unlockRules.js';
+import {
+  getAvailableSceneOptions,
+  getCurrentSpaceStage,
+  getNextSpaceUnlock,
+  getPrimaryWorkplaceScene,
+  getUnlockedSpaceMilestones,
+  resolveActiveScene,
+} from './unlockRules.js';
 
 export function buildPersonalSpaceViewModel(user) {
   const levelInfo = getLevelInfo(user?.totalXP || 0);
   const personalSpaceState = loadPersonalSpaceState();
   const spentGold = personalSpaceState.spentGold || 0;
   const ownedItems = personalSpaceState.ownedItems || [];
+  const stage = getCurrentSpaceStage(levelInfo.level);
+  const sceneOptions = getAvailableSceneOptions(levelInfo.level);
+  const activeScene = resolveActiveScene(levelInfo.level, personalSpaceState.selectedSceneId);
+  const activeWorkScene = getPrimaryWorkplaceScene(levelInfo.level);
 
   return {
     level: levelInfo.level,
@@ -19,7 +30,10 @@ export function buildPersonalSpaceViewModel(user) {
     },
     ownedItems,
     ownedItemCount: ownedItems.length,
-    stage: getCurrentSpaceStage(levelInfo.level),
+    stage,
+    sceneOptions,
+    activeScene,
+    activeWorkScene,
     unlockedMilestones: getUnlockedSpaceMilestones(levelInfo.level),
     nextUnlock: getNextSpaceUnlock(levelInfo.level),
     personalSpaceState,
