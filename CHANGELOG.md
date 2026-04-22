@@ -8,7 +8,7 @@
 ### Changed
 - Personal space page now loads persisted `spentGold` and `ownedItems` from local state, deducts spent gold from available gold, and shows a small owned-item snapshot on the page
 - Personal space page now renders the starter shop catalog, shows starter item prices and ownership state, and emits a purchase request event hook for future write flow
-- Personal space scene placeholder now renders a lightweight 2D room / office layer that reflects growth stage, selected scene, and owned-item progress signals
+- Personal space scene layer now switches between rental / office / estate contexts based on stage progression, supports home-work scene switching, and avoids overlapping scene UI on desktop and mobile
 
 ## [v1.16.0] - 2026-04-21
 

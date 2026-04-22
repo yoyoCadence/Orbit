@@ -1,6 +1,7 @@
 import { state } from '../state.js';
 import { buildPersonalSpaceViewModel } from '../personalSpace/index.js';
 import { buildStarterCatalogView } from '../personalSpace/economy.js';
+import { savePersonalSpaceState } from '../personalSpace/gameState.js';
 import { createSceneRuntime } from '../personalSpace/sceneRuntime.js';
 import { renderDialogBubblePlaceholder } from '../personalSpace/ui/dialogBubble.js';
 import { renderHudOverlayPlaceholder } from '../personalSpace/ui/hudOverlay.js';
@@ -21,6 +22,17 @@ export function renderPersonalSpace(container) {
   const model = buildPersonalSpaceViewModel(user);
   const starterCatalog = buildStarterCatalogView(model.ownedItems, model.gold.available);
   const nextUnlock = model.nextUnlock;
+  const sceneSwitcherMarkup = model.sceneOptions
+    .map(option => `
+      <button
+        class="space-scene-switch ${option.id === model.activeScene?.id ? 'is-active' : ''}"
+        type="button"
+        data-scene-switch="${escapeHtml(option.id)}"
+      >
+        ${escapeHtml(option.shortLabel)}
+      </button>
+    `)
+    .join('');
   const unlockedItems = model.unlockedMilestones
     .map(item => `<li>Lv.${item.level} · ${escapeHtml(item.label)}</li>`)
     .join('');
@@ -88,7 +100,14 @@ export function renderPersonalSpace(container) {
     </div>
 
     <div class="card">
-      <div class="card-title">Scene Runtime Placeholder</div>
+      <div class="card-title">Current Scene Layer</div>
+      <div class="space-scene-meta">
+        <div>
+          <div class="space-scene-meta-title">${escapeHtml(model.activeScene?.label || 'Current scene')}</div>
+          <div class="space-stat-copy">${describeSceneFlow(model.stage, model.activeScene?.role)}</div>
+        </div>
+        <div class="space-scene-switcher">${sceneSwitcherMarkup}</div>
+      </div>
       <div id="personal-space-scene" class="space-scene-shell"></div>
     </div>
 
@@ -118,12 +137,27 @@ export function renderPersonalSpace(container) {
     }));
   });
 
+  container.querySelector('.space-scene-switcher')?.addEventListener('click', event => {
+    const switchButton = event.target.closest('[data-scene-switch]');
+    if (!switchButton) return;
+
+    const sceneId = switchButton.dataset.sceneSwitch;
+    if (!sceneId || sceneId === model.activeScene?.id) return;
+
+    savePersonalSpaceState({
+      ...model.personalSpaceState,
+      selectedSceneId: sceneId,
+    });
+    renderPersonalSpace(container);
+  });
+
   const sceneContainer = container.querySelector('#personal-space-scene');
   activeRuntime = createSceneRuntime(sceneContainer, {
-    label: nextUnlock ? nextUnlock.label : 'Unlocked Personal Space',
     level: model.level,
     stage: model.stage,
-    sceneId: model.personalSpaceState.selectedSceneId,
+    sceneId: model.activeScene?.id,
+    sceneLabel: model.activeScene?.label,
+    sceneRole: model.activeScene?.role,
     ownedItemCount: model.ownedItemCount,
   });
   activeRuntime.mount();
@@ -135,6 +169,26 @@ function formatStage(stage) {
     building: 'Building Stage',
     mastery: 'Mastery Stage',
   }[stage] || 'Early Stage';
+}
+
+function describeSceneFlow(stage, role) {
+  if (stage === 'building' && role === 'home') {
+    return 'Building stage defaults to the company, but you can still return to your rental room.';
+  }
+
+  if (stage === 'building') {
+    return 'You now work inside the company building and can move across unlocked office floors.';
+  }
+
+  if (stage === 'mastery' && role === 'work') {
+    return 'Your primary home is now the estate, but you still return to the company to work.';
+  }
+
+  if (stage === 'mastery') {
+    return 'Mastery stage shifts your main residence to a private estate with richer personal space.';
+  }
+
+  return 'Survival stage keeps the focus on your rental room before the company building opens.';
 }
 
 function escapeHtml(value) {

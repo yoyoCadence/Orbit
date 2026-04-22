@@ -5,6 +5,7 @@ export function createSceneRuntime(container, sceneModel = {}) {
     mount() {
       if (!container || mounted) return;
       mounted = true;
+
       const visualModel = buildSceneVisualModel(sceneModel);
       const furnitureMarkup = visualModel.furniture
         .map(item => `
@@ -20,16 +21,18 @@ export function createSceneRuntime(container, sceneModel = {}) {
       container.innerHTML = `
         <div class="space-scene-placeholder space-scene-placeholder--${visualModel.palette}" data-scene-id="${visualModel.sceneId}">
           <div class="space-scene-grid"></div>
-          <div class="space-scene-backdrop">
-            <div class="space-scene-window space-scene-window--${visualModel.windowMood}"></div>
-            <div class="space-scene-floor"></div>
-            <div class="space-scene-silhouette space-scene-silhouette--${visualModel.silhouette}"></div>
-            ${furnitureMarkup}
-          </div>
           <div class="space-scene-copy">
             <strong>${visualModel.title}</strong>
             <span>${visualModel.copy}</span>
             <ul class="space-scene-progress">${progressMarkup}</ul>
+          </div>
+          <div class="space-scene-visual">
+            <div class="space-scene-backdrop">
+              <div class="space-scene-window space-scene-window--${visualModel.windowMood}"></div>
+              <div class="space-scene-floor"></div>
+              <div class="space-scene-silhouette space-scene-silhouette--${visualModel.silhouette}"></div>
+              ${furnitureMarkup}
+            </div>
           </div>
         </div>
       `;
@@ -45,71 +48,158 @@ export function createSceneRuntime(container, sceneModel = {}) {
 function buildSceneVisualModel(sceneModel) {
   const level = sceneModel.level || 1;
   const stage = sceneModel.stage || 'survival';
-  const sceneId = sceneModel.sceneId || 'rough-room';
+  const sceneId = sceneModel.sceneId || defaultSceneId(stage);
+  const sceneRole = sceneModel.sceneRole || 'home';
+  const sceneLabel = sceneModel.sceneLabel || sceneId;
   const ownedItemCount = sceneModel.ownedItemCount || 0;
-  const isOffice = sceneId.includes('office') || sceneId.includes('company');
 
   return {
     sceneId,
-    title: sceneLabel(sceneId, stage),
-    copy: sceneCopy(stage, isOffice, ownedItemCount),
-    palette: isOffice ? 'office' : stage,
-    silhouette: isOffice ? 'office' : stage === 'mastery' ? 'suite' : 'room',
-    windowMood: level >= 20 ? 'sunrise' : level >= 8 ? 'day' : 'dusk',
-    furniture: buildFurnitureLayout({ stage, isOffice, ownedItemCount, level }),
-    progressTags: [
-      `Lv.${level} scene state`,
-      `${ownedItemCount} owned item${ownedItemCount === 1 ? '' : 's'}`,
-      stage === 'mastery' ? 'Stable growth atmosphere' : stage === 'building' ? 'Expansion in progress' : 'Starter shelter',
-    ],
+    title: sceneTitle(sceneId, sceneLabel),
+    copy: sceneCopy({ stage, sceneId, sceneRole, ownedItemCount }),
+    palette: paletteForScene(sceneId, sceneRole, stage),
+    silhouette: silhouetteForScene(sceneId, sceneRole, stage),
+    windowMood: windowMoodForScene(level, sceneRole),
+    furniture: buildFurnitureLayout({ sceneId, sceneRole, ownedItemCount, level }),
+    progressTags: buildProgressTags({ level, stage, sceneRole, sceneId }),
   };
 }
 
-function buildFurnitureLayout({ stage, isOffice, ownedItemCount, level }) {
-  const items = [];
-
-  if (isOffice) {
-    items.push({ kind: 'desk', label: 'Desk', style: 'left: 20%; bottom: 22%; width: 28%; height: 17%;' });
-    items.push({ kind: 'chair', label: 'Chair', style: 'left: 31%; bottom: 13%; width: 14%; height: 13%;' });
-    items.push({ kind: 'monitor', label: level >= 15 ? 'Dual Screen' : 'Screen', style: 'left: 29%; bottom: 34%; width: 16%; height: 11%;' });
-    items.push({ kind: 'shelf', label: 'Shelf', style: 'right: 13%; bottom: 20%; width: 18%; height: 33%;' });
-  } else {
-    items.push({ kind: 'bed', label: 'Bed', style: 'left: 10%; bottom: 20%; width: 30%; height: 19%;' });
-    items.push({ kind: 'desk', label: 'Desk', style: 'right: 12%; bottom: 18%; width: 22%; height: 16%;' });
-    items.push({ kind: 'lamp', label: 'Lamp', style: 'right: 22%; bottom: 34%; width: 9%; height: 12%;' });
+function buildFurnitureLayout({ sceneId, sceneRole, ownedItemCount, level }) {
+  if (sceneRole === 'work') {
+    return buildOfficeFurniture(sceneId, level);
   }
 
-  if (stage !== 'survival' || ownedItemCount >= 1) {
-    items.push({ kind: 'plant', label: 'Plant', style: 'left: 48%; bottom: 19%; width: 11%; height: 18%;' });
+  if (sceneId.startsWith('estate-')) {
+    return buildEstateFurniture(sceneId, ownedItemCount);
   }
 
-  if (stage === 'mastery' || ownedItemCount >= 3) {
-    items.push({ kind: 'art', label: 'Wall Art', style: 'right: 20%; top: 18%; width: 16%; height: 12%;' });
+  return buildRentalFurniture(sceneId, ownedItemCount);
+}
+
+function buildOfficeFurniture(sceneId, level) {
+  const items = [
+    { kind: 'desk', label: sceneId === 'office-corner' ? 'Corner Desk' : 'Desk', style: 'left: 14%; bottom: 10%; width: 42%; height: 18%;' },
+    { kind: 'chair', label: 'Chair', style: 'left: 24%; bottom: 2%; width: 18%; height: 12%;' },
+    { kind: 'monitor', label: level >= 15 ? 'Dual Screen' : 'Screen', style: 'left: 24%; bottom: 30%; width: 20%; height: 11%;' },
+    { kind: 'shelf', label: 'Shelf', style: 'right: 8%; bottom: 12%; width: 16%; height: 34%;' },
+  ];
+
+  if (sceneId === 'small-office' || sceneId === 'mid-office' || sceneId === 'manager-room' || sceneId === 'large-office-suite') {
+    items.push({ kind: 'plant', label: 'Plant', style: 'right: 28%; bottom: 10%; width: 12%; height: 18%;' });
+  }
+
+  if (sceneId === 'mid-office' || sceneId === 'manager-room' || sceneId === 'large-office-suite') {
+    items.push({ kind: 'art', label: 'Board', style: 'right: 26%; top: 18%; width: 20%; height: 12%;' });
   }
 
   return items;
 }
 
-function sceneLabel(sceneId, stage) {
-  if (sceneId.includes('company')) return 'Company Building Corner';
-  if (sceneId.includes('office')) return 'Focused Workstation';
-  if (stage === 'mastery') return 'Upgraded Personal Suite';
-  if (stage === 'building') return 'Growing Rental Room';
-  return 'Starter Rental Room';
-}
+function buildRentalFurniture(sceneId, ownedItemCount) {
+  const items = [
+    { kind: 'bed', label: 'Bed', style: 'left: 8%; bottom: 8%; width: 36%; height: 18%;' },
+    { kind: 'desk', label: 'Desk', style: 'right: 10%; bottom: 9%; width: 26%; height: 16%;' },
+    { kind: 'lamp', label: 'Lamp', style: 'right: 18%; bottom: 26%; width: 10%; height: 12%;' },
+  ];
 
-function sceneCopy(stage, isOffice, ownedItemCount) {
-  if (isOffice) {
-    return `A lightweight 2D office slice now reflects your current growth stage and ${ownedItemCount} owned furnishing signals.`;
+  if (sceneId === 'upgraded-rental' || ownedItemCount >= 1) {
+    items.push({ kind: 'plant', label: 'Plant', style: 'left: 48%; bottom: 9%; width: 11%; height: 17%;' });
   }
 
-  if (stage === 'mastery') {
-    return `The room now reads like a stable base: cleaner layout, warmer light, and visible space for future placement systems.`;
+  if (sceneId === 'upgraded-rental') {
+    items.push({ kind: 'art', label: 'Wall Art', style: 'left: 18%; top: 18%; width: 16%; height: 12%;' });
+  }
+
+  return items;
+}
+
+function buildEstateFurniture(sceneId, ownedItemCount) {
+  const items = [
+    { kind: 'sofa', label: 'Sofa', style: 'left: 12%; bottom: 10%; width: 34%; height: 18%;' },
+    { kind: 'table', label: 'Table', style: 'left: 48%; bottom: 10%; width: 18%; height: 13%;' },
+    { kind: 'plant', label: 'Palm', style: 'right: 10%; bottom: 12%; width: 12%; height: 25%;' },
+  ];
+
+  if (sceneId === 'estate-study') {
+    items.push({ kind: 'desk', label: 'Private Desk', style: 'right: 12%; bottom: 10%; width: 28%; height: 16%;' });
+  }
+
+  if (sceneId === 'estate-lounge') {
+    items.push({ kind: 'art', label: 'Lounge Art', style: 'right: 20%; top: 18%; width: 18%; height: 12%;' });
+  }
+
+  if (sceneId === 'estate-game-room') {
+    items.push({ kind: 'console', label: 'Game Rig', style: 'right: 12%; bottom: 10%; width: 28%; height: 15%;' });
+  }
+
+  if (ownedItemCount >= 3) {
+    items.push({ kind: 'shelf', label: 'Display', style: 'left: 8%; top: 18%; width: 14%; height: 28%;' });
+  }
+
+  return items;
+}
+
+function sceneTitle(sceneId, sceneLabel) {
+  return sceneLabel || sceneId;
+}
+
+function sceneCopy({ stage, sceneId, sceneRole, ownedItemCount }) {
+  if (sceneRole === 'work') {
+    if (sceneId === 'office-corner') {
+      return 'You have entered the company building. This is your first work corner, but home is still waiting when the day ends.';
+    }
+
+    if (sceneId === 'manager-room' || sceneId === 'large-office-suite') {
+      return 'Work now happens in a higher-floor executive space. Even after moving home, the company remains part of your identity.';
+    }
+
+    return `Your current workplace reflects a clearer professional identity, while still carrying ${ownedItemCount} personal-space progress signal${ownedItemCount === 1 ? '' : 's'}.`;
+  }
+
+  if (sceneId.startsWith('estate-')) {
+    return 'Mastery stage shifts your main residence to a private estate, where different rooms begin to represent comfort, identity, and personal expression.';
   }
 
   if (stage === 'building') {
-    return `This 2D room snapshot shows a clearer floor plan and a few signs of growth before full placement systems arrive.`;
+    return 'You still return to your rental room after work. It is no longer the whole world, but it still holds your everyday life.';
   }
 
-  return `This early shelter now has a readable 2D layout so progression feels spatial before we introduce full scene systems.`;
+  return 'Survival stage starts in a rental room. Growth first makes the room more livable before the wider city begins to open.';
+}
+
+function buildProgressTags({ level, stage, sceneRole, sceneId }) {
+  return [
+    `Lv.${level} scene state`,
+    sceneRole === 'work' ? 'Workplace active' : sceneId.startsWith('estate-') ? 'Primary residence' : 'Rental home',
+    stage === 'mastery' ? 'Mastery stage' : stage === 'building' ? 'Building stage' : 'Survival stage',
+  ];
+}
+
+function paletteForScene(sceneId, sceneRole, stage) {
+  if (sceneRole === 'work') return 'office';
+  if (sceneId.startsWith('estate-')) return 'mastery';
+  if (sceneId === 'upgraded-rental') return 'rental-upgraded';
+  return stage === 'survival' ? 'survival' : 'building';
+}
+
+function silhouetteForScene(sceneId, sceneRole, stage) {
+  if (sceneRole === 'work') return 'office';
+  if (sceneId.startsWith('estate-')) return 'suite';
+  return stage === 'survival' ? 'room' : 'room-upgraded';
+}
+
+function windowMoodForScene(level, sceneRole) {
+  if (sceneRole === 'work') return level >= 40 ? 'skyline' : 'day';
+  if (level >= 40) return 'sunrise';
+  if (level >= 8) return 'day';
+  return 'dusk';
+}
+
+function defaultSceneId(stage) {
+  return {
+    survival: 'rough-room',
+    building: 'office-corner',
+    mastery: 'estate-hall',
+  }[stage] || 'rough-room';
 }
