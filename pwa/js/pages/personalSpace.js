@@ -2,10 +2,15 @@ import { state } from '../state.js';
 import { buildPersonalSpaceViewModel } from '../personalSpace/index.js';
 import { buildStarterCatalogView } from '../personalSpace/economy.js';
 import { savePersonalSpaceState } from '../personalSpace/gameState.js';
+import {
+  createInteractionBus,
+  PERSONAL_SPACE_ACTION_REQUESTED_EVENT,
+} from '../personalSpace/interactionBus.js';
 import { createSceneRuntime } from '../personalSpace/sceneRuntime.js';
 import { renderDialogBubblePlaceholder } from '../personalSpace/ui/dialogBubble.js';
 import { renderHudOverlayPlaceholder } from '../personalSpace/ui/hudOverlay.js';
 import { renderShopPanel, SHOP_PURCHASE_ACTION } from '../personalSpace/ui/shopPanel.js';
+import { SCENE_ACTION_TYPES } from '../personalSpace/world/sceneGraph.js';
 
 let activeRuntime = null;
 export const PERSONAL_SPACE_PURCHASE_REQUEST_EVENT = 'orbit:personal-space-purchase-request';
@@ -27,6 +32,7 @@ export function renderPersonalSpace(container) {
   const sceneInfoMarkup = buildSceneInfoMarkup(model, isMemoryScene);
   const sceneLocationMarkup = buildSceneLocationMarkup(model, primaryWorkScene);
   const sceneSwitcherMarkup = buildSceneSwitcherMarkup(model, primaryWorkScene);
+  const interactionBus = createInteractionBus();
   const unlockedItems = model.unlockedMilestones
     .map(item => `<li>Lv.${item.level} · ${escapeHtml(item.label)}</li>`)
     .join('');
@@ -152,6 +158,17 @@ export function renderPersonalSpace(container) {
   });
 
   const sceneContainer = container.querySelector('#personal-space-scene');
+  interactionBus.on(PERSONAL_SPACE_ACTION_REQUESTED_EVENT, payload => {
+    const action = payload?.action;
+    if (action?.type !== SCENE_ACTION_TYPES.CHANGE_SCENE || !action.sceneId) return;
+
+    savePersonalSpaceState({
+      ...model.personalSpaceState,
+      selectedSceneId: action.sceneId,
+    });
+    renderPersonalSpace(container);
+  });
+
   activeRuntime = createSceneRuntime(sceneContainer, {
     level: model.level,
     stage: model.stage,
@@ -160,6 +177,7 @@ export function renderPersonalSpace(container) {
     sceneRole: model.activeScene?.role,
     ownedItemCount: model.ownedItemCount,
     isMemoryScene,
+    interactionBus,
   });
   activeRuntime.mount();
 }

@@ -86,8 +86,21 @@ describe('renderPersonalSpace', () => {
 
     expect(container.querySelector('.space-scene-placeholder--office')).not.toBeNull();
     expect(container.querySelector('[data-scene-id="office-corner"]')).not.toBeNull();
+    expect(container.querySelector('[data-scene-node-id="office-corner-elevator"]')).not.toBeNull();
+    expect(container.querySelector('[data-scene-node-id="office-window"]')).not.toBeNull();
     expect(container.textContent).toContain('公司一樓辦公角');
     expect(container.textContent).toContain('回租屋');
+  });
+
+  it('can change scenes through a data-driven exit node action', () => {
+    state.user.totalXP = 600;
+
+    renderPersonalSpace(container);
+    container.querySelector('[data-scene-node-id="office-corner-elevator"]')?.click();
+
+    expect(container.querySelector('.space-scene-placeholder--rental-upgraded')).not.toBeNull();
+    expect(container.querySelector('[data-scene-id="upgraded-rental"]')).not.toBeNull();
+    expect(container.textContent).toContain('住處 / 升級租屋處');
   });
 
   it('allows switching back to rental in building stage', () => {
