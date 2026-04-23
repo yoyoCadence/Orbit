@@ -25,7 +25,7 @@ export function renderPersonalSpace(container) {
   const primaryWorkScene = model.sceneOptions.find(option => option.role === 'work' && option.id === model.activeWorkScene?.id);
   const isMemoryScene = isMemorySceneOption(model.activeScene, primaryWorkScene);
   const sceneInfoMarkup = buildSceneInfoMarkup(model, isMemoryScene);
-  const sceneTagMarkup = buildSceneTagMarkup(model, isMemoryScene);
+  const sceneLocationMarkup = buildSceneLocationMarkup(model, primaryWorkScene);
   const sceneSwitcherMarkup = buildSceneSwitcherMarkup(model, primaryWorkScene);
   const unlockedItems = model.unlockedMilestones
     .map(item => `<li>Lv.${item.level} · ${escapeHtml(item.label)}</li>`)
@@ -96,16 +96,13 @@ export function renderPersonalSpace(container) {
     <div class="card">
       <div class="card-title">Current Scene Layer</div>
       <div class="space-scene-meta">
-        <div>
-          <div class="space-scene-meta-title">${escapeHtml(model.activeScene?.label || 'Current scene')}</div>
-        </div>
+        ${sceneLocationMarkup}
         <div class="space-scene-meta-actions">
           <div class="space-scene-switcher">${sceneSwitcherMarkup}</div>
           ${sceneInfoMarkup}
         </div>
       </div>
       <div id="personal-space-scene" class="space-scene-shell"></div>
-      <div class="space-scene-chip-row">${sceneTagMarkup}</div>
     </div>
 
     <div class="space-placeholder-grid">
@@ -187,13 +184,15 @@ function buildSceneSwitcherMarkup(model, primaryWorkScene) {
 
     return `
       <button
-        class="space-scene-category ${isActive ? 'is-active' : ''}"
+        class="space-scene-category ${isActive ? 'is-active' : ''} ${isEmpty ? 'is-locked' : ''}"
         type="button"
         data-scene-category="${category.id}"
         aria-selected="${isActive ? 'true' : 'false'}"
+        aria-label="${isEmpty ? `${category.label}，尚未解鎖` : category.label}"
         ${isEmpty ? 'disabled' : ''}
       >
-        ${category.label}
+        <span>${category.label}</span>
+        ${isEmpty ? '<span class="space-scene-category-lock" aria-hidden="true">🔒</span>' : ''}
       </button>
     `;
   }).join('');
@@ -241,6 +240,18 @@ function buildSceneCategories(sceneOptions, primaryWorkScene) {
   return categories;
 }
 
+function buildSceneLocationMarkup(model, primaryWorkScene) {
+  const categoryLabel = getSceneCategoryLabel(model.activeScene, primaryWorkScene);
+  const sceneLabel = model.activeScene?.label || 'Current scene';
+
+  return `
+    <div class="space-scene-location">
+      <span>你現在位於</span>
+      <strong>${escapeHtml(categoryLabel)} / ${escapeHtml(sceneLabel)}</strong>
+    </div>
+  `;
+}
+
 function renderSceneSwitchButton(option, model, primaryWorkScene) {
   return `
     <button
@@ -258,6 +269,14 @@ function getSceneCategoryId(option, primaryWorkScene) {
   if (isMemorySceneOption(option, primaryWorkScene)) return 'memory';
   if (option?.role === 'work') return 'work';
   return 'home';
+}
+
+function getSceneCategoryLabel(option, primaryWorkScene) {
+  return {
+    home: '住處',
+    work: '上班',
+    memory: '回顧',
+  }[getSceneCategoryId(option, primaryWorkScene)] || '住處';
 }
 
 function activateSceneCategory(container, categoryId) {
@@ -287,26 +306,6 @@ function buildSceneInfoMarkup(model, isMemoryScene) {
       </div>
     </details>
   `;
-}
-
-function buildSceneTagMarkup(model, isMemoryScene) {
-  const tags = [
-    `Lv.${model.level}`,
-    formatStage(model.stage),
-    model.activeScene?.role === 'work' ? '公司場景' : model.activeScene?.id?.startsWith('estate-') ? '豪宅場景' : '居住場景',
-  ];
-
-  if (isMemoryScene) {
-    tags.push('Memory Property');
-  } else if (model.activeScene?.role === 'work') {
-    tags.push('Current Workplace');
-  } else if (model.activeScene?.id?.startsWith('estate-')) {
-    tags.push('Primary Residence');
-  } else {
-    tags.push('Rental Home');
-  }
-
-  return tags.map(tag => `<span class="space-scene-chip">${escapeHtml(tag)}</span>`).join('');
 }
 
 function describeSceneInfo(model, isMemoryScene) {

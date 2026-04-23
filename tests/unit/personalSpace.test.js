@@ -33,10 +33,12 @@ describe('renderPersonalSpace', () => {
     expect(container.querySelectorAll('.space-scene-item').length).toBeGreaterThan(0);
     expect(container.textContent).toContain('Current Scene Layer');
     expect(container.querySelector('.space-scene-info-toggle')).not.toBeNull();
-    expect(container.querySelector('.space-scene-chip-row')).not.toBeNull();
+    expect(container.querySelector('.space-scene-chip-row')).toBeNull();
+    expect(container.textContent).toContain('你現在位於');
     expect(container.querySelector('[data-scene-category="home"]')?.textContent).toContain('住處');
     expect(container.querySelector('[data-scene-category="work"]')?.textContent).toContain('上班');
     expect(container.querySelector('[data-scene-category="memory"]')?.textContent).toContain('回顧');
+    expect(container.querySelector('[data-scene-category="memory"]')?.disabled).toBe(true);
   });
 
   it('loads spent gold and owned items from persisted personal space state', () => {
@@ -118,7 +120,8 @@ describe('renderPersonalSpace', () => {
     container.querySelector('[data-scene-category="memory"]')?.click();
     container.querySelector('[data-scene-switch="office-corner"]')?.click();
 
-    expect(container.textContent).toContain('Memory Property');
+    expect(container.textContent).toContain('回顧 / 公司一樓辦公角');
+    expect(container.textContent).toContain('memory property');
     expect(container.textContent).toContain('回顧');
     expect(container.querySelectorAll('.space-scene-worker').length).toBeGreaterThan(0);
   });
