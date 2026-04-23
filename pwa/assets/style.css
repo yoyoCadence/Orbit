@@ -1322,23 +1322,24 @@ nav {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 34px;
-  min-height: 34px;
-  border: 1px solid color-mix(in srgb, var(--primary-lt) 55%, transparent);
+  min-width: 22px;
+  min-height: 22px;
+  border: 1px solid color-mix(in srgb, var(--primary-lt) 22%, transparent);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--surface) 68%, var(--primary) 32%);
+  background: color-mix(in srgb, var(--surface) 18%, transparent);
   color: var(--text);
   cursor: pointer;
-  box-shadow: 0 10px 24px rgba(0,0,0,0.22);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--primary-lt) 16%, transparent);
+  animation: space-scene-node-glow 3.8s ease-in-out infinite;
 }
 
 .space-scene-node::before {
   content: '';
-  width: 10px;
-  height: 10px;
+  width: 6px;
+  height: 6px;
   border-radius: 999px;
-  background: var(--primary-lt);
-  box-shadow: 0 0 16px color-mix(in srgb, var(--primary-lt) 70%, transparent);
+  background: color-mix(in srgb, var(--primary-lt) 82%, white);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--primary-lt) 58%, transparent);
 }
 
 .space-scene-node span {
@@ -1362,8 +1363,8 @@ nav {
 }
 
 .space-scene-node--view {
-  border-color: color-mix(in srgb, var(--accent) 65%, transparent);
-  background: color-mix(in srgb, var(--surface) 58%, var(--accent) 42%);
+  border-color: color-mix(in srgb, var(--accent) 28%, transparent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 .space-scene-node:hover span,
@@ -1371,6 +1372,19 @@ nav {
 .space-scene-node:active span {
   opacity: 1;
   visibility: visible;
+}
+
+@keyframes space-scene-node-glow {
+  0%,
+  100% {
+    opacity: 0.44;
+    box-shadow: 0 0 8px color-mix(in srgb, var(--primary-lt) 12%, transparent);
+  }
+
+  50% {
+    opacity: 0.9;
+    box-shadow: 0 0 18px color-mix(in srgb, var(--primary-lt) 34%, transparent);
+  }
 }
 
 .space-scene-window {
