@@ -18,11 +18,6 @@
   - 範圍：`pwa/js/personalSpace/world/`、相關文件
   - 完成條件：公司與豪宅都有可查閱的 floor-map schema，未來改哪層是什麼房間時不需要重寫 scene runtime
 
-- [ ] **PS-208** 建立辦公窗景 view node 互動原型
-  - 目標：驗證「點擊窗戶 → 角色走到窗邊 anchor → 切換成看窗外 view」的互動模型，先用 2D placeholder 表現，未來可替換為 3D camera transition
-  - 範圍：`pwa/js/personalSpace/world/`、`sceneRuntime.js`、`interactionBus.js`、`assetRegistry.js`
-  - 完成條件：公司場景可定義 `office-window` view node；點擊後可顯示窗外 view，並支援返回原場景
-
 - [ ] **PS-206** 為 personal space 新增地圖視窗入口
   - 目標：提供公司 / 豪宅整層設計圖視窗，讓使用者可查閱空間結構但不取代主要切換方式
   - 範圍：`pwa/js/pages/personalSpace.js`、`pwa/js/personalSpace/ui/`、相關樣式
@@ -84,6 +79,9 @@
 ---
 
 ## Done
+
+- [x] **PS-208** 建立辦公窗景 view node 互動原型
+  - 完成：`office-window` view node 現在可切換到窗外 placeholder view，顯示 skyline、玻璃層、窗外立繪 slot 與返回按鈕；返回會依 view 的 `exitAction` 回到原場景
 
 - [x] **PS-204** 為 personal space 建立 interactive scene graph 資料模型
   - 完成：新增 scene graph schema 與範例資料，支援 `exit / view / inspect / npc` interaction nodes、anchors、action sequence、views、asset slots；runtime 會讀取資料渲染 hotspot 並透過 interaction bus 發送 action event，頁面可用通用 `changeScene` action 從公司一樓回到住處
