@@ -33,7 +33,12 @@ describe('renderPersonalSpace', () => {
     expect(container.querySelectorAll('.space-scene-item').length).toBeGreaterThan(0);
     expect(container.textContent).toContain('Current Scene Layer');
     expect(container.querySelector('.space-scene-info-toggle')).not.toBeNull();
-    expect(container.querySelector('.space-scene-chip-row')).not.toBeNull();
+    expect(container.querySelector('.space-scene-chip-row')).toBeNull();
+    expect(container.textContent).toContain('你現在位於');
+    expect(container.querySelector('[data-scene-category="home"]')?.textContent).toContain('住處');
+    expect(container.querySelector('[data-scene-category="work"]')?.textContent).toContain('上班');
+    expect(container.querySelector('[data-scene-category="memory"]')?.textContent).toContain('回顧');
+    expect(container.querySelector('[data-scene-category="memory"]')?.disabled).toBe(true);
   });
 
   it('loads spent gold and owned items from persisted personal space state', () => {
@@ -89,6 +94,7 @@ describe('renderPersonalSpace', () => {
     state.user.totalXP = 600;
 
     renderPersonalSpace(container);
+    container.querySelector('[data-scene-category="home"]')?.click();
     container.querySelector('[data-scene-switch="upgraded-rental"]')?.click();
 
     expect(container.querySelector('.space-scene-placeholder--rental-upgraded')).not.toBeNull();
@@ -111,10 +117,26 @@ describe('renderPersonalSpace', () => {
     state.user.totalXP = 10000;
 
     renderPersonalSpace(container);
+    container.querySelector('[data-scene-category="memory"]')?.click();
     container.querySelector('[data-scene-switch="office-corner"]')?.click();
 
-    expect(container.textContent).toContain('Memory Property');
+    expect(container.textContent).toContain('回顧 / 公司一樓辦公角');
+    expect(container.textContent).toContain('memory property');
     expect(container.textContent).toContain('回顧');
     expect(container.querySelectorAll('.space-scene-worker').length).toBeGreaterThan(0);
+  });
+
+  it('groups older office floors and buy-back rental under memory scenes', () => {
+    state.user.totalXP = 30000;
+
+    renderPersonalSpace(container);
+    container.querySelector('[data-scene-category="memory"]')?.click();
+
+    const memoryPanel = container.querySelector('[data-scene-category-panel="memory"]');
+
+    expect(memoryPanel?.hidden).toBe(false);
+    expect(memoryPanel?.querySelector('[data-scene-switch="office-corner"]')).not.toBeNull();
+    expect(memoryPanel?.querySelector('[data-scene-switch="buy-back-rental"]')).not.toBeNull();
+    expect(container.querySelector('[data-scene-category-panel="work"] [data-scene-switch="large-office-suite"]')).not.toBeNull();
   });
 });
