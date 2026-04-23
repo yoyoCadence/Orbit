@@ -1322,24 +1322,41 @@ nav {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 22px;
-  min-height: 22px;
-  border: 1px solid color-mix(in srgb, var(--primary-lt) 22%, transparent);
+  min-width: 30px;
+  min-height: 30px;
+  border: 0;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--surface) 18%, transparent);
+  background: transparent;
   color: var(--text);
   cursor: pointer;
-  box-shadow: 0 0 18px color-mix(in srgb, var(--primary-lt) 16%, transparent);
-  animation: space-scene-node-glow 3.8s ease-in-out infinite;
+  box-shadow: none;
 }
 
 .space-scene-node::before {
   content: '';
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--primary-lt) 82%, white);
-  box-shadow: 0 0 10px color-mix(in srgb, var(--primary-lt) 58%, transparent);
+  background: color-mix(in srgb, var(--accent) 82%, white);
+  box-shadow:
+    0 0 7px color-mix(in srgb, var(--accent) 42%, transparent),
+    0 0 14px color-mix(in srgb, var(--accent) 16%, transparent);
+  animation: space-scene-node-glow 3.6s ease-in-out infinite;
+}
+
+.space-scene-node::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background:
+    linear-gradient(90deg, transparent 0 42%, color-mix(in srgb, var(--accent) 52%, transparent) 48% 52%, transparent 58% 100%),
+    linear-gradient(0deg, transparent 0 42%, color-mix(in srgb, var(--accent) 52%, transparent) 48% 52%, transparent 58% 100%);
+  filter: blur(0.2px);
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.62) rotate(14deg);
+  animation: space-scene-node-spark 4.8s ease-in-out infinite;
 }
 
 .space-scene-node span {
@@ -1363,8 +1380,7 @@ nav {
 }
 
 .space-scene-node--view {
-  border-color: color-mix(in srgb, var(--accent) 28%, transparent);
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  background: transparent;
 }
 
 .space-scene-node:hover span,
@@ -1377,13 +1393,32 @@ nav {
 @keyframes space-scene-node-glow {
   0%,
   100% {
-    opacity: 0.44;
-    box-shadow: 0 0 8px color-mix(in srgb, var(--primary-lt) 12%, transparent);
+    opacity: 0.36;
+    transform: scale(0.78);
   }
 
   50% {
-    opacity: 0.9;
-    box-shadow: 0 0 18px color-mix(in srgb, var(--primary-lt) 34%, transparent);
+    opacity: 0.86;
+    transform: scale(1);
+  }
+}
+
+@keyframes space-scene-node-spark {
+  0%,
+  64%,
+  100% {
+    opacity: 0;
+    transform: scale(0.55) rotate(14deg);
+  }
+
+  72% {
+    opacity: 0.72;
+    transform: scale(1) rotate(14deg);
+  }
+
+  84% {
+    opacity: 0.18;
+    transform: scale(0.78) rotate(14deg);
   }
 }
 
