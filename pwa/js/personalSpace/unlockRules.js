@@ -30,6 +30,7 @@ const SCENE_OPTIONS = [
   { id: 'estate-study', label: '豪宅私人書房', shortLabel: '私人書房', family: 'estate', role: 'home', minLevel: 45, maxLevel: 49 },
   { id: 'estate-lounge', label: '豪宅大客廳', shortLabel: '大客廳', family: 'estate', role: 'home', minLevel: 50, maxLevel: 59 },
   { id: 'estate-game-room', label: '豪宅遊戲房', shortLabel: '遊戲房', family: 'estate', role: 'home', minLevel: 60 },
+  { id: 'buy-back-rental', label: '買回最初租屋處', shortLabel: '最初租屋處', family: 'rental', role: 'home', minLevel: 80, memoryProperty: true },
 ];
 
 export function getUnlockedSpaceMilestones(level) {
@@ -63,6 +64,7 @@ export function getAvailableSceneOptions(level) {
   return [
     getPrimaryResidenceScene(level),
     ...getUnlockedWorkplaceScenes(level),
+    ...getUnlockedMemoryScenes(level),
   ].filter(Boolean);
 }
 
@@ -83,6 +85,12 @@ export function getPrimaryWorkplaceScene(level) {
 export function getUnlockedWorkplaceScenes(level) {
   return SCENE_OPTIONS
     .filter(option => option.family === 'office' && option.role === 'work')
+    .filter(option => level >= option.minLevel);
+}
+
+export function getUnlockedMemoryScenes(level) {
+  return SCENE_OPTIONS
+    .filter(option => option.memoryProperty)
     .filter(option => level >= option.minLevel);
 }
 

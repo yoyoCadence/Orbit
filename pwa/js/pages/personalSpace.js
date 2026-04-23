@@ -23,21 +23,10 @@ export function renderPersonalSpace(container) {
   const starterCatalog = buildStarterCatalogView(model.ownedItems, model.gold.available);
   const nextUnlock = model.nextUnlock;
   const primaryWorkScene = model.sceneOptions.find(option => option.role === 'work' && option.id === model.activeWorkScene?.id);
-  const isMemoryScene = model.activeScene?.role === 'work' && model.activeScene?.id !== primaryWorkScene?.id;
+  const isMemoryScene = isMemorySceneOption(model.activeScene, primaryWorkScene);
   const sceneInfoMarkup = buildSceneInfoMarkup(model, isMemoryScene);
   const sceneTagMarkup = buildSceneTagMarkup(model, isMemoryScene);
-  const sceneSwitcherMarkup = model.sceneOptions
-    .map(option => `
-      <button
-        class="space-scene-switch ${option.id === model.activeScene?.id ? 'is-active' : ''}"
-        type="button"
-        data-scene-switch="${escapeHtml(option.id)}"
-      >
-        ${escapeHtml(option.shortLabel)}
-        ${renderSceneSwitchBadge(option, model)}
-      </button>
-    `)
-    .join('');
+  const sceneSwitcherMarkup = buildSceneSwitcherMarkup(model, primaryWorkScene);
   const unlockedItems = model.unlockedMilestones
     .map(item => `<li>Lv.${item.level} · ${escapeHtml(item.label)}</li>`)
     .join('');
@@ -146,6 +135,12 @@ export function renderPersonalSpace(container) {
   });
 
   container.querySelector('.space-scene-switcher')?.addEventListener('click', event => {
+    const categoryButton = event.target.closest('[data-scene-category]');
+    if (categoryButton) {
+      activateSceneCategory(container, categoryButton.dataset.sceneCategory);
+      return;
+    }
+
     const switchButton = event.target.closest('[data-scene-switch]');
     if (!switchButton) return;
 
@@ -178,6 +173,105 @@ function formatStage(stage) {
     building: 'Building Stage',
     mastery: 'Mastery Stage',
   }[stage] || 'Early Stage';
+}
+
+function buildSceneSwitcherMarkup(model, primaryWorkScene) {
+  const categories = buildSceneCategories(model.sceneOptions, primaryWorkScene);
+  const activeCategoryId = categories.find(category => (
+    category.options.some(option => option.id === model.activeScene?.id)
+  ))?.id || categories[0]?.id;
+
+  const categoryTabs = categories.map(category => {
+    const isActive = category.id === activeCategoryId;
+    const isEmpty = category.options.length === 0;
+
+    return `
+      <button
+        class="space-scene-category ${isActive ? 'is-active' : ''}"
+        type="button"
+        data-scene-category="${category.id}"
+        aria-selected="${isActive ? 'true' : 'false'}"
+        ${isEmpty ? 'disabled' : ''}
+      >
+        ${category.label}
+      </button>
+    `;
+  }).join('');
+
+  const categoryPanels = categories.map(category => {
+    const isActive = category.id === activeCategoryId;
+    const optionsMarkup = category.options.length
+      ? category.options.map(option => renderSceneSwitchButton(option, model, primaryWorkScene)).join('')
+      : '<span class="space-scene-empty">尚未解鎖</span>';
+
+    return `
+      <div
+        class="space-scene-category-panel"
+        data-scene-category-panel="${category.id}"
+        ${isActive ? '' : 'hidden'}
+      >
+        ${optionsMarkup}
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div class="space-scene-category-tabs" role="tablist" aria-label="Scene categories">
+      ${categoryTabs}
+    </div>
+    <div class="space-scene-category-panels">
+      ${categoryPanels}
+    </div>
+  `;
+}
+
+function buildSceneCategories(sceneOptions, primaryWorkScene) {
+  const categories = [
+    { id: 'home', label: '住處', options: [] },
+    { id: 'work', label: '上班', options: [] },
+    { id: 'memory', label: '回顧', options: [] },
+  ];
+  const categoryById = new Map(categories.map(category => [category.id, category]));
+
+  sceneOptions.forEach(option => {
+    const categoryId = getSceneCategoryId(option, primaryWorkScene);
+    categoryById.get(categoryId)?.options.push(option);
+  });
+
+  return categories;
+}
+
+function renderSceneSwitchButton(option, model, primaryWorkScene) {
+  return `
+    <button
+      class="space-scene-switch ${option.id === model.activeScene?.id ? 'is-active' : ''}"
+      type="button"
+      data-scene-switch="${escapeHtml(option.id)}"
+    >
+      ${escapeHtml(option.shortLabel)}
+      ${renderSceneSwitchBadge(option, primaryWorkScene)}
+    </button>
+  `;
+}
+
+function getSceneCategoryId(option, primaryWorkScene) {
+  if (isMemorySceneOption(option, primaryWorkScene)) return 'memory';
+  if (option?.role === 'work') return 'work';
+  return 'home';
+}
+
+function activateSceneCategory(container, categoryId) {
+  if (!categoryId) return;
+
+  container.querySelectorAll('[data-scene-category]').forEach(button => {
+    const isActive = button.dataset.sceneCategory === categoryId;
+    button.classList.toggle('is-active', isActive);
+    button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+  });
+
+  container.querySelectorAll('[data-scene-category-panel]').forEach(panel => {
+    panel.hidden = panel.dataset.sceneCategoryPanel !== categoryId;
+  });
 }
 
 function buildSceneInfoMarkup(model, isMemoryScene) {
@@ -217,7 +311,11 @@ function buildSceneTagMarkup(model, isMemoryScene) {
 
 function describeSceneInfo(model, isMemoryScene) {
   if (isMemoryScene) {
-    return '這個舊辦公樓層已轉為可回顧的 memory property。你仍可回來看看當年的工作環境，而這一層現在會有其他員工繼續工作。';
+    if (model.activeScene?.role === 'work') {
+      return '這個舊辦公樓層已轉為可回顧的 memory property。你仍可回來看看當年的工作環境，而這一層現在會有其他員工繼續工作。';
+    }
+
+    return '這個場景屬於可回顧的 memory property。它保存早期生活階段的意義，之後可接上回購、紀念與狀態保存規則。';
   }
 
   if (model.stage === 'mastery' && model.activeScene?.role === 'work') {
@@ -239,15 +337,27 @@ function describeSceneInfo(model, isMemoryScene) {
   return '生存期先從租屋處開始，重點是讓房間逐步變得更能住，再慢慢打開通往外部世界的入口。';
 }
 
-function renderSceneSwitchBadge(option, model) {
+function renderSceneSwitchBadge(option, primaryWorkScene) {
+  if (option.memoryProperty) return '<span class="space-scene-switch-badge">回顧</span>';
+
   const isOlderWorkScene = option.role === 'work'
-    && model.activeWorkScene
-    && option.id !== model.activeWorkScene.id
-    && option.minLevel < model.activeWorkScene.minLevel;
+    && primaryWorkScene
+    && option.id !== primaryWorkScene.id
+    && option.minLevel < primaryWorkScene.minLevel;
 
   if (!isOlderWorkScene) return '';
 
   return '<span class="space-scene-switch-badge">回顧</span>';
+}
+
+function isMemorySceneOption(option, primaryWorkScene) {
+  if (!option) return false;
+  if (option.memoryProperty) return true;
+
+  return option.role === 'work'
+    && primaryWorkScene
+    && option.id !== primaryWorkScene.id
+    && option.minLevel < primaryWorkScene.minLevel;
 }
 
 function escapeHtml(value) {
