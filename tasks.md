@@ -13,20 +13,15 @@
 
 ## Backlog
 
-- [ ] **PS-203** 將個人空間的場景切換器改為二層分類選單
-  - 目標：把目前平鋪式切換按鈕改為 `住處 / 上班 / 回顧` 第一層分類，第二層顯示對應場景，保留快速直達能力並降低迷路風險
-  - 範圍：`pwa/js/pages/personalSpace.js`、`pwa/js/personalSpace/unlockRules.js`、相關樣式
-  - 完成條件：使用者可先選分類，再選場景；舊辦公樓層與未來可回購租屋處會被歸到 `回顧`
-
-- [ ] **PS-204** 為 personal space 建立 scene graph / exit node 資料模型
-  - 目標：定義門、出口、電梯、目標場景與入口落點，讓場景切換不只靠 UI 選單，也能靠場景內互動完成
-  - 範圍：`pwa/js/personalSpace/world/`、`sceneRuntime.js`、`interactionBus.js`
-  - 完成條件：租屋處與公司一樓可透過出口切換；辦公樓層與豪宅可定義門 / 電梯出口與目標地點
-
 - [ ] **PS-205** 定義公司大樓與豪宅的樓層圖 / 房間拓樸資料
   - 目標：把公司與豪宅的樓層、房間、相鄰關係資料化，支撐未來地圖視窗與可變格局
   - 範圍：`pwa/js/personalSpace/world/`、相關文件
   - 完成條件：公司與豪宅都有可查閱的 floor-map schema，未來改哪層是什麼房間時不需要重寫 scene runtime
+
+- [ ] **PS-208** 建立辦公窗景 view node 互動原型
+  - 目標：驗證「點擊窗戶 → 角色走到窗邊 anchor → 切換成看窗外 view」的互動模型，先用 2D placeholder 表現，未來可替換為 3D camera transition
+  - 範圍：`pwa/js/personalSpace/world/`、`sceneRuntime.js`、`interactionBus.js`、`assetRegistry.js`
+  - 完成條件：公司場景可定義 `office-window` view node；點擊後可顯示窗外 view，並支援返回原場景
 
 - [ ] **PS-206** 為 personal space 新增地圖視窗入口
   - 目標：提供公司 / 豪宅整層設計圖視窗，讓使用者可查閱空間結構但不取代主要切換方式
@@ -78,7 +73,11 @@
 
 ## Next
 
-- [ ] 目前無下一個正式任務
+- [ ] **PS-204** 為 personal space 建立 interactive scene graph 資料模型
+  - 目標：把原本單純的 exit node 升級為可支援 `exit / view / inspect / npc` 的 interaction node 模型，讓門、電梯、窗戶、家具、NPC 都能用同一套資料描述
+  - 範圍：`pwa/js/personalSpace/world/`、`sceneRuntime.js`、`interactionBus.js`、`assetRegistry.js`、相關測試
+  - 完成條件：定義 scene、node、anchor、action sequence、view、asset slot 的最小 schema；租屋處與公司一樓有 exit 範例；公司場景有 `office-window` view node 範例；runtime 只讀資料與發送 interaction event，不把特定場景邏輯寫死
+  - 3D 預留：action sequence 需可表達 `walkTo(anchorId)`、`switchView(viewId)`、`changeScene(sceneId, entryAnchorId)`；view 需可表達 background asset、foreground illustration slot、future camera preset，讓未來 Three.js runtime 可接同一份資料
 
 ---
 

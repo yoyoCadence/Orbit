@@ -147,6 +147,47 @@ For near-term implementation, prefer lightweight transition feedback:
 
 Do not block this work on full avatar pathfinding.
 
+### Interactive Scene Graph
+
+Exit nodes should be treated as one kind of interaction node, not as a separate one-off system.
+
+The personal-space scene graph should support:
+
+- `exit` nodes
+  Doors, elevators, stairs, and portals that move the user to another scene.
+- `view` nodes
+  Windows, balconies, overlooks, and close-up viewpoints that move the avatar to an anchor and switch the camera or visual view.
+- `inspect` nodes
+  Furniture, desks, walls, and props that open a lightweight detail panel or contextual UI.
+- `npc` nodes
+  Companion or character interaction points.
+
+This keeps the mental model stable:
+
+```text
+scene -> interaction node -> action sequence -> scene / view / panel
+```
+
+Example future interaction:
+
+```text
+office-corner
+  node: office-window
+    type: view
+    label: 看窗外
+    anchorId: window-side
+    actions:
+      - walkTo(window-side)
+      - switchView(office-window-view)
+
+office-window-view
+  backgroundAssetId: office-window-skyline-default
+  illustrationSlot: window-view-portrait
+  exitAction: backToScene(office-corner)
+```
+
+The initial implementation can render this in 2D. The same data should later be readable by a Three.js runtime as camera targets, camera transitions, and asset references.
+
 ## Scene Graph and Building Graph
 
 To keep future layout changes cheap, the system should separate:
@@ -162,16 +203,64 @@ Describes an individual scene:
 - stage visibility
 - visual pack
 
-### Exit Registry
+### Interaction Node Registry
 
-Describes interactive exits inside a scene:
+Describes interactive nodes inside a scene:
 
-- exit id
+- node id
 - source scene id
-- destination scene id
-- exit type (`door` / `elevator` / `portal`)
-- destination label
+- node type (`exit` / `view` / `inspect` / `npc`)
+- label
+- anchor id
+- action sequence
+- optional destination scene id
+- optional destination view id
 - optional placement metadata
+
+### Anchor Registry
+
+Describes named locations where avatar movement or camera focus can target:
+
+- anchor id
+- scene id
+- position metadata for current 2D runtime
+- future 3D position / rotation metadata
+
+### Action Sequences
+
+Describes what happens after an interaction node is selected:
+
+- `walkTo(anchorId)`
+- `switchView(viewId)`
+- `changeScene(sceneId, entryAnchorId)`
+- `openPanel(panelId)`
+- `backToScene(sceneId)`
+
+These actions should be data, not hardcoded branching inside `sceneRuntime.js`.
+
+### View Registry
+
+Describes close-up or alternate views within a scene:
+
+- view id
+- source scene id
+- background asset id
+- foreground illustration slot
+- optional camera preset
+- exit action
+
+This allows features such as looking out an office window, stepping onto an estate balcony, or focusing on a desk without redefining the whole scene.
+
+### Asset Slots
+
+Describes replaceable visual references:
+
+- default background asset
+- user-selected illustration asset
+- seasonal skyline
+- future 3D model reference
+
+The runtime should resolve these through `assetRegistry.js` so scene data does not depend on a specific rendering implementation.
 
 ### Arrival Rules
 
@@ -223,9 +312,9 @@ Later, the system should allow a buy-back moment where the rental returns as a m
 
 The next personal-space work should be split into small tasks:
 
-1. remove redundant scene chips and keep scene UI focused on the visual layer
-2. replace flat scene pills with categorized switching (`住處 / 上班 / 回顧`)
-3. introduce exit-node metadata and lightweight destination transitions
+1. define interactive scene graph data for scenes, nodes, anchors, actions, views, and asset slots
+2. introduce lightweight exit-node metadata and destination transitions
+3. prototype an office-window view node with a replaceable window-view illustration slot
 4. define office / estate building maps and a map modal surface
 5. connect ownership / placement state after the navigation graph is stable
 
