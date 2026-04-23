@@ -1322,41 +1322,57 @@ nav {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 30px;
-  min-height: 30px;
+  width: 56px;
+  height: 28px;
   border: 0;
-  border-radius: 999px;
   background: transparent;
   color: var(--text);
   cursor: pointer;
   box-shadow: none;
+  padding: 0;
 }
 
 .space-scene-node::before {
   content: '';
-  width: 4px;
-  height: 4px;
+  position: absolute;
+  left: 50%;
+  top: 68%;
+  width: 52px;
+  height: 18px;
+  transform: translate(-50%, -50%) scale(0.96);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 82%, white);
-  box-shadow:
-    0 0 7px color-mix(in srgb, var(--accent) 42%, transparent),
-    0 0 14px color-mix(in srgb, var(--accent) 16%, transparent);
-  animation: space-scene-node-glow 3.6s ease-in-out infinite;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 245, 205, 0.26) 0%,
+    rgba(255, 226, 146, 0.13) 34%,
+    rgba(255, 205, 96, 0.05) 62%,
+    rgba(255, 205, 96, 0) 100%
+  );
+  filter: blur(7px);
+  opacity: 0.18;
+  pointer-events: none;
+  animation: space-scene-node-breath 2.1s ease-in-out infinite;
 }
 
 .space-scene-node::after {
   content: '';
   position: absolute;
-  width: 14px;
-  height: 14px;
-  background:
-    linear-gradient(90deg, transparent 0 42%, color-mix(in srgb, var(--accent) 52%, transparent) 48% 52%, transparent 58% 100%),
-    linear-gradient(0deg, transparent 0 42%, color-mix(in srgb, var(--accent) 52%, transparent) 48% 52%, transparent 58% 100%);
-  filter: blur(0.2px);
+  left: 50%;
+  top: 68%;
+  width: 48px;
+  height: 16px;
+  transform: translate(-50%, -50%) scale(0.94);
+  border-radius: 999px;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255,255,255,0.16) 0%,
+    rgba(255,244,206,0.06) 42%,
+    rgba(255,244,206,0) 100%
+  );
+  filter: blur(10px);
   opacity: 0;
   pointer-events: none;
-  transform: scale(0.62) rotate(14deg);
-  animation: space-scene-node-spark 4.8s ease-in-out infinite;
+  animation: space-scene-node-shimmer 4.4s ease-in-out infinite;
 }
 
 .space-scene-node span {
@@ -1390,35 +1406,35 @@ nav {
   visibility: visible;
 }
 
-@keyframes space-scene-node-glow {
+@keyframes space-scene-node-breath {
   0%,
   100% {
-    opacity: 0.36;
-    transform: scale(0.78);
+    opacity: 0.16;
+    transform: translate(-50%, -50%) scale(0.96);
   }
 
   50% {
-    opacity: 0.86;
-    transform: scale(1);
+    opacity: 0.28;
+    transform: translate(-50%, -50%) scale(1.03);
   }
 }
 
-@keyframes space-scene-node-spark {
+@keyframes space-scene-node-shimmer {
   0%,
-  64%,
+  70%,
   100% {
     opacity: 0;
-    transform: scale(0.55) rotate(14deg);
+    transform: translate(-50%, -50%) scale(0.94);
   }
 
-  72% {
-    opacity: 0.72;
-    transform: scale(1) rotate(14deg);
+  78% {
+    opacity: 0.13;
+    transform: translate(-50%, -50%) scale(1.02);
   }
 
   84% {
-    opacity: 0.18;
-    transform: scale(0.78) rotate(14deg);
+    opacity: 0.04;
+    transform: translate(-50%, -50%) scale(0.98);
   }
 }
 
