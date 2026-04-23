@@ -103,6 +103,22 @@ describe('renderPersonalSpace', () => {
     expect(container.textContent).toContain('住處 / 升級租屋處');
   });
 
+  it('shows and exits the office window view from the window interaction node', () => {
+    state.user.totalXP = 600;
+
+    renderPersonalSpace(container);
+    container.querySelector('[data-scene-node-id="office-window"]')?.click();
+
+    expect(container.querySelector('[data-scene-view-id="office-window-view"]')).not.toBeNull();
+    expect(container.textContent).toContain('窗外風景');
+    expect(container.textContent).toContain('Window View Portrait Placeholder');
+
+    container.querySelector('[data-scene-view-back="office-window-view"]')?.click();
+
+    expect(container.querySelector('[data-scene-view-id="office-window-view"]')).toBeNull();
+    expect(container.querySelector('[data-scene-id="office-corner"]')).not.toBeNull();
+  });
+
   it('allows switching back to rental in building stage', () => {
     state.user.totalXP = 600;
 

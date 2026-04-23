@@ -2,59 +2,33 @@ import {
   PERSONAL_SPACE_ACTION_REQUESTED_EVENT,
   PERSONAL_SPACE_NODE_SELECTED_EVENT,
 } from './interactionBus.js';
-import { getSceneInteractionNodes, getSceneViews } from './world/sceneGraph.js';
+import { getVisualAsset } from './assetRegistry.js';
+import { getAssetSlot, getSceneInteractionNodes, getSceneView, getSceneViews, SCENE_ACTION_TYPES } from './world/sceneGraph.js';
 
 export function createSceneRuntime(container, sceneModel = {}) {
   let mounted = false;
-  let handleNodeClick = null;
+  let handleSceneClick = null;
+  let visualModel = null;
 
   return {
     mount() {
       if (!container || mounted) return;
       mounted = true;
 
-      const visualModel = buildSceneVisualModel(sceneModel);
-      const furnitureMarkup = visualModel.furniture
-        .map(item => `
-          <div class="space-scene-item space-scene-item--${item.kind}" style="${item.style}">
-            <span>${item.label}</span>
-          </div>
-        `)
-        .join('');
-      const workerMarkup = visualModel.workerSilhouettes
-        .map(worker => `<div class="space-scene-worker" style="${worker}"></div>`)
-        .join('');
-      const interactionMarkup = visualModel.interactionNodes
-        .map(node => `
-          <button
-            class="space-scene-node space-scene-node--${escapeHtml(node.type)}"
-            type="button"
-            data-scene-node-id="${escapeHtml(node.id)}"
-            style="${buildPlacementStyle(node.placement)}"
-            aria-label="${escapeHtml(node.label)}"
-          >
-            <span>${escapeHtml(node.label)}</span>
-          </button>
-        `)
-        .join('');
+      visualModel = buildSceneVisualModel(sceneModel);
+      renderScene(container, visualModel);
 
-      container.innerHTML = `
-        <div class="space-scene-placeholder space-scene-placeholder--${visualModel.palette}" data-scene-id="${visualModel.sceneId}">
-          <div class="space-scene-grid"></div>
-          <div class="space-scene-visual">
-            <div class="space-scene-backdrop">
-              <div class="space-scene-window space-scene-window--${visualModel.windowMood}"></div>
-              <div class="space-scene-floor"></div>
-              <div class="space-scene-silhouette space-scene-silhouette--${visualModel.silhouette}"></div>
-              ${workerMarkup}
-              ${furnitureMarkup}
-              ${interactionMarkup}
-            </div>
-          </div>
-        </div>
-      `;
+      handleSceneClick = event => {
+        const backButton = event.target.closest('[data-scene-view-back]');
+        if (backButton) {
+          const view = getSceneView(backButton.dataset.sceneViewBack);
+          if (!view) return;
 
-      handleNodeClick = event => {
+          emitActionRequested(sceneModel.interactionBus, visualModel.sceneId, view.id, view.exitAction, 0);
+          renderScene(container, visualModel);
+          return;
+        }
+
         const nodeButton = event.target.closest('[data-scene-node-id]');
         if (!nodeButton) return;
 
@@ -62,19 +36,95 @@ export function createSceneRuntime(container, sceneModel = {}) {
         if (!node) return;
 
         emitInteractionNodeSelected(sceneModel.interactionBus, visualModel.sceneId, node);
+
+        const switchViewAction = (node.actions || []).find(action => action.type === SCENE_ACTION_TYPES.SWITCH_VIEW);
+        const view = switchViewAction?.viewId ? getSceneView(switchViewAction.viewId) : null;
+        if (view) renderSceneView(container, visualModel, view);
       };
-      container.addEventListener('click', handleNodeClick);
+      container.addEventListener('click', handleSceneClick);
     },
     destroy() {
       if (!container || !mounted) return;
-      if (handleNodeClick) {
-        container.removeEventListener('click', handleNodeClick);
-        handleNodeClick = null;
+      if (handleSceneClick) {
+        container.removeEventListener('click', handleSceneClick);
+        handleSceneClick = null;
       }
       mounted = false;
+      visualModel = null;
       container.innerHTML = '';
     },
   };
+}
+
+function renderScene(container, visualModel) {
+  const furnitureMarkup = visualModel.furniture
+    .map(item => `
+      <div class="space-scene-item space-scene-item--${item.kind}" style="${item.style}">
+        <span>${item.label}</span>
+      </div>
+    `)
+    .join('');
+  const workerMarkup = visualModel.workerSilhouettes
+    .map(worker => `<div class="space-scene-worker" style="${worker}"></div>`)
+    .join('');
+  const interactionMarkup = visualModel.interactionNodes
+    .map(node => `
+      <button
+        class="space-scene-node space-scene-node--${escapeHtml(node.type)}"
+        type="button"
+        data-scene-node-id="${escapeHtml(node.id)}"
+        style="${buildPlacementStyle(node.placement)}"
+        aria-label="${escapeHtml(node.label)}"
+      >
+        <span>${escapeHtml(node.label)}</span>
+      </button>
+    `)
+    .join('');
+
+  container.innerHTML = `
+    <div class="space-scene-placeholder space-scene-placeholder--${visualModel.palette}" data-scene-id="${visualModel.sceneId}">
+      <div class="space-scene-grid"></div>
+      <div class="space-scene-visual">
+        <div class="space-scene-backdrop">
+          <div class="space-scene-window space-scene-window--${visualModel.windowMood}"></div>
+          <div class="space-scene-floor"></div>
+          <div class="space-scene-silhouette space-scene-silhouette--${visualModel.silhouette}"></div>
+          ${workerMarkup}
+          ${furnitureMarkup}
+          ${interactionMarkup}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderSceneView(container, visualModel, view) {
+  const backgroundAsset = getVisualAsset(view.backgroundAssetId);
+  const foregroundSlot = getAssetSlot(view.foregroundSlotId);
+  const foregroundAsset = foregroundSlot ? getVisualAsset(foregroundSlot.defaultAssetId) : null;
+
+  container.innerHTML = `
+    <div class="space-scene-placeholder space-scene-placeholder--${visualModel.palette}" data-scene-id="${visualModel.sceneId}">
+      <div class="space-scene-view" data-scene-view-id="${escapeHtml(view.id)}">
+        <div class="space-scene-view-skyline" aria-hidden="true"></div>
+        <div class="space-scene-view-glass" aria-hidden="true"></div>
+        <div class="space-scene-view-portrait" aria-label="${escapeHtml(foregroundAsset?.label || foregroundSlot?.label || 'Window view portrait')}">
+          <span>${escapeHtml(foregroundAsset?.label || 'Portrait Slot')}</span>
+        </div>
+        <div class="space-scene-view-caption">
+          <span>${escapeHtml(backgroundAsset?.label || view.label)}</span>
+          <strong>${escapeHtml(view.label)}</strong>
+        </div>
+        <button
+          class="space-scene-view-back"
+          type="button"
+          data-scene-view-back="${escapeHtml(view.id)}"
+        >
+          返回場景
+        </button>
+      </div>
+    </div>
+  `;
 }
 
 function buildSceneVisualModel(sceneModel) {
@@ -108,12 +158,18 @@ function emitInteractionNodeSelected(interactionBus, sceneId, node) {
   });
 
   (node.actions || []).forEach((action, index) => {
-    interactionBus.emit(PERSONAL_SPACE_ACTION_REQUESTED_EVENT, {
-      sceneId,
-      nodeId: node.id,
-      action,
-      actionIndex: index,
-    });
+    emitActionRequested(interactionBus, sceneId, node.id, action, index);
+  });
+}
+
+function emitActionRequested(interactionBus, sceneId, sourceId, action, actionIndex) {
+  if (!interactionBus || !action) return;
+
+  interactionBus.emit(PERSONAL_SPACE_ACTION_REQUESTED_EVENT, {
+    sceneId,
+    nodeId: sourceId,
+    action,
+    actionIndex,
   });
 }
 

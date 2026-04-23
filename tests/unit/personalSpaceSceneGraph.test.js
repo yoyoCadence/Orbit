@@ -70,12 +70,19 @@ describe('personal space scene graph', () => {
     runtime.mount();
     container.querySelector('[data-scene-node-id="office-window"]')?.click();
 
+    expect(container.querySelector('[data-scene-view-id="office-window-view"]')).not.toBeNull();
     expect(selectedNodes[0].node.id).toBe('office-window');
     expect(requestedActions.map(payload => payload.action.type)).toEqual([
       SCENE_ACTION_TYPES.WALK_TO,
       SCENE_ACTION_TYPES.SWITCH_VIEW,
     ]);
     expect(requestedActions[1].action.viewId).toBe('office-window-view');
+
+    container.querySelector('[data-scene-view-back="office-window-view"]')?.click();
+
+    expect(container.querySelector('[data-scene-view-id="office-window-view"]')).toBeNull();
+    expect(container.querySelector('[data-scene-node-id="office-window"]')).not.toBeNull();
+    expect(requestedActions.at(-1).action.type).toBe(SCENE_ACTION_TYPES.BACK_TO_SCENE);
 
     runtime.destroy();
   });

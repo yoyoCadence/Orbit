@@ -11,6 +11,7 @@
 - Personal space scene layer now switches between rental / office / estate contexts based on stage progression, supports home-work scene switching, moves explanatory UI outside the 2D scene, and treats older office floors as revisitable memory properties
 - Personal space scene switcher now uses a segmented `住處 / 上班 / 回顧` category layer, a horizontal scene destination row, a current-scene location highlight, and memory grouping for older office floors plus the Lv.80 buy-back rental scene
 - Personal space runtime now reads an interactive scene graph with exit, view, inspect, and npc nodes, emits interaction bus events from scene hotspots, and supports data-driven scene changes through action sequences
+- Personal space office window interaction now switches into a placeholder window-view surface with skyline, glass, portrait-slot, and back-to-scene controls
 
 ## [v1.16.0] - 2026-04-21
 
