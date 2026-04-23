@@ -1315,6 +1315,54 @@ nav {
   background: rgba(226, 232, 240, 0.24);
 }
 
+.space-scene-node {
+  position: absolute;
+  z-index: 4;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  min-height: 34px;
+  border: 1px solid color-mix(in srgb, var(--primary-lt) 55%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 68%, var(--primary) 32%);
+  color: var(--text);
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.22);
+}
+
+.space-scene-node::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--primary-lt);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--primary-lt) 70%, transparent);
+}
+
+.space-scene-node span {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 6px);
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 104px;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.42);
+  color: var(--text);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.2;
+  pointer-events: none;
+}
+
+.space-scene-node--view {
+  border-color: color-mix(in srgb, var(--accent) 65%, transparent);
+  background: color-mix(in srgb, var(--surface) 58%, var(--accent) 42%);
+}
+
 .space-scene-window {
   position: absolute;
   top: 20px;

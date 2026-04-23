@@ -1,5 +1,12 @@
+import {
+  PERSONAL_SPACE_ACTION_REQUESTED_EVENT,
+  PERSONAL_SPACE_NODE_SELECTED_EVENT,
+} from './interactionBus.js';
+import { getSceneInteractionNodes, getSceneViews } from './world/sceneGraph.js';
+
 export function createSceneRuntime(container, sceneModel = {}) {
   let mounted = false;
+  let handleNodeClick = null;
 
   return {
     mount() {
@@ -17,6 +24,19 @@ export function createSceneRuntime(container, sceneModel = {}) {
       const workerMarkup = visualModel.workerSilhouettes
         .map(worker => `<div class="space-scene-worker" style="${worker}"></div>`)
         .join('');
+      const interactionMarkup = visualModel.interactionNodes
+        .map(node => `
+          <button
+            class="space-scene-node space-scene-node--${escapeHtml(node.type)}"
+            type="button"
+            data-scene-node-id="${escapeHtml(node.id)}"
+            style="${buildPlacementStyle(node.placement)}"
+            aria-label="${escapeHtml(node.label)}"
+          >
+            <span>${escapeHtml(node.label)}</span>
+          </button>
+        `)
+        .join('');
 
       container.innerHTML = `
         <div class="space-scene-placeholder space-scene-placeholder--${visualModel.palette}" data-scene-id="${visualModel.sceneId}">
@@ -28,13 +48,29 @@ export function createSceneRuntime(container, sceneModel = {}) {
               <div class="space-scene-silhouette space-scene-silhouette--${visualModel.silhouette}"></div>
               ${workerMarkup}
               ${furnitureMarkup}
+              ${interactionMarkup}
             </div>
           </div>
         </div>
       `;
+
+      handleNodeClick = event => {
+        const nodeButton = event.target.closest('[data-scene-node-id]');
+        if (!nodeButton) return;
+
+        const node = visualModel.interactionNodes.find(item => item.id === nodeButton.dataset.sceneNodeId);
+        if (!node) return;
+
+        emitInteractionNodeSelected(sceneModel.interactionBus, visualModel.sceneId, node);
+      };
+      container.addEventListener('click', handleNodeClick);
     },
     destroy() {
       if (!container || !mounted) return;
+      if (handleNodeClick) {
+        container.removeEventListener('click', handleNodeClick);
+        handleNodeClick = null;
+      }
       mounted = false;
       container.innerHTML = '';
     },
@@ -58,7 +94,34 @@ function buildSceneVisualModel(sceneModel) {
     windowMood: windowMoodForScene(level, sceneRole),
     furniture: buildFurnitureLayout({ sceneId, sceneRole, ownedItemCount, level }),
     workerSilhouettes: buildWorkerSilhouettes({ sceneRole, isMemoryScene }),
+    interactionNodes: getSceneInteractionNodes(sceneId),
+    views: getSceneViews(sceneId),
   };
+}
+
+function emitInteractionNodeSelected(interactionBus, sceneId, node) {
+  if (!interactionBus) return;
+
+  interactionBus.emit(PERSONAL_SPACE_NODE_SELECTED_EVENT, {
+    sceneId,
+    node,
+  });
+
+  (node.actions || []).forEach((action, index) => {
+    interactionBus.emit(PERSONAL_SPACE_ACTION_REQUESTED_EVENT, {
+      sceneId,
+      nodeId: node.id,
+      action,
+      actionIndex: index,
+    });
+  });
+}
+
+function buildPlacementStyle(placement = {}) {
+  const left = placement.left || '50%';
+  const top = placement.top || '50%';
+
+  return `left: ${left}; top: ${top};`;
 }
 
 function buildFurnitureLayout({ sceneId, sceneRole, ownedItemCount, level }) {
@@ -171,4 +234,12 @@ function defaultSceneId(stage) {
     building: 'office-corner',
     mastery: 'estate-hall',
   }[stage] || 'rough-room';
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }

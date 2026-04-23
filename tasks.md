@@ -73,11 +73,7 @@
 
 ## Next
 
-- [ ] **PS-204** 為 personal space 建立 interactive scene graph 資料模型
-  - 目標：把原本單純的 exit node 升級為可支援 `exit / view / inspect / npc` 的 interaction node 模型，讓門、電梯、窗戶、家具、NPC 都能用同一套資料描述
-  - 範圍：`pwa/js/personalSpace/world/`、`sceneRuntime.js`、`interactionBus.js`、`assetRegistry.js`、相關測試
-  - 完成條件：定義 scene、node、anchor、action sequence、view、asset slot 的最小 schema；租屋處與公司一樓有 exit 範例；公司場景有 `office-window` view node 範例；runtime 只讀資料與發送 interaction event，不把特定場景邏輯寫死
-  - 3D 預留：action sequence 需可表達 `walkTo(anchorId)`、`switchView(viewId)`、`changeScene(sceneId, entryAnchorId)`；view 需可表達 background asset、foreground illustration slot、future camera preset，讓未來 Three.js runtime 可接同一份資料
+- [ ] 目前無下一個正式任務
 
 ---
 
@@ -88,6 +84,9 @@
 ---
 
 ## Done
+
+- [x] **PS-204** 為 personal space 建立 interactive scene graph 資料模型
+  - 完成：新增 scene graph schema 與範例資料，支援 `exit / view / inspect / npc` interaction nodes、anchors、action sequence、views、asset slots；runtime 會讀取資料渲染 hotspot 並透過 interaction bus 發送 action event，頁面可用通用 `changeScene` action 從公司一樓回到住處
 
 - [x] **PS-203** 將個人空間的場景切換器改為二層分類選單
   - 完成：個人空間場景切換器已改為 `住處 / 上班 / 回顧` 分類列加分類內場景列；舊辦公樓層會歸到 `回顧`，Lv.80 買回最初租屋處也先納入 memory scene 資料
