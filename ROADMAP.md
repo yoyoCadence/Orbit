@@ -24,6 +24,7 @@
 ## 長期（v2.x）
 
 - **SUB-15 AI 晨間報告** — 接入 Claude API，根據近期 XP 趨勢給個人化建議
+- **Personal Space 3D readiness** — 建立 interactive scene graph，讓門、電梯、窗景、家具與 NPC 互動可由資料驅動，未來能接 2D / 3D runtime
 - **公開個人頁面** — 可分享的成長檔案（等級、稱號、Heatmap 縮圖）
 - **邀請 & 社交** — 雙邊獎勵邀請機制、夥伴進度分享
 
