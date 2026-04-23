@@ -1355,12 +1355,22 @@ nav {
   font-size: 10px;
   font-weight: 800;
   line-height: 1.2;
+  opacity: 0;
   pointer-events: none;
+  visibility: hidden;
+  transition: opacity 0.16s ease, visibility 0.16s ease;
 }
 
 .space-scene-node--view {
   border-color: color-mix(in srgb, var(--accent) 65%, transparent);
   background: color-mix(in srgb, var(--surface) 58%, var(--accent) 42%);
+}
+
+.space-scene-node:hover span,
+.space-scene-node:focus-visible span,
+.space-scene-node:active span {
+  opacity: 1;
+  visibility: visible;
 }
 
 .space-scene-window {
@@ -1536,6 +1546,11 @@ nav {
 @media (max-width: 640px) {
   .space-scene-meta {
     flex-direction: column;
+  }
+
+  .space-scene-location,
+  .space-scene-meta-actions {
+    flex: none;
   }
 
   .space-scene-meta-actions {
