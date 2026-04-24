@@ -126,11 +126,16 @@ describe('renderPersonalSpace', () => {
     renderPersonalSpace(container);
 
     const propImages = Array.from(container.querySelectorAll('.space-scene-item-image')).map(node => node.getAttribute('src'));
+    const desk = container.querySelector('[data-scene-item-id="office-corner-desk"]');
+    const chairShadow = container.querySelector('[data-scene-item-id="office-chair"] .space-scene-item-shadow');
 
     expect(propImages.some(src => src?.includes('office-corner-desk.png'))).toBe(true);
     expect(propImages.some(src => src?.includes('office-chair-basic.png'))).toBe(true);
     expect(propImages.some(src => src?.includes('office-monitor-single.png'))).toBe(true);
     expect(propImages.some(src => src?.includes('office-shelf-basic.png'))).toBe(true);
+    expect(desk?.getAttribute('style')).toContain('z-index: 3');
+    expect(desk?.getAttribute('style')).toContain('scale(1.08)');
+    expect(chairShadow).not.toBeNull();
   });
 
   it('allows switching back to rental in building stage', () => {
