@@ -318,6 +318,8 @@ The next personal-space work should be split into small tasks:
 4. define office / estate building maps and a map modal surface
 5. connect ownership / placement state after the navigation graph is stable
 
+For 2D placeholder assets and generated prop packs, keep visual consistency aligned with [personal-space-art-direction.md](./personal-space-art-direction.md).
+
 ## Companion System Split
 
 The companion architecture should stay split:

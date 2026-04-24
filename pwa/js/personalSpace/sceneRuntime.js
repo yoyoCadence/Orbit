@@ -59,8 +59,12 @@ export function createSceneRuntime(container, sceneModel = {}) {
 function renderScene(container, visualModel) {
   const furnitureMarkup = visualModel.furniture
     .map(item => `
-      <div class="space-scene-item space-scene-item--${item.kind}" style="${item.style}">
-        <span>${item.label}</span>
+      <div
+        class="space-scene-item space-scene-item--${item.kind}${item.asset?.path ? ' space-scene-item--with-asset' : ''}"
+        style="${item.style}"
+        aria-label="${escapeHtml(item.label)}"
+      >
+        ${item.asset?.path ? `<img class="space-scene-item-image" src="${escapeHtml(item.asset.path)}" alt="" aria-hidden="true" />` : `<span>${escapeHtml(item.label)}</span>`}
       </div>
     `)
     .join('');
@@ -102,14 +106,18 @@ function renderSceneView(container, visualModel, view) {
   const backgroundAsset = getVisualAsset(view.backgroundAssetId);
   const foregroundSlot = getAssetSlot(view.foregroundSlotId);
   const foregroundAsset = foregroundSlot ? getVisualAsset(foregroundSlot.defaultAssetId) : null;
+  const skylineStyle = backgroundAsset?.path ? ` style="background-image: linear-gradient(180deg, rgba(15, 23, 42, 0.08), rgba(0,0,0,0.42)), url('${escapeHtml(backgroundAsset.path)}');"` : '';
+  const portraitMarkup = foregroundAsset?.path
+    ? `<img class="space-scene-view-portrait-image" src="${escapeHtml(foregroundAsset.path)}" alt="" aria-hidden="true" />`
+    : `<span>${escapeHtml(foregroundAsset?.label || 'Portrait Slot')}</span>`;
 
   container.innerHTML = `
     <div class="space-scene-placeholder space-scene-placeholder--${visualModel.palette}" data-scene-id="${visualModel.sceneId}">
       <div class="space-scene-view" data-scene-view-id="${escapeHtml(view.id)}">
-        <div class="space-scene-view-skyline" aria-hidden="true"></div>
+        <div class="space-scene-view-skyline" aria-hidden="true"${skylineStyle}></div>
         <div class="space-scene-view-glass" aria-hidden="true"></div>
         <div class="space-scene-view-portrait" aria-label="${escapeHtml(foregroundAsset?.label || foregroundSlot?.label || 'Window view portrait')}">
-          <span>${escapeHtml(foregroundAsset?.label || 'Portrait Slot')}</span>
+          ${portraitMarkup}
         </div>
         <div class="space-scene-view-caption">
           <span>${escapeHtml(backgroundAsset?.label || view.label)}</span>
@@ -142,7 +150,10 @@ function buildSceneVisualModel(sceneModel) {
     palette: paletteForScene(sceneId, sceneRole, stage),
     silhouette: silhouetteForScene(sceneId, sceneRole, stage),
     windowMood: windowMoodForScene(level, sceneRole),
-    furniture: buildFurnitureLayout({ sceneId, sceneRole, ownedItemCount, level }),
+    furniture: buildFurnitureLayout({ sceneId, sceneRole, ownedItemCount, level }).map(item => ({
+      ...item,
+      asset: item.assetId ? getVisualAsset(item.assetId) : null,
+    })),
     workerSilhouettes: buildWorkerSilhouettes({ sceneRole, isMemoryScene }),
     interactionNodes: getSceneInteractionNodes(sceneId),
     views: getSceneViews(sceneId),
@@ -194,18 +205,18 @@ function buildFurnitureLayout({ sceneId, sceneRole, ownedItemCount, level }) {
 
 function buildOfficeFurniture(sceneId, level) {
   const items = [
-    { kind: 'desk', label: sceneId === 'office-corner' ? 'Corner Desk' : 'Desk', style: 'left: 14%; bottom: 10%; width: 42%; height: 18%;' },
-    { kind: 'chair', label: 'Chair', style: 'left: 24%; bottom: 2%; width: 18%; height: 12%;' },
-    { kind: 'monitor', label: level >= 15 ? 'Dual Screen' : 'Screen', style: 'left: 24%; bottom: 30%; width: 20%; height: 11%;' },
-    { kind: 'shelf', label: 'Shelf', style: 'right: 8%; bottom: 12%; width: 16%; height: 34%;' },
+    { kind: 'desk', label: sceneId === 'office-corner' ? 'Corner Desk' : 'Desk', style: 'left: 14%; bottom: 10%; width: 42%; height: 18%;', assetId: 'office-corner-desk' },
+    { kind: 'chair', label: 'Chair', style: 'left: 24%; bottom: 2%; width: 18%; height: 12%;', assetId: 'office-chair-basic' },
+    { kind: 'monitor', label: level >= 15 ? 'Dual Screen' : 'Screen', style: 'left: 24%; bottom: 30%; width: 20%; height: 11%;', assetId: level >= 15 ? 'office-monitor-dual' : 'office-monitor-single' },
+    { kind: 'shelf', label: 'Shelf', style: 'right: 8%; bottom: 12%; width: 16%; height: 34%;', assetId: 'office-shelf-basic' },
   ];
 
   if (sceneId === 'small-office' || sceneId === 'mid-office' || sceneId === 'manager-room' || sceneId === 'large-office-suite') {
-    items.push({ kind: 'plant', label: 'Plant', style: 'right: 28%; bottom: 10%; width: 12%; height: 18%;' });
+    items.push({ kind: 'plant', label: 'Plant', style: 'right: 28%; bottom: 10%; width: 12%; height: 18%;', assetId: 'office-plant-basic' });
   }
 
   if (sceneId === 'mid-office' || sceneId === 'manager-room' || sceneId === 'large-office-suite') {
-    items.push({ kind: 'art', label: 'Board', style: 'right: 26%; top: 18%; width: 20%; height: 12%;' });
+    items.push({ kind: 'art', label: 'Board', style: 'right: 26%; top: 18%; width: 20%; height: 12%;', assetId: 'office-board-basic' });
   }
 
   return items;
@@ -213,17 +224,17 @@ function buildOfficeFurniture(sceneId, level) {
 
 function buildRentalFurniture(sceneId, ownedItemCount) {
   const items = [
-    { kind: 'bed', label: 'Bed', style: 'left: 8%; bottom: 8%; width: 36%; height: 18%;' },
-    { kind: 'desk', label: 'Desk', style: 'right: 10%; bottom: 9%; width: 26%; height: 16%;' },
-    { kind: 'lamp', label: 'Lamp', style: 'right: 18%; bottom: 26%; width: 10%; height: 12%;' },
+    { kind: 'bed', label: 'Bed', style: 'left: 8%; bottom: 8%; width: 36%; height: 18%;', assetId: 'rental-bed-basic' },
+    { kind: 'desk', label: 'Desk', style: 'right: 10%; bottom: 9%; width: 26%; height: 16%;', assetId: 'rental-desk-basic' },
+    { kind: 'lamp', label: 'Lamp', style: 'right: 18%; bottom: 26%; width: 10%; height: 12%;', assetId: 'rental-lamp-basic' },
   ];
 
   if (sceneId === 'upgraded-rental' || ownedItemCount >= 1) {
-    items.push({ kind: 'plant', label: 'Plant', style: 'left: 48%; bottom: 9%; width: 11%; height: 17%;' });
+    items.push({ kind: 'plant', label: 'Plant', style: 'left: 48%; bottom: 9%; width: 11%; height: 17%;', assetId: 'rental-plant-basic' });
   }
 
   if (sceneId === 'upgraded-rental') {
-    items.push({ kind: 'art', label: 'Wall Art', style: 'left: 18%; top: 18%; width: 16%; height: 12%;' });
+    items.push({ kind: 'art', label: 'Wall Art', style: 'left: 18%; top: 18%; width: 16%; height: 12%;', assetId: 'rental-wall-art-basic' });
   }
 
   return items;
@@ -231,25 +242,25 @@ function buildRentalFurniture(sceneId, ownedItemCount) {
 
 function buildEstateFurniture(sceneId, ownedItemCount) {
   const items = [
-    { kind: 'sofa', label: 'Sofa', style: 'left: 12%; bottom: 10%; width: 34%; height: 18%;' },
-    { kind: 'table', label: 'Table', style: 'left: 48%; bottom: 10%; width: 18%; height: 13%;' },
-    { kind: 'plant', label: 'Palm', style: 'right: 10%; bottom: 12%; width: 12%; height: 25%;' },
+    { kind: 'sofa', label: 'Sofa', style: 'left: 12%; bottom: 10%; width: 34%; height: 18%;', assetId: 'estate-sofa-basic' },
+    { kind: 'table', label: 'Table', style: 'left: 48%; bottom: 10%; width: 18%; height: 13%;', assetId: 'estate-table-basic' },
+    { kind: 'plant', label: 'Palm', style: 'right: 10%; bottom: 12%; width: 12%; height: 25%;', assetId: 'estate-palm-basic' },
   ];
 
   if (sceneId === 'estate-study') {
-    items.push({ kind: 'desk', label: 'Private Desk', style: 'right: 12%; bottom: 10%; width: 28%; height: 16%;' });
+    items.push({ kind: 'desk', label: 'Private Desk', style: 'right: 12%; bottom: 10%; width: 28%; height: 16%;', assetId: 'estate-private-desk' });
   }
 
   if (sceneId === 'estate-lounge') {
-    items.push({ kind: 'art', label: 'Lounge Art', style: 'right: 20%; top: 18%; width: 18%; height: 12%;' });
+    items.push({ kind: 'art', label: 'Lounge Art', style: 'right: 20%; top: 18%; width: 18%; height: 12%;', assetId: 'estate-lounge-art' });
   }
 
   if (sceneId === 'estate-game-room') {
-    items.push({ kind: 'console', label: 'Game Rig', style: 'right: 12%; bottom: 10%; width: 28%; height: 15%;' });
+    items.push({ kind: 'console', label: 'Game Rig', style: 'right: 12%; bottom: 10%; width: 28%; height: 15%;', assetId: 'estate-game-console' });
   }
 
   if (ownedItemCount >= 3) {
-    items.push({ kind: 'shelf', label: 'Display', style: 'left: 8%; top: 18%; width: 14%; height: 28%;' });
+    items.push({ kind: 'shelf', label: 'Display', style: 'left: 8%; top: 18%; width: 14%; height: 28%;', assetId: 'estate-display-shelf' });
   }
 
   return items;

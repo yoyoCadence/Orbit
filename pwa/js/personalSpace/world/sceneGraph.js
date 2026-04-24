@@ -215,7 +215,7 @@ export const personalSpaceSceneGraph = {
       id: 'window-view-portrait',
       label: '窗外立繪',
       accepts: ['image'],
-      defaultAssetId: 'office-window-portrait-placeholder',
+      defaultAssetId: 'office-window-portrait-default',
     },
   },
 };

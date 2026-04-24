@@ -44,13 +44,16 @@ describe('personal space scene graph', () => {
 
   it('keeps window views connected to replaceable assets and future camera metadata', () => {
     const [windowView] = getSceneViews('office-corner');
+    const backgroundAsset = getVisualAsset(windowView.backgroundAssetId);
 
     expect(windowView).toEqual(getSceneView('office-window-view'));
     expect(windowView.backgroundAssetId).toBe('office-window-skyline-default');
     expect(windowView.foregroundSlotId).toBe('window-view-portrait');
     expect(windowView.cameraPreset.future3d.position).toEqual([1.5, 1.5, -2.5]);
-    expect(getVisualAsset(windowView.backgroundAssetId)?.type).toBe('background');
-    expect(getAssetSlot(windowView.foregroundSlotId)?.defaultAssetId).toBe('office-window-portrait-placeholder');
+    expect(backgroundAsset?.type).toBe('background');
+    expect(backgroundAsset?.path).toContain('assets/personal-space/window/office-window-bg-day.png');
+    expect(getAssetSlot(windowView.foregroundSlotId)?.defaultAssetId).toBe('office-window-portrait-default');
+    expect(getVisualAsset('office-corner-desk')?.path).toContain('assets/personal-space/props/office-corner-desk.png');
   });
 
   it('emits node and action events from runtime-rendered interaction nodes', () => {

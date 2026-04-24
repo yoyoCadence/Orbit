@@ -111,12 +111,26 @@ describe('renderPersonalSpace', () => {
 
     expect(container.querySelector('[data-scene-view-id="office-window-view"]')).not.toBeNull();
     expect(container.textContent).toContain('窗外風景');
-    expect(container.textContent).toContain('Window View Portrait Placeholder');
+    expect(container.querySelector('.space-scene-view-skyline')?.getAttribute('style')).toContain('office-window-bg-day.png');
+    expect(container.querySelector('.space-scene-view-portrait-image')?.getAttribute('src')).toContain('office-window-portrait-default.png');
 
     container.querySelector('[data-scene-view-back="office-window-view"]')?.click();
 
     expect(container.querySelector('[data-scene-view-id="office-window-view"]')).toBeNull();
     expect(container.querySelector('[data-scene-id="office-corner"]')).not.toBeNull();
+  });
+
+  it('renders provided prop sprites for the current 2D scene furniture', () => {
+    state.user.totalXP = 600;
+
+    renderPersonalSpace(container);
+
+    const propImages = Array.from(container.querySelectorAll('.space-scene-item-image')).map(node => node.getAttribute('src'));
+
+    expect(propImages.some(src => src?.includes('office-corner-desk.png'))).toBe(true);
+    expect(propImages.some(src => src?.includes('office-chair-basic.png'))).toBe(true);
+    expect(propImages.some(src => src?.includes('office-monitor-single.png'))).toBe(true);
+    expect(propImages.some(src => src?.includes('office-shelf-basic.png'))).toBe(true);
   });
 
   it('allows switching back to rental in building stage', () => {
