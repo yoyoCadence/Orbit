@@ -14,6 +14,7 @@
 - Personal space office window interaction now switches into a placeholder window-view surface with skyline, glass, portrait-slot, and back-to-scene controls
 - Personal space now loads the provided 2D asset pack from `pwa/assets/personal-space/`, uses real window-view background and portrait art, and replaces current placeholder furniture blocks with sprite-based props when matching assets exist
 - Personal space now uses a sprite-based furniture layout schema for rental and office scenes, with explicit placement, z-order, anchor, scale, and soft shadow metadata instead of relying on raw inline placeholder rectangles
+- Personal space local state now separates `ownedItems` from `placedItems`, and scene runtime can apply placement overrides from local layout state without coupling placement data to purchase ownership
 
 ## [v1.16.0] - 2026-04-21
 

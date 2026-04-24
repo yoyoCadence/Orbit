@@ -28,10 +28,6 @@
   - 範圍：`unlockRules.js`、`gameState.js`、`world/`、相關文件
   - 完成條件：memory property 不再只是 UI 語意，而有明確資料分類與保存規則
 
-- [ ] **PS-202** 為 personal space 建立 furniture ownership / placement 的本地資料模型
-  - 目標：把「已擁有」與「已擺放」拆開，避免之後 UI 和 scene runtime 耦合
-  - 對應 roadmap：Phase 2
-
 - [ ] **PS-211** 為 personal space 新增常用資產 preload / cache 策略
   - 目標：降低切換頁面或切回 personal space 時重新顯示圖片的等待感
   - 範圍：`pwa/js/personalSpace/`、service worker / asset loading 相關模組、相關測試或文件
@@ -85,6 +81,9 @@
 ---
 
 ## Done
+
+- [x] **PS-202** 為 personal space 建立 furniture ownership / placement 的本地資料模型
+  - 完成：`personal-space-state` 現在正式區分 `ownedItems` 與 `placedItems`；新增 placement normalization 與 `furnitureState` 解析層，`sceneRuntime` 會讀 local placement state 覆蓋 scene layout，而不把 placement 規則耦合進 runtime 內部
 
 - [x] **PS-210** 為 personal space 建立 sprite-based furniture layout schema
   - 完成：新增 `world/furnitureLayout.js`，把租屋處、公司一樓與現有豪宅場景的家具位置抽成 schema，支援 `assetId / x / y / width / height / z / anchor / scale / shadow`；`sceneRuntime` 會依 schema 渲染家具與地面陰影，不再依賴原本的色塊式 placeholder 容器

@@ -48,6 +48,12 @@ describe('renderPersonalSpace', () => {
         { id: 'small-plant', name: 'Small Plant' },
         { id: 'desk-lamp', name: 'Desk Lamp' },
       ],
+      placedItems: [
+        {
+          sceneId: 'rough-room',
+          layoutItemId: 'rental-bed',
+        },
+      ],
     });
 
     const model = buildPersonalSpaceViewModel(state.user);
@@ -55,11 +61,15 @@ describe('renderPersonalSpace', () => {
 
     expect(model.gold.spent).toBe(120);
     expect(model.ownedItemCount).toBe(2);
+    expect(model.placedItemCount).toBe(1);
     expect(container.textContent).toContain(String(model.gold.available));
     expect(container.textContent).toContain('Spent from local state: 120');
     expect(container.textContent).toContain('Owned Items');
     expect(container.textContent).toContain('Small Plant');
     expect(container.textContent).toContain('Desk Lamp');
+    expect(container.textContent).toContain('Placed separately: 1 item');
+    expect(container.textContent).toContain('rough-room');
+    expect(container.textContent).toContain('rental-bed');
   });
 
   it('emits a purchase request event when clicking a starter catalog item', () => {
@@ -136,6 +146,30 @@ describe('renderPersonalSpace', () => {
     expect(desk?.getAttribute('style')).toContain('z-index: 3');
     expect(desk?.getAttribute('style')).toContain('scale(1.08)');
     expect(chairShadow).not.toBeNull();
+  });
+
+  it('applies placed item overrides from local state to the current scene runtime', () => {
+    state.user.totalXP = 600;
+    savePersonalSpaceState({
+      selectedSceneId: 'office-corner',
+      placedItems: [
+        {
+          sceneId: 'office-corner',
+          layoutItemId: 'office-corner-desk',
+          placement: {
+            x: '40%',
+            scale: 1.18,
+          },
+        },
+      ],
+    });
+
+    renderPersonalSpace(container);
+
+    const desk = container.querySelector('[data-scene-item-id="office-corner-desk"]');
+
+    expect(desk?.getAttribute('style')).toContain('left: 40%');
+    expect(desk?.getAttribute('style')).toContain('scale(1.18)');
   });
 
   it('allows switching back to rental in building stage', () => {
