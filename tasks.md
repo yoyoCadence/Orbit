@@ -13,11 +13,6 @@
 
 ## Backlog
 
-- [ ] **PS-205** 定義公司大樓與豪宅的樓層圖 / 房間拓樸資料
-  - 目標：把公司與豪宅的樓層、房間、相鄰關係資料化，支撐未來地圖視窗與可變格局
-  - 範圍：`pwa/js/personalSpace/world/`、相關文件
-  - 完成條件：公司與豪宅都有可查閱的 floor-map schema，未來改哪層是什麼房間時不需要重寫 scene runtime
-
 - [ ] **PS-206** 為 personal space 新增地圖視窗入口
   - 目標：提供公司 / 豪宅整層設計圖視窗，讓使用者可查閱空間結構但不取代主要切換方式
   - 範圍：`pwa/js/pages/personalSpace.js`、`pwa/js/personalSpace/ui/`、相關樣式
@@ -81,6 +76,9 @@
 ---
 
 ## Done
+
+- [x] **PS-205** 定義公司大樓與豪宅的樓層圖 / 房間拓樸資料
+  - 完成：新增 `world/floorMap.js`，為公司與豪宅定義 `building / floor / room / scene / adjacency` schema 與查詢 helper；後續地圖視窗與房間拓樸變更可直接讀資料層，不需要重寫 scene runtime
 
 - [x] **PS-202** 為 personal space 建立 furniture ownership / placement 的本地資料模型
   - 完成：`personal-space-state` 現在正式區分 `ownedItems` 與 `placedItems`；新增 placement normalization 與 `furnitureState` 解析層，`sceneRuntime` 會讀 local placement state 覆蓋 scene layout，而不把 placement 規則耦合進 runtime 內部
