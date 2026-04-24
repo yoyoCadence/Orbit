@@ -80,6 +80,9 @@
 
 ## Done
 
+- [x] **PS-209** 匯入 personal space 2D 素材包並接上 asset registry
+  - 完成：使用者提供的 `window / reference / props` 素材包已放入 `pwa/assets/personal-space/`；`assetRegistry` 與 `sceneRuntime` 會讀取窗景背景、窗外立繪與現有 2D 家具 sprite，無對應資產時仍保留原本 placeholder fallback
+
 - [x] **PS-208** 建立辦公窗景 view node 互動原型
   - 完成：`office-window` view node 現在可切換到窗外 placeholder view，顯示 skyline、玻璃層、窗外立繪 slot 與返回按鈕；返回會依 view 的 `exitAction` 回到原場景
 

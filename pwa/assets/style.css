@@ -1439,6 +1439,9 @@ nav {
   background:
     linear-gradient(90deg, transparent 0 7%, rgba(15, 23, 42, 0.62) 7% 14%, transparent 14% 20%, rgba(15, 23, 42, 0.5) 20% 31%, transparent 31% 38%, rgba(15, 23, 42, 0.58) 38% 48%, transparent 48% 55%, rgba(15, 23, 42, 0.48) 55% 70%, transparent 70% 78%, rgba(15, 23, 42, 0.6) 78% 88%, transparent 88% 100%),
     linear-gradient(180deg, transparent, rgba(0,0,0,0.32));
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
   opacity: 0.72;
 }
 
@@ -1470,6 +1473,14 @@ nav {
   font-size: 10px;
   font-weight: 800;
   text-align: center;
+  overflow: hidden;
+}
+
+.space-scene-view-portrait-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
 }
 
 .space-scene-view-caption {
@@ -1624,6 +1635,7 @@ nav {
   border: 1px solid rgba(255,255,255,0.12);
   background: rgba(255,255,255,0.08);
   box-shadow: 0 10px 24px rgba(0,0,0,0.18);
+  overflow: hidden;
 }
 
 .space-scene-item span {
@@ -1632,6 +1644,21 @@ nav {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: rgba(255,255,255,0.74);
+}
+
+.space-scene-item--with-asset {
+  padding-bottom: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.space-scene-item-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+  filter: drop-shadow(0 12px 18px rgba(0,0,0,0.2));
 }
 
 .space-scene-item--bed {

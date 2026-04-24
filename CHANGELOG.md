@@ -12,6 +12,7 @@
 - Personal space scene switcher now uses a segmented `住處 / 上班 / 回顧` category layer, a horizontal scene destination row, a current-scene location highlight, and memory grouping for older office floors plus the Lv.80 buy-back rental scene
 - Personal space runtime now reads an interactive scene graph with exit, view, inspect, and npc nodes, emits interaction bus events from scene hotspots, and supports data-driven scene changes through action sequences
 - Personal space office window interaction now switches into a placeholder window-view surface with skyline, glass, portrait-slot, and back-to-scene controls
+- Personal space now loads the provided 2D asset pack from `pwa/assets/personal-space/`, uses real window-view background and portrait art, and replaces current placeholder furniture blocks with sprite-based props when matching assets exist
 
 ## [v1.16.0] - 2026-04-21
 
