@@ -32,6 +32,18 @@
   - 目標：把「已擁有」與「已擺放」拆開，避免之後 UI 和 scene runtime 耦合
   - 對應 roadmap：Phase 2
 
+- [ ] **PS-210** 為 personal space 建立 sprite-based furniture layout schema
+  - 目標：讓家具不只是套用 sprite，而是可用明確的 `assetId / x / y / width / height / z / anchor / scale` 資料描述合理擺放
+  - 範圍：`pwa/js/personalSpace/world/`、`sceneRuntime.js`、相關測試
+  - 完成條件：至少租屋處與公司一樓可用資料化 layout 呈現較可信的家具落位，不再依賴目前色塊式 placeholder 容器
+  - 備註：優先順序應高於圖片 preload，因為它決定目前 2D 場景是否真正像空間而非素材測試面板
+
+- [ ] **PS-211** 為 personal space 新增常用資產 preload / cache 策略
+  - 目標：降低切換頁面或切回 personal space 時重新顯示圖片的等待感
+  - 範圍：`pwa/js/personalSpace/`、service worker / asset loading 相關模組、相關測試或文件
+  - 完成條件：目前常用場景素材可預載或快取，window view 與主要家具切頁後不再明顯延遲出現
+  - 備註：應在主要場景與資產集合較穩定後再做，避免過早優化 placeholder 階段的載入策略
+
 - [ ] **AI-201** 建立 AI companion behavior layer 的 rule-based 狀態模型
   - 目標：先定義 `observe / approach / remind / congratulate` 等狀態與觸發條件
   - 對應 roadmap：Phase 2
