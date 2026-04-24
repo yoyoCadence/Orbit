@@ -3,6 +3,7 @@ import {
   PERSONAL_SPACE_NODE_SELECTED_EVENT,
 } from './interactionBus.js';
 import { getVisualAsset } from './assetRegistry.js';
+import { getPlacedFurnitureForScene } from './furnitureState.js';
 import { getSceneFurnitureLayout } from './world/furnitureLayout.js';
 import { getAssetSlot, getSceneInteractionNodes, getSceneView, getSceneViews, SCENE_ACTION_TYPES } from './world/sceneGraph.js';
 
@@ -145,7 +146,10 @@ function buildSceneVisualModel(sceneModel) {
   const sceneRole = sceneModel.sceneRole || 'home';
   const sceneLabel = sceneModel.sceneLabel || sceneId;
   const ownedItemCount = sceneModel.ownedItemCount || 0;
+  const ownedItems = sceneModel.ownedItems || [];
+  const placedItems = sceneModel.placedItems || [];
   const isMemoryScene = Boolean(sceneModel.isMemoryScene);
+  const layoutItems = getSceneFurnitureLayout({ sceneId, sceneRole, ownedItemCount, level });
 
   return {
     sceneId,
@@ -153,7 +157,7 @@ function buildSceneVisualModel(sceneModel) {
     palette: paletteForScene(sceneId, sceneRole, stage),
     silhouette: silhouetteForScene(sceneId, sceneRole, stage),
     windowMood: windowMoodForScene(level, sceneRole),
-    furniture: getSceneFurnitureLayout({ sceneId, sceneRole, ownedItemCount, level }).map(item => ({
+    furniture: getPlacedFurnitureForScene({ sceneId, layoutItems, placedItems, ownedItems }).map(item => ({
       ...item,
       asset: item.assetId ? getVisualAsset(item.assetId) : null,
     })),

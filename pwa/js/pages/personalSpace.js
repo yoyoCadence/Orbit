@@ -42,6 +42,12 @@ export function renderPersonalSpace(container) {
         .map(item => `<li>${escapeHtml(item.name || item.id)}</li>`)
         .join('')
     : '<li>No purchased items yet</li>';
+  const placedItemsMarkup = model.placedItems.length
+    ? model.placedItems
+        .slice(0, 4)
+        .map(item => `<li>${escapeHtml(item.sceneId)} · ${escapeHtml(item.layoutItemId || item.itemId || item.id)}</li>`)
+        .join('')
+    : '<li>No placed items yet</li>';
 
   container.innerHTML = `
     <div class="section-title">🏠 個人空間</div>
@@ -76,7 +82,7 @@ export function renderPersonalSpace(container) {
       <div class="card space-stat-card">
         <div class="card-title">Owned Items</div>
         <div class="space-stat-value">${model.ownedItemCount}</div>
-        <div class="space-stat-copy">Persisted in local personal space state.</div>
+        <div class="space-stat-copy">Placed separately: ${model.placedItemCount} item(s) in local layout state.</div>
       </div>
     </div>
 
@@ -95,8 +101,10 @@ export function renderPersonalSpace(container) {
 
     <div class="card">
       <div class="card-title">Owned Furnishing Snapshot</div>
-      <div class="space-stat-copy">Latest local ownership data loaded into this page.</div>
+      <div class="space-stat-copy">Latest local ownership and placement data loaded into this page.</div>
       <ul class="space-unlock-list">${ownedItemsMarkup}</ul>
+      <div class="space-stat-copy">Placed Items</div>
+      <ul class="space-unlock-list">${placedItemsMarkup}</ul>
     </div>
 
     <div class="card">
@@ -176,6 +184,8 @@ export function renderPersonalSpace(container) {
     sceneLabel: model.activeScene?.label,
     sceneRole: model.activeScene?.role,
     ownedItemCount: model.ownedItemCount,
+    ownedItems: model.ownedItems,
+    placedItems: model.placedItems,
     isMemoryScene,
     interactionBus,
   });

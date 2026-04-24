@@ -15,6 +15,7 @@ export function buildPersonalSpaceViewModel(user) {
   const personalSpaceState = loadPersonalSpaceState();
   const spentGold = personalSpaceState.spentGold || 0;
   const ownedItems = personalSpaceState.ownedItems || [];
+  const placedItems = personalSpaceState.placedItems || [];
   const stage = getCurrentSpaceStage(levelInfo.level);
   const sceneOptions = getAvailableSceneOptions(levelInfo.level);
   const activeScene = resolveActiveScene(levelInfo.level, personalSpaceState.selectedSceneId);
@@ -30,6 +31,8 @@ export function buildPersonalSpaceViewModel(user) {
     },
     ownedItems,
     ownedItemCount: ownedItems.length,
+    placedItems,
+    placedItemCount: placedItems.length,
     stage,
     sceneOptions,
     activeScene,
