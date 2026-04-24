@@ -32,12 +32,6 @@
   - 目標：把「已擁有」與「已擺放」拆開，避免之後 UI 和 scene runtime 耦合
   - 對應 roadmap：Phase 2
 
-- [ ] **PS-210** 為 personal space 建立 sprite-based furniture layout schema
-  - 目標：讓家具不只是套用 sprite，而是可用明確的 `assetId / x / y / width / height / z / anchor / scale` 資料描述合理擺放
-  - 範圍：`pwa/js/personalSpace/world/`、`sceneRuntime.js`、相關測試
-  - 完成條件：至少租屋處與公司一樓可用資料化 layout 呈現較可信的家具落位，不再依賴目前色塊式 placeholder 容器
-  - 備註：優先順序應高於圖片 preload，因為它決定目前 2D 場景是否真正像空間而非素材測試面板
-
 - [ ] **PS-211** 為 personal space 新增常用資產 preload / cache 策略
   - 目標：降低切換頁面或切回 personal space 時重新顯示圖片的等待感
   - 範圍：`pwa/js/personalSpace/`、service worker / asset loading 相關模組、相關測試或文件
@@ -91,6 +85,9 @@
 ---
 
 ## Done
+
+- [x] **PS-210** 為 personal space 建立 sprite-based furniture layout schema
+  - 完成：新增 `world/furnitureLayout.js`，把租屋處、公司一樓與現有豪宅場景的家具位置抽成 schema，支援 `assetId / x / y / width / height / z / anchor / scale / shadow`；`sceneRuntime` 會依 schema 渲染家具與地面陰影，不再依賴原本的色塊式 placeholder 容器
 
 - [x] **PS-209** 匯入 personal space 2D 素材包並接上 asset registry
   - 完成：使用者提供的 `window / reference / props` 素材包已放入 `pwa/assets/personal-space/`；`assetRegistry` 與 `sceneRuntime` 會讀取窗景背景、窗外立繪與現有 2D 家具 sprite，無對應資產時仍保留原本 placeholder fallback
