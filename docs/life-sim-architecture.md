@@ -284,6 +284,14 @@ It should define:
 
 This is the source of truth for future map modal UI.
 
+The current floor-map seam lives in `pwa/js/personalSpace/world/floorMap.js`, where company and estate buildings define:
+
+- building ids
+- floor order
+- room lists
+- scene-to-room mapping
+- room adjacency
+
 ## Memory Property Rules
 
 Orbit should preserve emotional continuity in its spaces.

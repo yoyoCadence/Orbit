@@ -15,6 +15,7 @@
 - Personal space now loads the provided 2D asset pack from `pwa/assets/personal-space/`, uses real window-view background and portrait art, and replaces current placeholder furniture blocks with sprite-based props when matching assets exist
 - Personal space now uses a sprite-based furniture layout schema for rental and office scenes, with explicit placement, z-order, anchor, scale, and soft shadow metadata instead of relying on raw inline placeholder rectangles
 - Personal space local state now separates `ownedItems` from `placedItems`, and scene runtime can apply placement overrides from local layout state without coupling placement data to purchase ownership
+- Personal space now defines company-building and estate floor-map schema with explicit building, floor, room, scene, and adjacency data, giving future map UI and room topology changes a stable source of truth
 
 ## [v1.16.0] - 2026-04-21
 
