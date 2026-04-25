@@ -172,6 +172,37 @@ describe('renderPersonalSpace', () => {
     expect(desk?.getAttribute('style')).toContain('scale(1.18)');
   });
 
+  it('applies placed item overrides to formal workstation scenes as well', () => {
+    state.user.totalXP = 1200;
+    savePersonalSpaceState({
+      selectedSceneId: 'formal-workstation',
+      placedItems: [
+        {
+          sceneId: 'formal-workstation',
+          layoutItemId: 'office-corner-desk',
+          placement: {
+            x: '46%',
+            y: '78%',
+            scale: 1.22,
+            z: 5,
+          },
+        },
+      ],
+    });
+
+    renderPersonalSpace(container);
+
+    expect(container.querySelector('[data-scene-id="formal-workstation"]')).not.toBeNull();
+    expect(container.textContent).toContain('Placed separately: 1 item');
+
+    const desk = container.querySelector('[data-scene-item-id="office-corner-desk"]');
+
+    expect(desk?.getAttribute('style')).toContain('left: 46%');
+    expect(desk?.getAttribute('style')).toContain('top: 78%');
+    expect(desk?.getAttribute('style')).toContain('z-index: 5');
+    expect(desk?.getAttribute('style')).toContain('scale(1.22)');
+  });
+
   it('allows switching back to rental in building stage', () => {
     state.user.totalXP = 600;
 
