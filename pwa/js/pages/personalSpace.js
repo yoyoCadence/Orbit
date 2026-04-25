@@ -166,6 +166,7 @@ export function renderPersonalSpace(container) {
     });
     renderPersonalSpace(container);
   });
+  containSceneSwitcherSwipe(container);
 
   container.querySelector('.space-map-entry')?.addEventListener('click', event => {
     const mapButton = event.target.closest('[data-space-map-open]');
@@ -347,6 +348,16 @@ function openFloorMap(container, buildingId) {
 
 function closeFloorMap(mapWindow) {
   mapWindow.hidden = true;
+}
+
+function containSceneSwitcherSwipe(container) {
+  container.querySelectorAll('.space-scene-category-panel').forEach(panel => {
+    ['touchstart', 'touchmove', 'touchend'].forEach(eventName => {
+      panel.addEventListener(eventName, event => {
+        event.stopPropagation();
+      }, { passive: true });
+    });
+  });
 }
 
 function buildSceneInfoMarkup(model, isMemoryScene) {
