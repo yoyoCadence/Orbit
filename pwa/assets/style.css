@@ -1047,6 +1047,8 @@ nav {
   align-items: flex-start;
   gap: 10px;
   flex: 1 1 360px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .space-scene-location {
@@ -1121,15 +1123,12 @@ nav {
 
 .space-scene-category-panel {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 8px;
-  min-height: 64px;
+  min-height: 0;
   max-width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding: 2px 2px 8px;
-  scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--primary) 38%, var(--border)) transparent;
+  overflow: visible;
+  padding: 2px;
 }
 
 .space-scene-category-panel[hidden] {
@@ -1144,7 +1143,7 @@ nav {
 
 .space-scene-switch {
   display: inline-flex;
-  flex: 0 0 auto;
+  flex: 1 1 calc(50% - 4px);
   align-items: center;
   justify-content: center;
   gap: 6px;
@@ -1155,8 +1154,9 @@ nav {
   font-size: 12px;
   font-weight: 800;
   min-height: 52px;
-  min-width: 104px;
+  min-width: 0;
   padding: 10px 12px;
+  text-align: center;
   cursor: pointer;
   box-shadow: 0 8px 18px rgba(0,0,0,0.12);
 }
@@ -1413,7 +1413,7 @@ nav {
     radial-gradient(circle at top right, color-mix(in srgb, var(--accent) 18%, transparent), transparent 45%),
     linear-gradient(145deg, color-mix(in srgb, var(--surface-2) 82%, var(--primary) 18%), var(--surface));
   display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(220px, 0.92fr);
+  grid-template-columns: 1fr;
   gap: 16px;
   padding: 18px;
 }
@@ -1460,7 +1460,7 @@ nav {
 
 .space-scene-visual {
   position: relative;
-  min-height: 224px;
+  min-height: 240px;
   z-index: 1;
 }
 
