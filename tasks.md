@@ -13,16 +13,6 @@
 
 ## Backlog
 
-- [ ] **PS-206** 為 personal space 新增地圖視窗入口
-  - 目標：提供公司 / 豪宅整層設計圖視窗，讓使用者可查閱空間結構但不取代主要切換方式
-  - 範圍：`pwa/js/pages/personalSpace.js`、`pwa/js/personalSpace/ui/`、相關樣式
-  - 完成條件：公司與豪宅可透過地圖圖示開啟總圖視窗，顯示樓層與房間配置
-
-- [ ] **PS-207** 將舊辦公樓層與租屋處正式納入 memory property 規則
-  - 目標：讓舊辦公樓層可回顧且有其他員工工作的視覺語意，並為未來買回最初租屋處保留正式資料規則
-  - 範圍：`unlockRules.js`、`gameState.js`、`world/`、相關文件
-  - 完成條件：memory property 不再只是 UI 語意，而有明確資料分類與保存規則
-
 - [ ] **PS-211** 為 personal space 新增常用資產 preload / cache 策略
   - 目標：降低切換頁面或切回 personal space 時重新顯示圖片的等待感
   - 範圍：`pwa/js/personalSpace/`、service worker / asset loading 相關模組、相關測試或文件
@@ -65,7 +55,10 @@
 
 ## Next
 
-- [ ] 目前無下一個正式任務
+- [ ] **PS-207** 將舊辦公樓層與租屋處正式納入 memory property 規則
+  - 目標：讓舊辦公樓層可回顧且有其他員工工作的視覺語意，並為未來買回最初租屋處保留正式資料規則
+  - 範圍：`unlockRules.js`、`gameState.js`、`world/`、相關文件
+  - 完成條件：memory property 不再只是 UI 語意，而有明確資料分類與保存規則
 
 ---
 
@@ -76,6 +69,9 @@
 ---
 
 ## Done
+
+- [x] **PS-206** 為 personal space 新增地圖視窗入口
+  - 完成：新增 `ui/floorMapPanel.js`，personal space 場景列會依目前可用場景顯示公司 / 豪宅地圖圖示；點擊後開啟樓層圖視窗，使用 `world/floorMap.js` 顯示樓層、房間、房間類型與目前所在場景位置
 
 - [x] **PS-205** 定義公司大樓與豪宅的樓層圖 / 房間拓樸資料
   - 完成：新增 `world/floorMap.js`，為公司與豪宅定義 `building / floor / room / scene / adjacency` schema 與查詢 helper；後續地圖視窗與房間拓樸變更可直接讀資料層，不需要重寫 scene runtime

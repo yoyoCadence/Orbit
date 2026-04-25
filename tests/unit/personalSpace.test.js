@@ -195,6 +195,36 @@ describe('renderPersonalSpace', () => {
     expect(container.textContent).toContain('主管室');
   });
 
+  it('opens company and estate floor map windows from map icon buttons', () => {
+    state.user.totalXP = 10000;
+
+    renderPersonalSpace(container);
+
+    const companyMapButton = container.querySelector('[data-space-map-open="company-building"]');
+    const estateMapButton = container.querySelector('[data-space-map-open="estate-residence"]');
+
+    expect(companyMapButton).not.toBeNull();
+    expect(estateMapButton).not.toBeNull();
+    expect(container.querySelector('[data-space-map-window="company-building"]')?.hidden).toBe(true);
+
+    companyMapButton?.click();
+
+    const companyMap = container.querySelector('[data-space-map-window="company-building"]');
+    expect(companyMap?.hidden).toBe(false);
+    expect(companyMap?.textContent).toContain('公司大樓');
+    expect(companyMap?.textContent).toContain('公司一樓');
+    expect(companyMap?.textContent).toContain('正式工位');
+    expect(companyMap?.querySelector('[data-space-map-room="manager-room-suite"]')).not.toBeNull();
+
+    estateMapButton?.click();
+
+    const estateMap = container.querySelector('[data-space-map-window="estate-residence"]');
+    expect(estateMap?.hidden).toBe(false);
+    expect(estateMap?.textContent).toContain('豪宅主層');
+    expect(estateMap?.textContent).toContain('豪宅私人層');
+    expect(estateMap?.querySelector('[data-space-map-room="estate-game-room-space"]')).not.toBeNull();
+  });
+
   it('marks older office floors as memory property when revisiting them', () => {
     state.user.totalXP = 10000;
 
