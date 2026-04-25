@@ -1914,7 +1914,9 @@ nav {
 
 @media (max-width: 640px) {
   .space-scene-meta {
+    position: relative;
     flex-direction: column;
+    padding-right: 86px;
   }
 
   .space-scene-location,
@@ -1927,6 +1929,10 @@ nav {
     flex-direction: column;
   }
 
+  .space-scene-switcher {
+    width: calc(100% + 86px);
+  }
+
   .space-scene-placeholder {
     grid-template-columns: 1fr;
   }
@@ -1936,13 +1942,24 @@ nav {
   }
 
   .space-scene-info-panel {
-    position: static;
-    width: 100%;
-    margin-top: 8px;
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    width: min(280px, calc(100vw - 40px));
+    margin-top: 0;
   }
 
   .space-map-entry {
-    align-self: flex-start;
+    position: absolute;
+    top: 0;
+    right: 42px;
+    align-self: auto;
+  }
+
+  .space-scene-info {
+    position: absolute;
+    top: 0;
+    right: 0;
   }
 
   .space-map-window {
