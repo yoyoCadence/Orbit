@@ -1150,7 +1150,7 @@ nav {
 
 .space-scene-switch {
   display: inline-flex;
-  flex: 0 0 clamp(120px, calc((100% - 8px) / 2), 156px);
+  flex: 0 0 calc((100% - 16px) / 3);
   align-items: center;
   justify-content: center;
   gap: 6px;
@@ -1161,6 +1161,7 @@ nav {
   font-size: 12px;
   font-weight: 800;
   min-height: 52px;
+  min-width: 0;
   padding: 10px 12px;
   text-align: center;
   cursor: pointer;
@@ -1932,11 +1933,13 @@ nav {
 
   .space-scene-meta-actions {
     width: 100%;
+    max-width: none;
     flex-direction: column;
   }
 
   .space-scene-switcher {
     width: calc(100% + 86px);
+    max-width: none;
   }
 
   .space-scene-placeholder {
