@@ -8,6 +8,7 @@ import {
 } from '../personalSpace/interactionBus.js';
 import { createSceneRuntime } from '../personalSpace/sceneRuntime.js';
 import { renderDialogBubblePlaceholder } from '../personalSpace/ui/dialogBubble.js';
+import { renderFloorMapPanel } from '../personalSpace/ui/floorMapPanel.js';
 import { renderHudOverlayPlaceholder } from '../personalSpace/ui/hudOverlay.js';
 import { renderShopPanel, SHOP_PURCHASE_ACTION } from '../personalSpace/ui/shopPanel.js';
 import { SCENE_ACTION_TYPES } from '../personalSpace/world/sceneGraph.js';
@@ -113,6 +114,7 @@ export function renderPersonalSpace(container) {
         ${sceneLocationMarkup}
         <div class="space-scene-meta-actions">
           <div class="space-scene-switcher">${sceneSwitcherMarkup}</div>
+          ${renderFloorMapPanel(model)}
           ${sceneInfoMarkup}
         </div>
       </div>
@@ -163,6 +165,21 @@ export function renderPersonalSpace(container) {
       selectedSceneId: sceneId,
     });
     renderPersonalSpace(container);
+  });
+  containSceneSwitcherSwipe(container);
+
+  container.querySelector('.space-map-entry')?.addEventListener('click', event => {
+    const mapButton = event.target.closest('[data-space-map-open]');
+    if (!mapButton) return;
+
+    openFloorMap(container, mapButton.dataset.spaceMapOpen);
+  });
+
+  container.querySelectorAll('[data-space-map-window]').forEach(mapWindow => {
+    mapWindow.addEventListener('click', event => {
+      if (!event.target.closest('[data-space-map-close]')) return;
+      closeFloorMap(mapWindow);
+    });
   });
 
   const sceneContainer = container.querySelector('#personal-space-scene');
@@ -318,6 +335,28 @@ function activateSceneCategory(container, categoryId) {
 
   container.querySelectorAll('[data-scene-category-panel]').forEach(panel => {
     panel.hidden = panel.dataset.sceneCategoryPanel !== categoryId;
+  });
+}
+
+function openFloorMap(container, buildingId) {
+  const mapWindow = Array.from(container.querySelectorAll('[data-space-map-window]'))
+    .find(windowNode => windowNode.dataset.spaceMapWindow === buildingId);
+  if (!mapWindow) return;
+
+  mapWindow.hidden = false;
+}
+
+function closeFloorMap(mapWindow) {
+  mapWindow.hidden = true;
+}
+
+function containSceneSwitcherSwipe(container) {
+  container.querySelectorAll('.space-scene-category-panel').forEach(panel => {
+    ['touchstart', 'touchmove', 'touchend'].forEach(eventName => {
+      panel.addEventListener(eventName, event => {
+        event.stopPropagation();
+      }, { passive: true });
+    });
   });
 }
 

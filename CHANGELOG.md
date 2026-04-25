@@ -16,6 +16,7 @@
 - Personal space now uses a sprite-based furniture layout schema for rental and office scenes, with explicit placement, z-order, anchor, scale, and soft shadow metadata instead of relying on raw inline placeholder rectangles
 - Personal space local state now separates `ownedItems` from `placedItems`, and scene runtime can apply placement overrides from local layout state without coupling placement data to purchase ownership
 - Personal space now defines company-building and estate floor-map schema with explicit building, floor, room, scene, and adjacency data, giving future map UI and room topology changes a stable source of truth
+- Personal space now exposes company and estate map icon buttons that open floor-map windows showing each building's floors, rooms, room types, and current scene location
 
 ## [v1.16.0] - 2026-04-21
 
