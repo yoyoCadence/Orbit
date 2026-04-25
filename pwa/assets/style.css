@@ -1076,6 +1076,7 @@ nav {
   flex-direction: column;
   gap: 8px;
   min-width: 0;
+  max-width: 100%;
   width: 100%;
 }
 
@@ -1123,12 +1124,16 @@ nav {
 
 .space-scene-category-panel {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 8px;
   min-height: 0;
   max-width: 100%;
-  overflow: visible;
-  padding: 2px;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 2px 2px 8px;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--primary) 38%, var(--border)) transparent;
 }
 
 .space-scene-category-panel[hidden] {
@@ -1143,7 +1148,7 @@ nav {
 
 .space-scene-switch {
   display: inline-flex;
-  flex: 1 1 calc(50% - 4px);
+  flex: 0 0 104px;
   align-items: center;
   justify-content: center;
   gap: 6px;
@@ -1154,7 +1159,7 @@ nav {
   font-size: 12px;
   font-weight: 800;
   min-height: 52px;
-  min-width: 0;
+  max-width: 112px;
   padding: 10px 12px;
   text-align: center;
   cursor: pointer;
