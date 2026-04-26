@@ -29,9 +29,14 @@ const mockState = vi.hoisted(() => ({
 
 const mockStorage = vi.hoisted(() => ({
   saveUser:    vi.fn(),
+  saveUserAndSync: vi.fn(() => Promise.resolve()),
   isProUser:   vi.fn(() => false),
   isPaidProUser: vi.fn(() => false),
   isTrialUser: vi.fn(() => false),
+}));
+
+const mockDb = vi.hoisted(() => ({
+  uploadAvatar: vi.fn(() => Promise.resolve({ path: 'user/avatar.jpg', url: 'signed-avatar-url' })),
 }));
 
 // Prevent CDN import failure in Node
@@ -50,7 +55,7 @@ vi.mock('../../pwa/js/supabase.js', () => ({
 }));
 
 vi.mock('../../pwa/js/state.js',   () => ({ state: mockState }));
-vi.mock('../../pwa/js/storage.js', () => ({ storage: mockStorage }));
+vi.mock('../../pwa/js/storage.js', () => ({ storage: mockStorage, db: mockDb }));
 
 // Dynamic import in profile.js: import('../app.js').then(({ updateHeader }) => updateHeader())
 vi.mock('../../pwa/js/app.js', () => ({ updateHeader: vi.fn() }));
@@ -121,6 +126,31 @@ describe('renderProfile: basic rendering', () => {
     const c = makeContainer();
     expect(() => renderProfile(c)).not.toThrow();
     mockState.user = freshUser();
+  });
+});
+
+describe('renderProfile: avatar upload', () => {
+  it('guest avatar upload stays saved locally when Supabase has no session', async () => {
+    mockDb.uploadAvatar.mockRejectedValueOnce(new Error('Not authenticated'));
+    const originalFileReader = window.FileReader;
+    window.FileReader = class {
+      readAsDataURL() {
+        this.onload({ target: { result: 'data:image/png;base64,guest-avatar' } });
+      }
+    };
+
+    const c = makeContainer();
+    renderProfile(c);
+    const input = document.getElementById('avatar-input');
+    Object.defineProperty(input, 'files', { value: [{ name: 'avatar.png' }], configurable: true });
+    input.dispatchEvent(new Event('change'));
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(mockState.user.avatar).toBe('data:image/png;base64,guest-avatar');
+    expect(JSON.parse(localStorage.getItem('yoyo_user')).avatar).toBe('data:image/png;base64,guest-avatar');
+
+    window.FileReader = originalFileReader;
   });
 });
 
@@ -221,7 +251,7 @@ describe('renderProfile: template picker', () => {
     renderProfile(c);
     c.querySelector('[data-template="business"]').click();
     expect(mockState.user.titleTemplate).toBe('business');
-    expect(mockStorage.saveUser).toHaveBeenCalled();
+    expect(mockStorage.saveUserAndSync).toHaveBeenCalled();
   });
 
   it('Pro user: clicking a template button clears customTitle', () => {
@@ -402,7 +432,7 @@ describe('renderProfile: edit template modal', () => {
     document.querySelector('#tmpl-delete-btn').click();
 
     expect(mockState.user.customTemplates).not.toHaveProperty('custom_abc');
-    expect(mockStorage.saveUser).toHaveBeenCalled();
+    expect(mockStorage.saveUserAndSync).toHaveBeenCalled();
   });
 
   it('deleting the active custom template falls back to rpg', () => {
@@ -452,7 +482,7 @@ describe('renderProfile: custom title input', () => {
     document.getElementById('custom-title-input').value = '新稱號';
     document.getElementById('custom-title-save').click();
     expect(mockState.user.customTitle).toBe('新稱號');
-    expect(mockStorage.saveUser).toHaveBeenCalled();
+    expect(mockStorage.saveUserAndSync).toHaveBeenCalled();
   });
 
   it('clear button appears only when customTitle is set', () => {
@@ -474,7 +504,7 @@ describe('renderProfile: custom title input', () => {
     renderProfile(c);
     document.getElementById('custom-title-clear').click();
     expect(mockState.user.customTitle).toBe('');
-    expect(mockStorage.saveUser).toHaveBeenCalled();
+    expect(mockStorage.saveUserAndSync).toHaveBeenCalled();
   });
 });
 

@@ -135,6 +135,8 @@ export function updateHeader() {
     }
   }
 
+  const nameEl = document.getElementById('hdr-user-name');
+  if (nameEl) nameEl.textContent = state.user.name || '使用者';
   document.getElementById('hdr-level').textContent = `Lv.${info.level}`;
   document.getElementById('hdr-title').textContent = getDisplayTitle(info.level, state.user);
   document.getElementById('hdr-xp-fill').style.width = info.percent + '%';
