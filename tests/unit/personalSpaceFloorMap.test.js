@@ -162,7 +162,6 @@ describe('floor map panel rendering', () => {
     expect(teaserFloor?.querySelector('.space-map-floor-teaser')?.textContent).toContain('20');
 
     // Floor 3+ should NOT appear as full floors (only one teaser)
-    const allFloors = container.querySelectorAll('.space-map-floor:not(.is-locked-floor)');
     const teaser = container.querySelectorAll('.space-map-floor.is-locked-floor');
     expect(teaser).toHaveLength(1);
 
