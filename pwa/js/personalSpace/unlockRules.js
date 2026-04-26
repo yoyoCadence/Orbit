@@ -39,6 +39,22 @@ export const MEMORY_PROPERTY_RULES = [
     npcPresence: true,
   },
   {
+    id: 'rough-room-memory',
+    sceneId: 'rough-room',
+    label: '租屋處（回顧）',
+    kind: MEMORY_PROPERTY_KIND.GRADUATED,
+    graduatesAtLevel: 40,  // player moves to estate when mastery begins
+    npcPresence: false,
+  },
+  {
+    id: 'upgraded-rental-memory',
+    sceneId: 'upgraded-rental',
+    label: '升級租屋處（回顧）',
+    kind: MEMORY_PROPERTY_KIND.GRADUATED,
+    graduatesAtLevel: 40,
+    npcPresence: false,
+  },
+  {
     id: 'buy-back-rental-memory',
     sceneId: 'buy-back-rental',
     label: '買回最初租屋處',
@@ -76,9 +92,9 @@ const SCENE_OPTIONS = [
   { id: 'mid-office', label: '中階高樓層辦公室', shortLabel: '高樓層辦公室', family: 'office', role: 'work', minLevel: 30, maxLevel: 39 },
   { id: 'manager-room', label: '高樓層主管室', shortLabel: '主管室', family: 'office', role: 'work', minLevel: 40, maxLevel: 59 },
   { id: 'large-office-suite', label: '大型辦公室 / 私人會議區', shortLabel: '大型辦公室', family: 'office', role: 'work', minLevel: 60 },
-  { id: 'estate-hall', label: '豪宅主廳', shortLabel: '豪宅主廳', family: 'estate', role: 'home', minLevel: 40, maxLevel: 44 },
-  { id: 'estate-study', label: '豪宅私人書房', shortLabel: '私人書房', family: 'estate', role: 'home', minLevel: 45, maxLevel: 49 },
-  { id: 'estate-lounge', label: '豪宅大客廳', shortLabel: '大客廳', family: 'estate', role: 'home', minLevel: 50, maxLevel: 59 },
+  { id: 'estate-hall', label: '豪宅主廳', shortLabel: '豪宅主廳', family: 'estate', role: 'home', minLevel: 40 },
+  { id: 'estate-study', label: '豪宅私人書房', shortLabel: '私人書房', family: 'estate', role: 'home', minLevel: 45 },
+  { id: 'estate-lounge', label: '豪宅大客廳', shortLabel: '大客廳', family: 'estate', role: 'home', minLevel: 50 },
   { id: 'estate-game-room', label: '豪宅遊戲房', shortLabel: '遊戲房', family: 'estate', role: 'home', minLevel: 60 },
   { id: 'buy-back-rental', label: '買回最初租屋處', shortLabel: '最初租屋處', family: 'rental', role: 'home', minLevel: 80, memoryProperty: true },
 ];
@@ -112,10 +128,16 @@ export function getAvailableSceneOptions(level, { ownedItems = [] } = {}) {
   }
 
   return [
-    getPrimaryResidenceScene(level),
+    ...getUnlockedEstateScenes(level),
     ...getUnlockedWorkplaceScenes(level),
     ...getUnlockedMemoryScenes(level, ownedItems),
   ].filter(Boolean);
+}
+
+export function getUnlockedEstateScenes(level) {
+  return SCENE_OPTIONS
+    .filter(option => option.family === 'estate' && option.role === 'home')
+    .filter(option => level >= option.minLevel);
 }
 
 export function getPrimaryResidenceScene(level) {
@@ -141,7 +163,8 @@ export function getUnlockedWorkplaceScenes(level) {
 export function getUnlockedMemoryScenes(level, ownedItems = []) {
   const ownedSet = new Set(ownedItems.map(item => (typeof item === 'string' ? item : item?.id)).filter(Boolean));
 
-  return SCENE_OPTIONS
+  // Buyback scenes: only appear when explicitly purchased
+  const buyback = SCENE_OPTIONS
     .filter(option => option.memoryProperty)
     .filter(option => level >= option.minLevel)
     .filter(option => {
@@ -149,12 +172,31 @@ export function getUnlockedMemoryScenes(level, ownedItems = []) {
       if (rule?.kind === MEMORY_PROPERTY_KIND.BUYBACK) return ownedSet.has(option.id);
       return true;
     });
+
+  // Graduated rental scenes: old rental homes accessible as memory once player moves to estate
+  const graduatedRental = MEMORY_PROPERTY_RULES
+    .filter(rule => rule.kind === MEMORY_PROPERTY_KIND.GRADUATED && level >= rule.graduatesAtLevel)
+    .map(rule => {
+      const base = SCENE_OPTIONS.find(o => o.id === rule.sceneId);
+      return base?.family === 'rental' ? { ...base, memoryProperty: true, memoryKind: rule.kind } : null;
+    })
+    .filter(Boolean);
+
+  return [...graduatedRental, ...buyback];
 }
 
-export function resolveActiveScene(level, selectedSceneId, { ownedItems = [] } = {}) {
+export function resolveActiveScene(level, selectedSceneId, { ownedItems = [], memoryViewSceneId = null } = {}) {
   const options = getAvailableSceneOptions(level, { ownedItems });
-  const selected = options.find(option => option.id === selectedSceneId);
 
+  // Explicit memory scene navigation takes priority
+  if (memoryViewSceneId) {
+    const memoryScene = options.find(o => o.id === memoryViewSceneId && o.memoryProperty);
+    if (memoryScene) return memoryScene;
+  }
+
+  // For primary selection, skip memory-property scenes to avoid stale pre-mastery selections
+  // (e.g. selectedSceneId = 'rough-room' saved before player moved to estate)
+  const selected = options.find(o => o.id === selectedSceneId && !o.memoryProperty);
   if (selected) return selected;
 
   const stage = getCurrentSpaceStage(level);

@@ -9,6 +9,7 @@ export function createDefaultPersonalSpaceState() {
     ownedItems: [],
     placedItems: [],
     selectedSceneId: 'rough-room',
+    memoryViewSceneId: null,  // set only when user explicitly navigates to a memory scene
     selectedThemeId: 'default',
     companionRelationshipStage: 'stranger-observer',
     memorySceneLog: {},  // { [sceneId]: { firstVisitedAt: ISO string | null } }
@@ -116,6 +117,7 @@ function normalizePersonalSpaceState(value) {
     spentGold: Number.isFinite(raw.spentGold) ? Math.max(0, raw.spentGold) : defaults.spentGold,
     ownedItems: normalizeOwnedItems(raw.ownedItems),
     placedItems: normalizePlacedItems(raw.placedItems),
+    memoryViewSceneId: typeof raw.memoryViewSceneId === 'string' && raw.memoryViewSceneId.trim() ? raw.memoryViewSceneId.trim() : null,
     memorySceneLog: normalizeMemorySceneLog(raw.memorySceneLog),
     hiddenStats: {
       ...defaults.hiddenStats,

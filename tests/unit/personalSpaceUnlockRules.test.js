@@ -22,14 +22,23 @@ describe('MEMORY_PROPERTY_KIND', () => {
 
 describe('MEMORY_PROPERTY_RULES', () => {
   it('covers all four graduated office scenes with npcPresence', () => {
-    const graduated = MEMORY_PROPERTY_RULES.filter(r => r.kind === MEMORY_PROPERTY_KIND.GRADUATED);
-    const sceneIds = graduated.map(r => r.sceneId);
+    const officeGraduated = MEMORY_PROPERTY_RULES.filter(r => r.kind === MEMORY_PROPERTY_KIND.GRADUATED && r.npcPresence);
+    const sceneIds = officeGraduated.map(r => r.sceneId);
 
     expect(sceneIds).toContain('office-corner');
     expect(sceneIds).toContain('formal-workstation');
     expect(sceneIds).toContain('small-office');
     expect(sceneIds).toContain('mid-office');
-    graduated.forEach(r => expect(r.npcPresence).toBe(true));
+    officeGraduated.forEach(r => expect(r.npcPresence).toBe(true));
+  });
+
+  it('covers rough-room and upgraded-rental as graduated rental memory scenes at Lv.40', () => {
+    const rentalGraduated = MEMORY_PROPERTY_RULES.filter(r => r.kind === MEMORY_PROPERTY_KIND.GRADUATED && !r.npcPresence);
+    const sceneIds = rentalGraduated.map(r => r.sceneId);
+
+    expect(sceneIds).toContain('rough-room');
+    expect(sceneIds).toContain('upgraded-rental');
+    rentalGraduated.forEach(r => expect(r.graduatesAtLevel).toBe(40));
   });
 
   it('covers the buy-back-rental as a BUYBACK scene without npcPresence', () => {
@@ -64,7 +73,8 @@ describe('getGraduatedMemoryScenes', () => {
 
   it('accumulates more scenes as level increases', () => {
     expect(getGraduatedMemoryScenes(20).map(s => s.id)).toContain('formal-workstation');
-    expect(getGraduatedMemoryScenes(40)).toHaveLength(4);
+    // At Lv.40: 4 office + 2 rental = 6 graduated scenes
+    expect(getGraduatedMemoryScenes(40)).toHaveLength(6);
   });
 
   it('enriches each scene with memoryProperty, memoryKind, and npcPresence', () => {
@@ -78,7 +88,11 @@ describe('getGraduatedMemoryScenes', () => {
 describe('isMemoryScene', () => {
   it('returns false for a scene with no memory rule', () => {
     expect(isMemoryScene('estate-hall', 50)).toBe(false);
-    expect(isMemoryScene('rough-room', 99)).toBe(false);
+  });
+
+  it('returns true for rough-room at Lv.40 (graduated rental memory)', () => {
+    expect(isMemoryScene('rough-room', 39)).toBe(false);
+    expect(isMemoryScene('rough-room', 40)).toBe(true);
   });
 
   it('returns false for graduated scenes before graduation level', () => {
@@ -104,8 +118,14 @@ describe('getMemoryPropertyRule', () => {
   });
 
   it('returns null for scenes with no memory rule', () => {
-    expect(getMemoryPropertyRule('rough-room')).toBeNull();
     expect(getMemoryPropertyRule('estate-hall')).toBeNull();
+  });
+
+  it('returns the rule for rough-room now that it is a graduated rental memory scene', () => {
+    const rule = getMemoryPropertyRule('rough-room');
+    expect(rule).not.toBeNull();
+    expect(rule.kind).toBe(MEMORY_PROPERTY_KIND.GRADUATED);
+    expect(rule.graduatesAtLevel).toBe(40);
   });
 });
 
@@ -141,5 +161,54 @@ describe('getAvailableSceneOptions buyback gate', () => {
   it('includes buy-back-rental at Lv.80 when owned', () => {
     const options = getAvailableSceneOptions(80, { ownedItems: ['buy-back-rental'] });
     expect(options.map(o => o.id)).toContain('buy-back-rental');
+  });
+});
+
+describe('getUnlockedMemoryScenes rental graduation', () => {
+  it('returns rough-room and upgraded-rental in memory at Lv.40+', () => {
+    const scenes = getUnlockedMemoryScenes(40, []);
+    const ids = scenes.map(s => s.id);
+    expect(ids).toContain('rough-room');
+    expect(ids).toContain('upgraded-rental');
+  });
+
+  it('does not return rental scenes as memory before Lv.40', () => {
+    const scenes = getUnlockedMemoryScenes(39, []);
+    const ids = scenes.map(s => s.id);
+    expect(ids).not.toContain('rough-room');
+    expect(ids).not.toContain('upgraded-rental');
+  });
+
+  it('marks graduated rental scenes with memoryProperty: true', () => {
+    const scenes = getUnlockedMemoryScenes(40, []);
+    const roughRoom = scenes.find(s => s.id === 'rough-room');
+    expect(roughRoom?.memoryProperty).toBe(true);
+  });
+});
+
+describe('getAvailableSceneOptions estate rooms', () => {
+  it('includes all unlocked estate rooms in mastery stage (not just the highest)', () => {
+    const options = getAvailableSceneOptions(60);
+    const ids = options.map(o => o.id);
+    expect(ids).toContain('estate-hall');
+    expect(ids).toContain('estate-study');
+    expect(ids).toContain('estate-lounge');
+    expect(ids).toContain('estate-game-room');
+  });
+
+  it('includes only unlocked estate rooms (not yet-to-unlock ones)', () => {
+    const options = getAvailableSceneOptions(40);
+    const ids = options.map(o => o.id);
+    expect(ids).toContain('estate-hall');
+    expect(ids).not.toContain('estate-study');
+  });
+
+  it('includes rough-room and upgraded-rental in memory at Lv.40', () => {
+    const options = getAvailableSceneOptions(40);
+    const ids = options.map(o => o.id);
+    expect(ids).toContain('rough-room');
+    expect(ids).toContain('upgraded-rental');
+    const roughRoom = options.find(o => o.id === 'rough-room');
+    expect(roughRoom?.memoryProperty).toBe(true);
   });
 });
