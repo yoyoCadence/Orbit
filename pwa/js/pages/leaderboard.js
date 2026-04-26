@@ -48,7 +48,7 @@ export async function renderLeaderboard(container) {
   try {
     const { data, error } = await supabase.from('leaderboard_view').select('*');
     if (error) throw error;
-    rows = data || [];
+    rows = await _withAvatarUrls(data || []);
     storage.saveLeaderboardCache?.(rows, new Date().toISOString(), refreshDate);
   } catch {
     if (cachedRows) {
@@ -124,11 +124,14 @@ function _renderContent(container, rows, refreshedAt, isStale, refreshHour) {
           : _tab === 'growth'            ? '成長率'
           :                                '累積XP';
         const initial = (r.name || '?')[0].toUpperCase();
+        const avatarHtml = r.avatar_display_url
+          ? `<img src="${escAttr(r.avatar_display_url)}" alt="">`
+          : escHtml(initial);
 
         return `
           <div class="lb-row ${isMe ? 'lb-row-me' : ''}">
             <span class="lb-rank">${medal}</span>
-            <div class="lb-avatar">${initial}</div>
+            <div class="lb-avatar">${avatarHtml}</div>
             <div class="lb-info">
               <div class="lb-name">${escHtml(r.name)}${isMe ? ' <span class="lb-you">你</span>' : ''}</div>
               <div class="lb-sub">Lv.${lvl} · 連勝 ${r.streak_days}天</div>
@@ -178,6 +181,25 @@ function _renderContent(container, rows, refreshedAt, isStale, refreshHour) {
   });
 }
 
+async function _withAvatarUrls(rows) {
+  const resolved = await Promise.all(rows.map(async row => {
+    if (!row.avatar_url) return { ...row, avatar_display_url: null };
+    if (/^(https?:|data:|blob:)/.test(row.avatar_url)) {
+      return { ...row, avatar_display_url: row.avatar_url };
+    }
+    try {
+      const { data, error } = await supabase.storage
+        .from('avatars')
+        .createSignedUrl(row.avatar_url, 60 * 60 * 24 * 7);
+      if (error) throw error;
+      return { ...row, avatar_display_url: data?.signedUrl || null };
+    } catch {
+      return { ...row, avatar_display_url: null };
+    }
+  }));
+  return resolved;
+}
+
 function _refreshNoteHtml(refreshedAt, isStale, refreshHour) {
   const hourText = `${String(refreshHour).padStart(2, '0')}:00`;
   const timeText = refreshedAt
@@ -196,4 +218,8 @@ function escHtml(str) {
   return String(str)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;')
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function escAttr(str) {
+  return escHtml(str).replace(/'/g, '&#39;');
 }
