@@ -29,9 +29,14 @@ const mockState = vi.hoisted(() => ({
 
 const mockStorage = vi.hoisted(() => ({
   saveUser:    vi.fn(),
+  saveUserAndSync: vi.fn(() => Promise.resolve()),
   isProUser:   vi.fn(() => false),
   isPaidProUser: vi.fn(() => false),
   isTrialUser: vi.fn(() => false),
+}));
+
+const mockDb = vi.hoisted(() => ({
+  uploadAvatar: vi.fn(() => Promise.resolve({ path: 'user/avatar.jpg', url: 'signed-avatar-url' })),
 }));
 
 // Prevent CDN import failure in Node
@@ -50,7 +55,7 @@ vi.mock('../../pwa/js/supabase.js', () => ({
 }));
 
 vi.mock('../../pwa/js/state.js',   () => ({ state: mockState }));
-vi.mock('../../pwa/js/storage.js', () => ({ storage: mockStorage }));
+vi.mock('../../pwa/js/storage.js', () => ({ storage: mockStorage, db: mockDb }));
 
 // Dynamic import in profile.js: import('../app.js').then(({ updateHeader }) => updateHeader())
 vi.mock('../../pwa/js/app.js', () => ({ updateHeader: vi.fn() }));

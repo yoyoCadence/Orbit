@@ -6,6 +6,7 @@ import { supabase }  from './supabase.js';
 import { today }     from './utils.js';
 
 const PREFIX = 'yoyo_';
+const LEADERBOARD_CACHE_KEY = 'leaderboardCache';
 
 function get(key) {
   try { return JSON.parse(localStorage.getItem(PREFIX + key)); } catch { return null; }
@@ -35,10 +36,15 @@ export const db = {
 
     if (profileRes.data) {
       const p = profileRes.data;
+      let avatar = null;
+      try { avatar = await this.resolveAvatarUrl(p.avatar_url); } catch (err) {
+        console.warn('Avatar URL resolve failed:', err);
+      }
       set('user', {
         id:                   p.user_id,
         name:                 p.name,
-        avatar:               p.avatar_url || null,
+        avatar,
+        avatarPath:           p.avatar_url || null,
         totalXP:              p.total_xp,
         streakDays:           p.streak_days,
         lastStreakDate:       p.last_streak_date  || '',
@@ -120,10 +126,10 @@ export const db = {
   async upsertProfile(user) {
     const session = await this._session();
     if (!session) return;
-    // Skip base64 avatars (too large) — only sync proper Storage URLs
-    const avatarUrl = (user.avatar && user.avatar.startsWith('data:'))
-      ? null : (user.avatar || null);
-    await supabase.from('profiles').upsert({
+    // Keep large local previews out of profiles; avatarPath points to Storage.
+    const avatarUrl = user.avatarPath || ((user.avatar && user.avatar.startsWith('data:'))
+      ? null : (user.avatar || null));
+    const { error } = await supabase.from('profiles').upsert({
       user_id:                session.user.id,
       name:                   user.name,
       avatar_url:             avatarUrl,
@@ -146,6 +152,35 @@ export const db = {
       focus_default_minutes:     user.focusDefaultMinutes     ?? null,
       focus_sound_enabled:       user.focusSoundEnabled       ?? true,
     });
+    if (error) throw error;
+  },
+
+  async uploadAvatar(file) {
+    const session = await this._session();
+    if (!session) throw new Error('Not authenticated');
+
+    const ext = (file.name?.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+    const path = `${session.user.id}/avatar-${Date.now()}.${ext}`;
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(path, file, { cacheControl: '3600', upsert: true });
+    if (uploadError) throw uploadError;
+
+    const signed = await supabase.storage.from('avatars').createSignedUrl(path, 60 * 60 * 24 * 7);
+    if (signed.error) throw signed.error;
+    return { path, url: signed.data?.signedUrl || null };
+  },
+
+  async resolveAvatarUrl(pathOrUrl) {
+    if (!pathOrUrl) return null;
+    if (/^(https?:|data:|blob:)/.test(pathOrUrl)) return pathOrUrl;
+    const session = await this._session();
+    if (!session) return null;
+    const { data, error } = await supabase.storage
+      .from('avatars')
+      .createSignedUrl(pathOrUrl, 60 * 60 * 24 * 7);
+    if (error) throw error;
+    return data?.signedUrl || null;
   },
 
   async upsertTasks(tasks) {
@@ -254,6 +289,7 @@ export const storage = {
   // ── User ─────────────────────────────────────────────────────────────────────
   getUser:    ()  => get('user'),
   saveUser:   (u) => { set('user', u); db.upsertProfile(u).catch(console.error); },
+  saveUserAndSync: async (u) => { set('user', u); await db.upsertProfile(u); },
 
   // ── Tasks ────────────────────────────────────────────────────────────────────
   getTasks:   ()  => get('tasks') ?? [],
@@ -321,6 +357,12 @@ export const storage = {
     ? localStorage.setItem(PREFIX + 'bgImage', d)
     : localStorage.removeItem(PREFIX + 'bgImage'),
 
+  // ── Leaderboard cache (local only; refreshed once per effective day) ───────
+  getLeaderboardCache: () => get(LEADERBOARD_CACHE_KEY),
+  saveLeaderboardCache: (rows, refreshedAt, refreshDate) => {
+    set(LEADERBOARD_CACHE_KEY, { rows, refreshedAt, refreshDate });
+  },
+
   // ── Daily Plan (local only, resets each day) ─────────────────────────────────
   getDailyPlan: () => {
     const data     = get('dailyPlan');
@@ -335,7 +377,8 @@ export const storage = {
 
   // ── Clear all local data (on sign-out) ────────────────────────────────────────
   clearAll: () => {
-    ['user','tasks','sessions','energy','goals','logs','theme','bgImage','dailyPlan','trialBannerDismiss']
+    ['user','tasks','sessions','energy','goals','logs','theme','bgImage','dailyPlan',
+      'trialBannerDismiss', LEADERBOARD_CACHE_KEY]
       .forEach(k => localStorage.removeItem(PREFIX + k));
   },
 };

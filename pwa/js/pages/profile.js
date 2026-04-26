@@ -1,5 +1,5 @@
 import { state }                                         from '../state.js';
-import { storage }                                        from '../storage.js';
+import { storage, db }                                    from '../storage.js';
 import { getLevelInfo, getDisplayTitle, xpTable,
          getAllTemplates }                                 from '../leveling.js';
 import { effectiveToday }                                 from '../utils.js';
@@ -73,6 +73,7 @@ export function renderProfile(container) {
         <div class="avatar-edit-badge">✏️</div>
       </div>
       <input type="file" id="avatar-input" accept="image/*" style="display:none">
+      <div class="profile-sync-status" id="avatar-sync-status" aria-live="polite"></div>
 
       <div class="profile-name" id="profile-name-display">
         ${escHtml(user.name)}<span class="edit-hint">✏️</span>
@@ -216,11 +217,32 @@ export function renderProfile(container) {
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = ev => {
+    reader.onload = async ev => {
+      const previousAvatar = state.user.avatar;
+      const previousAvatarPath = state.user.avatarPath || null;
       state.user.avatar = ev.target.result;
-      storage.saveUser(state.user);
+      state.user.avatarPath = null;
+      _saveUserLocalOnly(state.user);
       renderProfile(container);
       import('../app.js').then(({ updateHeader }) => updateHeader());
+      _setProfileSyncStatus('avatar-sync-status', '頭像上傳中...');
+      try {
+        const uploaded = await db.uploadAvatar(file);
+        state.user.avatar = uploaded.url || state.user.avatar;
+        state.user.avatarPath = uploaded.path;
+        await storage.saveUserAndSync(state.user);
+        renderProfile(container);
+        import('../app.js').then(({ updateHeader }) => updateHeader());
+        _setProfileSyncStatus('avatar-sync-status', '頭像已同步');
+      } catch (err) {
+        console.error('Avatar upload failed:', err);
+        state.user.avatar = previousAvatar;
+        state.user.avatarPath = previousAvatarPath;
+        _saveUserLocalOnly(state.user);
+        renderProfile(container);
+        import('../app.js').then(({ updateHeader }) => updateHeader());
+        _setProfileSyncStatus('avatar-sync-status', '頭像上傳失敗，請稍後再試', true);
+      }
     };
     reader.readAsDataURL(file);
   });
@@ -580,6 +602,7 @@ function showNameModal(container) {
         <label class="form-label">你的名稱</label>
         <input class="form-input" id="name-input" value="${escHtml(state.user.name)}" maxlength="20">
       </div>
+      <div class="profile-sync-status" id="name-save-status" aria-live="polite"></div>
       <button class="btn btn-primary" id="name-save-btn">儲存</button>
     </div>
   `;
@@ -589,13 +612,50 @@ function showNameModal(container) {
   input.focus(); input.select();
   modal.querySelector('#name-modal-close').addEventListener('click', () => modal.remove());
   modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
-  modal.querySelector('#name-save-btn').addEventListener('click', () => {
+  modal.querySelector('#name-save-btn').addEventListener('click', async () => {
     const name = input.value.trim();
     if (!name) return;
+    const previousName = state.user.name;
+    const btn = modal.querySelector('#name-save-btn');
+    const status = modal.querySelector('#name-save-status');
+    btn.disabled = true;
+    btn.textContent = '儲存中...';
+    status.textContent = '正在同步到雲端';
     state.user.name = name;
-    storage.saveUser(state.user);
-    modal.remove();
+    _saveUserLocalOnly(state.user);
     renderProfile(container);
+    import('../app.js').then(({ updateHeader }) => updateHeader());
+    try {
+      await storage.saveUserAndSync(state.user);
+      modal.remove();
+      renderProfile(container);
+      import('../app.js').then(({ updateHeader }) => updateHeader());
+    } catch (err) {
+      console.error('Name sync failed:', err);
+      state.user.name = previousName;
+      _saveUserLocalOnly(state.user);
+      btn.disabled = false;
+      btn.textContent = '儲存';
+      status.textContent = '同步失敗，請稍後再試';
+      status.classList.add('error');
+      renderProfile(container);
+      import('../app.js').then(({ updateHeader }) => updateHeader());
+    }
+  });
+}
+
+function _saveUserLocalOnly(user) {
+  try { localStorage.setItem('yoyo_user', JSON.stringify(user)); } catch (err) {
+    console.error('Local user save failed:', err);
+  }
+}
+
+function _setProfileSyncStatus(id, text, isError = false) {
+  requestAnimationFrame(() => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = text;
+    el.classList.toggle('error', isError);
   });
 }
 

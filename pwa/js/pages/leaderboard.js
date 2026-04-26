@@ -1,6 +1,8 @@
 import { state }    from '../state.js';
+import { storage }  from '../storage.js';
 import { supabase } from '../supabase.js';
 import { getLevelInfo } from '../leveling.js';
+import { effectiveToday } from '../utils.js';
 
 // ─── Growth rate calculation ──────────────────────────────────────────────────
 
@@ -26,17 +28,33 @@ export function isNewUser(createdAt) {
 let _tab = 'week'; // 'week' | 'growth' | 'total'
 
 export async function renderLeaderboard(container) {
+  const refreshHour = state.user?.newDayHour ?? 5;
+  const refreshDate = effectiveToday(refreshHour);
+  const cache = storage.getLeaderboardCache?.();
+  const cachedRows = Array.isArray(cache?.rows) ? cache.rows : null;
+  const isFresh = cachedRows && cache.refreshDate === refreshDate;
+
+  if (isFresh) {
+    _renderRows(container, cachedRows, cache.refreshedAt, false, refreshHour);
+    return;
+  }
+
   container.innerHTML = `
     <div class="section-title">🏆 排行榜</div>
-    <div class="lb-loading">載入中…</div>
+    <div class="lb-loading">${cachedRows ? '更新排行榜中…' : '載入排行榜中…'}</div>
   `;
 
   let rows;
   try {
     const { data, error } = await supabase.from('leaderboard_view').select('*');
     if (error) throw error;
-    rows = data;
+    rows = data || [];
+    storage.saveLeaderboardCache?.(rows, new Date().toISOString(), refreshDate);
   } catch {
+    if (cachedRows) {
+      _renderRows(container, cachedRows, cache.refreshedAt, true, refreshHour);
+      return;
+    }
     container.innerHTML = `
       <div class="section-title">🏆 排行榜</div>
       <div class="card"><div style="color:var(--text-muted);font-size:13px;text-align:center;padding:16px">
@@ -46,6 +64,10 @@ export async function renderLeaderboard(container) {
     return;
   }
 
+  _renderRows(container, rows, new Date().toISOString(), false, refreshHour);
+}
+
+function _renderRows(container, rows, refreshedAt, isStale, refreshHour) {
   if (!rows || rows.length === 0) {
     container.innerHTML = `
       <div class="section-title">🏆 排行榜</div>
@@ -54,6 +76,7 @@ export async function renderLeaderboard(container) {
           目前還沒有公開用戶。<br>在設定頁開啟「顯示於排行榜」即可加入！
         </div>
       </div>
+      ${_refreshNoteHtml(refreshedAt, isStale, refreshHour)}
     `;
     return;
   }
@@ -61,10 +84,10 @@ export async function renderLeaderboard(container) {
   const myMode = state.user?.mode || 'normal';
   const filtered = rows.filter(r => r.mode === myMode);
 
-  _renderContent(container, filtered);
+  _renderContent(container, filtered, refreshedAt, isStale, refreshHour);
 }
 
-function _renderContent(container, rows) {
+function _renderContent(container, rows, refreshedAt, isStale, refreshHour) {
   const myUserId = state.user?.id;
 
   // ── Week XP ranking ───────────────────────────────────────────────────────
@@ -133,6 +156,7 @@ function _renderContent(container, rows) {
     <div style="font-size:11px;color:var(--text-muted);text-align:center;margin-bottom:8px">
       ${modeLabel} · 僅顯示公開用戶
     </div>
+    ${_refreshNoteHtml(refreshedAt, isStale, refreshHour)}
 
     <div class="card" style="padding:0;overflow:hidden">
       ${listHtml}
@@ -149,9 +173,23 @@ function _renderContent(container, rows) {
   container.querySelectorAll('.lb-tab').forEach(btn => {
     btn.addEventListener('click', () => {
       _tab = btn.dataset.tab;
-      _renderContent(container, rows);
+      _renderContent(container, rows, refreshedAt, isStale, refreshHour);
     });
   });
+}
+
+function _refreshNoteHtml(refreshedAt, isStale, refreshHour) {
+  const hourText = `${String(refreshHour).padStart(2, '0')}:00`;
+  const timeText = refreshedAt
+    ? new Date(refreshedAt).toLocaleString('zh-TW', {
+        month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
+      })
+    : '尚未更新';
+  return `
+    <div class="lb-refresh-note ${isStale ? 'is-stale' : ''}">
+      每日 ${hourText} 後首次開啟時更新；上次更新 ${timeText}${isStale ? '，目前顯示快取資料' : ''}
+    </div>
+  `;
 }
 
 function escHtml(str) {

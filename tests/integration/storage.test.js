@@ -19,11 +19,13 @@ const mockGetSession = vi.hoisted(() =>
 );
 
 const mockFrom = vi.hoisted(() => vi.fn());
+const mockStorageFrom = vi.hoisted(() => vi.fn());
 
 vi.mock('../../pwa/js/supabase.js', () => ({
   supabase: {
     auth: { getSession: mockGetSession },
     from: mockFrom,
+    storage: { from: mockStorageFrom },
   },
 }));
 
@@ -78,6 +80,10 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockGetSession.mockResolvedValue({ data: { session: null } });
   mockFrom.mockImplementation(() => makeChain());
+  mockStorageFrom.mockImplementation(() => ({
+    upload: vi.fn(() => Promise.resolve({ data: {}, error: null })),
+    createSignedUrl: vi.fn(() => Promise.resolve({ data: { signedUrl: 'signed-avatar-url' }, error: null })),
+  }));
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -461,6 +467,53 @@ describe('db.upsertProfile()', () => {
     expect(chain.upsert).toHaveBeenCalledWith(
       expect.objectContaining({ avatar_url: null })
     );
+  });
+
+  it('syncs avatarPath to profiles.avatar_url', async () => {
+    mockGetSession.mockResolvedValue({ data: { session: FAKE_SESSION } });
+    const chain = makeChain();
+    mockFrom.mockImplementation(() => chain);
+
+    await db.upsertProfile({
+      name: 'Alice',
+      avatar: 'data:image/png;base64,abc123',
+      avatarPath: 'user-abc/avatar.jpg',
+      totalXP: 0, streakDays: 0,
+    });
+
+    expect(chain.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ avatar_url: 'user-abc/avatar.jpg' })
+    );
+  });
+});
+
+describe('db.uploadAvatar()', () => {
+  it('uploads to avatars bucket and returns storage path with signed url', async () => {
+    mockGetSession.mockResolvedValue({ data: { session: FAKE_SESSION } });
+    const upload = vi.fn(() => Promise.resolve({ data: {}, error: null }));
+    const createSignedUrl = vi.fn(() => Promise.resolve({ data: { signedUrl: 'signed-url' }, error: null }));
+    mockStorageFrom.mockImplementation(() => ({ upload, createSignedUrl }));
+
+    const result = await db.uploadAvatar({ name: 'me.png' });
+
+    expect(mockStorageFrom).toHaveBeenCalledWith('avatars');
+    expect(upload).toHaveBeenCalled();
+    expect(createSignedUrl).toHaveBeenCalled();
+    expect(result.path).toMatch(/^user-abc\/avatar-/);
+    expect(result.url).toBe('signed-url');
+  });
+});
+
+describe('storage leaderboard cache', () => {
+  it('saves and reads leaderboard cache', () => {
+    const rows = [{ user_id: 'u1', name: 'Alice' }];
+    storage.saveLeaderboardCache(rows, '2026-04-26T00:00:00Z', '2026-04-26');
+
+    expect(storage.getLeaderboardCache()).toEqual({
+      rows,
+      refreshedAt: '2026-04-26T00:00:00Z',
+      refreshDate: '2026-04-26',
+    });
   });
 });
 

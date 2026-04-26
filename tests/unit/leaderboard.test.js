@@ -136,6 +136,7 @@ describe('renderLeaderboard — Supabase error', () => {
   beforeEach(() => {
     container = document.createElement('div');
     document.body.appendChild(container);
+    localStorage.clear();
     vi.clearAllMocks();
   });
 
@@ -156,6 +157,7 @@ describe('renderLeaderboard — empty data', () => {
   beforeEach(() => {
     container = document.createElement('div');
     document.body.appendChild(container);
+    localStorage.clear();
     vi.clearAllMocks();
   });
 
@@ -176,6 +178,7 @@ describe('renderLeaderboard — with data', () => {
   beforeEach(() => {
     container = document.createElement('div');
     document.body.appendChild(container);
+    localStorage.clear();
     vi.clearAllMocks();
     mockState.user = { id: 'me', name: 'Alice', mode: 'normal' };
   });
@@ -190,6 +193,38 @@ describe('renderLeaderboard — with data', () => {
     await renderLeaderboard(container);
     expect(container.innerHTML).toContain('Bob');
     expect(container.innerHTML).toContain('本週XP');
+  });
+
+  it('uses same-day cache without querying Supabase again', async () => {
+    const rows = [makeRow({ user_id: 'user-1', name: 'Cached Bob', week_xp: 200 })];
+    const today = new Date().toLocaleDateString('sv');
+    localStorage.setItem('yoyo_leaderboardCache', JSON.stringify({
+      rows,
+      refreshedAt: new Date().toISOString(),
+      refreshDate: today,
+    }));
+
+    await renderLeaderboard(container);
+
+    expect(mockFrom).not.toHaveBeenCalled();
+    expect(container.innerHTML).toContain('Cached Bob');
+    expect(container.innerHTML).toContain('每日 05:00');
+  });
+
+  it('falls back to stale cache when Supabase refresh fails', async () => {
+    const rows = [makeRow({ user_id: 'user-1', name: 'Stale Bob', week_xp: 200 })];
+    localStorage.setItem('yoyo_leaderboardCache', JSON.stringify({
+      rows,
+      refreshedAt: new Date(Date.now() - 86400000).toISOString(),
+      refreshDate: '2000-01-01',
+    }));
+    mockSelect.mockResolvedValueOnce({ data: null, error: { message: 'network error' } });
+
+    await renderLeaderboard(container);
+
+    expect(mockFrom).toHaveBeenCalledWith('leaderboard_view');
+    expect(container.innerHTML).toContain('Stale Bob');
+    expect(container.innerHTML).toContain('目前顯示快取資料');
   });
 
   it('escapes HTML in user names', async () => {

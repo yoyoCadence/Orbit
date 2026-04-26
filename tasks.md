@@ -65,6 +65,9 @@
 
 ## Done
 
+- [x] **USER-201** 修正使用者名稱 / 大頭貼同步與排行榜快取
+  - 完成：個人頁名稱儲存會顯示同步中 / 失敗狀態並等待 Supabase 寫入；大頭貼改為先本機預覽、再上傳 `avatars` Storage、成功後把 Storage path 寫回 `profiles.avatar_url`；排行榜新增每日有效日快取與快取 fallback，頁面顯示每日更新時間與上次更新時間；頂部狀態條新增使用者名稱並與個人頁共用同一頭像來源；555 tests passing
+
 - [x] **PS-212** 地圖視窗支援點選房間切換場景
   - 完成：`floorMapPanel.js` 從 `model.sceneOptions` 計算 `availableSceneIds`，有可用 scene 的房間改以 `<button data-space-map-room-switch>` 渲染（`is-navigable` class），無可用 scene 的房間維持 `<div>` 不可點；`pages/personalSpace.js` 地圖視窗 click handler 新增 `[data-space-map-room-switch]` 分支，邏輯與場景切換器一致（memoryProperty → memoryViewSceneId，否則 selectedSceneId + 清除 memoryViewSceneId）；補 5 個面板渲染測試（545 tests passing）
 
