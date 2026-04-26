@@ -83,14 +83,15 @@ describe('personal space floor map schema', () => {
 });
 
 describe('floor map panel rendering', () => {
-  function buildModel({ activeSceneId, sceneOptions }) {
+  function buildModel({ activeSceneId, sceneOptions, activeWorkScene = null }) {
     return {
       activeScene: { id: activeSceneId },
+      activeWorkScene,
       sceneOptions,
     };
   }
 
-  it('renders a navigable button with data-space-map-room-switch for rooms with available scenes', () => {
+  it('renders navigable buttons for rooms with available scenes', () => {
     const model = buildModel({
       activeSceneId: 'office-corner',
       sceneOptions: [
@@ -103,39 +104,33 @@ describe('floor map panel rendering', () => {
     const container = document.createElement('div');
     container.innerHTML = html;
 
-    const switchButtons = container.querySelectorAll('[data-space-map-room-switch]');
-    const switchIds = Array.from(switchButtons).map(btn => btn.dataset.spaceMapRoomSwitch);
+    const switchIds = Array.from(container.querySelectorAll('[data-space-map-room-switch]'))
+      .map(btn => btn.dataset.spaceMapRoomSwitch);
 
     expect(switchIds).toContain('office-corner');
     expect(switchIds).toContain('formal-workstation');
   });
 
-  it('renders corridor rooms (no sceneIds) as plain divs showing their label', () => {
+  it('excludes corridor rooms (no sceneIds) from the map entirely', () => {
     const model = buildModel({
       activeSceneId: 'office-corner',
-      sceneOptions: [
-        { id: 'office-corner', family: 'office', role: 'work' },
-      ],
+      sceneOptions: [{ id: 'office-corner', family: 'office', role: 'work' }],
     });
 
     const html = renderFloorMapPanel(model);
     const container = document.createElement('div');
     container.innerHTML = html;
 
-    // company-lobby has no sceneIds → plain div, not locked, not interactive
-    const lobby = container.querySelector('[data-space-map-room="company-lobby"]');
-    expect(lobby?.tagName.toLowerCase()).toBe('div');
-    expect(lobby?.classList.contains('is-locked')).toBe(false);
-    expect(lobby?.querySelector('[data-space-map-room-switch]')).toBeNull();
+    // company-lobby, company-elevator etc. have no sceneIds → not rendered at all
+    expect(container.querySelector('[data-space-map-room="company-lobby"]')).toBeNull();
+    expect(container.querySelector('[data-space-map-room="company-elevator"]')).toBeNull();
   });
 
-  it('renders rooms with scenes not yet available as locked cells without revealing the room name', () => {
-    // Only office-corner available → formal-workstation-room has a sceneId but it's not in sceneOptions
+  it('renders locked rooms with Lv.XX and hides the room name', () => {
+    // office-corner available; formal-workstation (Lv.15) is locked
     const model = buildModel({
       activeSceneId: 'office-corner',
-      sceneOptions: [
-        { id: 'office-corner', family: 'office', role: 'work' },
-      ],
+      sceneOptions: [{ id: 'office-corner', family: 'office', role: 'work' }],
     });
 
     const html = renderFloorMapPanel(model);
@@ -144,52 +139,128 @@ describe('floor map panel rendering', () => {
 
     const lockedRoom = container.querySelector('[data-space-map-room="formal-workstation-room"]');
     expect(lockedRoom?.classList.contains('is-locked')).toBe(true);
-    // Should not expose the room label
     expect(lockedRoom?.textContent).not.toContain('正式工位');
-    // Should show the unlock hint
     expect(lockedRoom?.textContent).toContain('繼續努力');
+    // Lv.15 displayed on the locked cell
+    expect(lockedRoom?.querySelector('.space-map-room-level')?.textContent).toContain('15');
+  });
+
+  it('shows a teaser for the next locked floor and hides further locked floors', () => {
+    // Only office-corner → floor-1 open; floor-2 (small-office Lv.20) should appear as teaser
+    const model = buildModel({
+      activeSceneId: 'office-corner',
+      sceneOptions: [{ id: 'office-corner', family: 'office', role: 'work' }],
+    });
+
+    const html = renderFloorMapPanel(model);
+    const container = document.createElement('div');
+    container.innerHTML = html;
+
+    // Teaser floor: exists and shows level info
+    const teaserFloor = container.querySelector('.is-locked-floor');
+    expect(teaserFloor).not.toBeNull();
+    expect(teaserFloor?.querySelector('.space-map-floor-teaser')?.textContent).toContain('20');
+
+    // Floor 3+ should NOT appear as full floors (only one teaser)
+    const allFloors = container.querySelectorAll('.space-map-floor:not(.is-locked-floor)');
+    const teaser = container.querySelectorAll('.space-map-floor.is-locked-floor');
+    expect(teaser).toHaveLength(1);
+
+    // "更多樓層" note should appear because there are floors 3/4/5 still locked
+    expect(container.querySelector('.space-map-more-floors')).not.toBeNull();
+  });
+
+  it('shows no more-floors note when only one locked floor remains', () => {
+    // All office scenes up to manager-room available; only large-office-suite is locked
+    const model = buildModel({
+      activeSceneId: 'manager-room',
+      activeWorkScene: { id: 'manager-room' },
+      sceneOptions: [
+        { id: 'office-corner', family: 'office', role: 'work' },
+        { id: 'formal-workstation', family: 'office', role: 'work' },
+        { id: 'small-office', family: 'office', role: 'work' },
+        { id: 'mid-office', family: 'office', role: 'work' },
+        { id: 'manager-room', family: 'office', role: 'work' },
+      ],
+    });
+
+    const html = renderFloorMapPanel(model);
+    const container = document.createElement('div');
+    container.innerHTML = html;
+
+    // Only floor-5 locked → teaser but no more-floors note
+    expect(container.querySelector('.is-locked-floor')).not.toBeNull();
+    expect(container.querySelector('.space-map-more-floors')).toBeNull();
+  });
+
+  it('marks the active work scene with 上班中 badge', () => {
+    const model = buildModel({
+      activeSceneId: 'office-corner',
+      activeWorkScene: { id: 'office-corner' },
+      sceneOptions: [
+        { id: 'office-corner', family: 'office', role: 'work' },
+        { id: 'formal-workstation', family: 'office', role: 'work' },
+      ],
+    });
+
+    const html = renderFloorMapPanel(model);
+    const container = document.createElement('div');
+    container.innerHTML = html;
+
+    const workBadge = container.querySelector('[data-space-map-room="office-corner-room"] .space-map-room-badge--work');
+    expect(workBadge?.textContent).toBe('上班中');
+  });
+
+  it('marks graduated office rooms with 回顧 badge', () => {
+    // office-corner graduated at Lv.15; formal-workstation is the active work scene
+    const model = buildModel({
+      activeSceneId: 'formal-workstation',
+      activeWorkScene: { id: 'formal-workstation' },
+      sceneOptions: [
+        { id: 'office-corner', family: 'office', role: 'work' },
+        { id: 'formal-workstation', family: 'office', role: 'work' },
+      ],
+    });
+
+    const html = renderFloorMapPanel(model);
+    const container = document.createElement('div');
+    container.innerHTML = html;
+
+    // office-corner-room has graduatesAtLevel: 15 → should show 回顧
+    const memoryBadge = container.querySelector('[data-space-map-room="office-corner-room"] .space-map-room-badge--memory');
+    expect(memoryBadge?.textContent).toBe('回顧');
   });
 
   it('marks the current room with is-current', () => {
-    // office-corner is the active scene → office-corner-room should be current
     const model = buildModel({
       activeSceneId: 'office-corner',
-      sceneOptions: [
-        { id: 'office-corner', family: 'office', role: 'work' },
-      ],
+      sceneOptions: [{ id: 'office-corner', family: 'office', role: 'work' }],
     });
 
     const html = renderFloorMapPanel(model);
     const container = document.createElement('div');
     container.innerHTML = html;
 
-    const currentRoom = container.querySelector('[data-space-map-room="office-corner-room"].is-current');
-    expect(currentRoom).not.toBeNull();
+    expect(container.querySelector('[data-space-map-room="office-corner-room"].is-current')).not.toBeNull();
   });
 
   it('does not render buildings for unavailable families', () => {
-    // Only office scenes available → estate building should not appear
     const model = buildModel({
       activeSceneId: 'office-corner',
-      sceneOptions: [
-        { id: 'office-corner', family: 'office', role: 'work' },
-      ],
+      sceneOptions: [{ id: 'office-corner', family: 'office', role: 'work' }],
     });
 
     const html = renderFloorMapPanel(model);
     const container = document.createElement('div');
     container.innerHTML = html;
 
-    const estateWindow = container.querySelector('[data-space-map-window="estate-residence"]');
-    expect(estateWindow).toBeNull();
+    expect(container.querySelector('[data-space-map-window="estate-residence"]')).toBeNull();
   });
 
   it('returns empty string when no building families are available', () => {
     const model = buildModel({
       activeSceneId: 'rough-room',
-      sceneOptions: [
-        { id: 'rough-room', family: 'rental', role: 'home' },
-      ],
+      sceneOptions: [{ id: 'rough-room', family: 'rental', role: 'home' }],
     });
 
     expect(renderFloorMapPanel(model)).toBe('');

@@ -235,6 +235,11 @@ export function getMemoryPropertyRule(sceneId) {
   return MEMORY_PROPERTY_RULES.find(rule => rule.sceneId === sceneId) || null;
 }
 
+// Returns the minimum player level required to unlock the given scene, or null if unknown.
+export function getSceneMinLevel(sceneId) {
+  return SCENE_OPTIONS.find(o => o.id === sceneId)?.minLevel ?? null;
+}
+
 function getHighestUnlockedScene(level, predicate) {
   return SCENE_OPTIONS
     .filter(option => level >= option.minLevel)
