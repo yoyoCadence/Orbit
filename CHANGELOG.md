@@ -6,7 +6,7 @@
 ## [Unreleased]
 
 ### Added
-- Profile avatar sync: 個人頁上傳大頭貼現在會先即時預覽，再背景上傳到 Supabase Storage，成功後把 Storage path 同步到 `profiles.avatar_url`
+- Profile avatar sync: 個人頁上傳大頭貼現在會先即時預覽；登入使用者會背景上傳到 Supabase Storage 並同步 `profiles.avatar_url`，遊客則保留為本機頭像
 - Leaderboard daily cache: 排行榜新增本機每日快取，當日已更新時再次進入不會重複查詢 Supabase，並在頁面提示每日更新時間與上次更新時間
 - Header identity display: 頂部狀態條新增使用者名稱，並與個人頁共用同一個使用者大頭貼來源
 - Floor map room navigation: 地圖視窗內有對應 scene 且已解鎖的房間現在渲染為可點擊按鈕（`is-navigable`），點擊後等同點擊場景切換器，memory scene 房間正確寫入 `memoryViewSceneId`
@@ -20,7 +20,7 @@
 - Floor map memory markers: `world/floorMap.js` 為四個畢業辦公室房間加上 `graduatesAtLevel` 欄位，並新增 `getMemoryRooms(level)` query helper
 
 ### Changed
-- Profile name saves now surface sync progress and failure states instead of silently relying on background sync
+- Profile name and title preference saves now use explicit local-first persistence with cloud sync instead of silently relying on background sync
 - Personal space page now loads persisted `spentGold` and `ownedItems` from local state, deducts spent gold from available gold, and shows a small owned-item snapshot on the page
 - Personal space page now renders the starter shop catalog, shows starter item prices and ownership state, and emits a purchase request event hook for future write flow
 - Personal space scene layer now switches between rental / office / estate contexts based on stage progression, supports home-work scene switching, moves explanatory UI outside the 2D scene, and treats older office floors as revisitable memory properties

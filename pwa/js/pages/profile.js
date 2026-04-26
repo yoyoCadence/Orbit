@@ -235,6 +235,13 @@ export function renderProfile(container) {
         import('../app.js').then(({ updateHeader }) => updateHeader());
         _setProfileSyncStatus('avatar-sync-status', '頭像已同步');
       } catch (err) {
+        if (err?.message === 'Not authenticated') {
+          _saveUserLocalOnly(state.user);
+          renderProfile(container);
+          import('../app.js').then(({ updateHeader }) => updateHeader());
+          _setProfileSyncStatus('avatar-sync-status', '頭像已儲存在此裝置，登入後可同步');
+          return;
+        }
         console.error('Avatar upload failed:', err);
         state.user.avatar = previousAvatar;
         state.user.avatarPath = previousAvatarPath;
@@ -254,12 +261,13 @@ export function renderProfile(container) {
 
   // Template select buttons
   container.querySelectorAll('.title-tmpl-btn:not([data-locked])').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
       state.user.titleTemplate = btn.dataset.template;
       state.user.customTitle   = '';
-      storage.saveUser(state.user);
+      _saveUserLocalOnly(state.user);
       renderProfile(container);
       import('../app.js').then(({ updateHeader }) => updateHeader());
+      await _syncUserPreference();
     });
   });
   container.querySelectorAll('.title-tmpl-btn[data-locked]').forEach(btn => {
@@ -283,9 +291,10 @@ export function renderProfile(container) {
   document.getElementById('custom-title-save').addEventListener('click', () => {
     const val = document.getElementById('custom-title-input').value.trim();
     state.user.customTitle = val || '';
-    storage.saveUser(state.user);
+    _saveUserLocalOnly(state.user);
     renderProfile(container);
     import('../app.js').then(({ updateHeader }) => updateHeader());
+    _syncUserPreference();
   });
 
   // XP table — show more
@@ -305,9 +314,10 @@ export function renderProfile(container) {
   // Custom title clear
   document.getElementById('custom-title-clear')?.addEventListener('click', () => {
     state.user.customTitle = '';
-    storage.saveUser(state.user);
+    _saveUserLocalOnly(state.user);
     renderProfile(container);
     import('../app.js').then(({ updateHeader }) => updateHeader());
+    _syncUserPreference();
   });
 
   // Scroll heatmap to rightmost (newest) on render
@@ -567,7 +577,8 @@ function showTemplateEditor(container, editKey) {
     // Auto-select newly created template
     if (isNew) state.user.titleTemplate = key;
 
-    storage.saveUser(state.user);
+    _saveUserLocalOnly(state.user);
+    _syncUserPreference();
     modal.remove();
     renderProfile(container);
     import('../app.js').then(({ updateHeader }) => updateHeader());
@@ -578,7 +589,8 @@ function showTemplateEditor(container, editKey) {
     delete state.user.customTemplates[editKey];
     // Fall back to rpg if deleted template was selected
     if (state.user.titleTemplate === editKey) state.user.titleTemplate = 'rpg';
-    storage.saveUser(state.user);
+    _saveUserLocalOnly(state.user);
+    _syncUserPreference();
     modal.remove();
     renderProfile(container);
     import('../app.js').then(({ updateHeader }) => updateHeader());
@@ -647,6 +659,12 @@ function showNameModal(container) {
 function _saveUserLocalOnly(user) {
   try { localStorage.setItem('yoyo_user', JSON.stringify(user)); } catch (err) {
     console.error('Local user save failed:', err);
+  }
+}
+
+async function _syncUserPreference() {
+  try { await storage.saveUserAndSync(state.user); } catch (err) {
+    console.error('Profile preference sync failed:', err);
   }
 }
 
