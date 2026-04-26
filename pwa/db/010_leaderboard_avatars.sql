@@ -6,16 +6,19 @@
 -- ============================================================
 
 -- ── 1. leaderboard_view: add avatar_url ─────────────────────
+-- PostgreSQL does not allow CREATE OR REPLACE VIEW to insert a column in the
+-- middle of an existing view. Keep the original leaderboard_view column order
+-- and append avatar_url at the end.
 CREATE OR REPLACE VIEW leaderboard_view AS
 SELECT
   p.user_id,
   p.name,
-  p.avatar_url,
   p.total_xp,
   p.streak_days,
   p.mode,
   p.created_at,
-  COALESCE(w.week_xp, 0) AS week_xp
+  COALESCE(w.week_xp, 0) AS week_xp,
+  p.avatar_url
 FROM profiles p
 LEFT JOIN (
   SELECT
