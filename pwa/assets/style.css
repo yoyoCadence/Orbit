@@ -1399,6 +1399,10 @@ nav {
   padding: 9px 10px;
 }
 
+.space-map-room {
+  position: relative;
+}
+
 .space-map-room.is-current {
   border-color: color-mix(in srgb, var(--accent) 78%, var(--border));
   background: color-mix(in srgb, var(--accent) 16%, var(--surface-2));
@@ -1433,6 +1437,68 @@ nav {
   font-weight: 700;
   text-align: center;
   line-height: 1.5;
+}
+
+.space-map-room-level {
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  padding: 2px 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text) 8%, var(--surface-2));
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.space-map-room-badge {
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  padding: 2px 5px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.space-map-room-badge--work {
+  background: color-mix(in srgb, var(--primary) 16%, var(--surface-2));
+  color: var(--primary);
+}
+
+.space-map-room-badge--memory {
+  background: color-mix(in srgb, var(--text) 8%, var(--surface-2));
+  color: var(--text-muted);
+}
+
+.space-map-floor.is-locked-floor {
+  opacity: 0.6;
+}
+
+.space-map-floor.is-locked-floor .space-map-floor-label span {
+  background: color-mix(in srgb, var(--text) 8%, var(--surface-2));
+  color: var(--text-muted);
+}
+
+.space-map-floor-teaser {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px dashed var(--border);
+  background: color-mix(in srgb, var(--text) 3%, var(--surface-2));
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.space-map-more-floors {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 6px 4px 2px;
+  letter-spacing: 0.02em;
 }
 
 .space-map-room strong {
