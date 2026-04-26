@@ -83,6 +83,19 @@ function renderRoom(room, currentRoom, availableSceneIds) {
   const kindLabel = formatRoomKind(room.kind);
   const switchableSceneId = room.sceneIds.find(sceneId => availableSceneIds.has(sceneId)) ?? null;
 
+  // Room has scenes but none are unlocked yet → hide identity to preserve discovery
+  if (room.sceneIds.length > 0 && !switchableSceneId) {
+    return `
+      <div
+        class="space-map-room is-locked"
+        data-space-map-room="${escapeHtml(room.id)}"
+        aria-label="尚未解鎖的空間"
+      >
+        <span class="space-map-room-locked-label">繼續努力<br>開放更多空間</span>
+      </div>
+    `;
+  }
+
   if (switchableSceneId) {
     return `
       <button
@@ -98,6 +111,7 @@ function renderRoom(room, currentRoom, availableSceneIds) {
     `;
   }
 
+  // No sceneIds (corridors, transition areas) — show label but not interactive
   return `
     <div
       class="space-map-room ${isCurrent ? 'is-current' : ''}"

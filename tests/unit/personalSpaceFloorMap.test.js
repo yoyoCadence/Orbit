@@ -110,7 +110,7 @@ describe('floor map panel rendering', () => {
     expect(switchIds).toContain('formal-workstation');
   });
 
-  it('renders rooms without available scenes as non-interactive divs', () => {
+  it('renders corridor rooms (no sceneIds) as plain divs showing their label', () => {
     const model = buildModel({
       activeSceneId: 'office-corner',
       sceneOptions: [
@@ -122,12 +122,32 @@ describe('floor map panel rendering', () => {
     const container = document.createElement('div');
     container.innerHTML = html;
 
-    // company-lobby has no sceneIds — should be a div, not a button with room-switch
-    const lobbySwitch = container.querySelector('[data-space-map-room="company-lobby"][data-space-map-room-switch]');
-    expect(lobbySwitch).toBeNull();
+    // company-lobby has no sceneIds → plain div, not locked, not interactive
+    const lobby = container.querySelector('[data-space-map-room="company-lobby"]');
+    expect(lobby?.tagName.toLowerCase()).toBe('div');
+    expect(lobby?.classList.contains('is-locked')).toBe(false);
+    expect(lobby?.querySelector('[data-space-map-room-switch]')).toBeNull();
+  });
 
-    const lobbyDiv = container.querySelector('[data-space-map-room="company-lobby"]');
-    expect(lobbyDiv?.tagName.toLowerCase()).toBe('div');
+  it('renders rooms with scenes not yet available as locked cells without revealing the room name', () => {
+    // Only office-corner available → formal-workstation-room has a sceneId but it's not in sceneOptions
+    const model = buildModel({
+      activeSceneId: 'office-corner',
+      sceneOptions: [
+        { id: 'office-corner', family: 'office', role: 'work' },
+      ],
+    });
+
+    const html = renderFloorMapPanel(model);
+    const container = document.createElement('div');
+    container.innerHTML = html;
+
+    const lockedRoom = container.querySelector('[data-space-map-room="formal-workstation-room"]');
+    expect(lockedRoom?.classList.contains('is-locked')).toBe(true);
+    // Should not expose the room label
+    expect(lockedRoom?.textContent).not.toContain('正式工位');
+    // Should show the unlock hint
+    expect(lockedRoom?.textContent).toContain('繼續努力');
   });
 
   it('marks the current room with is-current', () => {
