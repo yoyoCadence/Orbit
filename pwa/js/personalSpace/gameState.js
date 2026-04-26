@@ -11,6 +11,7 @@ export function createDefaultPersonalSpaceState() {
     selectedSceneId: 'rough-room',
     selectedThemeId: 'default',
     companionRelationshipStage: 'stranger-observer',
+    memorySceneLog: {},  // { [sceneId]: { firstVisitedAt: ISO string | null } }
     hiddenStats: {
       discipline: 0,
       depth: 0,
@@ -115,11 +116,25 @@ function normalizePersonalSpaceState(value) {
     spentGold: Number.isFinite(raw.spentGold) ? Math.max(0, raw.spentGold) : defaults.spentGold,
     ownedItems: normalizeOwnedItems(raw.ownedItems),
     placedItems: normalizePlacedItems(raw.placedItems),
+    memorySceneLog: normalizeMemorySceneLog(raw.memorySceneLog),
     hiddenStats: {
       ...defaults.hiddenStats,
       ...(raw.hiddenStats && typeof raw.hiddenStats === 'object' ? raw.hiddenStats : {}),
     },
   };
+}
+
+function normalizeMemorySceneLog(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+
+  const result = {};
+  for (const [sceneId, entry] of Object.entries(value)) {
+    if (typeof sceneId !== 'string' || !sceneId.trim()) continue;
+    result[sceneId.trim()] = {
+      firstVisitedAt: typeof entry?.firstVisitedAt === 'string' ? entry.firstVisitedAt : null,
+    };
+  }
+  return result;
 }
 
 export function loadPersonalSpaceState() {
@@ -130,4 +145,18 @@ export function savePersonalSpaceState(nextState) {
   const merged = normalizePersonalSpaceState(nextState);
   writeJSON(KEY, merged);
   return merged;
+}
+
+// Records the first visit to a memory scene. Idempotent — does not overwrite existing entry.
+export function recordMemorySceneVisit(sceneId) {
+  const state = loadPersonalSpaceState();
+  if (state.memorySceneLog[sceneId]?.firstVisitedAt) return state;
+
+  return savePersonalSpaceState({
+    ...state,
+    memorySceneLog: {
+      ...state.memorySceneLog,
+      [sceneId]: { firstVisitedAt: new Date().toISOString() },
+    },
+  });
 }

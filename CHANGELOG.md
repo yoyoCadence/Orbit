@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Added
+- Memory property rule system: `unlockRules.js` 新增 `MEMORY_PROPERTY_KIND`（`graduated` / `buyback`）與 `MEMORY_PROPERTY_RULES`，作為所有 memory property 的資料層唯一來源；新增 `getGraduatedMemoryScenes`、`isMemoryScene`、`getMemoryPropertyRule` helper，讓 runtime 與 UI 可直接查詢而不需 UI-level 推算
+- Memory scene visit log: `gameState.js` 新增 `memorySceneLog` 欄位（按 sceneId 記錄 `firstVisitedAt`）與 `recordMemorySceneVisit` API，為 memory scene 的狀態保存建立最小資料結構
+- Floor map memory markers: `world/floorMap.js` 為四個畢業辦公室房間加上 `graduatesAtLevel` 欄位，並新增 `getMemoryRooms(level)` query helper
+
 ### Changed
 - Personal space page now loads persisted `spentGold` and `ownedItems` from local state, deducts spent gold from available gold, and shows a small owned-item snapshot on the page
 - Personal space page now renders the starter shop catalog, shows starter item prices and ownership state, and emits a purchase request event hook for future write flow

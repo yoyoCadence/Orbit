@@ -1,3 +1,53 @@
+export const MEMORY_PROPERTY_KIND = Object.freeze({
+  GRADUATED: 'graduated',  // scene is accessible as memory once player levels past it
+  BUYBACK: 'buyback',      // scene requires explicit purchase at acquireLevel
+});
+
+// Formal classification and preservation rules for all memory properties.
+// This is the data-layer source of truth — the UI must not infer memory status from comparisons alone.
+export const MEMORY_PROPERTY_RULES = [
+  {
+    id: 'office-corner-memory',
+    sceneId: 'office-corner',
+    label: '最初辦公角',
+    kind: MEMORY_PROPERTY_KIND.GRADUATED,
+    graduatesAtLevel: 15,  // player moves up when formal-workstation unlocks
+    npcPresence: true,     // other employees continue working here after graduation
+  },
+  {
+    id: 'formal-workstation-memory',
+    sceneId: 'formal-workstation',
+    label: '正式工位',
+    kind: MEMORY_PROPERTY_KIND.GRADUATED,
+    graduatesAtLevel: 20,
+    npcPresence: true,
+  },
+  {
+    id: 'small-office-memory',
+    sceneId: 'small-office',
+    label: '二樓小辦公室',
+    kind: MEMORY_PROPERTY_KIND.GRADUATED,
+    graduatesAtLevel: 30,
+    npcPresence: true,
+  },
+  {
+    id: 'mid-office-memory',
+    sceneId: 'mid-office',
+    label: '中階高樓層辦公室',
+    kind: MEMORY_PROPERTY_KIND.GRADUATED,
+    graduatesAtLevel: 40,
+    npcPresence: true,
+  },
+  {
+    id: 'buy-back-rental-memory',
+    sceneId: 'buy-back-rental',
+    label: '買回最初租屋處',
+    kind: MEMORY_PROPERTY_KIND.BUYBACK,
+    acquireLevel: 80,
+    npcPresence: false,
+  },
+];
+
 export const SPACE_UNLOCKS = [
   { level: 1, id: 'rough-room', label: 'Starter rental room', type: 'scene', stage: 'survival' },
   { level: 3, id: 'basic-furniture', label: 'Basic small furniture unlock', type: 'item-tier', stage: 'survival' },
@@ -47,7 +97,7 @@ export function getCurrentSpaceStage(level) {
   return 'survival';
 }
 
-export function getAvailableSceneOptions(level) {
+export function getAvailableSceneOptions(level, { ownedItems = [] } = {}) {
   const stage = getCurrentSpaceStage(level);
 
   if (stage === 'survival') {
@@ -64,7 +114,7 @@ export function getAvailableSceneOptions(level) {
   return [
     getPrimaryResidenceScene(level),
     ...getUnlockedWorkplaceScenes(level),
-    ...getUnlockedMemoryScenes(level),
+    ...getUnlockedMemoryScenes(level, ownedItems),
   ].filter(Boolean);
 }
 
@@ -88,14 +138,21 @@ export function getUnlockedWorkplaceScenes(level) {
     .filter(option => level >= option.minLevel);
 }
 
-export function getUnlockedMemoryScenes(level) {
+export function getUnlockedMemoryScenes(level, ownedItems = []) {
+  const ownedSet = new Set(ownedItems.map(item => (typeof item === 'string' ? item : item?.id)).filter(Boolean));
+
   return SCENE_OPTIONS
     .filter(option => option.memoryProperty)
-    .filter(option => level >= option.minLevel);
+    .filter(option => level >= option.minLevel)
+    .filter(option => {
+      const rule = getMemoryPropertyRule(option.id);
+      if (rule?.kind === MEMORY_PROPERTY_KIND.BUYBACK) return ownedSet.has(option.id);
+      return true;
+    });
 }
 
-export function resolveActiveScene(level, selectedSceneId) {
-  const options = getAvailableSceneOptions(level);
+export function resolveActiveScene(level, selectedSceneId, { ownedItems = [] } = {}) {
+  const options = getAvailableSceneOptions(level, { ownedItems });
   const selected = options.find(option => option.id === selectedSceneId);
 
   if (selected) return selected;
@@ -103,7 +160,37 @@ export function resolveActiveScene(level, selectedSceneId) {
   const stage = getCurrentSpaceStage(level);
   if (stage === 'building') return getPrimaryWorkplaceScene(level) || options[0] || null;
   if (stage === 'mastery') return getPrimaryResidenceScene(level) || options[0] || null;
-  return getPrimaryResidenceScene(level) || options[0] || null;
+  return getPrimaryResidenceScene(level) || null;
+}
+
+// Returns graduated office scenes that have become memory properties for the given level.
+// These scenes are also present in getUnlockedWorkplaceScenes; this function adds the
+// memory-specific metadata (memoryKind, npcPresence) that the runtime needs.
+export function getGraduatedMemoryScenes(level) {
+  return MEMORY_PROPERTY_RULES
+    .filter(rule => rule.kind === MEMORY_PROPERTY_KIND.GRADUATED && level >= rule.graduatesAtLevel)
+    .map(rule => {
+      const base = SCENE_OPTIONS.find(o => o.id === rule.sceneId);
+      if (!base) return null;
+      return { ...base, memoryProperty: true, memoryKind: rule.kind, npcPresence: rule.npcPresence };
+    })
+    .filter(Boolean);
+}
+
+// Returns true if the given scene is a memory property at the given level.
+// Use this in place of UI-level minLevel comparisons.
+export function isMemoryScene(sceneId, level) {
+  return MEMORY_PROPERTY_RULES.some(rule => {
+    if (rule.sceneId !== sceneId) return false;
+    if (rule.kind === MEMORY_PROPERTY_KIND.GRADUATED) return level >= rule.graduatesAtLevel;
+    if (rule.kind === MEMORY_PROPERTY_KIND.BUYBACK) return level >= rule.acquireLevel;
+    return false;
+  });
+}
+
+// Returns the formal memory property rule for a scene, or null if none applies.
+export function getMemoryPropertyRule(sceneId) {
+  return MEMORY_PROPERTY_RULES.find(rule => rule.sceneId === sceneId) || null;
 }
 
 function getHighestUnlockedScene(level, predicate) {

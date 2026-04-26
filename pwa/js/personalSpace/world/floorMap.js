@@ -95,6 +95,7 @@ export const personalSpaceFloorMap = {
       kind: 'workspace',
       sceneIds: ['office-corner'],
       adjacentRooms: ['company-lobby', 'company-elevator', 'formal-workstation-room'],
+      graduatesAtLevel: 15,
     }),
     'formal-workstation-room': createRoom({
       id: 'formal-workstation-room',
@@ -103,6 +104,7 @@ export const personalSpaceFloorMap = {
       kind: 'workspace',
       sceneIds: ['formal-workstation'],
       adjacentRooms: ['office-corner-room', 'company-elevator'],
+      graduatesAtLevel: 20,
     }),
     'company-floor-2-hall': createRoom({
       id: 'company-floor-2-hall',
@@ -118,6 +120,7 @@ export const personalSpaceFloorMap = {
       kind: 'workspace',
       sceneIds: ['small-office'],
       adjacentRooms: ['company-floor-2-hall'],
+      graduatesAtLevel: 30,
     }),
     'company-floor-3-hall': createRoom({
       id: 'company-floor-3-hall',
@@ -133,6 +136,7 @@ export const personalSpaceFloorMap = {
       kind: 'workspace',
       sceneIds: ['mid-office'],
       adjacentRooms: ['company-floor-3-hall'],
+      graduatesAtLevel: 40,
     }),
     'company-floor-4-hall': createRoom({
       id: 'company-floor-4-hall',
@@ -273,6 +277,12 @@ export function getRoomBySceneId(sceneId) {
   return Object.values(personalSpaceFloorMap.rooms).find(room => room.sceneIds.includes(sceneId)) || null;
 }
 
+// Returns all rooms that have graduated to memory status at the given level.
+export function getMemoryRooms(level) {
+  return Object.values(personalSpaceFloorMap.rooms)
+    .filter(room => room.graduatesAtLevel != null && level >= room.graduatesAtLevel);
+}
+
 function createRoom({
   id,
   floorId,
@@ -280,8 +290,9 @@ function createRoom({
   kind,
   sceneIds = [],
   adjacentRooms = [],
+  graduatesAtLevel = null,
 }) {
-  return {
+  const room = {
     id,
     floorId,
     label,
@@ -289,4 +300,8 @@ function createRoom({
     sceneIds,
     adjacentRooms,
   };
+
+  if (graduatesAtLevel !== null) room.graduatesAtLevel = graduatesAtLevel;
+
+  return room;
 }
