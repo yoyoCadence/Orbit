@@ -185,13 +185,19 @@ export function getUnlockedMemoryScenes(level, ownedItems = []) {
   return [...graduatedRental, ...buyback];
 }
 
-export function resolveActiveScene(level, selectedSceneId, { ownedItems = [] } = {}) {
+export function resolveActiveScene(level, selectedSceneId, { ownedItems = [], memoryViewSceneId = null } = {}) {
   const options = getAvailableSceneOptions(level, { ownedItems });
-  const selected = options.find(option => option.id === selectedSceneId);
 
-  // Memory scenes require explicit user navigation — skip them as auto-selected defaults
-  // so a stale selectedSceneId (e.g. 'rough-room' before mastery) falls back to stage defaults.
-  if (selected && !selected.memoryProperty) return selected;
+  // Explicit memory scene navigation takes priority
+  if (memoryViewSceneId) {
+    const memoryScene = options.find(o => o.id === memoryViewSceneId && o.memoryProperty);
+    if (memoryScene) return memoryScene;
+  }
+
+  // For primary selection, skip memory-property scenes to avoid stale pre-mastery selections
+  // (e.g. selectedSceneId = 'rough-room' saved before player moved to estate)
+  const selected = options.find(o => o.id === selectedSceneId && !o.memoryProperty);
+  if (selected) return selected;
 
   const stage = getCurrentSpaceStage(level);
   if (stage === 'building') return getPrimaryWorkplaceScene(level) || options[0] || null;

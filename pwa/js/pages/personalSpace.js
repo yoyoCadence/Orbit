@@ -160,10 +160,12 @@ export function renderPersonalSpace(container) {
     const sceneId = switchButton.dataset.sceneSwitch;
     if (!sceneId || sceneId === model.activeScene?.id) return;
 
-    savePersonalSpaceState({
-      ...model.personalSpaceState,
-      selectedSceneId: sceneId,
-    });
+    const clickedOption = model.sceneOptions.find(o => o.id === sceneId);
+    if (clickedOption?.memoryProperty) {
+      savePersonalSpaceState({ ...model.personalSpaceState, memoryViewSceneId: sceneId });
+    } else {
+      savePersonalSpaceState({ ...model.personalSpaceState, selectedSceneId: sceneId, memoryViewSceneId: null });
+    }
     renderPersonalSpace(container);
   });
   containSceneSwitcherSwipe(container);
