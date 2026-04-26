@@ -9,7 +9,12 @@
 - Profile avatar sync: 個人頁上傳大頭貼現在會先即時預覽，再背景上傳到 Supabase Storage，成功後把 Storage path 同步到 `profiles.avatar_url`
 - Leaderboard daily cache: 排行榜新增本機每日快取，當日已更新時再次進入不會重複查詢 Supabase，並在頁面提示每日更新時間與上次更新時間
 - Header identity display: 頂部狀態條新增使用者名稱，並與個人頁共用同一個使用者大頭貼來源
-- Floor map room navigation: 地圖視窗內有對應 scene 且已解鎖的房間現在渲染為可點擊按鈕（`is-navigable`），點擊後等同點擊場景切換器，memory scene 房間正確寫入 `memoryViewSceneId`，無對應 scene 或尚未解鎖的房間維持 `<div>` 不可點
+- Floor map room navigation: 地圖視窗內有對應 scene 且已解鎖的房間現在渲染為可點擊按鈕（`is-navigable`），點擊後等同點擊場景切換器，memory scene 房間正確寫入 `memoryViewSceneId`
+- Floor map progressive reveal: 只有擁有可用 scene 的樓層正常顯示；下一個鎖定樓層以「升到 Lv.XX 解鎖」teaser 顯示，不洩漏樓層名稱；其餘未解鎖樓層收合為「更多樓層持續升等後陸續開放」一行
+- Floor map room lock badges: 鎖定房間右上角顯示「Lv.XX」解鎖等級，隱藏真實名稱，保留解鎖驚喜感
+- Floor map office badges: 公司地圖中當前辦公室標示「上班中」，已畢業的舊辦公室標示「回顧」
+- Scene enter animation: `.space-scene-shell` 加入 `scene-enter` keyframe（opacity + scale，0.35s），每次場景切換自動觸發進場動畫
+- `getSceneMinLevel(sceneId)`: `unlockRules.js` 新增 helper，供地圖 UI 查詢各 scene 的最低解鎖等級
 - Memory property rule system: `unlockRules.js` 新增 `MEMORY_PROPERTY_KIND`（`graduated` / `buyback`）與 `MEMORY_PROPERTY_RULES`，作為所有 memory property 的資料層唯一來源；新增 `getGraduatedMemoryScenes`、`isMemoryScene`、`getMemoryPropertyRule` helper，讓 runtime 與 UI 可直接查詢而不需 UI-level 推算
 - Memory scene visit log: `gameState.js` 新增 `memorySceneLog` 欄位（按 sceneId 記錄 `firstVisitedAt`）與 `recordMemorySceneVisit` API，為 memory scene 的狀態保存建立最小資料結構
 - Floor map memory markers: `world/floorMap.js` 為四個畢業辦公室房間加上 `graduatesAtLevel` 欄位，並新增 `getMemoryRooms(level)` query helper
@@ -27,6 +32,7 @@
 - Personal space local state now separates `ownedItems` from `placedItems`, and scene runtime can apply placement overrides from local layout state without coupling placement data to purchase ownership
 - Personal space now defines company-building and estate floor-map schema with explicit building, floor, room, scene, and adjacency data, giving future map UI and room topology changes a stable source of truth
 - Personal space now exposes company and estate map icon buttons that open floor-map windows showing each building's floors, rooms, room types, and current scene location
+- Floor map excludes corridor and transition rooms (no sceneIds) from display; only rooms with playable scenes appear in the map grid
 
 ## [v1.16.0] - 2026-04-21
 

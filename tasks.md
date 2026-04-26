@@ -69,7 +69,7 @@
   - 完成：個人頁名稱儲存會顯示同步中 / 失敗狀態並等待 Supabase 寫入；大頭貼改為先本機預覽、再上傳 `avatars` Storage、成功後把 Storage path 寫回 `profiles.avatar_url`；排行榜新增每日有效日快取與快取 fallback，頁面顯示每日更新時間與上次更新時間；頂部狀態條新增使用者名稱並與個人頁共用同一頭像來源；555 tests passing
 
 - [x] **PS-212** 地圖視窗支援點選房間切換場景
-  - 完成：`floorMapPanel.js` 從 `model.sceneOptions` 計算 `availableSceneIds`，有可用 scene 的房間改以 `<button data-space-map-room-switch>` 渲染（`is-navigable` class），無可用 scene 的房間維持 `<div>` 不可點；`pages/personalSpace.js` 地圖視窗 click handler 新增 `[data-space-map-room-switch]` 分支，邏輯與場景切換器一致（memoryProperty → memoryViewSceneId，否則 selectedSceneId + 清除 memoryViewSceneId）；補 5 個面板渲染測試（545 tests passing）
+  - 完成：地圖房間可點擊切換場景；鎖定樓層漸進揭露（只顯示已解鎖樓層 + 下一個 teaser + 其餘收合）；鎖定房間顯示「Lv.XX」但不洩漏名稱；公司辦公室標示「上班中」/「回顧」badge；走廊/景觀等無 sceneId 房間移除；切換場景觸發進場動畫；`getSceneMinLevel` helper 新增；550 tests passing（PR #95 #96 #97）
 
 - [x] **PS-208** 修正住處場景切換邏輯
   - 完成：mastery 階段「住處」tab 改為顯示所有已解鎖豪宅場景（`getUnlockedEstateScenes`）；`rough-room` / `upgraded-rental` 在 Lv.40 透過 `MEMORY_PROPERTY_RULES` 正式畢業進「回顧」；`resolveActiveScene` 跳過 stale memory scene，自動 fallback 到豪宅預設；移除 estate SCENE_OPTIONS 的 maxLevel 誤差；540 tests passing
