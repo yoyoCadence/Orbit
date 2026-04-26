@@ -64,17 +64,14 @@
 
 ## In Progress
 
-- [ ] **PS-208** 修正住處場景切換邏輯
-  - 目標：豪宅所有已解鎖房間均可在「住處」分類切換；搬進豪宅（Lv.40）後舊租屋處移至「回顧」
-  - 範圍：`unlockRules.js`、`MEMORY_PROPERTY_RULES`、相關測試
-  - 完成條件：
-    - Lv.40+ 的「住處」tab 顯示所有已解鎖豪宅場景（不只最高那間）
-    - Lv.40+ 的「回顧」tab 出現 rough-room、upgraded-rental（搬進豪宅後的舊居）
-    - 原有辦公室回顧邏輯不受影響
+- [ ] 目前無進行中的正式任務
 
 ---
 
 ## Done
+
+- [x] **PS-208** 修正住處場景切換邏輯
+  - 完成：mastery 階段「住處」tab 改為顯示所有已解鎖豪宅場景（`getUnlockedEstateScenes`）；`rough-room` / `upgraded-rental` 在 Lv.40 透過 `MEMORY_PROPERTY_RULES` 正式畢業進「回顧」；`resolveActiveScene` 跳過 stale memory scene，自動 fallback 到豪宅預設；移除 estate SCENE_OPTIONS 的 maxLevel 誤差；540 tests passing
 
 - [x] **PS-207** 將舊辦公樓層與租屋處正式納入 memory property 規則
   - 完成：新增 `MEMORY_PROPERTY_KIND` 與 `MEMORY_PROPERTY_RULES`（`unlockRules.js`），作為 memory property 的資料層唯一來源；新增 `getGraduatedMemoryScenes`、`isMemoryScene`、`getMemoryPropertyRule` 三個 helper；`gameState.js` 加入 `memorySceneLog` 追蹤欄位與 `recordMemorySceneVisit` API；`world/floorMap.js` 為四個畢業辦公室房間加上 `graduatesAtLevel`，並新增 `getMemoryRooms(level)` query helper；補 26 個測試（523 tests passing）
