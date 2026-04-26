@@ -8,6 +8,7 @@ const MAP_BUILDINGS = [
 export function renderFloorMapPanel(model) {
   const currentRoom = getRoomBySceneId(model.activeScene?.id);
   const availableFamilies = new Set(model.sceneOptions.map(option => option.family));
+  const availableSceneIds = new Set(model.sceneOptions.map(option => option.id));
   const buildings = MAP_BUILDINGS
     .filter(entry => availableFamilies.has(entry.family))
     .map(entry => getBuildingMap(entry.id))
@@ -19,7 +20,7 @@ export function renderFloorMapPanel(model) {
     <div class="space-map-entry" aria-label="Floor map">
       ${buildings.map(building => renderMapButton(building)).join('')}
     </div>
-    ${buildings.map(building => renderMapWindow(building, currentRoom)).join('')}
+    ${buildings.map(building => renderMapWindow(building, currentRoom, availableSceneIds)).join('')}
   `;
 }
 
@@ -37,7 +38,7 @@ function renderMapButton(building) {
   `;
 }
 
-function renderMapWindow(building, currentRoom) {
+function renderMapWindow(building, currentRoom, availableSceneIds) {
   return `
     <div
       class="space-map-window"
@@ -54,14 +55,14 @@ function renderMapWindow(building, currentRoom) {
           <button class="space-map-close" type="button" data-space-map-close aria-label="關閉地圖">×</button>
         </div>
         <div class="space-map-floor-list">
-          ${building.floors.map(floor => renderFloor(floor, currentRoom)).join('')}
+          ${building.floors.map(floor => renderFloor(floor, currentRoom, availableSceneIds)).join('')}
         </div>
       </section>
     </div>
   `;
 }
 
-function renderFloor(floor, currentRoom) {
+function renderFloor(floor, currentRoom, availableSceneIds) {
   const rooms = getFloorRooms(floor.id);
 
   return `
@@ -71,21 +72,39 @@ function renderFloor(floor, currentRoom) {
         <strong>${escapeHtml(floor.label)}</strong>
       </div>
       <div class="space-map-room-grid">
-        ${rooms.map(room => renderRoom(room, currentRoom)).join('')}
+        ${rooms.map(room => renderRoom(room, currentRoom, availableSceneIds)).join('')}
       </div>
     </article>
   `;
 }
 
-function renderRoom(room, currentRoom) {
+function renderRoom(room, currentRoom, availableSceneIds) {
   const isCurrent = currentRoom?.id === room.id;
   const kindLabel = formatRoomKind(room.kind);
-  const sceneCount = room.sceneIds.length;
+  const switchableSceneId = room.sceneIds.find(sceneId => availableSceneIds.has(sceneId)) ?? null;
+
+  if (switchableSceneId) {
+    return `
+      <button
+        class="space-map-room is-navigable ${isCurrent ? 'is-current' : ''}"
+        type="button"
+        data-space-map-room="${escapeHtml(room.id)}"
+        data-space-map-room-switch="${escapeHtml(switchableSceneId)}"
+        aria-label="前往${escapeHtml(room.label)}"
+      >
+        <strong>${escapeHtml(room.label)}</strong>
+        <span>${escapeHtml(kindLabel)}</span>
+      </button>
+    `;
+  }
 
   return `
-    <div class="space-map-room ${isCurrent ? 'is-current' : ''}" data-space-map-room="${escapeHtml(room.id)}">
+    <div
+      class="space-map-room ${isCurrent ? 'is-current' : ''}"
+      data-space-map-room="${escapeHtml(room.id)}"
+    >
       <strong>${escapeHtml(room.label)}</strong>
-      <span>${escapeHtml(kindLabel)}${sceneCount ? ` · ${sceneCount} scene` : ''}</span>
+      <span>${escapeHtml(kindLabel)}</span>
     </div>
   `;
 }
