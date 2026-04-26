@@ -203,3 +203,45 @@ Avoid:
 - "implement system"
 - "build feature"
 - "add 3D"
+
+## 16. Personal Space Development Reference
+
+### Module Responsibilities
+
+| 模組 | 職責 |
+|------|------|
+| `personalSpace/index.js` | `buildPersonalSpaceViewModel(user)` — 組合所有資料給頁面用 |
+| `personalSpace/unlockRules.js` | scene/stage unlock 邏輯、MEMORY_PROPERTY_RULES、`getSceneMinLevel` |
+| `personalSpace/gameState.js` | localStorage 讀寫、normalize、`recordMemorySceneVisit` |
+| `personalSpace/economy.js` | Gold 估算 |
+| `personalSpace/sceneRuntime.js` | 場景 2D 渲染 runtime |
+| `personalSpace/world/floorMap.js` | 公司 / 豪宅建築拓樸資料（buildings / floors / rooms / sceneIds） |
+| `personalSpace/ui/floorMapPanel.js` | 地圖視窗 HTML 渲染（樓層漸進揭露、badge、可點房間） |
+| `pages/personalSpace.js` | 頁面事件處理：場景切換器、地圖視窗點擊、interaction bus |
+
+### Key State Fields
+
+- `selectedSceneId` — 玩家選擇的主場景（非 memory scene）
+- `memoryViewSceneId` — 玩家明確導航到的回顧場景（null = 不在回顧模式）
+- `ownedItems` — 購買的家具/物件
+- `placedItems` — 各場景的擺放資料
+- `memorySceneLog` — 各 memory scene 的首次造訪時間
+
+### 測試時切換玩家等級（DevTools Console）
+
+```js
+// 修改 totalXP 來模擬不同等級（參考 pwa/js/leveling.js 計算對應 XP）
+const u = JSON.parse(localStorage.getItem('yoyo_user'));
+u.totalXP = 2000;   // 約 Lv.10（公司建設期開始）
+// u.totalXP = 8000;  // 約 Lv.20（二樓辦公室）
+// u.totalXP = 25000; // 約 Lv.40（掌控期，豪宅解鎖）
+localStorage.setItem('yoyo_user', JSON.stringify(u));
+location.reload();
+```
+
+### 測試時重置個人空間本地狀態
+
+```js
+localStorage.removeItem('orbit_personal-space-state');
+location.reload();
+```

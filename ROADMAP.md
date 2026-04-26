@@ -1,8 +1,8 @@
 # Orbit Roadmap
 
-> 2026-04-21 sync note: v1.16.0 已完成 life-sim foundation 基線，包含 personalSpace 模組骨架、platform adapters、個人空間 page route，以及對應文件同步。v1.16.x 後續工作仍以 SUB-13 為主。
+> 2026-04-26 sync note: PS-205~PS-212 personal space 地圖系統全部完成並 merged（PR #91~97）。v1.16.x 近期工作以 SUB-13 CSV 匯出為主，personal space 下一步為 AI companion（AI-201）或 preload 優化（PS-211）。
 
-目前版本：**v1.15.0**
+目前版本：**v1.16.0**（Unreleased 已累積大量 personal space 功能，待下次打版）
 
 這份文件記錄 Orbit 的公開功能規劃方向。功能依優先順序排列，會隨專案進展持續更新。
 
@@ -32,6 +32,7 @@
 
 ## 已完成
 
+- v1.16.x（Unreleased）— **Personal Space 地圖系統**（PS-205~PS-212）：公司 / 豪宅樓層地圖視窗、可點擊房間切換場景、樓層漸進揭露、解鎖等級標示、上班中 / 回顧 badge、走廊移除、場景切換進場動畫；memory property 規則正式化（MEMORY_PROPERTY_RULES）；memoryViewSceneId 區分回顧導航與 stale 選擇
 - v1.15.0 — **SUB-12** Focus Timer Pro（自訂倒數時長、Web Audio 音效、Session 備注）+ **refactor** isProUser() 含試用統一判斷
 - v1.14.0 — **SUB-16** Streak 解鎖 Pro（連勝 45 天 → 自動獲得 30 天免費 Pro）+ **SUB-UX1** 所有 Pro 限定功能標上「✦ Pro 專屬」角徽
 - v1.13.0 — **SUB-11** 進階數據儀表板（任務效率分析、最佳時段分佈、Streak 里程碑預測）
