@@ -1292,6 +1292,12 @@ export function applyTheme(themeId) {
   storage.saveTheme(themeId);
 }
 
+export function applyUiSkin(skinId) {
+  const nextSkin = skinId === 'modern' ? 'modern' : 'classic';
+  document.documentElement.setAttribute('data-ui-skin', nextSkin);
+  storage.saveUiSkin(nextSkin);
+}
+
 /** Pick and apply a random theme for today, but only once per calendar day. Pro only. */
 export function applyRandomThemeForToday() {
   if (!storage.getRandomThemeEnabled()) return;
@@ -1509,6 +1515,7 @@ async function init() {
   migrateV1toV2(today());
   migrateDefaultFlags();         // tag pre-existing default tasks with isDefault:true
   document.documentElement.setAttribute('data-theme', storage.getTheme());
+  document.documentElement.setAttribute('data-ui-skin', storage.getUiSkin());
   applyRandomThemeForToday(); // overrides saved theme if random-theme feature is on
   _renderBg(storage.getBgImage());
 

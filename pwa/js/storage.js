@@ -348,6 +348,8 @@ export const storage = {
   // ── Theme / Background (local only) ──────────────────────────────────────────
   getTheme:    ()  => get('theme') || 'dark-purple',
   saveTheme:   (t) => set('theme', t),
+  getUiSkin:    ()  => get('uiSkin') || 'classic',
+  saveUiSkin:   (s) => set('uiSkin', s === 'modern' ? 'modern' : 'classic'),
   getRandomThemeEnabled: ()  => !!get('randomThemeEnabled'),
   saveRandomThemeEnabled:(v) => set('randomThemeEnabled', !!v),
   getRandomThemeDate:    ()  => get('randomThemeDate') || '',
@@ -377,7 +379,7 @@ export const storage = {
 
   // ── Clear all local data (on sign-out) ────────────────────────────────────────
   clearAll: () => {
-    ['user','tasks','sessions','energy','goals','logs','theme','bgImage','dailyPlan',
+    ['user','tasks','sessions','energy','goals','logs','theme','uiSkin','bgImage','dailyPlan',
       'trialBannerDismiss', LEADERBOARD_CACHE_KEY]
       .forEach(k => localStorage.removeItem(PREFIX + k));
   },
