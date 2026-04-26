@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import {
   createDefaultPersonalSpaceState,
   loadPersonalSpaceState,
+  recordMemorySceneVisit,
   savePersonalSpaceState,
 } from '../../pwa/js/personalSpace/gameState.js';
 import { getPlacedFurnitureForScene } from '../../pwa/js/personalSpace/furnitureState.js';
@@ -16,6 +17,36 @@ describe('personal space furniture state', () => {
       ownedItems: [],
       placedItems: [],
     });
+  });
+
+  it('includes memorySceneLog as an empty object in default state', () => {
+    expect(createDefaultPersonalSpaceState().memorySceneLog).toEqual({});
+  });
+
+  it('normalizes and persists memorySceneLog entries', () => {
+    localStorage.clear();
+    savePersonalSpaceState({
+      memorySceneLog: {
+        'office-corner': { firstVisitedAt: '2026-04-26T10:00:00.000Z' },
+        '': { firstVisitedAt: '2026-01-01T00:00:00.000Z' },  // invalid key — should be dropped
+      },
+    });
+
+    const state = loadPersonalSpaceState();
+    expect(state.memorySceneLog['office-corner']).toEqual({ firstVisitedAt: '2026-04-26T10:00:00.000Z' });
+    expect(state.memorySceneLog['']).toBeUndefined();
+  });
+
+  it('recordMemorySceneVisit sets firstVisitedAt on first call and is idempotent', () => {
+    localStorage.clear();
+
+    recordMemorySceneVisit('office-corner');
+    const first = loadPersonalSpaceState().memorySceneLog['office-corner'];
+    expect(typeof first.firstVisitedAt).toBe('string');
+
+    recordMemorySceneVisit('office-corner');
+    const second = loadPersonalSpaceState().memorySceneLog['office-corner'];
+    expect(second.firstVisitedAt).toBe(first.firstVisitedAt);
   });
 
   it('normalizes placed items separately from owned items', () => {

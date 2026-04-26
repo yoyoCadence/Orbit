@@ -8,6 +8,7 @@ import {
   getBuildingFloors,
   getBuildingMap,
   getFloorRooms,
+  getMemoryRooms,
   getRoomBySceneId,
 } from '../../pwa/js/personalSpace/world/floorMap.js';
 
@@ -57,5 +58,25 @@ describe('personal space floor map schema', () => {
       'company-elevator',
       'formal-workstation-room',
     ]);
+  });
+
+  it('marks graduated office rooms with a graduatesAtLevel field', () => {
+    expect(getRoomBySceneId('office-corner')).toMatchObject({ graduatesAtLevel: 15 });
+    expect(getRoomBySceneId('formal-workstation')).toMatchObject({ graduatesAtLevel: 20 });
+    expect(getRoomBySceneId('small-office')).toMatchObject({ graduatesAtLevel: 30 });
+    expect(getRoomBySceneId('mid-office')).toMatchObject({ graduatesAtLevel: 40 });
+  });
+
+  it('does not mark non-graduated rooms with graduatesAtLevel', () => {
+    expect(getRoomBySceneId('manager-room')?.graduatesAtLevel).toBeUndefined();
+    expect(getRoomBySceneId('estate-hall')?.graduatesAtLevel).toBeUndefined();
+  });
+
+  it('getMemoryRooms returns rooms that have graduated at the given level', () => {
+    expect(getMemoryRooms(14).map(r => r.id)).toEqual([]);
+    expect(getMemoryRooms(15).map(r => r.id)).toContain('office-corner-room');
+    expect(getMemoryRooms(15).map(r => r.id)).not.toContain('formal-workstation-room');
+    expect(getMemoryRooms(20).map(r => r.id)).toContain('formal-workstation-room');
+    expect(getMemoryRooms(40).map(r => r.id)).toHaveLength(4);
   });
 });
