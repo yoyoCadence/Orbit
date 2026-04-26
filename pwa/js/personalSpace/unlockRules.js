@@ -97,7 +97,7 @@ export function getCurrentSpaceStage(level) {
   return 'survival';
 }
 
-export function getAvailableSceneOptions(level) {
+export function getAvailableSceneOptions(level, { ownedItems = [] } = {}) {
   const stage = getCurrentSpaceStage(level);
 
   if (stage === 'survival') {
@@ -114,7 +114,7 @@ export function getAvailableSceneOptions(level) {
   return [
     getPrimaryResidenceScene(level),
     ...getUnlockedWorkplaceScenes(level),
-    ...getUnlockedMemoryScenes(level),
+    ...getUnlockedMemoryScenes(level, ownedItems),
   ].filter(Boolean);
 }
 
@@ -138,14 +138,21 @@ export function getUnlockedWorkplaceScenes(level) {
     .filter(option => level >= option.minLevel);
 }
 
-export function getUnlockedMemoryScenes(level) {
+export function getUnlockedMemoryScenes(level, ownedItems = []) {
+  const ownedSet = new Set(ownedItems.map(item => (typeof item === 'string' ? item : item?.id)).filter(Boolean));
+
   return SCENE_OPTIONS
     .filter(option => option.memoryProperty)
-    .filter(option => level >= option.minLevel);
+    .filter(option => level >= option.minLevel)
+    .filter(option => {
+      const rule = getMemoryPropertyRule(option.id);
+      if (rule?.kind === MEMORY_PROPERTY_KIND.BUYBACK) return ownedSet.has(option.id);
+      return true;
+    });
 }
 
-export function resolveActiveScene(level, selectedSceneId) {
-  const options = getAvailableSceneOptions(level);
+export function resolveActiveScene(level, selectedSceneId, { ownedItems = [] } = {}) {
+  const options = getAvailableSceneOptions(level, { ownedItems });
   const selected = options.find(option => option.id === selectedSceneId);
 
   if (selected) return selected;
@@ -153,7 +160,7 @@ export function resolveActiveScene(level, selectedSceneId) {
   const stage = getCurrentSpaceStage(level);
   if (stage === 'building') return getPrimaryWorkplaceScene(level) || options[0] || null;
   if (stage === 'mastery') return getPrimaryResidenceScene(level) || options[0] || null;
-  return getPrimaryResidenceScene(level) || options[0] || null;
+  return getPrimaryResidenceScene(level) || null;
 }
 
 // Returns graduated office scenes that have become memory properties for the given level.

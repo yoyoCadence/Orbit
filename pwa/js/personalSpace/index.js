@@ -17,8 +17,8 @@ export function buildPersonalSpaceViewModel(user) {
   const ownedItems = personalSpaceState.ownedItems || [];
   const placedItems = personalSpaceState.placedItems || [];
   const stage = getCurrentSpaceStage(levelInfo.level);
-  const sceneOptions = getAvailableSceneOptions(levelInfo.level);
-  const activeScene = resolveActiveScene(levelInfo.level, personalSpaceState.selectedSceneId);
+  const sceneOptions = getAvailableSceneOptions(levelInfo.level, { ownedItems });
+  const activeScene = resolveActiveScene(levelInfo.level, personalSpaceState.selectedSceneId, { ownedItems });
   const activeWorkScene = getPrimaryWorkplaceScene(levelInfo.level);
 
   return {

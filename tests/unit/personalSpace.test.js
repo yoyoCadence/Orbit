@@ -269,7 +269,7 @@ describe('renderPersonalSpace', () => {
     expect(container.querySelectorAll('.space-scene-worker').length).toBeGreaterThan(0);
   });
 
-  it('groups older office floors and buy-back rental under memory scenes', () => {
+  it('groups older office floors under memory scenes', () => {
     state.user.totalXP = 30000;
 
     renderPersonalSpace(container);
@@ -279,7 +279,27 @@ describe('renderPersonalSpace', () => {
 
     expect(memoryPanel?.hidden).toBe(false);
     expect(memoryPanel?.querySelector('[data-scene-switch="office-corner"]')).not.toBeNull();
-    expect(memoryPanel?.querySelector('[data-scene-switch="buy-back-rental"]')).not.toBeNull();
     expect(container.querySelector('[data-scene-category-panel="work"] [data-scene-switch="large-office-suite"]')).not.toBeNull();
+  });
+
+  it('does not show buy-back-rental in memory tab at Lv.80 unless purchased', () => {
+    state.user.totalXP = 30000; // Lv.80+
+
+    renderPersonalSpace(container);
+    container.querySelector('[data-scene-category="memory"]')?.click();
+
+    const memoryPanel = container.querySelector('[data-scene-category-panel="memory"]');
+    expect(memoryPanel?.querySelector('[data-scene-switch="buy-back-rental"]')).toBeNull();
+  });
+
+  it('shows buy-back-rental in memory tab at Lv.80 when in ownedItems', () => {
+    state.user.totalXP = 30000; // Lv.80+
+    savePersonalSpaceState({ ownedItems: ['buy-back-rental'] });
+
+    renderPersonalSpace(container);
+    container.querySelector('[data-scene-category="memory"]')?.click();
+
+    const memoryPanel = container.querySelector('[data-scene-category-panel="memory"]');
+    expect(memoryPanel?.querySelector('[data-scene-switch="buy-back-rental"]')).not.toBeNull();
   });
 });

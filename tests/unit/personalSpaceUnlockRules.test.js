@@ -6,8 +6,10 @@ import { describe, expect, it } from 'vitest';
 import {
   MEMORY_PROPERTY_KIND,
   MEMORY_PROPERTY_RULES,
+  getAvailableSceneOptions,
   getGraduatedMemoryScenes,
   getMemoryPropertyRule,
+  getUnlockedMemoryScenes,
   isMemoryScene,
 } from '../../pwa/js/personalSpace/unlockRules.js';
 
@@ -104,5 +106,40 @@ describe('getMemoryPropertyRule', () => {
   it('returns null for scenes with no memory rule', () => {
     expect(getMemoryPropertyRule('rough-room')).toBeNull();
     expect(getMemoryPropertyRule('estate-hall')).toBeNull();
+  });
+});
+
+describe('getUnlockedMemoryScenes buyback gate', () => {
+  it('does NOT return buy-back-rental at Lv.80 when not in ownedItems', () => {
+    const scenes = getUnlockedMemoryScenes(80, []);
+    expect(scenes.map(s => s.id)).not.toContain('buy-back-rental');
+  });
+
+  it('returns buy-back-rental at Lv.80 when present in ownedItems (string form)', () => {
+    const scenes = getUnlockedMemoryScenes(80, ['buy-back-rental']);
+    expect(scenes.map(s => s.id)).toContain('buy-back-rental');
+  });
+
+  it('returns buy-back-rental at Lv.80 when present in ownedItems (object form)', () => {
+    const scenes = getUnlockedMemoryScenes(80, [{ id: 'buy-back-rental' }]);
+    expect(scenes.map(s => s.id)).toContain('buy-back-rental');
+  });
+
+  it('does not gate graduated scenes behind ownedItems', () => {
+    const scenes = getUnlockedMemoryScenes(80, []);
+    // buy-back-rental filtered out, but graduated scenes are not present in getUnlockedMemoryScenes anyway
+    expect(scenes.every(s => s.id !== 'buy-back-rental')).toBe(true);
+  });
+});
+
+describe('getAvailableSceneOptions buyback gate', () => {
+  it('does NOT include buy-back-rental at Lv.80 without ownedItems', () => {
+    const options = getAvailableSceneOptions(80);
+    expect(options.map(o => o.id)).not.toContain('buy-back-rental');
+  });
+
+  it('includes buy-back-rental at Lv.80 when owned', () => {
+    const options = getAvailableSceneOptions(80, { ownedItems: ['buy-back-rental'] });
+    expect(options.map(o => o.id)).toContain('buy-back-rental');
   });
 });
