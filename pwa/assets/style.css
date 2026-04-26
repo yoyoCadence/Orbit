@@ -1029,8 +1029,14 @@ nav {
   color: var(--text);
 }
 
+@keyframes scene-enter {
+  from { opacity: 0.35; transform: scale(0.984); }
+  to   { opacity: 1;    transform: scale(1); }
+}
+
 .space-scene-shell {
   min-height: 260px;
+  animation: scene-enter 0.35s ease;
 }
 
 .space-scene-meta {
@@ -1396,6 +1402,37 @@ nav {
 .space-map-room.is-current {
   border-color: color-mix(in srgb, var(--accent) 78%, var(--border));
   background: color-mix(in srgb, var(--accent) 16%, var(--surface-2));
+}
+
+.space-map-room.is-navigable {
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.space-map-room.is-navigable:hover,
+.space-map-room.is-navigable:focus-visible {
+  border-color: color-mix(in srgb, var(--primary-lt) 60%, var(--border));
+  background: color-mix(in srgb, var(--primary) 14%, var(--surface-2));
+  outline: none;
+}
+
+.space-map-room.is-locked {
+  background: color-mix(in srgb, var(--text) 3%, var(--surface-2));
+  border-color: var(--border);
+  border-style: dashed;
+  cursor: default;
+  justify-content: center;
+  align-items: center;
+}
+
+.space-map-room-locked-label {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.5;
 }
 
 .space-map-room strong {
