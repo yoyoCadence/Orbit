@@ -51,11 +51,6 @@
   - 目標：完成 roadmap 既有 SUB-15
   - 對應 roadmap：?瑟? 2.x
 
-- [ ] **PS-212** 地圖視窗支援點選房間切換場景
-  - 目標：讓樓層地圖視窗內的房間可點擊，點擊後切換到對應場景（若該房間有 sceneId 且場景在玩家可用清單內）
-  - 範圍：`ui/floorMapPanel.js`、`pages/personalSpace.js`（scene switch 事件）
-  - 完成條件：點擊地圖房間 = 等同點擊場景切換器的場景按鈕；無對應場景或尚未解鎖的房間不可點
-
 ---
 
 ## Next
@@ -69,6 +64,9 @@
 ---
 
 ## Done
+
+- [x] **PS-212** 地圖視窗支援點選房間切換場景
+  - 完成：`floorMapPanel.js` 從 `model.sceneOptions` 計算 `availableSceneIds`，有可用 scene 的房間改以 `<button data-space-map-room-switch>` 渲染（`is-navigable` class），無可用 scene 的房間維持 `<div>` 不可點；`pages/personalSpace.js` 地圖視窗 click handler 新增 `[data-space-map-room-switch]` 分支，邏輯與場景切換器一致（memoryProperty → memoryViewSceneId，否則 selectedSceneId + 清除 memoryViewSceneId）；補 5 個面板渲染測試（545 tests passing）
 
 - [x] **PS-208** 修正住處場景切換邏輯
   - 完成：mastery 階段「住處」tab 改為顯示所有已解鎖豪宅場景（`getUnlockedEstateScenes`）；`rough-room` / `upgraded-rental` 在 Lv.40 透過 `MEMORY_PROPERTY_RULES` 正式畢業進「回顧」；`resolveActiveScene` 跳過 stale memory scene，自動 fallback 到豪宅預設；移除 estate SCENE_OPTIONS 的 maxLevel 誤差；540 tests passing

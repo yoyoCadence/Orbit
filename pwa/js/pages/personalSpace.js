@@ -179,8 +179,27 @@ export function renderPersonalSpace(container) {
 
   container.querySelectorAll('[data-space-map-window]').forEach(mapWindow => {
     mapWindow.addEventListener('click', event => {
-      if (!event.target.closest('[data-space-map-close]')) return;
-      closeFloorMap(mapWindow);
+      if (event.target.closest('[data-space-map-close]')) {
+        closeFloorMap(mapWindow);
+        return;
+      }
+
+      const roomButton = event.target.closest('[data-space-map-room-switch]');
+      if (!roomButton) return;
+
+      const sceneId = roomButton.dataset.spaceMapRoomSwitch;
+      if (!sceneId || sceneId === model.activeScene?.id) {
+        closeFloorMap(mapWindow);
+        return;
+      }
+
+      const clickedOption = model.sceneOptions.find(o => o.id === sceneId);
+      if (clickedOption?.memoryProperty) {
+        savePersonalSpaceState({ ...model.personalSpaceState, memoryViewSceneId: sceneId });
+      } else {
+        savePersonalSpaceState({ ...model.personalSpaceState, selectedSceneId: sceneId, memoryViewSceneId: null });
+      }
+      renderPersonalSpace(container);
     });
   });
 

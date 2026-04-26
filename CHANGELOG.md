@@ -6,6 +6,7 @@
 ## [Unreleased]
 
 ### Added
+- Floor map room navigation: 地圖視窗內有對應 scene 且已解鎖的房間現在渲染為可點擊按鈕（`is-navigable`），點擊後等同點擊場景切換器，memory scene 房間正確寫入 `memoryViewSceneId`，無對應 scene 或尚未解鎖的房間維持 `<div>` 不可點
 - Memory property rule system: `unlockRules.js` 新增 `MEMORY_PROPERTY_KIND`（`graduated` / `buyback`）與 `MEMORY_PROPERTY_RULES`，作為所有 memory property 的資料層唯一來源；新增 `getGraduatedMemoryScenes`、`isMemoryScene`、`getMemoryPropertyRule` helper，讓 runtime 與 UI 可直接查詢而不需 UI-level 推算
 - Memory scene visit log: `gameState.js` 新增 `memorySceneLog` 欄位（按 sceneId 記錄 `firstVisitedAt`）與 `recordMemorySceneVisit` API，為 memory scene 的狀態保存建立最小資料結構
 - Floor map memory markers: `world/floorMap.js` 為四個畢業辦公室房間加上 `graduatesAtLevel` 欄位，並新增 `getMemoryRooms(level)` query helper

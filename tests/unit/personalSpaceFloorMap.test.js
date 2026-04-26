@@ -11,6 +11,7 @@ import {
   getMemoryRooms,
   getRoomBySceneId,
 } from '../../pwa/js/personalSpace/world/floorMap.js';
+import { renderFloorMapPanel } from '../../pwa/js/personalSpace/ui/floorMapPanel.js';
 
 describe('personal space floor map schema', () => {
   it('defines company and estate building maps with ordered floors', () => {
@@ -78,5 +79,99 @@ describe('personal space floor map schema', () => {
     expect(getMemoryRooms(15).map(r => r.id)).not.toContain('formal-workstation-room');
     expect(getMemoryRooms(20).map(r => r.id)).toContain('formal-workstation-room');
     expect(getMemoryRooms(40).map(r => r.id)).toHaveLength(4);
+  });
+});
+
+describe('floor map panel rendering', () => {
+  function buildModel({ activeSceneId, sceneOptions }) {
+    return {
+      activeScene: { id: activeSceneId },
+      sceneOptions,
+    };
+  }
+
+  it('renders a navigable button with data-space-map-room-switch for rooms with available scenes', () => {
+    const model = buildModel({
+      activeSceneId: 'office-corner',
+      sceneOptions: [
+        { id: 'office-corner', family: 'office', role: 'work' },
+        { id: 'formal-workstation', family: 'office', role: 'work' },
+      ],
+    });
+
+    const html = renderFloorMapPanel(model);
+    const container = document.createElement('div');
+    container.innerHTML = html;
+
+    const switchButtons = container.querySelectorAll('[data-space-map-room-switch]');
+    const switchIds = Array.from(switchButtons).map(btn => btn.dataset.spaceMapRoomSwitch);
+
+    expect(switchIds).toContain('office-corner');
+    expect(switchIds).toContain('formal-workstation');
+  });
+
+  it('renders rooms without available scenes as non-interactive divs', () => {
+    const model = buildModel({
+      activeSceneId: 'office-corner',
+      sceneOptions: [
+        { id: 'office-corner', family: 'office', role: 'work' },
+      ],
+    });
+
+    const html = renderFloorMapPanel(model);
+    const container = document.createElement('div');
+    container.innerHTML = html;
+
+    // company-lobby has no sceneIds — should be a div, not a button with room-switch
+    const lobbySwitch = container.querySelector('[data-space-map-room="company-lobby"][data-space-map-room-switch]');
+    expect(lobbySwitch).toBeNull();
+
+    const lobbyDiv = container.querySelector('[data-space-map-room="company-lobby"]');
+    expect(lobbyDiv?.tagName.toLowerCase()).toBe('div');
+  });
+
+  it('marks the current room with is-current', () => {
+    // office-corner is the active scene → office-corner-room should be current
+    const model = buildModel({
+      activeSceneId: 'office-corner',
+      sceneOptions: [
+        { id: 'office-corner', family: 'office', role: 'work' },
+      ],
+    });
+
+    const html = renderFloorMapPanel(model);
+    const container = document.createElement('div');
+    container.innerHTML = html;
+
+    const currentRoom = container.querySelector('[data-space-map-room="office-corner-room"].is-current');
+    expect(currentRoom).not.toBeNull();
+  });
+
+  it('does not render buildings for unavailable families', () => {
+    // Only office scenes available → estate building should not appear
+    const model = buildModel({
+      activeSceneId: 'office-corner',
+      sceneOptions: [
+        { id: 'office-corner', family: 'office', role: 'work' },
+      ],
+    });
+
+    const html = renderFloorMapPanel(model);
+    const container = document.createElement('div');
+    container.innerHTML = html;
+
+    const estateWindow = container.querySelector('[data-space-map-window="estate-residence"]');
+    expect(estateWindow).toBeNull();
+  });
+
+  it('returns empty string when no building families are available', () => {
+    const model = buildModel({
+      activeSceneId: 'rough-room',
+      sceneOptions: [
+        { id: 'rough-room', family: 'rental', role: 'home' },
+      ],
+    });
+
+    expect(renderFloorMapPanel(model)).toBe('');
   });
 });
