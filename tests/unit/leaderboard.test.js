@@ -25,9 +25,11 @@ vi.mock('../../pwa/js/leveling.js', () => ({
 // Supabase mock — configure per-test in beforeEach
 const mockSelect = vi.hoisted(() => vi.fn());
 const mockFrom   = vi.hoisted(() => vi.fn(() => ({ select: mockSelect })));
+const mockCreateSignedUrl = vi.hoisted(() => vi.fn());
+const mockStorageFrom = vi.hoisted(() => vi.fn(() => ({ createSignedUrl: mockCreateSignedUrl })));
 
 vi.mock('../../pwa/js/supabase.js', () => ({
-  supabase: { from: mockFrom },
+  supabase: { from: mockFrom, storage: { from: mockStorageFrom } },
 }));
 
 // ─── Import after mocks ───────────────────────────────────────────────────────
@@ -138,6 +140,7 @@ describe('renderLeaderboard — Supabase error', () => {
     document.body.appendChild(container);
     localStorage.clear();
     vi.clearAllMocks();
+    mockCreateSignedUrl.mockResolvedValue({ data: { signedUrl: 'signed-avatar-url' }, error: null });
   });
 
   afterEach(() => {
@@ -159,6 +162,7 @@ describe('renderLeaderboard — empty data', () => {
     document.body.appendChild(container);
     localStorage.clear();
     vi.clearAllMocks();
+    mockCreateSignedUrl.mockResolvedValue({ data: { signedUrl: 'signed-avatar-url' }, error: null });
   });
 
   afterEach(() => {
@@ -180,6 +184,7 @@ describe('renderLeaderboard — with data', () => {
     document.body.appendChild(container);
     localStorage.clear();
     vi.clearAllMocks();
+    mockCreateSignedUrl.mockResolvedValue({ data: { signedUrl: 'signed-avatar-url' }, error: null });
     mockState.user = { id: 'me', name: 'Alice', mode: 'normal' };
   });
 
@@ -209,6 +214,31 @@ describe('renderLeaderboard — with data', () => {
     expect(mockFrom).not.toHaveBeenCalled();
     expect(container.innerHTML).toContain('Cached Bob');
     expect(container.innerHTML).toContain('每日 05:00');
+  });
+
+  it('renders signed avatar image from leaderboard avatar path', async () => {
+    const rows = [makeRow({ user_id: 'user-1', name: 'Bob', avatar_url: 'user-1/avatar.png' })];
+    mockCreateSignedUrl.mockResolvedValueOnce({ data: { signedUrl: 'https://signed.example/avatar.png' }, error: null });
+    mockSelect.mockResolvedValueOnce({ data: rows, error: null });
+
+    await renderLeaderboard(container);
+
+    expect(mockStorageFrom).toHaveBeenCalledWith('avatars');
+    expect(mockCreateSignedUrl).toHaveBeenCalledWith('user-1/avatar.png', 60 * 60 * 24 * 7);
+    const img = container.querySelector('.lb-avatar img');
+    expect(img).not.toBeNull();
+    expect(img.getAttribute('src')).toBe('https://signed.example/avatar.png');
+  });
+
+  it('falls back to initial when avatar signing fails', async () => {
+    const rows = [makeRow({ user_id: 'user-1', name: 'Bob', avatar_url: 'user-1/avatar.png' })];
+    mockCreateSignedUrl.mockResolvedValueOnce({ data: null, error: { message: 'denied' } });
+    mockSelect.mockResolvedValueOnce({ data: rows, error: null });
+
+    await renderLeaderboard(container);
+
+    expect(container.querySelector('.lb-avatar img')).toBeNull();
+    expect(container.querySelector('.lb-avatar').textContent).toContain('B');
   });
 
   it('falls back to stale cache when Supabase refresh fails', async () => {
