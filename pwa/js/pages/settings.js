@@ -1,6 +1,6 @@
 import { state }                      from '../state.js';
 import { storage }                     from '../storage.js';
-import { applyTheme, applyBgImage, removeBgImage, applyRandomThemeForToday, APP_VERSION } from '../app.js';
+import { applyTheme, applyUiSkin, applyBgImage, removeBgImage, applyRandomThemeForToday, APP_VERSION } from '../app.js';
 import { uid, today }                  from '../utils.js';
 
 // ── Theme definitions ────────────────────────────────────────────────────────
@@ -292,6 +292,7 @@ function _themeCardHtml(t, currentTheme, locked = false) {
 
 function _renderView(container) {
   const currentTheme          = storage.getTheme();
+  const currentUiSkin         = storage.getUiSkin();
   const randomThemeEnabled    = storage.getRandomThemeEnabled();
   const hasBg = !!storage.getBgImage();
 
@@ -331,6 +332,21 @@ function _renderView(container) {
 
   container.innerHTML = `
     <div class="section-title">⚙️ 設定</div>
+
+    <!-- UI skin -->
+    <div class="card">
+      <div class="card-title">UI Skin</div>
+      <div class="mode-row">
+        <div class="mode-info">
+          <div class="mode-name">Modern UI</div>
+          <div class="mode-desc">保留 Classic UI，切換為新的系統化視覺語言。</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="ui-skin-toggle" ${currentUiSkin === 'modern' ? 'checked' : ''}>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
 
     <!-- Theme -->
     <div class="card">
@@ -500,6 +516,12 @@ function _renderView(container) {
 
 // ── Listeners ────────────────────────────────────────────────────────────────
 function _setupListeners(container) {
+  // UI skin toggle
+  container.querySelector('#ui-skin-toggle')?.addEventListener('change', e => {
+    applyUiSkin(e.target.checked ? 'modern' : 'classic');
+    _renderView(container);
+  });
+
   // Random theme toggle
   container.querySelector('#random-theme-toggle')?.addEventListener('change', e => {
     const enabled = e.target.checked;

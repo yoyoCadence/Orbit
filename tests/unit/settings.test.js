@@ -18,10 +18,12 @@ const mockState = vi.hoisted(() => ({
 
 const mockStorage = vi.hoisted(() => ({
   getTheme:              vi.fn(() => 'dark-purple'),
+  getUiSkin:             vi.fn(() => 'classic'),
   getBgImage:            vi.fn(() => null),
   saveUser:              vi.fn(),
   saveTasks:             vi.fn(),
   saveTheme:             vi.fn(),
+  saveUiSkin:            vi.fn(),
   saveBgImage:           vi.fn(),
   clearAll:              vi.fn(),
   getRandomThemeEnabled: vi.fn(() => false),
@@ -36,6 +38,7 @@ const mockStorage = vi.hoisted(() => ({
 }));
 
 const mockApplyTheme        = vi.hoisted(() => vi.fn());
+const mockApplyUiSkin       = vi.hoisted(() => vi.fn());
 const mockApplyRandomTheme  = vi.hoisted(() => vi.fn());
 
 // Mock supabase first to prevent CDN URL import failure in Node.js
@@ -63,6 +66,7 @@ vi.mock('../../pwa/js/state.js',   () => ({ state: mockState }));
 vi.mock('../../pwa/js/storage.js', () => ({ storage: mockStorage, db: {} }));
 vi.mock('../../pwa/js/app.js', () => ({
   applyTheme:              mockApplyTheme,
+  applyUiSkin:             mockApplyUiSkin,
   applyBgImage:            vi.fn(),
   removeBgImage:           vi.fn(),
   applyRandomThemeForToday: mockApplyRandomTheme,
@@ -109,6 +113,7 @@ beforeEach(() => {
   mockState.tasks = [];
   vi.clearAllMocks();
   mockStorage.getTheme.mockReturnValue('dark-purple');
+  mockStorage.getUiSkin.mockReturnValue('classic');
   mockStorage.getBgImage.mockReturnValue(null);
   mockStorage.isProUser.mockReturnValue(false);
   mockStorage.isPaidProUser.mockReturnValue(false);
@@ -171,6 +176,32 @@ describe('renderSettings: theme grid', () => {
     const c = makeContainer();
     renderSettings(c);
     expect(c.querySelector('[data-locked]')).toBeNull();
+  });
+});
+
+describe('renderSettings: UI skin toggle', () => {
+  it('shows Classic UI by default', () => {
+    const c = makeContainer();
+    renderSettings(c);
+    const toggle = c.querySelector('#ui-skin-toggle');
+    expect(toggle).not.toBeNull();
+    expect(toggle.checked).toBe(false);
+  });
+
+  it('shows Modern UI when saved skin is modern', () => {
+    mockStorage.getUiSkin.mockReturnValue('modern');
+    const c = makeContainer();
+    renderSettings(c);
+    expect(c.querySelector('#ui-skin-toggle').checked).toBe(true);
+  });
+
+  it('switching UI skin calls applyUiSkin', () => {
+    const c = makeContainer();
+    renderSettings(c);
+    const toggle = c.querySelector('#ui-skin-toggle');
+    toggle.checked = true;
+    toggle.dispatchEvent(new Event('change'));
+    expect(mockApplyUiSkin).toHaveBeenCalledWith('modern');
   });
 });
 

@@ -6,6 +6,7 @@
 ## [Unreleased]
 
 ### Added
+- Modern UI skin: 新增可在設定頁切換的 Classic / Modern UI 外觀層，保留既有 Classic UI，並以 design tokens 套用深色、玻璃感、pill navigation、按鈕、卡片、表單與 modal 的系統化樣式
 - Profile avatar sync: 個人頁上傳大頭貼現在會先即時預覽；登入使用者會背景上傳到 Supabase Storage 並同步 `profiles.avatar_url`，遊客則保留為本機頭像
 - Leaderboard daily cache: 排行榜新增本機每日快取，當日已更新時再次進入不會重複查詢 Supabase，並在頁面提示每日更新時間與上次更新時間
 - Header identity display: 頂部狀態條新增使用者名稱，並與個人頁共用同一個使用者大頭貼來源
