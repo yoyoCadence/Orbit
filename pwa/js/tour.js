@@ -161,9 +161,12 @@ function _showStep() {
 function _renderStep(s) {
   const isLast = _step === STEPS.length - 1;
 
-  // Backdrop — blocks accidental page interaction
+  // Backdrop — blocks accidental page interaction on non-interactive steps.
+  // For interactive steps (waitFor), pointer-events must be none so clicks
+  // can reach the spotlight target element and trigger the waitFor observer.
   _backdrop = document.createElement('div');
   _backdrop.className = 'tour-backdrop';
+  if (s.waitFor) _backdrop.style.pointerEvents = 'none';
   document.body.appendChild(_backdrop);
 
   // Tooltip
