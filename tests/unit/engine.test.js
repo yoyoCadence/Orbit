@@ -61,8 +61,7 @@ describe('calcBaseXP', () => {
     expect(calcBaseXP(makeTask())).toBe(37);
   });
 
-  it('S / 高難度 / 高抵抗 = 179', () => {
-    // 20 × 3.2 × 1.0 × 1.4 = 89.6 → round = 90 ... wait
+  it('S / 高難度 / 高抵抗 = 90', () => {
     // 20 × 3.2 × 1.0 × 1.4 = 89.6 → 90
     const task = makeTask({ value: 'S', difficulty: 1.0, resistance: 1.4 });
     expect(calcBaseXP(task)).toBe(90);

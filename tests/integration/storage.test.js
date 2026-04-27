@@ -311,12 +311,64 @@ describe('storage.clearAll()', () => {
     lsSet('sessions', [{ id: 's1' }]);
     lsSet('energy',   { currentEnergy: 80 });
     lsSet('theme',    'dark-purple');
+    lsSet('uiSkin',   'modern');
 
     storage.clearAll();
 
-    ['user', 'tasks', 'sessions', 'energy', 'theme'].forEach(k => {
+    ['user', 'tasks', 'sessions', 'energy', 'theme', 'uiSkin'].forEach(k => {
       expect(localStorage.getItem(PREFIX + k)).toBeNull();
     });
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// storage.getUiSkin() / storage.saveUiSkin()
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('storage.getUiSkin()', () => {
+  beforeEach(() => localStorage.clear());
+
+  it("returns 'classic' when nothing stored", () => {
+    expect(storage.getUiSkin()).toBe('classic');
+  });
+
+  it("returns 'modern' when saved as modern", () => {
+    lsSet('uiSkin', 'modern');
+    expect(storage.getUiSkin()).toBe('modern');
+  });
+
+  it("returns 'classic' when stored value is 'classic'", () => {
+    lsSet('uiSkin', 'classic');
+    expect(storage.getUiSkin()).toBe('classic');
+  });
+});
+
+describe('storage.saveUiSkin()', () => {
+  beforeEach(() => localStorage.clear());
+
+  it("saves 'modern' to localStorage", () => {
+    storage.saveUiSkin('modern');
+    expect(lsGet('uiSkin')).toBe('modern');
+  });
+
+  it("saves 'classic' to localStorage", () => {
+    storage.saveUiSkin('classic');
+    expect(lsGet('uiSkin')).toBe('classic');
+  });
+
+  it('sanitizes unknown values to classic', () => {
+    storage.saveUiSkin('hacker');
+    expect(lsGet('uiSkin')).toBe('classic');
+  });
+
+  it('sanitizes undefined to classic', () => {
+    storage.saveUiSkin(undefined);
+    expect(lsGet('uiSkin')).toBe('classic');
+  });
+
+  it('saved skin is retrievable via getUiSkin()', () => {
+    storage.saveUiSkin('modern');
+    expect(storage.getUiSkin()).toBe('modern');
   });
 });
 
