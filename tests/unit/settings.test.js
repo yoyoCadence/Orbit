@@ -195,13 +195,23 @@ describe('renderSettings: UI skin toggle', () => {
     expect(c.querySelector('#ui-skin-toggle').checked).toBe(true);
   });
 
-  it('switching UI skin calls applyUiSkin', () => {
+  it('switching UI skin to Modern calls applyUiSkin("modern")', () => {
     const c = makeContainer();
     renderSettings(c);
     const toggle = c.querySelector('#ui-skin-toggle');
     toggle.checked = true;
     toggle.dispatchEvent(new Event('change'));
     expect(mockApplyUiSkin).toHaveBeenCalledWith('modern');
+  });
+
+  it('switching UI skin back to Classic calls applyUiSkin("classic")', () => {
+    mockStorage.getUiSkin.mockReturnValue('modern');
+    const c = makeContainer();
+    renderSettings(c);
+    const toggle = c.querySelector('#ui-skin-toggle');
+    toggle.checked = false;
+    toggle.dispatchEvent(new Event('change'));
+    expect(mockApplyUiSkin).toHaveBeenCalledWith('classic');
   });
 });
 
