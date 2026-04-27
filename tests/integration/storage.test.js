@@ -661,6 +661,7 @@ describe('db.insertSession()', () => {
       baseXP: 20, finalXP: 22, energyCost: 8, energyGain: 0,
       impactType: 'task', taskNature: 'growth',
       value: 'A', resistance: 1.2, isProductiveXP: true,
+      taskIconImg: 'assets/personal-space/props/book.png',
     });
 
     expect(mockFrom).toHaveBeenCalledWith('sessions');
@@ -674,7 +675,29 @@ describe('db.insertSession()', () => {
         final_xp:         22,
         energy_cost:      8,
         is_productive_xp: true,
+        task_icon_img:    'assets/personal-space/props/book.png',
       })
+    );
+  });
+
+  it('sends task_icon_img as null when taskIconImg is absent', async () => {
+    mockGetSession.mockResolvedValue({ data: { session: FAKE_SESSION } });
+    const chain = makeChain();
+    mockFrom.mockImplementation(() => chain);
+
+    await db.insertSession({
+      id: 's2', taskId: 't2', taskName: '跑步', taskEmoji: '🏃',
+      date: '2026-04-13',
+      startedAt: '2026-04-13T07:00:00Z', completedAt: '2026-04-13T07:30:00Z',
+      durationMinutes: 30, result: 'complete',
+      baseXP: 10, finalXP: 10, energyCost: 5, energyGain: 0,
+      impactType: 'task', taskNature: 'maintenance',
+      value: 'B', resistance: 1.0, isProductiveXP: false,
+      // taskIconImg intentionally omitted
+    });
+
+    expect(chain.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ task_icon_img: null })
     );
   });
 });

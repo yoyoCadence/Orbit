@@ -239,6 +239,7 @@ export const db = {
       value:            session.value,
       resistance:       session.resistance,
       is_productive_xp: session.isProductiveXP,
+      task_icon_img:    session.taskIconImg    || null,
     });
   },
 
