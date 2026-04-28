@@ -1503,7 +1503,8 @@ function handleSignOut() {
 // visualViewport is more reliable on Chrome when the address bar expands/collapses.
 function _syncAppHeight() {
   const viewportHeight = window.visualViewport?.height || window.innerHeight;
-  document.documentElement.style.setProperty('--app-height', Math.round(viewportHeight) + 'px');
+  const sab = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sab')) || 0;
+  document.documentElement.style.setProperty('--app-height', Math.round(viewportHeight + sab) + 'px');
 }
 _syncAppHeight();
 window.addEventListener('resize', _syncAppHeight);

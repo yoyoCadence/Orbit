@@ -3,6 +3,10 @@
 ══════════════════════════════════════════════════════════════ */
 
 /* 1. 暗夜紫 — default */
+:root {
+  --sab: env(safe-area-inset-bottom, 0px);
+}
+
 :root, [data-theme="dark-purple"] {
   --bg:           #0d0d1a;
   --surface:      #1a1a2e;
