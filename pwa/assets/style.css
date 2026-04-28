@@ -4134,13 +4134,14 @@ main.page-slide-right { animation: _slideFromLeft  0.22s cubic-bezier(0.25, 0.46
   --modern-text: #f5f5f7;
   --modern-text-secondary: #a1a1a6;
   --modern-text-muted: #737378;
-  --modern-primary: #0a84ff;
-  --modern-primary-strong: #3b82f6;
-  --modern-accent: #5ac8fa;
+  /* Primary/accent follow the active theme; only surfaces are locked to Modern */
+  --modern-primary: var(--primary);
+  --modern-primary-strong: var(--primary);
+  --modern-accent: var(--accent);
   --modern-success: #32d74b;
   --modern-danger: #ff453a;
   --modern-warning: #ff9f0a;
-  --modern-focus-ring: rgba(10, 132, 255, 0.42);
+  --modern-focus-ring: color-mix(in srgb, var(--primary) 42%, transparent);
   --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
   --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
   --type-h1: 34px;
@@ -4168,9 +4169,7 @@ main.page-slide-right { animation: _slideFromLeft  0.22s cubic-bezier(0.25, 0.46
   --surface: var(--modern-surface);
   --surface-2: var(--modern-surface-2);
   --surface-g: var(--modern-surface-glass);
-  --primary: var(--modern-primary);
-  --primary-lt: var(--modern-primary-strong);
-  --accent: var(--modern-accent);
+  /* --primary and --accent intentionally NOT overridden — theme controls them */
   --success: var(--modern-success);
   --danger: var(--modern-danger);
   --text: var(--modern-text);
