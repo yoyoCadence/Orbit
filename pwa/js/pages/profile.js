@@ -632,14 +632,16 @@ function showNameModal(container) {
     const status = modal.querySelector('#name-save-status');
     btn.disabled = true;
     btn.textContent = '儲存中...';
-    status.textContent = '正在同步到雲端';
+    status.textContent = '本機已儲存，同步中…';
     state.user.name = name;
     _saveUserLocalOnly(state.user);
     renderProfile(container);
     import('../app.js').then(({ updateHeader }) => updateHeader());
     try {
       await storage.saveUserAndSync(state.user);
-      modal.remove();
+      status.textContent = '✓ 同步完成';
+      status.classList.remove('error');
+      setTimeout(() => { if (document.body.contains(modal)) modal.remove(); }, 800);
       renderProfile(container);
       import('../app.js').then(({ updateHeader }) => updateHeader());
     } catch (err) {

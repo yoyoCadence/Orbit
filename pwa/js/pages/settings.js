@@ -302,32 +302,43 @@ function _renderView(container) {
   const themeGridNew      = THEMES_NEW.map(t => _themeCardHtml(t, currentTheme, !isPro)).join('');
   const themeGridCreative = THEMES_CREATIVE.map(t => _themeCardHtml(t, currentTheme, !isPro)).join('');
 
+  const TASKS_PREVIEW = 4;
   const isAdvanced = state.user?.mode === 'advanced';
-  const tasksHtml = state.tasks.length
-    ? state.tasks.map(t => {
-        const vcls    = t.value === 'S' ? 'badge-s' : t.value === 'A' ? 'badge-a' : t.value === 'B' ? 'badge-b' : 'badge-d';
-        const canEdit = isAdvanced || !t.isDefault;
-        return `
-          <div class="log-item">
-            ${t.iconImg
-              ? `<img src="${t.iconImg}" class="log-icon-img">`
-              : `<span class="log-emoji">${t.emoji || '🎯'}</span>`}
-            <div class="log-info">
-              <div class="log-name">${escHtml(t.name)}${t.isDefault ? ' <span class="badge-default">預設</span>' : ''}</div>
-              <div class="log-time">
-                <span class="badge ${vcls}">${t.value}</span>
-                ${t.category === 'focus' ? '<span class="badge badge-nature">專注</span>' : '<span class="badge badge-nature">即時</span>'}
-              </div>
-            </div>
-            <div style="display:flex;gap:6px;flex-shrink:0">
-              ${canEdit
-                ? `<button class="btn btn-outline btn-sm" data-edit="${t.id}">編輯</button>
-                   <button class="btn-danger-sm" data-del="${t.id}">刪除</button>`
-                : `<span style="font-size:12px;color:var(--text-muted);padding:0 4px">🔒</span>`}
-            </div>
+  const _taskItemHtml = t => {
+    const vcls    = t.value === 'S' ? 'badge-s' : t.value === 'A' ? 'badge-a' : t.value === 'B' ? 'badge-b' : 'badge-d';
+    const canEdit = isAdvanced || !t.isDefault;
+    return `
+      <div class="log-item">
+        ${t.iconImg
+          ? `<img src="${t.iconImg}" class="log-icon-img">`
+          : `<span class="log-emoji">${t.emoji || '🎯'}</span>`}
+        <div class="log-info">
+          <div class="log-name">${escHtml(t.name)}${t.isDefault ? ' <span class="badge-default">預設</span>' : ''}</div>
+          <div class="log-time">
+            <span class="badge ${vcls}">${t.value}</span>
+            ${t.category === 'focus' ? '<span class="badge badge-nature">專注</span>' : '<span class="badge badge-nature">即時</span>'}
           </div>
-        `;
-      }).join('')
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          ${canEdit
+            ? `<button class="btn btn-outline btn-sm" data-edit="${t.id}">編輯</button>
+               <button class="btn-danger-sm" data-del="${t.id}">刪除</button>`
+            : `<span style="font-size:12px;color:var(--text-muted);padding:0 4px">🔒</span>`}
+        </div>
+      </div>
+    `;
+  };
+  const tasksHtml = state.tasks.length
+    ? (() => {
+        const visible = state.tasks.slice(0, TASKS_PREVIEW).map(_taskItemHtml).join('');
+        const hidden  = state.tasks.slice(TASKS_PREVIEW).map(_taskItemHtml).join('');
+        const expandBtn = hidden
+          ? `<div id="tasks-expand-row" style="text-align:center;margin-top:6px">
+               <button class="btn btn-outline btn-sm" id="tasks-expand-btn">展開全部（共 ${state.tasks.length} 項）</button>
+             </div>`
+          : '';
+        return `${visible}${hidden ? `<div id="tasks-extra" class="hidden">${hidden}</div>` : ''}${expandBtn}`;
+      })()
     : `<div class="empty-state"><div class="empty-icon">🎯</div><p>還沒有任何任務</p></div>`;
 
   container.innerHTML = `
@@ -339,7 +350,7 @@ function _renderView(container) {
       <div class="mode-row">
         <div class="mode-info">
           <div class="mode-name">Modern UI</div>
-          <div class="mode-desc">保留 Classic UI，切換為新的系統化視覺語言。</div>
+          <div class="mode-desc">切換為新的系統化視覺語言</div>
         </div>
         <label class="toggle-switch">
           <input type="checkbox" id="ui-skin-toggle" ${currentUiSkin === 'modern' ? 'checked' : ''}>
@@ -520,6 +531,12 @@ function _setupListeners(container) {
   container.querySelector('#ui-skin-toggle')?.addEventListener('change', e => {
     applyUiSkin(e.target.checked ? 'modern' : 'classic');
     _renderView(container);
+  });
+
+  // Task list expand
+  container.querySelector('#tasks-expand-btn')?.addEventListener('click', () => {
+    container.querySelector('#tasks-extra')?.classList.remove('hidden');
+    container.querySelector('#tasks-expand-row')?.remove();
   });
 
   // Random theme toggle

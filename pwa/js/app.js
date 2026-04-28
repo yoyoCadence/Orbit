@@ -1512,6 +1512,12 @@ window.addEventListener('orientationchange', _syncAppHeight);
 window.visualViewport?.addEventListener('resize', _syncAppHeight);
 window.visualViewport?.addEventListener('scroll', _syncAppHeight);
 
+// Tap header to scroll main content to top (mirrors iOS status-bar tap behavior)
+document.getElementById('header')?.addEventListener('click', e => {
+  if (e.target.closest('button, a, label, input, select')) return;
+  document.getElementById('content')?.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
 async function init() {
   migrateV1toV2(today());
   migrateDefaultFlags();         // tag pre-existing default tasks with isDefault:true
