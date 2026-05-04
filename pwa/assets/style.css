@@ -4136,7 +4136,6 @@ main.page-slide-right { animation: _slideFromLeft  0.22s cubic-bezier(0.25, 0.46
   --modern-text-muted: #737378;
   /* Primary/accent follow the active theme; only surfaces are locked to Modern */
   --modern-primary: var(--primary);
-  --modern-primary-strong: var(--primary);
   --modern-accent: var(--accent);
   --modern-success: #32d74b;
   --modern-danger: #ff453a;
