@@ -71,9 +71,6 @@
 
 ## Next
 
-- [x] **BUG-101** 覆蓋稱號清除後隔天重置回覆蓋值
-  - 完成：根因與 BUG-104 相同 — `_syncUserPreference` 呼叫 `saveUserAndSync` 時若無 session，`upsertProfile` 靜默跳過，Supabase 未更新；下次登入 `loadFromRemote` 用舊 cloud 資料蓋掉本地清除結果。BUG-104 的 `_syncPending` 機制同時修正此問題：未同步時標記 pending，`loadFromRemote` 執行前先推本地資料（含已清除的 `customTitle: ''`）再拉遠端
-
 - [ ] **BUG-102** 設定頁帳號區塊帳號名稱下方持續顯示「載入中」
   - 症狀：進入設定頁，帳號名稱下方顯示「載入中」字樣，資料載入完成後仍未消失
   - 範圍：設定頁帳號區塊的資料載入狀態管理與 UI 更新邏輯
@@ -86,12 +83,17 @@
 
 ## In Progress
 
-- [x] **BUG-104** 改使用者名稱 / 上傳大頭貼靜默失敗
-  - 完成：`upsertProfile` 改為回傳 `boolean`（true = 已同步，false = 無 session 跳過）；`saveUserAndSync` 傳遞此值，未同步時在 localStorage 標記 `_syncPending: true`；`loadFromRemote` 執行前若發現 `_syncPending`，先把本地資料推上 Supabase 再拉遠端，避免重開後舊資料蓋掉本地變更；改名與頭像上傳的 UI 訊息改為依實際同步結果顯示（已同步 / 已儲存在此裝置，登入後可同步），不再顯示假的「✓ 同步完成」
+- [ ] 目前無進行中的正式任務
 
 ---
 
 ## Done
+
+- [x] **BUG-104** 改使用者名稱 / 上傳大頭貼靜默失敗
+  - 完成：`upsertProfile` 改為回傳 `boolean`（true = 已同步，false = 無 session 跳過）；`saveUserAndSync` 傳遞此值，未同步時在 localStorage 標記 `_syncPending: true`；`loadFromRemote` 執行前若發現 `_syncPending`，先把本地資料推上 Supabase 再拉遠端，避免重開後舊資料蓋掉本地變更；改名與頭像上傳的 UI 訊息改為依實際同步結果顯示（已同步 / 已儲存在此裝置，登入後可同步），不再顯示假的「✓ 同步完成」
+
+- [x] **BUG-101** 覆蓋稱號清除後隔天重置回覆蓋值
+  - 完成：根因與 BUG-104 相同 — `_syncUserPreference` 呼叫 `saveUserAndSync` 時若無 session，`upsertProfile` 靜默跳過，Supabase 未更新；下次登入 `loadFromRemote` 用舊 cloud 資料蓋掉本地清除結果。BUG-104 的 `_syncPending` 機制同時修正此問題：未同步時標記 pending，`loadFromRemote` 執行前先推本地資料（含已清除的 `customTitle: ''`）再拉遠端
 
 - [x] **SKIN-101** Modern skin 修正：繼承 theme 主色 / accent 而非硬覆蓋
   - 完成：移除 Modern skin 對 `--primary` / `--accent` 的硬覆蓋（Apple-blue #0a84ff），改為讓 `--modern-primary` / `--modern-accent` 直接 `var(--primary)` / `var(--accent)`；`--modern-focus-ring` 改用 `color-mix()` 動態跟隨主色；Modern skin 切換後主色仍由使用者選定的 theme 決定，不再強制換色
