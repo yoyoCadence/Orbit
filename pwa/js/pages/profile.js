@@ -230,10 +230,10 @@ export function renderProfile(container) {
         const uploaded = await db.uploadAvatar(file);
         state.user.avatar = uploaded.url || state.user.avatar;
         state.user.avatarPath = uploaded.path;
-        await storage.saveUserAndSync(state.user);
+        const synced = await storage.saveUserAndSync(state.user);
         renderProfile(container);
         import('../app.js').then(({ updateHeader }) => updateHeader());
-        _setProfileSyncStatus('avatar-sync-status', '頭像已同步');
+        _setProfileSyncStatus('avatar-sync-status', synced ? '頭像已同步' : '頭像已儲存在此裝置，登入後可同步');
       } catch (err) {
         if (err?.message === 'Not authenticated') {
           _saveUserLocalOnly(state.user);
@@ -638,10 +638,16 @@ function showNameModal(container) {
     renderProfile(container);
     import('../app.js').then(({ updateHeader }) => updateHeader());
     try {
-      await storage.saveUserAndSync(state.user);
-      status.textContent = '✓ 同步完成';
+      const synced = await storage.saveUserAndSync(state.user);
       status.classList.remove('error');
-      setTimeout(() => { if (document.body.contains(modal)) modal.remove(); }, 800);
+      if (synced) {
+        status.textContent = '✓ 同步完成';
+        setTimeout(() => { if (document.body.contains(modal)) modal.remove(); }, 800);
+      } else {
+        status.textContent = '已儲存在此裝置，登入後可同步';
+        btn.disabled = false;
+        btn.textContent = '儲存';
+      }
       renderProfile(container);
       import('../app.js').then(({ updateHeader }) => updateHeader());
     } catch (err) {

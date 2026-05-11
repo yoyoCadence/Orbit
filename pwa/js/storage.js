@@ -26,6 +26,15 @@ export const db = {
 
   /** Pull all user data from Supabase → write into localStorage cache. */
   async loadFromRemote(userId) {
+    // Push any locally pending changes before overwriting with remote data
+    const localUser = get('user');
+    if (localUser?._syncPending && localUser?.id === userId) {
+      const { _syncPending, ...userToSync } = localUser;
+      try { await this.upsertProfile(userToSync); } catch (err) {
+        console.warn('Could not push pending local changes before remote load:', err);
+      }
+    }
+
     const [profileRes, tasksRes, sessionsRes, energyRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('user_id', userId).single(),
       supabase.from('tasks').select('*').eq('user_id', userId).order('created_at'),
@@ -125,7 +134,7 @@ export const db = {
 
   async upsertProfile(user) {
     const session = await this._session();
-    if (!session) return;
+    if (!session) return false;
     // Keep large local previews out of profiles; avatarPath points to Storage.
     const avatarUrl = user.avatarPath || ((user.avatar && user.avatar.startsWith('data:'))
       ? null : (user.avatar || null));
@@ -153,6 +162,7 @@ export const db = {
       focus_sound_enabled:       user.focusSoundEnabled       ?? true,
     });
     if (error) throw error;
+    return true;
   },
 
   async uploadAvatar(file) {
@@ -290,7 +300,15 @@ export const storage = {
   // ── User ─────────────────────────────────────────────────────────────────────
   getUser:    ()  => get('user'),
   saveUser:   (u) => { set('user', u); db.upsertProfile(u).catch(console.error); },
-  saveUserAndSync: async (u) => { set('user', u); await db.upsertProfile(u); },
+  saveUserAndSync: async (u) => {
+    set('user', u);
+    const synced = await db.upsertProfile(u);
+    if (!synced) {
+      // No active session — mark so loadFromRemote can push before pulling
+      set('user', { ...u, _syncPending: true });
+    }
+    return synced;
+  },
 
   // ── Tasks ────────────────────────────────────────────────────────────────────
   getTasks:   ()  => get('tasks') ?? [],
