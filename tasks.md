@@ -71,10 +71,8 @@
 
 ## Next
 
-- [ ] **BUG-101** 覆蓋稱號清除後隔天重置回覆蓋值
-  - 症狀：設定自訂稱號後按「清除」，當下恢復預設等級稱號；但隔天（或重新登入後）又跳回之前的覆蓋稱號
-  - 懷疑原因：local 清除後，cloud sync 在下次登入時把舊的覆蓋值蓋回來；或 local-first 寫入沒有正確標記「已清除」
-  - 範圍：稱號偏好的 local 讀寫 + cloud sync 邏輯
+- [x] **BUG-101** 覆蓋稱號清除後隔天重置回覆蓋值
+  - 完成：根因與 BUG-104 相同 — `_syncUserPreference` 呼叫 `saveUserAndSync` 時若無 session，`upsertProfile` 靜默跳過，Supabase 未更新；下次登入 `loadFromRemote` 用舊 cloud 資料蓋掉本地清除結果。BUG-104 的 `_syncPending` 機制同時修正此問題：未同步時標記 pending，`loadFromRemote` 執行前先推本地資料（含已清除的 `customTitle: ''`）再拉遠端
 
 - [ ] **BUG-102** 設定頁帳號區塊帳號名稱下方持續顯示「載入中」
   - 症狀：進入設定頁，帳號名稱下方顯示「載入中」字樣，資料載入完成後仍未消失
