@@ -21,6 +21,9 @@
 - Memory scene visit log: `gameState.js` 新增 `memorySceneLog` 欄位（按 sceneId 記錄 `firstVisitedAt`）與 `recordMemorySceneVisit` API，為 memory scene 的狀態保存建立最小資料結構
 - Floor map memory markers: `world/floorMap.js` 為四個畢業辦公室房間加上 `graduatesAtLevel` 欄位，並新增 `getMemoryRooms(level)` query helper
 
+### Fixed
+- Modern skin theme compatibility: `--modern-primary` and `--modern-accent` now resolve to `var(--primary)` / `var(--accent)` instead of hardcoding Apple-blue (`#0a84ff`); `--modern-focus-ring` uses `color-mix()` to follow the active theme color; switching to Modern skin no longer forces the primary color away from the user's chosen theme
+
 ### Changed
 - Profile name and title preference saves now use explicit local-first persistence with cloud sync instead of silently relying on background sync
 - Personal space page now loads persisted `spentGold` and `ownedItems` from local state, deducts spent gold from available gold, and shows a small owned-item snapshot on the page
