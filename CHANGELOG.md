@@ -21,7 +21,12 @@
 - Memory scene visit log: `gameState.js` 新增 `memorySceneLog` 欄位（按 sceneId 記錄 `firstVisitedAt`）與 `recordMemorySceneVisit` API，為 memory scene 的狀態保存建立最小資料結構
 - Floor map memory markers: `world/floorMap.js` 為四個畢業辦公室房間加上 `graduatesAtLevel` 欄位，並新增 `getMemoryRooms(level)` query helper
 
+### Added
+- Daily plan info modal: 本日計劃標題旁新增「？」按鈕，點擊彈出 modal 說明起床規劃的心理學原理（實行意圖、決策疲勞、心理對比）
+- Password visibility toggle: 登入與註冊頁密碼欄位右側新增眼睛 icon，點擊切換明文 / 遮罩顯示
+
 ### Fixed
+- Google OAuth login UX: Google 按鈕移至 email/password 表單之前，分隔線文字改為「或用電子郵件」，讓用 Google 帳號註冊的使用者不會誤填密碼
 - Task card edit mode lost after drag reorder: `_endDrag` now captures which sections have `edit-mode` active before calling `renderHome`, then restores those classes and button labels after the re-render; dragging a card no longer exits editing
 - Settings account email stuck on "載入中…": email is now cached in a module-level variable on first async load; subsequent `_renderView` calls (triggered by theme/skin/mode changes) render from the cache instantly instead of resetting to "載入中…"
 - Profile sync silent failure: name and avatar changes no longer show a false "✓ 同步完成" when the Supabase session is unavailable; unsaved changes are flagged as `_syncPending` in localStorage and pushed to Supabase before the next remote pull, preventing changes from disappearing after app reload

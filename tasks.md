@@ -51,21 +51,9 @@
   - 目標：完成 roadmap 既有 SUB-15
   - 對應 roadmap：?瑟? 2.x
 
-- [ ] **AUTH-101** Google OAuth 登入流程 UX 確認與優化
-  - 目標：確認用 Google 註冊的帳號再次登入時，UI 是否明確引導點擊「Google 登入」而非填寫密碼；如有混淆，改善登入頁的文字提示或按鈕排列
-  - 範圍：登入頁 UI、auth 相關說明文字；不改動 Supabase auth 核心流程
-
-- [ ] **AUTH-102** 密碼欄位新增顯示 / 隱藏切換按鈕
-  - 目標：登入與註冊頁的密碼 input 右側新增眼睛 icon，點擊切換明文 / 遮罩顯示
-  - 範圍：auth 相關頁面 HTML / CSS，不改動驗證邏輯
-
 - [ ] **AUTH-103** 忘記密碼 / 密碼重設流程
   - 目標：登入頁新增「忘記密碼」連結，呼叫 Supabase `resetPasswordForEmail`，寄送重設信；新增重設密碼頁面供使用者輸入新密碼
   - 範圍：登入頁、新增重設密碼頁、Supabase auth email template 設定
-
-- [ ] **UI-201** 本日計劃區塊新增說明視窗
-  - 目標：本日計劃標題旁新增問號 icon，點擊彈出 modal，說明「起床先規劃本日任務有助提升執行率」的心理學原理
-  - 範圍：本日計劃頁面元件，僅新增說明 UI，不改動計劃邏輯
 
 ---
 
@@ -81,6 +69,15 @@
 ---
 
 ## Done
+
+- [x] **UI-201** 本日計劃區塊新增說明視窗
+  - 完成：本日計劃標題改為 `section-title-row`，右側新增 `plan-info-btn`（？圓形按鈕）；點擊彈出 modal 說明「起床先規劃本日任務」的三個心理學原理（實行意圖、決策疲勞、心理對比）
+
+- [x] **AUTH-102** 密碼欄位新增顯示 / 隱藏切換按鈕
+  - 完成：密碼 input 包入 `.password-input-wrap`，右側加 `.password-toggle-btn`，以 SVG 眼睛 icon 切換 `type=password/text`；app.js 在登入頁初始化時綁定事件
+
+- [x] **AUTH-101** Google OAuth 登入流程 UX 確認與優化
+  - 完成：Google 按鈕移至 email/password 表單之前，分隔線文字改為「或用電子郵件」，讓用 Google 註冊的使用者第一眼就看到正確入口，避免誤填密碼
 
 - [x] **BUG-103** 任務小卡移動後意外停止編輯模式
   - 完成：`_endDrag` 在呼叫 `renderHome` 前先記錄所有 `.task-grid.edit-mode` 的 section；重繪後逐一恢復 `edit-mode` class 並把對應「編輯」按鈕改回「完成」，拖曳排序不再退出編輯模式
