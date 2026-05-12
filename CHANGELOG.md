@@ -22,6 +22,7 @@
 - Floor map memory markers: `world/floorMap.js` 為四個畢業辦公室房間加上 `graduatesAtLevel` 欄位，並新增 `getMemoryRooms(level)` query helper
 
 ### Fixed
+- Settings account email stuck on "載入中…": email is now cached in a module-level variable on first async load; subsequent `_renderView` calls (triggered by theme/skin/mode changes) render from the cache instantly instead of resetting to "載入中…"
 - Profile sync silent failure: name and avatar changes no longer show a false "✓ 同步完成" when the Supabase session is unavailable; unsaved changes are flagged as `_syncPending` in localStorage and pushed to Supabase before the next remote pull, preventing changes from disappearing after app reload
 - Modern skin theme compatibility: `--modern-primary` and `--modern-accent` now resolve to `var(--primary)` / `var(--accent)` instead of hardcoding Apple-blue (`#0a84ff`); `--modern-focus-ring` uses `color-mix()` to follow the active theme color; switching to Modern skin no longer forces the primary color away from the user's chosen theme
 

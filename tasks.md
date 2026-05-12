@@ -71,9 +71,6 @@
 
 ## Next
 
-- [ ] **BUG-102** 設定頁帳號區塊帳號名稱下方持續顯示「載入中」
-  - 症狀：進入設定頁，帳號名稱下方顯示「載入中」字樣，資料載入完成後仍未消失
-  - 範圍：設定頁帳號區塊的資料載入狀態管理與 UI 更新邏輯
 
 - [ ] **BUG-103** 任務小卡移動後意外停止編輯模式
   - 症狀：在任務小卡編輯狀態下移動小卡位置，編輯模式會自動停止；預期應只有按「完成」按鈕或點擊空白處才退出編輯
@@ -88,6 +85,9 @@
 ---
 
 ## Done
+
+- [x] **BUG-102** 設定頁帳號區塊帳號名稱下方持續顯示「載入中」
+  - 完成：`settings.js` 新增 module-level `_cachedEmail` 變數；首次非同步取得 email 後存入 cache；後續所有 `_renderView` 呼叫直接從 cache render，不再還原成「載入中…」
 
 - [x] **BUG-104** 改使用者名稱 / 上傳大頭貼靜默失敗
   - 完成：`upsertProfile` 改為回傳 `boolean`（true = 已同步，false = 無 session 跳過）；`saveUserAndSync` 傳遞此值，未同步時在 localStorage 標記 `_syncPending: true`；`loadFromRemote` 執行前若發現 `_syncPending`，先把本地資料推上 Supabase 再拉遠端，避免重開後舊資料蓋掉本地變更；改名與頭像上傳的 UI 訊息改為依實際同步結果顯示（已同步 / 已儲存在此裝置，登入後可同步），不再顯示假的「✓ 同步完成」

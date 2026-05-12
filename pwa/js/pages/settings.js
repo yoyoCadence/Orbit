@@ -26,6 +26,8 @@ export const THEMES_CREATIVE = [
   { id: 'github',  name: 'GitHub',   icon: '🐙', colors: ['#1f6feb', '#2da44e', '#0d1117'] },
 ];
 
+let _cachedEmail = null;
+
 const EMOJI_LIST = [
   '🏃','🚶','🏋️','🧘','🚴','🏊','⚽','🏸','🎯','📚','💡','🎨','🎵','🎮',
   '🍎','🥗','🥤','💧','💊','🌙','😴','✍️','📝','💻','🤝','❤️','🧠','🌟',
@@ -511,7 +513,7 @@ function _renderView(container) {
       <div class="account-row">
         <div class="account-info">
           <div class="account-name">${escHtml(state.user?.name || '使用者')}</div>
-          <div class="account-sub" id="account-email">載入中…</div>
+          <div class="account-sub" id="account-email">${_cachedEmail ?? '載入中…'}</div>
         </div>
         <button class="btn btn-outline btn-sm" id="signout-btn">登出</button>
       </div>
@@ -645,14 +647,16 @@ function _setupListeners(container) {
     _renderView(container);
   });
 
-  // Show account email async
-  import('../auth.js').then(({ getSession }) => {
-    getSession().then(session => {
-      const el = container.querySelector('#account-email');
-      if (!el) return;
-      el.textContent = session?.user?.email || '（遊客）';
+  // Show account email async (cached so re-renders don't flash "載入中…")
+  if (!_cachedEmail) {
+    import('../auth.js').then(({ getSession }) => {
+      getSession().then(session => {
+        _cachedEmail = session?.user?.email || '（遊客）';
+        const el = container.querySelector('#account-email');
+        if (el) el.textContent = _cachedEmail;
+      });
     });
-  });
+  }
 
   // Restart tour
   container.querySelector('#tour-btn')?.addEventListener('click', () => {
