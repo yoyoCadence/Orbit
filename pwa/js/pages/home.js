@@ -135,7 +135,10 @@ export function renderHome(container) {
     <div class="effective-row">${streakIndicator}</div>
 
     <!-- 本日計劃 -->
-    <div class="section-title">📋 本日計劃</div>
+    <div class="section-title-row">
+      <span>📋 本日計劃</span>
+      <button class="plan-info-btn" id="plan-info-btn" aria-label="本日計劃說明">？</button>
+    </div>
     <div class="plan-list" id="plan-list">${planHtml}</div>
 
     ${growthTasks.length ? `
@@ -264,6 +267,11 @@ export function renderHome(container) {
   container.querySelector('.stat-pill-shield-info')?.addEventListener('click', e => {
     e.stopPropagation();
     window.showShieldInfo(e.currentTarget);
+  });
+
+  // ── Plan info modal ───────────────────────────────────────────────────────────
+  container.querySelector('#plan-info-btn')?.addEventListener('click', () => {
+    _showPlanInfoModal();
   });
 
   // ── Setup drag-and-drop ───────────────────────────────────────────────────────
@@ -811,4 +819,30 @@ function _cardUnderPoint(container, x, y) {
 
 function _clearDragOver(container) {
   container.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+}
+
+// ─── Plan info modal ──────────────────────────────────────────────────────────
+
+function _showPlanInfoModal() {
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.innerHTML = `
+    <div class="modal-box">
+      <button class="modal-close-btn" aria-label="關閉">✕</button>
+      <div class="modal-title">📋 為什麼要規劃本日任務？</div>
+      <div class="modal-body">
+        <p>心理學研究顯示，<strong>起床後先列出當日任務</strong>能顯著提升執行率，原因有三：</p>
+        <ul>
+          <li><strong>實行意圖（Implementation Intention）</strong>：把「我要做 X」轉化為「我在 Y 時間做 X」，能將行動機率提升 2–3 倍。</li>
+          <li><strong>減少決策疲勞</strong>：預先規劃讓你不需要在疲憊時才決定「接下來要幹嘛」，保留意志力給真正的執行。</li>
+          <li><strong>心理對比（Mental Contrasting）</strong>：把目標攤開在眼前，讓大腦對「現在」與「想達成的狀態」形成落差感，主動驅動行動。</li>
+        </ul>
+        <p style="margin-top:12px;color:var(--text-muted);font-size:13px">每天花 30 秒規劃，效果遠大於臨時起意。</p>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  const close = () => modal.remove();
+  modal.querySelector('.modal-close-btn').addEventListener('click', close);
+  modal.addEventListener('click', e => { if (e.target === modal) close(); });
 }

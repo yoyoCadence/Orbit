@@ -1391,6 +1391,15 @@ function showLoginScreen() {
   if (_loginListenerSet) return;
   _loginListenerSet = true;
 
+  // Password show/hide toggle
+  document.getElementById('auth-password-toggle')?.addEventListener('click', () => {
+    const input = document.getElementById('auth-password');
+    const isHidden = input.type === 'password';
+    input.type = isHidden ? 'text' : 'password';
+    document.getElementById('pw-eye-show').style.display = isHidden ? 'none' : '';
+    document.getElementById('pw-eye-hide').style.display = isHidden ? '' : 'none';
+  });
+
   document.getElementById('auth-form').addEventListener('submit', async e => {
     e.preventDefault();
     const email    = document.getElementById('auth-email').value.trim();
