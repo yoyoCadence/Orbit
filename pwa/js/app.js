@@ -1516,7 +1516,9 @@ function showLoginScreen() {
         btn.disabled    = false;
         btn.textContent = '登入';
         _showAuthError(
-          error.message.includes('Invalid login') ? '帳號或密碼錯誤' : error.message
+          error.message.includes('Invalid login')
+            ? '帳號或密碼錯誤。若你是用 Google 帳號登入，請點上方「用 Google 帳號登入」。'
+            : error.message
         );
       }
       // on success → onAuthStateChange fires → loadAndStart
