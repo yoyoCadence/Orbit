@@ -1376,7 +1376,8 @@ window.showForgotPassword = function () {
       <button class="modal-close-btn" aria-label="關閉">✕</button>
       <div class="modal-title">重設密碼</div>
       <p style="font-size:14px;color:var(--text-muted);margin:0 0 16px">
-        輸入你的 Email，我們會寄送重設連結。
+        輸入你的 Email，我們會寄送重設連結。<br>
+        <span style="font-size:12px">若你是用 Google 帳號登入，請直接點擊「用 Google 帳號登入」，不需要重設密碼。</span>
       </p>
       <div class="form-group">
         <input class="form-input" id="forgot-pw-email" type="email"
