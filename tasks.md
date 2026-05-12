@@ -72,10 +72,6 @@
 ## Next
 
 
-- [ ] **BUG-103** 任務小卡移動後意外停止編輯模式
-  - 症狀：在任務小卡編輯狀態下移動小卡位置，編輯模式會自動停止；預期應只有按「完成」按鈕或點擊空白處才退出編輯
-  - 範圍：任務小卡的事件處理邏輯（拖移 vs 編輯狀態的區分）
-
 ---
 
 ## In Progress
@@ -85,6 +81,9 @@
 ---
 
 ## Done
+
+- [x] **BUG-103** 任務小卡移動後意外停止編輯模式
+  - 完成：`_endDrag` 在呼叫 `renderHome` 前先記錄所有 `.task-grid.edit-mode` 的 section；重繪後逐一恢復 `edit-mode` class 並把對應「編輯」按鈕改回「完成」，拖曳排序不再退出編輯模式
 
 - [x] **BUG-102** 設定頁帳號區塊帳號名稱下方持續顯示「載入中」
   - 完成：`settings.js` 新增 module-level `_cachedEmail` 變數；首次非同步取得 email 後存入 cache；後續所有 `_renderView` 呼叫直接從 cache render，不再還原成「載入中…」
