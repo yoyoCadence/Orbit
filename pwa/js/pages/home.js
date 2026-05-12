@@ -538,9 +538,19 @@ function _setupCardSwipe(container) {
     }, { passive: true });
   });
 
-  // Close swipe on tap outside any task card
+  // Close swipe / exit edit-mode on tap outside
   container.addEventListener('click', e => {
     if (_swipeOpen && !e.target.closest('.task-card')) _closeSwipe();
+
+    // Exit all active edit-mode sections when clicking outside them
+    const activeGrids = [...container.querySelectorAll('.task-grid.edit-mode')];
+    if (activeGrids.length && !e.target.closest('.task-grid.edit-mode') && !e.target.closest('.task-edit-btn')) {
+      activeGrids.forEach(grid => {
+        grid.classList.remove('edit-mode');
+        const btn = container.querySelector(`.task-edit-btn[data-section="${grid.dataset.section}"]`);
+        if (btn) btn.textContent = '編輯';
+      });
+    }
   });
 }
 
