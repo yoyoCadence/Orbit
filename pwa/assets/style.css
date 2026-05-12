@@ -753,6 +753,32 @@ html.has-bg #app { background: transparent; }
   height: 1px;
   background: var(--border);
 }
+/* Auth hint text (below divider) */
+.auth-hint {
+  margin: -10px 0 14px;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* Forgot password link row */
+.forgot-pw-row {
+  text-align: right;
+  margin: -8px 0 12px;
+}
+.btn-text-muted {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.btn-text-muted:hover { color: var(--text-primary); }
+
 /* Password input with show/hide toggle */
 .password-input-wrap {
   position: relative;
@@ -809,17 +835,42 @@ html.has-bg #app { background: transparent; }
   align-items: center;
   justify-content: center;
   gap: 10px;
-  padding: 11px 16px;
+  padding: 13px 16px;
   border-radius: 10px;
-  border: 1px solid var(--border);
-  background: transparent;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.06);
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 0.2s, border-color 0.2s;
+  position: relative;
 }
-.btn-google:hover { background: rgba(255,255,255,0.07); }
+.btn-google:hover {
+  background: rgba(255,255,255,0.11);
+  border-color: rgba(255,255,255,0.25);
+}
+.btn-google-badge {
+  position: absolute;
+  top: -9px;
+  right: 12px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 20px;
+  letter-spacing: 0.03em;
+}
+/* Light theme: use dark-tinted background for Google button */
+[data-theme="light"] .btn-google {
+  background: rgba(0,0,0,0.04);
+  border-color: rgba(0,0,0,0.12);
+}
+[data-theme="light"] .btn-google:hover {
+  background: rgba(0,0,0,0.08);
+}
+
 .btn-guest {
   background: none;
   border: none;

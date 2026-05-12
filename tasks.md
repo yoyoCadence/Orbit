@@ -51,9 +51,6 @@
   - 目標：完成 roadmap 既有 SUB-15
   - 對應 roadmap：?瑟? 2.x
 
-- [ ] **AUTH-103** 忘記密碼 / 密碼重設流程
-  - 目標：登入頁新增「忘記密碼」連結，呼叫 Supabase `resetPasswordForEmail`，寄送重設信；新增重設密碼頁面供使用者輸入新密碼
-  - 範圍：登入頁、新增重設密碼頁、Supabase auth email template 設定
 
 ---
 
@@ -69,6 +66,9 @@
 ---
 
 ## Done
+
+- [x] **AUTH-103** 忘記密碼 / 密碼重設流程
+  - 完成：`auth.js` 新增 `resetPasswordForEmail` / `updatePassword`；登入頁密碼欄位下加「忘記密碼？」連結，點擊彈出 modal 輸入 Email 寄送重設信；`onAuthStateChange` 攔截 `PASSWORD_RECOVERY` 事件顯示設定新密碼 modal；切到「註冊」tab 時自動隱藏忘記密碼連結
 
 - [x] **UI-201** 本日計劃區塊新增說明視窗
   - 完成：本日計劃標題改為 `section-title-row`，右側新增 `plan-info-btn`（？圓形按鈕）；點擊彈出 modal 說明「起床先規劃本日任務」的三個心理學原理（實行意圖、決策疲勞、心理對比）
