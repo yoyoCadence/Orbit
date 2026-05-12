@@ -538,9 +538,19 @@ function _setupCardSwipe(container) {
     }, { passive: true });
   });
 
-  // Close swipe on tap outside any task card
+  // Close swipe / exit edit-mode on tap outside
   container.addEventListener('click', e => {
     if (_swipeOpen && !e.target.closest('.task-card')) _closeSwipe();
+
+    // Exit all active edit-mode sections when clicking outside them
+    const activeGrids = [...container.querySelectorAll('.task-grid.edit-mode')];
+    if (activeGrids.length && !e.target.closest('.task-grid.edit-mode') && !e.target.closest('.task-edit-btn')) {
+      activeGrids.forEach(grid => {
+        grid.classList.remove('edit-mode');
+        const btn = container.querySelector(`.task-edit-btn[data-section="${grid.dataset.section}"]`);
+        if (btn) btn.textContent = '編輯';
+      });
+    }
   });
 }
 
@@ -760,7 +770,20 @@ function _endDrag(container) {
     const newTasks = reorderTasks(state.tasks, _drag.taskId, target.dataset.taskId);
     state.tasks.splice(0, state.tasks.length, ...newTasks);
     import('../storage.js').then(({ storage: s }) => s.saveTasks(state.tasks));
+
+    // Preserve which sections are in edit-mode before full re-render
+    const editingSections = [...container.querySelectorAll('.task-grid.edit-mode')]
+      .map(g => g.dataset.section);
+
     if (_container) renderHome(_container);
+
+    // Restore edit-mode after re-render so dragging doesn't exit editing
+    editingSections.forEach(section => {
+      const grid = _container.querySelector(`.task-grid[data-section="${section}"]`);
+      const btn  = _container.querySelector(`.task-edit-btn[data-section="${section}"]`);
+      if (grid) grid.classList.add('edit-mode');
+      if (btn)  btn.textContent = '完成';
+    });
   }
 
   _drag.active = false;
