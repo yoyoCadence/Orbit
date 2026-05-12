@@ -22,6 +22,7 @@
 - Floor map memory markers: `world/floorMap.js` 為四個畢業辦公室房間加上 `graduatesAtLevel` 欄位，並新增 `getMemoryRooms(level)` query helper
 
 ### Added
+- Forgot password flow: 登入頁加「忘記密碼？」連結，彈出 modal 輸入 Email 呼叫 Supabase `resetPasswordForEmail` 寄送重設信；app 攔截 `PASSWORD_RECOVERY` auth 事件，顯示設定新密碼 modal 呼叫 `updatePassword`；切到「註冊」tab 時連結自動隱藏
 - Daily plan info modal: 本日計劃標題旁新增「？」按鈕，點擊彈出 modal 說明起床規劃的心理學原理（實行意圖、決策疲勞、心理對比）
 - Password visibility toggle: 登入與註冊頁密碼欄位右側新增眼睛 icon，點擊切換明文 / 遮罩顯示
 
