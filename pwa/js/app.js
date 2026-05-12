@@ -1354,6 +1354,15 @@ window.loginWithGoogle = async function () {
   if (error) showToast('Google 登入失敗：' + (error.message || '請稍後再試'));
 };
 
+window.togglePasswordVisibility = function () {
+  const input = document.getElementById('auth-password');
+  if (!input) return;
+  const isHidden = input.type === 'password';
+  input.type = isHidden ? 'text' : 'password';
+  document.getElementById('pw-eye-show').style.display = isHidden ? 'none' : '';
+  document.getElementById('pw-eye-hide').style.display = isHidden ? '' : 'none';
+};
+
 window.continueAsGuest = function () {
   _isGuest = true;
   hideLoading();
@@ -1390,15 +1399,6 @@ function showLoginScreen() {
 
   if (_loginListenerSet) return;
   _loginListenerSet = true;
-
-  // Password show/hide toggle
-  document.getElementById('auth-password-toggle')?.addEventListener('click', () => {
-    const input = document.getElementById('auth-password');
-    const isHidden = input.type === 'password';
-    input.type = isHidden ? 'text' : 'password';
-    document.getElementById('pw-eye-show').style.display = isHidden ? 'none' : '';
-    document.getElementById('pw-eye-hide').style.display = isHidden ? '' : 'none';
-  });
 
   document.getElementById('auth-form').addEventListener('submit', async e => {
     e.preventDefault();

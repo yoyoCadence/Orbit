@@ -766,6 +766,7 @@ html.has-bg #app { background: transparent; }
 .password-toggle-btn {
   position: absolute;
   right: 10px;
+  z-index: 1;
   background: none;
   border: none;
   padding: 4px;
