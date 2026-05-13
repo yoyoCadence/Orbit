@@ -580,19 +580,21 @@ function _renderView(container) {
       <button class="btn btn-primary" style="margin-top:12px" id="add-task-btn">+ 新增任務</button>
     </div>
 
-    <!-- Data export (Pro only) -->
-    ${storage.isProUser() ? `
+    <!-- Data export (always visible; locked for free users → redirects to Pro card) -->
     <div class="card">
       <span class="pro-badge--corner">✦ Pro 專屬</span>
       <div class="card-title">📤 資料匯出</div>
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">
-        匯出打卡紀錄為 CSV，或產生帶有圖表的 PDF 成長報告。
+        ${isPro
+          ? '匯出打卡紀錄為 CSV，或產生帶有圖表的 PDF 成長報告。'
+          : '升級 Pro，一鍵匯出打卡紀錄 CSV，或產生帶有統計圖表的 PDF 成長報告。'}
       </p>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="btn btn-outline" id="export-csv-btn">📊 匯出 CSV</button>
-        <button class="btn btn-primary" id="export-pdf-btn">📄 產生 PDF 報告</button>
+        <button class="btn btn-outline" id="export-csv-btn">${isPro ? '📊 匯出 CSV' : '🔒 匯出 CSV'}</button>
+        <button class="btn btn-primary" id="export-pdf-btn">${isPro ? '📄 產生 PDF 報告' : '🔒 產生 PDF 報告'}</button>
       </div>
-    </div>` : ''}
+      ${!isPro ? `<p style="font-size:11px;color:var(--text-muted);margin-top:10px;">點擊了解 Orbit Pro ↓</p>` : ''}
+    </div>
 
     <!-- Leaderboard opt-in -->
     <div class="card">
@@ -840,13 +842,15 @@ function _setupListeners(container) {
   container.querySelector('#dev-pro-paid')?.addEventListener('click',  () => _devApplyPro('paid'));
   container.querySelector('#dev-reset')?.addEventListener('click', _devReset);
 
-  // CSV export (Pro only)
+  // CSV export — Pro: run; free: redirect to Pro card
   container.querySelector('#export-csv-btn')?.addEventListener('click', () => {
+    if (!storage.isProUser()) { _goToProCard(); return; }
     exportSessionsCSV();
   });
 
-  // PDF report (Pro only)
+  // PDF report — Pro: run; free: redirect to Pro card
   container.querySelector('#export-pdf-btn')?.addEventListener('click', () => {
+    if (!storage.isProUser()) { _goToProCard(); return; }
     showReportPicker();
   });
 
