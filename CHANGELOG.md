@@ -22,6 +22,7 @@
 - Floor map memory markers: `world/floorMap.js` 為四個畢業辦公室房間加上 `graduatesAtLevel` 欄位，並新增 `getMemoryRooms(level)` query helper
 
 ### Added
+- CSV export + PDF report: 設定頁 Pro / 試用用戶新增「📤 資料匯出」card，提供兩個按鈕：（1）「📊 匯出 CSV」下載含所有 sessions 的 CSV 檔（UTF-8 BOM，Excel 直接開啟中文正常顯示）；（2）「📄 產生 PDF 報告」彈出月份選擇器（本月 / 上個月 / 選擇月份 / 全部時間），以 html2canvas + jsPDF 產生 A4 PDF，內含統計摘要、每週 XP 長條圖、最常打卡 Top 5、打卡明細表（≤150 筆時顯示，超過則提示使用 CSV）
 - Forgot password flow: 登入頁加「忘記密碼？」連結，彈出 modal 輸入 Email 呼叫 Supabase `resetPasswordForEmail` 寄送重設信；app 攔截 `PASSWORD_RECOVERY` auth 事件，顯示設定新密碼 modal 呼叫 `updatePassword`；切到「註冊」tab 時連結自動隱藏
 - Daily plan info modal: 本日計劃標題旁新增「？」按鈕，點擊彈出 modal 說明起床規劃的心理學原理（實行意圖、決策疲勞、心理對比）
 - Password visibility toggle: 登入與註冊頁密碼欄位右側新增眼睛 icon，點擊切換明文 / 遮罩顯示

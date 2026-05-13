@@ -133,6 +133,8 @@ export const db = {
   },
 
   async upsertProfile(user) {
+    // Dev-tool guard: never sync to Supabase while a dev override backup exists
+    if (localStorage.getItem('orbit_dev_backup')) return false;
     const session = await this._session();
     if (!session) return false;
     // Keep large local previews out of profiles; avatarPath points to Storage.
