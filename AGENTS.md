@@ -179,7 +179,25 @@ Do NOT:
 - remove items without explicit instruction
 
 
-## 14. Task Lifecycle
+## 14. Version Bumping
+
+**Never manually edit version strings across multiple files.** Use the bump script instead:
+
+```bash
+npm run bump -- patch    # bug fix, minor UX tweak
+npm run bump -- minor    # new feature, new page, new setting
+npm run bump -- major    # breaking data format change (rare)
+```
+
+The script atomically updates all three locations:
+- `package.json` `version` — single source of truth
+- `pwa/js/app.js` `APP_VERSION`
+- `pwa/sw.js` `CACHE`
+- Inserts a dated stub into `CHANGELOG.md` (fill in content manually)
+
+Run this once per PR, in the same commit that introduces the feature or fix.
+
+## 15. Task Lifecycle
 
 Tasks must move through the following states:
 
@@ -191,7 +209,7 @@ Rules:
 - Move to Done only when completed
 - Do not silently skip or reorder tasks
 
-## 15. Task Granularity Rule
+## 16. Task Granularity Rule
 
 Tasks must be:
 
@@ -204,7 +222,7 @@ Avoid:
 - "build feature"
 - "add 3D"
 
-## 16. Personal Space Development Reference
+## 17. Personal Space Development Reference
 
 ### Module Responsibilities
 

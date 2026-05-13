@@ -22,7 +22,7 @@ import { renderPersonalSpace }  from './pages/personalSpace.js';
 import { startTour } from './tour.js';
 
 // ─── Version ─────────────────────────────────────────────────────────────────
-export const APP_VERSION = 'v1.16.0';
+export const APP_VERSION = 'v1.17.0';
 
 // Expose tour globally so settings page can call it
 window.startTour = startTour;
