@@ -1,7 +1,9 @@
 {
   "name": "orbit",
+  "version": "1.17.0",
   "type": "module",
   "scripts": {
+    "bump": "node scripts/bump.mjs",
     "lint": "eslint pwa/js/**/*.js tests/**/*.js",
     "test": "vitest run",
     "test:watch": "vitest",
