@@ -2,6 +2,7 @@ import { state }                      from '../state.js';
 import { storage }                     from '../storage.js';
 import { applyTheme, applyUiSkin, applyBgImage, removeBgImage, applyRandomThemeForToday, APP_VERSION } from '../app.js';
 import { uid, today }                  from '../utils.js';
+import { exportSessionsCSV }           from '../export.js';
 
 // ── Theme definitions ────────────────────────────────────────────────────────
 export const THEMES = [
@@ -478,6 +479,17 @@ function _renderView(container) {
       <button class="btn btn-primary" style="margin-top:12px" id="add-task-btn">+ 新增任務</button>
     </div>
 
+    <!-- Data export (Pro only) -->
+    ${storage.isProUser() ? `
+    <div class="card">
+      <span class="pro-badge--corner">✦ Pro 專屬</span>
+      <div class="card-title">📤 資料匯出</div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">
+        匯出所有打卡紀錄為 CSV，可匯入 Excel / Notion 做進一步分析。資料永遠是你的。
+      </p>
+      <button class="btn btn-outline" id="export-csv-btn">匯出打卡紀錄 CSV</button>
+    </div>` : ''}
+
     <!-- Leaderboard opt-in -->
     <div class="card">
       <div class="card-title">🏆 排行榜</div>
@@ -709,6 +721,11 @@ function _setupListeners(container) {
       content?.addEventListener('scrollend', () => { clearTimeout(fallback); flash(); }, { once: true });
     }
   };
+
+  // CSV export (Pro only)
+  container.querySelector('#export-csv-btn')?.addEventListener('click', () => {
+    exportSessionsCSV();
+  });
 
   // Sign out
   container.querySelector('#signout-btn')?.addEventListener('click', () => {

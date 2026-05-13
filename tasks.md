@@ -35,10 +35,6 @@
   - 目標：讓未來包成 native 時有清楚替換點
   - 對應 roadmap：Phase 5 準備
 
-- [ ] **PRO-013** 資料匯出 CSV
-  - 目標：完成 roadmap 既有 SUB-13
-  - 對應 roadmap：v1.16.x
-
 - [ ] **PRO-014** 排行榜 Pro 強化
   - 目標：完成 roadmap 既有 SUB-14
   - 對應 roadmap：銝剜?
@@ -66,6 +62,9 @@
 ---
 
 ## Done
+
+- [x] **PRO-013** 資料匯出 CSV
+  - 完成：新增 `export.js`，`exportSessionsCSV()` 將所有 sessions 排序後轉為中文欄位名稱的 CSV（含 UTF-8 BOM 確保 Excel 正確顯示中文），觸發瀏覽器下載；設定頁 Pro/試用用戶新增「📤 資料匯出」card，點擊按鈕即匯出檔名含日期的 CSV 檔
 
 - [x] **AUTH-103** 忘記密碼 / 密碼重設流程
   - 完成：`auth.js` 新增 `resetPasswordForEmail` / `updatePassword`；登入頁密碼欄位下加「忘記密碼？」連結，點擊彈出 modal 輸入 Email 寄送重設信；`onAuthStateChange` 攔截 `PASSWORD_RECOVERY` 事件顯示設定新密碼 modal；切到「註冊」tab 時自動隱藏忘記密碼連結
