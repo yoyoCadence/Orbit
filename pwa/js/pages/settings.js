@@ -3,6 +3,7 @@ import { storage }                     from '../storage.js';
 import { applyTheme, applyUiSkin, applyBgImage, removeBgImage, applyRandomThemeForToday, APP_VERSION } from '../app.js';
 import { uid, today }                  from '../utils.js';
 import { exportSessionsCSV, showReportPicker } from '../export.js';
+import { xpRequired, getLevelInfo }            from '../leveling.js';
 
 // ── Theme definitions ────────────────────────────────────────────────────────
 export const THEMES = [
@@ -248,6 +249,106 @@ function _showProSheet() {
       close();
     });
   });
+}
+
+// ── Dev tools ─────────────────────────────────────────────────────────────────
+
+function _isDevMode() {
+  const host = window.location.hostname;
+  return host === 'localhost' || host === '127.0.0.1' || localStorage.getItem('orbit_dev_panel') === '1';
+}
+
+function _devXpForLevel(level) {
+  let xp = 0;
+  for (let l = 1; l < level; l++) xp += xpRequired(l);
+  return xp;
+}
+
+function _devApplyLevel(level) {
+  const raw = localStorage.getItem('yoyo_user');
+  const u   = raw ? JSON.parse(raw) : {};
+  if (!localStorage.getItem('orbit_dev_backup')) localStorage.setItem('orbit_dev_backup', raw || '{}');
+  u.totalXP = _devXpForLevel(Math.max(1, Math.min(100, level)));
+  localStorage.setItem('yoyo_user', JSON.stringify(u));
+  location.reload();
+}
+
+function _devApplyPro(status) {
+  const raw = localStorage.getItem('yoyo_user');
+  const u   = raw ? JSON.parse(raw) : {};
+  if (!localStorage.getItem('orbit_dev_backup')) localStorage.setItem('orbit_dev_backup', raw || '{}');
+  if (status === 'paid') {
+    u.isPro = true; u.proExpiresAt = null; u.trialStartedAt = null;
+  } else if (status === 'trial') {
+    u.isPro = true;
+    u.trialStartedAt = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(); // started yesterday
+    u.proExpiresAt   = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+  } else {
+    u.isPro = false; u.proExpiresAt = null; u.trialStartedAt = null;
+  }
+  localStorage.setItem('yoyo_user', JSON.stringify(u));
+  location.reload();
+}
+
+function _devReset() {
+  const backup = localStorage.getItem('orbit_dev_backup');
+  if (backup) localStorage.setItem('yoyo_user', backup);
+  localStorage.removeItem('orbit_dev_backup');
+  location.reload();
+}
+
+function _devPanelHtml() {
+  if (!_isDevMode()) return '';
+
+  const hasBackup   = !!localStorage.getItem('orbit_dev_backup');
+  const { level }   = getLevelInfo(state.user?.totalXP || 0);
+  const isPaid      = storage.isPaidProUser();
+  const isTrial     = storage.isTrialUser();
+  const proStatus   = isPaid ? 'paid' : isTrial ? 'trial' : 'free';
+  const proLabel    = isPaid ? '付費 Pro' : isTrial ? '試用' : '免費';
+
+  const activeCls = 'btn btn-primary btn-sm';
+  const inactCls  = 'btn btn-outline btn-sm';
+
+  return `
+    <div class="card" style="border:1.5px solid rgba(245,158,11,0.35);background:rgba(245,158,11,0.04)">
+      <div class="card-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="color:#f59e0b">🛠 開發者工具</span>
+        <span style="font-size:11px;color:var(--text-muted);font-weight:400">localhost · 不影響雲端紀錄</span>
+        ${hasBackup ? '<span style="font-size:11px;color:#ef4444;font-weight:600">● 覆蓋中</span>' : ''}
+      </div>
+
+      ${hasBackup ? `
+      <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:8px 12px;font-size:12px;color:#ef4444;margin-bottom:14px">
+        ⚠️ 開發者覆蓋模式已啟用，Supabase profile 同步已暫停，避免假資料上傳
+      </div>` : ''}
+
+      <div style="display:flex;flex-direction:column;gap:16px">
+
+        <div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">等級模擬（目前 Lv.${level}）</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="number" id="dev-level-input" class="form-input"
+                   min="1" max="100" placeholder="1-100"
+                   style="width:80px;text-align:center;padding:6px 8px">
+            <button class="btn btn-outline btn-sm" id="dev-level-apply">套用並重啟</button>
+          </div>
+        </div>
+
+        <div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">會員狀態（目前：${proLabel}）</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="${proStatus === 'free'  ? activeCls : inactCls}" id="dev-pro-free">免費</button>
+            <button class="${proStatus === 'trial' ? activeCls : inactCls}" id="dev-pro-trial">試用（15 天）</button>
+            <button class="${proStatus === 'paid'  ? activeCls : inactCls}" id="dev-pro-paid">付費 Pro</button>
+          </div>
+        </div>
+
+        ${hasBackup ? `
+        <button class="btn-text-danger" id="dev-reset" style="text-align:left">↩ 還原原始資料並重啟</button>` : ''}
+
+      </div>
+    </div>`;
 }
 
 // ── Main render ──────────────────────────────────────────────────────────────
@@ -522,6 +623,9 @@ function _renderView(container) {
       ${_proSectionHtml()}
     </div>
 
+    <!-- Dev tools (localhost only) -->
+    ${_devPanelHtml()}
+
     <!-- Account -->
     <div class="card">
       <div class="card-title">👤 帳號</div>
@@ -724,6 +828,17 @@ function _setupListeners(container) {
       content?.addEventListener('scrollend', () => { clearTimeout(fallback); flash(); }, { once: true });
     }
   };
+
+  // Dev tools (localhost only)
+  container.querySelector('#dev-level-apply')?.addEventListener('click', () => {
+    const v = parseInt(container.querySelector('#dev-level-input')?.value, 10);
+    if (!v || v < 1 || v > 100) { window.showToast('請輸入 1–100 的等級'); return; }
+    _devApplyLevel(v);
+  });
+  container.querySelector('#dev-pro-free')?.addEventListener('click',  () => _devApplyPro('free'));
+  container.querySelector('#dev-pro-trial')?.addEventListener('click', () => _devApplyPro('trial'));
+  container.querySelector('#dev-pro-paid')?.addEventListener('click',  () => _devApplyPro('paid'));
+  container.querySelector('#dev-reset')?.addEventListener('click', _devReset);
 
   // CSV export (Pro only)
   container.querySelector('#export-csv-btn')?.addEventListener('click', () => {
