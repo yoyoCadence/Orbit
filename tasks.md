@@ -13,6 +13,20 @@
 
 ## Backlog
 
+- [ ] **INFRA-101** 設定 Custom SMTP（Resend）並自訂 email 寄件人名稱與模板
+  - 目標：讓重設密碼等 auth email 以「Orbit」名義寄出，而非「Supabase Auth」；並把 email 內容換成中文品牌模板
+  - 目前限制：Supabase 內建 email 服務每天只能寄 2 封，且 Sender name 無法自訂，不適合正式上線
+  - 步驟：
+    1. 在 [resend.com](https://resend.com) 免費註冊，取得 SMTP 憑證（API key）
+    2. Supabase Dashboard → Authentication → Notifications → Email → SMTP Settings → Enable Custom SMTP
+       - Host: `smtp.resend.com` / Port: `465` / Username: `resend` / Password: Resend API key
+       - Sender email: `onboarding@resend.dev`（之後有自訂域名再換）
+       - Sender name: `Orbit`
+    3. Authentication → Notifications → Email → Templates，更新以下模板內容（英文品牌版，內容已備好）：
+       - Reset Password：主旨「Reset your Orbit password」
+       - Confirm Signup：主旨「Confirm your Orbit account」
+  - 備註：Resend 免費方案 3,000 封/月，足夠早期使用；之後有自訂域名可換成 `noreply@yourdomain.com`
+
 - [ ] **PS-211** 為 personal space 新增常用資產 preload / cache 策略
   - 目標：降低切換頁面或切回 personal space 時重新顯示圖片的等待感
   - 範圍：`pwa/js/personalSpace/`、service worker / asset loading 相關模組、相關測試或文件
