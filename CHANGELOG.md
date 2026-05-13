@@ -3,7 +3,7 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
-## [Unreleased]
+## [1.17.0] - 2026-05-13
 
 ### Added
 - Modern UI skin: 新增可在設定頁切換的 Classic / Modern UI 外觀層，保留既有 Classic UI，並以 design tokens 套用深色、玻璃感、pill navigation、按鈕、卡片、表單與 modal 的系統化樣式
