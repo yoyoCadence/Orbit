@@ -2,7 +2,7 @@ import { state }                      from '../state.js';
 import { storage }                     from '../storage.js';
 import { applyTheme, applyUiSkin, applyBgImage, removeBgImage, applyRandomThemeForToday, APP_VERSION } from '../app.js';
 import { uid, today }                  from '../utils.js';
-import { exportSessionsCSV }           from '../export.js';
+import { exportSessionsCSV, showReportPicker } from '../export.js';
 
 // ── Theme definitions ────────────────────────────────────────────────────────
 export const THEMES = [
@@ -485,9 +485,12 @@ function _renderView(container) {
       <span class="pro-badge--corner">✦ Pro 專屬</span>
       <div class="card-title">📤 資料匯出</div>
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">
-        匯出所有打卡紀錄為 CSV，可匯入 Excel / Notion 做進一步分析。資料永遠是你的。
+        匯出打卡紀錄為 CSV，或產生帶有圖表的 PDF 成長報告。
       </p>
-      <button class="btn btn-outline" id="export-csv-btn">匯出打卡紀錄 CSV</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-outline" id="export-csv-btn">📊 匯出 CSV</button>
+        <button class="btn btn-primary" id="export-pdf-btn">📄 產生 PDF 報告</button>
+      </div>
     </div>` : ''}
 
     <!-- Leaderboard opt-in -->
@@ -725,6 +728,11 @@ function _setupListeners(container) {
   // CSV export (Pro only)
   container.querySelector('#export-csv-btn')?.addEventListener('click', () => {
     exportSessionsCSV();
+  });
+
+  // PDF report (Pro only)
+  container.querySelector('#export-pdf-btn')?.addEventListener('click', () => {
+    showReportPicker();
   });
 
   // Sign out

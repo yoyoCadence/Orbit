@@ -74,8 +74,8 @@
 
 ## Done
 
-- [x] **PRO-013** 資料匯出 CSV
-  - 完成：新增 `export.js`，`exportSessionsCSV()` 將所有 sessions 排序後轉為中文欄位名稱的 CSV（含 UTF-8 BOM 確保 Excel 正確顯示中文），觸發瀏覽器下載；設定頁 Pro/試用用戶新增「📤 資料匯出」card，點擊按鈕即匯出檔名含日期的 CSV 檔
+- [x] **PRO-013** 資料匯出 CSV + PDF 成長報告
+  - 完成：新增 `export.js`；CSV 匯出將所有 sessions 依日期排序，帶 UTF-8 BOM；PDF 報告透過 html2canvas + jsPDF（CDN 懶載入）產生 A4 PDF，含統計摘要、每週 XP 長條圖、Top 5 任務、打卡明細表（>150 筆改顯示提示）；設定頁「📤 資料匯出」card 新增兩個按鈕；月份選擇器支援本月、上個月、任意月份、全部時間四種範圍
 
 - [x] **AUTH-103** 忘記密碼 / 密碼重設流程
   - 完成：`auth.js` 新增 `resetPasswordForEmail` / `updatePassword`；登入頁密碼欄位下加「忘記密碼？」連結，點擊彈出 modal 輸入 Email 寄送重設信；`onAuthStateChange` 攔截 `PASSWORD_RECOVERY` 事件顯示設定新密碼 modal；切到「註冊」tab 時自動隱藏忘記密碼連結
