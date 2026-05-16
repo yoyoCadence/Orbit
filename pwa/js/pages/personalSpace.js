@@ -12,8 +12,10 @@ import { renderFloorMapPanel } from '../personalSpace/ui/floorMapPanel.js';
 import { renderHudOverlayPlaceholder } from '../personalSpace/ui/hudOverlay.js';
 import { renderShopPanel, SHOP_PURCHASE_ACTION } from '../personalSpace/ui/shopPanel.js';
 import { SCENE_ACTION_TYPES } from '../personalSpace/world/sceneGraph.js';
+import { haptic } from '../platform/haptics.js';
 
 let activeRuntime = null;
+let activeParallaxCleanup = null;
 export const PERSONAL_SPACE_PURCHASE_REQUEST_EVENT = 'orbit:personal-space-purchase-request';
 
 export function renderPersonalSpace(container) {
@@ -23,6 +25,10 @@ export function renderPersonalSpace(container) {
   if (activeRuntime) {
     activeRuntime.destroy();
     activeRuntime = null;
+  }
+  if (activeParallaxCleanup) {
+    activeParallaxCleanup();
+    activeParallaxCleanup = null;
   }
 
   const model = buildPersonalSpaceViewModel(user);
@@ -136,6 +142,7 @@ export function renderPersonalSpace(container) {
     const item = starterCatalog.find(entry => entry.id === itemId);
     if (!item || item.isOwned || !item.canAfford) return;
 
+    haptic('purchase');
     container.dispatchEvent(new window.CustomEvent(PERSONAL_SPACE_PURCHASE_REQUEST_EVENT, {
       bubbles: true,
       detail: {
@@ -166,6 +173,7 @@ export function renderPersonalSpace(container) {
     } else {
       savePersonalSpaceState({ ...model.personalSpaceState, selectedSceneId: sceneId, memoryViewSceneId: null });
     }
+    haptic('tap');
     renderPersonalSpace(container);
   });
   containSceneSwitcherSwipe(container);
@@ -199,6 +207,7 @@ export function renderPersonalSpace(container) {
       } else {
         savePersonalSpaceState({ ...model.personalSpaceState, selectedSceneId: sceneId, memoryViewSceneId: null });
       }
+      haptic('tap');
       renderPersonalSpace(container);
     });
   });
@@ -212,6 +221,7 @@ export function renderPersonalSpace(container) {
       ...model.personalSpaceState,
       selectedSceneId: action.sceneId,
     });
+    haptic('unlock');
     renderPersonalSpace(container);
   });
 
@@ -228,6 +238,89 @@ export function renderPersonalSpace(container) {
     interactionBus,
   });
   activeRuntime.mount();
+  activeParallaxCleanup = createPersonalSpaceParallax(sceneContainer);
+}
+
+function createPersonalSpaceParallax(sceneContainer) {
+  if (!sceneContainer) return null;
+
+  let permissionAsked = false;
+  let motionStarted = false;
+  let rafId = 0;
+  const current = { x: 0, y: 0 };
+  const target = { x: 0, y: 0 };
+
+  sceneContainer.classList.add('space-scene-shell--motion');
+  writeParallax();
+
+  const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
+  function writeParallax() {
+    sceneContainer.style.setProperty('--space-tilt-x', `${current.x.toFixed(2)}px`);
+    sceneContainer.style.setProperty('--space-tilt-y', `${current.y.toFixed(2)}px`);
+  }
+
+  function animate() {
+    rafId = 0;
+    current.x += (target.x - current.x) * 0.18;
+    current.y += (target.y - current.y) * 0.18;
+    writeParallax();
+    if (Math.abs(target.x - current.x) > 0.05 || Math.abs(target.y - current.y) > 0.05) {
+      rafId = window.requestAnimationFrame(animate);
+    }
+  }
+
+  function queue(x, y) {
+    target.x = clamp(x, -10, 10);
+    target.y = clamp(y, -8, 8);
+    if (!rafId && !document.hidden) rafId = window.requestAnimationFrame(animate);
+  }
+
+  function handleOrientation(event) {
+    const gamma = Number.isFinite(event.gamma) ? event.gamma : 0;
+    const beta = Number.isFinite(event.beta) ? event.beta : 0;
+    queue(clamp(gamma, -28, 28) * 0.32, clamp(beta, -24, 24) * -0.22);
+  }
+
+  function startMotion() {
+    if (motionStarted) return;
+    motionStarted = true;
+    window.addEventListener('deviceorientation', handleOrientation, { passive: true });
+  }
+
+  function requestMotion() {
+    if (permissionAsked) return;
+    permissionAsked = true;
+    const orientationApi = window.DeviceOrientationEvent;
+    if (orientationApi?.requestPermission) {
+      orientationApi.requestPermission()
+        .then(state => { if (state === 'granted') startMotion(); })
+        .catch(() => {});
+    } else {
+      startMotion();
+    }
+  }
+
+  function handlePointer(event) {
+    const rect = sceneContainer.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const x = ((event.clientX - rect.left) / rect.width - 0.5) * 9;
+    const y = ((event.clientY - rect.top) / rect.height - 0.5) * 6;
+    queue(x, y);
+  }
+
+  if (!window.DeviceOrientationEvent?.requestPermission) startMotion();
+  sceneContainer.addEventListener('pointermove', handlePointer, { passive: true });
+  sceneContainer.addEventListener('touchstart', requestMotion, { passive: true });
+  sceneContainer.addEventListener('click', requestMotion, { passive: true });
+
+  return () => {
+    if (rafId) window.cancelAnimationFrame(rafId);
+    window.removeEventListener('deviceorientation', handleOrientation);
+    sceneContainer.removeEventListener('pointermove', handlePointer);
+    sceneContainer.removeEventListener('touchstart', requestMotion);
+    sceneContainer.removeEventListener('click', requestMotion);
+  };
 }
 
 function formatStage(stage) {

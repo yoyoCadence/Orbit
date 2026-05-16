@@ -151,6 +151,14 @@ describe('renderSettings: theme grid', () => {
     expect(mockApplyTheme).toHaveBeenCalledWith('emerald');
   });
 
+  it('renders Liquid Galss as a selectable new style theme', () => {
+    const c = makeContainer();
+    renderSettings(c);
+    const card = c.querySelector('[data-theme-id="liquid-galss"]');
+    expect(THEMES_NEW.some(t => t.id === 'liquid-galss')).toBe(true);
+    expect(card).not.toBeNull();
+  });
+
   it('locks non-free themes for free users', () => {
     mockStorage.isProUser.mockReturnValue(false);
     mockStorage.isTrialUser.mockReturnValue(false);

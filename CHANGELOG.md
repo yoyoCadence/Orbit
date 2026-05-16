@@ -3,6 +3,19 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.18.0] - 2026-05-14
+
+### Added
+- Liquid Galss theme: added a dark glass visual theme with translucent cards, edge highlights, neon XP accents, settings preview support, and inclusion in daily random theme selection.
+- Motion-reactive glass reflection: Liquid Galss updates highlight position from mobile device orientation when available, with pointer movement as a desktop fallback.
+- Liquid Galss reflection refinement: replaced the moving center light spot with angle-based sheen, softened haze, and tilt-responsive rim strength for a more natural glass surface.
+- Liquid Galss mobile performance: throttled and smoothed motion updates through `requestAnimationFrame`, reduced per-card backdrop blur on touch devices, and kept blur only on shell/modal surfaces to avoid Safari reloads under motion.
+- Hardware haptics foundation: added a shared PWA haptics adapter with named feedback patterns for focus, task completion, warnings, level-up, unlock, purchase, and scene taps.
+- Personal Space motion parallax: added subtle device-tilt and pointer-based depth movement for scene backgrounds, furniture, and character layers with cleanup on rerender.
+- Focus desk mode: added a calmer focus presentation that can be toggled manually and can auto-enter after stable flat-phone posture detection, while releasing motion listeners when focus ends.
+
+---
+
 ## [1.17.0] - 2026-05-13
 
 ### Added

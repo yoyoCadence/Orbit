@@ -13,6 +13,46 @@
 
 ## Backlog
 
+- [ ] **HW-104** Camera proof capture for task deliverables
+  - Goal: allow users to attach an optional local photo proof to a completed task or session, optimized for mobile camera capture.
+  - Scope: PWA-only file/camera input, local preview/compression, localStorage-safe metadata shape; no cloud upload or schema changes.
+  - Acceptance: a completed session can show a small proof thumbnail locally, and clearing local cache removes it.
+
+- [ ] **HW-105** Personal Space achievement photo wall
+  - Goal: let selected task proof photos appear as framed memories inside Personal Space.
+  - Scope: local-only photo references, simple wall/frame rendering in existing 2D scene runtime, placeholder fallback when images are unavailable.
+  - Acceptance: user can mark one local proof image as displayable and see it in a Personal Space room without touching auth/storage schema.
+
+- [ ] **HW-106** Ambient noise focus signal
+  - Goal: use microphone volume level as an optional focus-environment signal, not as recording.
+  - Scope: permission-gated Web Audio volume meter, no audio persistence, UI states for quiet / normal / noisy.
+  - Acceptance: focus mode can show a live ambient state and stops microphone tracks when leaving the view.
+
+- [ ] **HW-107** Location context mode
+  - Goal: support optional coarse context labels such as home / work / outside for task suggestions.
+  - Scope: privacy-first local-only geolocation prompt, coarse saved labels, no precise coordinate sync.
+  - Acceptance: user can opt in, assign current place to a label, and see context-aware task hints.
+
+- [ ] **HW-108** Web Share achievement cards
+  - Goal: let users share daily / weekly growth summary cards from mobile.
+  - Scope: generate a lightweight share payload using Web Share API with clipboard fallback; no external service.
+  - Acceptance: share button works on supported phones and copy fallback works elsewhere.
+
+- [ ] **HW-109** App badge and notification shell
+  - Goal: introduce restrained PWA badge/notification hooks for daily core tasks and review reminders.
+  - Scope: platform adapter only, permission-gated notifications, local scheduling placeholders; no push server.
+  - Acceptance: supported browsers can show/clear badge count and local reminder copy is centralized.
+
+- [ ] **HW-110** Offline action queue and sync hints
+  - Goal: make offline task completion feel intentional and visible.
+  - Scope: local pending-action queue UI, sync status messaging, reuse existing storage bridge patterns; no schema migration.
+  - Acceptance: user can complete tasks offline and see a clear pending-sync state when connection returns.
+
+- [ ] **HW-111** Time-of-day atmosphere layer
+  - Goal: make Orbit feel more alive by shifting UI and Personal Space atmosphere by local time.
+  - Scope: local time-based tokens for morning / day / evening / night; no external weather dependency.
+  - Acceptance: Personal Space and Liquid Galss background subtly change by time band.
+
 - [ ] **INFRA-101** 設定 Custom SMTP（Resend）並自訂 email 寄件人名稱與模板
   - 目標：讓 auth email（重設密碼等）以「Orbit」名義寄出，而非「Supabase Auth」；並把 email 內容換成品牌模板
   - 目前限制：Supabase 內建 email 每天只能寄 2 封，Sender name 無法自訂，不適合正式上線
@@ -73,6 +113,18 @@
 ---
 
 ## Done
+
+- [x] **HW-103** Focus desk mode by phone posture
+  - Completed: added a calmer focus desk presentation with a manual fallback button, optional device-orientation permission flow, stable flat-phone detection, and cleanup when minimizing or ending focus.
+
+- [x] **HW-102** Personal Space motion parallax
+  - Completed: added throttled device-orientation/pointer parallax for Personal Space scenes, with CSS tilt variables, layered background/furniture movement, and cleanup on rerender.
+
+- [x] **HW-101** Haptics feedback adapter
+  - Completed: expanded the platform haptics adapter with named vibration patterns and wired task completion, focus start/milestone, warnings, level-up, unlock, purchase, and scene tap feedback.
+
+- [x] **UI-202** Add Liquid Galss glass theme with device-angle highlights
+  - Completed: added the `liquid-galss` app theme to settings and daily random theme selection; introduced glass tokens/surfaces in CSS; wired `deviceorientation` plus pointer fallback to update reflection CSS variables; bumped to v1.18.0 and documented the change.
 
 - [x] **PRO-013** 資料匯出 CSV + PDF 成長報告
   - 完成：新增 `export.js`；CSV 匯出將所有 sessions 依日期排序，帶 UTF-8 BOM；PDF 報告透過 html2canvas + jsPDF（CDN 懶載入）產生 A4 PDF，含統計摘要、每週 XP 長條圖、Top 5 任務、打卡明細表（>150 筆改顯示提示）；設定頁「📤 資料匯出」card 新增兩個按鈕；月份選擇器支援本月、上個月、任意月份、全部時間四種範圍
