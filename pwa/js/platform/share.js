@@ -22,7 +22,7 @@ export function buildGrowthShareText({ name, level, title, streakDays, totalXP, 
   const today   = todayXP   > 0 ? `今日 +${todayXP} XP` : '';
   const lines   = [
     `🌱 ${name || 'Orbit 使用者'} — Lv.${level} ${title}`,
-    `⭐ 累積 ${totalXP} XP　${streak}`,
+    `⭐ 累積 ${totalXP} XP  ${streak}`,
     today,
     '#Orbit成長日誌',
   ].filter(Boolean);
