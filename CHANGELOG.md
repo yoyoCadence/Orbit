@@ -11,6 +11,7 @@
 - Liquid Galss reflection refinement: replaced the moving center light spot with angle-based sheen, softened haze, and tilt-responsive rim strength for a more natural glass surface.
 - Liquid Galss mobile performance: throttled and smoothed motion updates through `requestAnimationFrame`, reduced per-card backdrop blur on touch devices, and kept blur only on shell/modal surfaces to avoid Safari reloads under motion.
 - Liquid Galss mobile stability: added a lower-frequency motion path for touch devices, disabled pointer tracking and heavy sheen overlay layers on mobile, and removed remaining mobile backdrop blur to prevent repeated Chrome/Safari page crashes.
+- Liquid Galss iPhone browser tuning: iOS Chrome now uses a static glass path to avoid WebKit page crashes, while touch Safari keeps low-frequency motion with a stronger lightweight glass surface on Today cards.
 - Hardware haptics foundation: added a shared PWA haptics adapter with named feedback patterns for focus, task completion, warnings, level-up, unlock, purchase, and scene taps.
 - Personal Space motion parallax: added subtle device-tilt and pointer-based depth movement for scene backgrounds, furniture, and character layers with cleanup on rerender.
 - Focus desk mode: added a calmer focus presentation that can be toggled manually and can auto-enter after stable flat-phone posture detection, while releasing motion listeners when focus ends.

@@ -1749,6 +1749,14 @@ let _liquidGlassLiteLastWrite = 0;
 const _liquidGlassCurrent = { angle: 136, sheenX: 50, sheenY: 34, rim: 0.58, hazeX: 50, hazeY: 36 };
 const _liquidGlassTarget  = { ..._liquidGlassCurrent };
 
+function _isIosChrome() {
+  return /CriOS/i.test(window.navigator.userAgent || '');
+}
+
+function _isLiquidGlassStaticMotion() {
+  return _isIosChrome();
+}
+
 function _isLiquidGlassLiteMotion() {
   return window.matchMedia?.('(hover: none), (pointer: coarse), (max-width: 768px)')?.matches ?? false;
 }
@@ -1764,9 +1772,11 @@ function _writeLiquidGlassReflection({ angle, sheenX, sheenY, rim, hazeX, hazeY 
 }
 
 function _queueLiquidGlassReflection(next) {
+  if (_isLiquidGlassStaticMotion()) return;
+
   if (_isLiquidGlassLiteMotion()) {
     const now = window.performance.now();
-    if (now - _liquidGlassLiteLastWrite < 220) return;
+    if (now - _liquidGlassLiteLastWrite < 280) return;
     _liquidGlassLiteLastWrite = now;
     Object.keys(_liquidGlassCurrent).forEach(key => {
       const capped = key === 'rim' ? Math.min(next[key], 0.64) : next[key];
@@ -1819,12 +1829,14 @@ function _handleLiquidGlassOrientation(event) {
 }
 
 function _startLiquidGlassMotion() {
+  if (_isLiquidGlassStaticMotion()) return;
   if (_liquidGlassMotionStarted) return;
   _liquidGlassMotionStarted = true;
   window.addEventListener('deviceorientation', _handleLiquidGlassOrientation, { passive: true });
 }
 
 function _requestLiquidGlassMotion() {
+  if (_isLiquidGlassStaticMotion()) return;
   if (_liquidGlassPermissionAsked || document.documentElement.dataset.theme !== 'liquid-galss') return;
   _liquidGlassPermissionAsked = true;
   const orientationApi = window.DeviceOrientationEvent;
@@ -1855,6 +1867,7 @@ function _handleLiquidGlassPointer(event) {
 function _initLiquidGlassReflection() {
   _writeLiquidGlassReflection(_liquidGlassCurrent);
   document.documentElement.classList.toggle('liquid-galss-lite-motion', _isLiquidGlassLiteMotion());
+  document.documentElement.classList.toggle('liquid-galss-static-motion', _isLiquidGlassStaticMotion());
   if (!window.DeviceOrientationEvent?.requestPermission) _startLiquidGlassMotion();
   window.addEventListener('pointermove', _handleLiquidGlassPointer, { passive: true });
   window.addEventListener('touchstart', _requestLiquidGlassMotion, { passive: true });
