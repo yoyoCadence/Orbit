@@ -27,6 +27,10 @@ export function isNewUser(createdAt) {
 
 let _tab = 'week'; // 'week' | 'growth' | 'total'
 
+function isCurrentLeaderboardRender(container) {
+  return !container.dataset?.route || container.dataset.route === 'leaderboard';
+}
+
 export async function renderLeaderboard(container) {
   const refreshHour = state.user?.newDayHour ?? 5;
   const refreshDate = effectiveToday(refreshHour);
@@ -51,6 +55,7 @@ export async function renderLeaderboard(container) {
     rows = await _withAvatarUrls(data || []);
     storage.saveLeaderboardCache?.(rows, new Date().toISOString(), refreshDate);
   } catch {
+    if (!isCurrentLeaderboardRender(container)) return;
     if (cachedRows) {
       _renderRows(container, cachedRows, cache.refreshedAt, true, refreshHour);
       return;
@@ -64,6 +69,7 @@ export async function renderLeaderboard(container) {
     return;
   }
 
+  if (!isCurrentLeaderboardRender(container)) return;
   _renderRows(container, rows, new Date().toISOString(), false, refreshHour);
 }
 

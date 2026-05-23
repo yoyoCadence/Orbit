@@ -56,6 +56,7 @@ let _prevPageIdx = -1;   // -1 = first render, skip animation
 function renderPage(hash) {
   const fn      = ROUTES[hash] || renderHome;
   const content = document.getElementById('content');
+  content.dataset.route = hash;
 
   fn(content);
 
