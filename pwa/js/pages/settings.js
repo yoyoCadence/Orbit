@@ -21,6 +21,10 @@ export const THEMES_NEW = [
   { id: 'cyberpunk', name: '賽博龐克', icon: '⚡', colors: ['#00ff9f', '#ff2d78', '#050508'] },
 ];
 
+THEMES_NEW.push(
+  { id: 'liquid-galss', name: 'Liquid Galss', icon: 'LG', colors: ['#eaff35', '#8b5cf6', '#071522'] },
+);
+
 export const THEMES_CREATIVE = [
   { id: 'pixel',   name: '像　　素', icon: '👾', colors: ['#39ff14', '#ffff00', '#0a0a0a'] },
   { id: 'anime',   name: '動　　漫', icon: '🌸', colors: ['#ff6b9d', '#7ec8e3', '#fff5f8'] },
@@ -255,7 +259,9 @@ function _showProSheet() {
 
 function _isDevMode() {
   const host = window.location.hostname;
-  return host === 'localhost' || host === '127.0.0.1' || localStorage.getItem('orbit_dev_panel') === '1';
+  const isLocal = host === 'localhost' || host === '127.0.0.1';
+  const isNgrok = host.endsWith('.ngrok-free.dev') || host.endsWith('.ngrok-free.app') || host.endsWith('.ngrok.app') || host.endsWith('.ngrok.io');
+  return isLocal || isNgrok || localStorage.getItem('orbit_dev_panel') === '1';
 }
 
 function _devXpForLevel(level) {

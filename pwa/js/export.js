@@ -1,3 +1,4 @@
+/* global Blob */
 import { storage }         from './storage.js';
 import { state }            from './state.js';
 import { getLevelInfo }     from './leveling.js';

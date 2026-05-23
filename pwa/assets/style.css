@@ -234,6 +234,32 @@
 [data-theme="github"] .plan-card,
 [data-theme="github"] .modal-box { border-radius: 6px; }
 
+/* Liquid Galss theme tokens */
+[data-theme="liquid-galss"] {
+  color-scheme: dark;
+  --bg:           #071522;
+  --surface:      rgba(25, 39, 53, 0.56);
+  --surface-2:    rgba(45, 59, 72, 0.48);
+  --surface-g:    rgba(35, 50, 64, 0.58);
+  --primary:      #eaff35;
+  --primary-lt:   #f3ff6a;
+  --accent:       #8b5cf6;
+  --success:      #39d98a;
+  --danger:       #ff5a7a;
+  --text:         #f7fbff;
+  --text-muted:   #9aa9ba;
+  --border:       rgba(226, 240, 255, 0.3);
+  --bg-card:      rgba(25, 39, 53, 0.56);
+  --glass-angle: 136deg;
+  --glass-sheen-x: 50%;
+  --glass-sheen-y: 34%;
+  --glass-haze-x: 50%;
+  --glass-haze-y: 36%;
+  --glass-rim-strength: 0.58;
+  --glass-edge: rgba(226, 240, 255, 0.66);
+  --glass-shadow: rgba(0, 0, 0, 0.42);
+}
+
 /* ══════════════════════════════════════════════════════════════
    RESET & BASE
 ══════════════════════════════════════════════════════════════ */
@@ -1153,6 +1179,8 @@ nav {
 .space-scene-shell {
   min-height: 260px;
   animation: scene-enter 0.35s ease;
+  --space-tilt-x: 0px;
+  --space-tilt-y: 0px;
 }
 
 .space-scene-meta {
@@ -1682,6 +1710,12 @@ nav {
     linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
   background-size: 28px 28px;
   mask-image: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent);
+  transform: translate3d(
+    calc(var(--space-tilt-x, 0px) * -0.34),
+    calc(var(--space-tilt-y, 0px) * -0.24),
+    0
+  );
+  transition: transform 0.18s linear;
 }
 
 .space-scene-visual {
@@ -1969,6 +2003,14 @@ nav {
   background: rgba(255,255,255,0.14);
 }
 
+.space-scene-shell--motion .space-scene-window {
+  transform: translate3d(
+    calc(var(--space-tilt-x, 0px) * -0.38),
+    calc(var(--space-tilt-y, 0px) * -0.26),
+    0
+  );
+}
+
 .space-scene-window--dusk {
   background: linear-gradient(180deg, rgba(247, 181, 114, 0.45), rgba(96, 76, 140, 0.1));
 }
@@ -1993,6 +2035,14 @@ nav {
   height: 32%;
   background: linear-gradient(180deg, rgba(92, 66, 45, 0.18), rgba(79, 52, 32, 0.54));
   border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.space-scene-shell--motion .space-scene-floor {
+  transform: translate3d(
+    calc(var(--space-tilt-x, 0px) * 0.18),
+    calc(var(--space-tilt-y, 0px) * 0.12),
+    0
+  );
 }
 
 .space-scene-silhouette {
@@ -2790,6 +2840,19 @@ nav {
 }
 .form-input:focus { border-color: var(--primary); }
 
+@media (hover: none), (pointer: coarse) {
+  input,
+  textarea,
+  select,
+  .form-input {
+    font-size: 16px;
+  }
+
+  html.keyboard-editing main {
+    scroll-behavior: auto;
+  }
+}
+
 /* ══════════════════════════════════════════════════════════════
    MODAL
 ══════════════════════════════════════════════════════════════ */
@@ -3129,6 +3192,53 @@ nav {
   margin-bottom: 14px;
 }
 .focus-pause-btn { min-width: 96px; }
+
+.focus-desk-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 120px;
+  min-height: 34px;
+  border: 1px solid color-mix(in srgb, var(--primary-lt) 44%, var(--border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-2) 78%, transparent);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.focus-desk-btn[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--primary) 28%, var(--surface-2));
+  border-color: color-mix(in srgb, var(--primary-lt) 72%, var(--border));
+  box-shadow: 0 0 18px color-mix(in srgb, var(--primary) 28%, transparent);
+}
+
+#focus-overlay.focus-desk-mode {
+  background:
+    radial-gradient(circle at 50% 18%, color-mix(in srgb, var(--primary) 18%, transparent), transparent 36%),
+    rgba(0,0,0,0.96);
+}
+#focus-overlay.focus-desk-mode .focus-box {
+  width: min(520px, 92vw);
+  min-height: min(560px, 82vh);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: color-mix(in srgb, var(--surface) 88%, #000);
+  border-color: color-mix(in srgb, var(--primary-lt) 34%, var(--border));
+  box-shadow: 0 24px 80px rgba(0,0,0,0.58);
+}
+#focus-overlay.focus-desk-mode .focus-timer {
+  font-size: clamp(72px, 22vw, 128px);
+  margin-bottom: 20px;
+}
+#focus-overlay.focus-desk-mode .focus-task-header {
+  margin-bottom: 30px;
+}
+#focus-overlay.focus-desk-mode .focus-controls,
+#focus-overlay.focus-desk-mode .focus-skip-btn {
+  opacity: 0.58;
+}
 
 /* 略過按鈕（低調文字樣式） */
 .focus-skip-btn {
@@ -3981,6 +4091,202 @@ nav {
 [data-theme="cyberpunk"] .nav-item.active {
   color: var(--primary);
   text-shadow: 0 0 8px rgba(0,255,159,0.5);
+}
+
+/* Liquid Galss surfaces. Reflection angle follows app.js motion variables. */
+[data-theme="liquid-galss"] body {
+  background:
+    radial-gradient(circle at 16% 0%, rgba(234, 255, 53, 0.13), transparent 24rem),
+    radial-gradient(circle at 86% 18%, rgba(139, 92, 246, 0.18), transparent 20rem),
+    linear-gradient(155deg, #071522 0%, #101d2a 48%, #050d15 100%);
+}
+
+.space-scene-shell--motion .space-scene-silhouette,
+.space-scene-shell--motion .space-scene-worker {
+  transform: translate3d(
+    calc(var(--space-tilt-x, 0px) * 0.32),
+    calc(var(--space-tilt-y, 0px) * 0.22),
+    0
+  );
+}
+
+[data-theme="liquid-galss"] #app {
+  background:
+    radial-gradient(ellipse at var(--glass-haze-x) var(--glass-haze-y), rgba(255,255,255,0.06), transparent 19rem),
+    transparent;
+}
+
+[data-theme="liquid-galss"] #header,
+[data-theme="liquid-galss"] nav,
+[data-theme="liquid-galss"] .card,
+[data-theme="liquid-galss"] .task-card,
+[data-theme="liquid-galss"] .plan-card,
+[data-theme="liquid-galss"] .stat-pill,
+[data-theme="liquid-galss"] .date-badge,
+[data-theme="liquid-galss"] .theme-card,
+[data-theme="liquid-galss"] .modal-box,
+[data-theme="liquid-galss"] .pro-sheet,
+[data-theme="liquid-galss"] .shield-confirm-box {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(var(--glass-angle), rgba(255,255,255,0.24) -8%, rgba(255,255,255,0.08) 18%, transparent 44%, rgba(255,255,255,0.1) 112%),
+    radial-gradient(ellipse at var(--glass-sheen-x) var(--glass-sheen-y), rgba(255,255,255,0.18), rgba(255,255,255,0.05) 30%, transparent 62%),
+    linear-gradient(145deg, rgba(255,255,255,0.14), rgba(255,255,255,0.04) 44%, rgba(0,0,0,0.18)),
+    var(--surface-g);
+  border-color: var(--glass-edge);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,calc(var(--glass-rim-strength) * 0.78)),
+    inset 1px 0 0 rgba(255,255,255,calc(var(--glass-rim-strength) * 0.22)),
+    inset 0 -1px 0 rgba(255,255,255,0.08),
+    0 18px 42px var(--glass-shadow);
+  contain: paint;
+  backdrop-filter: blur(22px) saturate(165%);
+  -webkit-backdrop-filter: blur(22px) saturate(165%);
+}
+
+[data-theme="liquid-galss"] #header::after,
+[data-theme="liquid-galss"] nav::after,
+[data-theme="liquid-galss"] .card::after,
+[data-theme="liquid-galss"] .task-card::after,
+[data-theme="liquid-galss"] .plan-card::after,
+[data-theme="liquid-galss"] .stat-pill::after,
+[data-theme="liquid-galss"] .date-badge::after,
+[data-theme="liquid-galss"] .theme-card::after,
+[data-theme="liquid-galss"] .modal-box::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--glass-angle), transparent 0 17%, rgba(255,255,255,0.36) 26%, rgba(255,255,255,0.1) 34%, transparent 52%),
+    linear-gradient(calc(var(--glass-angle) + 88deg), rgba(234,255,53,0.11), transparent 32% 68%, rgba(139,92,246,0.13));
+  opacity: calc(var(--glass-rim-strength) * 0.78);
+  mix-blend-mode: screen;
+}
+
+[data-theme="liquid-galss"] .task-card,
+[data-theme="liquid-galss"] .plan-card,
+[data-theme="liquid-galss"] .stat-pill {
+  border-radius: 20px;
+}
+
+[data-theme="liquid-galss"] .card,
+[data-theme="liquid-galss"] .modal-box,
+[data-theme="liquid-galss"] .theme-card {
+  border-radius: 22px;
+}
+
+[data-theme="liquid-galss"] nav {
+  border-top: 1px solid var(--glass-edge);
+}
+
+[data-theme="liquid-galss"] .xp-bar-track,
+[data-theme="liquid-galss"] .energy-bar-track,
+[data-theme="liquid-galss"] .streak-unlock-track {
+  background: rgba(255,255,255,0.08);
+  box-shadow: inset 0 1px 1px rgba(0,0,0,0.22);
+}
+
+[data-theme="liquid-galss"] .xp-bar-fill,
+[data-theme="liquid-galss"] .energy-bar-fill,
+[data-theme="liquid-galss"] .streak-unlock-fill {
+  background: linear-gradient(90deg, #8b5cf6, #eaff35);
+  box-shadow: 0 0 18px rgba(234,255,53,0.54);
+}
+
+[data-theme="liquid-galss"] .btn-primary,
+[data-theme="liquid-galss"] .swipe-detail-action {
+  background: linear-gradient(135deg, #7c3aed, #b238ff);
+  box-shadow: 0 0 24px rgba(139,92,246,0.48);
+}
+
+[data-theme="liquid-galss"] .nav-item.active,
+[data-theme="liquid-galss"] .hdr-title,
+[data-theme="liquid-galss"] .stat-value,
+[data-theme="liquid-galss"] .today-xp-value {
+  color: var(--primary);
+  text-shadow: 0 0 14px rgba(234,255,53,0.36);
+}
+
+[data-theme="liquid-galss"] .tp-bg {
+  background:
+    linear-gradient(var(--glass-angle), rgba(255,255,255,0.32), transparent 38%, rgba(234,255,53,0.16)),
+    radial-gradient(ellipse at var(--glass-sheen-x) var(--glass-sheen-y), rgba(255,255,255,0.28), transparent 46%),
+    linear-gradient(145deg, #071522, #263747) !important;
+  border: 1px solid rgba(255,255,255,0.28);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.52);
+}
+
+@media (hover: none), (pointer: coarse) {
+  [data-theme="liquid-galss"] #app {
+    background:
+      radial-gradient(ellipse at 50% 36%, rgba(255,255,255,0.04), transparent 18rem),
+      transparent;
+  }
+
+  [data-theme="liquid-galss"] #header,
+  [data-theme="liquid-galss"] nav,
+  [data-theme="liquid-galss"] .card,
+  [data-theme="liquid-galss"] .task-card,
+  [data-theme="liquid-galss"] .plan-card,
+  [data-theme="liquid-galss"] .stat-pill,
+  [data-theme="liquid-galss"] .date-badge,
+  [data-theme="liquid-galss"] .theme-card,
+  [data-theme="liquid-galss"] .modal-box,
+  [data-theme="liquid-galss"] .pro-sheet,
+  [data-theme="liquid-galss"] .shield-confirm-box {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-color: rgba(226, 240, 255, 0.42);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.5),
+      inset 1px 0 0 rgba(255,255,255,0.16),
+      inset 0 -1px 0 rgba(255,255,255,0.09),
+      0 10px 24px rgba(0,0,0,0.3);
+  }
+
+  [data-theme="liquid-galss"] #header::after,
+  [data-theme="liquid-galss"] nav::after,
+  [data-theme="liquid-galss"] .card::after,
+  [data-theme="liquid-galss"] .task-card::after,
+  [data-theme="liquid-galss"] .plan-card::after,
+  [data-theme="liquid-galss"] .stat-pill::after,
+  [data-theme="liquid-galss"] .date-badge::after,
+  [data-theme="liquid-galss"] .theme-card::after,
+  [data-theme="liquid-galss"] .modal-box::after {
+    opacity: 0;
+    mix-blend-mode: normal;
+  }
+
+  [data-theme="liquid-galss"] #header,
+  [data-theme="liquid-galss"] nav,
+  [data-theme="liquid-galss"] .task-card,
+  [data-theme="liquid-galss"] .plan-card,
+  [data-theme="liquid-galss"] .card,
+  [data-theme="liquid-galss"] .stat-pill,
+  [data-theme="liquid-galss"] .date-badge,
+  [data-theme="liquid-galss"] .theme-card,
+  [data-theme="liquid-galss"] .modal-box {
+    background:
+      linear-gradient(var(--glass-angle), rgba(255,255,255,0.24), rgba(255,255,255,0.08) 38%, rgba(0,0,0,0.16)),
+      radial-gradient(ellipse at var(--glass-sheen-x) var(--glass-sheen-y), rgba(255,255,255,0.1), transparent 48%),
+      var(--surface-g);
+  }
+
+  .liquid-galss-static-motion[data-theme="liquid-galss"] #header,
+  .liquid-galss-static-motion[data-theme="liquid-galss"] nav,
+  .liquid-galss-static-motion[data-theme="liquid-galss"] .task-card,
+  .liquid-galss-static-motion[data-theme="liquid-galss"] .plan-card,
+  .liquid-galss-static-motion[data-theme="liquid-galss"] .card,
+  .liquid-galss-static-motion[data-theme="liquid-galss"] .stat-pill,
+  .liquid-galss-static-motion[data-theme="liquid-galss"] .date-badge,
+  .liquid-galss-static-motion[data-theme="liquid-galss"] .theme-card,
+  .liquid-galss-static-motion[data-theme="liquid-galss"] .modal-box {
+    background:
+      linear-gradient(136deg, rgba(255,255,255,0.23), rgba(255,255,255,0.08) 42%, rgba(0,0,0,0.16)),
+      var(--surface-g);
+  }
 }
 
 /* ─── Onboarding Tour ────────────────────────────────────────────────────────── */

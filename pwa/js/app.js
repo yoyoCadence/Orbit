@@ -20,9 +20,10 @@ import { renderSettings }       from './pages/settings.js';
 import { renderLeaderboard }    from './pages/leaderboard.js';
 import { renderPersonalSpace }  from './pages/personalSpace.js';
 import { startTour } from './tour.js';
+import { haptic } from './platform/haptics.js';
 
 // ─── Version ─────────────────────────────────────────────────────────────────
-export const APP_VERSION = 'v1.17.0';
+export const APP_VERSION = 'v1.18.0';
 
 // Expose tour globally so settings page can call it
 window.startTour = startTour;
@@ -55,6 +56,7 @@ let _prevPageIdx = -1;   // -1 = first render, skip animation
 function renderPage(hash) {
   const fn      = ROUTES[hash] || renderHome;
   const content = document.getElementById('content');
+  content.dataset.route = hash;
 
   fn(content);
 
@@ -81,14 +83,29 @@ window.addEventListener('hashchange', () => renderPage(currentHash()));
 // ─── Swipe navigation ─────────────────────────────────────────────────────────
 
 let _swipeStartX = 0, _swipeStartY = 0;
+let _lastTextInputFocusAt = 0;
+
+function _isTextInputTarget(target) {
+  return Boolean(target?.closest?.('input, textarea, select, [contenteditable="true"]'));
+}
+
+function _isTextInputActive() {
+  return _isTextInputTarget(document.activeElement);
+}
 
 document.addEventListener('touchstart', e => {
+  if (_isTextInputTarget(e.target) || _isTextInputActive()) {
+    _swipeStartX = 0;
+    _swipeStartY = 0;
+    return;
+  }
   _swipeStartX = e.touches[0].clientX;
   _swipeStartY = e.touches[0].clientY;
 }, { passive: true });
 
 document.addEventListener('touchend', e => {
   if (window._isDragging) return;
+  if (_isTextInputTarget(e.target) || _isTextInputActive() || Date.now() - _lastTextInputFocusAt < 900) return;
   const dx = e.changedTouches[0].clientX - _swipeStartX;
   const dy = e.changedTouches[0].clientY - _swipeStartY;
   // Only trigger for clearly horizontal swipes (not vertical scrolling)
@@ -390,7 +407,13 @@ const focus = {
   minEffectiveSec:   0,
   paused:            false,
   pausedAt:          null,
+  deskMode:          false,
+  deskStableSince:   0,
+  deskMotionCleanup: null,
+  deskAutoSuppressed: false,
 };
+
+let _focusDeskToggleAt = 0;
 
 const SKIP_MESSAGES = [
   '成長是對自己的負責，確定已完成任務？',
@@ -497,7 +520,135 @@ function _showDurationPicker(taskId, task) {
   };
 }
 
+function _ensureFocusDeskButton() {
+  const box = document.querySelector('#focus-overlay .focus-box');
+  if (!box) return;
+  const existing = document.getElementById('focus-desk-btn');
+  if (existing) {
+    existing.onclick = event => {
+      event.preventDefault();
+      event.stopPropagation();
+      const now = Date.now();
+      if (now - _focusDeskToggleAt < 350) return;
+      _focusDeskToggleAt = now;
+      window.toggleFocusDeskMode();
+    };
+    return;
+  }
+  const skipBtn = box.querySelector('.focus-skip-btn');
+  const btn = document.createElement('button');
+  btn.id = 'focus-desk-btn';
+  btn.className = 'focus-desk-btn';
+  btn.type = 'button';
+  btn.setAttribute('aria-pressed', 'false');
+  btn.textContent = '桌面模式';
+  const toggle = event => {
+    event.preventDefault();
+    event.stopPropagation();
+    const now = Date.now();
+    if (now - _focusDeskToggleAt < 350) return;
+    _focusDeskToggleAt = now;
+    window.toggleFocusDeskMode();
+  };
+  btn.addEventListener('pointerup', toggle);
+  btn.addEventListener('touchend', toggle);
+  btn.addEventListener('click', toggle);
+  box.insertBefore(btn, skipBtn || null);
+}
+
+function _setFocusDeskMode(enabled, source = 'manual') {
+  focus.deskMode = Boolean(enabled);
+  if (source === 'manual' && !focus.deskMode) {
+    focus.deskAutoSuppressed = true;
+    focus.deskStableSince = 0;
+  }
+  const overlay = document.getElementById('focus-overlay');
+  const btn = document.getElementById('focus-desk-btn');
+  if (overlay) overlay.classList.toggle('focus-desk-mode', focus.deskMode);
+  if (btn) {
+    btn.setAttribute('aria-pressed', focus.deskMode ? 'true' : 'false');
+    btn.textContent = focus.deskMode ? '退出桌面模式' : '桌面模式';
+  }
+  if (source === 'manual') haptic('tap');
+}
+
+function _looksLikePhoneRestingFlat(event) {
+  const beta = Number(event.beta);
+  const gamma = Number(event.gamma);
+  if (!Number.isFinite(beta) || !Number.isFinite(gamma)) return false;
+  const flatScreenUp = Math.abs(beta) < 18 && Math.abs(gamma) < 18;
+  const flatLandscape = Math.abs(Math.abs(beta) - 90) < 12 && Math.abs(gamma) < 12;
+  return flatScreenUp || flatLandscape;
+}
+
+function _startFocusDeskSensors() {
+  if (focus.deskMotionCleanup || typeof window === 'undefined' || !('DeviceOrientationEvent' in window)) return;
+
+  let rafId = 0;
+  let lastEvent = null;
+  const onOrientation = event => {
+    lastEvent = event;
+    if (rafId) return;
+    rafId = requestAnimationFrame(() => {
+      rafId = 0;
+      if (!focus.active || !lastEvent) return;
+      if (_looksLikePhoneRestingFlat(lastEvent)) {
+        focus.deskStableSince ||= Date.now();
+        if (!focus.deskAutoSuppressed && !focus.deskMode && Date.now() - focus.deskStableSince > 1200) {
+          _setFocusDeskMode(true, 'sensor');
+        }
+      } else {
+        focus.deskStableSince = 0;
+        focus.deskAutoSuppressed = false;
+      }
+    });
+  };
+
+  window.addEventListener('deviceorientation', onOrientation, { passive: true });
+  focus.deskMotionCleanup = () => {
+    window.removeEventListener('deviceorientation', onOrientation);
+    if (rafId) window.cancelAnimationFrame(rafId);
+  };
+}
+
+async function _requestFocusDeskSensors() {
+  const OrientationEvent = window.DeviceOrientationEvent;
+  if (typeof OrientationEvent !== 'undefined' &&
+      typeof OrientationEvent.requestPermission === 'function') {
+    try {
+      const result = await OrientationEvent.requestPermission();
+      if (result !== 'granted') return;
+    } catch { return; }
+  }
+  _startFocusDeskSensors();
+}
+
+function _prepareFocusDeskMode() {
+  _ensureFocusDeskButton();
+  focus.deskStableSince = 0;
+  focus.deskAutoSuppressed = false;
+  _setFocusDeskMode(false, 'reset');
+  _requestFocusDeskSensors();
+}
+
+function _stopFocusDeskMode() {
+  _setFocusDeskMode(false, 'reset');
+  focus.deskStableSince = 0;
+  focus.deskAutoSuppressed = false;
+  if (focus.deskMotionCleanup) {
+    focus.deskMotionCleanup();
+    focus.deskMotionCleanup = null;
+  }
+}
+
+window.toggleFocusDeskMode = async function () {
+  if (!focus.active) return;
+  await _requestFocusDeskSensors();
+  _setFocusDeskMode(!focus.deskMode, 'manual');
+};
+
 function _launchFocus(taskId, task, targetMin) {
+  haptic('focusStart');
   focus.active          = true;
   focus.taskId          = taskId;
   focus.startTime       = Date.now();
@@ -518,6 +669,7 @@ function _launchFocus(taskId, task, targetMin) {
   }
 
   document.getElementById('focus-overlay').classList.remove('hidden');
+  _prepareFocusDeskMode();
   focus.intervalId = setInterval(_tickFocus, 1000);
   _tickFocus();
 }
@@ -529,6 +681,7 @@ function _tickFocus() {
   if (focus.targetSec && focus.elapsedSec >= focus.targetSec) {
     clearInterval(focus.intervalId);
     document.getElementById('focus-timer').textContent = '00:00';
+    _stopFocusDeskMode();
     document.getElementById('focus-overlay').classList.add('hidden');
     document.getElementById('focus-pip').classList.add('hidden');
     _playFocusChime('end');
@@ -556,7 +709,10 @@ function _tickFocus() {
   const minSec = focus.minEffectiveSec;
   const justReached = focus.elapsedSec === minSec;
   if (focus.elapsedSec >= minSec) {
-    if (justReached) _playFocusChime('milestone');
+    if (justReached) {
+      _playFocusChime('milestone');
+      haptic('focusMilestone');
+    }
     minEl.textContent = '達到最低有效時間 ✓';
     minEl.className = 'focus-min-reached';
     document.getElementById('focus-end-btn').disabled = false;
@@ -596,11 +752,13 @@ window.endFocus = function () {
 
   if (!isEffective) {
     // Show confirmation before recording invalid (timer keeps running behind modal)
+    haptic('warning');
     _showEarlyEndConfirm();
     return;
   }
 
   clearInterval(focus.intervalId);
+  _stopFocusDeskMode();
   document.getElementById('focus-overlay').classList.add('hidden');
   document.getElementById('focus-pip').classList.add('hidden');
   _showResultPicker(Math.floor(focus.elapsedSec / 60));
@@ -610,6 +768,7 @@ window.endFocus = function () {
 window.minimizeFocus = function () {
   if (!focus.active) return;
   const task = state.tasks.find(t => t.id === focus.taskId);
+  _setFocusDeskMode(false, 'reset');
   document.getElementById('focus-pip-emoji').textContent = task?.emoji || '🎯';
   document.getElementById('focus-overlay').classList.add('hidden');
   document.getElementById('focus-pip').classList.remove('hidden');
@@ -678,6 +837,7 @@ function _showEarlyEndConfirm() {
     modal.remove();
     clearInterval(focus.intervalId);
     const dur = Math.floor(focus.elapsedSec / 60);
+    _stopFocusDeskMode();
     document.getElementById('focus-overlay').classList.add('hidden');
     document.getElementById('focus-pip').classList.add('hidden');
     _submitFocusResult('invalid', dur);
@@ -730,6 +890,7 @@ window.skipFocus = function () {
   modal.querySelector('#skip-yes').addEventListener('click', () => {
     modal.remove();
     clearInterval(focus.intervalId);
+    _stopFocusDeskMode();
     document.getElementById('focus-overlay').classList.add('hidden');
     document.getElementById('focus-pip').classList.add('hidden');
     _submitFocusResult('complete', selected);
@@ -783,6 +944,7 @@ function _showResultPicker(durationMin) {
 
 function _submitFocusResult(result, durationMin, note = '') {
   const task = state.tasks.find(t => t.id === focus.taskId);
+  _stopFocusDeskMode();
   focus.active = false;
 
   if (!task || !state.user) return;
@@ -874,12 +1036,16 @@ function _commitSession(session, _task) {
         ? '無效 0 XP'
         : '完成';
   showXPFloat(xpLabel);
+  haptic(session.result === 'invalid' ? 'warning' : 'taskComplete');
 
   renderPage(currentHash());
 
   const newLevel = getLevelInfo(state.user.totalXP).level;
   if (newLevel > oldLevel) {
-    setTimeout(() => showLevelUp(newLevel, getDisplayTitle(newLevel, state.user)), 600);
+    setTimeout(() => {
+      haptic('levelUp');
+      showLevelUp(newLevel, getDisplayTitle(newLevel, state.user));
+    }, 600);
   }
 }
 
@@ -1284,7 +1450,7 @@ function _startDayWatcher() {
 
 const _ALL_THEME_IDS = [
   'dark-purple', 'aurora-blue', 'emerald', 'flame', 'neon-pink', 'light',
-  'wabi', 'material', 'cyberpunk', 'pixel', 'anime', 'gothic', 'github',
+  'wabi', 'material', 'cyberpunk', 'liquid-galss', 'pixel', 'anime', 'gothic', 'github',
 ];
 
 export function applyTheme(themeId) {
@@ -1613,8 +1779,9 @@ function handleSignOut() {
 // Sync the app shell to the real visible viewport height on mobile browsers.
 // visualViewport is more reliable on Chrome when the address bar expands/collapses.
 function _syncAppHeight() {
+  if (_isTextInputActive()) return;
   const viewportHeight = window.visualViewport?.height || window.innerHeight;
-  const sab = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sab')) || 0;
+  const sab = parseFloat(window.getComputedStyle(document.documentElement).getPropertyValue('--sab')) || 0;
   document.documentElement.style.setProperty('--app-height', Math.round(viewportHeight + sab) + 'px');
 }
 _syncAppHeight();
@@ -1622,6 +1789,153 @@ window.addEventListener('resize', _syncAppHeight);
 window.addEventListener('orientationchange', _syncAppHeight);
 window.visualViewport?.addEventListener('resize', _syncAppHeight);
 window.visualViewport?.addEventListener('scroll', _syncAppHeight);
+document.addEventListener('focusin', e => {
+  if (!_isTextInputTarget(e.target)) return;
+  _lastTextInputFocusAt = Date.now();
+  document.documentElement.classList.add('keyboard-editing');
+}, true);
+document.addEventListener('focusout', e => {
+  if (!_isTextInputTarget(e.target)) return;
+  _lastTextInputFocusAt = Date.now();
+  setTimeout(() => {
+    if (_isTextInputActive()) return;
+    document.documentElement.classList.remove('keyboard-editing');
+    _syncAppHeight();
+  }, 260);
+}, true);
+
+let _liquidGlassMotionStarted = false;
+let _liquidGlassPermissionAsked = false;
+let _liquidGlassRaf = 0;
+let _liquidGlassLastFrame = 0;
+let _liquidGlassLiteLastWrite = 0;
+const _liquidGlassCurrent = { angle: 136, sheenX: 50, sheenY: 34, rim: 0.58, hazeX: 50, hazeY: 36 };
+const _liquidGlassTarget  = { ..._liquidGlassCurrent };
+
+function _isIosChrome() {
+  return /CriOS/i.test(window.navigator.userAgent || '');
+}
+
+function _isLiquidGlassStaticMotion() {
+  return _isIosChrome();
+}
+
+function _isLiquidGlassLiteMotion() {
+  return window.matchMedia?.('(hover: none), (pointer: coarse), (max-width: 768px)')?.matches ?? false;
+}
+
+function _writeLiquidGlassReflection({ angle, sheenX, sheenY, rim, hazeX, hazeY }) {
+  const root = document.documentElement;
+  root.style.setProperty('--glass-angle', `${Math.max(105, Math.min(165, angle))}deg`);
+  root.style.setProperty('--glass-sheen-x', `${Math.max(18, Math.min(82, sheenX))}%`);
+  root.style.setProperty('--glass-sheen-y', `${Math.max(8, Math.min(72, sheenY))}%`);
+  root.style.setProperty('--glass-rim-strength', Math.max(0.42, Math.min(0.86, rim)).toFixed(2));
+  root.style.setProperty('--glass-haze-x', `${Math.max(12, Math.min(88, hazeX))}%`);
+  root.style.setProperty('--glass-haze-y', `${Math.max(8, Math.min(82, hazeY))}%`);
+}
+
+function _queueLiquidGlassReflection(next) {
+  if (_isLiquidGlassStaticMotion()) return;
+
+  if (_isLiquidGlassLiteMotion()) {
+    const now = window.performance.now();
+    if (now - _liquidGlassLiteLastWrite < 280) return;
+    _liquidGlassLiteLastWrite = now;
+    Object.keys(_liquidGlassCurrent).forEach(key => {
+      const capped = key === 'rim' ? Math.min(next[key], 0.64) : next[key];
+      _liquidGlassCurrent[key] += (capped - _liquidGlassCurrent[key]) * 0.35;
+    });
+    _writeLiquidGlassReflection(_liquidGlassCurrent);
+    return;
+  }
+
+  Object.assign(_liquidGlassTarget, next);
+  if (_liquidGlassRaf || document.hidden) return;
+  _liquidGlassRaf = window.requestAnimationFrame(_animateLiquidGlassReflection);
+}
+
+function _animateLiquidGlassReflection(timestamp) {
+  _liquidGlassRaf = 0;
+  if (document.documentElement.dataset.theme !== 'liquid-galss' || document.hidden) return;
+  if (timestamp - _liquidGlassLastFrame < 32) {
+    _liquidGlassRaf = window.requestAnimationFrame(_animateLiquidGlassReflection);
+    return;
+  }
+  _liquidGlassLastFrame = timestamp;
+
+  let moving = false;
+  Object.keys(_liquidGlassCurrent).forEach(key => {
+    const current = _liquidGlassCurrent[key];
+    const next = current + (_liquidGlassTarget[key] - current) * 0.16;
+    _liquidGlassCurrent[key] = next;
+    if (Math.abs(_liquidGlassTarget[key] - next) > 0.08) moving = true;
+  });
+
+  _writeLiquidGlassReflection(_liquidGlassCurrent);
+  if (moving) _liquidGlassRaf = window.requestAnimationFrame(_animateLiquidGlassReflection);
+}
+
+function _handleLiquidGlassOrientation(event) {
+  if (document.documentElement.dataset.theme !== 'liquid-galss') return;
+  const gamma = Number.isFinite(event.gamma) ? event.gamma : 0; // left/right tilt, roughly -90..90
+  const beta = Number.isFinite(event.beta) ? event.beta : 0;   // front/back tilt, roughly -180..180
+  const tiltX = Math.max(-42, Math.min(42, gamma));
+  const tiltY = Math.max(-42, Math.min(42, beta));
+  _queueLiquidGlassReflection({
+    angle: 136 + tiltX * 0.46 - tiltY * 0.18,
+    sheenX: 50 + tiltX * 0.62,
+    sheenY: 34 - tiltY * 0.36,
+    rim: 0.58 + Math.min(0.24, (Math.abs(tiltX) + Math.abs(tiltY)) / 170),
+    hazeX: 50 + tiltX * 0.28,
+    hazeY: 36 - tiltY * 0.18,
+  });
+}
+
+function _startLiquidGlassMotion() {
+  if (_isLiquidGlassStaticMotion()) return;
+  if (_liquidGlassMotionStarted) return;
+  _liquidGlassMotionStarted = true;
+  window.addEventListener('deviceorientation', _handleLiquidGlassOrientation, { passive: true });
+}
+
+function _requestLiquidGlassMotion() {
+  if (_isLiquidGlassStaticMotion()) return;
+  if (_liquidGlassPermissionAsked || document.documentElement.dataset.theme !== 'liquid-galss') return;
+  _liquidGlassPermissionAsked = true;
+  const orientationApi = window.DeviceOrientationEvent;
+  if (orientationApi?.requestPermission) {
+    orientationApi.requestPermission()
+      .then(state => { if (state === 'granted') _startLiquidGlassMotion(); })
+      .catch(() => {});
+  } else {
+    _startLiquidGlassMotion();
+  }
+}
+
+function _handleLiquidGlassPointer(event) {
+  if (document.documentElement.dataset.theme !== 'liquid-galss') return;
+  if (_isLiquidGlassLiteMotion()) return;
+  const px = (event.clientX / Math.max(1, window.innerWidth) - 0.5) * 2;
+  const py = (event.clientY / Math.max(1, window.innerHeight) - 0.5) * 2;
+  _queueLiquidGlassReflection({
+    angle: 136 + px * 22 - py * 9,
+    sheenX: 50 + px * 24,
+    sheenY: 34 + py * 18,
+    rim: 0.58 + Math.min(0.18, (Math.abs(px) + Math.abs(py)) * 0.08),
+    hazeX: 50 + px * 10,
+    hazeY: 36 + py * 8,
+  });
+}
+
+function _initLiquidGlassReflection() {
+  _writeLiquidGlassReflection(_liquidGlassCurrent);
+  document.documentElement.classList.toggle('liquid-galss-lite-motion', _isLiquidGlassLiteMotion());
+  document.documentElement.classList.toggle('liquid-galss-static-motion', _isLiquidGlassStaticMotion());
+  if (!window.DeviceOrientationEvent?.requestPermission) _startLiquidGlassMotion();
+  window.addEventListener('pointermove', _handleLiquidGlassPointer, { passive: true });
+  window.addEventListener('touchstart', _requestLiquidGlassMotion, { passive: true });
+  window.addEventListener('click', _requestLiquidGlassMotion, { passive: true });
+}
 
 // Tap header to scroll main content to top (mirrors iOS status-bar tap behavior)
 document.getElementById('header')?.addEventListener('click', e => {
@@ -1635,6 +1949,7 @@ async function init() {
   document.documentElement.setAttribute('data-theme', storage.getTheme());
   document.documentElement.setAttribute('data-ui-skin', storage.getUiSkin());
   applyRandomThemeForToday(); // overrides saved theme if random-theme feature is on
+  _initLiquidGlassReflection();
   _renderBg(storage.getBgImage());
 
   // Listen for future auth changes (sign-ins, sign-outs)

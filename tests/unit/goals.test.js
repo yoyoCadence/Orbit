@@ -78,6 +78,8 @@ function makeSession(overrides = {}) {
 let container;
 
 beforeEach(() => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date('2026-04-16T12:00:00'));
   mockState.sessions = [];
   container = document.createElement('div');
   document.body.appendChild(container);
@@ -85,6 +87,7 @@ beforeEach(() => {
 
 afterEach(() => {
   document.body.removeChild(container);
+  vi.useRealTimers();
 });
 
 // ─── Empty state ──────────────────────────────────────────────────────────────

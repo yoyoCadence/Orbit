@@ -252,19 +252,21 @@ function buildFurnitureStyle(placement = {}) {
     `width: ${width}`,
     `height: ${height}`,
     `z-index: ${z}`,
-    `transform: ${buildFurnitureTransform(anchor, scale)}`,
+    `transform: ${buildFurnitureTransform(anchor, scale, z)}`,
   ].join('; ');
 }
 
-function buildFurnitureTransform(anchor, scale) {
+function buildFurnitureTransform(anchor, scale, z = 3) {
   const anchorMap = {
-    'center-bottom': '-50%, -100%',
-    center: '-50%, -50%',
-    'left-bottom': '0, -100%',
-    'right-bottom': '-100%, -100%',
+    'center-bottom': ['-50%', '-100%'],
+    center: ['-50%', '-50%'],
+    'left-bottom': ['0px', '-100%'],
+    'right-bottom': ['-100%', '-100%'],
   };
+  const [anchorX, anchorY] = anchorMap[anchor] || anchorMap['center-bottom'];
+  const depth = Math.max(0.16, Math.min(0.58, Number(z) * 0.07));
 
-  return `translate(${anchorMap[anchor] || anchorMap['center-bottom']}) scale(${scale})`;
+  return `translate(calc(${anchorX} + var(--space-tilt-x, 0px) * ${depth}), calc(${anchorY} + var(--space-tilt-y, 0px) * ${depth})) scale(${scale})`;
 }
 
 function buildShadowStyle(shadow = {}) {

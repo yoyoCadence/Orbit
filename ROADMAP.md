@@ -39,7 +39,7 @@
 - v1.12.0 — **SUB-10** Habit Heatmap（GitHub 風格，免費 90 天 / Pro 365 天）
 - v1.11.0 — **SUB-07** 稱號模板門控（免費只能自訂文字，Pro 一鍵套用）
 - v1.10.0 — **SUB-04** 統一 Pro 標誌 UI（`.pro-badge--inline`、`.feature-locked`）
-- v1.9.0  — **SUB-06** 主題門控（免費前 5 個，Pro 全部 13 個 + 每日隨機主題）+ **SUB-09** Streak Shield（Pro 每月 2 張保護卡）
+- v1.9.0  — **SUB-06** 主題門控（免費前 5 個，Pro 全部 14 個 + 每日隨機主題）+ **SUB-09** Streak Shield（Pro 每月 2 張保護卡）
 - v1.8.0  — **SUB-03** Pro 升級頁面（年費錨定、底部 sheet、功能詳情 popover）
 - v1.7.0  — **SUB-02** 15 天免費試用流程
 - v1.6.0  — **SUB-01** Pro 狀態管理模組

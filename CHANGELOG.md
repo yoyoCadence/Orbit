@@ -3,6 +3,24 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.18.0] - 2026-05-14
+
+### Added
+- Liquid Galss theme: added a dark glass visual theme with translucent cards, edge highlights, neon XP accents, settings preview support, and inclusion in daily random theme selection.
+- Motion-reactive glass reflection: Liquid Galss updates highlight position from mobile device orientation when available, with pointer movement as a desktop fallback.
+- Liquid Galss reflection refinement: replaced the moving center light spot with angle-based sheen, softened haze, and tilt-responsive rim strength for a more natural glass surface.
+- Liquid Galss mobile performance: throttled and smoothed motion updates through `requestAnimationFrame`, reduced per-card backdrop blur on touch devices, and kept blur only on shell/modal surfaces to avoid Safari reloads under motion.
+- Liquid Galss mobile stability: added a lower-frequency motion path for touch devices, disabled pointer tracking and heavy sheen overlay layers on mobile, and removed remaining mobile backdrop blur to prevent repeated Chrome/Safari page crashes.
+- Liquid Galss iPhone browser tuning: iOS Chrome now uses a static glass path to avoid WebKit page crashes, while touch Safari keeps low-frequency motion with a stronger lightweight glass surface on Today cards.
+- Mobile input stability: disabled page-swipe navigation while editing text fields, paused visual viewport height syncing during keyboard entry, and forced 16px form controls on touch devices to prevent iOS zoom jumps.
+- Personal Space parallax visibility: increased scene tilt ranges and layer depth multipliers so device tilt has a visible effect on background, furniture, and character layers.
+- Focus desk mode manual exit: when the user exits desk mode while the phone is still flat, automatic flat-phone detection stays suppressed until the phone is lifted again.
+- Hardware haptics foundation: added a shared PWA haptics adapter with named feedback patterns for focus, task completion, warnings, level-up, unlock, purchase, and scene taps.
+- Personal Space motion parallax: added subtle device-tilt and pointer-based depth movement for scene backgrounds, furniture, and character layers with cleanup on rerender.
+- Focus desk mode: added a calmer focus presentation that can be toggled manually and can auto-enter after stable flat-phone posture detection, while releasing motion listeners when focus ends.
+
+---
+
 ## [1.17.0] - 2026-05-13
 
 ### Added

@@ -65,6 +65,18 @@ function makeRow(overrides = {}) {
   };
 }
 
+function effectiveDateForTest(newDayHour = 5) {
+  const d = new Date();
+  if (d.getHours() < newDayHour) d.setDate(d.getDate() - 1);
+  return d.toLocaleDateString('sv');
+}
+
+function deferred() {
+  let resolve;
+  const promise = new Promise(r => { resolve = r; });
+  return { promise, resolve };
+}
+
 // ─── calcGrowthRate ───────────────────────────────────────────────────────────
 
 describe('calcGrowthRate', () => {
@@ -202,7 +214,7 @@ describe('renderLeaderboard — with data', () => {
 
   it('uses same-day cache without querying Supabase again', async () => {
     const rows = [makeRow({ user_id: 'user-1', name: 'Cached Bob', week_xp: 200 })];
-    const today = new Date().toLocaleDateString('sv');
+    const today = effectiveDateForTest();
     localStorage.setItem('yoyo_leaderboardCache', JSON.stringify({
       rows,
       refreshedAt: new Date().toISOString(),
@@ -214,6 +226,23 @@ describe('renderLeaderboard — with data', () => {
     expect(mockFrom).not.toHaveBeenCalled();
     expect(container.innerHTML).toContain('Cached Bob');
     expect(container.innerHTML).toContain('每日 05:00');
+  });
+
+  it('does not overwrite content when leaderboard async result resolves after navigation away', async () => {
+    const pending = deferred();
+    mockSelect.mockReturnValueOnce(pending.promise);
+    container.dataset.route = 'leaderboard';
+
+    const renderPromise = renderLeaderboard(container);
+    expect(container.innerHTML).toContain('排行榜');
+
+    container.dataset.route = 'home';
+    container.innerHTML = '<div>Home stays here</div>';
+    pending.resolve({ data: [makeRow({ name: 'Late Bob' })], error: null });
+    await renderPromise;
+
+    expect(container.innerHTML).toContain('Home stays here');
+    expect(container.innerHTML).not.toContain('Late Bob');
   });
 
   it('renders signed avatar image from leaderboard avatar path', async () => {
