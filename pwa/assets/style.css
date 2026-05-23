@@ -1711,8 +1711,8 @@ nav {
   background-size: 28px 28px;
   mask-image: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent);
   transform: translate3d(
-    calc(var(--space-tilt-x, 0px) * -0.22),
-    calc(var(--space-tilt-y, 0px) * -0.16),
+    calc(var(--space-tilt-x, 0px) * -0.34),
+    calc(var(--space-tilt-y, 0px) * -0.24),
     0
   );
   transition: transform 0.18s linear;
@@ -2005,8 +2005,8 @@ nav {
 
 .space-scene-shell--motion .space-scene-window {
   transform: translate3d(
-    calc(var(--space-tilt-x, 0px) * -0.18),
-    calc(var(--space-tilt-y, 0px) * -0.12),
+    calc(var(--space-tilt-x, 0px) * -0.38),
+    calc(var(--space-tilt-y, 0px) * -0.26),
     0
   );
 }
@@ -2039,8 +2039,8 @@ nav {
 
 .space-scene-shell--motion .space-scene-floor {
   transform: translate3d(
-    calc(var(--space-tilt-x, 0px) * 0.08),
-    calc(var(--space-tilt-y, 0px) * 0.05),
+    calc(var(--space-tilt-x, 0px) * 0.18),
+    calc(var(--space-tilt-y, 0px) * 0.12),
     0
   );
 }
@@ -2839,6 +2839,19 @@ nav {
   outline: none; transition: border-color 0.2s;
 }
 .form-input:focus { border-color: var(--primary); }
+
+@media (hover: none), (pointer: coarse) {
+  input,
+  textarea,
+  select,
+  .form-input {
+    font-size: 16px;
+  }
+
+  html.keyboard-editing main {
+    scroll-behavior: auto;
+  }
+}
 
 /* ══════════════════════════════════════════════════════════════
    MODAL
@@ -4091,8 +4104,8 @@ nav {
 .space-scene-shell--motion .space-scene-silhouette,
 .space-scene-shell--motion .space-scene-worker {
   transform: translate3d(
-    calc(var(--space-tilt-x, 0px) * 0.14),
-    calc(var(--space-tilt-y, 0px) * 0.1),
+    calc(var(--space-tilt-x, 0px) * 0.32),
+    calc(var(--space-tilt-y, 0px) * 0.22),
     0
   );
 }

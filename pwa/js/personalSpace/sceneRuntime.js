@@ -264,7 +264,7 @@ function buildFurnitureTransform(anchor, scale, z = 3) {
     'right-bottom': ['-100%', '-100%'],
   };
   const [anchorX, anchorY] = anchorMap[anchor] || anchorMap['center-bottom'];
-  const depth = Math.max(0.08, Math.min(0.3, Number(z) * 0.035));
+  const depth = Math.max(0.16, Math.min(0.58, Number(z) * 0.07));
 
   return `translate(calc(${anchorX} + var(--space-tilt-x, 0px) * ${depth}), calc(${anchorY} + var(--space-tilt-y, 0px) * ${depth})) scale(${scale})`;
 }

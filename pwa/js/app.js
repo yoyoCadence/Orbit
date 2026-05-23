@@ -82,14 +82,29 @@ window.addEventListener('hashchange', () => renderPage(currentHash()));
 // ─── Swipe navigation ─────────────────────────────────────────────────────────
 
 let _swipeStartX = 0, _swipeStartY = 0;
+let _lastTextInputFocusAt = 0;
+
+function _isTextInputTarget(target) {
+  return Boolean(target?.closest?.('input, textarea, select, [contenteditable="true"]'));
+}
+
+function _isTextInputActive() {
+  return _isTextInputTarget(document.activeElement);
+}
 
 document.addEventListener('touchstart', e => {
+  if (_isTextInputTarget(e.target) || _isTextInputActive()) {
+    _swipeStartX = 0;
+    _swipeStartY = 0;
+    return;
+  }
   _swipeStartX = e.touches[0].clientX;
   _swipeStartY = e.touches[0].clientY;
 }, { passive: true });
 
 document.addEventListener('touchend', e => {
   if (window._isDragging) return;
+  if (_isTextInputTarget(e.target) || _isTextInputActive() || Date.now() - _lastTextInputFocusAt < 900) return;
   const dx = e.changedTouches[0].clientX - _swipeStartX;
   const dy = e.changedTouches[0].clientY - _swipeStartY;
   // Only trigger for clearly horizontal swipes (not vertical scrolling)
@@ -394,7 +409,10 @@ const focus = {
   deskMode:          false,
   deskStableSince:   0,
   deskMotionCleanup: null,
+  deskAutoSuppressed: false,
 };
+
+let _focusDeskToggleAt = 0;
 
 const SKIP_MESSAGES = [
   '成長是對自己的負責，確定已完成任務？',
@@ -503,7 +521,19 @@ function _showDurationPicker(taskId, task) {
 
 function _ensureFocusDeskButton() {
   const box = document.querySelector('#focus-overlay .focus-box');
-  if (!box || document.getElementById('focus-desk-btn')) return;
+  if (!box) return;
+  const existing = document.getElementById('focus-desk-btn');
+  if (existing) {
+    existing.onclick = event => {
+      event.preventDefault();
+      event.stopPropagation();
+      const now = Date.now();
+      if (now - _focusDeskToggleAt < 350) return;
+      _focusDeskToggleAt = now;
+      window.toggleFocusDeskMode();
+    };
+    return;
+  }
   const skipBtn = box.querySelector('.focus-skip-btn');
   const btn = document.createElement('button');
   btn.id = 'focus-desk-btn';
@@ -511,12 +541,26 @@ function _ensureFocusDeskButton() {
   btn.type = 'button';
   btn.setAttribute('aria-pressed', 'false');
   btn.textContent = '桌面模式';
-  btn.addEventListener('click', () => window.toggleFocusDeskMode());
+  const toggle = event => {
+    event.preventDefault();
+    event.stopPropagation();
+    const now = Date.now();
+    if (now - _focusDeskToggleAt < 350) return;
+    _focusDeskToggleAt = now;
+    window.toggleFocusDeskMode();
+  };
+  btn.addEventListener('pointerup', toggle);
+  btn.addEventListener('touchend', toggle);
+  btn.addEventListener('click', toggle);
   box.insertBefore(btn, skipBtn || null);
 }
 
 function _setFocusDeskMode(enabled, source = 'manual') {
   focus.deskMode = Boolean(enabled);
+  if (source === 'manual' && !focus.deskMode) {
+    focus.deskAutoSuppressed = true;
+    focus.deskStableSince = 0;
+  }
   const overlay = document.getElementById('focus-overlay');
   const btn = document.getElementById('focus-desk-btn');
   if (overlay) overlay.classList.toggle('focus-desk-mode', focus.deskMode);
@@ -549,11 +593,12 @@ function _startFocusDeskSensors() {
       if (!focus.active || !lastEvent) return;
       if (_looksLikePhoneRestingFlat(lastEvent)) {
         focus.deskStableSince ||= Date.now();
-        if (!focus.deskMode && Date.now() - focus.deskStableSince > 1200) {
+        if (!focus.deskAutoSuppressed && !focus.deskMode && Date.now() - focus.deskStableSince > 1200) {
           _setFocusDeskMode(true, 'sensor');
         }
       } else {
         focus.deskStableSince = 0;
+        focus.deskAutoSuppressed = false;
       }
     });
   };
@@ -580,6 +625,7 @@ async function _requestFocusDeskSensors() {
 function _prepareFocusDeskMode() {
   _ensureFocusDeskButton();
   focus.deskStableSince = 0;
+  focus.deskAutoSuppressed = false;
   _setFocusDeskMode(false, 'reset');
   _requestFocusDeskSensors();
 }
@@ -587,6 +633,7 @@ function _prepareFocusDeskMode() {
 function _stopFocusDeskMode() {
   _setFocusDeskMode(false, 'reset');
   focus.deskStableSince = 0;
+  focus.deskAutoSuppressed = false;
   if (focus.deskMotionCleanup) {
     focus.deskMotionCleanup();
     focus.deskMotionCleanup = null;
@@ -1731,6 +1778,7 @@ function handleSignOut() {
 // Sync the app shell to the real visible viewport height on mobile browsers.
 // visualViewport is more reliable on Chrome when the address bar expands/collapses.
 function _syncAppHeight() {
+  if (_isTextInputActive()) return;
   const viewportHeight = window.visualViewport?.height || window.innerHeight;
   const sab = parseFloat(window.getComputedStyle(document.documentElement).getPropertyValue('--sab')) || 0;
   document.documentElement.style.setProperty('--app-height', Math.round(viewportHeight + sab) + 'px');
@@ -1740,6 +1788,20 @@ window.addEventListener('resize', _syncAppHeight);
 window.addEventListener('orientationchange', _syncAppHeight);
 window.visualViewport?.addEventListener('resize', _syncAppHeight);
 window.visualViewport?.addEventListener('scroll', _syncAppHeight);
+document.addEventListener('focusin', e => {
+  if (!_isTextInputTarget(e.target)) return;
+  _lastTextInputFocusAt = Date.now();
+  document.documentElement.classList.add('keyboard-editing');
+}, true);
+document.addEventListener('focusout', e => {
+  if (!_isTextInputTarget(e.target)) return;
+  _lastTextInputFocusAt = Date.now();
+  setTimeout(() => {
+    if (_isTextInputActive()) return;
+    document.documentElement.classList.remove('keyboard-editing');
+    _syncAppHeight();
+  }, 260);
+}, true);
 
 let _liquidGlassMotionStarted = false;
 let _liquidGlassPermissionAsked = false;

@@ -271,15 +271,15 @@ function createPersonalSpaceParallax(sceneContainer) {
   }
 
   function queue(x, y) {
-    target.x = clamp(x, -10, 10);
-    target.y = clamp(y, -8, 8);
+    target.x = clamp(x, -18, 18);
+    target.y = clamp(y, -14, 14);
     if (!rafId && !document.hidden) rafId = window.requestAnimationFrame(animate);
   }
 
   function handleOrientation(event) {
     const gamma = Number.isFinite(event.gamma) ? event.gamma : 0;
     const beta = Number.isFinite(event.beta) ? event.beta : 0;
-    queue(clamp(gamma, -28, 28) * 0.32, clamp(beta, -24, 24) * -0.22);
+    queue(clamp(gamma, -30, 30) * 0.5, clamp(beta, -26, 26) * -0.38);
   }
 
   function startMotion() {
@@ -304,8 +304,8 @@ function createPersonalSpaceParallax(sceneContainer) {
   function handlePointer(event) {
     const rect = sceneContainer.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
-    const x = ((event.clientX - rect.left) / rect.width - 0.5) * 9;
-    const y = ((event.clientY - rect.top) / rect.height - 0.5) * 6;
+    const x = ((event.clientX - rect.left) / rect.width - 0.5) * 18;
+    const y = ((event.clientY - rect.top) / rect.height - 0.5) * 12;
     queue(x, y);
   }
 
