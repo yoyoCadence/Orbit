@@ -65,6 +65,12 @@ function makeRow(overrides = {}) {
   };
 }
 
+function effectiveDateForTest(newDayHour = 5) {
+  const d = new Date();
+  if (d.getHours() < newDayHour) d.setDate(d.getDate() - 1);
+  return d.toLocaleDateString('sv');
+}
+
 // ─── calcGrowthRate ───────────────────────────────────────────────────────────
 
 describe('calcGrowthRate', () => {
@@ -202,7 +208,7 @@ describe('renderLeaderboard — with data', () => {
 
   it('uses same-day cache without querying Supabase again', async () => {
     const rows = [makeRow({ user_id: 'user-1', name: 'Cached Bob', week_xp: 200 })];
-    const today = new Date().toLocaleDateString('sv');
+    const today = effectiveDateForTest();
     localStorage.setItem('yoyo_leaderboardCache', JSON.stringify({
       rows,
       refreshedAt: new Date().toISOString(),
