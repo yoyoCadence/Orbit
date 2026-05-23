@@ -244,13 +244,15 @@
 [data-time-band="evening"] { --time-tint: rgba(255, 140,  60, 0.045); }
 [data-time-band="night"]   { --time-tint: rgba( 80, 110, 200, 0.055); }
 
-/* Apply tint as a pseudo-element over the app shell background */
+/* Apply tint as a pseudo-element over the app shell background.
+   z-index 1 keeps it above body background but below modals (z-index 50+).
+   pointer-events: none ensures it never blocks interaction. */
 [data-time-band] body::after {
   content: '';
   position: fixed; inset: 0;
   background: var(--time-tint);
   pointer-events: none;
-  z-index: 0;
+  z-index: 1;
   transition: background 2s ease;
 }
 
