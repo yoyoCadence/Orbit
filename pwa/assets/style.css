@@ -4206,6 +4206,12 @@ nav {
 }
 
 @media (hover: none), (pointer: coarse) {
+  [data-theme="liquid-galss"] #app {
+    background:
+      radial-gradient(ellipse at 50% 36%, rgba(255,255,255,0.04), transparent 18rem),
+      transparent;
+  }
+
   [data-theme="liquid-galss"] #header,
   [data-theme="liquid-galss"] nav,
   [data-theme="liquid-galss"] .card,
@@ -4226,14 +4232,6 @@ nav {
       0 10px 24px rgba(0,0,0,0.3);
   }
 
-  [data-theme="liquid-galss"] #header,
-  [data-theme="liquid-galss"] nav,
-  [data-theme="liquid-galss"] .modal-box,
-  [data-theme="liquid-galss"] .pro-sheet {
-    backdrop-filter: blur(12px) saturate(135%);
-    -webkit-backdrop-filter: blur(12px) saturate(135%);
-  }
-
   [data-theme="liquid-galss"] #header::after,
   [data-theme="liquid-galss"] nav::after,
   [data-theme="liquid-galss"] .card::after,
@@ -4243,8 +4241,17 @@ nav {
   [data-theme="liquid-galss"] .date-badge::after,
   [data-theme="liquid-galss"] .theme-card::after,
   [data-theme="liquid-galss"] .modal-box::after {
-    opacity: 0.34;
+    opacity: 0;
     mix-blend-mode: normal;
+  }
+
+  [data-theme="liquid-galss"] .task-card,
+  [data-theme="liquid-galss"] .plan-card,
+  [data-theme="liquid-galss"] .card,
+  [data-theme="liquid-galss"] .stat-pill {
+    background:
+      linear-gradient(var(--glass-angle), rgba(255,255,255,0.18), rgba(255,255,255,0.05) 42%, rgba(0,0,0,0.12)),
+      var(--surface-g);
   }
 }
 
