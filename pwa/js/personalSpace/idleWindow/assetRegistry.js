@@ -202,8 +202,28 @@ export const idleWindowAssetRegistry = {
       label: 'Low Coffee Table',
       path: `${IDLE_WINDOW_ASSET_BASE}/props/office-low-coffee-table/prop.png`,
       dimensions: { width: 353, height: 218 },
-      source: 'office-expansion-furniture-sheet',
+      source: 'office-low-coffee-table-variant-sheet-v1',
       qc: 'passed',
+      variants: [
+        variant('front', 'Front', {
+          path: `${IDLE_WINDOW_ASSET_BASE}/props/office-low-coffee-table/prop.png`,
+          dimensions: { width: 353, height: 218 },
+          cameraProfileId: 'center',
+          status: 'perspective-correct',
+        }),
+        variant('left-wall-flush', 'Left wall flush', {
+          path: `${IDLE_WINDOW_ASSET_BASE}/props/office-low-coffee-table/left-wall-flush.png`,
+          dimensions: { width: 486, height: 292 },
+          cameraProfileId: 'left',
+          status: 'perspective-correct',
+        }),
+        variant('right-wall-flush', 'Right wall flush', {
+          path: `${IDLE_WINDOW_ASSET_BASE}/props/office-low-coffee-table/right-wall-flush.png`,
+          dimensions: { width: 485, height: 292 },
+          cameraProfileId: 'right',
+          status: 'perspective-correct',
+        }),
+      ],
     }),
     'office-filing-cabinet': buildPropAsset({
       id: 'office-filing-cabinet',
@@ -218,8 +238,28 @@ export const idleWindowAssetRegistry = {
       label: 'Trophy Display Cabinet',
       path: `${IDLE_WINDOW_ASSET_BASE}/props/office-trophy-display/prop.png`,
       dimensions: { width: 305, height: 302 },
-      source: 'office-expansion-furniture-sheet',
+      source: 'office-trophy-display-variant-sheet-v1',
       qc: 'passed',
+      variants: [
+        variant('front', 'Front', {
+          path: `${IDLE_WINDOW_ASSET_BASE}/props/office-trophy-display/prop.png`,
+          dimensions: { width: 305, height: 302 },
+          cameraProfileId: 'center',
+          status: 'perspective-correct',
+        }),
+        variant('left-wall-flush', 'Left wall flush', {
+          path: `${IDLE_WINDOW_ASSET_BASE}/props/office-trophy-display/left-wall-flush.png`,
+          dimensions: { width: 485, height: 560 },
+          cameraProfileId: 'left',
+          status: 'perspective-correct',
+        }),
+        variant('right-wall-flush', 'Right wall flush', {
+          path: `${IDLE_WINDOW_ASSET_BASE}/props/office-trophy-display/right-wall-flush.png`,
+          dimensions: { width: 483, height: 564 },
+          cameraProfileId: 'right',
+          status: 'perspective-correct',
+        }),
+      ],
     }),
     'office-achievement-board': buildPropAsset({
       id: 'office-achievement-board',
@@ -242,8 +282,28 @@ export const idleWindowAssetRegistry = {
       label: 'Patterned Office Rug',
       path: `${IDLE_WINDOW_ASSET_BASE}/props/office-pattern-rug/prop.png`,
       dimensions: { width: 460, height: 176 },
-      source: 'office-expansion-furniture-sheet',
+      source: 'office-pattern-rug-variant-sheet-v1',
       qc: 'passed',
+      variants: [
+        variant('front', 'Front', {
+          path: `${IDLE_WINDOW_ASSET_BASE}/props/office-pattern-rug/prop.png`,
+          dimensions: { width: 460, height: 176 },
+          cameraProfileId: 'center',
+          status: 'perspective-correct',
+        }),
+        variant('left-wall-flush', 'Left floor angle', {
+          path: `${IDLE_WINDOW_ASSET_BASE}/props/office-pattern-rug/left-wall-flush.png`,
+          dimensions: { width: 527, height: 239 },
+          cameraProfileId: 'left',
+          status: 'perspective-correct',
+        }),
+        variant('right-wall-flush', 'Right floor angle', {
+          path: `${IDLE_WINDOW_ASSET_BASE}/props/office-pattern-rug/right-wall-flush.png`,
+          dimensions: { width: 531, height: 235 },
+          cameraProfileId: 'right',
+          status: 'perspective-correct',
+        }),
+      ],
     }),
     'office-side-table': buildPropAsset({
       id: 'office-side-table',
@@ -479,11 +539,27 @@ export const idleWindowAssetRegistry = {
       label: 'Office Shelf',
       path: `${IDLE_WINDOW_ASSET_BASE}/props/office-shelf/prop.png`,
       dimensions: { width: 265, height: 350 },
-      source: 'office-prop-pack',
+      source: 'office-shelf-variant-sheet-v1',
       qc: 'passed',
       variants: [
-        variant('front', 'Front'),
-        variant('mirror-test', 'Mirror test', { flipX: true, status: 'prototype-mirror' }),
+        variant('front', 'Front', {
+          path: `${IDLE_WINDOW_ASSET_BASE}/props/office-shelf/prop.png`,
+          dimensions: { width: 265, height: 350 },
+          cameraProfileId: 'center',
+          status: 'perspective-correct',
+        }),
+        variant('left-wall-flush', 'Left wall flush', {
+          path: `${IDLE_WINDOW_ASSET_BASE}/props/office-shelf/left-wall-flush.png`,
+          dimensions: { width: 465, height: 537 },
+          cameraProfileId: 'left',
+          status: 'perspective-correct',
+        }),
+        variant('right-wall-flush', 'Right wall flush', {
+          path: `${IDLE_WINDOW_ASSET_BASE}/props/office-shelf/right-wall-flush.png`,
+          dimensions: { width: 464, height: 541 },
+          cameraProfileId: 'right',
+          status: 'perspective-correct',
+        }),
       ],
     }),
     'office-plant': buildPropAsset({

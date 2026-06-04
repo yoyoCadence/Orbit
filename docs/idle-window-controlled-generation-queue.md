@@ -22,16 +22,19 @@ Background reference generation follows the same rule: one approved room or loca
 
 | Priority | Asset | Reference | Missing / non-final work | Runtime need |
 |---:|---|---|---|---|
-| 2 | `office-low-coffee-table` | `props/office-low-coffee-table/prop.png` | Generate authored side variants and validate tabletop perspective. | Support surface and sofa pairing. |
-| 3 | `office-pattern-rug` | `props/office-pattern-rug/prop.png` | Generate angle-aware floor variants or a floor-conforming variant set. | Rugs expose perspective errors immediately and can visually fight layer ordering. |
-| 4 | `office-trophy-display` | `props/office-trophy-display/prop.png` | Generate authored side variants and validate shelf surface bounds. | Tall display furniture near walls. |
-| 5 | `office-shelf` | `props/office-shelf/prop.png` | Replace `mirror-test` with authored side variants. | Shelf support surfaces should remain believable from camera profiles. |
 | 6 | `office-tall-bookcase` | `props/office-tall-bookcase/prop.png` | Generate authored side variants before placing as a major wall/floor object. | Future storage layout. |
 | 7 | `office-filing-cabinet` | `props/office-filing-cabinet/prop.png` | Generate authored side variants before placing against side walls. | Future denser office layout. |
 
 `office-corner-desk-v3` is the current completed reference: it already provides `front`, `left-wall-flush`, and `right-wall-flush` with `perspective-correct` status.
 
 `office-leather-sofa` is the first completed skill-validated loop after the queue was added. It uses the original `prop.png` as `front` and the generated `left-wall-flush` / `right-wall-flush` variants from `raw/office-leather-sofa-variant-sheet-v1-magenta.png`.
+
+The first large-furniture batch is also complete:
+
+- `office-low-coffee-table` uses the original `prop.png` as `front` and generated side variants from `raw/office-low-coffee-table-variant-sheet-v1-magenta.png`.
+- `office-pattern-rug` uses the original `prop.png` as `front` and generated side variants from `raw/office-pattern-rug-variant-sheet-v1-magenta.png`.
+- `office-trophy-display` uses the original `prop.png` as `front` and generated side variants from `raw/office-trophy-display-variant-sheet-v1-magenta.png`.
+- `office-shelf` replaces the old `mirror-test` side views with generated variants from `raw/office-shelf-variant-sheet-v1-magenta.png`.
 
 `office-angle-overhead-proof` is the first background reference-angle proof. It was generated from `backgrounds/office-angle-center-v2.png` and registered as `role: angle-proof`, not as a runtime camera profile.
 

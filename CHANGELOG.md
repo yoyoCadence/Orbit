@@ -20,6 +20,7 @@
 - Idle window variant generation queue: added a tested readiness manifest for large furniture direction variants, so future generated assets must declare reference paths, missing side views, and final `perspective-correct` status before being considered complete.
 - Idle window asset skill tooling: added a reusable `audit_idle_window_variants.mjs` skill script that prints the current controlled furniture-variant queue in Markdown or JSON before image generation begins.
 - Idle window skill-generated sofa variants: generated, split, de-fringed, registered, and wired `office-leather-sofa` left / center / right perspective variants so camera profiles now swap both desk and sofa art.
+- Idle window large furniture variants: generated, split, de-fringed, registered, and wired `office-low-coffee-table`, `office-pattern-rug`, `office-trophy-display`, and `office-shelf` perspective variants so the main office layout now has authored camera-aware art for six large props.
 - Idle window background angle proof: generated and registered an `office-angle-overhead-proof` background from the approved office reference to validate the reference-to-angle-pack workflow for future top-down and overhead views.
 - HD-2D-inspired idle-window prototype assets: added the office base background, office prop pack, regenerated desk prop, and a four-frame protagonist idle sprite preview for the building-stage prototype.
 

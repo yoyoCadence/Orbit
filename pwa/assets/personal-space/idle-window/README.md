@@ -72,6 +72,26 @@ It is additive and must not replace the existing `personalSpace` scene runtime o
   - Runtime uses the original `prop.png` as `front` and generated `left-wall-flush` / `right-wall-flush` variants from `raw/office-leather-sofa-variant-sheet-v1-magenta.png`.
   - QC note: `split_idle_window_sheet.py` removed flat magenta, cleared transparent RGB, and removed edge key-color fringe before the variants were accepted.
 
+- `props/office-low-coffee-table/`
+  - Skill-generated large-furniture variant set.
+  - Runtime uses the original `prop.png` as `front` and generated `left-wall-flush` / `right-wall-flush` variants from `raw/office-low-coffee-table-variant-sheet-v1-magenta.png`.
+  - QC note: `front-generated.png` is retained only as a visual QA artifact; runtime keeps the approved original front prop.
+
+- `props/office-pattern-rug/`
+  - Skill-generated floor-prop variant set.
+  - Runtime uses the original `prop.png` as `front` and generated `left-wall-flush` / `right-wall-flush` variants from `raw/office-pattern-rug-variant-sheet-v1-magenta.png`.
+  - QC note: side variants are angle-aware art, not CSS-rotated floor art, so camera changes no longer rely on a flat one-view rug.
+
+- `props/office-trophy-display/`
+  - Skill-generated tall display-furniture variant set.
+  - Runtime uses the original `prop.png` as `front` and generated `left-wall-flush` / `right-wall-flush` variants from `raw/office-trophy-display-variant-sheet-v1-magenta.png`.
+  - QC note: side variants preserve the cabinet/display silhouette and are registered as `perspective-correct`.
+
+- `props/office-shelf/`
+  - Skill-generated shelf variant set replacing the earlier mirror proof.
+  - Runtime uses the original `prop.png` as `front` and generated `left-wall-flush` / `right-wall-flush` variants from `raw/office-shelf-variant-sheet-v1-magenta.png`.
+  - QC note: `split_idle_window_sheet.py` removed magenta key/fringe and despilled edge pixels before acceptance.
+
 - `props/office-*/`
   - Extracted transparent PNGs for the expanded office furniture, small props, wall props, and storage props.
   - Runtime registry includes all extracted assets, while layout currently places only a curated subset to avoid overfilling the first screen.
@@ -98,7 +118,7 @@ separate from scene `placedItems`.
 Current placement feasibility layer:
 
 - Small eligible props can persist `rotation` in placement overrides and render through CSS transforms.
-- Larger props expose direction `variants`; `office-corner-desk-v3` proves the production path with true perspective-correct `left / center / right` art.
+- Larger props expose direction `variants`; the desk, sofa, coffee table, rug, trophy display, and shelf now prove the production path with true perspective-correct `left / center / right` art. The remaining controlled queue is `office-tall-bookcase` and `office-filing-cabinet`.
 - Layouts define `placementPlanes` such as wall, floor, and desktop; eligible small props can drag freely and snap to valid support surfaces instead of being permanently clamped to one rectangle.
 - Furniture can expose `supportSurfaces`; desktop and shelf props use `localX` / `localY`, so they follow the parent furniture when it moves.
 - Layouts define `cameraProfiles` (`left`, `center`, `right`) with real background images and preferred furniture variants; survival, building, and mastery now each have strict 16:9 background sets.
@@ -113,7 +133,7 @@ Current placement feasibility layer:
 Next recommended asset pass:
 
 1. Regenerate the current survival, building, and mastery background angle sets through the reference-image workflow so each angle preserves the exact same floor, wall, trim, window, and lighting identity.
-2. Generate true perspective variants from `docs/idle-window-controlled-generation-queue.md`, starting with sofa, coffee table, rug, trophy display, and shelf.
+2. Generate true perspective variants from `docs/idle-window-controlled-generation-queue.md`, starting with the remaining tall bookcase and filing cabinet.
 3. Add survival and mastery protagonist idle sheets with the same frame contract.
 4. Add particle sheets for work sparks, level-up stars, and fatigue dust.
 5. Add scene-specific idle-window layouts for survival and mastery instead of routing them to the building-stage prototype fallback.

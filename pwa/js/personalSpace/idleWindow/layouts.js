@@ -54,7 +54,14 @@ export const idleWindowLayouts = {
         backgroundShiftX: -0.8,
         itemSkew: -0.7,
         backgroundAssetId: 'office-angle-left-v2',
-        preferredVariants: { 'corner-desk': 'left-wall-flush', 'leather-sofa': 'left-wall-flush' },
+        preferredVariants: {
+          'corner-desk': 'left-wall-flush',
+          'pattern-rug': 'left-wall-flush',
+          'leather-sofa': 'left-wall-flush',
+          'low-coffee-table': 'left-wall-flush',
+          'office-shelf': 'left-wall-flush',
+          'trophy-display': 'left-wall-flush',
+        },
       }),
       cameraProfile({
         id: 'center',
@@ -63,7 +70,14 @@ export const idleWindowLayouts = {
         backgroundShiftX: 0,
         itemSkew: 0,
         backgroundAssetId: 'office-angle-center-v2',
-        preferredVariants: { 'corner-desk': 'front', 'leather-sofa': 'front' },
+        preferredVariants: {
+          'corner-desk': 'front',
+          'pattern-rug': 'front',
+          'leather-sofa': 'front',
+          'low-coffee-table': 'front',
+          'office-shelf': 'front',
+          'trophy-display': 'front',
+        },
       }),
       cameraProfile({
         id: 'right',
@@ -72,7 +86,14 @@ export const idleWindowLayouts = {
         backgroundShiftX: 0.8,
         itemSkew: 0.7,
         backgroundAssetId: 'office-angle-right-v2',
-        preferredVariants: { 'corner-desk': 'right-wall-flush', 'leather-sofa': 'right-wall-flush' },
+        preferredVariants: {
+          'corner-desk': 'right-wall-flush',
+          'pattern-rug': 'right-wall-flush',
+          'leather-sofa': 'right-wall-flush',
+          'low-coffee-table': 'right-wall-flush',
+          'office-shelf': 'right-wall-flush',
+          'trophy-display': 'right-wall-flush',
+        },
       }),
     ],
     placementPlanes: [

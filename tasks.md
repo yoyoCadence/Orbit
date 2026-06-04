@@ -119,6 +119,9 @@
 
 ## Done
 
+- [x] **PS-233** Complete first large idle furniture variant batch
+  - Completed: generated, split, cleaned, registered, and wired perspective-correct `left-wall-flush` / `front` / `right-wall-flush` variants for `office-low-coffee-table`, `office-pattern-rug`, `office-trophy-display`, and `office-shelf`, leaving only the tall bookcase and filing cabinet in the controlled queue.
+
 - [x] **PS-232** Prove reference-to-angle-pack generation for idle backgrounds
   - Completed: generated `office-angle-overhead-proof` from the approved building office center background, registered it as a non-runtime `angle-proof`, and documented the overhead/top-down background workflow in the idle-window asset skill.
 

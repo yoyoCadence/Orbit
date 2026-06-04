@@ -207,37 +207,57 @@ describe('personal space idle window contract', () => {
     const host = document.createElement('div');
     host.innerHTML = markup;
     const desk = findLayoutItem(model.layout, 'corner-desk');
+    const rug = findLayoutItem(model.layout, 'pattern-rug');
     const sofa = findLayoutItem(model.layout, 'leather-sofa');
+    const coffeeTable = findLayoutItem(model.layout, 'low-coffee-table');
+    const shelf = findLayoutItem(model.layout, 'office-shelf');
+    const trophyDisplay = findLayoutItem(model.layout, 'trophy-display');
 
     expect(model.layout.activeCameraProfile.backgroundAssetId).toBe('office-angle-left-v2');
     expect(desk.placement.variantId).toBe('left-wall-flush');
+    expect(rug.placement.variantId).toBe('left-wall-flush');
     expect(sofa.placement.variantId).toBe('left-wall-flush');
+    expect(coffeeTable.placement.variantId).toBe('left-wall-flush');
+    expect(shelf.placement.variantId).toBe('left-wall-flush');
+    expect(trophyDisplay.placement.variantId).toBe('left-wall-flush');
     expect(host.querySelector('.space-idle-background')?.getAttribute('src')).toContain('office-angle-left-v2.png');
     expect(host.querySelector('[data-idle-prop-id="corner-desk"]')?.getAttribute('src')).toContain('left-wall-flush.png');
     expect(host.querySelector('[data-idle-prop-id="leather-sofa"]')?.getAttribute('src')).toContain('office-leather-sofa/left-wall-flush.png');
+    expect(host.querySelector('[data-idle-prop-id="low-coffee-table"]')?.getAttribute('src')).toContain('office-low-coffee-table/left-wall-flush.png');
+    expect(host.querySelector('[data-idle-prop-id="trophy-display"]')?.getAttribute('src')).toContain('office-trophy-display/left-wall-flush.png');
   });
 
   it('tracks controlled generation readiness for large furniture variants', () => {
     const queue = buildIdleWindowVariantGenerationQueue();
     const deskReadiness = getIdleWindowVariantReadiness('office-corner-desk-v3');
     const sofaReadiness = getIdleWindowVariantReadiness('office-leather-sofa');
+    const coffeeTableReadiness = getIdleWindowVariantReadiness('office-low-coffee-table');
+    const rugReadiness = getIdleWindowVariantReadiness('office-pattern-rug');
+    const trophyDisplayReadiness = getIdleWindowVariantReadiness('office-trophy-display');
+    const shelfReadiness = getIdleWindowVariantReadiness('office-shelf');
     const queuedAssetIds = queue.map(item => item.assetId);
 
     expect(deskReadiness.ready).toBe(true);
     expect(sofaReadiness.ready).toBe(true);
+    expect(coffeeTableReadiness.ready).toBe(true);
+    expect(rugReadiness.ready).toBe(true);
+    expect(trophyDisplayReadiness.ready).toBe(true);
+    expect(shelfReadiness.ready).toBe(true);
     expect(queuedAssetIds).not.toContain('office-corner-desk-v3');
     expect(queuedAssetIds).not.toContain('office-leather-sofa');
-    expect(queuedAssetIds.slice(0, 4)).toEqual([
-      'office-low-coffee-table',
-      'office-pattern-rug',
-      'office-trophy-display',
-      'office-shelf',
+    expect(queuedAssetIds).not.toContain('office-low-coffee-table');
+    expect(queuedAssetIds).not.toContain('office-pattern-rug');
+    expect(queuedAssetIds).not.toContain('office-trophy-display');
+    expect(queuedAssetIds).not.toContain('office-shelf');
+    expect(queuedAssetIds).toEqual([
+      'office-tall-bookcase',
+      'office-filing-cabinet',
     ]);
     expect(queue[0]).toMatchObject({
-      assetId: 'office-low-coffee-table',
+      assetId: 'office-tall-bookcase',
       missingVariantIds: ['left-wall-flush', 'right-wall-flush'],
       nonFinalVariantIds: ['front'],
-      layoutCritical: true,
+      layoutCritical: false,
     });
   });
 
