@@ -16,6 +16,7 @@ describe('personal space furniture state', () => {
     expect(createDefaultPersonalSpaceState()).toMatchObject({
       ownedItems: [],
       placedItems: [],
+      idleWindowLayouts: {},
     });
   });
 
@@ -85,6 +86,59 @@ describe('personal space furniture state', () => {
         },
       },
     ]);
+  });
+
+  it('normalizes idle window placement overrides separately from scene furniture', () => {
+    localStorage.clear();
+
+    savePersonalSpaceState({
+      idleWindowLayouts: {
+        'building-office-prototype': {
+          cameraProfileId: 'left',
+          placements: {
+            'single-monitor': {
+              x: '41.25%',
+              y: '73.5%',
+              width: '10%',
+              z: 27,
+              rotation: 10,
+              anchor: 'center-bottom',
+              variantId: 'mirror-test',
+              planeId: 'desktop-main',
+              parentItemId: 'corner-desk',
+              surfaceId: 'desktop',
+              localX: 0.42,
+              localY: 0.58,
+            },
+            '': {
+              x: '0%',
+            },
+          },
+        },
+      },
+    });
+
+    expect(loadPersonalSpaceState().idleWindowLayouts).toEqual({
+      'building-office-prototype': {
+        cameraProfileId: 'left',
+        placements: {
+          'single-monitor': {
+            x: '41.25%',
+            y: '73.5%',
+            width: '10%',
+            z: 27,
+            rotation: 10,
+            anchor: 'center-bottom',
+            variantId: 'mirror-test',
+            planeId: 'desktop-main',
+            parentItemId: 'corner-desk',
+            surfaceId: 'desktop',
+            localX: 0.42,
+            localY: 0.58,
+          },
+        },
+      },
+    });
   });
 
   it('applies placement overrides without coupling them to owned item storage', () => {

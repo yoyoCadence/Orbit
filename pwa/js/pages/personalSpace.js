@@ -1,4 +1,6 @@
 import { state } from '../state.js';
+import { mountIdleWindowEditor } from '../personalSpace/idleWindow/editorRuntime.js';
+import { buildIdleWindowViewModel, renderIdleWindow } from '../personalSpace/idleWindow/index.js';
 import { buildPersonalSpaceViewModel } from '../personalSpace/index.js';
 import { buildStarterCatalogView } from '../personalSpace/economy.js';
 import { savePersonalSpaceState } from '../personalSpace/gameState.js';
@@ -16,6 +18,7 @@ import { haptic } from '../platform/haptics.js';
 
 let activeRuntime = null;
 let activeParallaxCleanup = null;
+let activeIdleWindowCleanup = null;
 export const PERSONAL_SPACE_PURCHASE_REQUEST_EVENT = 'orbit:personal-space-purchase-request';
 
 export function renderPersonalSpace(container) {
@@ -30,8 +33,13 @@ export function renderPersonalSpace(container) {
     activeParallaxCleanup();
     activeParallaxCleanup = null;
   }
+  if (activeIdleWindowCleanup) {
+    activeIdleWindowCleanup();
+    activeIdleWindowCleanup = null;
+  }
 
   const model = buildPersonalSpaceViewModel(user);
+  const idleWindowModel = buildIdleWindowViewModel(user, model.personalSpaceState);
   const starterCatalog = buildStarterCatalogView(model.ownedItems, model.gold.available);
   const nextUnlock = model.nextUnlock;
   const primaryWorkScene = model.sceneOptions.find(option => option.role === 'work' && option.id === model.activeWorkScene?.id);
@@ -114,6 +122,62 @@ export function renderPersonalSpace(container) {
       <ul class="space-unlock-list">${placedItemsMarkup}</ul>
     </div>
 
+    <div class="card space-idle-card" data-idle-window-card>
+      <button class="card-title space-idle-card-title" type="button" data-idle-window-open>
+        Idle Growth Window
+      </button>
+      ${renderIdleWindow(idleWindowModel)}
+      <button class="space-idle-open-button" type="button" data-idle-window-open>
+        Open
+      </button>
+    </div>
+
+    <div
+      class="space-idle-overlay"
+      data-idle-window-overlay
+      data-idle-window-editing="false"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Idle Growth Window"
+      hidden
+    >
+      <div class="space-idle-overlay-toolbar">
+        <strong>Idle Growth Window</strong>
+        <div class="space-idle-overlay-actions">
+          <button class="space-idle-tool-button" type="button" data-idle-window-edit>Edit</button>
+          <button class="space-idle-tool-button" type="button" data-idle-window-reset>Reset</button>
+          <button class="space-idle-tool-button" type="button" data-idle-window-close>Close</button>
+        </div>
+      </div>
+      <div class="space-idle-editor-panel" data-idle-window-selection hidden>
+        <strong data-idle-selected-label>None</strong>
+        <span data-idle-selected-plane></span>
+        <div class="space-idle-editor-actions">
+          <button class="space-idle-tool-button" type="button" data-idle-rotate="-1">Rotate -</button>
+          <button class="space-idle-tool-button" type="button" data-idle-rotate="1">Rotate +</button>
+          <button class="space-idle-tool-button" type="button" data-idle-variant="-1">Variant -</button>
+          <button class="space-idle-tool-button" type="button" data-idle-variant="1">Variant +</button>
+          <button class="space-idle-tool-button" type="button" data-idle-layer="back">Back</button>
+          <button class="space-idle-tool-button" type="button" data-idle-layer="down">-</button>
+          <button class="space-idle-tool-button" type="button" data-idle-layer="up">+</button>
+          <button class="space-idle-tool-button" type="button" data-idle-layer="front">Front</button>
+        </div>
+      </div>
+      <div class="space-idle-library-panel" data-idle-window-library hidden>
+        <div class="space-idle-library-header">
+          <strong>Items</strong>
+          <div class="space-idle-library-actions">
+            <button class="space-idle-tool-button" type="button" data-idle-show-all>Show all</button>
+            <button class="space-idle-tool-button" type="button" data-idle-hide-all>Hide all</button>
+          </div>
+        </div>
+        <div class="space-idle-library-list" data-idle-library-list></div>
+      </div>
+      <div class="space-idle-overlay-stage">
+        ${renderIdleWindow(idleWindowModel, { variant: 'expanded' })}
+      </div>
+    </div>
+
     <div class="card">
       <div class="card-title">Current Scene Layer</div>
       <div class="space-scene-meta">
@@ -133,6 +197,11 @@ export function renderPersonalSpace(container) {
       ${renderHudOverlayPlaceholder()}
     </div>
   `;
+
+  activeIdleWindowCleanup = mountIdleWindowEditor(container, {
+    personalSpaceState: model.personalSpaceState,
+    onCloseRefresh: () => renderPersonalSpace(container),
+  });
 
   container.querySelector('.space-shop-panel')?.addEventListener('click', event => {
     const purchaseButton = event.target.closest(`[data-action="${SHOP_PURCHASE_ACTION}"]`);

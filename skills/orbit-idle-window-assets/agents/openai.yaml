@@ -1,0 +1,4 @@
+interface:
+  display_name: "Orbit Idle Window Assets"
+  short_description: "Build Orbit idle-window art assets and placement specs."
+  default_prompt: "Use this skill to generate or integrate Orbit idle-window backgrounds, furniture variants, support surfaces, and character anchors."

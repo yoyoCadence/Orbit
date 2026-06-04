@@ -1,0 +1,64 @@
+{
+  "target": "asset",
+  "mode": "single",
+  "prompt": "",
+  "role": "",
+  "input": "pwa\\assets\\personal-space\\idle-window\\props\\office-corner-desk-v2\\raw\\office-corner-desk-v2-magenta.png",
+  "threshold": 100,
+  "edge_threshold": 150,
+  "duration": 200,
+  "rows": 1,
+  "cols": 1,
+  "cell_size": 512,
+  "fit_scale": 1.0,
+  "trim_border": 4,
+  "edge_clean_depth": 3,
+  "align": "bottom",
+  "shared_scale": false,
+  "component_mode": "largest",
+  "component_padding": 16,
+  "min_component_area": 1000,
+  "edge_touch_margin": 2,
+  "frame_labels": [
+    "office-corner-desk-v2-1"
+  ],
+  "frames": [
+    {
+      "grid": [
+        0,
+        0
+      ],
+      "source_box": [
+        0,
+        0,
+        1536,
+        1024
+      ],
+      "component_mode": "largest",
+      "component_count": 1,
+      "selected_component_area": 322741,
+      "selected_component_bbox": [
+        265,
+        221,
+        1266,
+        731
+      ],
+      "crop_bbox": [
+        249,
+        205,
+        1282,
+        747
+      ],
+      "edge_touch": false,
+      "output_size": [
+        512,
+        268
+      ],
+      "paste_position": [
+        0,
+        244
+      ]
+    }
+  ],
+  "edge_touch_frames": []
+}
