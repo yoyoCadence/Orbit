@@ -3,6 +3,28 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.19.0] - 2026-06-01
+
+### Added
+- Personal Space idle growth window: added a separate idle-game style visual card that appears alongside the existing Current Scene Layer instead of replacing it.
+- Idle window prototype renderer and contract: added stage/layout data, asset registry, layered raster rendering, unlock-gated props, prototype fallback badges, and unit coverage for the independent view.
+- Idle window editing prototype: the idle card can now open into an immersive landscape-style overlay, toggle edit mode, drag unlocked furniture layers, and persist those positions in a separate idle-window layout state.
+- Idle furniture placement feasibility: added CSS rotation for eligible props, direction-variant metadata for larger furniture, and wall / floor / desktop placement planes with drag clamping and footprint metadata.
+- Idle placement surface model: desktop props can attach to furniture support surfaces so they follow parent furniture when it moves, and idle layouts now expose left / center / right camera profiles for angle-aware background and furniture expansion.
+- Idle window production proof: added art-direction and furniture-variant specs, true left / center / right office background profile assets, and a perspective-correct `office-corner-desk-v3` variant set for wall-aligned placement.
+- Idle editor feasibility pass: small props can drag freely and snap to valid support surfaces, furniture overlap warnings are shown during editing, depth hints update from footprint metadata, and the protagonist can follow a desk interaction anchor.
+- Idle window background expansion: added strict 16:9 survival rental, building office, and mastery estate background camera sets, with stage-aware idle-window background selection.
+- Idle window prop expansion: added 27 extracted transparent office furniture, small prop, wall, storage, and decor assets, and placed a curated subset into the building-stage idle layout.
+- Idle window editor maturation: added layer up/down controls, blank-stage drag camera switching, per-item visibility toggles with show-all/hide-all, and a controlled reference-image workflow for future consistent room angles and furniture variants.
+- Idle window mobile editor refinement: layer controls now support instant front/back plus fine nudges, furniture visibility is grouped by unlock tier with per-group all/none controls, camera drag is limited to expanded non-edit mode, and editor controls now have touch feedback animations.
+- Idle window variant generation queue: added a tested readiness manifest for large furniture direction variants, so future generated assets must declare reference paths, missing side views, and final `perspective-correct` status before being considered complete.
+- Idle window asset skill tooling: added a reusable `audit_idle_window_variants.mjs` skill script that prints the current controlled furniture-variant queue in Markdown or JSON before image generation begins.
+- Idle window skill-generated sofa variants: generated, split, de-fringed, registered, and wired `office-leather-sofa` left / center / right perspective variants so camera profiles now swap both desk and sofa art.
+- Idle window background angle proof: generated and registered an `office-angle-overhead-proof` background from the approved office reference to validate the reference-to-angle-pack workflow for future top-down and overhead views.
+- HD-2D-inspired idle-window prototype assets: added the office base background, office prop pack, regenerated desk prop, and a four-frame protagonist idle sprite preview for the building-stage prototype.
+
+---
+
 ## [1.18.0] - 2026-05-14
 
 ### Added

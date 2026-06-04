@@ -1,6 +1,6 @@
 // Service Worker — network-first for JS/CSS/HTML, cache-first for images
 // Bump CACHE version on every deploy so users always get fresh code.
-const CACHE = 'orbit-v1.18.0';
+const CACHE = 'orbit-v1.19.0';
 
 const SHELL = [
   './',
@@ -32,6 +32,12 @@ const SHELL = [
   './js/personalSpace/economy.js',
   './js/personalSpace/unlockRules.js',
   './js/personalSpace/gameState.js',
+  './js/personalSpace/idleWindow/index.js',
+  './js/personalSpace/idleWindow/assetRegistry.js',
+  './js/personalSpace/idleWindow/layouts.js',
+  './js/personalSpace/idleWindow/renderer.js',
+  './js/personalSpace/idleWindow/editorRuntime.js',
+  './js/personalSpace/idleWindow/variantReadiness.js',
   './js/personalSpace/assetRegistry.js',
   './js/personalSpace/interactionBus.js',
   './js/personalSpace/avatar/avatarController.js',

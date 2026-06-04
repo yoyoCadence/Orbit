@@ -31,7 +31,12 @@ describe('renderPersonalSpace', () => {
     expect(container.textContent).toContain('Small Plant');
     expect(container.querySelector('.space-scene-window')).not.toBeNull();
     expect(container.querySelectorAll('.space-scene-item').length).toBeGreaterThan(0);
+    expect(container.textContent).toContain('Idle Growth Window');
+    expect(container.querySelector('.space-idle-window')).not.toBeNull();
+    expect(container.querySelector('[data-idle-window-open]')).not.toBeNull();
+    expect(container.querySelector('[data-idle-window-overlay]')).not.toBeNull();
     expect(container.textContent).toContain('Current Scene Layer');
+    expect(container.querySelector('.space-scene-placeholder')).not.toBeNull();
     expect(container.querySelector('.space-scene-info-toggle')).not.toBeNull();
     expect(container.querySelector('.space-scene-chip-row')).toBeNull();
     expect(container.textContent).toContain('你現在位於');
@@ -39,6 +44,25 @@ describe('renderPersonalSpace', () => {
     expect(container.querySelector('[data-scene-category="work"]')?.textContent).toContain('上班');
     expect(container.querySelector('[data-scene-category="memory"]')?.textContent).toContain('回顧');
     expect(container.querySelector('[data-scene-category="memory"]')?.disabled).toBe(true);
+  });
+
+  it('opens the idle growth window overlay without removing the current scene layer', () => {
+    renderPersonalSpace(container);
+
+    const overlay = container.querySelector('[data-idle-window-overlay]');
+    expect(overlay?.hidden).toBe(true);
+
+    container.querySelector('[data-idle-window-open]')?.click();
+
+    expect(overlay?.hidden).toBe(false);
+    expect(overlay?.querySelector('.space-idle-window--expanded')).not.toBeNull();
+    expect(container.querySelector('.space-scene-window')).not.toBeNull();
+
+    overlay?.querySelector('[data-idle-window-edit]')?.click();
+
+    expect(overlay?.dataset.idleWindowEditing).toBe('true');
+    expect(overlay?.querySelector('.space-idle-window')?.classList.contains('is-editing')).toBe(true);
+    expect(overlay?.querySelector('[data-idle-prop-id="single-monitor"]')?.dataset.idleDraggable).toBe('true');
   });
 
   it('loads spent gold and owned items from persisted personal space state', () => {

@@ -1,0 +1,350 @@
+{
+  "input": "pwa\\assets\\personal-space\\idle-window\\raw\\office-props-sheet-alpha.png",
+  "rows": 3,
+  "cols": 3,
+  "threshold": 100,
+  "edge_threshold": 150,
+  "component_mode": "all",
+  "component_padding": 10,
+  "min_component_area": 200,
+  "edge_touch_margin": 2,
+  "accepted": [
+    {
+      "index": 0,
+      "label": "office-corner-desk",
+      "grid": [
+        0,
+        0
+      ],
+      "source_box": [
+        0,
+        0,
+        418,
+        418
+      ],
+      "component_mode": "all",
+      "component_count": 1,
+      "selected_component_area": null,
+      "selected_component_bbox": null,
+      "crop_bbox": [
+        62,
+        104,
+        409,
+        339
+      ],
+      "padded_crop_bbox": [
+        52,
+        94,
+        410,
+        349
+      ],
+      "edge_touch": true,
+      "output_size": [
+        358,
+        255
+      ],
+      "status": "accepted",
+      "image": "pwa\\assets\\personal-space\\idle-window\\props\\office-corner-desk\\prop.png"
+    },
+    {
+      "index": 1,
+      "label": "office-chair",
+      "grid": [
+        0,
+        1
+      ],
+      "source_box": [
+        418,
+        0,
+        836,
+        418
+      ],
+      "component_mode": "all",
+      "component_count": 1,
+      "selected_component_area": null,
+      "selected_component_bbox": null,
+      "crop_bbox": [
+        114,
+        80,
+        282,
+        381
+      ],
+      "padded_crop_bbox": [
+        104,
+        70,
+        292,
+        391
+      ],
+      "edge_touch": false,
+      "output_size": [
+        188,
+        321
+      ],
+      "status": "accepted",
+      "image": "pwa\\assets\\personal-space\\idle-window\\props\\office-chair\\prop.png"
+    },
+    {
+      "index": 2,
+      "label": "office-monitor-single",
+      "grid": [
+        0,
+        2
+      ],
+      "source_box": [
+        836,
+        0,
+        1254,
+        418
+      ],
+      "component_mode": "all",
+      "component_count": 1,
+      "selected_component_area": null,
+      "selected_component_bbox": null,
+      "crop_bbox": [
+        82,
+        123,
+        284,
+        362
+      ],
+      "padded_crop_bbox": [
+        72,
+        113,
+        294,
+        372
+      ],
+      "edge_touch": false,
+      "output_size": [
+        222,
+        259
+      ],
+      "status": "accepted",
+      "image": "pwa\\assets\\personal-space\\idle-window\\props\\office-monitor-single\\prop.png"
+    },
+    {
+      "index": 3,
+      "label": "office-monitor-dual",
+      "grid": [
+        1,
+        0
+      ],
+      "source_box": [
+        0,
+        418,
+        418,
+        836
+      ],
+      "component_mode": "all",
+      "component_count": 1,
+      "selected_component_area": null,
+      "selected_component_bbox": null,
+      "crop_bbox": [
+        63,
+        105,
+        373,
+        351
+      ],
+      "padded_crop_bbox": [
+        53,
+        95,
+        383,
+        361
+      ],
+      "edge_touch": false,
+      "output_size": [
+        330,
+        266
+      ],
+      "status": "accepted",
+      "image": "pwa\\assets\\personal-space\\idle-window\\props\\office-monitor-dual\\prop.png"
+    },
+    {
+      "index": 4,
+      "label": "office-shelf",
+      "grid": [
+        1,
+        1
+      ],
+      "source_box": [
+        418,
+        418,
+        836,
+        836
+      ],
+      "component_mode": "all",
+      "component_count": 1,
+      "selected_component_area": null,
+      "selected_component_bbox": null,
+      "crop_bbox": [
+        85,
+        52,
+        330,
+        382
+      ],
+      "padded_crop_bbox": [
+        75,
+        42,
+        340,
+        392
+      ],
+      "edge_touch": false,
+      "output_size": [
+        265,
+        350
+      ],
+      "status": "accepted",
+      "image": "pwa\\assets\\personal-space\\idle-window\\props\\office-shelf\\prop.png"
+    },
+    {
+      "index": 5,
+      "label": "office-plant",
+      "grid": [
+        1,
+        2
+      ],
+      "source_box": [
+        836,
+        418,
+        1254,
+        836
+      ],
+      "component_mode": "all",
+      "component_count": 1,
+      "selected_component_area": null,
+      "selected_component_bbox": null,
+      "crop_bbox": [
+        76,
+        69,
+        289,
+        349
+      ],
+      "padded_crop_bbox": [
+        66,
+        59,
+        299,
+        359
+      ],
+      "edge_touch": false,
+      "output_size": [
+        233,
+        300
+      ],
+      "status": "accepted",
+      "image": "pwa\\assets\\personal-space\\idle-window\\props\\office-plant\\prop.png"
+    },
+    {
+      "index": 6,
+      "label": "office-board",
+      "grid": [
+        2,
+        0
+      ],
+      "source_box": [
+        0,
+        836,
+        418,
+        1254
+      ],
+      "component_mode": "all",
+      "component_count": 1,
+      "selected_component_area": null,
+      "selected_component_bbox": null,
+      "crop_bbox": [
+        82,
+        67,
+        373,
+        295
+      ],
+      "padded_crop_bbox": [
+        72,
+        57,
+        383,
+        305
+      ],
+      "edge_touch": false,
+      "output_size": [
+        311,
+        248
+      ],
+      "status": "accepted",
+      "image": "pwa\\assets\\personal-space\\idle-window\\props\\office-board\\prop.png"
+    },
+    {
+      "index": 7,
+      "label": "office-desk-lamp",
+      "grid": [
+        2,
+        1
+      ],
+      "source_box": [
+        418,
+        836,
+        836,
+        1254
+      ],
+      "component_mode": "all",
+      "component_count": 1,
+      "selected_component_area": null,
+      "selected_component_bbox": null,
+      "crop_bbox": [
+        107,
+        54,
+        284,
+        314
+      ],
+      "padded_crop_bbox": [
+        97,
+        44,
+        294,
+        324
+      ],
+      "edge_touch": false,
+      "output_size": [
+        197,
+        280
+      ],
+      "status": "accepted",
+      "image": "pwa\\assets\\personal-space\\idle-window\\props\\office-desk-lamp\\prop.png"
+    },
+    {
+      "index": 8,
+      "label": "office-coffee-cup",
+      "grid": [
+        2,
+        2
+      ],
+      "source_box": [
+        836,
+        836,
+        1254,
+        1254
+      ],
+      "component_mode": "all",
+      "component_count": 1,
+      "selected_component_area": null,
+      "selected_component_bbox": null,
+      "crop_bbox": [
+        96,
+        52,
+        289,
+        302
+      ],
+      "padded_crop_bbox": [
+        86,
+        42,
+        299,
+        312
+      ],
+      "edge_touch": false,
+      "output_size": [
+        213,
+        270
+      ],
+      "status": "accepted",
+      "image": "pwa\\assets\\personal-space\\idle-window\\props\\office-coffee-cup\\prop.png"
+    }
+  ],
+  "rejected": [],
+  "edge_touch_props": [
+    "office-corner-desk"
+  ]
+}

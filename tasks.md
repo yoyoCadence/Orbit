@@ -103,6 +103,11 @@
 
 ## Next
 
+- [ ] **PS-227** Generate controlled idle furniture variants from approved references
+  - Goal: replace one-view-only expanded props with true `front / left-wall-flush / right-wall-flush` variants that preserve material identity.
+  - Scope: use the `orbit-idle-window-assets` reference workflow for sofa, coffee table, bookcase, filing cabinet, trophy display, rug, and other large layout-critical props; register variant metadata and camera preferences.
+  - Acceptance: each selected large prop has authored variants, no CSS rotation or mirror-only final art, and visual QA confirms material/palette/silhouette consistency across views.
+
 
 ---
 
@@ -113,6 +118,48 @@
 ---
 
 ## Done
+
+- [x] **PS-232** Prove reference-to-angle-pack generation for idle backgrounds
+  - Completed: generated `office-angle-overhead-proof` from the approved building office center background, registered it as a non-runtime `angle-proof`, and documented the overhead/top-down background workflow in the idle-window asset skill.
+
+- [x] **PS-231** Validate first skill-generated furniture variant loop
+  - Completed: generated sofa side variants from the approved front prop, split and cleaned the chroma-key sheet with skill tooling, registered `left-wall-flush` / `front` / `right-wall-flush` variants, and wired sofa camera preferences into the idle layout.
+
+- [x] **PS-230** Add reusable idle variant audit script to the asset skill
+  - Completed: added `audit_idle_window_variants.mjs` to the project and installed `orbit-idle-window-assets` skill, documented the command, and verified Markdown/JSON output from the Orbit repo root.
+
+- [x] **PS-229** Add controlled idle furniture variant generation queue
+  - Completed: added a tested `variantReadiness` manifest for large furniture direction variants, documented the controlled generation queue, and kept PS-227 focused on actual authored image generation instead of uncontrolled prompt batching.
+
+- [x] **PS-228** Refine mobile idle editor controls and grouped furniture library
+  - Completed: changed layer controls to instant back/front with separate fine nudges, grouped the furniture visibility library by unlock tier with per-group all/none controls, limited camera drag to expanded non-edit mode, prevented image drag thumbnails, and added touch feedback animations for idle editor controls.
+
+- [x] **PS-226** Mature idle editor placement controls and consistency generation workflow
+  - Completed: added selected-item layer up/down controls, blank-stage drag camera switching without Camera +/- buttons, item visibility toggles with show-all/hide-all controls, and a reference-image workflow in the idle-window skill for consistent future room angles and furniture variants.
+
+- [x] **PS-225** Generate stage-wide idle-window background sets
+  - Completed: generated and registered strict 16:9 `left / center / right` background sets for survival rental, building office, and mastery estate, then wired stage-aware background selection into the idle-window layout without replacing the existing Personal Space scene layer.
+
+- [x] **PS-224** Replace proof office camera backgrounds with strict 16:9 assets
+  - Completed: replaced the office proof camera backgrounds with strict 16:9 v2 production background assets, preserved the proof assets, and verified idle-window asset resolution with focused tests.
+
+- [x] **PS-223** Add idle-window character furniture anchors
+  - Completed: added furniture-defined character anchors and wired the protagonist to follow `corner-desk.desk-work`, including live editor updates when the desk is dragged while keeping the existing idle sprite contract.
+
+- [x] **PS-222** Add idle editor depth sorting and collision feasibility
+  - Completed: added footprint-based overlap warnings, editor invalid-placement styling, z-depth hints from placement depth, and unit coverage for overlap detection without persisting invalid state separately.
+
+- [x] **PS-221** Add free movement and support-surface snapping
+  - Completed: expanded desk and shelf support surfaces, added eligible-surface metadata for small props, and verified dragged props can move freely then snap to valid parent surfaces such as shelf tiers.
+
+- [x] **PS-220** Add real idle-window camera profiles
+  - Completed: generated and registered true `left / center / right` office background assets, tied them to camera profiles, and verified camera switching changes the actual background image.
+
+- [x] **PS-219** Add perspective-correct desk variants
+  - Completed: generated `office-corner-desk-v3` with true `front`, `left-wall-flush`, and `right-wall-flush` transparent variants, registered them, and tied desk variants to camera profile switching instead of CSS rotation or mirror-only art.
+
+- [x] **PS-218** Add idle window production art and placement specs
+  - Completed: added `docs/idle-window-art-direction-spec.md` and `docs/idle-window-furniture-variant-spec.md` with camera, support-surface, footprint, variant, anchor, scale, and acceptance rules for expansion before generating more assets.
 
 - [x] **HW-103** Focus desk mode by phone posture
   - Completed: added a calmer focus desk presentation with a manual fallback button, optional device-orientation permission flow, stable flat-phone detection, and cleanup when minimizing or ending focus.

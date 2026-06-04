@@ -8,6 +8,7 @@ export function createDefaultPersonalSpaceState() {
     spentGold: 0,
     ownedItems: [],
     placedItems: [],
+    idleWindowLayouts: {},
     selectedSceneId: 'rough-room',
     memoryViewSceneId: null,  // set only when user explicitly navigates to a memory scene
     selectedThemeId: 'default',
@@ -49,7 +50,17 @@ function normalizePlacement(value = {}) {
   if (!value || typeof value !== 'object') return null;
 
   const normalized = {};
-  const stringFields = ['x', 'y', 'width', 'height', 'anchor'];
+  const stringFields = [
+    'x',
+    'y',
+    'width',
+    'height',
+    'anchor',
+    'variantId',
+    'planeId',
+    'parentItemId',
+    'surfaceId',
+  ];
   stringFields.forEach(field => {
     if (typeof value[field] === 'string' && value[field].trim()) {
       normalized[field] = value[field].trim();
@@ -58,6 +69,9 @@ function normalizePlacement(value = {}) {
 
   if (Number.isFinite(value.z)) normalized.z = value.z;
   if (Number.isFinite(value.scale)) normalized.scale = value.scale;
+  if (Number.isFinite(value.rotation)) normalized.rotation = value.rotation;
+  if (Number.isFinite(value.localX)) normalized.localX = Math.max(0, Math.min(1, value.localX));
+  if (Number.isFinite(value.localY)) normalized.localY = Math.max(0, Math.min(1, value.localY));
 
   return Object.keys(normalized).length ? normalized : null;
 }
@@ -107,6 +121,32 @@ function normalizePlacedItems(value) {
     .filter(Boolean);
 }
 
+function normalizeIdleWindowLayouts(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+
+  return Object.entries(value).reduce((layouts, [layoutId, entry]) => {
+    if (typeof layoutId !== 'string' || !layoutId.trim()) return layouts;
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return layouts;
+
+    const placements = entry.placements && typeof entry.placements === 'object' && !Array.isArray(entry.placements)
+      ? Object.entries(entry.placements).reduce((result, [itemId, placement]) => {
+          if (typeof itemId !== 'string' || !itemId.trim()) return result;
+          const normalizedPlacement = normalizePlacement(placement);
+          if (normalizedPlacement) result[itemId.trim()] = normalizedPlacement;
+          return result;
+        }, {})
+      : {};
+
+    layouts[layoutId.trim()] = {
+      placements,
+      cameraProfileId: typeof entry.cameraProfileId === 'string' && entry.cameraProfileId.trim()
+        ? entry.cameraProfileId.trim()
+        : undefined,
+    };
+    return layouts;
+  }, {});
+}
+
 function normalizePersonalSpaceState(value) {
   const defaults = createDefaultPersonalSpaceState();
   const raw = value && typeof value === 'object' ? value : {};
@@ -117,6 +157,7 @@ function normalizePersonalSpaceState(value) {
     spentGold: Number.isFinite(raw.spentGold) ? Math.max(0, raw.spentGold) : defaults.spentGold,
     ownedItems: normalizeOwnedItems(raw.ownedItems),
     placedItems: normalizePlacedItems(raw.placedItems),
+    idleWindowLayouts: normalizeIdleWindowLayouts(raw.idleWindowLayouts),
     memoryViewSceneId: typeof raw.memoryViewSceneId === 'string' && raw.memoryViewSceneId.trim() ? raw.memoryViewSceneId.trim() : null,
     memorySceneLog: normalizeMemorySceneLog(raw.memorySceneLog),
     hiddenStats: {
