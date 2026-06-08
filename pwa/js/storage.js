@@ -366,6 +366,34 @@ export const storage = {
   getTrialBannerDismissDate:  ()  => get('trialBannerDismiss') || '',
   saveTrialBannerDismissDate: (d) => set('trialBannerDismiss', d),
 
+  // ── Manual cloud sync ────────────────────────────────────────────────────────
+  // Two-tier rate limit: 10 s cooldown between clicks, 3 times per rolling hour.
+  async syncFromRemote() {
+    const COOLDOWN_KEY = 'orbit_sync_last';
+    const HISTORY_KEY  = 'orbit_sync_history';
+    const COOLDOWN_MS  = 10_000;
+    const MAX_PER_HOUR = 3;
+    const HOUR_MS      = 60 * 60 * 1000;
+
+    const now = Date.now();
+
+    const lastMs = parseInt(localStorage.getItem(COOLDOWN_KEY) || '0', 10);
+    const secondsLeft = Math.ceil((lastMs + COOLDOWN_MS - now) / 1000);
+    if (secondsLeft > 0) throw new Error(`cooldown:${secondsLeft}`);
+
+    const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]')
+      .filter(t => now - t < HOUR_MS);
+    if (history.length >= MAX_PER_HOUR) throw new Error('ratelimit');
+
+    const session = await db._session();
+    if (!session) throw new Error('unauthenticated');
+
+    await db.loadFromRemote(session.user.id);
+
+    localStorage.setItem(COOLDOWN_KEY, String(now));
+    localStorage.setItem(HISTORY_KEY, JSON.stringify([...history, now]));
+  },
+
   // ── Theme / Background (local only) ──────────────────────────────────────────
   getTheme:    ()  => get('theme') || 'dark-purple',
   saveTheme:   (t) => set('theme', t),

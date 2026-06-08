@@ -708,6 +708,23 @@ html.has-bg #app { background: transparent; }
   background: var(--border);
   margin: 14px 0 10px;
 }
+.btn-syncing {
+  opacity: 0.7;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.btn-syncing::before {
+  content: '';
+  width: 13px;
+  height: 13px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
 .btn-text-danger {
   background: none;
   border: none;
