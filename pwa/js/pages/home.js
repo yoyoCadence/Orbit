@@ -260,6 +260,15 @@ export function renderHome(container) {
     });
   });
 
+  // ── Bind: proof thumbnails → lightbox ────────────────────────────────────────
+  container.querySelectorAll('.session-proof-thumb').forEach(img => {
+    img.style.cursor = 'zoom-in';
+    img.addEventListener('click', e => {
+      e.stopPropagation();
+      window._showProofLightbox(img.src);
+    });
+  });
+
   // ── Bind: streak shield banner buttons ───────────────────────────────────────
   container.querySelector('.shield-use-btn')?.addEventListener('click', () => window.useStreakShield());
   container.querySelector('.shield-skip-btn')?.addEventListener('click', () => window.dismissStreakShield());
@@ -365,7 +374,11 @@ function sessionRowHtml(s) {
     : s.energyGain > 0
       ? `+${s.energyGain} ⚡`
       : s.result === 'invalid' ? '0 XP' : '完成';
-  const dur = s.durationMinutes > 0 ? ` · ${s.durationMinutes}m` : '';
+  const dur   = s.durationMinutes > 0 ? ` · ${s.durationMinutes}m` : '';
+  const proof = localStorage.getItem(`orbit_proof_${s.id}`);
+  const thumbHtml = proof
+    ? `<span class="session-proof-thumb-wrap"><img class="session-proof-thumb" src="${proof}" alt="佐證"></span>`
+    : '';
 
   return `
     <div class="log-item">
@@ -374,6 +387,7 @@ function sessionRowHtml(s) {
         <div class="log-name">${escHtml(s.taskName)}</div>
         <div class="log-time">${formatTime(s.completedAt)}${dur}</div>
       </div>
+      ${thumbHtml}
       <span class="log-xp ${s.result === 'invalid' ? 'log-xp-invalid' : ''}">${xpStr}</span>
       <button class="session-del-btn" data-session-id="${s.id}" title="撤銷">✕</button>
     </div>

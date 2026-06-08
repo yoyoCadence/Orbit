@@ -18,6 +18,12 @@
   - Scope: PWA-only file/camera input, local preview/compression, localStorage-safe metadata shape; no cloud upload or schema changes.
   - Acceptance: a completed session can show a small proof thumbnail locally, and clearing local cache removes it.
 
+- [ ] **HW-112** 佐證圖片雲端同步（Supabase Storage）
+  - Goal: upload proof photos to Supabase Storage so they persist across devices and app reinstalls.
+  - Scope: `platform/badge.js` → new `pwa/js/platform/proofStorage.js` adapter; bucket `orbit-proof`, path `{user_id}/{sessionId}.jpg`; RLS: SELECT/INSERT/DELETE scoped to `auth.uid()`; use existing `compressImage()` output; graceful fallback to localStorage-only for guests.
+  - Acceptance: logged-in user completes a task, attaches proof, photo survives sign-out and re-login on a different device; guest mode still works with localStorage only; no service_role key in client code.
+  - Note: requires Supabase Storage RLS policy and a bucket — propose SQL migration before implementation.
+
 - [ ] **HW-105** Personal Space achievement photo wall
   - Goal: let selected task proof photos appear as framed memories inside Personal Space.
   - Scope: local-only photo references, simple wall/frame rendering in existing 2D scene runtime, placeholder fallback when images are unavailable.
@@ -33,25 +39,11 @@
   - Scope: privacy-first local-only geolocation prompt, coarse saved labels, no precise coordinate sync.
   - Acceptance: user can opt in, assign current place to a label, and see context-aware task hints.
 
-- [ ] **HW-108** Web Share achievement cards
-  - Goal: let users share daily / weekly growth summary cards from mobile.
-  - Scope: generate a lightweight share payload using Web Share API with clipboard fallback; no external service.
-  - Acceptance: share button works on supported phones and copy fallback works elsewhere.
-
-- [ ] **HW-109** App badge and notification shell
-  - Goal: introduce restrained PWA badge/notification hooks for daily core tasks and review reminders.
-  - Scope: platform adapter only, permission-gated notifications, local scheduling placeholders; no push server.
-  - Acceptance: supported browsers can show/clear badge count and local reminder copy is centralized.
-
 - [ ] **HW-110** Offline action queue and sync hints
   - Goal: make offline task completion feel intentional and visible.
   - Scope: local pending-action queue UI, sync status messaging, reuse existing storage bridge patterns; no schema migration.
   - Acceptance: user can complete tasks offline and see a clear pending-sync state when connection returns.
 
-- [ ] **HW-111** Time-of-day atmosphere layer
-  - Goal: make Orbit feel more alive by shifting UI and Personal Space atmosphere by local time.
-  - Scope: local time-based tokens for morning / day / evening / night; no external weather dependency.
-  - Acceptance: Personal Space and Liquid Galss background subtly change by time band.
 
 - [ ] **INFRA-101** 設定 Custom SMTP（Resend）並自訂 email 寄件人名稱與模板
   - 目標：讓 auth email（重設密碼等）以「Orbit」名義寄出，而非「Supabase Auth」；並把 email 內容換成品牌模板
@@ -118,6 +110,18 @@
 ---
 
 ## Done
+
+- [x] **HW-111** Time-of-day atmosphere layer
+  - Completed: `timeBand.js` maps local hour to morning/day/evening/night; `applyTimeBand()` sets `data-time-band` on `<html>` and is called on init + every hour; CSS `--time-tint` token applies a subtle hue overlay via `body::after` pseudo-element; Liquid Glass and Personal Space inherit the tint automatically.
+
+- [x] **HW-109** App badge and notification shell
+  - Completed: new `platform/badge.js` with `supportsBadge()`, `setBadge(count)`, `clearBadge()`, and `scheduleLocalReminder()` placeholder; badge updates to today's valid session count on each task completion; badge clears when the PWA returns to foreground via `visibilitychange`.
+
+- [x] **HW-108** Web Share achievement cards
+  - Completed: `share.js` extended with `buildGrowthShareText()` and `shareGrowthCard()`; profile page shows a 「分享成長卡 / 複製成長卡」button that uses Web Share API on supported devices and falls back to clipboard copy; toast confirms clipboard copy.
+
+- [x] **HW-104** Camera proof capture for task deliverables
+  - Completed: after completing any non-invalid task, an optional bottom sheet appears offering camera or file-picker input; selected images are compressed to ≤320px JPEG and stored locally under `orbit_proof_{sessionId}`; a 36×36 thumbnail badge appears in the session log row; deleting a session also removes its proof; clearing localStorage removes all proofs naturally.
 
 - [x] **PS-232** Prove reference-to-angle-pack generation for idle backgrounds
   - Completed: generated `office-angle-overhead-proof` from the approved building office center background, registered it as a non-runtime `angle-proof`, and documented the overhead/top-down background workflow in the idle-window asset skill.

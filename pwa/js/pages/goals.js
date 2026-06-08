@@ -46,6 +46,10 @@ export function renderGoals(container) {
         : s.energyGain > 0
           ? `+${s.energyGain} ⚡`
           : s.result === 'invalid' ? '0 XP' : '';
+      const proof = localStorage.getItem(`orbit_proof_${s.id}`);
+      const thumbHtml = proof
+        ? `<span class="session-proof-thumb-wrap"><img class="session-proof-thumb" src="${proof}" alt="佐證"></span>`
+        : '';
       return `
         <div class="log-item">
           <span class="log-result-icon">${RESULT_ICON[s.result] || '✓'}</span>
@@ -54,6 +58,7 @@ export function renderGoals(container) {
             <div class="log-time">${formatTime(s.completedAt)}${dur} · ${RESULT_LABEL[s.result] || ''}</div>
             ${s.note ? `<div class="log-note">💬 ${escHtml(s.note)}</div>` : ''}
           </div>
+          ${thumbHtml}
           <span class="log-xp ${s.result === 'invalid' ? 'log-xp-invalid' : ''}">${xpStr}</span>
         </div>
       `;
@@ -88,6 +93,14 @@ export function renderGoals(container) {
     ${groupsHtml}
     ${lockCardHtml}
   `;
+
+  container.querySelectorAll('.session-proof-thumb').forEach(img => {
+    img.style.cursor = 'zoom-in';
+    img.addEventListener('click', e => {
+      e.stopPropagation();
+      window._showProofLightbox(img.src);
+    });
+  });
 }
 
 function escHtml(str) {

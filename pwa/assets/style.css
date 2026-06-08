@@ -234,6 +234,34 @@
 [data-theme="github"] .plan-card,
 [data-theme="github"] .modal-box { border-radius: 6px; }
 
+/* ══════════════════════════════════════════════════════════════
+   TIME-OF-DAY ATMOSPHERE — subtle tints via data-time-band
+   Applied by timeBand.js; tokens usable in theme overrides below.
+══════════════════════════════════════════════════════════════ */
+:root { --time-tint: transparent; }
+[data-time-band="morning"] { --time-tint: rgba(255, 190, 100, 0.035); }
+[data-time-band="day"]     { --time-tint: rgba(255, 255, 255, 0.0);   }
+[data-time-band="evening"] { --time-tint: rgba(255, 140,  60, 0.045); }
+[data-time-band="night"]   { --time-tint: rgba( 80, 110, 200, 0.055); }
+
+/* Apply tint as a pseudo-element over the app shell background.
+   z-index 1 keeps it above body background but below modals (z-index 50+).
+   pointer-events: none ensures it never blocks interaction. */
+[data-time-band] body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background: var(--time-tint);
+  pointer-events: none;
+  z-index: 1;
+  transition: background 2s ease;
+}
+
+/* Liquid Galss: stronger tints needed over dark #071522 background */
+[data-theme="liquid-galss"][data-time-band="morning"] { --time-tint: rgba(255, 190, 100, 0.09); }
+[data-theme="liquid-galss"][data-time-band="day"]     { --time-tint: rgba(255, 255, 220, 0.04); }
+[data-theme="liquid-galss"][data-time-band="evening"] { --time-tint: rgba(255, 120,  50, 0.11); }
+[data-theme="liquid-galss"][data-time-band="night"]   { --time-tint: rgba(120,  80, 220, 0.13); }
+
 /* Liquid Galss theme tokens */
 [data-theme="liquid-galss"] {
   color-scheme: dark;
@@ -3020,6 +3048,12 @@ nav {
   opacity: 0.5; transition: opacity 0.2s, color 0.2s;
 }
 .session-del-btn:hover { opacity: 1; color: var(--danger); }
+.session-proof-thumb-wrap { flex-shrink: 0; }
+.session-proof-thumb {
+  width: 36px; height: 36px;
+  border-radius: 6px; object-fit: cover;
+  border: 1px solid var(--border);
+}
 
 /* Mode toggle */
 .mode-row {

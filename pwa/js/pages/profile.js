@@ -5,6 +5,7 @@ import { getLevelInfo, getDisplayTitle, xpTable,
 import { effectiveToday }                                 from '../utils.js';
 import { calcHourDistribution, calcStreakMilestone,
          calcDailyStats }                                 from '../engine.js';
+import { shareGrowthCard, supportsNativeShare }           from '../platform/share.js';
 
 export function renderProfile(container) {
   const user   = state.user;
@@ -18,6 +19,9 @@ export function renderProfile(container) {
   const daysActive = Math.max(1, Math.ceil((Date.now() - joined.getTime()) / 86400000));
   const activeDays = new Set(state.sessions.map(s => s.date)).size;
   const totalSessions = state.sessions.filter(s => s.result !== 'invalid').length;
+  const todayStr  = effectiveToday(user.newDayHour ?? 5);
+  const todayStats = calcDailyStats(state.sessions, todayStr);
+  const todayXP   = todayStats.productiveXP;
 
   const avatarContent = user.avatar
     ? `<img src="${user.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="avatar">`
@@ -178,6 +182,11 @@ export function renderProfile(container) {
       </div>
     </div>
 
+    <!-- Share growth card -->
+    <button class="btn btn-outline" id="share-growth-btn" style="width:100%;margin-bottom:4px">
+      ${supportsNativeShare() ? '📤 分享成長卡' : '📋 複製成長卡'}
+    </button>
+
     <!-- Habit Heatmap -->
     <div class="card">
       <span class="pro-badge--corner">✦ Pro 專屬</span>
@@ -208,6 +217,23 @@ export function renderProfile(container) {
       </div>
     </div>
   `;
+
+  // Share growth card
+  document.getElementById('share-growth-btn').addEventListener('click', async () => {
+    const result = await shareGrowthCard({
+      name:       user.name,
+      level:      info.level,
+      title,
+      streakDays: user.streakDays || 0,
+      totalXP:    user.totalXP   || 0,
+      todayXP,
+    });
+    if (result.reason === 'clipboard') {
+      import('../app.js').then(m => m.showToast('📋 已複製成長卡'));
+    } else if (!result.shared && result.reason !== 'AbortError') {
+      import('../app.js').then(m => m.showToast('分享失敗，請重試'));
+    }
+  });
 
   // Avatar upload
   document.getElementById('avatar-wrap').addEventListener('click', () => {
