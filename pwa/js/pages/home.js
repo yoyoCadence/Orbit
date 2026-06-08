@@ -260,6 +260,15 @@ export function renderHome(container) {
     });
   });
 
+  // ── Bind: proof thumbnails → lightbox ────────────────────────────────────────
+  container.querySelectorAll('.session-proof-thumb').forEach(img => {
+    img.style.cursor = 'zoom-in';
+    img.addEventListener('click', e => {
+      e.stopPropagation();
+      window._showProofLightbox(img.src);
+    });
+  });
+
   // ── Bind: streak shield banner buttons ───────────────────────────────────────
   container.querySelector('.shield-use-btn')?.addEventListener('click', () => window.useStreakShield());
   container.querySelector('.shield-skip-btn')?.addEventListener('click', () => window.dismissStreakShield());

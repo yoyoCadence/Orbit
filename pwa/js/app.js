@@ -1952,6 +1952,28 @@ function _updateBadge() {
   setBadge(count).catch(() => {});
 }
 
+function _showProofLightbox(src) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = [
+    'position:fixed;inset:0;z-index:600',
+    'background:rgba(0,0,0,0.88)',
+    'display:flex;align-items:center;justify-content:center',
+    'animation:proFadeIn 0.18s ease',
+    'cursor:zoom-out',
+  ].join(';');
+  const img = document.createElement('img');
+  img.src = src;
+  img.alt = '佐證';
+  img.style.cssText = 'max-width:92vw;max-height:88vh;border-radius:10px;object-fit:contain;box-shadow:0 8px 40px rgba(0,0,0,0.6)';
+  overlay.appendChild(img);
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', () => {
+    overlay.style.animation = 'proFadeOut 0.18s ease forwards';
+    setTimeout(() => overlay.remove(), 200);
+  });
+}
+window._showProofLightbox = _showProofLightbox;
+
 function _showProofSheet(sessionId, taskName) {
   let selectedDataUrl = null;
   const overlay = document.createElement('div');

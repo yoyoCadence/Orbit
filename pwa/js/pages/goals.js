@@ -93,6 +93,14 @@ export function renderGoals(container) {
     ${groupsHtml}
     ${lockCardHtml}
   `;
+
+  container.querySelectorAll('.session-proof-thumb').forEach(img => {
+    img.style.cursor = 'zoom-in';
+    img.addEventListener('click', e => {
+      e.stopPropagation();
+      window._showProofLightbox(img.src);
+    });
+  });
 }
 
 function escHtml(str) {
