@@ -18,6 +18,12 @@
   - Scope: PWA-only file/camera input, local preview/compression, localStorage-safe metadata shape; no cloud upload or schema changes.
   - Acceptance: a completed session can show a small proof thumbnail locally, and clearing local cache removes it.
 
+- [ ] **HW-112** 佐證圖片雲端同步（Supabase Storage）
+  - Goal: upload proof photos to Supabase Storage so they persist across devices and app reinstalls.
+  - Scope: `platform/badge.js` → new `pwa/js/platform/proofStorage.js` adapter; bucket `orbit-proof`, path `{user_id}/{sessionId}.jpg`; RLS: SELECT/INSERT/DELETE scoped to `auth.uid()`; use existing `compressImage()` output; graceful fallback to localStorage-only for guests.
+  - Acceptance: logged-in user completes a task, attaches proof, photo survives sign-out and re-login on a different device; guest mode still works with localStorage only; no service_role key in client code.
+  - Note: requires Supabase Storage RLS policy and a bucket — propose SQL migration before implementation.
+
 - [ ] **HW-105** Personal Space achievement photo wall
   - Goal: let selected task proof photos appear as framed memories inside Personal Space.
   - Scope: local-only photo references, simple wall/frame rendering in existing 2D scene runtime, placeholder fallback when images are unavailable.
