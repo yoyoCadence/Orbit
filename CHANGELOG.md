@@ -3,6 +3,16 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.20.0] - 2026-06-08
+
+### Added
+- Proof photo capture: after completing any non-invalid task, an optional bottom sheet appears allowing users to attach a local photo as accountability proof; images are compressed to ≤320px JPEG using canvas and stored in localStorage under `orbit_proof_<sessionId>`; a 36×36 thumbnail badge appears beside the session row in the daily log; deleting a session removes its proof.
+- Web Share growth card: profile page shows a 「分享成長卡」button (「複製成長卡」on unsupported browsers); tapping it invokes the Web Share API with name, level, title, streak, XP, and today's XP; clipboard fallback copies a plain-text card and shows a toast confirming the copy.
+- Time-of-day atmosphere layer: `timeBand.js` maps the local hour to morning (5–10), day (10–17), evening (17–21), or night (21–5); `applyTimeBand()` sets `data-time-band` on `<html>` at launch and refreshes every hour; a `--time-tint` CSS token drives a subtle color overlay via `body::after`.
+- App badge and notification shell: new `platform/badge.js` exposes `supportsBadge()`, `setBadge(count)`, `clearBadge()`, and a `scheduleLocalReminder()` placeholder; the badge updates to today's valid session count after each task completion and clears when the PWA returns to foreground.
+
+---
+
 ## [1.19.1] - 2026-06-08
 
 ### Added

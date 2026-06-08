@@ -23,7 +23,7 @@ import { startTour } from './tour.js';
 import { haptic } from './platform/haptics.js';
 
 // ─── Version ─────────────────────────────────────────────────────────────────
-export const APP_VERSION = 'v1.19.1';
+export const APP_VERSION = 'v1.20.0';
 
 // Expose tour globally so settings page can call it
 window.startTour = startTour;
