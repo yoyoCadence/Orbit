@@ -3,6 +3,15 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.19.1] - 2026-06-08
+
+### Added
+- 設定頁帳號區塊新增「↻ 從雲端同步資料」按鈕，讓使用者手動將 Supabase 最新資料寫入 localStorage（解決直接修改 DB 後 App 不更新的問題）
+- 兩層頻率限制：10 秒冷卻（防連點）＋ 1 小時最多 3 次（防濫用）
+- 同步中顯示旋轉 spinner，完成後 toast 提示並重繪設定頁；未登入時即時告知，不啟動 spinner
+
+---
+
 ## [1.19.0] - 2026-06-01
 
 ### Added

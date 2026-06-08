@@ -645,6 +645,7 @@ function _renderView(container) {
         <button class="btn btn-outline btn-sm" id="signout-btn">登出</button>
       </div>
       <div class="account-divider"></div>
+      <button class="btn btn-outline btn-sm" id="sync-btn" style="margin-bottom:10px;width:100%">↻ 從雲端同步資料</button>
       <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px">版本 ${APP_VERSION}</div>
       <button class="btn btn-outline btn-sm" id="tour-btn" style="margin-bottom:10px;width:100%">重啟新手教學</button>
       <button class="btn-text-danger" id="reset-btn">清除本機快取資料（重新登入後可從雲端還原）</button>
@@ -858,6 +859,40 @@ function _setupListeners(container) {
   container.querySelector('#export-pdf-btn')?.addEventListener('click', () => {
     if (!storage.isProUser()) { _goToProCard(); return; }
     showReportPicker();
+  });
+
+  // Cloud sync
+  container.querySelector('#sync-btn')?.addEventListener('click', async () => {
+    const btn = container.querySelector('#sync-btn');
+    if (!btn || btn.disabled) return;
+
+    if (!state.user) {
+      window.showToast('請先登入才能同步資料');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = '同步中…';
+    btn.classList.add('btn-syncing');
+    try {
+      await storage.syncFromRemote();
+      window.showToast('資料已更新');
+      _renderView(container);
+    } catch (err) {
+      if (err.message.startsWith('cooldown:')) {
+        const s = err.message.split(':')[1];
+        window.showToast(`請等待 ${s} 秒後再試`);
+      } else if (err.message === 'ratelimit') {
+        window.showToast('1 小時內最多同步 3 次，請稍後再試');
+      } else if (err.message === 'unauthenticated') {
+        window.showToast('請先登入才能同步資料');
+      } else {
+        window.showToast('同步失敗，請確認網路連線');
+      }
+      btn.disabled = false;
+      btn.textContent = '↻ 從雲端同步資料';
+      btn.classList.remove('btn-syncing');
+    }
   });
 
   // Sign out
