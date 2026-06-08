@@ -2001,7 +2001,23 @@ function _showProofSheet(sessionId, taskName) {
   sheet.querySelector('#proof-confirm').addEventListener('click', () => {
     if (!selectedDataUrl) return;
     localStorage.setItem(`orbit_proof_${sessionId}`, selectedDataUrl);
-    renderPage(currentHash());
+    // Inject thumbnail directly into the existing log-item row so it
+    // survives the close animation without a full-page re-render.
+    const delBtn = document.querySelector(`.session-del-btn[data-session-id="${sessionId}"]`);
+    if (delBtn) {
+      const logItem = delBtn.closest('.log-item');
+      if (logItem && !logItem.querySelector('.session-proof-thumb-wrap')) {
+        const wrap = document.createElement('span');
+        wrap.className = 'session-proof-thumb-wrap';
+        const img = document.createElement('img');
+        img.className = 'session-proof-thumb';
+        img.src = selectedDataUrl;
+        img.alt = '佐證';
+        wrap.appendChild(img);
+        const xpSpan = logItem.querySelector('.log-xp');
+        if (xpSpan) xpSpan.before(wrap);
+      }
+    }
     close();
     showToast('佐證已儲存');
   });
