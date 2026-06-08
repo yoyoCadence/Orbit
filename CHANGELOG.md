@@ -3,6 +3,15 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.20.1] - 2026-06-08
+
+### Fixed
+- HW-111: `applyTimeBand()` was defined but never called; now invoked in `init()` so `document.documentElement.dataset.timeBand` is correctly set on every launch.
+- HW-109: `setBadge()` / `clearBadge()` were never wired up; now called from `_commitSession`, `deleteSession`, `handleSignOut`, and on init — badge count reflects today's valid completed sessions.
+- HW-104: proof capture bottom sheet was never triggered after task completion; `_showProofSheet()` is now called 700 ms after `completeInstant` for any task where `supportsProofCapture()` is true; users can attach or skip the photo, which is stored in `localStorage` under `orbit_proof_<sessionId>`.
+
+---
+
 ## [1.20.0] - 2026-06-08
 
 ### Added

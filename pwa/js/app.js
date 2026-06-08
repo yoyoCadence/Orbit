@@ -21,9 +21,12 @@ import { renderLeaderboard }    from './pages/leaderboard.js';
 import { renderPersonalSpace }  from './pages/personalSpace.js';
 import { startTour } from './tour.js';
 import { haptic } from './platform/haptics.js';
+import { applyTimeBand }                       from './timeBand.js';
+import { setBadge, clearBadge }                from './platform/badge.js';
+import { compressImage, supportsProofCapture } from './platform/proofCapture.js';
 
 // ─── Version ─────────────────────────────────────────────────────────────────
-export const APP_VERSION = 'v1.20.0';
+export const APP_VERSION = 'v1.20.1';
 
 // Expose tour globally so settings page can call it
 window.startTour = startTour;
@@ -394,6 +397,9 @@ window.completeInstant = function (taskId) {
   };
 
   _commitSession(session, task);
+  if (supportsProofCapture()) {
+    setTimeout(() => _showProofSheet(session.id, task.name), 700);
+  }
 };
 
 // ─── Focus timer state ───────────────────────────────────────────────────────
@@ -1047,6 +1053,7 @@ function _commitSession(session, _task) {
       showLevelUp(newLevel, getDisplayTitle(newLevel, state.user));
     }, 600);
   }
+  _updateBadge();
 }
 
 // ─── Daily morning report ────────────────────────────────────────────────────
@@ -1327,6 +1334,7 @@ window.deleteSession = function (sessionId) {
   updateHeader();
   renderPage(currentHash());
   showToast('已撤銷');
+  _updateBadge();
 };
 
 // ─── Weekly consistency bonus (called once/week) ──────────────────────────────
@@ -1762,6 +1770,7 @@ function handleSignOut() {
   state.sessions = [];
   state.energy   = { currentEnergy: 100, maxEnergy: 100, lastResetDate: '' };
   storage.clearAll();
+  clearBadge().catch(() => {});
 
   // Clear login form fields
   const emailEl = document.getElementById('auth-email');
@@ -1937,6 +1946,64 @@ function _initLiquidGlassReflection() {
   window.addEventListener('click', _requestLiquidGlassMotion, { passive: true });
 }
 
+function _updateBadge() {
+  const todayStr = _eToday();
+  const count = state.sessions.filter(s => s.date === todayStr && s.result !== 'invalid').length;
+  setBadge(count).catch(() => {});
+}
+
+function _showProofSheet(sessionId, taskName) {
+  let selectedDataUrl = null;
+  const overlay = document.createElement('div');
+  overlay.className = 'pro-sheet-overlay';
+  const sheet = document.createElement('div');
+  sheet.className = 'pro-sheet';
+  sheet.innerHTML = `
+    <div class="pro-sheet-handle"></div>
+    <div style="font-weight:600;font-size:16px;margin-bottom:4px">📸 附上佐證（選填）</div>
+    <div id="proof-task-name" style="font-size:13px;color:var(--text-secondary);margin-bottom:16px"></div>
+    <label style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:12px;cursor:pointer" class="btn btn-outline">
+      <span>選擇 / 拍攝照片</span>
+      <input type="file" accept="image/*" capture="environment" style="display:none" id="proof-file-input">
+    </label>
+    <div id="proof-preview" style="display:none;text-align:center;margin-bottom:12px">
+      <img id="proof-img" style="max-width:100%;max-height:200px;border-radius:8px;object-fit:contain" alt="佐證預覽">
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-outline" id="proof-skip" style="flex:1">跳過</button>
+      <button class="btn btn-primary" id="proof-confirm" style="flex:1" disabled>確認</button>
+    </div>
+  `;
+  sheet.querySelector('#proof-task-name').textContent = taskName;
+  document.body.append(overlay, sheet);
+
+  function close() {
+    overlay.classList.add('pro-sheet-overlay-out');
+    sheet.classList.add('pro-sheet-out');
+    setTimeout(() => { overlay.remove(); sheet.remove(); }, 300);
+  }
+
+  overlay.addEventListener('click', close);
+  sheet.querySelector('#proof-skip').addEventListener('click', close);
+  sheet.querySelector('#proof-file-input').addEventListener('change', async e => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      selectedDataUrl = await compressImage(file);
+      sheet.querySelector('#proof-img').src = selectedDataUrl;
+      sheet.querySelector('#proof-preview').style.display = 'block';
+      sheet.querySelector('#proof-confirm').disabled = false;
+    } catch { showToast('圖片處理失敗'); }
+  });
+  sheet.querySelector('#proof-confirm').addEventListener('click', () => {
+    if (!selectedDataUrl) return;
+    localStorage.setItem(`orbit_proof_${sessionId}`, selectedDataUrl);
+    renderPage(currentHash());
+    close();
+    showToast('佐證已儲存');
+  });
+}
+
 // Tap header to scroll main content to top (mirrors iOS status-bar tap behavior)
 document.getElementById('header')?.addEventListener('click', e => {
   if (e.target.closest('button, a, label, input, select')) return;
@@ -1950,6 +2017,7 @@ async function init() {
   document.documentElement.setAttribute('data-ui-skin', storage.getUiSkin());
   applyRandomThemeForToday(); // overrides saved theme if random-theme feature is on
   _initLiquidGlassReflection();
+  applyTimeBand();
   _renderBg(storage.getBgImage());
 
   // Listen for future auth changes (sign-ins, sign-outs)
@@ -1978,6 +2046,7 @@ async function init() {
     } else {
       showMainApp();
     }
+    _updateBadge();
     checkWeeklyBonus();
 
     // Sync from Supabase in background (no spinner)
@@ -1993,6 +2062,7 @@ async function init() {
           state.energy   = storage.getEnergy();
           updateHeader();
           renderPage(currentHash());
+          _updateBadge();
           showSyncBanner('synced');
         }).catch(() => {
           showSyncBanner('synced'); // hide banner even on failure
