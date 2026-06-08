@@ -256,6 +256,12 @@
   transition: background 2s ease;
 }
 
+/* Liquid Galss: stronger tints needed over dark #071522 background */
+[data-theme="liquid-galss"][data-time-band="morning"] { --time-tint: rgba(255, 190, 100, 0.09); }
+[data-theme="liquid-galss"][data-time-band="day"]     { --time-tint: rgba(255, 255, 220, 0.04); }
+[data-theme="liquid-galss"][data-time-band="evening"] { --time-tint: rgba(255, 120,  50, 0.11); }
+[data-theme="liquid-galss"][data-time-band="night"]   { --time-tint: rgba(120,  80, 220, 0.13); }
+
 /* Liquid Galss theme tokens */
 [data-theme="liquid-galss"] {
   color-scheme: dark;

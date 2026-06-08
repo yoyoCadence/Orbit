@@ -1958,6 +1958,9 @@ function _showProofSheet(sessionId, taskName) {
   overlay.className = 'pro-sheet-overlay';
   const sheet = document.createElement('div');
   sheet.className = 'pro-sheet';
+  // Liquid Glass theme overrides position:fixed → relative via class selector;
+  // inline style wins over any class-based rule to keep the sheet anchored at bottom.
+  sheet.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:500;';
   sheet.innerHTML = `
     <div class="pro-sheet-handle"></div>
     <div style="font-weight:600;font-size:16px;margin-bottom:4px">📸 附上佐證（選填）</div>
