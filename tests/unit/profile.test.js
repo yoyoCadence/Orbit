@@ -213,7 +213,7 @@ describe('renderProfile: template picker', () => {
     const c = makeContainer();
     renderProfile(c);
     const btns = c.querySelectorAll('.title-tmpl-btn');
-    expect(btns.length).toBe(3);
+    expect(btns.length).toBe(4); // rpg, kny, kny_dynamic, business
   });
 
   it('marks the active template button with class "active"', () => {
@@ -231,7 +231,7 @@ describe('renderProfile: template picker', () => {
     const c = makeContainer();
     renderProfile(c);
     const locked = c.querySelectorAll('.title-tmpl-btn[data-locked]');
-    expect(locked.length).toBe(3);
+    expect(locked.length).toBe(4); // rpg, kny, kny_dynamic, business
     expect(c.querySelectorAll('.title-tmpl-edit-btn').length).toBe(0);
     expect(document.getElementById('add-template-btn')).toBeNull();
   });
@@ -267,7 +267,7 @@ describe('renderProfile: template picker', () => {
     mockStorage.isProUser.mockReturnValue(true);
     const c = makeContainer();
     renderProfile(c);
-    expect(c.querySelectorAll('.title-tmpl-edit-btn').length).toBe(3);
+    expect(c.querySelectorAll('.title-tmpl-edit-btn').length).toBe(4); // rpg, kny, kny_dynamic, business
   });
 
   it('custom template also appears in template list', () => {
@@ -278,7 +278,7 @@ describe('renderProfile: template picker', () => {
     const c = makeContainer();
     renderProfile(c);
     const btns = c.querySelectorAll('.title-tmpl-btn');
-    expect(btns.length).toBe(4);
+    expect(btns.length).toBe(5); // 4 built-in + 1 custom
     expect(Array.from(btns).some(b => b.textContent.includes('我的英雄'))).toBe(true);
   });
 });

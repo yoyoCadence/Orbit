@@ -3,6 +3,11 @@ import { storage, db, migrateV1toV2, migrateDefaultFlags }    from './storage.js
 import { signIn, signUp, signInWithGoogle, signOut as authSignOut, getSession, onAuthStateChange, resetPasswordForEmail, updatePassword } from './auth.js';
 import { getLevelInfo, getDisplayTitle } from './leveling.js';
 import {
+  calculateBreathingProfile, getBreathingTitle,
+  loadBreathingFlowState, updateBreathingFlowState,
+  showBreathingInfoModal,
+} from './titleBreathing.js';
+import {
   calcBaseXP, calcFinalXP, calcEnergyCost, calcEnergyGain,
   calcDailyStats, processStreakForDate, getDailyTaskXP,
   getDailyTaskCount, getMinEffectiveMinutes, calcTimeMultiplier,
@@ -17,19 +22,18 @@ import { renderGoals }          from './pages/goals.js';
 import { renderReview }         from './pages/review.js';
 import { renderProfile }        from './pages/profile.js';
 import { renderSettings }       from './pages/settings.js';
-import { renderLeaderboard }    from './pages/leaderboard.js';
 import { renderPersonalSpace }  from './pages/personalSpace.js';
-import { startTour } from './tour.js';
 import { haptic } from './platform/haptics.js';
-import { applyTimeBand }                       from './timeBand.js';
-import { setBadge, clearBadge }                from './platform/badge.js';
-import { compressImage, supportsProofCapture } from './platform/proofCapture.js';
+import { applyTimeBand }        from './timeBand.js';
 
 // ─── Version ─────────────────────────────────────────────────────────────────
-export const APP_VERSION = 'v1.20.1';
+export const APP_VERSION = 'v1.20.2';
 
-// Expose tour globally so settings page can call it
-window.startTour = startTour;
+// Lazy proxy — tour.js is not imported at startup; loaded on first call.
+window.startTour = () =>
+  import('./tour.js')
+    .then(m => m.startTour())
+    .catch(() => showToast('導覽載入失敗'));
 
 // ─── Auth session state ───────────────────────────────────────────────────────
 let _currentSession   = null;
@@ -38,14 +42,18 @@ let _loginListenerSet = false;
 
 // ─── Router ──────────────────────────────────────────────────────────────────
 
-const ROUTES = {
-  home:        renderHome,
-  goals:       renderGoals,
-  review:      renderReview,
-  profile:     renderProfile,
+const SYNC_ROUTES = {
+  home:          renderHome,
+  goals:         renderGoals,
+  review:        renderReview,
+  profile:       renderProfile,
   personalSpace: renderPersonalSpace,
-  settings:    renderSettings,
-  leaderboard: renderLeaderboard,
+  settings:      renderSettings,
+};
+
+// Lazy routes: module is not imported at startup; loaded on first navigation.
+const LAZY_ROUTES = {
+  leaderboard: () => import('./pages/leaderboard.js').then(m => m.renderLeaderboard),
 };
 
 function currentHash() { return window.location.hash.slice(1) || 'home'; }
@@ -56,19 +64,41 @@ const PAGE_ORDER = ['home', 'goals', 'review', 'profile', 'personalSpace', 'lead
 let _prevPageIdx = -1;   // -1 = first render, skip animation
 
 
-function renderPage(hash) {
-  const fn      = ROUTES[hash] || renderHome;
+async function renderPage(hash) {
   const content = document.getElementById('content');
   content.dataset.route = hash;
+  const newIdx = PAGE_ORDER.indexOf(hash);
 
-  fn(content);
+  const syncFn = SYNC_ROUTES[hash];
+  if (syncFn) {
+    syncFn(content);
+  } else if (LAZY_ROUTES[hash]) {
+    let loadTimer;
+    try {
+      // Only show loading skeleton if the import takes longer than 200ms
+      // (avoids flicker when the module is already in the browser module cache)
+      loadTimer = setTimeout(() => {
+        if (content.dataset.route === hash) content.innerHTML = '<div class="lazy-page-loading"></div>';
+      }, 200);
+      const renderFn = await LAZY_ROUTES[hash]();
+      clearTimeout(loadTimer);
+      if (content.dataset.route !== hash) return; // user navigated away while loading
+      renderFn(content);
+    } catch {
+      clearTimeout(loadTimer);
+      if (content.dataset.route !== hash) return;
+      showToast('頁面載入失敗，請稍後再試');
+      renderHome(content);
+    }
+  } else {
+    renderHome(content);
+  }
 
   document.querySelectorAll('.nav-item').forEach(el => {
     el.classList.toggle('active', el.dataset.page === hash);
   });
 
   // Slide animation — skip on first render
-  const newIdx = PAGE_ORDER.indexOf(hash);
   if (_prevPageIdx !== -1 && newIdx !== _prevPageIdx) {
     const cls = newIdx > _prevPageIdx ? 'page-slide-left' : 'page-slide-right';
     content.classList.remove('page-slide-left', 'page-slide-right');
@@ -77,7 +107,6 @@ function renderPage(hash) {
     content.addEventListener('animationend', () => content.classList.remove(cls), { once: true });
   }
   _prevPageIdx = newIdx === -1 ? 0 : newIdx;
-
 }
 
 window.navigate = function (page) { window.location.hash = '#' + page; };
@@ -158,7 +187,31 @@ export function updateHeader() {
   const nameEl = document.getElementById('hdr-user-name');
   if (nameEl) nameEl.textContent = state.user.name || '使用者';
   document.getElementById('hdr-level').textContent = `Lv.${info.level}`;
-  document.getElementById('hdr-title').textContent = getDisplayTitle(info.level, state.user);
+
+  const _titleEl   = document.getElementById('hdr-title');
+  const _infoBtnEl = document.getElementById('hdr-breathing-info-btn');
+  if ((state.user.titleTemplate || 'rpg') === 'kny_dynamic') {
+    const _today   = effectiveToday(state.user.newDayHour ?? 5);
+    const _bProf   = calculateBreathingProfile({
+      sessions:   state.sessions,
+      tasks:      state.tasks,
+      level:      info.level,
+      streakDays: state.user.streakDays || 0,
+      today:      _today,
+    });
+    const _bState  = loadBreathingFlowState();
+    const _bTitle  = getBreathingTitle({ level: info.level, profile: _bProf, previousFlow: _bState.currentFlow || null });
+    if (_titleEl)   _titleEl.textContent = _bTitle.displayTitle || getDisplayTitle(info.level, state.user);
+    if (_infoBtnEl) {
+      _infoBtnEl.style.display = 'inline-flex';
+      _infoBtnEl.onclick = () => showBreathingInfoModal({ profile: _bProf, level: info.level, titleResult: _bTitle });
+    }
+    // State persistence is handled by renderProfile; updateHeader only reads.
+  } else {
+    if (_titleEl)   _titleEl.textContent = getDisplayTitle(info.level, state.user);
+    if (_infoBtnEl) _infoBtnEl.style.display = 'none';
+  }
+
   document.getElementById('hdr-xp-fill').style.width = info.percent + '%';
   document.getElementById('hdr-xp-text').textContent = `${info.currentXP} / ${info.needed} XP`;
 
@@ -397,7 +450,8 @@ window.completeInstant = function (taskId) {
   };
 
   _commitSession(session, task);
-  if (supportsProofCapture()) {
+  // Inline capability check avoids importing proofCapture.js at startup
+  if (typeof window !== 'undefined' && typeof FileReader !== 'undefined') {
     setTimeout(() => _showProofSheet(session.id, task.name), 700);
   }
 };
@@ -1410,7 +1464,7 @@ function showSetup() {
     // Ask morning state on first day
     showMorningModal();
     // Show onboarding tour for new users (slight delay so page renders first)
-    setTimeout(() => startTour(), 600);
+    setTimeout(() => window.startTour(), 600);
   });
 }
 
@@ -1425,6 +1479,8 @@ function showMainApp() {
     sessionStorage.removeItem('orbit_streak_unlock_new');
     setTimeout(showStreakUnlockModal, 800);
   }
+  // Warm-load non-critical modules after the initial screen is visible
+  warmEnhancementModules();
 }
 
 // ─── Cross-day watcher ────────────────────────────────────────────────────────
@@ -1770,7 +1826,7 @@ function handleSignOut() {
   state.sessions = [];
   state.energy   = { currentEnergy: 100, maxEnergy: 100, lastResetDate: '' };
   storage.clearAll();
-  clearBadge().catch(() => {});
+  if (_badgeMod) _badgeMod.clearBadge().catch(() => {});
 
   // Clear login form fields
   const emailEl = document.getElementById('auth-email');
@@ -1946,10 +2002,35 @@ function _initLiquidGlassReflection() {
   window.addEventListener('click', _requestLiquidGlassMotion, { passive: true });
 }
 
+// ─── Warm / lazy module loading ───────────────────────────────────────────────
+
+// _badgeMod is populated by warmEnhancementModules(); calls before that are no-ops.
+let _badgeMod = null;
+
+function warmEnhancementModules() {
+  const run = typeof requestIdleCallback !== 'undefined'
+    ? cb => requestIdleCallback(cb, { timeout: 2000 })
+    : cb => setTimeout(cb, 500);
+  run(_doWarmImports);
+}
+
+async function _doWarmImports() {
+  const [badgeResult] = await Promise.allSettled([
+    import('./platform/badge.js'),
+    import('./pages/leaderboard.js'), // pre-warm so leaderboard navigation is instant
+    import('./tour.js'),              // pre-warm for new-user onboarding path
+  ]);
+  if (badgeResult.status === 'fulfilled') {
+    _badgeMod = badgeResult.value;
+    _updateBadge(); // apply badge count now that the module is ready
+  }
+}
+
 function _updateBadge() {
+  if (!_badgeMod) return;
   const todayStr = _eToday();
   const count = state.sessions.filter(s => s.date === todayStr && s.result !== 'invalid').length;
-  setBadge(count).catch(() => {});
+  _badgeMod.setBadge(count).catch(() => {});
 }
 
 function _showProofLightbox(src) {
@@ -1974,7 +2055,14 @@ function _showProofLightbox(src) {
 }
 window._showProofLightbox = _showProofLightbox;
 
-function _showProofSheet(sessionId, taskName) {
+async function _showProofSheet(sessionId, taskName) {
+  let compressImage;
+  try {
+    ({ compressImage } = await import('./platform/proofCapture.js'));
+  } catch {
+    // Proof capture is optional — silently skip rather than block the user
+    return;
+  }
   let selectedDataUrl = null;
   const overlay = document.createElement('div');
   overlay.className = 'pro-sheet-overlay';

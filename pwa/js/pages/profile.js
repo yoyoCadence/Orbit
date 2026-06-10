@@ -3,6 +3,11 @@ import { storage, db }                                    from '../storage.js';
 import { getLevelInfo, getDisplayTitle, xpTable,
          getAllTemplates }                                 from '../leveling.js';
 import { effectiveToday }                                 from '../utils.js';
+import {
+  calculateBreathingProfile, getBreathingTitle,
+  loadBreathingFlowState, updateBreathingFlowState,
+  showBreathingInfoModal,
+} from '../titleBreathing.js';
 import { calcHourDistribution, calcStreakMilestone,
          calcDailyStats }                                 from '../engine.js';
 import { shareGrowthCard, supportsNativeShare }           from '../platform/share.js';
@@ -12,8 +17,30 @@ export function renderProfile(container) {
   if (!user) return;
 
   const info   = getLevelInfo(user.totalXP || 0);
-  const title  = getDisplayTitle(info.level, user);
   const energy = state.energy;
+
+  // kny_dynamic: compute breathing title; otherwise use static getDisplayTitle
+  let title = getDisplayTitle(info.level, user);
+  let _breathingProfile    = null;
+  let _breathingTitleResult = null;
+  if ((user.titleTemplate || 'rpg') === 'kny_dynamic') {
+    const _today = effectiveToday(user.newDayHour ?? 5);
+    _breathingProfile = calculateBreathingProfile({
+      sessions:   state.sessions,
+      tasks:      state.tasks,
+      level:      info.level,
+      streakDays: user.streakDays || 0,
+      today:      _today,
+    });
+    const _bState = loadBreathingFlowState();
+    _breathingTitleResult = getBreathingTitle({
+      level:        info.level,
+      profile:      _breathingProfile,
+      previousFlow: _bState.currentFlow || null,
+    });
+    if (_breathingTitleResult.displayTitle) title = _breathingTitleResult.displayTitle;
+    if (_breathingTitleResult.flow) updateBreathingFlowState(_today, _breathingTitleResult.flow, _bState);
+  }
 
   const joined     = new Date((user.createdAt ?? new Date().toISOString().slice(0, 10)) + 'T00:00:00');
   const daysActive = Math.max(1, Math.ceil((Date.now() - joined.getTime()) / 86400000));
@@ -88,7 +115,10 @@ export function renderProfile(container) {
     <!-- Level card -->
     <div class="card level-card">
       <div class="level-big">${info.level}</div>
-      <div class="level-title-text">${title}</div>
+      <div class="level-title-text">
+        ${escHtml(title)}
+        ${_breathingProfile ? `<button class="breathing-info-btn" id="level-card-breathing-btn" aria-label="呼吸流派說明">!</button>` : ''}
+      </div>
       <div class="xp-bar-label">
         <span>升級進度</span>
         <span>${info.currentXP} / ${info.needed} XP</span>
@@ -217,6 +247,11 @@ export function renderProfile(container) {
       </div>
     </div>
   `;
+
+  // Breathing info button (level card)
+  document.getElementById('level-card-breathing-btn')?.addEventListener('click', () => {
+    showBreathingInfoModal({ profile: _breathingProfile, level: info.level, titleResult: _breathingTitleResult });
+  });
 
   // Share growth card
   document.getElementById('share-growth-btn').addEventListener('click', async () => {

@@ -42,6 +42,25 @@ export const TITLE_TEMPLATES = {
       [1,   '癸之隊士・Mizunoto'],
     ],
   },
+  // Dynamic breathing-style titles — actual title computed by titleBreathing.js.
+  // Tiers here mirror kny so the XP table and static fallbacks stay meaningful.
+  kny_dynamic: {
+    name: '呼吸流派（動態）',
+    icon: '🌊',
+    tiers: [
+      [100, '柱（Hashira）'],
+      [75,  '甲之隊士・Kinoe'],
+      [50,  '乙之隊士・Kinoto'],
+      [40,  '丙之隊士・Hinoe'],
+      [30,  '丁之隊士・Hinoto'],
+      [25,  '戊之隊士・Tsuchinoe'],
+      [20,  '己之隊士・Tsuchinoto'],
+      [15,  '庚之隊士・Kanoe'],
+      [10,  '辛之隊士・Kanoto'],
+      [5,   '壬之隊士・Mizunoe'],
+      [1,   '全集中修練中'],
+    ],
+  },
   business: {
     name: '職場菁英',
     icon: '💼',
