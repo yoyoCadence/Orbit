@@ -117,10 +117,10 @@ describe('TITLE_TEMPLATES', () => {
 // ─── getAllTemplates ──────────────────────────────────────────────────────────
 
 describe('getAllTemplates', () => {
-  it('no custom → returns all 3 built-in keys', () => {
+  it('no custom → returns all 4 built-in keys', () => {
     const all = getAllTemplates();
-    expect(Object.keys(all)).toEqual(expect.arrayContaining(['rpg', 'kny', 'business']));
-    expect(Object.keys(all)).toHaveLength(3);
+    expect(Object.keys(all)).toEqual(expect.arrayContaining(['rpg', 'kny', 'kny_dynamic', 'business']));
+    expect(Object.keys(all)).toHaveLength(4);
   });
 
   it('custom templates are merged in', () => {
@@ -129,7 +129,7 @@ describe('getAllTemplates', () => {
     };
     const all = getAllTemplates(custom);
     expect(all).toHaveProperty('myTheme');
-    expect(Object.keys(all)).toHaveLength(4);
+    expect(Object.keys(all)).toHaveLength(5);
   });
 
   it('custom key overrides built-in key with same name', () => {
@@ -138,8 +138,8 @@ describe('getAllTemplates', () => {
     };
     const all = getAllTemplates(custom);
     expect(all.rpg.name).toBe('自訂RPG');
-    // total count stays 3 (override, not add)
-    expect(Object.keys(all)).toHaveLength(3);
+    // total count stays 4 (override, not add) — rpg, kny, kny_dynamic, business
+    expect(Object.keys(all)).toHaveLength(4);
   });
 
   it('built-in templates are not mutated', () => {

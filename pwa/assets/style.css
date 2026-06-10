@@ -5563,3 +5563,175 @@ html.has-bg[data-ui-skin="modern"] .levelup-box {
   }
 }
 
+/* ══════════════════════════════════════════════════════════════
+   BREATHING TITLE SYSTEM (titleBreathing.js)
+══════════════════════════════════════════════════════════════ */
+
+/* ── Info button ── */
+.breathing-info-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  border: 1px solid var(--primary);
+  background: rgba(124,58,237,.12);
+  color: var(--primary-lt);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  vertical-align: middle;
+  margin-left: 5px;
+  line-height: 1;
+  padding: 0;
+  flex-shrink: 0;
+}
+.breathing-info-btn:hover {
+  background: rgba(124,58,237,.25);
+}
+
+/* ── Modal container ── */
+.br-modal-box {
+  padding: 20px 16px 28px;
+  max-height: 85dvh;
+  overflow-y: auto;
+}
+
+/* ── Section ── */
+.br-section {
+  margin-bottom: 18px;
+}
+.br-section-lbl {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin-bottom: 8px;
+}
+
+/* ── Current title ── */
+.br-current-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--primary-lt);
+  margin-bottom: 4px;
+}
+.br-sub-flow {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.br-reason {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* ── Flow percentage bars ── */
+.br-flow-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.br-flow-name {
+  font-size: 12px;
+  color: var(--text-muted);
+  width: 90px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.br-bar-track {
+  flex: 1;
+  height: 6px;
+  background: var(--surface-2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.br-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--border);
+  transition: width .3s;
+}
+.br-bar-main { background: var(--primary); }
+.br-bar-sub  { background: rgba(124,58,237,.5); }
+.br-pct-val {
+  font-size: 11px;
+  color: var(--text-muted);
+  width: 28px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.br-locked-badge {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-left: 4px;
+}
+
+/* ── Flow table ── */
+.br-table-wrap { overflow-x: auto; }
+.br-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.br-table th {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.br-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+  vertical-align: top;
+  line-height: 1.4;
+}
+.br-td-name { white-space: nowrap; font-weight: 600; color: var(--text); }
+.br-td-tend { color: var(--text-muted); }
+.br-td-how  { color: var(--text-muted); }
+.br-row-active td { background: rgba(124,58,237,.08); }
+.br-row-active .br-td-name { color: var(--primary-lt); }
+
+/* ── Note / sun lock ── */
+.br-note-row {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: rgba(251,191,36,.08);
+  border: 1px solid rgba(251,191,36,.2);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+.br-footer-note {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.6;
+  text-align: center;
+  margin-top: 4px;
+}
+
+
+/* ─── Lazy page loading skeleton ─────────────────────────────────────────── */
+.lazy-page-loading {
+  min-height: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.lazy-page-loading::after {
+  content: '';
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}

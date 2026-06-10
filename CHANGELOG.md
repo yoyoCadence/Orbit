@@ -3,6 +3,16 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.20.2] - 2026-06-10
+
+### Added
+- 
+
+### Fixed
+- 
+
+---
+
 ## [1.20.1] - 2026-06-08
 
 ### Fixed
