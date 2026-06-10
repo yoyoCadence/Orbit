@@ -1060,6 +1060,10 @@ function _submitFocusResult(result, durationMin, note = '') {
   };
 
   _commitSession(session, task);
+  // Show proof sheet for completed/partial timed sessions; not for invalid (unproductive)
+  if (result !== 'invalid' && typeof window !== 'undefined' && typeof FileReader !== 'undefined') {
+    setTimeout(() => _showProofSheet(session.id, task.name), 700);
+  }
 }
 
 // ─── Shared session commit ────────────────────────────────────────────────────
