@@ -27,7 +27,7 @@ import { haptic } from './platform/haptics.js';
 import { applyTimeBand }        from './timeBand.js';
 
 // ─── Version ─────────────────────────────────────────────────────────────────
-export const APP_VERSION = 'v1.20.2';
+export const APP_VERSION = 'v1.20.3';
 
 // Lazy proxy — tour.js is not imported at startup; loaded on first call.
 window.startTour = () =>

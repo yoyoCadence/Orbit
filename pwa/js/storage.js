@@ -3,7 +3,7 @@
 // Async background sync → Supabase (when authenticated + online)
 
 import { supabase }  from './supabase.js';
-import { today }     from './utils.js';
+import { today, mergeSessionsById } from './utils.js';
 
 const PREFIX = 'yoyo_';
 const LEADERBOARD_CACHE_KEY = 'leaderboardCache';
@@ -13,6 +13,14 @@ function get(key) {
 }
 function set(key, val) {
   localStorage.setItem(PREFIX + key, JSON.stringify(val));
+}
+
+function markSessionSyncPending(sessionId) {
+  const sessions = get('sessions') ?? [];
+  const idx = sessions.findIndex(s => s?.id === sessionId);
+  if (idx === -1) return;
+  sessions[idx] = { ...sessions[idx], _syncPending: true };
+  set('sessions', sessions);
 }
 
 // ─── Supabase async operations ────────────────────────────────────────────────
@@ -28,6 +36,7 @@ export const db = {
   async loadFromRemote(userId) {
     // Push any locally pending changes before overwriting with remote data
     const localUser = get('user');
+    const localSessions = get('sessions') ?? [];
     if (localUser?._syncPending && localUser?.id === userId) {
       const { _syncPending, ...userToSync } = localUser;
       try { await this.upsertProfile(userToSync); } catch (err) {
@@ -99,7 +108,7 @@ export const db = {
     }
 
     if (sessionsRes.data) {
-      set('sessions', sessionsRes.data.map(s => ({
+      const remoteSessions = sessionsRes.data.map(s => ({
         id:              s.id,
         taskId:          s.task_id   || null,
         taskName:        s.task_name,
@@ -119,7 +128,17 @@ export const db = {
         resistance:      s.resistance,
         isProductiveXP:  s.is_productive_xp,
         taskIconImg:     s.task_icon_img    || null,
-      })));
+      }));
+      const mergedSessions = mergeSessionsById(remoteSessions, localSessions);
+      set('sessions', mergedSessions);
+
+      const remoteIds = new Set(remoteSessions.map(s => s.id));
+      localSessions
+        .filter(s => s?.id && !remoteIds.has(s.id))
+        .forEach(s => this.insertSession(s).catch(err => {
+          console.warn('Could not backfill local session after remote load:', err);
+          markSessionSyncPending(s.id);
+        }));
     }
 
     if (energyRes.data) {
@@ -231,7 +250,7 @@ export const db = {
   async insertSession(session) {
     const authSession = await this._session();
     if (!authSession) return;
-    await supabase.from('sessions').insert({
+    const { error } = await supabase.from('sessions').insert({
       id:               session.id,
       user_id:          authSession.user.id,
       task_id:          session.taskId        || null,
@@ -251,8 +270,8 @@ export const db = {
       value:            session.value,
       resistance:       session.resistance,
       is_productive_xp: session.isProductiveXP,
-      task_icon_img:    session.taskIconImg    || null,
     });
+    if (error) throw error;
   },
 
   async deleteSession(id) {
@@ -329,7 +348,10 @@ export const storage = {
     set('sessions', s);
     // Only INSERT the newly added sessions (not the whole array)
     s.filter(ns => !prev.find(ps => ps.id === ns.id))
-     .forEach(ns => db.insertSession(ns).catch(console.error));
+     .forEach(ns => db.insertSession(ns).catch(err => {
+       console.error(err);
+       markSessionSyncPending(ns.id);
+     }));
   },
 
   // ── Energy ───────────────────────────────────────────────────────────────────

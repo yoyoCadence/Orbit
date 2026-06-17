@@ -1,6 +1,6 @@
 import { state }                    from '../state.js';
 import { storage }                   from '../storage.js';
-import { formatTime, formatDate }    from '../utils.js';
+import { formatTime, formatDate, sortSessionsNewestFirst } from '../utils.js';
 
 const RESULT_ICON  = { complete: '✅', partial: '🔶', invalid: '❌', instant: '✓' };
 const RESULT_LABEL = { complete: '完成', partial: '部分完成', invalid: '無效', instant: '完成' };
@@ -9,7 +9,7 @@ const FREE_DAYS = 30; // free tier history depth
 
 export function renderGoals(container) {
   const isPro       = storage.isProUser();
-  const allSessions = [...state.sessions].reverse();
+  const allSessions = sortSessionsNewestFirst(state.sessions);
 
   if (allSessions.length === 0) {
     container.innerHTML = `

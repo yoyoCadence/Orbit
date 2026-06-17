@@ -42,6 +42,9 @@ vi.mock('../../pwa/js/storage.js', () => ({ storage: mockStorage, db: {} }));
 vi.mock('../../pwa/js/utils.js', () => ({
   today:      () => '2026-04-16',
   formatTime: () => '10:00',
+  sortSessionsNewestFirst: sessions => [...sessions].sort(
+    (a, b) => Date.parse(b.completedAt) - Date.parse(a.completedAt)
+  ),
   formatDate: (d) => {
     if (d === '2026-04-16') return '今天';
     if (d === '2026-04-15') return '昨天';
@@ -123,6 +126,24 @@ describe('renderGoals — 分組', () => {
     ];
     renderGoals(container);
     expect(container.querySelectorAll('.date-group').length).toBe(1);
+  });
+
+  it('orders date groups newest first', () => {
+    mockState.sessions = [
+      makeSession({ id: 's-old', taskName: 'old date', date: '2026-04-15', completedAt: '2026-04-15T10:00:00Z' }),
+      makeSession({ id: 's-new', taskName: 'new date', date: '2026-04-16', completedAt: '2026-04-16T10:00:00Z' }),
+    ];
+    renderGoals(container);
+    expect(container.querySelector('.date-group .log-name').textContent).toBe('new date');
+  });
+
+  it('orders sessions within a date newest first', () => {
+    mockState.sessions = [
+      makeSession({ id: 's-old', taskName: 'older session', completedAt: '2026-04-16T08:00:00Z' }),
+      makeSession({ id: 's-new', taskName: 'newer session', completedAt: '2026-04-16T12:00:00Z' }),
+    ];
+    renderGoals(container);
+    expect(container.querySelector('.log-name').textContent).toBe('newer session');
   });
 });
 

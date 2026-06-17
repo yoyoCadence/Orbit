@@ -266,6 +266,23 @@ describe('storage.saveSessions()', () => {
 
     expect(chain.insert).not.toHaveBeenCalled();
   });
+
+  it('marks a new local session as pending when remote insert fails', async () => {
+    mockGetSession.mockResolvedValue({ data: { session: FAKE_SESSION } });
+    const chain = makeChain();
+    chain.insert = vi.fn(() => Promise.resolve({
+      data: null,
+      error: new Error('remote insert failed'),
+    }));
+    mockFrom.mockImplementation(() => chain);
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    storage.saveSessions([makeSession({ id: 's-pending' })]);
+    await flushPromises();
+
+    expect(lsGet('sessions')[0]._syncPending).toBe(true);
+    console.error.mockRestore();
+  });
 });
 
 describe('storage.getEnergy()', () => {
@@ -455,6 +472,23 @@ describe('db.loadFromRemote()', () => {
     expect(sessions[0].finalXP).toBe(22);
     expect(sessions[0].energyCost).toBe(8);
     expect(sessions[0].isProductiveXP).toBe(true);
+  });
+
+  it('preserves local-only sessions when remote data is loaded', async () => {
+    lsSet('sessions', [
+      makeSession({
+        id: 's-local',
+        taskName: '本機新紀錄',
+        date: '2026-04-14',
+        completedAt: '2026-04-14T08:00:00Z',
+      }),
+    ]);
+
+    await db.loadFromRemote('user-abc');
+    const sessions = lsGet('sessions');
+
+    expect(sessions.map(s => s.id)).toEqual(['s-local', 's1']);
+    expect(sessions.find(s => s.id === 's-local').taskName).toBe('本機新紀錄');
   });
 
   it('writes energy to localStorage with camelCase field mapping', async () => {
@@ -675,12 +709,12 @@ describe('db.insertSession()', () => {
         final_xp:         22,
         energy_cost:      8,
         is_productive_xp: true,
-        task_icon_img:    'assets/personal-space/props/book.png',
       })
     );
+    expect(chain.insert.mock.calls[0][0]).not.toHaveProperty('task_icon_img');
   });
 
-  it('sends task_icon_img as null when taskIconImg is absent', async () => {
+  it('does not send task_icon_img when taskIconImg is absent', async () => {
     mockGetSession.mockResolvedValue({ data: { session: FAKE_SESSION } });
     const chain = makeChain();
     mockFrom.mockImplementation(() => chain);
@@ -696,9 +730,17 @@ describe('db.insertSession()', () => {
       // taskIconImg intentionally omitted
     });
 
-    expect(chain.insert).toHaveBeenCalledWith(
-      expect.objectContaining({ task_icon_img: null })
-    );
+    expect(chain.insert.mock.calls[0][0]).not.toHaveProperty('task_icon_img');
+  });
+
+  it('throws when Supabase rejects a session insert', async () => {
+    mockGetSession.mockResolvedValue({ data: { session: FAKE_SESSION } });
+    const insertError = new Error('column sessions.task_icon_img does not exist');
+    const chain = makeChain();
+    chain.insert = vi.fn(() => Promise.resolve({ data: null, error: insertError }));
+    mockFrom.mockImplementation(() => chain);
+
+    await expect(db.insertSession(makeSession())).rejects.toBe(insertError);
   });
 });
 
