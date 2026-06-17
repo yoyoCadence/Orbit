@@ -44,6 +44,9 @@ vi.mock('../../pwa/js/utils.js', () => ({
   today:          () => '2026-04-11',
   effectiveToday: () => '2026-04-11',
   formatTime:     () => '10:00',
+  sortSessionsNewestFirst: sessions => [...sessions].sort(
+    (a, b) => Date.parse(b.completedAt) - Date.parse(a.completedAt)
+  ),
 }));
 
 vi.mock('../../pwa/js/engine.js', () => ({
@@ -224,6 +227,26 @@ describe('renderHome: session list', () => {
     renderHome(c);
     expect(c.textContent).toContain('深度學習');
     expect(c.textContent).toContain('+15 XP');
+  });
+
+  it('shows newest today session first', () => {
+    mockState.sessions = [
+      {
+        id: 'sess-old', taskId: 'task-1', taskName: 'older session',
+        date: '2026-04-11', result: 'instant', finalXP: 10,
+        energyGain: 0, durationMinutes: 0,
+        completedAt: '2026-04-11T08:00:00Z',
+      },
+      {
+        id: 'sess-new', taskId: 'task-1', taskName: 'newer session',
+        date: '2026-04-11', result: 'instant', finalXP: 20,
+        energyGain: 0, durationMinutes: 0,
+        completedAt: '2026-04-11T12:00:00Z',
+      },
+    ];
+    const c = makeContainer();
+    renderHome(c);
+    expect(c.querySelector('.log-name').textContent).toBe('newer session');
   });
 
   it('session delete button calls window.deleteSession', () => {

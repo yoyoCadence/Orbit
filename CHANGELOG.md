@@ -3,6 +3,17 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.20.3] - 2026-06-17
+
+### Added
+- Regression coverage for session sync schema mismatches, local-only session preservation, and newest-first history ordering.
+
+### Fixed
+- Completed sessions no longer fail cloud sync because of unsupported `sessions.task_icon_img` writes; failed inserts are surfaced and marked pending locally for retry.
+- History and today's session logs now sort explicitly by completion time newest-first, regardless of whether data came from local cache or Supabase.
+
+---
+
 ## [1.20.2] - 2026-06-10
 
 ### Added

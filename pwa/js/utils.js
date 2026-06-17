@@ -44,3 +44,41 @@ export function formatDate(dateStr) {
   if (dateStr === yesterday.toLocaleDateString('sv')) return '昨天';
   return d.toLocaleDateString('zh-TW', { month: 'long', day: 'numeric', weekday: 'short' });
 }
+
+export function getSessionTimestamp(session = {}) {
+  const fallbackDate = session.date ? `${session.date}T00:00:00` : '';
+  const raw = session.completedAt || session.startedAt || fallbackDate;
+  const time = Date.parse(raw);
+  return Number.isFinite(time) ? time : 0;
+}
+
+export function sortSessionsNewestFirst(sessions = []) {
+  return [...sessions].sort((a, b) => {
+    const byTime = getSessionTimestamp(b) - getSessionTimestamp(a);
+    if (byTime !== 0) return byTime;
+    return String(b.id || '').localeCompare(String(a.id || ''));
+  });
+}
+
+export function mergeSessionsById(remoteSessions = [], localSessions = []) {
+  const byId = new Map();
+
+  localSessions.forEach(session => {
+    if (session?.id) byId.set(session.id, { ...session });
+  });
+
+  remoteSessions.forEach(session => {
+    if (!session?.id) return;
+    const local = byId.get(session.id) || {};
+    const merged = {
+      ...local,
+      ...session,
+      note: local.note ?? session.note,
+      taskIconImg: local.taskIconImg ?? session.taskIconImg ?? null,
+    };
+    delete merged._syncPending;
+    byId.set(session.id, merged);
+  });
+
+  return sortSessionsNewestFirst([...byId.values()]);
+}

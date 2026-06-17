@@ -1,5 +1,5 @@
 import { state }              from '../state.js';
-import { effectiveToday, formatTime } from '../utils.js';
+import { effectiveToday, formatTime, sortSessionsNewestFirst } from '../utils.js';
 import { calcDailyStats, reorderTasks } from '../engine.js';
 import { storage } from '../storage.js';
 
@@ -122,8 +122,8 @@ export function renderHome(container) {
   const recEntTasks = state.tasks.filter(t =>
     t.taskNature === 'recovery' || t.taskNature === 'entertainment');
 
-  // Recent sessions (today, reversed)
-  const recentSess = [...todaySess].reverse();
+  // Recent sessions (today, newest first)
+  const recentSess = sortSessionsNewestFirst(todaySess);
 
   container.innerHTML = `
     <div class="date-badge">📅 ${dateLabel}</div>
