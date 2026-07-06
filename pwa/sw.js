@@ -24,6 +24,7 @@ const SHELL = [
   './js/dayCycle.js',
   './js/sessionFlow.js',
   './js/focusTimer.js',
+  './js/authFlow.js',
   './js/tour.js',
   './js/pages/home.js',
   './js/pages/goals.js',
