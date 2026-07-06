@@ -30,6 +30,7 @@ const SHELL = [
   './js/pages/settings.js',
   './js/pages/leaderboard.js',
   './js/ui/feedback.js',
+  './js/ui/header.js',
   './js/ui/proNav.js',
   './js/ui/sessionRow.js',
   './js/platform/storageBridge.js',
