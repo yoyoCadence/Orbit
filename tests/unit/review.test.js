@@ -46,7 +46,8 @@ vi.mock('../../pwa/js/storage.js', () => ({ storage: mockStorage, db: {} }));
 
 // Mock utils — today() returns real local date so month calendar aligns with
 // the module's _viewYear/_viewMonth (both initialized from new Date())
-vi.mock('../../pwa/js/utils.js', () => ({
+vi.mock('../../pwa/js/utils.js', async (importOriginal) => ({
+  ...(await importOriginal()),
   today:          () => new Date().toLocaleDateString('sv'),
   effectiveToday: () => new Date().toLocaleDateString('sv'),
   formatTime:     () => '10:00',

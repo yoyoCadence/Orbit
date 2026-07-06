@@ -1,5 +1,5 @@
 import { state }              from '../state.js';
-import { effectiveToday, formatTime, sortSessionsNewestFirst } from '../utils.js';
+import { effectiveToday, formatTime, sortSessionsNewestFirst, escHtml } from '../utils.js';
 import { calcDailyStats, reorderTasks } from '../engine.js';
 import { storage } from '../storage.js';
 
@@ -403,12 +403,6 @@ function xpPreview(task) {
   const dw = { '0.4': 0.4, '0.7': 0.7, '1': 1.0, '1.0': 1.0 }[String(task.difficulty)] ?? 0;
   const rw = { '1': 1.0, '1.0': 1.0, '1.2': 1.2, '1.4': 1.4 }[String(task.resistance)] ?? 0;
   return Math.round(20 * vw * dw * rw);
-}
-
-function escHtml(str) {
-  return String(str)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 // ─── Task detail modal ───────────────────────────────────────────────────────

@@ -40,7 +40,8 @@ vi.mock('../../pwa/js/storage.js', () => ({
 
 vi.mock('../../pwa/js/state.js', () => ({ state: mockState }));
 
-vi.mock('../../pwa/js/utils.js', () => ({
+vi.mock('../../pwa/js/utils.js', async (importOriginal) => ({
+  ...(await importOriginal()),
   today:          () => '2026-04-11',
   effectiveToday: () => '2026-04-11',
   formatTime:     () => '10:00',

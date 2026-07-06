@@ -2,7 +2,7 @@ import { state }    from '../state.js';
 import { storage }  from '../storage.js';
 import { supabase } from '../supabase.js';
 import { getLevelInfo } from '../leveling.js';
-import { effectiveToday } from '../utils.js';
+import { effectiveToday, escHtml } from '../utils.js';
 
 // ─── Growth rate calculation ──────────────────────────────────────────────────
 
@@ -218,12 +218,6 @@ function _refreshNoteHtml(refreshedAt, isStale, refreshHour) {
       每日 ${hourText} 後首次開啟時更新；上次更新 ${timeText}${isStale ? '，目前顯示快取資料' : ''}
     </div>
   `;
-}
-
-function escHtml(str) {
-  return String(str)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 function escAttr(str) {

@@ -1,7 +1,7 @@
 import { state }                      from '../state.js';
 import { storage }                     from '../storage.js';
 import { applyTheme, applyUiSkin, applyBgImage, removeBgImage, applyRandomThemeForToday, APP_VERSION } from '../app.js';
-import { uid, today }                  from '../utils.js';
+import { uid, today, escHtml }         from '../utils.js';
 import { exportSessionsCSV, showReportPicker } from '../export.js';
 import { xpRequired, getLevelInfo }            from '../leveling.js';
 
@@ -1276,10 +1276,4 @@ function _compressImage(file, maxPx, quality) {
     };
     reader.readAsDataURL(file);
   });
-}
-
-function escHtml(str) {
-  return String(str)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }

@@ -2,7 +2,7 @@ import { state }                                         from '../state.js';
 import { storage, db }                                    from '../storage.js';
 import { getLevelInfo, getDisplayTitle, xpTable,
          getAllTemplates }                                 from '../leveling.js';
-import { effectiveToday }                                 from '../utils.js';
+import { effectiveToday, escHtml }                        from '../utils.js';
 import {
   calculateBreathingProfile, getBreathingTitle,
   loadBreathingFlowState, updateBreathingFlowState,
@@ -755,10 +755,4 @@ function _xpTableRow(r, info, user) {
       <span class="xp-table-xp">${r.from === info.level ? `${info.currentXP} / ` : ''}${r.xp} XP</span>
     </div>
   `;
-}
-
-function escHtml(str) {
-  return String(str)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }

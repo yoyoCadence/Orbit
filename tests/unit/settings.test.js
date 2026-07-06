@@ -77,7 +77,8 @@ vi.mock('../../pwa/js/auth.js', () => ({
   onAuthStateChange: vi.fn(),
   signOut: vi.fn(),
 }));
-vi.mock('../../pwa/js/utils.js', () => ({
+vi.mock('../../pwa/js/utils.js', async (importOriginal) => ({
+  ...(await importOriginal()),
   uid:   () => 'test-uid-' + Math.random().toString(36).slice(2),
   today: () => '2026-04-11',
 }));

@@ -1,6 +1,6 @@
 import { state }               from '../state.js';
 import { storage }             from '../storage.js';
-import { today }               from '../utils.js';
+import { today, escHtml }      from '../utils.js';
 import { calcDailyStats, calcValueConfidence } from '../engine.js';
 
 const FREE_MONTHS = 3; // free tier month-view depth
@@ -381,11 +381,4 @@ function buildMonthView() {
       ${topTasksHtml}
     </div>
   `;
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-function escHtml(str) {
-  return String(str)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }

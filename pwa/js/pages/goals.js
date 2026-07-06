@@ -1,6 +1,6 @@
 import { state }                    from '../state.js';
 import { storage }                   from '../storage.js';
-import { formatTime, formatDate, sortSessionsNewestFirst } from '../utils.js';
+import { formatTime, formatDate, sortSessionsNewestFirst, escHtml } from '../utils.js';
 
 const RESULT_ICON  = { complete: '✅', partial: '🔶', invalid: '❌', instant: '✓' };
 const RESULT_LABEL = { complete: '完成', partial: '部分完成', invalid: '無效', instant: '完成' };
@@ -101,10 +101,4 @@ export function renderGoals(container) {
       window._showProofLightbox(img.src);
     });
   });
-}
-
-function escHtml(str) {
-  return String(str)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
