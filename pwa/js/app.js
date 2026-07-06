@@ -1,16 +1,12 @@
 import { state }                                              from './state.js';
 import { storage, db, migrateV1toV2, migrateDefaultFlags }    from './storage.js';
 import { signIn, signUp, signInWithGoogle, signOut as authSignOut, getSession, onAuthStateChange, resetPasswordForEmail, updatePassword } from './auth.js';
-import { getLevelInfo, getDisplayTitle } from './leveling.js';
 import { updateHeader } from './ui/header.js';
-import { showProofSheet } from './ui/proofSheet.js';
 
 // Re-export so existing importers (profile.js via dynamic import, tests) keep working.
 export { updateHeader };
-import {
-  calcBaseXP, calcFinalXP, calcEnergyCost, calcEnergyGain,
-  getDailyTaskXP, getDailyTaskCount, getMinEffectiveMinutes, calcTimeMultiplier,
-} from './engine.js';
+import { getMinEffectiveMinutes } from './engine.js';
+import { submitFocusResult, setBadgeUpdater } from './sessionFlow.js';
 import { uid, today } from './utils.js';
 import {
   eToday, processYesterdayStreak, showStreakUnlockModal,
@@ -20,7 +16,7 @@ import { createDefaultTasks }   from './defaultTasks.js';
 import { renderPage, currentHash, isTextInputTarget, isTextInputActive, markTextInputFocus } from './router.js';
 import { haptic } from './platform/haptics.js';
 import { applyTimeBand }        from './timeBand.js';
-import { showToast, showXPFloat, showSyncBanner, showLevelUp } from './ui/feedback.js';
+import { showToast, showXPFloat, showSyncBanner } from './ui/feedback.js';
 import { applyRandomThemeForToday, renderBg, initLiquidGlassReflection } from './theme.js';
 
 // Re-export so existing importers (pages via dynamic import) keep working.
@@ -57,81 +53,6 @@ window.removeFromDailyPlan = function (taskId) {
   state.dailyPlan = state.dailyPlan.filter(id => id !== taskId);
   storage.saveDailyPlan(state.dailyPlan);
   renderPage(currentHash());
-};
-
-// ─── Energy helpers ──────────────────────────────────────────────────────────
-
-export function getTodayEntertainmentMinutes() {
-  const todayStr = eToday();
-  return state.sessions
-    .filter(s => s.date === todayStr && s.impactType === 'entertainment')
-    .reduce((sum, s) => sum + (s.durationMinutes || 0), 0);
-}
-
-// ─── Instant task completion ─────────────────────────────────────────────────
-
-window.completeInstant = function (taskId) {
-  const task = state.tasks.find(t => t.id === taskId);
-  if (!task || !state.user) return;
-
-  const todayStr = eToday();
-
-  // Anti-grind: max 3 completions per task per day
-  if (getDailyTaskCount(state.sessions, taskId, todayStr) >= 3) {
-    showToast('今日此任務已達上限（3次）');
-    return;
-  }
-
-  const baseXP    = calcBaseXP(task);
-  let   finalXP   = calcFinalXP(baseXP, 'instant', state.user.streakDays || 0);
-  const energyCost = calcEnergyCost(task);
-
-  // B-class daily XP cap (100 XP/day)
-  if (task.value === 'B') {
-    const alreadyToday = getDailyTaskXP(state.sessions, taskId, todayStr);
-    const taskCap = task.dailyXpCap ?? 100;
-    if (alreadyToday >= taskCap) finalXP = 0;
-    else finalXP = Math.min(finalXP, taskCap - alreadyToday);
-  }
-
-  // Energy: recovery/entertainment gain energy instead of costing
-  let energyGain = 0;
-  if (task.impactType !== 'task') {
-    // For instant recovery/entertainment we use a flat 15-min bracket
-    energyGain = calcEnergyGain(task, 15, getTodayEntertainmentMinutes());
-  }
-
-  const isProductiveXP = task.impactType === 'task' &&
-    task.value !== 'D' && finalXP > 0;
-
-  const session = {
-    id:              uid(),
-    taskId:          task.id,
-    taskName:        task.name,
-    taskEmoji:       task.emoji || '🎯',
-    taskIconImg:     task.iconImg || null,
-    date:            todayStr,
-    startedAt:       new Date().toISOString(),
-    completedAt:     new Date().toISOString(),
-    durationMinutes: 0,
-    result:          'instant',
-    baseXP,
-    finalXP,
-    energyCost,
-    energyGain,
-    streakMultiplier: 1,
-    impactType:      task.impactType,
-    taskNature:      task.taskNature,
-    value:           task.value,
-    resistance:      task.resistance,
-    isProductiveXP,
-  };
-
-  _commitSession(session, task);
-  // Inline capability check avoids importing proofCapture.js at startup
-  if (typeof window !== 'undefined' && typeof FileReader !== 'undefined') {
-    setTimeout(() => showProofSheet(session.id, task.name), 700);
-  }
 };
 
 // ─── Focus timer state ───────────────────────────────────────────────────────
@@ -680,116 +601,11 @@ function _showResultPicker(durationMin) {
   });
 }
 
+/** Focus-timer teardown, then hand settlement to sessionFlow. */
 function _submitFocusResult(result, durationMin, note = '') {
-  const task = state.tasks.find(t => t.id === focus.taskId);
   _stopFocusDeskMode();
   focus.active = false;
-
-  if (!task || !state.user) return;
-
-  const todayStr = eToday();
-  const baseXP   = calcBaseXP(task);
-  let   finalXP  = calcFinalXP(baseXP, result, state.user.streakDays || 0);
-
-  // Time multiplier: XP scales linearly with session duration (focus tasks only, capped at 4x)
-  if (result !== 'invalid' && task.impactType === 'task') {
-    const timeMult = calcTimeMultiplier(durationMin, getMinEffectiveMinutes(task.difficulty));
-    finalXP = Math.round(finalXP * timeMult);
-  }
-
-  // B-class daily XP cap
-  if (task.value === 'B') {
-    const alreadyToday = getDailyTaskXP(state.sessions, task.id, todayStr);
-    const taskCap = task.dailyXpCap ?? 100;
-    if (alreadyToday >= taskCap) finalXP = 0;
-    else finalXP = Math.min(finalXP, taskCap - alreadyToday);
-  }
-
-  const energyCost  = result !== 'invalid' ? calcEnergyCost(task) : 0;
-  const energyGain  = task.impactType !== 'task'
-    ? calcEnergyGain(task, durationMin, getTodayEntertainmentMinutes())
-    : 0;
-
-  const isProductiveXP = task.impactType === 'task' &&
-    task.value !== 'D' && finalXP > 0 && result !== 'invalid';
-
-  const session = {
-    id:              uid(),
-    taskId:          task.id,
-    taskName:        task.name,
-    taskEmoji:       task.emoji || '🎯',
-    taskIconImg:     task.iconImg || null,
-    date:            todayStr,
-    startedAt:       new Date(Date.now() - focus.elapsedSec * 1000).toISOString(),
-    completedAt:     new Date().toISOString(),
-    durationMinutes: durationMin,
-    result,
-    baseXP,
-    finalXP,
-    energyCost,
-    energyGain,
-    streakMultiplier: 1,
-    impactType:      task.impactType,
-    taskNature:      task.taskNature,
-    value:           task.value,
-    resistance:      task.resistance,
-    isProductiveXP,
-    ...(note ? { note } : {}),
-  };
-
-  _commitSession(session, task);
-  // Show proof sheet for completed/partial timed sessions; not for invalid (unproductive)
-  if (result !== 'invalid' && typeof window !== 'undefined' && typeof FileReader !== 'undefined') {
-    setTimeout(() => showProofSheet(session.id, task.name), 700);
-  }
-}
-
-// ─── Shared session commit ────────────────────────────────────────────────────
-
-function _commitSession(session, _task) {
-  const oldLevel = getLevelInfo(state.user.totalXP || 0).level;
-
-  // Persist session
-  state.sessions.push(session);
-  storage.saveSessions(state.sessions);
-
-  // Update XP
-  state.user.totalXP = (state.user.totalXP || 0) + session.finalXP;
-
-  // Update energy
-  if (session.energyCost > 0) {
-    state.energy.currentEnergy = Math.max(0,
-      state.energy.currentEnergy - session.energyCost);
-  }
-  if (session.energyGain > 0) {
-    state.energy.currentEnergy = Math.min(state.energy.maxEnergy,
-      state.energy.currentEnergy + session.energyGain);
-  }
-  storage.saveEnergy(state.energy);
-  storage.saveUser(state.user);
-
-  updateHeader();
-
-  const xpLabel = session.finalXP > 0
-    ? `+${session.finalXP} XP`
-    : session.impactType === 'recovery'
-      ? `+${session.energyGain} ⚡`
-      : session.result === 'invalid'
-        ? '無效 0 XP'
-        : '完成';
-  showXPFloat(xpLabel);
-  haptic(session.result === 'invalid' ? 'warning' : 'taskComplete');
-
-  renderPage(currentHash());
-
-  const newLevel = getLevelInfo(state.user.totalXP).level;
-  if (newLevel > oldLevel) {
-    setTimeout(() => {
-      haptic('levelUp');
-      showLevelUp(newLevel, getDisplayTitle(newLevel, state.user));
-    }, 600);
-  }
-  _updateBadge();
+  submitFocusResult(focus.taskId, focus.elapsedSec, result, durationMin, note);
 }
 
 // ─── Trial banner ────────────────────────────────────────────────────────────
@@ -817,39 +633,6 @@ window._dismissTrialBanner = function () {
 window.signOut = async function () {
   try { await authSignOut(); } catch (e) { console.error('signOut error:', e); }
   handleSignOut();
-};
-
-window.deleteSession = function (sessionId) {
-  const session = state.sessions.find(s => s.id === sessionId);
-  if (!session) return;
-  if (!confirm(`撤銷「${session.taskName}」這筆記錄？`)) return;
-
-  // Reverse XP
-  state.user.totalXP = Math.max(0, (state.user.totalXP || 0) - session.finalXP);
-
-  // Reverse energy
-  if (session.energyCost > 0) {
-    state.energy.currentEnergy = Math.min(state.energy.maxEnergy,
-      state.energy.currentEnergy + session.energyCost);
-  }
-  if (session.energyGain > 0) {
-    state.energy.currentEnergy = Math.max(0,
-      state.energy.currentEnergy - session.energyGain);
-  }
-
-  // Remove session
-  state.sessions = state.sessions.filter(s => s.id !== sessionId);
-  storage.saveSessions(state.sessions);
-  storage.saveUser(state.user);
-  storage.saveEnergy(state.energy);
-
-  // Delete from Supabase
-  db.deleteSession(sessionId).catch(console.error);
-
-  updateHeader();
-  renderPage(currentHash());
-  showToast('已撤銷');
-  _updateBadge();
 };
 
 // ─── Setup screen ────────────────────────────────────────────────────────────
@@ -1255,6 +1038,8 @@ function _updateBadge() {
   const count = state.sessions.filter(s => s.date === todayStr && s.result !== 'invalid').length;
   _badgeMod.setBadge(count).catch(() => {});
 }
+// sessionFlow calls this after every commit/delete (no-op until badge module loads)
+setBadgeUpdater(_updateBadge);
 
 // Tap header to scroll main content to top (mirrors iOS status-bar tap behavior)
 document.getElementById('header')?.addEventListener('click', e => {
