@@ -54,8 +54,8 @@ Orbit——個人成長追蹤 PWA（部署於 <https://yoyocadence.github.io/Orb
 | 種類 | 指令 | 基準（2026-07-06 實測） |
 |---|---|---|
 | 單元測試 | `npm test`（Vitest） | **643 passed / 23 檔，0 failed** |
-| Lint | `npm run lint`（ESLint 9） | 通過（assumption：本次評估未單獨執行，僅由近期 commit 推定；接手者第一步請實跑一次記錄基準） |
-| E2E | `npm run test:e2e`（Playwright） | **assumption：本次評估未執行**，狀態未知；不作為重構驗收依據，僅作參考 |
+| Lint | `npm run lint`（ESLint 9） | **5 個 pre-existing errors**（2026-07-06 實測）：app.js:7 unused import `updateBreathingFlowState`、app.js:2016 `requestIdleCallback` no-undef、titleBreathing.js:404/451/542 三項。重構驗收標準＝**不得新增**（搬移程式碼時錯誤可隨碼移動；順帶消失可接受） |
+| E2E | `npm run test:e2e`（Playwright） | **22 passed（2026-07-06 實測，29.8s）**——覆蓋遊客開機、focus 計時（啟動/跳動/暫停繼續/提前結束/invalid）、加入計劃、設定頁、隨機主題 toggle。每個高風險 phase 後必跑 |
 | 手動 | `node pwa/server.cjs` | 冒煙流程見 §10 |
 
 無 build 指令（無 build step）。
@@ -137,8 +137,10 @@ switchAuthTab, loginWithGoogle, togglePasswordVisibility, showForgotPassword,
 continueAsGuest, signOut, deleteSession, closeLevelUp,
 _dismissTrialBanner, _showResetPasswordModal, _showProofLightbox,
 _scrollToProCard, _reviewSetMode, _reviewPrevMonth, _reviewNextMonth,
-_isDragging, showToast（settings/goals 等頁呼叫 window.showToast）
+_isDragging
 ```
+
+> ⚠️ 更正（2026-07-06 開工前實查）：`window.showToast` 被 settings.js（11 處）與 export.js（3 處）呼叫，但**從未在任何地方被賦值**——這些呼叫點現況會拋 TypeError（例如設定頁手動同步成功後按鈕卡在「同步中…」）。此為 pre-existing bug，見 §11 Q7；重構期間**維持現狀不綁定**，留給獨立修復 PR。
 
 ### 4.2 主要操作流程
 
@@ -624,6 +626,16 @@ npm run lint      # 必須通過
 
 ## 11. Open Questions
 
+> **決議紀錄（使用者於 2026-07-06 答覆）**：
+> - **Q1 → (b)**：核准先執行 Phase 1–13，作為第一個重構 PR。Phase 14–17 延後到第二個 PR；Phase 18 視 Phase 1–13 完成後的測試狀況再決定。第一個 PR 不處理資料層重構與 bug 修復。
+> - **Q2 → (a)**：修，但獨立 commit、獨立於重構 PR。
+> - **Q3 → (a)**：修文案，單獨 `fix:` commit，不夾在 refactor commit。
+> - **Q4 → (a)**：卡片改顯示「回能」，但不在本次重構中修——另開 issue 或獨立修復 PR，保留 engine 現有規則。
+> - **Q5 → (a)**：patch（重構 PR 完成時 bump v1.20.4）。
+> - **Q6 → (a)**：已於開工前實跑，e2e 基準 22 passed（見 §1.4）。
+>
+> **執行順序微調（coding agent 依 §12 授權，2026-07-06）**：Phase 12（dayCycle）提前到 Phase 10/11 之前執行——sessionFlow/focusTimer 依賴 `eToday()`，先建立 dayCycle 可避免臨時重複。另依 §5 P-2 方向增加兩個小型前置抽離 commit：`ui/header.js`（updateHeader）與 `ui/proofSheet.js`（佐證 sheet/lightbox），否則 sessionFlow → app.js 會形成新循環依賴。
+
 ### Q1：重構範圍核准
 
 - **Question**: 執行全部 Phase 1–17（＋選配 18），或先 Phase 1–13（app.js 拆解為止），或僅 Phase 1–5（低風險去重）？
@@ -671,9 +683,14 @@ npm run lint      # 必須通過
 - **Recommended answer**: (a)，若本來就紅則記錄「pre-existing failure」，不歸咎重構
 - **Consequence if ignored**: e2e 若在重構後紅掉，無法判斷是誰弄壞的
 
----
+### Q7：`window.showToast` 從未被綁定（2026-07-06 開工前新發現，pre-existing bug）
 
-## 12. Next Agent Instructions
+- **Question**: settings.js（11 處）與 export.js（3 處）呼叫 `window.showToast(...)`，但全 codebase 沒有任何 `window.showToast = ...` 賦值——這些呼叫會拋 TypeError。最明顯症狀：設定頁「從雲端同步資料」成功後，toast 不出現且按鈕永久卡在「同步中…」（throw 發生在按鈕復原之前）。修嗎？
+- **Why it matters**: 使用者可見的功能故障；單元測試沒抓到是因為 settings.test.js 有 stub
+- **Options**: (a) 修——在 feedback/toast 模組載入時綁 `window.showToast = showToast`（一行），獨立 `fix:` commit、獨立於重構 PR（與 Q2/Q3 同批） (b) 改所有呼叫端 import showToast（較大 diff） (c) 不修
+- **Recommended answer**: (a)
+- **Consequence if ignored**: 同步按鈕卡死、CSV 無資料提示/PDF 失敗提示/佐證清除確認等 13 處提示全部靜默失效
+- **重構期間的處理**: 維持現狀（不綁定、不修），feedback.js 抽離時只搬函式本體，行為（含此故障）保持不變
 
 **開工前（按順序讀）**：
 
@@ -731,7 +748,7 @@ FAIL 條件：任何 blocking issue（行為變更、資料格式變更、測試
 
 ## 14. Final Summary
 
-- **現在做到哪**：重構「評估與計畫」完成（2026-07-06），**程式碼零改動**；基準：v1.20.3、643 unit tests 全綠、分支 `feat/hardware-sensory-foundation` 乾淨（僅 `.codex/` 未追蹤）
-- **下一步**：等使用者回答 §11 Q1（範圍）與 Q2–Q4（三個 bug 是否另行修復）→ coding agent 按 §12 從 Phase 1 開始
+- **現在做到哪**：計畫已核准（§11 決議紀錄），重構於分支 `refactor/app-modularization` 進行中；基準：v1.20.3、unit 643 全綠、e2e 22 全綠、lint 5 個 pre-existing errors
+- **下一步**：依 §7 執行 Phase 1–13（含 §11 註記的順序微調），一 phase 一 commit；完成後 bump patch、交 reviewer
 - **最大風險**：Phase 10（session 結算抽離，產品核心）與 Phase 16（storage 映射表化，資料相容性）；兩者都有專屬對策（結算矩陣手測／characterization tests 先行）
 - **絕對不要碰**：localStorage key 名與 JSON 形狀、Supabase schema 與 RLS、`window.*` 全域名稱、`'liquid-galss'`、`personalSpace/**`、部署設定、`index.html` 與 `assets/style.css`（本次重構應對兩者零 diff）
