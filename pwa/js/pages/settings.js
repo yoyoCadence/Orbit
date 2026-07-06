@@ -1,6 +1,6 @@
 import { state }                      from '../state.js';
 import { storage }                     from '../storage.js';
-import { applyTheme, applyUiSkin, applyBgImage, removeBgImage, applyRandomThemeForToday } from '../app.js';
+import { applyTheme, applyUiSkin, applyBgImage, removeBgImage, applyRandomThemeForToday } from '../theme.js';
 import { APP_VERSION } from '../version.js';
 import { uid, today, escHtml }         from '../utils.js';
 import { exportSessionsCSV, showReportPicker } from '../export.js';

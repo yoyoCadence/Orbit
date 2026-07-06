@@ -64,7 +64,7 @@ vi.mock('../../pwa/js/supabase.js', () => ({
 
 vi.mock('../../pwa/js/state.js',   () => ({ state: mockState }));
 vi.mock('../../pwa/js/storage.js', () => ({ storage: mockStorage, db: {} }));
-vi.mock('../../pwa/js/app.js', () => ({
+vi.mock('../../pwa/js/theme.js', () => ({
   applyTheme:              mockApplyTheme,
   applyUiSkin:             mockApplyUiSkin,
   applyBgImage:            vi.fn(),

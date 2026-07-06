@@ -19,6 +19,7 @@ const SHELL = [
   './js/defaultTasks.js',
   './js/utils.js',
   './js/timeBand.js',
+  './js/theme.js',
   './js/tour.js',
   './js/pages/home.js',
   './js/pages/goals.js',
