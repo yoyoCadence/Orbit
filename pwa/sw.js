@@ -7,6 +7,7 @@ const SHELL = [
   './index.html',
   './assets/style.css',
   './js/app.js',
+  './js/version.js',
   './js/state.js',
   './js/storage.js',
   './js/supabase.js',

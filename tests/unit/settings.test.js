@@ -70,7 +70,6 @@ vi.mock('../../pwa/js/app.js', () => ({
   applyBgImage:            vi.fn(),
   removeBgImage:           vi.fn(),
   applyRandomThemeForToday: mockApplyRandomTheme,
-  APP_VERSION:   'v1.2.0',
 }));
 vi.mock('../../pwa/js/auth.js', () => ({
   getSession: vi.fn(() => Promise.resolve({ user: { email: 'test@example.com' } })),
@@ -337,10 +336,11 @@ describe('renderSettings: leaderboard opt-in', () => {
 });
 
 describe('renderSettings: version number', () => {
-  it('displays APP_VERSION in account card', () => {
+  it('displays APP_VERSION in account card', async () => {
+    const { APP_VERSION } = await import('../../pwa/js/version.js');
     const c = makeContainer();
     renderSettings(c);
-    expect(c.textContent).toContain('v1.2.0');
+    expect(c.textContent).toContain(APP_VERSION);
   });
 });
 
