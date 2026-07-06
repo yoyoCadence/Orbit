@@ -5,6 +5,7 @@ import { uid, today, escHtml }         from '../utils.js';
 import { exportSessionsCSV, showReportPicker } from '../export.js';
 import { xpRequired, getLevelInfo }            from '../leveling.js';
 import { previewBaseXP }                       from '../engine.js';
+import { goToProCard }                         from '../ui/proNav.js';
 
 // ── Theme definitions ────────────────────────────────────────────────────────
 export const THEMES = [
@@ -363,9 +364,9 @@ export function renderSettings(container) {
   _renderView(container);
 }
 
+// Already on the settings page — no navigation, scroll as soon as possible.
 function _goToProCard() {
-  sessionStorage.setItem('orbit_pro_highlight', '1');
-  setTimeout(() => window._scrollToProCard?.(), 50);
+  goToProCard({ navigate: false, delayMs: 50 });
 }
 
 function _themeCardHtml(t, currentTheme, locked = false) {

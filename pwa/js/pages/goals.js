@@ -1,6 +1,7 @@
 import { state }                    from '../state.js';
 import { storage }                   from '../storage.js';
 import { formatTime, formatDate, sortSessionsNewestFirst, escHtml } from '../utils.js';
+import { goToProCard } from '../ui/proNav.js';
 
 const RESULT_ICON  = { complete: '✅', partial: '🔶', invalid: '❌', instant: '✓' };
 const RESULT_LABEL = { complete: '完成', partial: '部分完成', invalid: '無效', instant: '完成' };
@@ -84,7 +85,7 @@ export function renderGoals(container) {
           <div class="history-lock-desc">免費版顯示近 ${FREE_DAYS} 天 · 升級後立即完整呈現</div>
         </div>
       </div>
-      <button class="history-lock-btn" onclick="sessionStorage.setItem('orbit_pro_highlight','1'); window.navigate('settings'); setTimeout(() => window._scrollToProCard?.(), 300)">查看 Pro 方案 →</button>
+      <button class="history-lock-btn">查看 Pro 方案 →</button>
     </div>
   ` : '';
 
@@ -93,6 +94,8 @@ export function renderGoals(container) {
     ${groupsHtml}
     ${lockCardHtml}
   `;
+
+  container.querySelector('.history-lock-btn')?.addEventListener('click', () => goToProCard());
 
   container.querySelectorAll('.session-proof-thumb').forEach(img => {
     img.style.cursor = 'zoom-in';
