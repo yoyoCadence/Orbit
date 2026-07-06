@@ -54,7 +54,7 @@ Orbit——個人成長追蹤 PWA（部署於 <https://yoyocadence.github.io/Orb
 | 種類 | 指令 | 基準（2026-07-06 實測） |
 |---|---|---|
 | 單元測試 | `npm test`（Vitest） | **643 passed / 23 檔，0 failed** |
-| Lint | `npm run lint`（ESLint 9） | **5 個 pre-existing errors**（2026-07-06 實測）：app.js:7 unused import `updateBreathingFlowState`、app.js:2016 `requestIdleCallback` no-undef、titleBreathing.js:404/451/542 三項。重構驗收標準＝**不得新增**（搬移程式碼時錯誤可隨碼移動；順帶消失可接受） |
+| Lint | `npm run lint`（ESLint 9） | ~~5 個 pre-existing errors~~ → **0 errors**（2026-07-07 於 commit `19ef23f` 以零行為修復清空，經使用者要求；含全形空格改 HTML entity `&#12288;` 等細節見該 commit）。後續驗收門檻＝**維持 0** |
 | E2E | `npm run test:e2e`（Playwright） | **22 passed（2026-07-06 實測，29.8s）**——覆蓋遊客開機、focus 計時（啟動/跳動/暫停繼續/提前結束/invalid）、加入計劃、設定頁、隨機主題 toggle。每個高風險 phase 後必跑 |
 | 手動 | `node pwa/server.cjs` | 冒煙流程見 §10 |
 
@@ -635,6 +635,8 @@ npm run lint      # 必須通過
 > - **Q6 → (a)**：已於開工前實跑，e2e 基準 22 passed（見 §1.4）。
 >
 > **執行順序微調（coding agent 依 §12 授權，2026-07-06）**：Phase 12（dayCycle）提前到 Phase 10/11 之前執行——sessionFlow/focusTimer 依賴 `eToday()`，先建立 dayCycle 可避免臨時重複。另依 §5 P-2 方向增加兩個小型前置抽離 commit：`ui/header.js`（updateHeader）與 `ui/proofSheet.js`（佐證 sheet/lightbox），否則 sessionFlow → app.js 會形成新循環依賴。
+>
+> **執行完成紀錄（2026-07-07）**：Phase 1–13 全部完成於分支 `refactor/app-modularization`（commits `c24e2f5`…`ef8cd1a`，一 phase 一 commit）。app.js 2217 → 367 行；新模組：version / router / theme / dayCycle / sessionFlow / focusTimer / authFlow / ui/{feedback,header,proNav,proofSheet,sessionRow}。每 phase 驗證 unit 643 全過＋lint（清零後為 0）＋高風險 phase 加跑 e2e 22 全過。**Reviewer 需知的三個已審慎評估的無害差異**（皆記錄於對應 commit message）：① instant session 的 startedAt/completedAt 由兩次 `new Date()` 改為同一時間戳；② init 快取路徑 `_updateBadge` 與 `checkWeeklyBonus` 順序對調（該時點兩者互不影響且 badge 為 no-op）；③ `showBreathingInfoModal` 移除未使用的 `level` 參數（呼叫端仍傳、被忽略）。測試側配合：四個測試檔的 utils/engine 部分 mock 改 `importOriginal` 展開、settings.test 的 theme mock 目標改 theme.js、版本斷言改真實 APP_VERSION。
 
 ### Q1：重構範圍核准
 
@@ -748,7 +750,7 @@ FAIL 條件：任何 blocking issue（行為變更、資料格式變更、測試
 
 ## 14. Final Summary
 
-- **現在做到哪**：計畫已核准（§11 決議紀錄），重構於分支 `refactor/app-modularization` 進行中；基準：v1.20.3、unit 643 全綠、e2e 22 全綠、lint 5 個 pre-existing errors
-- **下一步**：依 §7 執行 Phase 1–13（含 §11 註記的順序微調），一 phase 一 commit；完成後 bump patch、交 reviewer
+- **現在做到哪**：**Phase 1–13 全部完成**（2026-07-07，分支 `refactor/app-modularization`，見 §11 執行完成紀錄）；驗證：unit 643 全綠、e2e 22 全綠、lint 0；版本 bump v1.20.4
+- **下一步**：交 reviewer 依 §13 驗收 → 開 PR merge；第二個 PR 處理 Phase 14–17（資料層）；Q2/Q3/Q7 三個 bug 修復另開獨立 PR（週視圖 UTC、舊公式文案、window.showToast 未綁定）
 - **最大風險**：Phase 10（session 結算抽離，產品核心）與 Phase 16（storage 映射表化，資料相容性）；兩者都有專屬對策（結算矩陣手測／characterization tests 先行）
 - **絕對不要碰**：localStorage key 名與 JSON 形狀、Supabase schema 與 RLS、`window.*` 全域名稱、`'liquid-galss'`、`personalSpace/**`、部署設定、`index.html` 與 `assets/style.css`（本次重構應對兩者零 diff）
