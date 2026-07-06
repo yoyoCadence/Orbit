@@ -1298,11 +1298,11 @@ export function showXPFloat(text) {
 
 let _syncHideTimer = null;
 
-export function showSyncBanner(state) {
+export function showSyncBanner(status) {
   const el = document.getElementById('sync-banner');
   if (!el) return;
   clearTimeout(_syncHideTimer);
-  if (state === 'syncing') {
+  if (status === 'syncing') {
     el.className = 'syncing';
     el.textContent = '☁️ 同步中…';
   } else {

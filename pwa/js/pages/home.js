@@ -616,7 +616,7 @@ function _endPlanDrag(planList) {
     const idx        = plan.indexOf(targetId);
     if (idx !== -1) plan.splice(before ? idx : idx + 1, 0, dragId);
     state.dailyPlan  = plan;
-    import('../storage.js').then(({ storage: s }) => s.saveDailyPlan(plan));
+    storage.saveDailyPlan(plan);
     if (_container) renderHome(_container);
   }
 
@@ -744,7 +744,7 @@ function _endDrag(container) {
   if (target && target !== _drag.card && _drag.taskId) {
     const newTasks = reorderTasks(state.tasks, _drag.taskId, target.dataset.taskId);
     state.tasks.splice(0, state.tasks.length, ...newTasks);
-    import('../storage.js').then(({ storage: s }) => s.saveTasks(state.tasks));
+    storage.saveTasks(state.tasks);
 
     // Preserve which sections are in edit-mode before full re-render
     const editingSections = [...container.querySelectorAll('.task-grid.edit-mode')]

@@ -67,6 +67,18 @@ const RESISTANCE_OPTIONS = [
   { v: '1.4', l: '高（很想拖延或逃避）' },
 ];
 
+// Pro feature highlights — shared by the Pro card grid and the ! info popovers
+const PRO_FEAT_DETAILS = [
+  { icon: '∞', label: '完整歷史紀錄',
+    detail: '免費版僅保留 30 天紀錄。Pro 永久保留所有打卡與 XP 歷程，讓你看見真實的成長曲線。' },
+  { icon: '🛡️', label: 'Streak Shield',
+    detail: '每月獲得 2 張保護卡。偶爾忘記打卡？用盾牌抵擋中斷，連勝不歸零。' },
+  { icon: '📈', label: 'Habit Heatmap',
+    detail: '完整熱力圖顯示全年每日活躍度。免費版僅 90 天。一眼看出哪幾週你最拼。' },
+  { icon: '📤', label: 'CSV 匯出',
+    detail: '一鍵匯出所有打卡紀錄為 CSV，可匯入 Excel / Notion 做進一步分析，資料永遠是你的。' },
+];
+
 // ── Pro upgrade section ───────────────────────────────────────────────────────
 function _proSectionHtml() {
   const isPro    = storage.isProUser();
@@ -110,17 +122,7 @@ function _proSectionHtml() {
     <div class="pro-section-divider"></div>` : '';
 
   // ── Feature highlights (2×2 grid) ────────────────────────────────────────
-  const FEAT_DETAILS = [
-    { icon: '∞', label: '完整歷史紀錄',
-      detail: '免費版僅保留 30 天紀錄。Pro 永久保留所有打卡與 XP 歷程，讓你看見真實的成長曲線。' },
-    { icon: '🛡️', label: 'Streak Shield',
-      detail: '每月獲得 2 張保護卡。偶爾忘記打卡？用盾牌抵擋中斷，連勝不歸零。' },
-    { icon: '📈', label: 'Habit Heatmap',
-      detail: '完整熱力圖顯示全年每日活躍度。免費版僅 90 天。一眼看出哪幾週你最拼。' },
-    { icon: '📤', label: 'CSV 匯出',
-      detail: '一鍵匯出所有打卡紀錄為 CSV，可匯入 Excel / Notion 做進一步分析，資料永遠是你的。' },
-  ];
-  const featItemsHtml = FEAT_DETAILS.map((f, i) => `
+  const featItemsHtml = PRO_FEAT_DETAILS.map((f, i) => `
     <div class="pro-feat-item" data-feat="${i}">
       <span class="pro-feat-item-icon">${f.icon}</span>
       <span class="pro-feat-item-label">${f.label}</span>
@@ -810,21 +812,11 @@ function _setupListeners(container) {
   });
 
   // Feature info buttons → popover
-  const FEAT_DETAILS_LABELS = [
-    { icon: '∞', label: '完整歷史紀錄',
-      detail: '免費版僅保留 30 天紀錄。Pro 永久保留所有打卡與 XP 歷程，讓你看見真實的成長曲線。' },
-    { icon: '🛡️', label: 'Streak Shield',
-      detail: '每月獲得 2 張保護卡。偶爾忘記打卡？用盾牌抵擋中斷，連勝不歸零。' },
-    { icon: '📈', label: 'Habit Heatmap',
-      detail: '完整熱力圖顯示全年每日活躍度。免費版僅 90 天。一眼看出哪幾週你最拼。' },
-    { icon: '📤', label: 'CSV 匯出',
-      detail: '一鍵匯出所有打卡紀錄為 CSV，可匯入 Excel / Notion 做進一步分析，資料永遠是你的。' },
-  ];
   container.querySelectorAll('.pro-feat-info-btn').forEach(btn => {
     btn.addEventListener('click', e => {
       e.stopPropagation();
       const idx = Number(btn.dataset.feat);
-      const feat = FEAT_DETAILS_LABELS[idx];
+      const feat = PRO_FEAT_DETAILS[idx];
       if (!feat) return;
       _showFeatPopover(btn, feat);
     });
