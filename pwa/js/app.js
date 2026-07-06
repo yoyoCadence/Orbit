@@ -4,8 +4,7 @@ import { signIn, signUp, signInWithGoogle, signOut as authSignOut, getSession, o
 import { getLevelInfo, getDisplayTitle } from './leveling.js';
 import {
   calculateBreathingProfile, getBreathingTitle,
-  loadBreathingFlowState, updateBreathingFlowState,
-  showBreathingInfoModal,
+  loadBreathingFlowState, showBreathingInfoModal,
 } from './titleBreathing.js';
 import {
   calcBaseXP, calcFinalXP, calcEnergyCost, calcEnergyGain,
@@ -1669,8 +1668,8 @@ document.addEventListener('focusout', e => {
 let _badgeMod = null;
 
 function warmEnhancementModules() {
-  const run = typeof requestIdleCallback !== 'undefined'
-    ? cb => requestIdleCallback(cb, { timeout: 2000 })
+  const run = typeof window.requestIdleCallback !== 'undefined'
+    ? cb => window.requestIdleCallback(cb, { timeout: 2000 })
     : cb => setTimeout(cb, 500);
   run(_doWarmImports);
 }
