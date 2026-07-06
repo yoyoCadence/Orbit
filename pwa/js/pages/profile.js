@@ -2,7 +2,7 @@ import { state }                                         from '../state.js';
 import { storage, db }                                    from '../storage.js';
 import { getLevelInfo, getDisplayTitle, xpTable,
          getAllTemplates }                                 from '../leveling.js';
-import { effectiveToday }                                 from '../utils.js';
+import { effectiveToday, escHtml }                        from '../utils.js';
 import {
   calculateBreathingProfile, getBreathingTitle,
   loadBreathingFlowState, updateBreathingFlowState,
@@ -11,6 +11,7 @@ import {
 import { calcHourDistribution, calcStreakMilestone,
          calcDailyStats }                                 from '../engine.js';
 import { shareGrowthCard, supportsNativeShare }           from '../platform/share.js';
+import { goToProCard }                                    from '../ui/proNav.js';
 
 export function renderProfile(container) {
   const user   = state.user;
@@ -381,6 +382,10 @@ export function renderProfile(container) {
     _syncUserPreference();
   });
 
+  // Pro upsell buttons (heatmap footer / locked dashboard)
+  container.querySelector('.hm-upgrade-btn')?.addEventListener('click', () => goToProCard());
+  container.querySelector('.dash-upgrade-btn')?.addEventListener('click', () => goToProCard());
+
   // Scroll heatmap to rightmost (newest) on render
   const hmScroll = container.querySelector('.hm-scroll');
   if (hmScroll) hmScroll.scrollLeft = hmScroll.scrollWidth;
@@ -422,7 +427,7 @@ function _heatmapHtml(sessions, isPro, newDayHour = 5) {
 
   const note = isPro
     ? `<span style="font-size:11px;color:var(--text-muted)">近 365 天</span>`
-    : `<span style="font-size:11px;color:var(--text-muted)">近 90 天・<button class="hm-upgrade-btn" onclick="sessionStorage.setItem('orbit_pro_highlight','1');window.navigate('settings');setTimeout(()=>window._scrollToProCard?.(),300)">Pro 查看完整年度 →</button></span>`;
+    : `<span style="font-size:11px;color:var(--text-muted)">近 90 天・<button class="hm-upgrade-btn">Pro 查看完整年度 →</button></span>`;
 
   return `
     <div class="hm-scroll"><div class="hm-grid">${gridCells}</div></div>
@@ -441,8 +446,7 @@ function _dashboardHtml(sessions, isPro, user) {
         <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px">
           任務效率、最佳作業時段、Streak 里程碑預測
         </div>
-        <button class="btn btn-primary btn-sm"
-                onclick="sessionStorage.setItem('orbit_pro_highlight','1');window.navigate('settings');setTimeout(()=>window._scrollToProCard?.(),300)">
+        <button class="btn btn-primary btn-sm dash-upgrade-btn">
           ✦ 升級 Pro 解鎖
         </button>
       </div>
@@ -537,9 +541,7 @@ function _dashboardHtml(sessions, isPro, user) {
 }
 
 function _goToProCard() {
-  sessionStorage.setItem('orbit_pro_highlight', '1');
-  window.navigate('settings');
-  setTimeout(() => window._scrollToProCard?.(), 300);
+  goToProCard();
 }
 
 // ─── TIER_LEVELS: the 11 threshold levels in all built-in templates ───────────
@@ -755,10 +757,4 @@ function _xpTableRow(r, info, user) {
       <span class="xp-table-xp">${r.from === info.level ? `${info.currentXP} / ` : ''}${r.xp} XP</span>
     </div>
   `;
-}
-
-function escHtml(str) {
-  return String(str)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }

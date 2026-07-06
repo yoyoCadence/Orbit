@@ -39,7 +39,8 @@ vi.mock('../../pwa/js/supabase.js', () => ({
 vi.mock('../../pwa/js/state.js',   () => ({ state: mockState }));
 vi.mock('../../pwa/js/storage.js', () => ({ storage: mockStorage, db: {} }));
 
-vi.mock('../../pwa/js/utils.js', () => ({
+vi.mock('../../pwa/js/utils.js', async (importOriginal) => ({
+  ...(await importOriginal()),
   today:      () => '2026-04-16',
   formatTime: () => '10:00',
   sortSessionsNewestFirst: sessions => [...sessions].sort(

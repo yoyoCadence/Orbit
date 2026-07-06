@@ -35,18 +35,18 @@ pkg.version = nextVersion;
 writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf8');
 console.log(`package.json  ${prevVStr} → ${nextVStr}`);
 
-// ── 2. pwa/js/app.js ─────────────────────────────────────────────────────────
-const appPath = resolve(ROOT, 'pwa/js/app.js');
+// ── 2. pwa/js/version.js ─────────────────────────────────────────────────────
+const appPath = resolve(ROOT, 'pwa/js/version.js');
 const appSrc  = readFileSync(appPath, 'utf8');
 const appNext = appSrc.replace(
   /export const APP_VERSION = 'v[\d.]+';/,
   `export const APP_VERSION = '${nextVStr}';`
 );
 if (appNext === appSrc) {
-  console.error('WARN: APP_VERSION not updated — pattern not found in pwa/js/app.js');
+  console.error('WARN: APP_VERSION not updated — pattern not found in pwa/js/version.js');
 } else {
   writeFileSync(appPath, appNext, 'utf8');
-  console.log(`pwa/js/app.js ${prevVStr} → ${nextVStr}`);
+  console.log(`pwa/js/version.js ${prevVStr} → ${nextVStr}`);
 }
 
 // ── 3. pwa/sw.js ─────────────────────────────────────────────────────────────

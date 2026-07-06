@@ -1,9 +1,8 @@
 import { state }                    from '../state.js';
 import { storage }                   from '../storage.js';
-import { formatTime, formatDate, sortSessionsNewestFirst } from '../utils.js';
-
-const RESULT_ICON  = { complete: '✅', partial: '🔶', invalid: '❌', instant: '✓' };
-const RESULT_LABEL = { complete: '完成', partial: '部分完成', invalid: '無效', instant: '完成' };
+import { formatDate, sortSessionsNewestFirst } from '../utils.js';
+import { goToProCard } from '../ui/proNav.js';
+import { sessionRowHtml, bindProofThumbs } from '../ui/sessionRow.js';
 
 const FREE_DAYS = 30; // free tier history depth
 
@@ -39,30 +38,9 @@ export function renderGoals(container) {
 
   const groupsHtml = Object.entries(grouped).map(([date, sessions]) => {
     const totalXP = sessions.reduce((sum, s) => sum + (s.finalXP || 0), 0);
-    const rowsHtml = sessions.map(s => {
-      const dur = s.durationMinutes > 0 ? ` · ${s.durationMinutes}m` : '';
-      const xpStr = s.finalXP > 0
-        ? `+${s.finalXP} XP`
-        : s.energyGain > 0
-          ? `+${s.energyGain} ⚡`
-          : s.result === 'invalid' ? '0 XP' : '';
-      const proof = localStorage.getItem(`orbit_proof_${s.id}`);
-      const thumbHtml = proof
-        ? `<span class="session-proof-thumb-wrap"><img class="session-proof-thumb" src="${proof}" alt="佐證"></span>`
-        : '';
-      return `
-        <div class="log-item">
-          <span class="log-result-icon">${RESULT_ICON[s.result] || '✓'}</span>
-          <div class="log-info">
-            <div class="log-name">${escHtml(s.taskName)}</div>
-            <div class="log-time">${formatTime(s.completedAt)}${dur} · ${RESULT_LABEL[s.result] || ''}</div>
-            ${s.note ? `<div class="log-note">💬 ${escHtml(s.note)}</div>` : ''}
-          </div>
-          ${thumbHtml}
-          <span class="log-xp ${s.result === 'invalid' ? 'log-xp-invalid' : ''}">${xpStr}</span>
-        </div>
-      `;
-    }).join('');
+    const rowsHtml = sessions.map(s =>
+      sessionRowHtml(s, { showNote: true, showResultLabel: true })
+    ).join('');
 
     return `
       <div class="date-group">
@@ -84,7 +62,7 @@ export function renderGoals(container) {
           <div class="history-lock-desc">免費版顯示近 ${FREE_DAYS} 天 · 升級後立即完整呈現</div>
         </div>
       </div>
-      <button class="history-lock-btn" onclick="sessionStorage.setItem('orbit_pro_highlight','1'); window.navigate('settings'); setTimeout(() => window._scrollToProCard?.(), 300)">查看 Pro 方案 →</button>
+      <button class="history-lock-btn">查看 Pro 方案 →</button>
     </div>
   ` : '';
 
@@ -94,17 +72,7 @@ export function renderGoals(container) {
     ${lockCardHtml}
   `;
 
-  container.querySelectorAll('.session-proof-thumb').forEach(img => {
-    img.style.cursor = 'zoom-in';
-    img.addEventListener('click', e => {
-      e.stopPropagation();
-      window._showProofLightbox(img.src);
-    });
-  });
-}
+  container.querySelector('.history-lock-btn')?.addEventListener('click', () => goToProCard());
 
-function escHtml(str) {
-  return String(str)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  bindProofThumbs(container);
 }

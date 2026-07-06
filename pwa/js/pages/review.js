@@ -1,6 +1,7 @@
 import { state }               from '../state.js';
 import { storage }             from '../storage.js';
-import { today }               from '../utils.js';
+import { today, escHtml }      from '../utils.js';
+import { goToProCard }         from '../ui/proNav.js';
 import { calcDailyStats, calcValueConfidence } from '../engine.js';
 
 const FREE_MONTHS = 3; // free tier month-view depth
@@ -50,6 +51,8 @@ export function renderReview(container) {
   } else {
     container.innerHTML = toggleHtml + buildWeekView();
   }
+
+  container.querySelector('.history-lock-btn')?.addEventListener('click', () => goToProCard());
 }
 
 // ─── Week view ────────────────────────────────────────────────────────────────
@@ -256,7 +259,7 @@ function buildMonthView() {
             <div class="history-lock-desc">免費版可查看近 ${FREE_MONTHS} 個月 · Pro 無限歷史</div>
           </div>
         </div>
-        <button class="history-lock-btn" onclick="sessionStorage.setItem('orbit_pro_highlight','1'); window.navigate('settings'); setTimeout(() => window._scrollToProCard?.(), 300)">查看 Pro 方案 →</button>
+        <button class="history-lock-btn">查看 Pro 方案 →</button>
       </div>
     `;
   }
@@ -381,11 +384,4 @@ function buildMonthView() {
       ${topTasksHtml}
     </div>
   `;
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-function escHtml(str) {
-  return String(str)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }

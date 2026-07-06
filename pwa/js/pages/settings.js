@@ -1,9 +1,12 @@
 import { state }                      from '../state.js';
 import { storage }                     from '../storage.js';
-import { applyTheme, applyUiSkin, applyBgImage, removeBgImage, applyRandomThemeForToday, APP_VERSION } from '../app.js';
-import { uid, today }                  from '../utils.js';
+import { applyTheme, applyUiSkin, applyBgImage, removeBgImage, applyRandomThemeForToday } from '../theme.js';
+import { APP_VERSION } from '../version.js';
+import { uid, today, escHtml }         from '../utils.js';
 import { exportSessionsCSV, showReportPicker } from '../export.js';
 import { xpRequired, getLevelInfo }            from '../leveling.js';
+import { previewBaseXP }                       from '../engine.js';
+import { goToProCard }                         from '../ui/proNav.js';
 
 // ── Theme definitions ────────────────────────────────────────────────────────
 export const THEMES = [
@@ -65,6 +68,18 @@ const RESISTANCE_OPTIONS = [
   { v: '1.4', l: '高（很想拖延或逃避）' },
 ];
 
+// Pro feature highlights — shared by the Pro card grid and the ! info popovers
+const PRO_FEAT_DETAILS = [
+  { icon: '∞', label: '完整歷史紀錄',
+    detail: '免費版僅保留 30 天紀錄。Pro 永久保留所有打卡與 XP 歷程，讓你看見真實的成長曲線。' },
+  { icon: '🛡️', label: 'Streak Shield',
+    detail: '每月獲得 2 張保護卡。偶爾忘記打卡？用盾牌抵擋中斷，連勝不歸零。' },
+  { icon: '📈', label: 'Habit Heatmap',
+    detail: '完整熱力圖顯示全年每日活躍度。免費版僅 90 天。一眼看出哪幾週你最拼。' },
+  { icon: '📤', label: 'CSV 匯出',
+    detail: '一鍵匯出所有打卡紀錄為 CSV，可匯入 Excel / Notion 做進一步分析，資料永遠是你的。' },
+];
+
 // ── Pro upgrade section ───────────────────────────────────────────────────────
 function _proSectionHtml() {
   const isPro    = storage.isProUser();
@@ -108,17 +123,7 @@ function _proSectionHtml() {
     <div class="pro-section-divider"></div>` : '';
 
   // ── Feature highlights (2×2 grid) ────────────────────────────────────────
-  const FEAT_DETAILS = [
-    { icon: '∞', label: '完整歷史紀錄',
-      detail: '免費版僅保留 30 天紀錄。Pro 永久保留所有打卡與 XP 歷程，讓你看見真實的成長曲線。' },
-    { icon: '🛡️', label: 'Streak Shield',
-      detail: '每月獲得 2 張保護卡。偶爾忘記打卡？用盾牌抵擋中斷，連勝不歸零。' },
-    { icon: '📈', label: 'Habit Heatmap',
-      detail: '完整熱力圖顯示全年每日活躍度。免費版僅 90 天。一眼看出哪幾週你最拼。' },
-    { icon: '📤', label: 'CSV 匯出',
-      detail: '一鍵匯出所有打卡紀錄為 CSV，可匯入 Excel / Notion 做進一步分析，資料永遠是你的。' },
-  ];
-  const featItemsHtml = FEAT_DETAILS.map((f, i) => `
+  const featItemsHtml = PRO_FEAT_DETAILS.map((f, i) => `
     <div class="pro-feat-item" data-feat="${i}">
       <span class="pro-feat-item-icon">${f.icon}</span>
       <span class="pro-feat-item-label">${f.label}</span>
@@ -362,9 +367,9 @@ export function renderSettings(container) {
   _renderView(container);
 }
 
+// Already on the settings page — no navigation, scroll as soon as possible.
 function _goToProCard() {
-  sessionStorage.setItem('orbit_pro_highlight', '1');
-  setTimeout(() => window._scrollToProCard?.(), 50);
+  goToProCard({ navigate: false, delayMs: 50 });
 }
 
 function _themeCardHtml(t, currentTheme, locked = false) {
@@ -808,21 +813,11 @@ function _setupListeners(container) {
   });
 
   // Feature info buttons → popover
-  const FEAT_DETAILS_LABELS = [
-    { icon: '∞', label: '完整歷史紀錄',
-      detail: '免費版僅保留 30 天紀錄。Pro 永久保留所有打卡與 XP 歷程，讓你看見真實的成長曲線。' },
-    { icon: '🛡️', label: 'Streak Shield',
-      detail: '每月獲得 2 張保護卡。偶爾忘記打卡？用盾牌抵擋中斷，連勝不歸零。' },
-    { icon: '📈', label: 'Habit Heatmap',
-      detail: '完整熱力圖顯示全年每日活躍度。免費版僅 90 天。一眼看出哪幾週你最拼。' },
-    { icon: '📤', label: 'CSV 匯出',
-      detail: '一鍵匯出所有打卡紀錄為 CSV，可匯入 Excel / Notion 做進一步分析，資料永遠是你的。' },
-  ];
   container.querySelectorAll('.pro-feat-info-btn').forEach(btn => {
     btn.addEventListener('click', e => {
       e.stopPropagation();
       const idx = Number(btn.dataset.feat);
-      const feat = FEAT_DETAILS_LABELS[idx];
+      const feat = PRO_FEAT_DETAILS[idx];
       if (!feat) return;
       _showFeatPopover(btn, feat);
     });
@@ -1162,9 +1157,7 @@ function _showTaskModal(container, task) {
     const v  = valueEl.value;
     const d  = parseFloat(modal.querySelector('#tm-difficulty').value);
     const r  = parseFloat(modal.querySelector('#tm-resistance').value);
-    const vw = { S: 3.2, A: 2.2, B: 1.2, D: 0 }[v] ?? 0;
-    const dw = d; const rw = r;
-    const baseXP = Math.round(20 * vw * dw * rw);
+    const baseXP = previewBaseXP(v, d, r);
     xpPreview.innerHTML = baseXP > 0
       ? `<span>預估 XP：<strong>+${baseXP}</strong>（完成）/ <strong>+${Math.round(baseXP * 0.6)}</strong>（部分完成）</span>`
       : `<span style="color:var(--text-muted)">此任務不提供 XP</span>`;
@@ -1276,10 +1269,4 @@ function _compressImage(file, maxPx, quality) {
     };
     reader.readAsDataURL(file);
   });
-}
-
-function escHtml(str) {
-  return String(str)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }

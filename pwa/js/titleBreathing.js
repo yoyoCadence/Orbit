@@ -401,7 +401,7 @@ export function loadBreathingFlowState() {
 }
 
 export function saveBreathingFlowState(s) {
-  try { localStorage.setItem('orbit_breathing_flow', JSON.stringify(s)); } catch {}
+  try { localStorage.setItem('orbit_breathing_flow', JSON.stringify(s)); } catch { /* storage full — skip persist */ }
 }
 
 // Called once per day to advance the stability logic.
@@ -448,7 +448,7 @@ function _esc(str) {
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-export function showBreathingInfoModal({ profile, level, titleResult }) {
+export function showBreathingInfoModal({ profile, titleResult }) {
   if (typeof document === 'undefined') return;
 
   document.getElementById('breathing-info-modal')?.remove();
@@ -539,7 +539,7 @@ export function showBreathingInfoModal({ profile, level, titleResult }) {
 
       <div class="br-footer-note">
         稱號由最近 30 天任務行為判定，等級決定招式階段。<br>
-        ★ 主流派　☆ 副流派（雙流派時顯示）
+        ★ 主流派&#12288;☆ 副流派（雙流派時顯示）
       </div>
     </div>
   `;

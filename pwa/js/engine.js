@@ -23,6 +23,19 @@ export function calcBaseXP(task) {
   return Math.round(20 * vw * dw * rw);
 }
 
+/**
+ * Base-XP estimate from raw value/difficulty/resistance (UI preview only).
+ * Unlike calcBaseXP it takes loose form values and does NOT check impactType —
+ * home task cards and the settings task modal preview rely on that looseness.
+ */
+export function previewBaseXP(value, difficulty, resistance) {
+  if (value === 'D') return 0;
+  const vw = VALUE_WEIGHT[value]                   ?? 0;
+  const dw = DIFFICULTY_WEIGHT[String(difficulty)] ?? 0;
+  const rw = RESISTANCE_WEIGHT[String(resistance)] ?? 0;
+  return Math.round(20 * vw * dw * rw);
+}
+
 /** streakMultiplier: 1.00 → 1.12 in 0.02 steps per 5 streak days */
 export function calcStreakMultiplier(streakDays) {
   return Math.min(1 + 0.02 * Math.floor((streakDays || 0) / 5), 1.12);

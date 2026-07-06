@@ -1,7 +1,8 @@
 import { state }              from '../state.js';
-import { effectiveToday, formatTime, sortSessionsNewestFirst } from '../utils.js';
-import { calcDailyStats, reorderTasks } from '../engine.js';
+import { effectiveToday, sortSessionsNewestFirst, escHtml } from '../utils.js';
+import { calcDailyStats, reorderTasks, previewBaseXP } from '../engine.js';
 import { storage } from '../storage.js';
+import { sessionRowHtml, bindProofThumbs } from '../ui/sessionRow.js';
 
 // ─── Value / impactType labels ────────────────────────────────────────────────
 
@@ -181,7 +182,7 @@ export function renderHome(container) {
     <div class="section-title" style="margin-top:20px">📝 今日紀錄</div>
     <div class="card">
       ${recentSess.length
-        ? recentSess.map(s => sessionRowHtml(s)).join('')
+        ? recentSess.map(s => sessionRowHtml(s, { showDelete: true, emptyXpText: '完成' })).join('')
         : `<div class="empty-state"><div class="empty-icon">⚡</div><p>點擊任務開始今日記錄！</p></div>`
       }
     </div>
@@ -261,13 +262,7 @@ export function renderHome(container) {
   });
 
   // ── Bind: proof thumbnails → lightbox ────────────────────────────────────────
-  container.querySelectorAll('.session-proof-thumb').forEach(img => {
-    img.style.cursor = 'zoom-in';
-    img.addEventListener('click', e => {
-      e.stopPropagation();
-      window._showProofLightbox(img.src);
-    });
-  });
+  bindProofThumbs(container);
 
   // ── Bind: streak shield banner buttons ───────────────────────────────────────
   container.querySelector('.shield-use-btn')?.addEventListener('click', () => window.useStreakShield());
@@ -363,52 +358,10 @@ function taskCardHtml(task, countToday, inPlan) {
   `;
 }
 
-// ─── Session row HTML ────────────────────────────────────────────────────────
-
-const RESULT_ICON = { complete: '✅', partial: '🔶', invalid: '❌', instant: '✓' };
-
-function sessionRowHtml(s) {
-  const icon  = RESULT_ICON[s.result] || '✓';
-  const xpStr = s.finalXP > 0
-    ? `+${s.finalXP} XP`
-    : s.energyGain > 0
-      ? `+${s.energyGain} ⚡`
-      : s.result === 'invalid' ? '0 XP' : '完成';
-  const dur   = s.durationMinutes > 0 ? ` · ${s.durationMinutes}m` : '';
-  const proof = localStorage.getItem(`orbit_proof_${s.id}`);
-  const thumbHtml = proof
-    ? `<span class="session-proof-thumb-wrap"><img class="session-proof-thumb" src="${proof}" alt="佐證"></span>`
-    : '';
-
-  return `
-    <div class="log-item">
-      <span class="log-result-icon">${icon}</span>
-      <div class="log-info">
-        <div class="log-name">${escHtml(s.taskName)}</div>
-        <div class="log-time">${formatTime(s.completedAt)}${dur}</div>
-      </div>
-      ${thumbHtml}
-      <span class="log-xp ${s.result === 'invalid' ? 'log-xp-invalid' : ''}">${xpStr}</span>
-      <button class="session-del-btn" data-session-id="${s.id}" title="撤銷">✕</button>
-    </div>
-  `;
-}
-
 // ─── XP preview (base, no streak) ────────────────────────────────────────────
-// Weight maps mirror engine.js exactly (include '1' key for number-stored values)
 
 function xpPreview(task) {
-  if (task.value === 'D') return 0;
-  const vw = { S: 3.2, A: 2.2, B: 1.2, D: 0 }[task.value] ?? 0;
-  const dw = { '0.4': 0.4, '0.7': 0.7, '1': 1.0, '1.0': 1.0 }[String(task.difficulty)] ?? 0;
-  const rw = { '1': 1.0, '1.0': 1.0, '1.2': 1.2, '1.4': 1.4 }[String(task.resistance)] ?? 0;
-  return Math.round(20 * vw * dw * rw);
-}
-
-function escHtml(str) {
-  return String(str)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return previewBaseXP(task.value, task.difficulty, task.resistance);
 }
 
 // ─── Task detail modal ───────────────────────────────────────────────────────
@@ -663,7 +616,7 @@ function _endPlanDrag(planList) {
     const idx        = plan.indexOf(targetId);
     if (idx !== -1) plan.splice(before ? idx : idx + 1, 0, dragId);
     state.dailyPlan  = plan;
-    import('../storage.js').then(({ storage: s }) => s.saveDailyPlan(plan));
+    storage.saveDailyPlan(plan);
     if (_container) renderHome(_container);
   }
 
@@ -791,7 +744,7 @@ function _endDrag(container) {
   if (target && target !== _drag.card && _drag.taskId) {
     const newTasks = reorderTasks(state.tasks, _drag.taskId, target.dataset.taskId);
     state.tasks.splice(0, state.tasks.length, ...newTasks);
-    import('../storage.js').then(({ storage: s }) => s.saveTasks(state.tasks));
+    storage.saveTasks(state.tasks);
 
     // Preserve which sections are in edit-mode before full re-render
     const editingSections = [...container.querySelectorAll('.task-grid.edit-mode')]

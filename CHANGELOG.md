@@ -3,6 +3,21 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.20.4] - 2026-07-07
+
+### Changed（純重構，零功能/UI/資料格式變化）
+- app.js 由 2217 行拆分為模組：`router.js`、`theme.js`（含液態玻璃）、`dayCycle.js`、`sessionFlow.js`、`focusTimer.js`、`authFlow.js`、`version.js` 與 `ui/`（feedback / header / proNav / proofSheet / sessionRow），app.js 收斂為 367 行開機編排
+- 消除重複：escHtml ×6、XP 權重表 ×3、Pro 導流片段 ×6、session 列渲染 ×2、即時/計時結算組裝整段重複、開機序列 ×3
+- 斷開 settings.js ⇄ app.js 循環依賴；pages/ 不再靜態依賴 app.js
+- `APP_VERSION` 移至 `version.js`，`scripts/bump.mjs` 改寫目標同步更新（本版即以新流程發佈）
+- 清空全部 5 個既有 lint errors（零行為修復）；lint 門檻改為 0
+- 交接文件 `docs/refactor-handoff.md`（14 章節，含 reviewer 驗收指令與風險登記簿）
+
+### 驗證
+- unit 643/643、e2e 22/22、lint 0；`window.*` 全域介面與 localStorage/Supabase 資料行為完全不變
+
+---
+
 ## [1.20.3] - 2026-06-17
 
 ### Added

@@ -31,6 +31,13 @@ export function effectiveToday(newDayHour = 5) {
   return now.toLocaleDateString('sv');
 }
 
+/** Escape a string for safe interpolation into HTML (&, <, >, "). */
+export function escHtml(str) {
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 export function formatTime(iso) {
   return new Date(iso).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
 }
