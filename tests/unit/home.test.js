@@ -50,7 +50,8 @@ vi.mock('../../pwa/js/utils.js', async (importOriginal) => ({
   ),
 }));
 
-vi.mock('../../pwa/js/engine.js', () => ({
+vi.mock('../../pwa/js/engine.js', async (importOriginal) => ({
+  ...(await importOriginal()),
   calcDailyStats: vi.fn(() => ({
     productiveXP:         0,
     hasASTask:            false,

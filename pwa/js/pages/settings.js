@@ -4,6 +4,7 @@ import { applyTheme, applyUiSkin, applyBgImage, removeBgImage, applyRandomThemeF
 import { uid, today, escHtml }         from '../utils.js';
 import { exportSessionsCSV, showReportPicker } from '../export.js';
 import { xpRequired, getLevelInfo }            from '../leveling.js';
+import { previewBaseXP }                       from '../engine.js';
 
 // ── Theme definitions ────────────────────────────────────────────────────────
 export const THEMES = [
@@ -1162,9 +1163,7 @@ function _showTaskModal(container, task) {
     const v  = valueEl.value;
     const d  = parseFloat(modal.querySelector('#tm-difficulty').value);
     const r  = parseFloat(modal.querySelector('#tm-resistance').value);
-    const vw = { S: 3.2, A: 2.2, B: 1.2, D: 0 }[v] ?? 0;
-    const dw = d; const rw = r;
-    const baseXP = Math.round(20 * vw * dw * rw);
+    const baseXP = previewBaseXP(v, d, r);
     xpPreview.innerHTML = baseXP > 0
       ? `<span>預估 XP：<strong>+${baseXP}</strong>（完成）/ <strong>+${Math.round(baseXP * 0.6)}</strong>（部分完成）</span>`
       : `<span style="color:var(--text-muted)">此任務不提供 XP</span>`;

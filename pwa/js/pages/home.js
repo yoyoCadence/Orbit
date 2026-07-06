@@ -1,6 +1,6 @@
 import { state }              from '../state.js';
 import { effectiveToday, formatTime, sortSessionsNewestFirst, escHtml } from '../utils.js';
-import { calcDailyStats, reorderTasks } from '../engine.js';
+import { calcDailyStats, reorderTasks, previewBaseXP } from '../engine.js';
 import { storage } from '../storage.js';
 
 // ─── Value / impactType labels ────────────────────────────────────────────────
@@ -395,14 +395,9 @@ function sessionRowHtml(s) {
 }
 
 // ─── XP preview (base, no streak) ────────────────────────────────────────────
-// Weight maps mirror engine.js exactly (include '1' key for number-stored values)
 
 function xpPreview(task) {
-  if (task.value === 'D') return 0;
-  const vw = { S: 3.2, A: 2.2, B: 1.2, D: 0 }[task.value] ?? 0;
-  const dw = { '0.4': 0.4, '0.7': 0.7, '1': 1.0, '1.0': 1.0 }[String(task.difficulty)] ?? 0;
-  const rw = { '1': 1.0, '1.0': 1.0, '1.2': 1.2, '1.4': 1.4 }[String(task.resistance)] ?? 0;
-  return Math.round(20 * vw * dw * rw);
+  return previewBaseXP(task.value, task.difficulty, task.resistance);
 }
 
 // ─── Task detail modal ───────────────────────────────────────────────────────
