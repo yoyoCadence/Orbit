@@ -27,6 +27,7 @@ const SHELL = [
   './js/pages/personalSpace.js',
   './js/pages/settings.js',
   './js/pages/leaderboard.js',
+  './js/ui/feedback.js',
   './js/ui/proNav.js',
   './js/ui/sessionRow.js',
   './js/platform/storageBridge.js',

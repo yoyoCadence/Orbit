@@ -25,6 +25,10 @@ import { renderSettings }       from './pages/settings.js';
 import { renderPersonalSpace }  from './pages/personalSpace.js';
 import { haptic } from './platform/haptics.js';
 import { applyTimeBand }        from './timeBand.js';
+import { showToast, showXPFloat, showSyncBanner, showLevelUp } from './ui/feedback.js';
+
+// Re-export so existing importers (pages via dynamic import) keep working.
+export { showToast, showXPFloat, showSyncBanner };
 
 // ─── Version ─────────────────────────────────────────────────────────────────
 export { APP_VERSION } from './version.js';
@@ -1284,36 +1288,6 @@ function showMorningModal() {
   });
 }
 
-// ─── XP float animation ──────────────────────────────────────────────────────
-
-export function showXPFloat(text) {
-  const el = document.createElement('div');
-  el.className = 'xp-float';
-  el.textContent = text;
-  document.body.appendChild(el);
-  setTimeout(() => el.remove(), 1400);
-}
-
-// ─── Sync banner ─────────────────────────────────────────────────────────────
-
-let _syncHideTimer = null;
-
-export function showSyncBanner(status) {
-  const el = document.getElementById('sync-banner');
-  if (!el) return;
-  clearTimeout(_syncHideTimer);
-  if (status === 'syncing') {
-    el.className = 'syncing';
-    el.textContent = '☁️ 同步中…';
-  } else {
-    el.className = 'synced';
-    el.textContent = '✓ 已更新';
-    _syncHideTimer = setTimeout(() => {
-      el.className = 'hidden';
-    }, 2000);
-  }
-}
-
 // ─── Trial banner ────────────────────────────────────────────────────────────
 
 function _showTrialBanner() {
@@ -1334,27 +1308,6 @@ function _showTrialBanner() {
 window._dismissTrialBanner = function () {
   storage.saveTrialBannerDismissDate(today());
   document.getElementById('trial-banner')?.classList.add('hidden');
-};
-
-// ─── Toast ────────────────────────────────────────────────────────────────────
-
-export function showToast(text) {
-  const el = document.createElement('div');
-  el.className = 'toast';
-  el.textContent = text;
-  document.body.appendChild(el);
-  setTimeout(() => el.remove(), 2500);
-}
-
-// ─── Level-up overlay ────────────────────────────────────────────────────────
-
-function showLevelUp(level, title) {
-  document.getElementById('lu-level').textContent = level;
-  document.getElementById('lu-title').textContent = title;
-  document.getElementById('levelup-overlay').classList.remove('hidden');
-}
-window.closeLevelUp = function () {
-  document.getElementById('levelup-overlay').classList.add('hidden');
 };
 
 window.signOut = async function () {
