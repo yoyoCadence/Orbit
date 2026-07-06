@@ -32,6 +32,7 @@ const SHELL = [
   './js/ui/feedback.js',
   './js/ui/header.js',
   './js/ui/proNav.js',
+  './js/ui/proofSheet.js',
   './js/ui/sessionRow.js',
   './js/platform/storageBridge.js',
   './js/platform/notifications.js',
