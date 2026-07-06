@@ -27,6 +27,7 @@ const SHELL = [
   './js/pages/settings.js',
   './js/pages/leaderboard.js',
   './js/ui/proNav.js',
+  './js/ui/sessionRow.js',
   './js/platform/storageBridge.js',
   './js/platform/notifications.js',
   './js/platform/haptics.js',

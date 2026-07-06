@@ -1,7 +1,8 @@
 import { state }              from '../state.js';
-import { effectiveToday, formatTime, sortSessionsNewestFirst, escHtml } from '../utils.js';
+import { effectiveToday, sortSessionsNewestFirst, escHtml } from '../utils.js';
 import { calcDailyStats, reorderTasks, previewBaseXP } from '../engine.js';
 import { storage } from '../storage.js';
+import { sessionRowHtml, bindProofThumbs } from '../ui/sessionRow.js';
 
 // ─── Value / impactType labels ────────────────────────────────────────────────
 
@@ -181,7 +182,7 @@ export function renderHome(container) {
     <div class="section-title" style="margin-top:20px">📝 今日紀錄</div>
     <div class="card">
       ${recentSess.length
-        ? recentSess.map(s => sessionRowHtml(s)).join('')
+        ? recentSess.map(s => sessionRowHtml(s, { showDelete: true, emptyXpText: '完成' })).join('')
         : `<div class="empty-state"><div class="empty-icon">⚡</div><p>點擊任務開始今日記錄！</p></div>`
       }
     </div>
@@ -261,13 +262,7 @@ export function renderHome(container) {
   });
 
   // ── Bind: proof thumbnails → lightbox ────────────────────────────────────────
-  container.querySelectorAll('.session-proof-thumb').forEach(img => {
-    img.style.cursor = 'zoom-in';
-    img.addEventListener('click', e => {
-      e.stopPropagation();
-      window._showProofLightbox(img.src);
-    });
-  });
+  bindProofThumbs(container);
 
   // ── Bind: streak shield banner buttons ───────────────────────────────────────
   container.querySelector('.shield-use-btn')?.addEventListener('click', () => window.useStreakShield());
@@ -359,37 +354,6 @@ function taskCardHtml(task, countToday, inPlan) {
       <div class="swipe-detail-action">
         <button class="swipe-detail-btn" data-task-id="${task.id}">詳細</button>
       </div>
-    </div>
-  `;
-}
-
-// ─── Session row HTML ────────────────────────────────────────────────────────
-
-const RESULT_ICON = { complete: '✅', partial: '🔶', invalid: '❌', instant: '✓' };
-
-function sessionRowHtml(s) {
-  const icon  = RESULT_ICON[s.result] || '✓';
-  const xpStr = s.finalXP > 0
-    ? `+${s.finalXP} XP`
-    : s.energyGain > 0
-      ? `+${s.energyGain} ⚡`
-      : s.result === 'invalid' ? '0 XP' : '完成';
-  const dur   = s.durationMinutes > 0 ? ` · ${s.durationMinutes}m` : '';
-  const proof = localStorage.getItem(`orbit_proof_${s.id}`);
-  const thumbHtml = proof
-    ? `<span class="session-proof-thumb-wrap"><img class="session-proof-thumb" src="${proof}" alt="佐證"></span>`
-    : '';
-
-  return `
-    <div class="log-item">
-      <span class="log-result-icon">${icon}</span>
-      <div class="log-info">
-        <div class="log-name">${escHtml(s.taskName)}</div>
-        <div class="log-time">${formatTime(s.completedAt)}${dur}</div>
-      </div>
-      ${thumbHtml}
-      <span class="log-xp ${s.result === 'invalid' ? 'log-xp-invalid' : ''}">${xpStr}</span>
-      <button class="session-del-btn" data-session-id="${s.id}" title="撤銷">✕</button>
     </div>
   `;
 }

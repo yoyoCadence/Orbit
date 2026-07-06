@@ -1,10 +1,8 @@
 import { state }                    from '../state.js';
 import { storage }                   from '../storage.js';
-import { formatTime, formatDate, sortSessionsNewestFirst, escHtml } from '../utils.js';
+import { formatDate, sortSessionsNewestFirst } from '../utils.js';
 import { goToProCard } from '../ui/proNav.js';
-
-const RESULT_ICON  = { complete: '✅', partial: '🔶', invalid: '❌', instant: '✓' };
-const RESULT_LABEL = { complete: '完成', partial: '部分完成', invalid: '無效', instant: '完成' };
+import { sessionRowHtml, bindProofThumbs } from '../ui/sessionRow.js';
 
 const FREE_DAYS = 30; // free tier history depth
 
@@ -40,30 +38,9 @@ export function renderGoals(container) {
 
   const groupsHtml = Object.entries(grouped).map(([date, sessions]) => {
     const totalXP = sessions.reduce((sum, s) => sum + (s.finalXP || 0), 0);
-    const rowsHtml = sessions.map(s => {
-      const dur = s.durationMinutes > 0 ? ` · ${s.durationMinutes}m` : '';
-      const xpStr = s.finalXP > 0
-        ? `+${s.finalXP} XP`
-        : s.energyGain > 0
-          ? `+${s.energyGain} ⚡`
-          : s.result === 'invalid' ? '0 XP' : '';
-      const proof = localStorage.getItem(`orbit_proof_${s.id}`);
-      const thumbHtml = proof
-        ? `<span class="session-proof-thumb-wrap"><img class="session-proof-thumb" src="${proof}" alt="佐證"></span>`
-        : '';
-      return `
-        <div class="log-item">
-          <span class="log-result-icon">${RESULT_ICON[s.result] || '✓'}</span>
-          <div class="log-info">
-            <div class="log-name">${escHtml(s.taskName)}</div>
-            <div class="log-time">${formatTime(s.completedAt)}${dur} · ${RESULT_LABEL[s.result] || ''}</div>
-            ${s.note ? `<div class="log-note">💬 ${escHtml(s.note)}</div>` : ''}
-          </div>
-          ${thumbHtml}
-          <span class="log-xp ${s.result === 'invalid' ? 'log-xp-invalid' : ''}">${xpStr}</span>
-        </div>
-      `;
-    }).join('');
+    const rowsHtml = sessions.map(s =>
+      sessionRowHtml(s, { showNote: true, showResultLabel: true })
+    ).join('');
 
     return `
       <div class="date-group">
@@ -97,11 +74,5 @@ export function renderGoals(container) {
 
   container.querySelector('.history-lock-btn')?.addEventListener('click', () => goToProCard());
 
-  container.querySelectorAll('.session-proof-thumb').forEach(img => {
-    img.style.cursor = 'zoom-in';
-    img.addEventListener('click', e => {
-      e.stopPropagation();
-      window._showProofLightbox(img.src);
-    });
-  });
+  bindProofThumbs(container);
 }
