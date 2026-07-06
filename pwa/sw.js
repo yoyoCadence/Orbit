@@ -23,6 +23,7 @@ const SHELL = [
   './js/router.js',
   './js/dayCycle.js',
   './js/sessionFlow.js',
+  './js/focusTimer.js',
   './js/tour.js',
   './js/pages/home.js',
   './js/pages/goals.js',
