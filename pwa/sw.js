@@ -21,6 +21,7 @@ const SHELL = [
   './js/timeBand.js',
   './js/theme.js',
   './js/router.js',
+  './js/dayCycle.js',
   './js/tour.js',
   './js/pages/home.js',
   './js/pages/goals.js',
