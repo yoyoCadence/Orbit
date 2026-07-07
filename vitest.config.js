@@ -12,6 +12,7 @@ export default defineConfig({
       ['tests/unit/leaderboard.test.js',      'jsdom'],
       ['tests/unit/review.test.js',           'jsdom'],
       ['tests/unit/goals.test.js',            'jsdom'],
+      ['tests/unit/feedback.test.js',         'jsdom'],
       ['tests/unit/proofCapture.test.js',     'jsdom'],
       ['tests/integration/storage.test.js',   'jsdom'],
     ],

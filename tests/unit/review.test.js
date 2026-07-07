@@ -5,8 +5,8 @@
  * 環境：jsdom
  *
  * 注意事項：
- * - 週視圖的日期以 UTC（toISOString().slice(0,10)）計算，非本地日期。
- *   測試 sessions 的 date 欄位以此對齊。
+ * - 週視圖的日期以本地日期（toLocaleDateString('sv')）計算，
+ *   與 app 其餘日期欄位一致。測試 sessions 的 date 欄位以此對齊。
  * - 月視圖的 _viewYear / _viewMonth 為模組層級狀態，以當前日期初始化。
  * - _viewMode、_viewYear、_viewMonth 在測試間持續存在；
  *   每個 beforeEach 透過 window._reviewSetMode('week') 重置。
@@ -60,9 +60,9 @@ import { renderReview } from '../../pwa/js/pages/review.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Returns today as UTC YYYY-MM-DD — matches how week view builds its date list. */
-function utcToday() {
-  return new Date().toISOString().slice(0, 10);
+/** Returns today as local YYYY-MM-DD — matches how week view builds its date list. */
+function localToday() {
+  return new Date().toLocaleDateString('sv');
 }
 
 /** Returns local YYYY-MM-DD for the current month, day d. */
@@ -76,7 +76,7 @@ function makeSession(overrides = {}) {
     id:              's-1',
     taskId:          'task-1',
     taskName:        '深度學習',
-    date:            utcToday(),
+    date:            localToday(),
     completedAt:     new Date().toISOString(),
     result:          'complete',
     finalXP:         60,
@@ -222,7 +222,7 @@ describe('週視圖 — 待校準任務', () => {
       taskNature: 'maintenance', successCriteria: null, resistance: 1.0,
     })];
     mockState.sessions = [{
-      id: 's-calib', taskId: 'task-calib', date: utcToday(),
+      id: 's-calib', taskId: 'task-calib', date: localToday(),
       completedAt: new Date().toISOString(),
       result: 'complete', durationMinutes: 5, // avgDur < 10 → another -20
       finalXP: 0, energyGain: 0, impactType: 'task',

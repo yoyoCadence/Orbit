@@ -10,6 +10,9 @@ export function showToast(text) {
   document.body.appendChild(el);
   setTimeout(() => el.remove(), 2500);
 }
+// settings.js 與 export.js 以 window.showToast 呼叫（共 13 處）——必須綁定，
+// 否則同步按鈕成功後會拋 TypeError 卡在「同步中…」。
+window.showToast = showToast;
 
 // ─── XP float animation ──────────────────────────────────────────────────────
 

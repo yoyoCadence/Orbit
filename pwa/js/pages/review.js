@@ -60,7 +60,7 @@ function buildWeekView() {
   const dates = [];
   for (let i = 6; i >= 0; i--) {
     const d = new Date(); d.setDate(d.getDate() - i);
-    dates.push(d.toISOString().slice(0, 10));
+    dates.push(d.toLocaleDateString('sv')); // local date — sessions record local dates
   }
 
   const weekSessions = state.sessions.filter(s => dates.includes(s.date));

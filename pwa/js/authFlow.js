@@ -139,12 +139,10 @@ window._showResetPasswordModal = function () {
 
 // ── Login screen ──────────────────────────────────────────────────────────────
 
+// #auth-form 是 index.html 的靜態節點、從不重建——submit 監聽只能綁一次。
+// （舊行為在登出時重置此旗標，導致下次進登入頁重複 addEventListener，
+// 送出時 signIn/signUp 被呼叫兩次。）
 let _loginListenerSet = false;
-
-/** Called on sign-out so the next showLoginScreen re-binds the form listener. */
-export function resetLoginListenerBinding() {
-  _loginListenerSet = false;
-}
 
 function _showAuthError(msg) {
   const el = document.getElementById('auth-error');
