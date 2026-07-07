@@ -1,7 +1,7 @@
 import { state }                                              from './state.js';
 import { storage, db, migrateV1toV2, migrateDefaultFlags }    from './storage.js';
 import { signOut as authSignOut, getSession, onAuthStateChange } from './auth.js';
-import { showLoginScreen, hideLoading, resetLoginListenerBinding } from './authFlow.js';
+import { showLoginScreen, hideLoading } from './authFlow.js';
 import { updateHeader } from './ui/header.js';
 
 // Re-export so existing importers (profile.js via dynamic import, tests) keep working.
@@ -213,7 +213,6 @@ function handleSignOut() {
   if (!_currentSession && !storage.getUser()) return; // already signed out
   _currentSession = null;
   _isGuest        = false;
-  resetLoginListenerBinding();
   state.user     = null;
   state.tasks    = [];
   state.sessions = [];
