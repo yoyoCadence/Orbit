@@ -29,6 +29,8 @@ const mockState = vi.hoisted(() => ({
 
 const mockStorage = vi.hoisted(() => ({
   saveUser:    vi.fn(),
+  // Mirrors the real local-only write so tests can assert the localStorage cache
+  saveUserLocal: vi.fn((u) => localStorage.setItem('yoyo_user', JSON.stringify(u))),
   saveUserAndSync: vi.fn(() => Promise.resolve()),
   isProUser:   vi.fn(() => false),
   isPaidProUser: vi.fn(() => false),

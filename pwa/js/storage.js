@@ -321,6 +321,10 @@ export const storage = {
   // ── User ─────────────────────────────────────────────────────────────────────
   getUser:    ()  => get('user'),
   saveUser:   (u) => { set('user', u); db.upsertProfile(u).catch(console.error); },
+  /** Local-only write — no Supabase sync（profile 樂觀更新、dev tools 用）。 */
+  saveUserLocal: (u) => {
+    try { set('user', u); } catch (err) { console.error('Local user save failed:', err); }
+  },
   saveUserAndSync: async (u) => {
     set('user', u);
     const synced = await db.upsertProfile(u);

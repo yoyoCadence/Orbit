@@ -284,7 +284,7 @@ export function renderProfile(container) {
       const previousAvatarPath = state.user.avatarPath || null;
       state.user.avatar = ev.target.result;
       state.user.avatarPath = null;
-      _saveUserLocalOnly(state.user);
+      storage.saveUserLocal(state.user);
       renderProfile(container);
       import('../app.js').then(({ updateHeader }) => updateHeader());
       _setProfileSyncStatus('avatar-sync-status', '頭像上傳中...');
@@ -298,7 +298,7 @@ export function renderProfile(container) {
         _setProfileSyncStatus('avatar-sync-status', synced ? '頭像已同步' : '頭像已儲存在此裝置，登入後可同步');
       } catch (err) {
         if (err?.message === 'Not authenticated') {
-          _saveUserLocalOnly(state.user);
+          storage.saveUserLocal(state.user);
           renderProfile(container);
           import('../app.js').then(({ updateHeader }) => updateHeader());
           _setProfileSyncStatus('avatar-sync-status', '頭像已儲存在此裝置，登入後可同步');
@@ -307,7 +307,7 @@ export function renderProfile(container) {
         console.error('Avatar upload failed:', err);
         state.user.avatar = previousAvatar;
         state.user.avatarPath = previousAvatarPath;
-        _saveUserLocalOnly(state.user);
+        storage.saveUserLocal(state.user);
         renderProfile(container);
         import('../app.js').then(({ updateHeader }) => updateHeader());
         _setProfileSyncStatus('avatar-sync-status', '頭像上傳失敗，請稍後再試', true);
@@ -326,7 +326,7 @@ export function renderProfile(container) {
     btn.addEventListener('click', async () => {
       state.user.titleTemplate = btn.dataset.template;
       state.user.customTitle   = '';
-      _saveUserLocalOnly(state.user);
+      storage.saveUserLocal(state.user);
       renderProfile(container);
       import('../app.js').then(({ updateHeader }) => updateHeader());
       await _syncUserPreference();
@@ -353,7 +353,7 @@ export function renderProfile(container) {
   document.getElementById('custom-title-save').addEventListener('click', () => {
     const val = document.getElementById('custom-title-input').value.trim();
     state.user.customTitle = val || '';
-    _saveUserLocalOnly(state.user);
+    storage.saveUserLocal(state.user);
     renderProfile(container);
     import('../app.js').then(({ updateHeader }) => updateHeader());
     _syncUserPreference();
@@ -376,7 +376,7 @@ export function renderProfile(container) {
   // Custom title clear
   document.getElementById('custom-title-clear')?.addEventListener('click', () => {
     state.user.customTitle = '';
-    _saveUserLocalOnly(state.user);
+    storage.saveUserLocal(state.user);
     renderProfile(container);
     import('../app.js').then(({ updateHeader }) => updateHeader());
     _syncUserPreference();
@@ -640,7 +640,7 @@ function showTemplateEditor(container, editKey) {
     // Auto-select newly created template
     if (isNew) state.user.titleTemplate = key;
 
-    _saveUserLocalOnly(state.user);
+    storage.saveUserLocal(state.user);
     _syncUserPreference();
     modal.remove();
     renderProfile(container);
@@ -652,7 +652,7 @@ function showTemplateEditor(container, editKey) {
     delete state.user.customTemplates[editKey];
     // Fall back to rpg if deleted template was selected
     if (state.user.titleTemplate === editKey) state.user.titleTemplate = 'rpg';
-    _saveUserLocalOnly(state.user);
+    storage.saveUserLocal(state.user);
     _syncUserPreference();
     modal.remove();
     renderProfile(container);
@@ -697,7 +697,7 @@ function showNameModal(container) {
     btn.textContent = '儲存中...';
     status.textContent = '本機已儲存，同步中…';
     state.user.name = name;
-    _saveUserLocalOnly(state.user);
+    storage.saveUserLocal(state.user);
     renderProfile(container);
     import('../app.js').then(({ updateHeader }) => updateHeader());
     try {
@@ -716,7 +716,7 @@ function showNameModal(container) {
     } catch (err) {
       console.error('Name sync failed:', err);
       state.user.name = previousName;
-      _saveUserLocalOnly(state.user);
+      storage.saveUserLocal(state.user);
       btn.disabled = false;
       btn.textContent = '儲存';
       status.textContent = '同步失敗，請稍後再試';
@@ -725,12 +725,6 @@ function showNameModal(container) {
       import('../app.js').then(({ updateHeader }) => updateHeader());
     }
   });
-}
-
-function _saveUserLocalOnly(user) {
-  try { localStorage.setItem('yoyo_user', JSON.stringify(user)); } catch (err) {
-    console.error('Local user save failed:', err);
-  }
 }
 
 async function _syncUserPreference() {

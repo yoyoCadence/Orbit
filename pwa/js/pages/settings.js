@@ -276,19 +276,24 @@ function _devXpForLevel(level) {
   return xp;
 }
 
+/** Snapshot the current user into the dev backup slot (once) before overriding. */
+function _devBackupOnce() {
+  if (!localStorage.getItem('orbit_dev_backup')) {
+    localStorage.setItem('orbit_dev_backup', JSON.stringify(storage.getUser() ?? {}));
+  }
+}
+
 function _devApplyLevel(level) {
-  const raw = localStorage.getItem('yoyo_user');
-  const u   = raw ? JSON.parse(raw) : {};
-  if (!localStorage.getItem('orbit_dev_backup')) localStorage.setItem('orbit_dev_backup', raw || '{}');
+  const u = storage.getUser() ?? {};
+  _devBackupOnce();
   u.totalXP = _devXpForLevel(Math.max(1, Math.min(100, level)));
-  localStorage.setItem('yoyo_user', JSON.stringify(u));
+  storage.saveUserLocal(u);
   location.reload();
 }
 
 function _devApplyPro(status) {
-  const raw = localStorage.getItem('yoyo_user');
-  const u   = raw ? JSON.parse(raw) : {};
-  if (!localStorage.getItem('orbit_dev_backup')) localStorage.setItem('orbit_dev_backup', raw || '{}');
+  const u = storage.getUser() ?? {};
+  _devBackupOnce();
   if (status === 'paid') {
     u.isPro = true; u.proExpiresAt = null; u.trialStartedAt = null;
   } else if (status === 'trial') {
@@ -298,13 +303,13 @@ function _devApplyPro(status) {
   } else {
     u.isPro = false; u.proExpiresAt = null; u.trialStartedAt = null;
   }
-  localStorage.setItem('yoyo_user', JSON.stringify(u));
+  storage.saveUserLocal(u);
   location.reload();
 }
 
 function _devReset() {
   const backup = localStorage.getItem('orbit_dev_backup');
-  if (backup) localStorage.setItem('yoyo_user', backup);
+  if (backup) storage.saveUserLocal(JSON.parse(backup));
   localStorage.removeItem('orbit_dev_backup');
   location.reload();
 }
