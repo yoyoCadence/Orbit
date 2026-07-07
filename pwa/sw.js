@@ -43,6 +43,7 @@ const SHELL = [
   './js/platform/haptics.js',
   './js/platform/badge.js',
   './js/platform/proofCapture.js',
+  './js/platform/proofStore.js',
   './js/platform/share.js',
   './js/platform/purchases.js',
   './js/personalSpace/index.js',

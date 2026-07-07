@@ -7,6 +7,7 @@ import { exportSessionsCSV, showReportPicker } from '../export.js';
 import { xpRequired, getLevelInfo }            from '../leveling.js';
 import { previewBaseXP }                       from '../engine.js';
 import { goToProCard }                         from '../ui/proNav.js';
+import { proofStats, clearAllProofs }          from '../platform/proofStore.js';
 
 // ── Theme definitions ────────────────────────────────────────────────────────
 export const THEMES = [
@@ -405,18 +406,6 @@ function _themeCardHtml(t, currentTheme, locked = false) {
   `;
 }
 
-function _proofStats() {
-  let count = 0, bytes = 0;
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key?.startsWith('orbit_proof_')) {
-      count++;
-      bytes += (localStorage.getItem(key) || '').length;
-    }
-  }
-  return { count, kb: Math.round(bytes / 1024) };
-}
-
 function _renderView(container) {
   const currentTheme          = storage.getTheme();
   const currentUiSkin         = storage.getUiSkin();
@@ -665,7 +654,7 @@ function _renderView(container) {
       <button class="btn btn-outline btn-sm" id="sync-btn" style="margin-bottom:10px;width:100%">↻ 從雲端同步資料</button>
       <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px">版本 ${APP_VERSION}</div>
       <button class="btn btn-outline btn-sm" id="tour-btn" style="margin-bottom:10px;width:100%">重啟新手教學</button>
-      ${(() => { const p = _proofStats(); return p.count > 0
+      ${(() => { const p = proofStats(); return p.count > 0
         ? `<button class="btn btn-outline btn-sm" id="proof-clear-btn" style="margin-bottom:10px;width:100%;color:var(--text-muted)">🗑 清除佐證圖片（${p.count} 張，約 ${p.kb} KB）</button>`
         : `<button class="btn btn-outline btn-sm" id="proof-clear-btn" style="margin-bottom:10px;width:100%;opacity:0.4" disabled>🗑 清除佐證圖片（無儲存）</button>`;
       })()}
@@ -913,13 +902,10 @@ function _setupListeners(container) {
 
   // Clear proof images
   container.querySelector('#proof-clear-btn')?.addEventListener('click', () => {
-    const { count, kb } = _proofStats();
+    const { count, kb } = proofStats();
     if (count === 0) return;
     if (!confirm(`確定要刪除全部 ${count} 張佐證圖片（約 ${kb} KB）？\n此操作無法復原。`)) return;
-    for (let i = localStorage.length - 1; i >= 0; i--) {
-      const key = localStorage.key(i);
-      if (key?.startsWith('orbit_proof_')) localStorage.removeItem(key);
-    }
+    clearAllProofs();
     _renderView(container);
     window.showToast('佐證圖片已清除');
   });
