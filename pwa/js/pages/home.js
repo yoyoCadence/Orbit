@@ -296,7 +296,10 @@ export function renderHome(container) {
 
 function planCardHtml(task, countToday) {
   const isFocus   = task.category === 'focus';
-  const xpLabel   = task.value !== 'D' ? `+${xpPreview(task)}${isFocus ? '+' : ''} XP` : '';
+  // XP 只發給 impactType==='task'（engine.calcBaseXP）——恢復/娛樂型不顯示 +XP 承諾
+  const xpLabel   = task.impactType === 'task' && task.value !== 'D'
+    ? `+${xpPreview(task)}${isFocus ? '+' : ''} XP`
+    : task.impactType === 'recovery' && task.value !== 'D' ? '回能' : '';
   const doneClass = countToday > 0 ? 'plan-card-done' : '';
   return `
     <div class="plan-card ${doneClass}" data-task-id="${task.id}" data-category="${task.category}">
@@ -320,7 +323,8 @@ function planCardHtml(task, countToday) {
 
 function taskCardHtml(task, countToday, inPlan) {
   const isFocus    = task.category === 'focus';
-  const xpLabel    = task.value !== 'D'
+  // XP 只發給 impactType==='task'（engine.calcBaseXP）——恢復/娛樂型不顯示 +XP 承諾
+  const xpLabel    = task.impactType === 'task' && task.value !== 'D'
     ? `+${xpPreview(task)}${isFocus ? '+' : ''} XP`
     : task.impactType === 'recovery' ? '回能' : '娛樂';
   const valueLabel = VALUE_LABEL[task.value] || '';

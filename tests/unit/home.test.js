@@ -313,6 +313,24 @@ describe('renderHome: xpPreview XP label', () => {
     expect(label.textContent).toBe('回能');
   });
 
+  // Regression（handoff Q4）：非 D 值的恢復/娛樂型任務實際結算為 0 XP
+  //（calcBaseXP 只發給 impactType==='task'），卡片不得顯示 +XP 承諾
+  it('recovery A-value task shows "回能" label, not a misleading +XP', () => {
+    mockState.tasks = [makeTask({ value: 'A', impactType: 'recovery', taskNature: 'recovery' })];
+    const c = makeContainer();
+    renderHome(c);
+    const label = c.querySelector('.task-card .task-xp-label');
+    expect(label.textContent).toBe('回能');
+  });
+
+  it('entertainment B-value task shows "娛樂" label, not a misleading +XP', () => {
+    mockState.tasks = [makeTask({ value: 'B', impactType: 'entertainment', taskNature: 'entertainment' })];
+    const c = makeContainer();
+    renderHome(c);
+    const label = c.querySelector('.task-card .task-xp-label');
+    expect(label.textContent).toBe('娛樂');
+  });
+
   it('S task, max weights → correct XP', () => {
     // S, difficulty=1.0, resistance=1.4 → round(20 × 3.2 × 1.0 × 1.4) = 90
     mockState.tasks = [makeTask({ value: 'S', difficulty: 1.0, resistance: 1.4, taskNature: 'growth' })];
