@@ -243,7 +243,7 @@ export function renderProfile(container) {
           顯示更多
         </button>` : ''}
       <div class="xp-table-note">
-        公式：XP(n) = 120 + 45×(n-1) + 10×(n-1)^1.35，每級遞增。<br>
+        公式：Lv.1–20 每級需 (50 + 14×(n−1)) ÷ 2；Lv.21 起需 (330 + 10m + 3m^1.3) ÷ 2，m = n − 20，四捨五入。<br>
         S 任務完成約 90 XP、A 任務約 37–53 XP。
       </div>
     </div>
