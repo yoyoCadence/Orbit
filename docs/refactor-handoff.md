@@ -750,7 +750,11 @@ FAIL 條件：任何 blocking issue（行為變更、資料格式變更、測試
 
 ## 14. Final Summary
 
-- **現在做到哪**：**Phase 1–13 全部完成**（2026-07-07，分支 `refactor/app-modularization`，見 §11 執行完成紀錄）；驗證：unit 643 全綠、e2e 22 全綠、lint 0；版本 bump v1.20.4
-- **下一步**：交 reviewer 依 §13 驗收 → 開 PR merge；第二個 PR 處理 Phase 14–17（資料層）；Q2/Q3/Q7 三個 bug 修復另開獨立 PR（週視圖 UTC、舊公式文案、window.showToast 未綁定）
+- **現在做到哪**：**本文件的全部計畫已執行完畢**（2026-07-07）——
+  - PR #126（Phase 1–13，v1.20.4）：已 merge
+  - PR #127（Q2/Q3/Q4/Q7＋雙重登入監聽修復，v1.20.5）：已 merge
+  - 分支 `refactor/data-layer`（Phase 14–17＋_isGuest 清理＋Phase 18a/18b，v1.20.6）：Phase 16 依規格先寫 12 個 characterization tests 再表化，零漂移驗證通過
+- **最終驗證**：unit 667 全綠（643 基準＋24 個新迴歸/鎖定測試）、e2e 22 全綠、lint 0
+- **本文件狀態**：計畫已全數落地，轉為歷史紀錄；後續開發以一般流程進行
 - **最大風險**：Phase 10（session 結算抽離，產品核心）與 Phase 16（storage 映射表化，資料相容性）；兩者都有專屬對策（結算矩陣手測／characterization tests 先行）
 - **絕對不要碰**：localStorage key 名與 JSON 形狀、Supabase schema 與 RLS、`window.*` 全域名稱、`'liquid-galss'`、`personalSpace/**`、部署設定、`index.html` 與 `assets/style.css`（本次重構應對兩者零 diff）
