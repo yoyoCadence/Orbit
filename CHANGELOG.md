@@ -3,6 +3,20 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.20.5] - 2026-07-07
+
+### Fixed
+- `window.showToast` 從未被綁定，settings/export 共 13 處全域呼叫拋 TypeError——最明顯症狀：設定頁「從雲端同步資料」成功後按鈕永久卡在「同步中…」（handoff Q7）
+- 登出後重新進入登入頁，登入表單被重複綁定 submit 監聽，送出時 signIn/signUp 觸發兩次
+- 週視圖以 UTC 產生 7 天窗口，UTC+8 使用者在本地 00:00–07:59 看到的統計整體偏移一天；改用本地日期與全 app 一致（handoff Q2）
+- 個人頁升等公式說明仍是 v1.4.0 舊公式文字，更新為 v1.4.1 分段公式（handoff Q3）
+- 恢復/娛樂型且 value≠D 的任務卡顯示誤導性「+XX XP」（實際結算 0 XP），改顯示「回能」／「娛樂」；engine 結算規則不變（handoff Q4 決議 (a)）
+
+### Added
+- `tests/unit/feedback.test.js`（window.showToast 綁定迴歸防護）＋任務卡標籤迴歸測試 ×2（649 tests）
+
+---
+
 ## [1.20.4] - 2026-07-07
 
 ### Changed（純重構，零功能/UI/資料格式變化）

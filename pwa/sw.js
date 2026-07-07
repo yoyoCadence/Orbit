@@ -1,6 +1,6 @@
 // Service Worker
 // Bump CACHE version on every deploy so users always get fresh code.
-const CACHE = 'orbit-v1.20.4';
+const CACHE = 'orbit-v1.20.5';
 
 const SHELL = [
   './',
