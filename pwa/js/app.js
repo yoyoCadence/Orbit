@@ -18,6 +18,7 @@ import { renderPage, currentHash, isTextInputTarget, isTextInputActive, markText
 import { applyTimeBand }        from './timeBand.js';
 import { showToast, showXPFloat, showSyncBanner } from './ui/feedback.js';
 import { applyRandomThemeForToday, renderBg, initLiquidGlassReflection } from './theme.js';
+import { FLAG_STREAK_UNLOCK_NEW } from './flags.js';
 
 // Re-export so existing importers (pages via dynamic import) keep working.
 export { showToast, showXPFloat, showSyncBanner };
@@ -138,8 +139,8 @@ function showMainApp() {
   renderPage(currentHash());
   startDayWatcher();
   _showTrialBanner();
-  if (sessionStorage.getItem('orbit_streak_unlock_new')) {
-    sessionStorage.removeItem('orbit_streak_unlock_new');
+  if (sessionStorage.getItem(FLAG_STREAK_UNLOCK_NEW)) {
+    sessionStorage.removeItem(FLAG_STREAK_UNLOCK_NEW);
     setTimeout(showStreakUnlockModal, 800);
   }
   // Warm-load non-critical modules after the initial screen is visible

@@ -12,6 +12,7 @@ import { calcHourDistribution, calcStreakMilestone,
          calcDailyStats }                                 from '../engine.js';
 import { shareGrowthCard, supportsNativeShare }           from '../platform/share.js';
 import { goToProCard }                                    from '../ui/proNav.js';
+import { FLAG_SHIELD_PENDING }                            from '../flags.js';
 
 export function renderProfile(container) {
   const user   = state.user;
@@ -174,8 +175,8 @@ export function renderProfile(container) {
         <div class="streak-big">${streakDays} ${streakLabel}</div>
         <div class="streak-lbl">連勝天數</div>
         <div class="streak-hint">連勝 XP 加成：×${(1 + 0.02 * Math.floor(streakDays / 5)).toFixed(2).replace(/\.?0+$/, '')}</div>
-        <div class="streak-shield-row ${(() => { try { return localStorage.getItem('orbit_shield_pending') ? 'shield-pill-pending' : ''; } catch { return ''; } })()}"
-             onclick="${(() => { try { return localStorage.getItem('orbit_shield_pending') ? 'reshowShieldBanner()' : ''; } catch { return ''; } })()}">
+        <div class="streak-shield-row ${(() => { try { return localStorage.getItem(FLAG_SHIELD_PENDING) ? 'shield-pill-pending' : ''; } catch { return ''; } })()}"
+             onclick="${(() => { try { return localStorage.getItem(FLAG_SHIELD_PENDING) ? 'reshowShieldBanner()' : ''; } catch { return ''; } })()}">
           <span class="stat-pill-shield ${storage.isProUser() ? '' : 'stat-pill-shield-locked'}">🛡 ${user.streakShieldCount ?? 0} 張保護卡</span>
           <button class="stat-pill-shield-info" onclick="event.stopPropagation();showShieldInfo(this)" aria-label="保護卡說明">?</button>
         </div>

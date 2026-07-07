@@ -4,6 +4,7 @@
 
 import { supabase }  from './supabase.js';
 import { today, mergeSessionsById } from './utils.js';
+import { FLAG_DEV_BACKUP } from './flags.js';
 
 const PREFIX = 'yoyo_';
 const LEADERBOARD_CACHE_KEY = 'leaderboardCache';
@@ -184,7 +185,7 @@ export const db = {
 
   async upsertProfile(user) {
     // Dev-tool guard: never sync to Supabase while a dev override backup exists
-    if (localStorage.getItem('orbit_dev_backup')) return false;
+    if (localStorage.getItem(FLAG_DEV_BACKUP)) return false;
     const session = await this._session();
     if (!session) return false;
     // Keep large local previews out of profiles; avatarPath points to Storage.

@@ -8,6 +8,7 @@ import { xpRequired, getLevelInfo }            from '../leveling.js';
 import { previewBaseXP }                       from '../engine.js';
 import { goToProCard }                         from '../ui/proNav.js';
 import { proofStats, clearAllProofs }          from '../platform/proofStore.js';
+import { FLAG_PRO_HIGHLIGHT, FLAG_DEV_BACKUP, FLAG_DEV_PANEL } from '../flags.js';
 
 // ── Theme definitions ────────────────────────────────────────────────────────
 export const THEMES = [
@@ -267,7 +268,7 @@ function _isDevMode() {
   const host = window.location.hostname;
   const isLocal = host === 'localhost' || host === '127.0.0.1';
   const isNgrok = host.endsWith('.ngrok-free.dev') || host.endsWith('.ngrok-free.app') || host.endsWith('.ngrok.app') || host.endsWith('.ngrok.io');
-  return isLocal || isNgrok || localStorage.getItem('orbit_dev_panel') === '1';
+  return isLocal || isNgrok || localStorage.getItem(FLAG_DEV_PANEL) === '1';
 }
 
 function _devXpForLevel(level) {
@@ -278,8 +279,8 @@ function _devXpForLevel(level) {
 
 /** Snapshot the current user into the dev backup slot (once) before overriding. */
 function _devBackupOnce() {
-  if (!localStorage.getItem('orbit_dev_backup')) {
-    localStorage.setItem('orbit_dev_backup', JSON.stringify(storage.getUser() ?? {}));
+  if (!localStorage.getItem(FLAG_DEV_BACKUP)) {
+    localStorage.setItem(FLAG_DEV_BACKUP, JSON.stringify(storage.getUser() ?? {}));
   }
 }
 
@@ -308,16 +309,16 @@ function _devApplyPro(status) {
 }
 
 function _devReset() {
-  const backup = localStorage.getItem('orbit_dev_backup');
+  const backup = localStorage.getItem(FLAG_DEV_BACKUP);
   if (backup) storage.saveUserLocal(JSON.parse(backup));
-  localStorage.removeItem('orbit_dev_backup');
+  localStorage.removeItem(FLAG_DEV_BACKUP);
   location.reload();
 }
 
 function _devPanelHtml() {
   if (!_isDevMode()) return '';
 
-  const hasBackup   = !!localStorage.getItem('orbit_dev_backup');
+  const hasBackup   = !!localStorage.getItem(FLAG_DEV_BACKUP);
   const { level }   = getLevelInfo(state.user?.totalXP || 0);
   const isPaid      = storage.isPaidProUser();
   const isTrial     = storage.isTrialUser();
@@ -831,8 +832,8 @@ function _setupListeners(container) {
     if (!card) return;
     const content = document.getElementById('content');
     content?.scrollTo({ top: card.offsetTop - 16, behavior: 'smooth' });
-    if (sessionStorage.getItem('orbit_pro_highlight') === '1') {
-      sessionStorage.removeItem('orbit_pro_highlight');
+    if (sessionStorage.getItem(FLAG_PRO_HIGHLIGHT) === '1') {
+      sessionStorage.removeItem(FLAG_PRO_HIGHLIGHT);
       const flash = () => {
         card.classList.add('pro-card-highlight');
         setTimeout(() => card.classList.remove('pro-card-highlight'), 2000);

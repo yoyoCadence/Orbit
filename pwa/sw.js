@@ -8,6 +8,7 @@ const SHELL = [
   './assets/style.css',
   './js/app.js',
   './js/version.js',
+  './js/flags.js',
   './js/state.js',
   './js/storage.js',
   './js/supabase.js',

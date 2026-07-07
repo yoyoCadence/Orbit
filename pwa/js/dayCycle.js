@@ -10,6 +10,10 @@ import { renderPage, currentHash } from './router.js';
 import { showToast, showXPFloat } from './ui/feedback.js';
 import { updateHeader } from './ui/header.js';
 import { applyRandomThemeForToday } from './theme.js';
+import {
+  FLAG_SHIELD_PENDING, FLAG_SHIELD_DISMISSED, FLAG_SHIELD_SCROLL_TOP,
+  FLAG_STREAK_UNLOCK_NEW,
+} from './flags.js';
 
 /** Effective date for session recording — respects user's newDayHour threshold. */
 export function eToday() { return effectiveToday(state.user?.newDayHour ?? 5); }
@@ -59,7 +63,7 @@ export function processYesterdayStreak() {
     const prevStreak = state.user.streakDays || 0;
     state.user.streakDays = 0;
     if (storage.isProUser() && (state.user.streakShieldCount || 0) > 0 && prevStreak >= 2) {
-      localStorage.setItem('orbit_shield_pending', JSON.stringify({ prevStreak }));
+      localStorage.setItem(FLAG_SHIELD_PENDING, JSON.stringify({ prevStreak }));
     }
   }
 
@@ -72,7 +76,7 @@ export function processYesterdayStreak() {
     state.user.isPro           = true;
     state.user.proExpiresAt    = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
     state.user.streakUnlockUsed = true;
-    sessionStorage.setItem('orbit_streak_unlock_new', '1');
+    sessionStorage.setItem(FLAG_STREAK_UNLOCK_NEW, '1');
   }
 
   state.user.lastStreakDate = todayStr;
@@ -82,14 +86,14 @@ export function processYesterdayStreak() {
 // ─── Streak Shield ────────────────────────────────────────────────────────────
 
 window.useStreakShield = function () {
-  const raw = localStorage.getItem('orbit_shield_pending');
+  const raw = localStorage.getItem(FLAG_SHIELD_PENDING);
   if (!raw || !state.user) return;
   if (!storage.isProUser()) return;
   const { prevStreak } = JSON.parse(raw);
   state.user.streakDays = prevStreak;
   state.user.streakShieldCount = Math.max(0, (state.user.streakShieldCount || 0) - 1);
-  localStorage.removeItem('orbit_shield_pending');
-  sessionStorage.removeItem('orbit_shield_dismissed');
+  localStorage.removeItem(FLAG_SHIELD_PENDING);
+  sessionStorage.removeItem(FLAG_SHIELD_DISMISSED);
   storage.saveUser(state.user);
   db.upsertProfile(state.user);
   renderPage(currentHash());
@@ -113,14 +117,14 @@ window.dismissStreakShield = function () {
   document.body.appendChild(overlay);
   overlay.querySelector('#shield-confirm-ok-btn').onclick = () => {
     overlay.remove();
-    sessionStorage.setItem('orbit_shield_dismissed', '1');
+    sessionStorage.setItem(FLAG_SHIELD_DISMISSED, '1');
     renderPage(currentHash());
   };
 };
 
 window.reshowShieldBanner = function () {
-  sessionStorage.removeItem('orbit_shield_dismissed');
-  sessionStorage.setItem('orbit_shield_scroll_top', '1');
+  sessionStorage.removeItem(FLAG_SHIELD_DISMISSED);
+  sessionStorage.setItem(FLAG_SHIELD_SCROLL_TOP, '1');
   window.navigate('home');
 };
 
