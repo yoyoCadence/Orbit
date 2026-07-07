@@ -23,6 +23,98 @@ function markSessionSyncPending(sessionId) {
   set('sessions', sessions);
 }
 
+// ─── Field maps: snake_case DB row ↔ camelCase JS object ─────────────────────
+//
+// Each entry: [jsKey, dbKey, fromRow(row), toRow(obj)]
+// fromRow/toRow carry the per-field default semantics（`||` 與 `??` 刻意不同，
+// 例如 last_streak_date 讀 null→'' 但寫 ''→null）verbatim — locked by
+// tests/unit/storage-mapping.test.js. Adding a synced field = one new row here
+// (+ DB migration). toRow = null marks read-only fields never written back.
+
+const PROFILE_FIELDS = [
+  ['name',                   'name',                      p => p.name,                              u => u.name],
+  ['totalXP',                'total_xp',                  p => p.total_xp,                          u => u.totalXP              || 0],
+  ['streakDays',             'streak_days',               p => p.streak_days,                       u => u.streakDays           || 0],
+  ['lastStreakDate',         'last_streak_date',          p => p.last_streak_date         || '',    u => u.lastStreakDate       || null],
+  ['lastWeeklyBonusDate',    'last_weekly_bonus_date',    p => p.last_weekly_bonus_date   || '',    u => u.lastWeeklyBonusDate  || null],
+  ['morningState',           'morning_state',             p => p.morning_state,                     u => u.morningState         || 'normal'],
+  ['mode',                   'mode',                      p => p.mode,                              u => u.mode                 || 'normal'],
+  ['isPublic',               'is_public',                 p => p.is_public                ?? false, u => u.isPublic             ?? false],
+  ['titleTemplate',          'title_template',            p => p.title_template           || 'rpg', u => u.titleTemplate        || 'rpg'],
+  ['customTitle',            'custom_title',              p => p.custom_title             || '',    u => u.customTitle          || null],
+  ['newDayHour',             'new_day_hour',              p => p.new_day_hour             ?? 5,     u => u.newDayHour           ?? 5],
+  ['isPro',                  'is_pro',                    p => p.is_pro                   ?? false, u => u.isPro                ?? false],
+  ['proExpiresAt',           'pro_expires_at',            p => p.pro_expires_at           || null,  u => u.proExpiresAt         ?? null],
+  ['trialStartedAt',         'trial_started_at',          p => p.trial_started_at         || null,  u => u.trialStartedAt       ?? null],
+  ['streakShieldCount',      'streak_shield_count',       p => p.streak_shield_count      ?? 2,     u => u.streakShieldCount    ?? 2],
+  ['streakShieldResetMonth', 'streak_shield_reset_month', p => p.streak_shield_reset_month || '',   u => u.streakShieldResetMonth || ''],
+  ['streakUnlockUsed',       'streak_unlock_used',        p => p.streak_unlock_used       ?? false, u => u.streakUnlockUsed     ?? false],
+  ['focusDefaultMinutes',    'focus_default_minutes',     p => p.focus_default_minutes    ?? null,  u => u.focusDefaultMinutes  ?? null],
+  ['focusSoundEnabled',      'focus_sound_enabled',       p => p.focus_sound_enabled      ?? true,  u => u.focusSoundEnabled    ?? true],
+];
+
+const TASK_FIELDS = [
+  ['id',                  'id',                    t => t.id,                       t => t.id],
+  ['name',                'name',                  t => t.name,                     t => t.name],
+  ['category',            'category',              t => t.category,                 t => t.category],
+  ['impactType',          'impact_type',           t => t.impact_type,              t => t.impactType],
+  ['taskNature',          'task_nature',           t => t.task_nature,              t => t.taskNature],
+  ['value',               'value',                 t => t.value,                    t => t.value],
+  ['difficulty',          'difficulty',            t => t.difficulty,               t => t.difficulty],
+  ['resistance',          'resistance',            t => t.resistance,               t => t.resistance],
+  ['emoji',               'emoji',                 t => t.emoji            || null, t => t.emoji               || null],
+  ['dailyXpCap',          'daily_xp_cap',          t => t.daily_xp_cap,             t => t.dailyXpCap          ?? 100],
+  ['cooldownMinutes',     'cooldown_minutes',      t => t.cooldown_minutes,         t => t.cooldownMinutes     ?? 0],
+  ['minEffectiveMinutes', 'min_effective_minutes', t => t.min_effective_minutes,    t => t.minEffectiveMinutes ?? 0],
+  ['isDefault',           'is_default',            t => t.is_default,               t => t.isDefault           ?? false],
+  ['reason',              'reason',                t => t.reason           || null, t => t.reason              || null],
+  ['successCriteria',     'success_criteria',      t => t.success_criteria || null, t => t.successCriteria     || null],
+  ['valueConfidence',     'value_confidence',      t => t.value_confidence,         t => t.valueConfidence     ?? 100],
+  ['createdAt',           'created_at',            t => t.created_at,               null],
+];
+
+const SESSION_FIELDS = [
+  ['id',              'id',               s => s.id,                     s => s.id],
+  ['taskId',          'task_id',          s => s.task_id      || null,   s => s.taskId    || null],
+  ['taskName',        'task_name',        s => s.task_name,              s => s.taskName],
+  ['taskEmoji',       'task_emoji',       s => s.task_emoji   || null,   s => s.taskEmoji || null],
+  ['date',            'date',             s => s.date,                   s => s.date],
+  ['startedAt',       'started_at',       s => s.started_at,             s => s.startedAt],
+  ['completedAt',     'completed_at',     s => s.completed_at,           s => s.completedAt],
+  ['durationMinutes', 'duration_minutes', s => s.duration_minutes,       s => s.durationMinutes],
+  ['result',          'result',           s => s.result,                 s => s.result],
+  ['baseXP',          'base_xp',          s => s.base_xp,                s => s.baseXP],
+  ['finalXP',         'final_xp',         s => s.final_xp,               s => s.finalXP],
+  ['energyCost',      'energy_cost',      s => s.energy_cost,            s => s.energyCost],
+  ['energyGain',      'energy_gain',      s => s.energy_gain,            s => s.energyGain],
+  ['impactType',      'impact_type',      s => s.impact_type,            s => s.impactType],
+  ['taskNature',      'task_nature',      s => s.task_nature,            s => s.taskNature],
+  ['value',           'value',            s => s.value,                  s => s.value],
+  ['resistance',      'resistance',       s => s.resistance,             s => s.resistance],
+  ['isProductiveXP',  'is_productive_xp', s => s.is_productive_xp,       s => s.isProductiveXP],
+  ['taskIconImg',     'task_icon_img',    s => s.task_icon_img || null,  null], // 本機圖示不上雲
+];
+
+const ENERGY_FIELDS = [
+  ['currentEnergy', 'current_energy',  e => e.current_energy,        en => en.currentEnergy],
+  ['maxEnergy',     'max_energy',      e => e.max_energy,            en => en.maxEnergy],
+  ['lastResetDate', 'last_reset_date', e => e.last_reset_date || '', en => en.lastResetDate || null],
+];
+
+/** DB row → JS object（依 fields 表）。 */
+function fromRow(fields, row) {
+  const obj = {};
+  for (const [jsKey, , read] of fields) obj[jsKey] = read(row);
+  return obj;
+}
+
+/** JS object → DB payload（依 fields 表；toRow 為 null 的欄位不寫回）。 */
+function toRow(fields, obj) {
+  const row = {};
+  for (const [, dbKey, , write] of fields) if (write) row[dbKey] = write(obj);
+  return row;
+}
+
 // ─── Supabase async operations ────────────────────────────────────────────────
 
 export const db = {
@@ -59,76 +151,20 @@ export const db = {
         console.warn('Avatar URL resolve failed:', err);
       }
       set('user', {
-        id:                   p.user_id,
-        name:                 p.name,
+        id:         p.user_id,
         avatar,
-        avatarPath:           p.avatar_url || null,
-        totalXP:              p.total_xp,
-        streakDays:           p.streak_days,
-        lastStreakDate:       p.last_streak_date  || '',
-        lastWeeklyBonusDate:  p.last_weekly_bonus_date || '',
-        morningState:         p.morning_state,
-        mode:                 p.mode,
-        isPublic:             p.is_public       ?? false,
-        titleTemplate:        p.title_template  || 'rpg',
-        customTitle:          p.custom_title    || '',
-        newDayHour:           p.new_day_hour    ?? 5,
-        createdAt:            p.created_at,
-        isPro:                p.is_pro          ?? false,
-        proExpiresAt:         p.pro_expires_at  || null,
-        trialStartedAt:       p.trial_started_at || null,
-        streakShieldCount:       p.streak_shield_count        ?? 2,
-        streakShieldResetMonth:  p.streak_shield_reset_month  || '',
-        streakUnlockUsed:        p.streak_unlock_used         ?? false,
-        focusDefaultMinutes:     p.focus_default_minutes      ?? null,
-        focusSoundEnabled:       p.focus_sound_enabled        ?? true,
+        avatarPath: p.avatar_url || null,
+        createdAt:  p.created_at,
+        ...fromRow(PROFILE_FIELDS, p),
       });
     }
 
     if (tasksRes.data) {
-      set('tasks', tasksRes.data.map(t => ({
-        id:                   t.id,
-        name:                 t.name,
-        category:             t.category,
-        impactType:           t.impact_type,
-        taskNature:           t.task_nature,
-        value:                t.value,
-        difficulty:           t.difficulty,
-        resistance:           t.resistance,
-        emoji:                t.emoji || null,
-        dailyXpCap:           t.daily_xp_cap,
-        cooldownMinutes:      t.cooldown_minutes,
-        minEffectiveMinutes:  t.min_effective_minutes,
-        isDefault:            t.is_default,
-        reason:               t.reason || null,
-        successCriteria:      t.success_criteria || null,
-        valueConfidence:      t.value_confidence,
-        createdAt:            t.created_at,
-      })));
+      set('tasks', tasksRes.data.map(t => fromRow(TASK_FIELDS, t)));
     }
 
     if (sessionsRes.data) {
-      const remoteSessions = sessionsRes.data.map(s => ({
-        id:              s.id,
-        taskId:          s.task_id   || null,
-        taskName:        s.task_name,
-        taskEmoji:       s.task_emoji || null,
-        date:            s.date,
-        startedAt:       s.started_at,
-        completedAt:     s.completed_at,
-        durationMinutes: s.duration_minutes,
-        result:          s.result,
-        baseXP:          s.base_xp,
-        finalXP:         s.final_xp,
-        energyCost:      s.energy_cost,
-        energyGain:      s.energy_gain,
-        impactType:      s.impact_type,
-        taskNature:      s.task_nature,
-        value:           s.value,
-        resistance:      s.resistance,
-        isProductiveXP:  s.is_productive_xp,
-        taskIconImg:     s.task_icon_img    || null,
-      }));
+      const remoteSessions = sessionsRes.data.map(s => fromRow(SESSION_FIELDS, s));
       const mergedSessions = mergeSessionsById(remoteSessions, localSessions);
       set('sessions', mergedSessions);
 
@@ -142,12 +178,7 @@ export const db = {
     }
 
     if (energyRes.data) {
-      const e = energyRes.data;
-      set('energy', {
-        currentEnergy: e.current_energy,
-        maxEnergy:     e.max_energy,
-        lastResetDate: e.last_reset_date || '',
-      });
+      set('energy', fromRow(ENERGY_FIELDS, energyRes.data));
     }
   },
 
@@ -160,27 +191,9 @@ export const db = {
     const avatarUrl = user.avatarPath || ((user.avatar && user.avatar.startsWith('data:'))
       ? null : (user.avatar || null));
     const { error } = await supabase.from('profiles').upsert({
-      user_id:                session.user.id,
-      name:                   user.name,
-      avatar_url:             avatarUrl,
-      total_xp:               user.totalXP              || 0,
-      streak_days:            user.streakDays            || 0,
-      last_streak_date:       user.lastStreakDate        || null,
-      last_weekly_bonus_date: user.lastWeeklyBonusDate   || null,
-      morning_state:          user.morningState          || 'normal',
-      mode:                   user.mode                  || 'normal',
-      is_public:              user.isPublic              ?? false,
-      title_template:         user.titleTemplate         || 'rpg',
-      custom_title:           user.customTitle           || null,
-      new_day_hour:           user.newDayHour            ?? 5,
-      is_pro:                 user.isPro                 ?? false,
-      pro_expires_at:         user.proExpiresAt          ?? null,
-      trial_started_at:       user.trialStartedAt        ?? null,
-      streak_shield_count:       user.streakShieldCount       ?? 2,
-      streak_shield_reset_month: user.streakShieldResetMonth  || '',
-      streak_unlock_used:        user.streakUnlockUsed        ?? false,
-      focus_default_minutes:     user.focusDefaultMinutes     ?? null,
-      focus_sound_enabled:       user.focusSoundEnabled       ?? true,
+      user_id:    session.user.id,
+      avatar_url: avatarUrl,
+      ...toRow(PROFILE_FIELDS, user),
     });
     if (error) throw error;
     return true;
@@ -218,25 +231,7 @@ export const db = {
     const session = await this._session();
     if (!session || !tasks.length) return;
     await supabase.from('tasks').upsert(
-      tasks.map(t => ({
-        id:                    t.id,
-        user_id:               session.user.id,
-        name:                  t.name,
-        category:              t.category,
-        impact_type:           t.impactType,
-        task_nature:           t.taskNature,
-        value:                 t.value,
-        difficulty:            t.difficulty,
-        resistance:            t.resistance,
-        emoji:                 t.emoji                || null,
-        daily_xp_cap:          t.dailyXpCap           ?? 100,
-        cooldown_minutes:      t.cooldownMinutes       ?? 0,
-        min_effective_minutes: t.minEffectiveMinutes   ?? 0,
-        is_default:            t.isDefault             ?? false,
-        reason:                t.reason               || null,
-        success_criteria:      t.successCriteria      || null,
-        value_confidence:      t.valueConfidence       ?? 100,
-      })),
+      tasks.map(t => ({ user_id: session.user.id, ...toRow(TASK_FIELDS, t) })),
       { onConflict: 'id' }
     );
   },
@@ -251,25 +246,8 @@ export const db = {
     const authSession = await this._session();
     if (!authSession) return;
     const { error } = await supabase.from('sessions').insert({
-      id:               session.id,
-      user_id:          authSession.user.id,
-      task_id:          session.taskId        || null,
-      task_name:        session.taskName,
-      task_emoji:       session.taskEmoji     || null,
-      date:             session.date,
-      started_at:       session.startedAt,
-      completed_at:     session.completedAt,
-      duration_minutes: session.durationMinutes,
-      result:           session.result,
-      base_xp:          session.baseXP,
-      final_xp:         session.finalXP,
-      energy_cost:      session.energyCost,
-      energy_gain:      session.energyGain,
-      impact_type:      session.impactType,
-      task_nature:      session.taskNature,
-      value:            session.value,
-      resistance:       session.resistance,
-      is_productive_xp: session.isProductiveXP,
+      user_id: authSession.user.id,
+      ...toRow(SESSION_FIELDS, session),
     });
     if (error) throw error;
   },
@@ -303,12 +281,7 @@ export const db = {
     const session = await this._session();
     if (!session) return;
     await supabase.from('energy').upsert(
-      {
-        user_id:         session.user.id,
-        current_energy:  energy.currentEnergy,
-        max_energy:      energy.maxEnergy,
-        last_reset_date: energy.lastResetDate || null,
-      },
+      { user_id: session.user.id, ...toRow(ENERGY_FIELDS, energy) },
       { onConflict: 'user_id' }
     );
   },
