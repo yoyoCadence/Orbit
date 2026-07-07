@@ -3,9 +3,6 @@ import { storage, db, migrateV1toV2, migrateDefaultFlags }    from './storage.js
 import { signOut as authSignOut, getSession, onAuthStateChange } from './auth.js';
 import { showLoginScreen, hideLoading } from './authFlow.js';
 import { updateHeader } from './ui/header.js';
-
-// Re-export so existing importers (profile.js via dynamic import, tests) keep working.
-export { updateHeader };
 import { setBadgeUpdater } from './sessionFlow.js';
 import './focusTimer.js'; // binds window.startFocus / endFocus / skipFocus / …
 import { uid, today } from './utils.js';
@@ -16,15 +13,9 @@ import {
 import { createDefaultTasks }   from './defaultTasks.js';
 import { renderPage, currentHash, isTextInputTarget, isTextInputActive, markTextInputFocus } from './router.js';
 import { applyTimeBand }        from './timeBand.js';
-import { showToast, showXPFloat, showSyncBanner } from './ui/feedback.js';
+import { showToast, showSyncBanner } from './ui/feedback.js';
 import { applyRandomThemeForToday, renderBg, initLiquidGlassReflection } from './theme.js';
 import { FLAG_STREAK_UNLOCK_NEW } from './flags.js';
-
-// Re-export so existing importers (pages via dynamic import) keep working.
-export { showToast, showXPFloat, showSyncBanner };
-
-// ─── Version ─────────────────────────────────────────────────────────────────
-export { APP_VERSION } from './version.js';
 
 // Lazy proxy — tour.js is not imported at startup; loaded on first call.
 window.startTour = () =>
@@ -34,7 +25,6 @@ window.startTour = () =>
 
 // ─── Auth session state ───────────────────────────────────────────────────────
 let _currentSession   = null;
-let _isGuest          = false;
 let _loginListenerSet = false;
 
 // ─── Daily Plan ───────────────────────────────────────────────────────────────
@@ -170,7 +160,6 @@ function bootWithLocalState() {
 }
 
 window.continueAsGuest = function () {
-  _isGuest = true;
   hideLoading();
   document.getElementById('login-screen').classList.add('hidden');
   loadStateFromStorage();
@@ -213,7 +202,6 @@ async function loadAndStart(session) {
 function handleSignOut() {
   if (!_currentSession && !storage.getUser()) return; // already signed out
   _currentSession = null;
-  _isGuest        = false;
   state.user     = null;
   state.tasks    = [];
   state.sessions = [];

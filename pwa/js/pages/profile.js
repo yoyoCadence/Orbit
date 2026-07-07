@@ -13,6 +13,8 @@ import { calcHourDistribution, calcStreakMilestone,
 import { shareGrowthCard, supportsNativeShare }           from '../platform/share.js';
 import { goToProCard }                                    from '../ui/proNav.js';
 import { FLAG_SHIELD_PENDING }                            from '../flags.js';
+import { updateHeader }                                   from '../ui/header.js';
+import { showToast }                                      from '../ui/feedback.js';
 
 export function renderProfile(container) {
   const user   = state.user;
@@ -266,9 +268,9 @@ export function renderProfile(container) {
       todayXP,
     });
     if (result.reason === 'clipboard') {
-      import('../app.js').then(m => m.showToast('📋 已複製成長卡'));
+      showToast('📋 已複製成長卡');
     } else if (!result.shared && result.reason !== 'AbortError') {
-      import('../app.js').then(m => m.showToast('分享失敗，請重試'));
+      showToast('分享失敗，請重試');
     }
   });
 
@@ -287,7 +289,7 @@ export function renderProfile(container) {
       state.user.avatarPath = null;
       storage.saveUserLocal(state.user);
       renderProfile(container);
-      import('../app.js').then(({ updateHeader }) => updateHeader());
+      updateHeader();
       _setProfileSyncStatus('avatar-sync-status', '頭像上傳中...');
       try {
         const uploaded = await db.uploadAvatar(file);
@@ -295,13 +297,13 @@ export function renderProfile(container) {
         state.user.avatarPath = uploaded.path;
         const synced = await storage.saveUserAndSync(state.user);
         renderProfile(container);
-        import('../app.js').then(({ updateHeader }) => updateHeader());
+        updateHeader();
         _setProfileSyncStatus('avatar-sync-status', synced ? '頭像已同步' : '頭像已儲存在此裝置，登入後可同步');
       } catch (err) {
         if (err?.message === 'Not authenticated') {
           storage.saveUserLocal(state.user);
           renderProfile(container);
-          import('../app.js').then(({ updateHeader }) => updateHeader());
+          updateHeader();
           _setProfileSyncStatus('avatar-sync-status', '頭像已儲存在此裝置，登入後可同步');
           return;
         }
@@ -310,7 +312,7 @@ export function renderProfile(container) {
         state.user.avatarPath = previousAvatarPath;
         storage.saveUserLocal(state.user);
         renderProfile(container);
-        import('../app.js').then(({ updateHeader }) => updateHeader());
+        updateHeader();
         _setProfileSyncStatus('avatar-sync-status', '頭像上傳失敗，請稍後再試', true);
       }
     };
@@ -329,7 +331,7 @@ export function renderProfile(container) {
       state.user.customTitle   = '';
       storage.saveUserLocal(state.user);
       renderProfile(container);
-      import('../app.js').then(({ updateHeader }) => updateHeader());
+      updateHeader();
       await _syncUserPreference();
     });
   });
@@ -356,7 +358,7 @@ export function renderProfile(container) {
     state.user.customTitle = val || '';
     storage.saveUserLocal(state.user);
     renderProfile(container);
-    import('../app.js').then(({ updateHeader }) => updateHeader());
+    updateHeader();
     _syncUserPreference();
   });
 
@@ -379,7 +381,7 @@ export function renderProfile(container) {
     state.user.customTitle = '';
     storage.saveUserLocal(state.user);
     renderProfile(container);
-    import('../app.js').then(({ updateHeader }) => updateHeader());
+    updateHeader();
     _syncUserPreference();
   });
 
@@ -645,7 +647,7 @@ function showTemplateEditor(container, editKey) {
     _syncUserPreference();
     modal.remove();
     renderProfile(container);
-    import('../app.js').then(({ updateHeader }) => updateHeader());
+    updateHeader();
   });
 
   modal.querySelector('#tmpl-delete-btn')?.addEventListener('click', () => {
@@ -657,7 +659,7 @@ function showTemplateEditor(container, editKey) {
     _syncUserPreference();
     modal.remove();
     renderProfile(container);
-    import('../app.js').then(({ updateHeader }) => updateHeader());
+    updateHeader();
   });
 }
 
@@ -700,7 +702,7 @@ function showNameModal(container) {
     state.user.name = name;
     storage.saveUserLocal(state.user);
     renderProfile(container);
-    import('../app.js').then(({ updateHeader }) => updateHeader());
+    updateHeader();
     try {
       const synced = await storage.saveUserAndSync(state.user);
       status.classList.remove('error');
@@ -713,7 +715,7 @@ function showNameModal(container) {
         btn.textContent = '儲存';
       }
       renderProfile(container);
-      import('../app.js').then(({ updateHeader }) => updateHeader());
+      updateHeader();
     } catch (err) {
       console.error('Name sync failed:', err);
       state.user.name = previousName;
@@ -723,7 +725,7 @@ function showNameModal(container) {
       status.textContent = '同步失敗，請稍後再試';
       status.classList.add('error');
       renderProfile(container);
-      import('../app.js').then(({ updateHeader }) => updateHeader());
+      updateHeader();
     }
   });
 }

@@ -60,7 +60,7 @@ vi.mock('../../pwa/js/state.js',   () => ({ state: mockState }));
 vi.mock('../../pwa/js/storage.js', () => ({ storage: mockStorage, db: mockDb }));
 
 // Dynamic import in profile.js: import('../app.js').then(({ updateHeader }) => updateHeader())
-vi.mock('../../pwa/js/app.js', () => ({ updateHeader: vi.fn() }));
+vi.mock('../../pwa/js/ui/header.js', () => ({ updateHeader: vi.fn() }));
 
 import { renderProfile } from '../../pwa/js/pages/profile.js';
 
