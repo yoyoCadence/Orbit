@@ -4,8 +4,10 @@
 // renders, so cross-page callers wait 300ms for that render to happen;
 // callers already on the settings page skip navigation and scroll sooner.
 
+import { FLAG_PRO_HIGHLIGHT } from '../flags.js';
+
 export function goToProCard({ navigate = true, delayMs = 300 } = {}) {
-  sessionStorage.setItem('orbit_pro_highlight', '1');
+  sessionStorage.setItem(FLAG_PRO_HIGHLIGHT, '1');
   if (navigate) window.navigate('settings');
   setTimeout(() => window._scrollToProCard?.(), delayMs);
 }

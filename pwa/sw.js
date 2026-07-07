@@ -1,6 +1,6 @@
 // Service Worker
 // Bump CACHE version on every deploy so users always get fresh code.
-const CACHE = 'orbit-v1.20.5';
+const CACHE = 'orbit-v1.20.6';
 
 const SHELL = [
   './',
@@ -8,6 +8,7 @@ const SHELL = [
   './assets/style.css',
   './js/app.js',
   './js/version.js',
+  './js/flags.js',
   './js/state.js',
   './js/storage.js',
   './js/supabase.js',
@@ -43,6 +44,7 @@ const SHELL = [
   './js/platform/haptics.js',
   './js/platform/badge.js',
   './js/platform/proofCapture.js',
+  './js/platform/proofStore.js',
   './js/platform/share.js',
   './js/platform/purchases.js',
   './js/personalSpace/index.js',

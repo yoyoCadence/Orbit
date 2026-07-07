@@ -7,6 +7,8 @@ import { exportSessionsCSV, showReportPicker } from '../export.js';
 import { xpRequired, getLevelInfo }            from '../leveling.js';
 import { previewBaseXP }                       from '../engine.js';
 import { goToProCard }                         from '../ui/proNav.js';
+import { proofStats, clearAllProofs }          from '../platform/proofStore.js';
+import { FLAG_PRO_HIGHLIGHT, FLAG_DEV_BACKUP, FLAG_DEV_PANEL } from '../flags.js';
 
 // ── Theme definitions ────────────────────────────────────────────────────────
 export const THEMES = [
@@ -266,7 +268,7 @@ function _isDevMode() {
   const host = window.location.hostname;
   const isLocal = host === 'localhost' || host === '127.0.0.1';
   const isNgrok = host.endsWith('.ngrok-free.dev') || host.endsWith('.ngrok-free.app') || host.endsWith('.ngrok.app') || host.endsWith('.ngrok.io');
-  return isLocal || isNgrok || localStorage.getItem('orbit_dev_panel') === '1';
+  return isLocal || isNgrok || localStorage.getItem(FLAG_DEV_PANEL) === '1';
 }
 
 function _devXpForLevel(level) {
@@ -275,19 +277,24 @@ function _devXpForLevel(level) {
   return xp;
 }
 
+/** Snapshot the current user into the dev backup slot (once) before overriding. */
+function _devBackupOnce() {
+  if (!localStorage.getItem(FLAG_DEV_BACKUP)) {
+    localStorage.setItem(FLAG_DEV_BACKUP, JSON.stringify(storage.getUser() ?? {}));
+  }
+}
+
 function _devApplyLevel(level) {
-  const raw = localStorage.getItem('yoyo_user');
-  const u   = raw ? JSON.parse(raw) : {};
-  if (!localStorage.getItem('orbit_dev_backup')) localStorage.setItem('orbit_dev_backup', raw || '{}');
+  const u = storage.getUser() ?? {};
+  _devBackupOnce();
   u.totalXP = _devXpForLevel(Math.max(1, Math.min(100, level)));
-  localStorage.setItem('yoyo_user', JSON.stringify(u));
+  storage.saveUserLocal(u);
   location.reload();
 }
 
 function _devApplyPro(status) {
-  const raw = localStorage.getItem('yoyo_user');
-  const u   = raw ? JSON.parse(raw) : {};
-  if (!localStorage.getItem('orbit_dev_backup')) localStorage.setItem('orbit_dev_backup', raw || '{}');
+  const u = storage.getUser() ?? {};
+  _devBackupOnce();
   if (status === 'paid') {
     u.isPro = true; u.proExpiresAt = null; u.trialStartedAt = null;
   } else if (status === 'trial') {
@@ -297,21 +304,21 @@ function _devApplyPro(status) {
   } else {
     u.isPro = false; u.proExpiresAt = null; u.trialStartedAt = null;
   }
-  localStorage.setItem('yoyo_user', JSON.stringify(u));
+  storage.saveUserLocal(u);
   location.reload();
 }
 
 function _devReset() {
-  const backup = localStorage.getItem('orbit_dev_backup');
-  if (backup) localStorage.setItem('yoyo_user', backup);
-  localStorage.removeItem('orbit_dev_backup');
+  const backup = localStorage.getItem(FLAG_DEV_BACKUP);
+  if (backup) storage.saveUserLocal(JSON.parse(backup));
+  localStorage.removeItem(FLAG_DEV_BACKUP);
   location.reload();
 }
 
 function _devPanelHtml() {
   if (!_isDevMode()) return '';
 
-  const hasBackup   = !!localStorage.getItem('orbit_dev_backup');
+  const hasBackup   = !!localStorage.getItem(FLAG_DEV_BACKUP);
   const { level }   = getLevelInfo(state.user?.totalXP || 0);
   const isPaid      = storage.isPaidProUser();
   const isTrial     = storage.isTrialUser();
@@ -403,18 +410,6 @@ function _themeCardHtml(t, currentTheme, locked = false) {
       ${t.id === currentTheme ? '<div class="theme-check">✓</div>' : ''}
     </div>
   `;
-}
-
-function _proofStats() {
-  let count = 0, bytes = 0;
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key?.startsWith('orbit_proof_')) {
-      count++;
-      bytes += (localStorage.getItem(key) || '').length;
-    }
-  }
-  return { count, kb: Math.round(bytes / 1024) };
 }
 
 function _renderView(container) {
@@ -665,7 +660,7 @@ function _renderView(container) {
       <button class="btn btn-outline btn-sm" id="sync-btn" style="margin-bottom:10px;width:100%">↻ 從雲端同步資料</button>
       <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px">版本 ${APP_VERSION}</div>
       <button class="btn btn-outline btn-sm" id="tour-btn" style="margin-bottom:10px;width:100%">重啟新手教學</button>
-      ${(() => { const p = _proofStats(); return p.count > 0
+      ${(() => { const p = proofStats(); return p.count > 0
         ? `<button class="btn btn-outline btn-sm" id="proof-clear-btn" style="margin-bottom:10px;width:100%;color:var(--text-muted)">🗑 清除佐證圖片（${p.count} 張，約 ${p.kb} KB）</button>`
         : `<button class="btn btn-outline btn-sm" id="proof-clear-btn" style="margin-bottom:10px;width:100%;opacity:0.4" disabled>🗑 清除佐證圖片（無儲存）</button>`;
       })()}
@@ -837,8 +832,8 @@ function _setupListeners(container) {
     if (!card) return;
     const content = document.getElementById('content');
     content?.scrollTo({ top: card.offsetTop - 16, behavior: 'smooth' });
-    if (sessionStorage.getItem('orbit_pro_highlight') === '1') {
-      sessionStorage.removeItem('orbit_pro_highlight');
+    if (sessionStorage.getItem(FLAG_PRO_HIGHLIGHT) === '1') {
+      sessionStorage.removeItem(FLAG_PRO_HIGHLIGHT);
       const flash = () => {
         card.classList.add('pro-card-highlight');
         setTimeout(() => card.classList.remove('pro-card-highlight'), 2000);
@@ -913,13 +908,10 @@ function _setupListeners(container) {
 
   // Clear proof images
   container.querySelector('#proof-clear-btn')?.addEventListener('click', () => {
-    const { count, kb } = _proofStats();
+    const { count, kb } = proofStats();
     if (count === 0) return;
     if (!confirm(`確定要刪除全部 ${count} 張佐證圖片（約 ${kb} KB）？\n此操作無法復原。`)) return;
-    for (let i = localStorage.length - 1; i >= 0; i--) {
-      const key = localStorage.key(i);
-      if (key?.startsWith('orbit_proof_')) localStorage.removeItem(key);
-    }
+    clearAllProofs();
     _renderView(container);
     window.showToast('佐證圖片已清除');
   });

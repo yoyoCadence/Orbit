@@ -29,6 +29,8 @@ const mockState = vi.hoisted(() => ({
 
 const mockStorage = vi.hoisted(() => ({
   saveUser:    vi.fn(),
+  // Mirrors the real local-only write so tests can assert the localStorage cache
+  saveUserLocal: vi.fn((u) => localStorage.setItem('yoyo_user', JSON.stringify(u))),
   saveUserAndSync: vi.fn(() => Promise.resolve()),
   isProUser:   vi.fn(() => false),
   isPaidProUser: vi.fn(() => false),
@@ -58,7 +60,7 @@ vi.mock('../../pwa/js/state.js',   () => ({ state: mockState }));
 vi.mock('../../pwa/js/storage.js', () => ({ storage: mockStorage, db: mockDb }));
 
 // Dynamic import in profile.js: import('../app.js').then(({ updateHeader }) => updateHeader())
-vi.mock('../../pwa/js/app.js', () => ({ updateHeader: vi.fn() }));
+vi.mock('../../pwa/js/ui/header.js', () => ({ updateHeader: vi.fn() }));
 
 import { renderProfile } from '../../pwa/js/pages/profile.js';
 

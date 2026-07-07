@@ -4,6 +4,7 @@
 //   goals → { showNote: true, showResultLabel: true }
 
 import { escHtml, formatTime } from '../utils.js';
+import { getProof } from '../platform/proofStore.js';
 
 export const RESULT_ICON  = { complete: '✅', partial: '🔶', invalid: '❌', instant: '✓' };
 export const RESULT_LABEL = { complete: '完成', partial: '部分完成', invalid: '無效', instant: '完成' };
@@ -22,7 +23,7 @@ export function sessionRowHtml(s, {
       : s.result === 'invalid' ? '0 XP' : emptyXpText;
   const dur         = s.durationMinutes > 0 ? ` · ${s.durationMinutes}m` : '';
   const resultLabel = showResultLabel ? ` · ${RESULT_LABEL[s.result] || ''}` : '';
-  const proof = localStorage.getItem(`orbit_proof_${s.id}`);
+  const proof = getProof(s.id);
   const thumbHtml = proof
     ? `<span class="session-proof-thumb-wrap"><img class="session-proof-thumb" src="${proof}" alt="佐證"></span>`
     : '';

@@ -3,6 +3,7 @@ import { effectiveToday, sortSessionsNewestFirst, escHtml } from '../utils.js';
 import { calcDailyStats, reorderTasks, previewBaseXP } from '../engine.js';
 import { storage } from '../storage.js';
 import { sessionRowHtml, bindProofThumbs } from '../ui/sessionRow.js';
+import { FLAG_SHIELD_PENDING, FLAG_SHIELD_DISMISSED, FLAG_SHIELD_SCROLL_TOP } from '../flags.js';
 
 // ─── Value / impactType labels ────────────────────────────────────────────────
 
@@ -56,10 +57,10 @@ export function renderHome(container) {
 
   // Streak shield banner
   const shieldPending = (() => {
-    try { return JSON.parse(localStorage.getItem('orbit_shield_pending') || 'null'); }
+    try { return JSON.parse(localStorage.getItem(FLAG_SHIELD_PENDING) || 'null'); }
     catch { return null; }
   })();
-  const shieldDismissed = sessionStorage.getItem('orbit_shield_dismissed') === '1';
+  const shieldDismissed = sessionStorage.getItem(FLAG_SHIELD_DISMISSED) === '1';
   const shieldBanner = (shieldPending && !shieldDismissed) ? `
     <div class="shield-banner">
       <div class="shield-banner-top">
@@ -284,8 +285,8 @@ export function renderHome(container) {
   _setupCardSwipe(container);
 
   // Scroll to top when redirected from profile shield button
-  if (sessionStorage.getItem('orbit_shield_scroll_top') === '1') {
-    sessionStorage.removeItem('orbit_shield_scroll_top');
+  if (sessionStorage.getItem(FLAG_SHIELD_SCROLL_TOP) === '1') {
+    sessionStorage.removeItem(FLAG_SHIELD_SCROLL_TOP);
     requestAnimationFrame(() => {
       document.getElementById('content')?.scrollTo({ top: 0, behavior: 'smooth' });
     });

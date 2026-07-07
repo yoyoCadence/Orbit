@@ -3,6 +3,21 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.20.6] - 2026-07-07
+
+### Changed（資料層重構，零行為/資料格式變化 — handoff Phase 14–18 完結）
+- `platform/proofStore.js`：orbit_proof_* 佐證圖片存取（讀/寫/統計/清除）單一化，key 與「登出不清除」行為不變
+- `storage.saveUserLocal()`：profile 樂觀更新與 dev tools 不再硬編碼 'yoyo_user'
+- storage.js 四實體欄位映射表化（FIELD_MAP 表驅動，新增同步欄位＝加一列）；先以 12 個 characterization tests 鎖住 `||`/`??` 預設值語義再改，零漂移
+- `flags.js`：七個跨模組旗標 key 常數化（字串值不變）
+- profile.js 14 處 `import('../app.js')` 動態匯入改靜態；移除 app.js 死 re-export 與只寫不讀的 `_isGuest`
+
+### Added
+- 焦點計時器狀態機單元測試 ×6（fake timers：暫停補償、最低有效門檻、略過/早退/達標結算）——補上最後一個無自動測試的高風險區
+- 測試總數 649 → 667；e2e 22/22、lint 0
+
+---
+
 ## [1.20.5] - 2026-07-07
 
 ### Fixed

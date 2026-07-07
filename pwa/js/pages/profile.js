@@ -12,6 +12,9 @@ import { calcHourDistribution, calcStreakMilestone,
          calcDailyStats }                                 from '../engine.js';
 import { shareGrowthCard, supportsNativeShare }           from '../platform/share.js';
 import { goToProCard }                                    from '../ui/proNav.js';
+import { FLAG_SHIELD_PENDING }                            from '../flags.js';
+import { updateHeader }                                   from '../ui/header.js';
+import { showToast }                                      from '../ui/feedback.js';
 
 export function renderProfile(container) {
   const user   = state.user;
@@ -174,8 +177,8 @@ export function renderProfile(container) {
         <div class="streak-big">${streakDays} ${streakLabel}</div>
         <div class="streak-lbl">連勝天數</div>
         <div class="streak-hint">連勝 XP 加成：×${(1 + 0.02 * Math.floor(streakDays / 5)).toFixed(2).replace(/\.?0+$/, '')}</div>
-        <div class="streak-shield-row ${(() => { try { return localStorage.getItem('orbit_shield_pending') ? 'shield-pill-pending' : ''; } catch { return ''; } })()}"
-             onclick="${(() => { try { return localStorage.getItem('orbit_shield_pending') ? 'reshowShieldBanner()' : ''; } catch { return ''; } })()}">
+        <div class="streak-shield-row ${(() => { try { return localStorage.getItem(FLAG_SHIELD_PENDING) ? 'shield-pill-pending' : ''; } catch { return ''; } })()}"
+             onclick="${(() => { try { return localStorage.getItem(FLAG_SHIELD_PENDING) ? 'reshowShieldBanner()' : ''; } catch { return ''; } })()}">
           <span class="stat-pill-shield ${storage.isProUser() ? '' : 'stat-pill-shield-locked'}">🛡 ${user.streakShieldCount ?? 0} 張保護卡</span>
           <button class="stat-pill-shield-info" onclick="event.stopPropagation();showShieldInfo(this)" aria-label="保護卡說明">?</button>
         </div>
@@ -265,9 +268,9 @@ export function renderProfile(container) {
       todayXP,
     });
     if (result.reason === 'clipboard') {
-      import('../app.js').then(m => m.showToast('📋 已複製成長卡'));
+      showToast('📋 已複製成長卡');
     } else if (!result.shared && result.reason !== 'AbortError') {
-      import('../app.js').then(m => m.showToast('分享失敗，請重試'));
+      showToast('分享失敗，請重試');
     }
   });
 
@@ -284,9 +287,9 @@ export function renderProfile(container) {
       const previousAvatarPath = state.user.avatarPath || null;
       state.user.avatar = ev.target.result;
       state.user.avatarPath = null;
-      _saveUserLocalOnly(state.user);
+      storage.saveUserLocal(state.user);
       renderProfile(container);
-      import('../app.js').then(({ updateHeader }) => updateHeader());
+      updateHeader();
       _setProfileSyncStatus('avatar-sync-status', '頭像上傳中...');
       try {
         const uploaded = await db.uploadAvatar(file);
@@ -294,22 +297,22 @@ export function renderProfile(container) {
         state.user.avatarPath = uploaded.path;
         const synced = await storage.saveUserAndSync(state.user);
         renderProfile(container);
-        import('../app.js').then(({ updateHeader }) => updateHeader());
+        updateHeader();
         _setProfileSyncStatus('avatar-sync-status', synced ? '頭像已同步' : '頭像已儲存在此裝置，登入後可同步');
       } catch (err) {
         if (err?.message === 'Not authenticated') {
-          _saveUserLocalOnly(state.user);
+          storage.saveUserLocal(state.user);
           renderProfile(container);
-          import('../app.js').then(({ updateHeader }) => updateHeader());
+          updateHeader();
           _setProfileSyncStatus('avatar-sync-status', '頭像已儲存在此裝置，登入後可同步');
           return;
         }
         console.error('Avatar upload failed:', err);
         state.user.avatar = previousAvatar;
         state.user.avatarPath = previousAvatarPath;
-        _saveUserLocalOnly(state.user);
+        storage.saveUserLocal(state.user);
         renderProfile(container);
-        import('../app.js').then(({ updateHeader }) => updateHeader());
+        updateHeader();
         _setProfileSyncStatus('avatar-sync-status', '頭像上傳失敗，請稍後再試', true);
       }
     };
@@ -326,9 +329,9 @@ export function renderProfile(container) {
     btn.addEventListener('click', async () => {
       state.user.titleTemplate = btn.dataset.template;
       state.user.customTitle   = '';
-      _saveUserLocalOnly(state.user);
+      storage.saveUserLocal(state.user);
       renderProfile(container);
-      import('../app.js').then(({ updateHeader }) => updateHeader());
+      updateHeader();
       await _syncUserPreference();
     });
   });
@@ -353,9 +356,9 @@ export function renderProfile(container) {
   document.getElementById('custom-title-save').addEventListener('click', () => {
     const val = document.getElementById('custom-title-input').value.trim();
     state.user.customTitle = val || '';
-    _saveUserLocalOnly(state.user);
+    storage.saveUserLocal(state.user);
     renderProfile(container);
-    import('../app.js').then(({ updateHeader }) => updateHeader());
+    updateHeader();
     _syncUserPreference();
   });
 
@@ -376,9 +379,9 @@ export function renderProfile(container) {
   // Custom title clear
   document.getElementById('custom-title-clear')?.addEventListener('click', () => {
     state.user.customTitle = '';
-    _saveUserLocalOnly(state.user);
+    storage.saveUserLocal(state.user);
     renderProfile(container);
-    import('../app.js').then(({ updateHeader }) => updateHeader());
+    updateHeader();
     _syncUserPreference();
   });
 
@@ -640,11 +643,11 @@ function showTemplateEditor(container, editKey) {
     // Auto-select newly created template
     if (isNew) state.user.titleTemplate = key;
 
-    _saveUserLocalOnly(state.user);
+    storage.saveUserLocal(state.user);
     _syncUserPreference();
     modal.remove();
     renderProfile(container);
-    import('../app.js').then(({ updateHeader }) => updateHeader());
+    updateHeader();
   });
 
   modal.querySelector('#tmpl-delete-btn')?.addEventListener('click', () => {
@@ -652,11 +655,11 @@ function showTemplateEditor(container, editKey) {
     delete state.user.customTemplates[editKey];
     // Fall back to rpg if deleted template was selected
     if (state.user.titleTemplate === editKey) state.user.titleTemplate = 'rpg';
-    _saveUserLocalOnly(state.user);
+    storage.saveUserLocal(state.user);
     _syncUserPreference();
     modal.remove();
     renderProfile(container);
-    import('../app.js').then(({ updateHeader }) => updateHeader());
+    updateHeader();
   });
 }
 
@@ -697,9 +700,9 @@ function showNameModal(container) {
     btn.textContent = '儲存中...';
     status.textContent = '本機已儲存，同步中…';
     state.user.name = name;
-    _saveUserLocalOnly(state.user);
+    storage.saveUserLocal(state.user);
     renderProfile(container);
-    import('../app.js').then(({ updateHeader }) => updateHeader());
+    updateHeader();
     try {
       const synced = await storage.saveUserAndSync(state.user);
       status.classList.remove('error');
@@ -712,25 +715,19 @@ function showNameModal(container) {
         btn.textContent = '儲存';
       }
       renderProfile(container);
-      import('../app.js').then(({ updateHeader }) => updateHeader());
+      updateHeader();
     } catch (err) {
       console.error('Name sync failed:', err);
       state.user.name = previousName;
-      _saveUserLocalOnly(state.user);
+      storage.saveUserLocal(state.user);
       btn.disabled = false;
       btn.textContent = '儲存';
       status.textContent = '同步失敗，請稍後再試';
       status.classList.add('error');
       renderProfile(container);
-      import('../app.js').then(({ updateHeader }) => updateHeader());
+      updateHeader();
     }
   });
-}
-
-function _saveUserLocalOnly(user) {
-  try { localStorage.setItem('yoyo_user', JSON.stringify(user)); } catch (err) {
-    console.error('Local user save failed:', err);
-  }
 }
 
 async function _syncUserPreference() {

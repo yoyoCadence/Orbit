@@ -2,6 +2,7 @@
 // proofCapture.js stays a lazy import so it never enters the startup critical path.
 
 import { showToast } from './feedback.js';
+import { saveProof } from '../platform/proofStore.js';
 
 export function showProofLightbox(src) {
   const overlay = document.createElement('div');
@@ -80,7 +81,7 @@ export async function showProofSheet(sessionId, taskName) {
   });
   sheet.querySelector('#proof-confirm').addEventListener('click', () => {
     if (!selectedDataUrl) return;
-    localStorage.setItem(`orbit_proof_${sessionId}`, selectedDataUrl);
+    saveProof(sessionId, selectedDataUrl);
     // Inject thumbnail directly into the existing log-item row so it
     // survives the close animation without a full-page re-render.
     const delBtn = document.querySelector(`.session-del-btn[data-session-id="${sessionId}"]`);

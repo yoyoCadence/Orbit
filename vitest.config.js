@@ -13,6 +13,8 @@ export default defineConfig({
       ['tests/unit/review.test.js',           'jsdom'],
       ['tests/unit/goals.test.js',            'jsdom'],
       ['tests/unit/feedback.test.js',         'jsdom'],
+      ['tests/unit/storage-mapping.test.js',  'jsdom'],
+      ['tests/unit/focusTimer.test.js',       'jsdom'],
       ['tests/unit/proofCapture.test.js',     'jsdom'],
       ['tests/integration/storage.test.js',   'jsdom'],
     ],
