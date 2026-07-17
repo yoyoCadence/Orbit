@@ -62,6 +62,11 @@
   - 完成條件：目前常用場景素材可預載或快取，window view 與主要家具切頁後不再明顯延遲出現
   - 備註：應在主要場景與資產集合較穩定後再做，避免過早優化 placeholder 階段的載入策略
 
+- [ ] **PS-227** Generate controlled idle furniture variants from approved references
+  - Goal: replace one-view-only expanded props with true `front / left-wall-flush / right-wall-flush` variants that preserve material identity.
+  - Scope: legacy Idle Growth Window only; pause further volume work while the fixed-camera Personal Space V2 vertical slice is validated.
+  - Acceptance: resume only if a validated runtime interaction still needs multiple authored perspectives; preserve all completed variant assets and provenance in the meantime.
+
 - [ ] **AI-201** 建立 AI companion behavior layer 的 rule-based 狀態模型
   - 目標：先定義 `observe / approach / remind / congratulate` 等狀態與觸發條件
   - 對應 roadmap：Phase 2
@@ -95,21 +100,52 @@
 
 ## Next
 
-- [ ] **PS-227** Generate controlled idle furniture variants from approved references
-  - Goal: replace one-view-only expanded props with true `front / left-wall-flush / right-wall-flush` variants that preserve material identity.
-  - Scope: use the `orbit-idle-window-assets` reference workflow for sofa, coffee table, bookcase, filing cabinet, trophy display, rug, and other large layout-critical props; register variant metadata and camera preferences.
-  - Acceptance: each selected large prop has authored variants, no CSS rotation or mirror-only final art, and visual QA confirms material/palette/silhouette consistency across views.
+- [ ] **PS-237** Integrate the home Orbit Window with lazy runtime and static fallback
+  - Goal: show the main Session-to-world reward loop directly in the home core content area.
+  - Scope: 3:2 home surface, poster-first render, viewport/idle lazy mount, reduced motion, failure fallback, task/project/Companion actions, and cleanup.
+  - Acceptance: home remains usable before runtime load, normal and Focus completions reveal world changes in place, and the task list is not blocked.
+
+- [ ] **PS-238** Add Personal Space V2 World Mode and minimal Edit Mode shell
+  - Goal: replace dashboard-first presentation with a scene-first full view while preserving the legacy page behind the flag.
+  - Scope: shared scene state, compact HUD, project/Companion interactions, map entry, edit-mode boundary, and existing placement reuse.
+  - Acceptance: home and full view show the same state; the minimal editor changes only existing placement state.
+
+- [ ] **PS-239** Add Personal Space runtime teardown, asset cache, and mobile fallback contracts
+  - Goal: prevent duplicate runtimes/listeners and keep the PWA responsive on constrained devices.
+  - Scope: route teardown, mount/suspend/resume/destroy, visibility handling, context failure, image/runtime cache behavior, and service-worker coverage.
+  - Acceptance: repeated route changes leave at most one runtime, fallback never blocks tasks, and required V2 assets remain available after caching.
+
+- [ ] **PS-240** Validate and document the Personal Space V2 vertical slice
+  - Goal: close the slice with integration/E2E coverage, synchronized docs, and a release-ready handoff.
+  - Scope: home-to-Focus-to-reveal-to-full-world-to-undo flow, performance checks, accessibility, roadmap/changelog/tasks sync, and version bump.
+  - Acceptance: the corrected mandatory home-window flow passes automated tests and documented manual checks without regressing legacy mode.
 
 
 ---
 
 ## In Progress
 
-- [ ] 目前無進行中的正式任務
+- [ ] **PS-234** Add Personal Space V2 feature flag and idempotent local state migration
+  - Goal: preserve legacy Personal Space while introducing a versioned V2 state envelope.
+  - Scope: `legacy | v2` runtime selection, v1-to-v2 migration, normalization, fallback, and focused tests; no Supabase schema change.
+  - Acceptance: legacy data and layouts remain readable, migration is idempotent, and either runtime can be selected without data loss.
+
+- [ ] **PS-235** Add reversible session reward ledger and Workspace Upgrade project engine
+  - Goal: make every game reward traceable to a Session and safely reversible.
+  - Scope: deterministic reward generation, duplicate protection, reconciliation, reversal, hidden-stat mapping, and one five-stage Active Project.
+  - Acceptance: commit, reload/reconcile, duplicate remote data, and Session undo produce one correct ledger and matching project state.
+
+- [ ] **PS-236** Build the shared Personal Space V2 world and Orbit Window view models
+  - Goal: derive home-window, full-world, and edit presentations from one persisted world state.
+  - Scope: Active Project, Main Quest, recent world change, pending reveal, protagonist state, rule-based Companion state, time band, and presentation-mode selectors.
+  - Acceptance: no presentation model mutates state and home/full-world outputs agree on project and Companion state.
 
 ---
 
 ## Done
+
+- [x] **PS-233** Audit and specify the corrected Personal Space V2 vertical slice
+  - Completed: audited v1.20.6 code, state, sync, tests, home, Personal Space runtime, assets, cache, and documentation; added product, art, technical, asset-pipeline, and vertical-slice specifications with the corrected mandatory home Orbit Window carried through all acceptance and non-goal clauses.
 
 - [x] **HW-111** Time-of-day atmosphere layer
   - Completed: `timeBand.js` maps local hour to morning/day/evening/night; `applyTimeBand()` sets `data-time-band` on `<html>` and is called on init + every hour; CSS `--time-tint` token applies a subtle hue overlay via `body::after` pseudo-element; Liquid Glass and Personal Space inherit the tint automatically.
