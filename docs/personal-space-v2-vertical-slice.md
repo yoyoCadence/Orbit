@@ -843,7 +843,7 @@ Deliver:
 
 Exit gate: every acceptance item in this document passes in V2 mode and legacy mode has no regression.
 
-#### PS-240 pre-merge verification checklist
+#### PS-240 merge hardening and PS-243 production acceptance
 
 Automated coverage completed by the implementation:
 
@@ -853,8 +853,11 @@ Automated coverage completed by the implementation:
 - [x] Small, Medium, and Major reveal clocks are distinct and pause off-screen or in a hidden tab
 - [x] protagonist, Companion, and rain state reach both poster and Pixi render paths
 - [x] telemetry drops non-allowlisted fields, deduplicates retry ids, and fails closed as a no-op
+- [x] PR #129 merged PS-240 hardening with Chromium E2E 26/26 and 792 unit/integration tests
+- [x] PS-243 browser baseline covers responsive viewports, keyboard order, reduced motion, 200% zoom stress, route loops, transfer estimates, and privacy-safe telemetry values
 
-Human verification still required before declaring production acceptance:
+Human verification still required before declaring PS-243 production acceptance.
+Record results in [`ps-243-production-acceptance.md`](ps-243-production-acceptance.md):
 
 - [ ] switch rapidly between two real accounts while sync is delayed; verify names, tasks, Energy, Sessions, and V2 world never cross accounts
 - [ ] complete and undo a qualifying Focus Session, then inspect Small／Medium／Major reveal readability with normal and reduced motion

@@ -3,6 +3,22 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.21.1] - 2026-07-18
+
+### Added
+- 新增 PS-243 production acceptance 證據矩陣，分開記錄 responsive viewport、鍵盤順序、reduced motion、200% zoom、synthetic route-loop、資產預算與仍需真機完成的驗收項目。
+
+### Fixed
+- Personal Space telemetry 現在依每個 event field 驗證有限類別、日期、布林值與數值範圍；caller retry key 僅留在本機去重，adapter id 只由可信事件 metadata 產生，無效時間與自由文字也不再原樣進入 event payload。
+
+### Validation
+- `npm run lint`：通過。
+- `npm run test`：40 個檔案、796 個測試通過。
+- `npm run test:e2e`：Chromium 26/26 通過；資源競爭造成的 timeout 案例均已單獨重跑，清理 QA session 後完整序列通過。
+- Playwright CLI：完成 320×568、390×844、768×1024、1024×768、844×390、reduced-motion、200% zoom 與 10 次 4× CPU throttle route-loop baseline。
+
+---
+
 ## [1.21.0] - 2026-07-17
 
 ### Added
