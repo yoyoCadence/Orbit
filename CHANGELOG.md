@@ -11,11 +11,13 @@
 - 新增 scene-first Full World 與只調整既有擺設的最小 Edit Mode；Home、World、Edit 共用同一份 world snapshot。
 - Pin 並 vendor PixiJS 8.18.1，採 poster-first、viewport lazy mount、offscreen/tab suspend、WebGL context recovery 與靜態 fallback。
 - 新增 Session deletion retry log、Home-to-Focus-to-reveal-to-World-to-undo E2E，以及 migration、ledger、runtime、route、cache、同步與 editor 回歸測試。
+- 新增隱私 allowlist、retry event id 去重且預設 no-op 的 Personal Space telemetry 合約；尚未連接任何外部分析服務。
 
 ### Changed
 - Personal Space runtime 預設改為 V2，仍保留明確的 `legacy` fallback；既有 V1 key、資產、ownership 與 placements 不被覆寫。
 - 初始載入、背景同步與設定頁手動同步現在都會刷新 canonical app state，再靜默 reconcile V2；只有成功的完整 Session 查詢會視為 authoritative。
 - Service Worker 安裝殼只預載靜態 fallback poster；Pixi 與 phase props 首次成功使用後再快取，避免把完整場景材質塞進 Home install path。
+- Small／Medium／Major Reward Reveal 現在具有不同顯示時間與視覺層級；主角、Companion 與雨天狀態會同步驅動 Pixi 與靜態 poster fallback。
 
 ### Fixed
 - Personal Space V2 的未分帳 V1 資料只允許一個 owner claim；快取開機的 Gold cutover 會先標記 provisional，並在遠端或離線決策完成後只定稿一次。
@@ -25,6 +27,8 @@
 - Same-device undo 使用實際套用的 Energy delta，在 0／max clamp 邊界可精準回滾。
 - Silent authoritative reversal 會移除已失效的正向 pending reveal／recent change，避免世界已回滾後仍播放舊的 +Gold／+Project 動畫。
 - 同一 Session 的 ordinary／Daily Main Quest hidden-stat grant 使用不同 immutable identity，不再因 winner promotion 原地改寫 ledger entry。
+- 遠端 load、profile／task／Session／Energy 寫入與 trial 啟用現在都綁定預期 authenticated owner；App 另以 generation token 阻止 sign-out／快速切換帳號後的舊請求回填 cache 或重繪畫面。
+- Home 同 route 重繪會先 release 再延後 destroy Pixi Application；同步 remount 會取消 teardown，因此任務結算不再重建 Application，離開 route 或登出仍會完成清理。
 - 重複 commit／remote merge 不再重複發獎；撤銷 Session 會反轉 Gold、Quest、Project、hidden stats 與 milestone rewards，且 remote resurrection 由 tombstone 阻擋。
 - Boot／migration／remote reconciliation 不再重播歷史 reveal；Home 消耗 reveal 後會立即顯示下一筆或回到穩定狀態。
 - Editor 寫入加入 world revision guard，localStorage 寫入失敗不再回報假成功；Home 與 Full World 仍保留可讀的靜態 snapshot。
@@ -35,11 +39,12 @@
 
 ### Validation
 - `npm run lint`：通過。
-- `npm run test`：38 個檔案、773 個測試通過。
+- `npm run test`：40 個檔案、786 個測試通過。
 - `npm run test:e2e`：Chromium 26/26 通過，包含正式 Focus 結束、Pixi failure fallback、off-screen suspend/resume、三輪 Home／World route loop、reduced motion 與 legacy fallback。
 
 ### Known limitations
 - 首個 V2 場景仍使用明確標記為 `fallback-proof` 的既有 16:9 美術，以 cover-crop 顯示於 3:2；最終 3:2 action／Companion 資產包與 1.5 MB 目標仍需後續美術驗收。
+- 低階 Android／iOS 實機效能、鍵盤操作與 reduced-motion 的人工驗證仍待完成；自動化通過不代表這些實機驗收已完成。
 - V2 世界狀態目前 local-first；跨裝置同步需要另行核准的後端 schema 設計。
 
 ---

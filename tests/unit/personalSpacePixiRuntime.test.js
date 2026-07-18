@@ -4,9 +4,28 @@
 
 import { describe, expect, it, vi } from 'vitest';
 import {
+  createDeferredRuntimeDestroyer,
   createPixiSceneRuntime,
   getCoverTransform,
 } from '../../pwa/js/personalSpace/v2/runtime/pixiSceneRuntime.js';
+
+describe('deferred Orbit runtime destruction', () => {
+  it('cancels teardown when the next same-route render retains the runtime', () => {
+    vi.useFakeTimers();
+    const runtime = { destroy: vi.fn() };
+    const destroyer = createDeferredRuntimeDestroyer(runtime);
+
+    destroyer.schedule();
+    destroyer.retain();
+    vi.runAllTimers();
+    expect(runtime.destroy).not.toHaveBeenCalled();
+
+    destroyer.schedule();
+    vi.runAllTimers();
+    expect(runtime.destroy).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
+});
 
 function createFakePixi(options = {}) {
   const applications = [];
@@ -113,6 +132,34 @@ describe('Personal Space V2 Pixi scene runtime', () => {
     expect(cover.scale).toBeCloseTo(640 / 941, 8);
     expect(1672 * cover.scale).toBeGreaterThan(960);
     expect(941 * cover.scale).toBeCloseTo(640, 8);
+  });
+
+  it('renders weather and drives protagonist and Companion motion from shared state', async () => {
+    const fake = createFakePixi();
+    const runtime = createPixiSceneRuntime({ loadPixi: () => Promise.resolve(fake.pixi) });
+    const { host } = createRuntimeHost();
+
+    await runtime.mount(host, {
+      activeProject: { progress: 50 },
+      protagonist: { state: 'work' },
+      companion: { state: 'congratulate' },
+      weather: 'rain',
+    });
+    const app = fake.applications[0];
+    const protagonist = app.stage.children.find(child => child.label === 'orbit-protagonist');
+    const companion = app.stage.children.find(child => child.label === 'orbit-companion');
+    const rain = app.stage.children.find(child => child.label === 'orbit-weather-rain');
+    const ticker = app.ticker.add.mock.calls[0][0];
+    const initialProtagonistX = protagonist.x;
+    const initialCompanionY = companion.y;
+
+    ticker({ deltaMS: 200 });
+
+    expect(rain.children).toHaveLength(18);
+    expect(protagonist.x).not.toBe(initialProtagonistX);
+    expect(companion.y).not.toBe(initialCompanionY);
+    expect(rain.y).not.toBe(0);
+    runtime.destroy();
   });
 
   it('re-renders the latest model after WebGL context restoration and cleans up once', async () => {

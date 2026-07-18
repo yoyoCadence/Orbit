@@ -5,6 +5,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getWorkspaceSceneAssets } from '../../pwa/js/personalSpace/v2/content/assetManifest.js';
 import {
+  getRevealDurationMs,
   mountOrbitWindow,
   normalizeOrbitWindowModel,
   renderOrbitWindow,
@@ -54,6 +55,27 @@ describe('Personal Space V2 Orbit Window', () => {
     expect(normalizeOrbitWindowModel(source, 'full-world').renderMode).toBe('full-world');
     expect(normalizeOrbitWindowModel(source, 'edit').renderMode).toBe('edit');
     expect(source.activeProject.progress).toBe(50);
+  });
+
+  it('projects protagonist, Companion, weather, and distinct reveal tiers into the shared surface', () => {
+    const host = document.createElement('div');
+    host.innerHTML = renderOrbitWindow({
+      playerState: 'work',
+      companion: { state: 'remind' },
+      weather: 'rain',
+      pendingReveal: { id: 'major-1', kind: 'major', title: '新區域開放' },
+    });
+    const root = host.querySelector('[data-orbit-window]');
+
+    expect(root.dataset.playerState).toBe('work');
+    expect(root.dataset.companionState).toBe('remind');
+    expect(root.dataset.weather).toBe('rain');
+    expect(root.dataset.revealKind).toBe('major');
+    expect(root.querySelector('.orbit-window-major-reveal')).not.toBeNull();
+    expect(root.querySelector('[data-weather="rain"]')).not.toBeNull();
+    expect(getRevealDurationMs('small')).toBeLessThan(getRevealDurationMs('medium'));
+    expect(getRevealDurationMs('medium')).toBeLessThan(getRevealDurationMs('major'));
+    expect(getRevealDurationMs('major', true)).toBe(1000);
   });
 
   it('lazy-mounts the runtime and keeps high-value actions in semantic DOM buttons', async () => {

@@ -100,21 +100,23 @@
 
 ## Next
 
-- None.
+- [ ] **PS-242** Promote the fallback-proof Personal Space scene pack to final production action art
+  - Target: replace the current proof assets with reviewed protagonist, Companion, weather, and direction/state variants while preserving the V2 manifest contract.
+
+- [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
+  - Target: record low-end mobile measurements, complete the manual reduced-motion/keyboard checklist, and validate the local event contract before enabling any external analytics provider.
 
 
 ---
 
 ## In Progress
 
-- None.
+- [ ] **PS-240** Validate and harden the Personal Space V2 vertical slice
+  - In progress: bind remote writes and loads to the authenticated owner, reuse the Home Pixi runtime across same-route renders, distinguish Small / Medium / Major reveal presentation, and correct release-status documentation before merge.
 
 ---
 
 ## Done
-
-- [x] **PS-240** Validate and document the Personal Space V2 vertical slice
-  - Completed: added the Home → Main Quest → formal Focus settlement → reveal → Full World → Session undo E2E plus Pixi failure, viewport, route-loop, reduced-motion, and legacy coverage; final verification is lint clean, 773 unit/integration tests, and 26 Chromium E2E tests.
 
 - [x] **PS-239** Add Personal Space runtime teardown, asset cache, and mobile fallback contracts
   - Completed: added route and viewport lifecycle ownership, visibility/context loss recovery, idempotent cleanup, successful-response asset caching, poster fallback, and focused regression coverage.

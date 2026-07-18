@@ -1,5 +1,9 @@
 import { getWorkspaceSceneAssets } from '../content/assetManifest.js';
-import { orbitWindowRuntime } from '../runtime/pixiSceneRuntime.js';
+import {
+  orbitWindowRuntime,
+  orbitWindowRuntimeDestroyer,
+} from '../runtime/pixiSceneRuntime.js';
+import { emitPersonalSpaceTelemetry } from '../telemetry.js';
 
 const COMPANION_DIALOGUE_MESSAGES = Object.freeze({
   'companion.project.workspace-upgrade.complete': '工作站完成了。這個房間記得你一路累積的努力。',
@@ -12,17 +16,33 @@ const COMPANION_DIALOGUE_MESSAGES = Object.freeze({
   'companion.observe': '我會在這裡看著你的空間慢慢成形。',
 });
 
+const REVEAL_DURATIONS_MS = Object.freeze({
+  small: Object.freeze({ standard: 2200, reduced: 500 }),
+  medium: Object.freeze({ standard: 4200, reduced: 750 }),
+  major: Object.freeze({ standard: 6000, reduced: 1000 }),
+});
+
+export function getRevealDurationMs(kind, reducedMotion = false) {
+  const tier = REVEAL_DURATIONS_MS[normalizeRevealKind(kind)];
+  return reducedMotion ? tier.reduced : tier.standard;
+}
+
 export function renderOrbitWindow(inputModel = {}, options = {}) {
   const model = normalizeOrbitWindowModel(inputModel, options.renderMode);
   const scene = getWorkspaceSceneAssets(model.activeProject.progress, model.placements);
   const rewardLines = buildRewardLines(model.pendingReveal);
+  const revealKind = model.pendingReveal?.kind || null;
 
   return `
     <section
-      class="orbit-window orbit-window--${escapeHtml(model.renderMode)} ${model.pendingReveal ? 'is-revealing' : ''}"
+      class="orbit-window orbit-window--${escapeHtml(model.renderMode)} ${revealKind ? `is-revealing orbit-window--reveal-${revealKind}` : ''} orbit-window--weather-${escapeHtml(model.weather)}"
       data-orbit-window
       data-render-mode="${escapeHtml(model.renderMode)}"
       data-project-progress="${model.activeProject.progress}"
+      data-player-state="${escapeHtml(model.protagonist.state)}"
+      data-companion-state="${escapeHtml(model.companion.state)}"
+      data-weather="${escapeHtml(model.weather)}"
+      ${revealKind ? `data-reveal-kind="${revealKind}"` : ''}
       aria-labelledby="orbit-window-title"
     >
       <div class="orbit-window-heading">
@@ -40,6 +60,7 @@ export function renderOrbitWindow(inputModel = {}, options = {}) {
             ${scene.props.map(renderPosterProp).join('')}
             <img
               class="orbit-window-protagonist"
+              data-player-state="${escapeHtml(model.protagonist.state)}"
               src="${escapeHtml(scene.protagonist)}"
               alt=""
               draggable="false"
@@ -50,6 +71,7 @@ export function renderOrbitWindow(inputModel = {}, options = {}) {
               data-companion-state="${escapeHtml(model.companion.state)}"
               style="${placementStyle(scene.companionPlacement)}"
             ><span></span></span>
+            <span class="orbit-window-weather" data-weather="${escapeHtml(model.weather)}"></span>
             <span class="orbit-window-light orbit-window-light--${escapeHtml(model.timeBand)}"></span>
           </span>
           <span class="orbit-window-runtime-host" data-orbit-runtime-host data-runtime-status="poster"></span>
@@ -62,6 +84,13 @@ export function renderOrbitWindow(inputModel = {}, options = {}) {
           ` : `<span>${escapeHtml(model.recentWorldChange || scene.phase.label)}</span>`}
         </div>
       </div>
+
+      ${revealKind === 'major' ? `
+        <div class="orbit-window-major-reveal" aria-hidden="true">
+          <span>WORLD MILESTONE</span>
+          <strong>${escapeHtml(model.pendingReveal.title || '世界里程碑已解鎖')}</strong>
+        </div>
+      ` : ''}
 
       <div class="orbit-window-state-grid">
         <button class="orbit-window-state-card" type="button" data-orbit-project>
@@ -96,6 +125,7 @@ export function renderOrbitWindow(inputModel = {}, options = {}) {
 export function mountOrbitWindow(root, options = {}) {
   if (!root) return () => {};
   const runtime = options.runtime || orbitWindowRuntime;
+  if (runtime === orbitWindowRuntime) orbitWindowRuntimeDestroyer.retain();
   const model = normalizeOrbitWindowModel(options.model || {}, options.renderMode);
   const runtimeHost = root.querySelector('[data-orbit-runtime-host]');
   const reducedMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
@@ -111,9 +141,32 @@ export function mountOrbitWindow(root, options = {}) {
   let isInViewport = 'IntersectionObserver' in globalThis ? null : true;
   let lastVisibility = document.hidden ? 'hidden' : 'visible';
   const revealId = model.pendingReveal?.id || null;
-  let revealRemainingMs = revealId ? (reducedMotion ? 700 : 2800) : 0;
+  let revealRemainingMs = revealId
+    ? getRevealDurationMs(model.pendingReveal.kind, reducedMotion)
+    : 0;
   let revealStartedAt = null;
   let revealConsumed = false;
+  let revealTelemetryStarted = false;
+  let windowViewedEmitted = false;
+  const revealDurationMs = revealId
+    ? getRevealDurationMs(model.pendingReveal.kind, reducedMotion)
+    : 0;
+  const revealTelemetryProperties = revealId ? {
+    rewardBatchType: model.pendingReveal.direction || 'settlement',
+    revealClass: model.pendingReveal.kind,
+    renderMode: model.renderMode,
+    reducedMotion,
+  } : null;
+
+  const emitWindowViewed = runtimeReadyValue => {
+    if (windowViewedEmitted) return;
+    windowViewedEmitted = true;
+    emitPersonalSpaceTelemetry('orbit_window_viewed', {
+      renderPath: runtimeReadyValue ? 'pixi' : 'poster-fallback',
+      projectPhase: model.activeProject.currentPhase,
+      runtimeReady: runtimeReadyValue,
+    }, { eventId: `orbit-window-viewed:${model.renderMode}:${model.worldRevision}:${runtimeReadyValue}` });
+  };
 
   const pauseRevealClock = () => {
     if (revealTimer === null) return;
@@ -135,8 +188,19 @@ export function mountOrbitWindow(root, options = {}) {
     if (revealTimer !== null) return;
     if (revealRemainingMs <= 0) {
       revealConsumed = true;
+      emitPersonalSpaceTelemetry('reward_reveal_completed', {
+        ...revealTelemetryProperties,
+        durationMs: revealDurationMs,
+        completionMode: 'timer',
+      }, { eventId: `${revealId}:completed` });
       options.onRevealConsumed?.(revealId);
       return;
+    }
+    if (!revealTelemetryStarted) {
+      revealTelemetryStarted = true;
+      emitPersonalSpaceTelemetry('reward_reveal_started', revealTelemetryProperties, {
+        eventId: `${revealId}:started`,
+      });
     }
     revealStartedAt = Date.now();
     revealTimer = globalThis.setTimeout(() => {
@@ -145,6 +209,11 @@ export function mountOrbitWindow(root, options = {}) {
       revealRemainingMs = 0;
       if (disposed || revealConsumed) return;
       revealConsumed = true;
+      emitPersonalSpaceTelemetry('reward_reveal_completed', {
+        ...revealTelemetryProperties,
+        durationMs: revealDurationMs,
+        completionMode: 'timer',
+      }, { eventId: `${revealId}:completed` });
       options.onRevealConsumed?.(revealId);
     }, revealRemainingMs);
   };
@@ -168,11 +237,13 @@ export function mountOrbitWindow(root, options = {}) {
         if (disposed) return;
         runtimeReady = true;
         runtimeActive = true;
+        emitWindowViewed(true);
         syncRuntimeActivity();
       })
       .catch(() => {
         if (disposed) return;
         runtimeHost.dataset.runtimeStatus = 'fallback';
+        emitWindowViewed(false);
         const note = root.querySelector('[data-orbit-runtime-note]');
         if (note) note.textContent = '互動場景暫時無法載入，已保留靜態世界與所有任務功能。';
       });
@@ -214,9 +285,22 @@ export function mountOrbitWindow(root, options = {}) {
   }
 
   const actionBindings = [];
-  bindAction('[data-orbit-open-world]', () => options.onOpenWorld?.());
+  bindAction('[data-orbit-open-world]', () => {
+    emitPersonalSpaceTelemetry('orbit_window_opened', {
+      entryPoint: model.renderMode,
+      projectPhase: model.activeProject.currentPhase,
+    });
+    options.onOpenWorld?.();
+  });
   bindAction('[data-orbit-project]', () => options.onProject?.(model.activeProject));
-  bindAction('[data-orbit-companion]', () => options.onCompanion?.(model.companion));
+  bindAction('[data-orbit-companion]', () => {
+    emitPersonalSpaceTelemetry('companion_interacted', {
+      companionState: model.companion.state,
+      interactionKey: model.companion.interactionKey,
+      renderMode: model.renderMode,
+    });
+    options.onCompanion?.(model.companion);
+  });
   bindAction('[data-orbit-main-quest]', () => options.onMainQuest?.(model.mainQuest));
 
   function bindAction(selector, handler) {
@@ -251,7 +335,11 @@ export function normalizeOrbitWindowModel(input = {}, renderMode) {
   const project = input.activeProject || input.project || input.world?.activeProject || {};
   const companion = input.companion || input.companionState || input.world?.companion || {};
   const quest = input.mainQuest || input.quest || {};
-  const pendingReveal = input.pendingReveal || input.world?.pendingReveal || input.world?.revealQueue?.[0] || null;
+  const rawPendingReveal = input.pendingReveal || input.world?.pendingReveal || input.world?.revealQueue?.[0] || null;
+  const pendingReveal = rawPendingReveal
+    ? { ...rawPendingReveal, kind: normalizeRevealKind(rawPendingReveal.kind) }
+    : null;
+  const protagonist = input.protagonist || input.world?.protagonist || {};
   const requestedRenderMode = renderMode ?? input.renderMode ?? 'home-window';
   const recentWorldChange = input.recentWorldChange
     ?? input.recentWorldChangeEvent
@@ -265,10 +353,12 @@ export function normalizeOrbitWindowModel(input = {}, renderMode) {
       : 'home-window',
     sceneId: input.sceneId || input.world?.selectedSceneId || 'office-corner',
     sceneLabel: input.sceneLabel || 'Building Stage · 正式工作站',
+    worldRevision: Number.isFinite(input.worldRevision) ? input.worldRevision : 0,
     activeProject: {
       id: project.id || 'workspace-upgrade-v1',
       label: project.label || 'Workspace Upgrade',
       progress: clampPercent(project.progress),
+      currentPhase: project.currentPhase || project.phase || 'bare',
       nextRequirement: project.nextRequirement || '',
     },
     mainQuest: {
@@ -283,18 +373,28 @@ export function normalizeOrbitWindowModel(input = {}, renderMode) {
       id: companion.id || 'orbit-guide',
       label: companion.label || 'Orbit Guide',
       state: companion.state || companion.activity || 'observe',
+      interactionKey: companion.interactionKey || companion.dialogueKey || companion.state || 'observe',
       message: companion.message
         || companion.dialogue
         || COMPANION_DIALOGUE_MESSAGES[companion.dialogueKey]
         || companion.dialogueKey
         || COMPANION_DIALOGUE_MESSAGES['companion.observe'],
     },
+    protagonist: {
+      state: protagonist.state || input.playerState || 'idle',
+      animationKey: protagonist.animationKey || protagonist.state || input.playerState || 'idle',
+    },
     pendingReveal,
     recentWorldChange: formatRecentWorldChange(recentWorldChange),
     momentum: input.momentum || 'low',
     timeBand: input.timeBand || 'day',
+    weather: input.weather === 'rain' ? 'rain' : 'clear',
     placements: input.placements || input.world?.placements || {},
   };
+}
+
+function normalizeRevealKind(value) {
+  return ['small', 'medium', 'major'].includes(value) ? value : 'small';
 }
 
 function renderPosterProp(entry) {

@@ -181,7 +181,7 @@ describe('Orbit Window lifecycle', () => {
 
     hidden = false;
     document.dispatchEvent(new Event('visibilitychange'));
-    vi.advanceTimersByTime(2799);
+    vi.advanceTimersByTime(2199);
     expect(onRevealConsumed).not.toHaveBeenCalled();
     vi.advanceTimersByTime(1);
     expect(onRevealConsumed).toHaveBeenCalledWith('reveal:hidden-tab');
@@ -214,7 +214,7 @@ describe('Orbit Window lifecycle', () => {
     vi.advanceTimersByTime(10_000);
     expect(onRevealConsumed).not.toHaveBeenCalled();
     observerCallback([{ isIntersecting: true }]);
-    vi.advanceTimersByTime(1299);
+    vi.advanceTimersByTime(699);
     expect(onRevealConsumed).not.toHaveBeenCalled();
     vi.advanceTimersByTime(1);
     expect(onRevealConsumed).toHaveBeenCalledWith('reveal:offscreen');

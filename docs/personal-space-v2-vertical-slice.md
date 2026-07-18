@@ -723,6 +723,15 @@ The slice defines these events even if the first implementation uses a local/no-
 | `edit_mode_opened` | `sceneId`, `ownedCountBand` |
 | `quest_completed` | `questType`, `effectiveDate`, `sourceCategory` |
 
+Implementation status (2026-07-18): `pwa/js/personalSpace/v2/telemetry.js`
+implements this allowlisted contract with local event-id deduplication and a
+bounded in-memory adapter for tests/dev inspection. Production defaults to a
+no-op adapter; no external analytics provider has been added. The Orbit Window
+currently emits view/open, reveal start/complete, Companion interaction, full
+space load, and Edit Mode entry events. Project/Quest settlement events remain
+contracted extension points until their event-source wiring is separately
+validated.
+
 Privacy rules:
 
 - do not send task names, notes, proof media, dialogue text, email, or raw localStorage values
@@ -833,6 +842,26 @@ Deliver:
 - documented remaining cloud-sync limitations and approval-gated next work
 
 Exit gate: every acceptance item in this document passes in V2 mode and legacy mode has no regression.
+
+#### PS-240 pre-merge verification checklist
+
+Automated coverage completed by the implementation:
+
+- [x] stale owner remote loads cannot write shared cache after account switch
+- [x] owner-bound profile, task, Session, Energy, and trial mutations reject a mismatched session
+- [x] same-route Home redraw cancels deferred Pixi teardown and reuses the Application
+- [x] Small, Medium, and Major reveal clocks are distinct and pause off-screen or in a hidden tab
+- [x] protagonist, Companion, and rain state reach both poster and Pixi render paths
+- [x] telemetry drops non-allowlisted fields, deduplicates retry ids, and fails closed as a no-op
+
+Human verification still required before declaring production acceptance:
+
+- [ ] switch rapidly between two real accounts while sync is delayed; verify names, tasks, Energy, Sessions, and V2 world never cross accounts
+- [ ] complete and undo a qualifying Focus Session, then inspect Small／Medium／Major reveal readability with normal and reduced motion
+- [ ] repeat Home settlement redraws and Home ↔ Full World loops on desktop and mobile; verify no blank canvas, duplicate canvas, or blocked task controls
+- [ ] verify keyboard focus order and screen-reader announcements for world, Project, Companion, Main Quest, and reveal status
+- [ ] record low-end Android and iOS load time, route teardown, FPS, memory, and fallback behavior against the budgets in section 10
+- [ ] review final 3:2 protagonist／Companion／weather art and compressed install-shell weight; current `fallback-proof` files are not final art
 
 ## 13. Test plan
 

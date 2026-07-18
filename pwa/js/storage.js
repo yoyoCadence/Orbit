@@ -65,7 +65,12 @@ function loadOwnerPendingSnapshot(baseKey, ownerId) {
   return { key, snapshot: null };
 }
 
-function markSessionSyncPending(sessionId) {
+function isCachedOwner(expectedOwnerId) {
+  return Boolean(expectedOwnerId && get('user')?.id === expectedOwnerId);
+}
+
+function markSessionSyncPending(sessionId, expectedOwnerId) {
+  if (!isCachedOwner(expectedOwnerId)) return;
   const sessions = get('sessions') ?? [];
   const idx = sessions.findIndex(s => s?.id === sessionId);
   if (idx === -1) return;
@@ -73,7 +78,8 @@ function markSessionSyncPending(sessionId) {
   set('sessions', sessions);
 }
 
-function clearSessionSyncPending(sessionId) {
+function clearSessionSyncPending(sessionId, expectedOwnerId) {
+  if (!isCachedOwner(expectedOwnerId)) return;
   const sessions = get('sessions') ?? [];
   const idx = sessions.findIndex(s => s?.id === sessionId);
   if (idx === -1 || sessions[idx]._syncPending !== true) return;
@@ -100,6 +106,7 @@ function legacyUndoEnergyTarget(session, energy) {
  * persistence; settled entries only filter a resurfaced Session.
  */
 export function recoverPendingSessionDeletions(ownerId, recoveredAt = new Date().toISOString()) {
+  if (!isCachedOwner(ownerId)) return { recoveredIds: [], settledIds: [] };
   const entries = loadSessionDeletionLog(ownerId);
   const entryList = Object.values(entries);
   if (!entryList.length) return { recoveredIds: [], settledIds: [] };
@@ -250,6 +257,15 @@ function toRow(fields, obj) {
 
 // ─── Supabase async operations ────────────────────────────────────────────────
 
+export class OwnerSessionChangedError extends Error {
+  constructor(expectedOwnerId, actualOwnerId = null) {
+    super(`Authenticated owner changed during sync (expected ${expectedOwnerId}, received ${actualOwnerId || 'none'})`);
+    this.name = 'OwnerSessionChangedError';
+    this.expectedOwnerId = expectedOwnerId;
+    this.actualOwnerId = actualOwnerId;
+  }
+}
+
 export const db = {
 
   async _session() {
@@ -257,8 +273,19 @@ export const db = {
     return session;
   },
 
+  async _assertOwner(expectedOwnerId) {
+    const session = await this._session();
+    const actualOwnerId = session?.user?.id || null;
+    if (!expectedOwnerId || actualOwnerId !== expectedOwnerId) {
+      throw new OwnerSessionChangedError(expectedOwnerId, actualOwnerId);
+    }
+    return session;
+  },
+
   /** Pull all user data from Supabase → write into localStorage cache. */
   async loadFromRemote(userId) {
+    await this._assertOwner(userId);
+
     // Push any locally pending changes before overwriting with remote data
     const localUser = get('user');
     const {
@@ -271,7 +298,9 @@ export const db = {
     } = loadOwnerPendingSnapshot(ENERGY_SYNC_PENDING_KEY, userId);
     const sessionDeletionLog = loadSessionDeletionLog(userId);
     const deletedSessionIds = new Set(Object.keys(sessionDeletionLog));
-    const localSessions = filterDeletedSessions(get('sessions') ?? [], deletedSessionIds);
+    const localSessions = localUser?.id === userId
+      ? filterDeletedSessions(get('sessions') ?? [], deletedSessionIds)
+      : [];
     const pendingProfileValue = pendingProfile?.ownerId === userId
       ? pendingProfile.value
       : localUser?._syncPending && localUser?.id === userId
@@ -283,7 +312,7 @@ export const db = {
         : null;
     if (pendingProfileValue) {
       try {
-        const synced = await this.upsertProfile(pendingProfileValue);
+        const synced = await this.upsertProfile(pendingProfileValue, userId);
         if (!synced) throw new Error('No authenticated profile sync session');
         if (pendingProfile?.ownerId === userId) {
           clearPendingSnapshot(pendingProfileKey, pendingProfile);
@@ -295,7 +324,7 @@ export const db = {
     }
     if (pendingEnergy?.ownerId === userId) {
       try {
-        const synced = await this.upsertEnergy(pendingEnergy.value);
+        const synced = await this.upsertEnergy(pendingEnergy.value, userId);
         if (!synced) throw new Error('No authenticated Energy sync session');
         clearPendingSnapshot(pendingEnergyKey, pendingEnergy);
       } catch (err) {
@@ -322,24 +351,26 @@ export const db = {
     if (sessionsRes.error) throw sessionsRes.error;
     if (energyRes.error && !isMissingSingleRow(energyRes.error)) throw energyRes.error;
 
+    let canonicalUser = null;
     if (profileRes.data) {
       const p = profileRes.data;
       let avatar = null;
-      try { avatar = await this.resolveAvatarUrl(p.avatar_url); } catch (err) {
+      try { avatar = await this.resolveAvatarUrl(p.avatar_url, userId); } catch (err) {
+        if (err instanceof OwnerSessionChangedError) throw err;
         console.warn('Avatar URL resolve failed:', err);
       }
-      set('user', {
+      canonicalUser = {
         id:         p.user_id,
         avatar,
         avatarPath: p.avatar_url || null,
         createdAt:  p.created_at,
         ...fromRow(PROFILE_FIELDS, p),
-      });
+      };
     }
 
-    if (tasksRes.data) {
-      set('tasks', tasksRes.data.map(t => fromRow(TASK_FIELDS, t)));
-    }
+    const canonicalTasks = (tasksRes.data ?? []).map(t => fromRow(TASK_FIELDS, t));
+    let canonicalSessions = [];
+    let sessionsToBackfill = [];
 
     if (sessionsRes.data) {
       const remoteSessions = filterDeletedSessions(
@@ -351,19 +382,9 @@ export const db = {
         session?.id
         && (remoteIds.has(session.id) || session._syncPending === true)
       ));
-      const mergedSessions = mergeSessionsById(remoteSessions, mergeableLocalSessions);
-      set('sessions', mergedSessions);
-
-      mergeableLocalSessions
-        .filter(s => s?.id && s._syncPending === true && !remoteIds.has(s.id))
-        .forEach(s => this.insertSession(s)
-          .then(inserted => {
-            if (inserted) clearSessionSyncPending(s.id);
-          })
-          .catch(err => {
-            console.warn('Could not backfill local session after remote load:', err);
-            markSessionSyncPending(s.id);
-          }));
+      canonicalSessions = mergeSessionsById(remoteSessions, mergeableLocalSessions);
+      sessionsToBackfill = mergeableLocalSessions
+        .filter(s => s?.id && s._syncPending === true && !remoteIds.has(s.id));
 
       await Promise.allSettled(Object.entries(sessionDeletionLog).map(async ([sessionId, entry]) => {
         if (entry.remoteConfirmedAt) return;
@@ -375,21 +396,42 @@ export const db = {
       }));
     }
 
-    if (energyRes.data) {
-      set('energy', fromRow(ENERGY_FIELDS, energyRes.data));
-    }
+    const canonicalEnergy = energyRes.data
+      ? fromRow(ENERGY_FIELDS, energyRes.data)
+      : null;
+
+    // Sign-out or account switching can complete while these queries are in
+    // flight. Re-check immediately before the synchronous canonical writes so
+    // an obsolete owner can never repopulate the shared local cache.
+    await this._assertOwner(userId);
+    if (canonicalUser) set('user', canonicalUser);
+    else if (localUser?.id !== userId) remove('user');
+    set('tasks', canonicalTasks);
+    set('sessions', canonicalSessions);
+    if (canonicalEnergy) set('energy', canonicalEnergy);
+    else if (localUser?.id !== userId) remove('energy');
+
+    sessionsToBackfill.forEach(s => this.insertSession(s, userId)
+      .then(inserted => {
+        if (inserted) clearSessionSyncPending(s.id, userId);
+      })
+      .catch(err => {
+        console.warn('Could not backfill local session after remote load:', err);
+        markSessionSyncPending(s.id, userId);
+      }));
   },
 
-  async upsertProfile(user) {
+  async upsertProfile(user, expectedOwnerId = user?.id) {
     // Dev-tool guard: never sync to Supabase while a dev override backup exists
     if (localStorage.getItem(FLAG_DEV_BACKUP)) return false;
     const session = await this._session();
     if (!session) return false;
+    if (expectedOwnerId && session.user.id !== expectedOwnerId) return false;
     // Keep large local previews out of profiles; avatarPath points to Storage.
     const avatarUrl = user.avatarPath || ((user.avatar && user.avatar.startsWith('data:'))
       ? null : (user.avatar || null));
     const { error } = await supabase.from('profiles').upsert({
-      user_id:    session.user.id,
+      user_id:    expectedOwnerId || session.user.id,
       avatar_url: avatarUrl,
       ...toRow(PROFILE_FIELDS, user),
     });
@@ -413,11 +455,14 @@ export const db = {
     return { path, url: signed.data?.signedUrl || null };
   },
 
-  async resolveAvatarUrl(pathOrUrl) {
+  async resolveAvatarUrl(pathOrUrl, expectedOwnerId = null) {
     if (!pathOrUrl) return null;
     if (/^(https?:|data:|blob:)/.test(pathOrUrl)) return pathOrUrl;
     const session = await this._session();
     if (!session) return null;
+    if (expectedOwnerId && session.user.id !== expectedOwnerId) {
+      throw new OwnerSessionChangedError(expectedOwnerId, session.user.id);
+    }
     const { data, error } = await supabase.storage
       .from('avatars')
       .createSignedUrl(pathOrUrl, 60 * 60 * 24 * 7);
@@ -425,26 +470,32 @@ export const db = {
     return data?.signedUrl || null;
   },
 
-  async upsertTasks(tasks) {
+  async upsertTasks(tasks, expectedOwnerId = null) {
     const session = await this._session();
-    if (!session || !tasks.length) return;
+    if (!session || (expectedOwnerId && session.user.id !== expectedOwnerId)) return false;
+    if (!tasks.length) return true;
     await supabase.from('tasks').upsert(
-      tasks.map(t => ({ user_id: session.user.id, ...toRow(TASK_FIELDS, t) })),
+      tasks.map(t => ({ user_id: expectedOwnerId || session.user.id, ...toRow(TASK_FIELDS, t) })),
       { onConflict: 'id' }
     );
+    return true;
   },
 
-  async deleteTasks(ids) {
+  async deleteTasks(ids, expectedOwnerId = null) {
     const session = await this._session();
-    if (!session || !ids.length) return;
-    await supabase.from('tasks').delete().in('id', ids);
+    if (!session || (expectedOwnerId && session.user.id !== expectedOwnerId)) return false;
+    if (!ids.length) return true;
+    await supabase.from('tasks').delete()
+      .in('id', ids)
+      .eq('user_id', expectedOwnerId || session.user.id);
+    return true;
   },
 
-  async insertSession(session) {
+  async insertSession(session, expectedOwnerId = null) {
     const authSession = await this._session();
-    if (!authSession) return false;
+    if (!authSession || (expectedOwnerId && authSession.user.id !== expectedOwnerId)) return false;
     const { error } = await supabase.from('sessions').insert({
-      user_id: authSession.user.id,
+      user_id: expectedOwnerId || authSession.user.id,
       ...toRow(SESSION_FIELDS, session),
     });
     if (error) throw error;
@@ -465,7 +516,7 @@ export const db = {
 
   async startTrial(userId) {
     const session = await this._session();
-    if (!session) return;
+    if (!session || session.user.id !== userId) return false;
     const now    = new Date().toISOString();
     const expiry = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString();
     await supabase.from('profiles').update({
@@ -474,19 +525,21 @@ export const db = {
       trial_started_at: now,
     }).eq('user_id', userId);
     const user = get('user');
-    if (user) {
+    if (user?.id === userId) {
       user.isPro          = true;
       user.proExpiresAt   = expiry;
       user.trialStartedAt = now;
       set('user', user);
     }
+    return true;
   },
 
-  async upsertEnergy(energy) {
+  async upsertEnergy(energy, expectedOwnerId = null) {
     const session = await this._session();
     if (!session) return false;
+    if (expectedOwnerId && session.user.id !== expectedOwnerId) return false;
     const { error } = await supabase.from('energy').upsert(
-      { user_id: session.user.id, ...toRow(ENERGY_FIELDS, energy) },
+      { user_id: expectedOwnerId || session.user.id, ...toRow(ENERGY_FIELDS, energy) },
       { onConflict: 'user_id' }
     );
     if (error) throw error;
@@ -508,7 +561,7 @@ export const storage = {
     const pending = createPendingSnapshot(ownerId, u);
     const pendingKey = ownerSyncPendingKey(PROFILE_SYNC_PENDING_KEY, ownerId);
     set(pendingKey, pending);
-    db.upsertProfile(u)
+    db.upsertProfile(u, ownerId)
       .then(synced => {
         if (synced) clearPendingSnapshot(pendingKey, pending);
       })
@@ -523,7 +576,7 @@ export const storage = {
     const pending = createPendingSnapshot(u?.id, u);
     const pendingKey = ownerSyncPendingKey(PROFILE_SYNC_PENDING_KEY, u?.id);
     if (pendingKey) set(pendingKey, pending);
-    const synced = await db.upsertProfile(u);
+    const synced = await db.upsertProfile(u, u?.id);
     if (synced && pendingKey) {
       clearPendingSnapshot(pendingKey, pending);
     } else if (!synced) {
@@ -538,9 +591,11 @@ export const storage = {
   saveTasks:  (t) => {
     const prev = get('tasks') ?? [];
     set('tasks', t);
-    db.upsertTasks(t).catch(console.error);
+    const ownerId = get('user')?.id;
+    if (!ownerId) return;
+    db.upsertTasks(t, ownerId).catch(console.error);
     const removedIds = prev.filter(p => !t.find(n => n.id === p.id)).map(p => p.id);
-    if (removedIds.length) db.deleteTasks(removedIds).catch(console.error);
+    if (removedIds.length) db.deleteTasks(removedIds, ownerId).catch(console.error);
   },
 
   // ── Sessions ─────────────────────────────────────────────────────────────────
@@ -553,6 +608,7 @@ export const storage = {
   },
   saveSessions: (s) => {
     const prev = get('sessions') ?? [];
+    const ownerId = get('user')?.id;
     const previousById = new Map(prev.filter(session => session?.id).map(session => [session.id, session]));
     const newIds = new Set(s
       .filter(ns => !prev.find(ps => ps.id === ns.id))
@@ -564,14 +620,15 @@ export const storage = {
     ));
     set('sessions', persistedSessions);
     // Only INSERT the newly added sessions (not the whole array)
+    if (!ownerId) return;
     s.filter(ns => newIds.has(ns.id))
-     .forEach(ns => db.insertSession(ns)
+     .forEach(ns => db.insertSession(ns, ownerId)
        .then(inserted => {
-         if (inserted) clearSessionSyncPending(ns.id);
+         if (inserted) clearSessionSyncPending(ns.id, ownerId);
        })
        .catch(err => {
          console.error(err);
-         markSessionSyncPending(ns.id);
+         markSessionSyncPending(ns.id, ownerId);
        }));
   },
 
@@ -583,7 +640,8 @@ export const storage = {
     const pending = ownerId ? createPendingSnapshot(ownerId, e) : null;
     const pendingKey = ownerSyncPendingKey(ENERGY_SYNC_PENDING_KEY, ownerId);
     if (pendingKey) set(pendingKey, pending);
-    db.upsertEnergy(e)
+    if (!ownerId) return;
+    db.upsertEnergy(e, ownerId)
       .then(synced => {
         if (synced && pending) clearPendingSnapshot(pendingKey, pending);
       })

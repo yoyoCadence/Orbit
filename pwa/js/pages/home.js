@@ -20,7 +20,7 @@ import {
   mountOrbitWindow,
   renderOrbitWindow,
 } from '../personalSpace/v2/ui/orbitWindow.js';
-import { orbitWindowRuntime } from '../personalSpace/v2/runtime/pixiSceneRuntime.js';
+import { orbitWindowRuntimeDestroyer } from '../personalSpace/v2/runtime/pixiSceneRuntime.js';
 
 // ─── Value / impactType labels ────────────────────────────────────────────────
 
@@ -410,7 +410,7 @@ export function renderHome(container) {
       _orbitWindowCleanup?.();
     } finally {
       _orbitWindowCleanup = null;
-      orbitWindowRuntime.destroy();
+      orbitWindowRuntimeDestroyer.schedule();
     }
   };
 }

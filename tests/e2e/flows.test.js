@@ -427,6 +427,20 @@ test.describe('Personal Space V2 垂直切片', () => {
     let runtimeHost = orbit.locator('[data-orbit-runtime-host]');
     await expect(runtimeHost).toHaveAttribute('data-runtime-status', 'ready', { timeout: 8000 });
 
+    await page.evaluate(async () => {
+      const runtimeModule = await import('/js/personalSpace/v2/runtime/pixiSceneRuntime.js');
+      const routerModule = await import('/js/router.js');
+      window.__orbitApplicationBeforeRedraw = runtimeModule.orbitWindowRuntime.getApplication();
+      routerModule.renderPage('home');
+    });
+    orbit = page.locator('[data-orbit-window]');
+    runtimeHost = orbit.locator('[data-orbit-runtime-host]');
+    await expect(runtimeHost).toHaveAttribute('data-runtime-status', 'ready', { timeout: 8000 });
+    expect(await page.evaluate(async () => {
+      const runtimeModule = await import('/js/personalSpace/v2/runtime/pixiSceneRuntime.js');
+      return runtimeModule.orbitWindowRuntime.getApplication() === window.__orbitApplicationBeforeRedraw;
+    })).toBe(true);
+
     await page.locator('#content').evaluate(element => {
       element.scrollTo({ top: element.scrollHeight, behavior: 'instant' });
     });

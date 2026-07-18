@@ -17,7 +17,8 @@ import {
   mountOrbitWindow,
   renderOrbitWindow,
 } from '../personalSpace/v2/ui/orbitWindow.js';
-import { orbitWindowRuntime } from '../personalSpace/v2/runtime/pixiSceneRuntime.js';
+import { orbitWindowRuntimeDestroyer } from '../personalSpace/v2/runtime/pixiSceneRuntime.js';
+import { emitPersonalSpaceTelemetry } from '../personalSpace/v2/telemetry.js';
 
 const EDIT_BOUNDS = Object.freeze({ minX: 6, maxX: 94, minY: 28, maxY: 92 });
 const EDIT_STEP = 2;
@@ -449,6 +450,7 @@ function runMainQuest(mainQuest) {
 
 /** Render V2 World/Edit from one reconciled state and return route cleanup. */
 export function renderPersonalSpaceV2(container, options = {}) {
+  const loadStartedAt = globalThis.performance?.now?.() || Date.now();
   const user = options.user || appState.user;
   if (!container || !user?.id) {
     if (container) container.innerHTML = '<div class="card">個人空間需要有效的本機玩家資料。</div>';
@@ -461,7 +463,7 @@ export function renderPersonalSpaceV2(container, options = {}) {
   const saveState = options.saveState || savePersonalSpaceV2State;
   const renderWindow = options.renderWindow || renderOrbitWindow;
   const mountWindow = options.mountWindow || mountOrbitWindow;
-  const destroyRuntime = options.destroyRuntime || (() => orbitWindowRuntime.destroy());
+  const destroyRuntime = options.destroyRuntime || (() => orbitWindowRuntimeDestroyer.schedule());
   let result;
   try {
     result = reconcile({ user, sessions: coreState.sessions || [], reconciledAt: options.reconciledAt });
@@ -486,6 +488,7 @@ export function renderPersonalSpaceV2(container, options = {}) {
   let sceneCleanup = null;
   let currentModel = null;
   let disposed = false;
+  let loadTelemetryEmitted = false;
 
   function persist(nextState) {
     if (nextState === v2State || disposed) return;
@@ -561,11 +564,30 @@ export function renderPersonalSpaceV2(container, options = {}) {
       onMainQuest: mode === 'edit' ? undefined : () => runMainQuest(model.mainQuest),
       onRevealConsumed: acknowledgeReveal,
     });
+    if (!loadTelemetryEmitted) {
+      loadTelemetryEmitted = true;
+      const loadEndedAt = globalThis.performance?.now?.() || Date.now();
+      emitPersonalSpaceTelemetry('personal_space_loaded', {
+        renderMode: mode,
+        renderPath: 'v2-pixi',
+        loadMs: Math.max(0, Math.round(loadEndedAt - loadStartedAt)),
+        projectPhase: model.activeProject.currentPhase,
+      });
+    }
   }
 
   function handleClick(event) {
     const modeButton = event.target.closest('[data-v2-mode]');
     if (modeButton) {
+      if (modeButton.dataset.v2Mode === 'edit' && mode !== 'edit') {
+        const ownedCount = Array.isArray(v2State.inventory?.ownedItems)
+          ? v2State.inventory.ownedItems.length
+          : 0;
+        emitPersonalSpaceTelemetry('edit_mode_opened', {
+          sceneId: currentModel?.sceneId || 'office-corner',
+          ownedCountBand: ownedCount === 0 ? '0' : ownedCount < 5 ? '1-4' : ownedCount < 10 ? '5-9' : '10+',
+        });
+      }
       render(modeButton.dataset.v2Mode);
       return;
     }

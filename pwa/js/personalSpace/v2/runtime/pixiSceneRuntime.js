@@ -140,8 +140,13 @@ export function createPixiSceneRuntime(options = {}) {
 
     const companion = buildCompanion(pixi, scene.companion);
     applyPointPlacement(companion, scene.companionPlacement);
+    companion.label = 'orbit-companion';
     companion.zIndex = scene.companionPlacement.z || 42;
     app.stage.addChild(companion);
+
+    const weather = renderModel.weather || renderModel.world?.weather || 'clear';
+    const weatherOverlay = weather === 'rain' ? buildRainOverlay(pixi) : null;
+    if (weatherOverlay) app.stage.addChild(weatherOverlay);
 
     const timeBand = renderModel.timeBand || 'day';
     const lighting = new pixi.Graphics()
@@ -152,17 +157,37 @@ export function createPixiSceneRuntime(options = {}) {
     app.stage.sortableChildren = true;
     app.stage.sortChildren();
 
+    const protagonistState = renderModel.protagonist?.state || renderModel.playerState || 'idle';
+    const companionState = renderModel.companion?.state || renderModel.companionState || 'observe';
     const reducedMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     const shouldCelebrate = Boolean(renderModel.pendingReveal || renderModel.world?.pendingReveal);
+    if (protagonistState === 'inspect') protagonist.rotation += -0.025;
+    if (protagonistState === 'rest') protagonist.alpha = 0.88;
+    if (companionState === 'rest') companion.alpha = 0.72;
     if (!reducedMotion) {
       let elapsed = 0;
+      const protagonistX = protagonist.x;
       const protagonistY = protagonist.y;
       const companionX = companion.x;
+      const companionY = companion.y;
+      const protagonistRotation = protagonist.rotation;
       tickerUpdate = ticker => {
         elapsed += ticker.deltaMS;
-        protagonist.y = protagonistY + Math.sin(elapsed / (shouldCelebrate ? 110 : 600)) * (shouldCelebrate ? 6 : 1.5);
-        companion.x = companionX + Math.sin(elapsed / 520) * 3;
-        companion.rotation = Math.sin(elapsed / 700) * 0.05;
+        const celebrate = shouldCelebrate || protagonistState === 'celebrate';
+        const stateSpeed = protagonistState === 'rest' ? 1100 : protagonistState === 'work' ? 340 : 600;
+        const stateLift = celebrate ? 6 : protagonistState === 'rest' ? 0.6 : protagonistState === 'work' ? 2.2 : 1.5;
+        protagonist.y = protagonistY + Math.sin(elapsed / (celebrate ? 110 : stateSpeed)) * stateLift;
+        protagonist.x = protagonistX + (protagonistState === 'work' ? Math.sin(elapsed / 480) * 1.8 : 0);
+        protagonist.rotation = protagonistRotation
+          + (protagonistState === 'inspect' ? Math.sin(elapsed / 520) * 0.025 : 0);
+
+        const companionApproach = companionState === 'approach' || companionState === 'remind';
+        const approachOffset = companionApproach ? Math.max(0, 20 - elapsed / 45) : 0;
+        const companionLift = companionState === 'congratulate' ? 4.5 : companionState === 'rest' ? 1 : 2;
+        companion.x = companionX + approachOffset + Math.sin(elapsed / 520) * 3;
+        companion.y = companionY + Math.sin(elapsed / (companionState === 'congratulate' ? 180 : 720)) * companionLift;
+        companion.rotation = Math.sin(elapsed / 700) * (companionState === 'work' ? 0.025 : 0.05);
+        if (weatherOverlay) weatherOverlay.y = (elapsed / 24) % 32 - 16;
       };
       app.ticker.add(tickerUpdate);
     }
@@ -329,6 +354,34 @@ function disposeApplication(application, options = {}) {
 
 export const orbitWindowRuntime = createPixiSceneRuntime();
 
+export function createDeferredRuntimeDestroyer(runtime, timers = globalThis) {
+  let timerId = null;
+
+  function retain() {
+    if (timerId === null) return;
+    timers.clearTimeout(timerId);
+    timerId = null;
+  }
+
+  return {
+    retain,
+    schedule(delayMs = 0) {
+      if (timerId !== null) return;
+      timerId = timers.setTimeout(() => {
+        timerId = null;
+        runtime.destroy();
+      }, delayMs);
+    },
+    destroyNow() {
+      retain();
+      runtime.destroy();
+    },
+    isScheduled: () => timerId !== null,
+  };
+}
+
+export const orbitWindowRuntimeDestroyer = createDeferredRuntimeDestroyer(orbitWindowRuntime);
+
 export function getCoverTransform(
   sourceWidth,
   sourceHeight,
@@ -370,6 +423,23 @@ function buildCompanion(PIXI, definition = {}) {
   const eyeLeft = new PIXI.Graphics().circle(-4, -1, 1.7).fill({ color: 0x14213d });
   const eyeRight = new PIXI.Graphics().circle(4, -1, 1.7).fill({ color: 0x14213d });
   container.addChild(halo, ring, core, eyeLeft, eyeRight);
+  return container;
+}
+
+function buildRainOverlay(PIXI) {
+  const container = new PIXI.Container();
+  container.label = 'orbit-weather-rain';
+  container.zIndex = 72;
+  container.alpha = 0.46;
+  for (let index = 0; index < 18; index += 1) {
+    const drop = new PIXI.Graphics()
+      .rect(0, 0, index % 3 === 0 ? 2 : 1, 18 + (index % 4) * 5)
+      .fill({ color: 0xcde7ff, alpha: 0.72 });
+    drop.x = (index * 137 + 41) % ORBIT_WINDOW_LOGICAL_SIZE.width;
+    drop.y = (index * 83 + 17) % ORBIT_WINDOW_LOGICAL_SIZE.height;
+    drop.rotation = 0.18;
+    container.addChild(drop);
+  }
   return container;
 }
 

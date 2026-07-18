@@ -31,7 +31,13 @@ vi.mock('../../pwa/js/supabase.js', () => ({
 
 // ─── 被測模組（mock 完成後才 import）─────────────────────────────────────────
 
-import { storage, db, migrateV1toV2, migrateDefaultFlags } from '../../pwa/js/storage.js';
+import {
+  storage,
+  db,
+  OwnerSessionChangedError,
+  migrateV1toV2,
+  migrateDefaultFlags,
+} from '../../pwa/js/storage.js';
 import {
   loadSessionDeletionLog,
   recordSessionDeletion,
@@ -56,7 +62,7 @@ function makeChain(data = null) {
     insert: vi.fn(() => Promise.resolve({ data, error: null })),
     delete: vi.fn().mockReturnThis(),
     eq:     vi.fn().mockReturnThis(),
-    in:     vi.fn(() => Promise.resolve({ data, error: null })),
+    in:     vi.fn().mockReturnThis(),
     order:  vi.fn(() => Promise.resolve({ data, error: null })),
     single: vi.fn(() => Promise.resolve({ data, error: null })),
     then:   (resolve, reject) =>
@@ -125,7 +131,7 @@ describe('storage.saveUser()', () => {
     const chain = makeChain();
     mockFrom.mockImplementation(() => chain);
 
-    storage.saveUser({ id: 'u1', name: 'Alice', totalXP: 0, streakDays: 0 });
+    storage.saveUser({ id: 'user-abc', name: 'Alice', totalXP: 0, streakDays: 0 });
     await flushPromises();
 
     expect(mockFrom).toHaveBeenCalledWith('profiles');
@@ -164,6 +170,8 @@ function makeTask(overrides = {}) {
 }
 
 describe('storage.saveTasks()', () => {
+  beforeEach(() => lsSet('user', { id: 'user-abc' }));
+
   it('writes tasks to localStorage', () => {
     const tasks = [makeTask()];
     storage.saveTasks(tasks);
@@ -272,6 +280,8 @@ function makeSession(overrides = {}) {
 }
 
 describe('storage.saveSessions()', () => {
+  beforeEach(() => lsSet('user', { id: 'user-abc' }));
+
   it('writes sessions to localStorage', () => {
     storage.saveSessions([makeSession()]);
     expect(lsGet('sessions')).toHaveLength(1);
@@ -344,6 +354,8 @@ describe('storage.getEnergy()', () => {
 });
 
 describe('storage.saveEnergy()', () => {
+  beforeEach(() => lsSet('user', { id: 'user-abc' }));
+
   it('writes energy to localStorage', () => {
     const energy = { currentEnergy: 80, maxEnergy: 100, lastResetDate: '2026-04-13' };
     storage.saveEnergy(energy);
@@ -470,6 +482,8 @@ const ENERGY_DB = {
 
 describe('db.loadFromRemote()', () => {
   beforeEach(() => {
+    mockGetSession.mockResolvedValue({ data: { session: FAKE_SESSION } });
+    lsSet('user', { id: 'user-abc' });
     mockFrom.mockImplementation((table) => {
       if (table === 'profiles') return makeChain(PROFILE_DB);
       if (table === 'tasks')    return makeChain(TASKS_DB);
@@ -534,6 +548,52 @@ describe('db.loadFromRemote()', () => {
     expect(sessions.find(s => s.id === 's-local').taskName).toBe('本機新紀錄');
   });
 
+  it('rejects before querying when the requested owner is no longer authenticated', async () => {
+    const ownerBSession = { user: { id: 'user-b' } };
+    mockGetSession.mockResolvedValue({ data: { session: ownerBSession } });
+    lsSet('user', { id: 'user-b', name: 'Bob' });
+    lsSet('tasks', [{ id: 'b-task' }]);
+
+    await expect(db.loadFromRemote('user-abc')).rejects.toBeInstanceOf(OwnerSessionChangedError);
+
+    expect(mockFrom).not.toHaveBeenCalled();
+    expect(lsGet('user')).toEqual({ id: 'user-b', name: 'Bob' });
+    expect(lsGet('tasks')).toEqual([{ id: 'b-task' }]);
+  });
+
+  it('does not write a completed response after the authenticated owner changes', async () => {
+    const ownerBSession = { user: { id: 'user-b' } };
+    mockGetSession
+      .mockResolvedValueOnce({ data: { session: FAKE_SESSION } })
+      .mockResolvedValue({ data: { session: ownerBSession } });
+    lsSet('user', { id: 'user-abc', name: 'Cached A', totalXP: 9 });
+    lsSet('tasks', [{ id: 'cached-a-task' }]);
+
+    await expect(db.loadFromRemote('user-abc')).rejects.toBeInstanceOf(OwnerSessionChangedError);
+
+    expect(lsGet('user')).toMatchObject({ name: 'Cached A', totalXP: 9 });
+    expect(lsGet('tasks')).toEqual([{ id: 'cached-a-task' }]);
+  });
+
+  it('never merges a previous owner pending Session into the next owner snapshot', async () => {
+    const ownerBSession = { user: { id: 'user-b' } };
+    mockGetSession.mockResolvedValue({ data: { session: ownerBSession } });
+    lsSet('user', { id: 'user-abc', name: 'Alice' });
+    lsSet('sessions', [makeSession({ id: 'a-pending', _syncPending: true })]);
+    mockFrom.mockImplementation((table) => {
+      if (table === 'profiles') return makeChain({ ...PROFILE_DB, user_id: 'user-b', name: 'Bob' });
+      if (table === 'tasks') return makeChain([]);
+      if (table === 'sessions') return makeChain(SESSIONS_DB);
+      if (table === 'energy') return makeChain(ENERGY_DB);
+      return makeChain(null);
+    });
+
+    await db.loadFromRemote('user-b');
+
+    expect(lsGet('user')).toMatchObject({ id: 'user-b', name: 'Bob' });
+    expect(lsGet('sessions').map(session => session.id)).toEqual(['s1']);
+  });
+
   it('drops a stale non-pending local Session absent from an authoritative remote snapshot', async () => {
     lsSet('sessions', [makeSession({
       id: 'stale-on-this-device',
@@ -565,6 +625,7 @@ describe('db.loadFromRemote()', () => {
   });
 
   it('pushes an offline undo profile and Energy checkpoint before pulling stale remote values', async () => {
+    mockGetSession.mockResolvedValue({ data: { session: null } });
     const localUser = { id: 'user-abc', name: 'Alice', totalXP: 100, streakDays: 5 };
     const localEnergy = { currentEnergy: 3, maxEnergy: 100, lastResetDate: '2026-04-13' };
     storage.saveUser(localUser);
@@ -676,6 +737,15 @@ describe('db.loadFromRemote()', () => {
 // ─── db.upsertProfile() ───────────────────────────────────────────────────────
 
 describe('db.upsertProfile()', () => {
+  it('refuses to write an obsolete owner profile into the current account', async () => {
+    mockGetSession.mockResolvedValue({ data: { session: { user: { id: 'user-b' } } } });
+
+    await expect(db.upsertProfile({ id: 'user-a', name: 'Alice' }, 'user-a'))
+      .resolves.toBe(false);
+
+    expect(mockFrom).not.toHaveBeenCalled();
+  });
+
   it('skips Supabase when not authenticated', async () => {
     await db.upsertProfile({ name: 'Alice', totalXP: 0 });
     expect(mockFrom).not.toHaveBeenCalled();
