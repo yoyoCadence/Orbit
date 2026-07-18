@@ -286,6 +286,7 @@ describe('storage.saveSessions()', () => {
     storage.saveSessions([makeSession()]);
     expect(lsGet('sessions')).toHaveLength(1);
     expect(lsGet('sessions')[0]._syncPending).toBe(true);
+    expect(lsGet('sessionSyncPending:user-abc').value).toHaveLength(1);
   });
 
   it('inserts only NEW sessions (not already-stored ones)', async () => {
@@ -548,6 +549,46 @@ describe('db.loadFromRemote()', () => {
     expect(sessions.find(s => s.id === 's-local').taskName).toBe('本機新紀錄');
   });
 
+  it('protects and backfills an unmarked legacy local-only Session during the v1.21 cutover', async () => {
+    lsSet('sessions', [
+      makeSession({
+        id: 'legacy-local-only',
+        taskName: '舊版離線紀錄',
+        date: '2026-04-14',
+        completedAt: '2026-04-14T08:00:00Z',
+      }),
+    ]);
+    const sessionChain = makeChain(SESSIONS_DB);
+    sessionChain.insert = vi.fn(() => Promise.resolve({
+      data: null,
+      error: new Error('still offline'),
+    }));
+    mockFrom.mockImplementation((table) => {
+      if (table === 'profiles') return makeChain(PROFILE_DB);
+      if (table === 'tasks') return makeChain(TASKS_DB);
+      if (table === 'sessions') return sessionChain;
+      if (table === 'energy') return makeChain(ENERGY_DB);
+      return makeChain(null);
+    });
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await db.loadFromRemote('user-abc');
+    await flushPromises();
+
+    expect(lsGet('sessions').map(session => session.id)).toEqual([
+      'legacy-local-only',
+      's1',
+    ]);
+    expect(lsGet('sessions').find(session => session.id === 'legacy-local-only')._syncPending)
+      .toBe(true);
+    expect(sessionChain.insert).toHaveBeenCalledTimes(1);
+    expect(lsGet('sessionSyncCutover:v1.21:user-abc')).toMatchObject({
+      ownerId: 'user-abc',
+      completed: true,
+    });
+    console.warn.mockRestore();
+  });
+
   it('rejects before querying when the requested owner is no longer authenticated', async () => {
     const ownerBSession = { user: { id: 'user-b' } };
     mockGetSession.mockResolvedValue({ data: { session: ownerBSession } });
@@ -580,6 +621,10 @@ describe('db.loadFromRemote()', () => {
     mockGetSession.mockResolvedValue({ data: { session: ownerBSession } });
     lsSet('user', { id: 'user-abc', name: 'Alice' });
     lsSet('sessions', [makeSession({ id: 'a-pending', _syncPending: true })]);
+    lsSet('sessionSyncPending:user-abc', {
+      ownerId: 'user-abc',
+      value: [makeSession({ id: 'a-pending', _syncPending: true })],
+    });
     mockFrom.mockImplementation((table) => {
       if (table === 'profiles') return makeChain({ ...PROFILE_DB, user_id: 'user-b', name: 'Bob' });
       if (table === 'tasks') return makeChain([]);
@@ -592,9 +637,52 @@ describe('db.loadFromRemote()', () => {
 
     expect(lsGet('user')).toMatchObject({ id: 'user-b', name: 'Bob' });
     expect(lsGet('sessions').map(session => session.id)).toEqual(['s1']);
+    expect(lsGet('sessionSyncPending:user-abc').value.map(session => session.id))
+      .toEqual(['a-pending']);
+  });
+
+  it('restores the matching owner pending Session after another account replaced the shared cache', async () => {
+    lsSet('user', { id: 'user-b', name: 'Bob' });
+    lsSet('sessions', [makeSession({ id: 'b-session' })]);
+    lsSet('sessionSyncPending:user-abc', {
+      ownerId: 'user-abc',
+      value: [makeSession({
+        id: 'a-pending',
+        taskName: 'Alice offline work',
+        _syncPending: true,
+      })],
+    });
+    const sessionChain = makeChain(SESSIONS_DB);
+    sessionChain.insert = vi.fn(() => Promise.resolve({
+      data: null,
+      error: new Error('still offline'),
+    }));
+    mockFrom.mockImplementation((table) => {
+      if (table === 'profiles') return makeChain(PROFILE_DB);
+      if (table === 'tasks') return makeChain(TASKS_DB);
+      if (table === 'sessions') return sessionChain;
+      if (table === 'energy') return makeChain(ENERGY_DB);
+      return makeChain(null);
+    });
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await db.loadFromRemote('user-abc');
+    await flushPromises();
+
+    expect(lsGet('user')).toMatchObject({ id: 'user-abc', name: 'Alice' });
+    expect(lsGet('sessions').map(session => session.id).sort()).toEqual(['a-pending', 's1']);
+    expect(lsGet('sessionSyncPending:user-abc').value.map(session => session.id))
+      .toEqual(['a-pending']);
+    expect(lsGet('sessions').some(session => session.id === 'b-session')).toBe(false);
+    console.warn.mockRestore();
   });
 
   it('drops a stale non-pending local Session absent from an authoritative remote snapshot', async () => {
+    lsSet('sessionSyncCutover:v1.21:user-abc', {
+      ownerId: 'user-abc',
+      completed: true,
+      completedAt: '2026-04-13T00:00:00.000Z',
+    });
     lsSet('sessions', [makeSession({
       id: 'stale-on-this-device',
       completedAt: '2026-04-14T08:00:00Z',
@@ -686,6 +774,30 @@ describe('db.loadFromRemote()', () => {
     expect(lsGet('energySyncPending:user-abc')).toBeNull();
     expect(lsGet('profileSyncPending:user-b').value.totalXP).toBe(7);
     expect(lsGet('energySyncPending:user-b').value.currentEnergy).toBe(91);
+  });
+
+  it('keeps owner-scoped pending data when its pre-pull upload fails', async () => {
+    mockGetSession.mockResolvedValue({ data: { session: null } });
+    storage.saveUser({ id: 'user-abc', name: 'Offline Alice', totalXP: 222 });
+    storage.saveEnergy({ currentEnergy: 44, maxEnergy: 100, lastResetDate: '2026-04-13' });
+    await flushPromises();
+
+    mockGetSession.mockResolvedValue({ data: { session: FAKE_SESSION } });
+    const uploadError = new Error('profile upload unavailable');
+    mockFrom.mockImplementation((table) => {
+      const chain = makeChain(null);
+      if (table === 'profiles') {
+        chain.upsert = vi.fn(() => Promise.resolve({ data: null, error: uploadError }));
+      }
+      return chain;
+    });
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await expect(db.loadFromRemote('user-abc')).rejects.toBe(uploadError);
+
+    expect(lsGet('profileSyncPending:user-abc').value.totalXP).toBe(222);
+    expect(lsGet('energySyncPending:user-abc').value.currentEnergy).toBe(44);
+    console.warn.mockRestore();
   });
 
   it('writes energy to localStorage with camelCase field mapping', async () => {

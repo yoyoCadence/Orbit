@@ -85,6 +85,8 @@ function createFakePixi(options = {}) {
       this.ticker = { add: vi.fn(), remove: vi.fn() };
       this.init = vi.fn(async (...args) => {
         await (options.init?.(...args) ?? Promise.resolve());
+        canvas.style.width = '960px';
+        canvas.style.height = '640px';
         initialized = true;
       });
       this.start = vi.fn();
@@ -146,6 +148,8 @@ describe('Personal Space V2 Pixi scene runtime', () => {
       weather: 'rain',
     });
     const app = fake.applications[0];
+    expect(app.canvas.style.width).toBe('100%');
+    expect(app.canvas.style.height).toBe('100%');
     const protagonist = app.stage.children.find(child => child.label === 'orbit-protagonist');
     const companion = app.stage.children.find(child => child.label === 'orbit-companion');
     const rain = app.stage.children.find(child => child.label === 'orbit-weather-rain');

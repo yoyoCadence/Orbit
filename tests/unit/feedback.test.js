@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { showToast, showXPFloat } from '../../pwa/js/ui/feedback.js';
+import { showSyncBanner, showToast, showXPFloat } from '../../pwa/js/ui/feedback.js';
 
 beforeEach(() => {
   document.body.innerHTML = '';
@@ -37,5 +37,17 @@ describe('showXPFloat', () => {
     const el = document.querySelector('.xp-float');
     expect(el).not.toBeNull();
     expect(el.textContent).toBe('+60 XP');
+  });
+});
+
+describe('showSyncBanner', () => {
+  it('keeps a visible retry state when remote refresh fails', () => {
+    document.body.innerHTML = '<div id="sync-banner" class="hidden"></div>';
+
+    showSyncBanner('error');
+
+    const banner = document.getElementById('sync-banner');
+    expect(banner.className).toBe('sync-error');
+    expect(banner.textContent).toContain('下次連線重試');
   });
 });

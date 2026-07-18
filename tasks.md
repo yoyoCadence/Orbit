@@ -112,7 +112,7 @@
 ## In Progress
 
 - [ ] **PS-240** Validate and harden the Personal Space V2 vertical slice
-  - In progress: bind remote writes and loads to the authenticated owner, reuse the Home Pixi runtime across same-route renders, distinguish Small / Medium / Major reveal presentation, and correct release-status documentation before merge.
+  - In progress: automated merge hardening is complete, including authenticated-owner sync guards, one-time legacy Session cutover, same-route Pixi reuse, structured Reveal selectors, placement sanitization, honest sync failure feedback, and responsive runtime visual QA. Keep open until the PR is merged; low-end device, keyboard, and reduced-motion acceptance remain explicitly assigned to PS-243.
 
 ---
 

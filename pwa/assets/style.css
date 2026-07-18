@@ -435,9 +435,13 @@
   .orbit-window { margin-inline: -2px; padding: 11px; border-radius: 18px; }
   .orbit-window-heading h2 { font-size: 15px; }
   .orbit-window-momentum { padding: 5px 7px; font-size: 9px; }
-  .orbit-window-state-grid { grid-template-columns: 1fr; }
-  .orbit-window-state-grid .orbit-window-state-card:last-child { display: none; }
+  .orbit-window-state-grid { grid-template-columns: minmax(0, 1.08fr) minmax(0, .92fr); gap: 6px; }
+  .orbit-window-state-card { padding: 8px; }
   .orbit-window-reward { left: 8px; right: 8px; bottom: 7px; }
+}
+
+@media (max-width: 340px) {
+  .orbit-window-state-grid { grid-template-columns: 1fr; }
 }
 
 @media (min-width: 760px) {
@@ -4817,6 +4821,7 @@ nav {
 #sync-banner.hidden { max-height: 0; padding: 0; opacity: 0; pointer-events: none; }
 #sync-banner.syncing { background: rgba(124,58,237,0.18); color: var(--text-muted); }
 #sync-banner.synced  { background: rgba(16,185,129,0.15); color: #10b981; }
+#sync-banner.sync-error { background: rgba(245,158,11,0.16); color: #d97706; }
 
 /* ── Trial reminder banner ──────────────────────────────────────────────────── */
 #trial-banner {

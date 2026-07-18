@@ -60,6 +60,11 @@ export function createPixiSceneRuntime(options = {}) {
         if (app !== initializingApp) return api;
         app.canvas.className = 'orbit-window-canvas';
         app.canvas.setAttribute('aria-hidden', 'true');
+        // Pixi writes the logical renderer dimensions as inline CSS. Keep the
+        // 960x640 backing coordinate system while fitting the visible canvas
+        // to the responsive Orbit Window host.
+        app.canvas.style.width = '100%';
+        app.canvas.style.height = '100%';
       } else if (appInitPromise) {
         const initPromise = appInitPromise;
         await initPromise;
@@ -114,6 +119,7 @@ export function createPixiSceneRuntime(options = {}) {
 
     const oldChildren = app.stage.removeChildren();
     oldChildren.forEach(child => child.destroy({ children: true }));
+    app.stage.sortableChildren = true;
 
     const background = new pixi.Sprite(textures[scene.background]);
     const backgroundCover = getCoverTransform(
@@ -154,7 +160,6 @@ export function createPixiSceneRuntime(options = {}) {
       .fill({ color: timeBand === 'night' ? 0x172449 : 0xf6d58b, alpha: timeBand === 'night' ? 0.2 : 0.05 });
     lighting.zIndex = 80;
     app.stage.addChild(lighting);
-    app.stage.sortableChildren = true;
     app.stage.sortChildren();
 
     const protagonistState = renderModel.protagonist?.state || renderModel.playerState || 'idle';

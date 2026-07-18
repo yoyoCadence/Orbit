@@ -20,6 +20,10 @@
 - Small／Medium／Major Reward Reveal 現在具有不同顯示時間與視覺層級；主角、Companion 與雨天狀態會同步驅動 Pixi 與靜態 poster fallback。
 
 ### Fixed
+- v1.21 首次 authoritative Session pull 會先完成一次 owner-scoped legacy cutover：遠端尚無對應列的既有本機 Session 會標記待同步並保留重試；切換帳號後也只會還原該 owner 的 pending Session，cutover 完成後才丟棄一般 stale cache。
+- persisted placement 只接受有限數值與核准 anchor，避免任意 CSS 注入；Reveal 判斷改讀結構化 reward／metadata，不再因任務或專案名稱含有關鍵字而誤觸發。
+- pending profile／Energy 上推失敗時不再顯示「同步完成」，改為保留 owner sidecar 並顯示可重試的同步暫停狀態。
+- Pixi canvas 初始化後會保留 960×640 邏輯座標但貼合響應式容器，避免窄螢幕只顯示 canvas 左上角而裁掉主角與 Companion；390px 首頁也不再隱藏 Companion 狀態卡。
 - Personal Space V2 的未分帳 V1 資料只允許一個 owner claim；快取開機的 Gold cutover 會先標記 provisional，並在遠端或離線決策完成後只定稿一次。
 - Session reconcile 會先依 immutable id 去重；非 authoritative partial snapshot 不再反轉缺席來源，也不會對同一天重複發 Main Quest bundle。
 - Undo deletion journal 現在可在重啟後精準完成 XP、Session、Energy 與 V2 reversal，且 owner-scoped profile／Energy pending snapshot 會在 remote pull 前上推並跨 sign-out 保留。
@@ -39,8 +43,9 @@
 
 ### Validation
 - `npm run lint`：通過。
-- `npm run test`：40 個檔案、786 個測試通過。
+- `npm run test`：40 個檔案、792 個測試通過。
 - `npm run test:e2e`：Chromium 26/26 通過，包含正式 Focus 結束、Pixi failure fallback、off-screen suspend/resume、三輪 Home／World route loop、reduced motion 與 legacy fallback。
+- Playwright 390×844 視覺檢查：Pixi runtime ready、主角與 Companion 可見、Project／Companion 狀態卡並列、無水平溢出。
 
 ### Known limitations
 - 首個 V2 場景仍使用明確標記為 `fallback-proof` 的既有 16:9 美術，以 cover-crop 顯示於 3:2；最終 3:2 action／Companion 資產包與 1.5 MB 目標仍需後續美術驗收。

@@ -57,13 +57,13 @@ export function getWorkspaceSceneAssets(progress = 0, placementOverrides = {}) {
     protagonistPlacement: normalizePlacementOverride(placementOverrides.protagonist, {
       x: normalized >= 25 ? 58 : 51,
       y: 87,
-      width: 14,
+      width: 17,
       z: 40,
     }),
     companionPlacement: normalizePlacementOverride(placementOverrides.companion, {
       x: normalized >= 75 ? 69 : 73,
       y: 73,
-      width: 7,
+      width: 9,
       z: 42,
     }),
   };
@@ -87,11 +87,12 @@ function normalizePlacementOverride(value, fallback = {}) {
   if (!value || typeof value !== 'object') return { ...fallback };
   return ['x', 'y', 'width', 'z', 'scale', 'rotation', 'anchor'].reduce((result, key) => {
     const raw = value[key];
-    if (typeof raw === 'number' && Number.isFinite(raw)) result[key] = raw;
-    if (typeof raw === 'string' && raw.trim()) {
-      const parsed = Number.parseFloat(raw);
-      result[key] = Number.isFinite(parsed) ? parsed : raw.trim();
+    if (key === 'anchor') {
+      if (raw === 'center' || raw === 'center-bottom') result[key] = raw;
+      return result;
     }
+    const parsed = typeof raw === 'number' ? raw : Number.parseFloat(raw);
+    if (Number.isFinite(parsed)) result[key] = parsed;
     return result;
   }, { ...fallback });
 }

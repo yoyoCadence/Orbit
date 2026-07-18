@@ -389,7 +389,7 @@ async function init() {
           // Offline is an explicit local-cache decision, so finish the cutover
           // without treating the incomplete remote snapshot as authoritative.
           loadStateFromStorage({ finalizeMigration: true });
-          showSyncBanner('synced'); // hide banner even on failure
+          showSyncBanner('error');
         });
       } else {
         if (authOperationGuard.isCurrent(cachedResolution) && !_currentSession) {

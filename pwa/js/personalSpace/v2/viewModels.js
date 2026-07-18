@@ -2,6 +2,7 @@ import { getLevelInfo } from '../../engine.js';
 import { getTimeBand as getSharedTimeBand } from '../../timeBand.js';
 import { getCompanionReaction } from './companionEngine.js';
 import { deriveMomentum } from './momentum.js';
+import { isWorldProgressReveal } from './revealSelectors.js';
 
 export const PERSONAL_SPACE_V2_RENDER_MODES = Object.freeze({
   HOME_WINDOW: 'home-window',
@@ -462,8 +463,7 @@ function formatRecentWorldChange(change) {
 }
 
 export function selectProtagonistState({ pendingReveal, recentSessions, momentum } = {}) {
-  const reveal = pendingReveal ? JSON.stringify(pendingReveal).toLowerCase() : '';
-  if (reveal.includes('project') || reveal.includes('quest') || reveal.includes('world_unlock')) {
+  if (isWorldProgressReveal(pendingReveal)) {
     return immutable({ state: 'celebrate', animationKey: 'celebrate', reasonKey: 'reward-progress' });
   }
   if (pendingReveal) {

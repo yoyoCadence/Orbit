@@ -17,6 +17,8 @@ const PREFIX = 'yoyo_';
 const LEADERBOARD_CACHE_KEY = 'leaderboardCache';
 const PROFILE_SYNC_PENDING_KEY = 'profileSyncPending';
 const ENERGY_SYNC_PENDING_KEY = 'energySyncPending';
+const SESSION_SYNC_PENDING_KEY = 'sessionSyncPending';
+const SESSION_SYNC_CUTOVER_KEY = 'sessionSyncCutover:v1.21';
 
 function get(key) {
   try { return JSON.parse(localStorage.getItem(PREFIX + key)); } catch { return null; }
@@ -46,6 +48,55 @@ function ownerSyncPendingKey(baseKey, ownerId) {
   return `${baseKey}:${encodeURIComponent(String(ownerId))}`;
 }
 
+function hasCompletedSessionSyncCutover(ownerId) {
+  const marker = get(ownerSyncPendingKey(SESSION_SYNC_CUTOVER_KEY, ownerId));
+  return marker?.ownerId === ownerId && marker?.completed === true;
+}
+
+function completeSessionSyncCutover(ownerId, completedAt = new Date().toISOString()) {
+  set(ownerSyncPendingKey(SESSION_SYNC_CUTOVER_KEY, ownerId), {
+    ownerId,
+    completed: true,
+    completedAt,
+  });
+}
+
+function loadOwnerPendingSessions(ownerId) {
+  const snapshot = get(ownerSyncPendingKey(SESSION_SYNC_PENDING_KEY, ownerId));
+  if (snapshot?.ownerId !== ownerId || !Array.isArray(snapshot.value)) return [];
+  return snapshot.value
+    .filter(session => session?.id)
+    .map(session => ({ ...session, _syncPending: true }));
+}
+
+function saveOwnerPendingSessions(ownerId, sessions) {
+  const key = ownerSyncPendingKey(SESSION_SYNC_PENDING_KEY, ownerId);
+  if (!key) return;
+  const byId = new Map((Array.isArray(sessions) ? sessions : [])
+    .filter(session => session?.id)
+    .map(session => [session.id, { ...session, _syncPending: true }]));
+  if (!byId.size) {
+    remove(key);
+    return;
+  }
+  set(key, { ownerId, value: [...byId.values()] });
+}
+
+function addOwnerPendingSession(ownerId, session) {
+  if (!ownerId || !session?.id) return;
+  const pending = loadOwnerPendingSessions(ownerId)
+    .filter(candidate => candidate.id !== session.id);
+  saveOwnerPendingSessions(ownerId, [...pending, session]);
+}
+
+function clearOwnerPendingSession(ownerId, sessionId) {
+  if (!ownerId || !sessionId) return;
+  saveOwnerPendingSessions(
+    ownerId,
+    loadOwnerPendingSessions(ownerId).filter(session => session.id !== sessionId),
+  );
+}
+
 function loadOwnerPendingSnapshot(baseKey, ownerId) {
   const key = ownerSyncPendingKey(baseKey, ownerId);
   if (!key) return { key: null, snapshot: null };
@@ -69,16 +120,21 @@ function isCachedOwner(expectedOwnerId) {
   return Boolean(expectedOwnerId && get('user')?.id === expectedOwnerId);
 }
 
-function markSessionSyncPending(sessionId, expectedOwnerId) {
-  if (!isCachedOwner(expectedOwnerId)) return;
+function markSessionSyncPending(sessionOrId, expectedOwnerId) {
+  const sessionId = typeof sessionOrId === 'string' ? sessionOrId : sessionOrId?.id;
+  if (!sessionId) return;
   const sessions = get('sessions') ?? [];
   const idx = sessions.findIndex(s => s?.id === sessionId);
+  const pendingSession = typeof sessionOrId === 'object' ? sessionOrId : sessions[idx];
+  if (pendingSession) addOwnerPendingSession(expectedOwnerId, pendingSession);
+  if (!isCachedOwner(expectedOwnerId)) return;
   if (idx === -1) return;
   sessions[idx] = { ...sessions[idx], _syncPending: true };
   set('sessions', sessions);
 }
 
 function clearSessionSyncPending(sessionId, expectedOwnerId) {
+  clearOwnerPendingSession(expectedOwnerId, sessionId);
   if (!isCachedOwner(expectedOwnerId)) return;
   const sessions = get('sessions') ?? [];
   const idx = sessions.findIndex(s => s?.id === sessionId);
@@ -298,9 +354,18 @@ export const db = {
     } = loadOwnerPendingSnapshot(ENERGY_SYNC_PENDING_KEY, userId);
     const sessionDeletionLog = loadSessionDeletionLog(userId);
     const deletedSessionIds = new Set(Object.keys(sessionDeletionLog));
-    const localSessions = localUser?.id === userId
+    const cachedSessions = localUser?.id === userId
       ? filterDeletedSessions(get('sessions') ?? [], deletedSessionIds)
       : [];
+    const ownerPendingSessions = filterDeletedSessions(
+      loadOwnerPendingSessions(userId),
+      deletedSessionIds,
+    );
+    const ownerPendingIds = new Set(ownerPendingSessions.map(session => session.id));
+    const localSessions = mergeSessionsById(cachedSessions, ownerPendingSessions)
+      .map(session => ownerPendingIds.has(session.id)
+        ? { ...session, _syncPending: true }
+        : session);
     const pendingProfileValue = pendingProfile?.ownerId === userId
       ? pendingProfile.value
       : localUser?._syncPending && localUser?.id === userId
@@ -369,32 +434,37 @@ export const db = {
     }
 
     const canonicalTasks = (tasksRes.data ?? []).map(t => fromRow(TASK_FIELDS, t));
-    let canonicalSessions = [];
-    let sessionsToBackfill = [];
-
-    if (sessionsRes.data) {
-      const remoteSessions = filterDeletedSessions(
-        sessionsRes.data.map(s => fromRow(SESSION_FIELDS, s)),
-        deletedSessionIds,
-      );
-      const remoteIds = new Set(remoteSessions.map(s => s.id));
-      const mergeableLocalSessions = localSessions.filter(session => (
+    const remoteSessions = filterDeletedSessions(
+      (sessionsRes.data ?? []).map(s => fromRow(SESSION_FIELDS, s)),
+      deletedSessionIds,
+    );
+    const remoteIds = new Set(remoteSessions.map(s => s.id));
+    const needsSessionSyncCutover = !hasCompletedSessionSyncCutover(userId);
+    const mergeableLocalSessions = localSessions
+      .filter(session => (
         session?.id
-        && (remoteIds.has(session.id) || session._syncPending === true)
+        && (remoteIds.has(session.id)
+          || session._syncPending === true
+          || needsSessionSyncCutover)
+      ))
+      .map(session => (
+        needsSessionSyncCutover && !remoteIds.has(session.id)
+          ? { ...session, _syncPending: true }
+          : session
       ));
-      canonicalSessions = mergeSessionsById(remoteSessions, mergeableLocalSessions);
-      sessionsToBackfill = mergeableLocalSessions
-        .filter(s => s?.id && s._syncPending === true && !remoteIds.has(s.id));
+    const canonicalSessions = mergeSessionsById(remoteSessions, mergeableLocalSessions);
+    const sessionsToBackfill = mergeableLocalSessions
+      .filter(s => s?.id && s._syncPending === true && !remoteIds.has(s.id));
+    saveOwnerPendingSessions(userId, sessionsToBackfill);
 
-      await Promise.allSettled(Object.entries(sessionDeletionLog).map(async ([sessionId, entry]) => {
-        if (entry.remoteConfirmedAt) return;
-        recordSessionDeletionAttempt(userId, sessionId, new Date().toISOString());
-        const confirmed = await this.deleteSession(sessionId, userId);
-        if (confirmed) {
-          recordSessionDeletionRemoteConfirmed(userId, sessionId, new Date().toISOString());
-        }
-      }));
-    }
+    await Promise.allSettled(Object.entries(sessionDeletionLog).map(async ([sessionId, entry]) => {
+      if (entry.remoteConfirmedAt) return;
+      recordSessionDeletionAttempt(userId, sessionId, new Date().toISOString());
+      const confirmed = await this.deleteSession(sessionId, userId);
+      if (confirmed) {
+        recordSessionDeletionRemoteConfirmed(userId, sessionId, new Date().toISOString());
+      }
+    }));
 
     const canonicalEnergy = energyRes.data
       ? fromRow(ENERGY_FIELDS, energyRes.data)
@@ -410,6 +480,7 @@ export const db = {
     set('sessions', canonicalSessions);
     if (canonicalEnergy) set('energy', canonicalEnergy);
     else if (localUser?.id !== userId) remove('energy');
+    if (needsSessionSyncCutover) completeSessionSyncCutover(userId);
 
     sessionsToBackfill.forEach(s => this.insertSession(s, userId)
       .then(inserted => {
@@ -621,6 +692,10 @@ export const storage = {
     set('sessions', persistedSessions);
     // Only INSERT the newly added sessions (not the whole array)
     if (!ownerId) return;
+    saveOwnerPendingSessions(
+      ownerId,
+      persistedSessions.filter(session => session?._syncPending === true),
+    );
     s.filter(ns => newIds.has(ns.id))
      .forEach(ns => db.insertSession(ns, ownerId)
        .then(inserted => {

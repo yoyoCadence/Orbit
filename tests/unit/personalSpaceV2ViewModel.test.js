@@ -12,6 +12,7 @@ import {
   buildHomeWindowViewModel,
   buildPersonalSpaceV2Snapshot,
   getTimeBand,
+  selectProtagonistState,
   selectCanonicalMainQuestSession,
   selectMainQuestActionTarget,
 } from '../../pwa/js/personalSpace/v2/viewModels.js';
@@ -105,6 +106,22 @@ describe('Personal Space V2 Companion selector', () => {
       missedPatterns: { selectedGoalId: 'goal-1' },
     }).state).toBe('remind');
     expect(getCompanionReaction({ momentum: 'stable' }).state).toBe('observe');
+  });
+
+  it('does not infer reward state from free-form reveal text', () => {
+    const freeFormReveal = {
+      id: 'message-only',
+      title: 'Project planning notes',
+      message: 'The next quest will appear tomorrow.',
+    };
+
+    expect(getCompanionReaction({ pendingReveal: freeFormReveal }).state).toBe('observe');
+    expect(selectProtagonistState({ pendingReveal: freeFormReveal }).state).toBe('inspect');
+    expect(selectProtagonistState({
+      pendingReveal: {
+        rewards: [{ rewardType: 'project_progress', rewardKey: 'workspace-upgrade' }],
+      },
+    }).state).toBe('celebrate');
   });
 });
 

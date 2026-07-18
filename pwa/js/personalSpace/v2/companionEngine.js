@@ -1,3 +1,8 @@
+import {
+  isProjectCompletionReveal,
+  isQuestOrProjectProgressReveal,
+} from './revealSelectors.js';
+
 const PRODUCTIVE_RESULTS = new Set(['complete', 'partial', 'instant']);
 
 function freezeReaction(reaction) {
@@ -6,37 +11,6 @@ function freezeReaction(reaction) {
     worldAction: null,
     ...reaction,
   });
-}
-
-function revealText(pendingReveal) {
-  if (!pendingReveal) return '';
-  try {
-    return JSON.stringify(pendingReveal).toLowerCase();
-  } catch {
-    return String(pendingReveal).toLowerCase();
-  }
-}
-
-function isProjectCompletionReveal(pendingReveal, activeProject) {
-  const text = revealText(pendingReveal);
-  if (!text) return false;
-
-  return text.includes('project-complete')
-    || text.includes('project_complete')
-    || text.includes('world_unlock')
-    || text.includes('world-unlock')
-    || text.includes('formal-workstation')
-    || (Number(activeProject?.progress) >= 100 && text.includes('workspace-upgrade'));
-}
-
-function isQuestOrProjectProgressReveal(pendingReveal) {
-  const text = revealText(pendingReveal);
-  return text.includes('quest_progress')
-    || text.includes('quest-progress')
-    || text.includes('project_progress')
-    || text.includes('project-progress')
-    || text.includes('main-focus')
-    || text.includes('workspace-upgrade');
 }
 
 function getLatestValidSession(recentSessions) {

@@ -403,12 +403,15 @@ function renderPosterProp(entry) {
 
 function placementStyle(placement = {}) {
   const anchor = placement.anchor === 'center' ? 'translate(-50%, -50%)' : 'translate(-50%, -100%)';
+  const z = Math.round(toFiniteStyleNumber(placement.z, 1, 0, 999));
+  const rotation = toFiniteStyleNumber(placement.rotation, 0, -360, 360);
+  const scale = toFiniteStyleNumber(placement.scale, 1, 0.1, 4);
   return [
     `left:${toPercent(placement.x, 50)}`,
     `top:${toPercent(placement.y, 50)}`,
-    `width:${toPercent(placement.width, 10)}`,
-    `z-index:${Number.isFinite(placement.z) ? placement.z : 1}`,
-    `transform:${anchor}${placement.rotation ? ` rotate(${placement.rotation}deg)` : ''}${placement.scale ? ` scale(${placement.scale})` : ''}`,
+    `width:${toPercent(placement.width, 10, 1, 100)}`,
+    `z-index:${z}`,
+    `transform:${anchor}${rotation ? ` rotate(${rotation}deg)` : ''}${scale !== 1 ? ` scale(${scale})` : ''}`,
   ].join(';');
 }
 
@@ -459,9 +462,14 @@ function clampPercent(value) {
   return Math.max(0, Math.min(100, Math.round(numeric)));
 }
 
-function toPercent(value, fallback) {
-  if (typeof value === 'string' && value.trim()) return value.includes('%') ? value : `${value}%`;
-  return `${Number.isFinite(value) ? value : fallback}%`;
+function toPercent(value, fallback, min = 0, max = 100) {
+  return `${toFiniteStyleNumber(value, fallback, min, max)}%`;
+}
+
+function toFiniteStyleNumber(value, fallback, min, max) {
+  const parsed = typeof value === 'number' ? value : Number.parseFloat(value);
+  const numeric = Number.isFinite(parsed) ? parsed : fallback;
+  return Math.max(min, Math.min(max, numeric));
 }
 
 function escapeHtml(value) {

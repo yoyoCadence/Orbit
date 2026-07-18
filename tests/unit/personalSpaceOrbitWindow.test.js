@@ -40,13 +40,39 @@ describe('Personal Space V2 Orbit Window', () => {
   });
 
   it('uses cumulative five-stage Workspace Upgrade visuals', () => {
-    expect(getWorkspaceSceneAssets(0).props).toHaveLength(0);
+    const initial = getWorkspaceSceneAssets(0);
+    expect(initial.props).toHaveLength(0);
+    expect(initial.protagonistPlacement.width).toBeGreaterThanOrEqual(17);
+    expect(initial.companionPlacement.width).toBeGreaterThanOrEqual(9);
     expect(getWorkspaceSceneAssets(25).props.map(item => item.id)).toEqual(['corner-desk', 'office-chair']);
     expect(getWorkspaceSceneAssets(75).props.map(item => item.id)).toContain('single-monitor');
 
     const completed = getWorkspaceSceneAssets(100).props.map(item => item.id);
     expect(completed).toContain('dual-monitor');
     expect(completed).not.toContain('single-monitor');
+  });
+
+  it('normalizes persisted placement values before composing inline styles', () => {
+    const host = document.createElement('div');
+    host.innerHTML = renderOrbitWindow({
+      activeProject: { progress: 25, label: 'Workspace Upgrade' },
+      placements: {
+        protagonist: {
+          x: '50" onerror="globalThis.injected=true',
+          rotation: '0);background:url(javascript:alert(1))',
+          scale: 'not-a-number',
+        },
+        'corner-desk': {
+          width: '20" data-injected="true',
+          anchor: 'center" onclick="alert(1)',
+        },
+      },
+    });
+
+    expect(host.querySelector('[onerror]')).toBeNull();
+    expect(host.querySelector('[data-injected]')).toBeNull();
+    expect(host.innerHTML).not.toContain('javascript:');
+    expect(host.querySelector('.orbit-window-protagonist').style.left).toBe('50%');
   });
 
   it('normalizes all three presentations from the same data without mutating it', () => {

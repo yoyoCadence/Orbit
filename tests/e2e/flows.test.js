@@ -426,6 +426,16 @@ test.describe('Personal Space V2 垂直切片', () => {
     let orbit = page.locator('[data-orbit-window]');
     let runtimeHost = orbit.locator('[data-orbit-runtime-host]');
     await expect(runtimeHost).toHaveAttribute('data-runtime-status', 'ready', { timeout: 8000 });
+    expect(await runtimeHost.evaluate(host => {
+      const canvas = host.querySelector('canvas.orbit-window-canvas');
+      const hostRect = host.getBoundingClientRect();
+      const canvasRect = canvas?.getBoundingClientRect();
+      return Boolean(
+        canvasRect
+        && Math.abs(canvasRect.width - hostRect.width) < 1
+        && Math.abs(canvasRect.height - hostRect.height) < 1
+      );
+    })).toBe(true);
 
     await page.evaluate(async () => {
       const runtimeModule = await import('/js/personalSpace/v2/runtime/pixiSceneRuntime.js');
