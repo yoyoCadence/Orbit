@@ -4,6 +4,23 @@ import { calcDailyStats, reorderTasks, previewBaseXP } from '../engine.js';
 import { storage } from '../storage.js';
 import { sessionRowHtml, bindProofThumbs } from '../ui/sessionRow.js';
 import { FLAG_SHIELD_PENDING, FLAG_SHIELD_DISMISSED, FLAG_SHIELD_SCROLL_TOP } from '../flags.js';
+import { showToast } from '../ui/feedback.js';
+import { isPersonalSpaceV2Enabled } from '../personalSpace/v2/featureFlag.js';
+import {
+  buildStoredPersonalSpaceV2LedgerSnapshot,
+  consumePersonalSpaceV2Reveal,
+  reconcileAndSavePersonalSpaceV2,
+} from '../personalSpace/v2/controller.js';
+import { loadPersonalSpaceV2State } from '../personalSpace/v2/store.js';
+import {
+  buildHomeWindowViewModel,
+  buildPersonalSpaceV2Snapshot,
+} from '../personalSpace/v2/viewModels.js';
+import {
+  mountOrbitWindow,
+  renderOrbitWindow,
+} from '../personalSpace/v2/ui/orbitWindow.js';
+import { orbitWindowRuntimeDestroyer } from '../personalSpace/v2/runtime/pixiSceneRuntime.js';
 
 // ─── Value / impactType labels ────────────────────────────────────────────────
 
@@ -25,16 +42,104 @@ const IMPACT_COLOR = {
 // ─── Module-level container ref (for drag re-render) ─────────────────────────
 
 let _container = null;
+let _orbitWindowCleanup = null;
+
+function buildHomeOrbitWindow(persistedState = null) {
+  if (!state.user?.id || !isPersonalSpaceV2Enabled()) return null;
+  try {
+    const result = persistedState
+      ? {
+          state: persistedState,
+          ledgerSnapshot: buildStoredPersonalSpaceV2LedgerSnapshot(persistedState),
+        }
+      : reconcileAndSavePersonalSpaceV2({
+          user: state.user,
+          sessions: state.sessions,
+        });
+    const snapshot = buildPersonalSpaceV2Snapshot({
+      coreState: state,
+      v2State: result.state,
+      ledgerSnapshot: result.ledgerSnapshot,
+    });
+    const model = buildHomeWindowViewModel(snapshot);
+    return { model, html: renderOrbitWindow(model) };
+  } catch (error) {
+    console.warn('Personal Space V2 home window will retry on the next render.', error);
+    try {
+      const fallbackState = loadPersonalSpaceV2State(state.user.id);
+      const snapshot = buildPersonalSpaceV2Snapshot({
+        coreState: state,
+        v2State: fallbackState,
+        ledgerSnapshot: buildStoredPersonalSpaceV2LedgerSnapshot(fallbackState),
+      });
+      const model = buildHomeWindowViewModel(snapshot);
+      return { model, html: renderOrbitWindow(model) };
+    } catch (fallbackError) {
+      console.warn('Personal Space V2 fallback snapshot is unavailable.', fallbackError);
+      return null;
+    }
+  }
+}
+
+function mountHomeOrbitWindow(orbitRoot, homeOrbitWindow) {
+  if (!orbitRoot || !homeOrbitWindow) return;
+  _orbitWindowCleanup = mountOrbitWindow(orbitRoot, {
+    model: homeOrbitWindow.model,
+    onOpenWorld: () => window.navigate('personalSpace'),
+    onProject: () => window.navigate('personalSpace'),
+    onCompanion: companion => showToast(companion.message),
+    onMainQuest: handleMainQuestAction,
+    onRevealConsumed: revealId => {
+      let consumed;
+      try {
+        consumed = consumePersonalSpaceV2Reveal({ user: state.user, revealId });
+      } catch (error) {
+        console.warn('Personal Space V2 reveal acknowledgement could not be saved.', error);
+        return;
+      }
+      if (!consumed.persisted) return;
+
+      const nextWindow = buildHomeOrbitWindow(consumed.state);
+      if (!nextWindow) return;
+      const shell = document.createElement('div');
+      shell.innerHTML = nextWindow.html;
+      const nextRoot = shell.querySelector('[data-orbit-window]');
+      if (!nextRoot) return;
+
+      _orbitWindowCleanup?.();
+      _orbitWindowCleanup = null;
+      orbitRoot.replaceWith(nextRoot);
+      mountHomeOrbitWindow(nextRoot, nextWindow);
+    },
+  });
+}
+
+function handleMainQuestAction(mainQuest) {
+  const target = mainQuest?.actionTarget || {};
+  const taskId = target.taskId || mainQuest?.taskId;
+  if (!mainQuest?.completed && taskId) {
+    window.startFocus(taskId);
+    return;
+  }
+  if (target.kind === 'create-focus-task') {
+    window.navigate('settings');
+    return;
+  }
+  showToast(mainQuest?.completed ? '今日 Main Quest 已完成' : '請先建立 A／S 專注任務');
+}
 
 // ─── Main render ──────────────────────────────────────────────────────────────
 
 export function renderHome(container) {
+  _orbitWindowCleanup?.();
+  _orbitWindowCleanup = null;
   _container = container;
 
   const todayStr  = effectiveToday(state.user?.newDayHour ?? 5);
   const todaySess = state.sessions.filter(s => s.date === todayStr);
   const stats     = calcDailyStats(state.sessions, todayStr);
   const energy    = state.energy;
+  const homeOrbitWindow = buildHomeOrbitWindow();
 
   // Completion count per task today
   const counts = {};
@@ -136,6 +241,8 @@ export function renderHome(container) {
 
     <div class="effective-row">${streakIndicator}</div>
 
+    ${homeOrbitWindow?.html || ''}
+
     <!-- 本日計劃 -->
     <div class="section-title-row">
       <span>📋 本日計劃</span>
@@ -188,6 +295,11 @@ export function renderHome(container) {
       }
     </div>
   `;
+
+  const orbitRoot = container.querySelector('[data-orbit-window]');
+  if (orbitRoot && homeOrbitWindow) {
+    mountHomeOrbitWindow(orbitRoot, homeOrbitWindow);
+  }
 
   // ── Bind: plan cards → complete task ─────────────────────────────────────────
   container.querySelectorAll('.plan-card').forEach(card => {
@@ -291,6 +403,16 @@ export function renderHome(container) {
       document.getElementById('content')?.scrollTo({ top: 0, behavior: 'smooth' });
     });
   }
+
+  return () => {
+    if (_container === container) _container = null;
+    try {
+      _orbitWindowCleanup?.();
+    } finally {
+      _orbitWindowCleanup = null;
+      orbitWindowRuntimeDestroyer.schedule();
+    }
+  };
 }
 
 // ─── Plan card HTML ───────────────────────────────────────────────────────────

@@ -10,13 +10,19 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 // ─── Module mocks ─────────────────────────────────────────────────────────────
 
 const mockState = vi.hoisted(() => ({
-  user:  { name: 'Tester', mode: 'normal', isPublic: false },
+  user:  { id: 'user-1', name: 'Tester', mode: 'normal', isPublic: false },
   tasks: [],
   sessions: [],
   energy: { currentEnergy: 80, maxEnergy: 100, lastResetDate: '' },
+  dailyPlan: [],
 }));
 
 const mockStorage = vi.hoisted(() => ({
+  getUser:               vi.fn(() => mockState.user),
+  getTasks:              vi.fn(() => mockState.tasks),
+  getSessions:           vi.fn(() => mockState.sessions),
+  getEnergy:             vi.fn(() => mockState.energy),
+  getDailyPlan:          vi.fn(() => mockState.dailyPlan),
   getTheme:              vi.fn(() => 'dark-purple'),
   getUiSkin:             vi.fn(() => 'classic'),
   getBgImage:            vi.fn(() => null),
@@ -35,6 +41,7 @@ const mockStorage = vi.hoisted(() => ({
   isTrialUser:           vi.fn(() => false),
   getTrialDaysRemaining: vi.fn(() => 0),
   getProExpiry:          vi.fn(() => null),
+  syncFromRemote:        vi.fn(() => Promise.resolve()),
 }));
 
 const mockApplyTheme        = vi.hoisted(() => vi.fn());
@@ -109,9 +116,19 @@ function makeTask(overrides = {}) {
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 beforeEach(() => {
-  mockState.user  = { name: 'Tester', mode: 'normal', isPublic: false };
+  localStorage.clear();
+  mockState.user  = { id: 'user-1', name: 'Tester', mode: 'normal', isPublic: false };
   mockState.tasks = [];
+  mockState.sessions = [];
+  mockState.energy = { currentEnergy: 80, maxEnergy: 100, lastResetDate: '' };
+  mockState.dailyPlan = [];
   vi.clearAllMocks();
+  mockStorage.getUser.mockImplementation(() => mockState.user);
+  mockStorage.getTasks.mockImplementation(() => mockState.tasks);
+  mockStorage.getSessions.mockImplementation(() => mockState.sessions);
+  mockStorage.getEnergy.mockImplementation(() => mockState.energy);
+  mockStorage.getDailyPlan.mockImplementation(() => mockState.dailyPlan);
+  mockStorage.syncFromRemote.mockResolvedValue(undefined);
   mockStorage.getTheme.mockReturnValue('dark-purple');
   mockStorage.getUiSkin.mockReturnValue('classic');
   mockStorage.getBgImage.mockReturnValue(null);
@@ -353,6 +370,50 @@ describe('renderSettings: sign out button', () => {
     expect(btn).not.toBeNull();
     btn.click();
     expect(window.signOut).toHaveBeenCalled();
+  });
+});
+
+describe('renderSettings: manual cloud sync', () => {
+  it('refreshes canonical state and reconciles V2 without queueing a reveal', async () => {
+    const remote = {
+      user: { id: 'synced-owner', name: 'Synced', mode: 'normal', isPublic: false, totalXP: 300 },
+      tasks: [{ id: 'synced-task', name: 'Synced task', emoji: '🎯', value: 'A' }],
+      sessions: [{
+        id: 'synced-session',
+        taskId: 'synced-task',
+        date: '2026-07-17',
+        completedAt: '2026-07-17T10:00:00.000Z',
+        result: 'complete',
+        durationMinutes: 30,
+        impactType: 'task',
+        taskNature: 'growth',
+        value: 'A',
+        resistance: 1.2,
+        finalXP: 50,
+        isProductiveXP: true,
+      }],
+      energy: { currentEnergy: 64, maxEnergy: 100, lastResetDate: '2026-07-17' },
+      dailyPlan: ['synced-task'],
+    };
+    mockStorage.getUser.mockReturnValue(remote.user);
+    mockStorage.getTasks.mockReturnValue(remote.tasks);
+    mockStorage.getSessions.mockReturnValue(remote.sessions);
+    mockStorage.getEnergy.mockReturnValue(remote.energy);
+    mockStorage.getDailyPlan.mockReturnValue(remote.dailyPlan);
+    window.showToast = vi.fn();
+    const c = makeContainer();
+    renderSettings(c);
+
+    c.querySelector('#sync-btn').click();
+
+    await vi.waitFor(() => expect(mockStorage.syncFromRemote).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() => expect(mockState.user).toBe(remote.user));
+    expect(mockState).toMatchObject(remote);
+
+    const { loadPersonalSpaceV2State } = await import('../../pwa/js/personalSpace/v2/store.js');
+    const v2State = loadPersonalSpaceV2State(remote.user.id);
+    expect(v2State.rewardLedger.length).toBeGreaterThan(0);
+    expect(v2State.pendingRewardReveals).toEqual([]);
   });
 });
 

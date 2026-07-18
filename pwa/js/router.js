@@ -7,7 +7,6 @@ import { renderGoals }          from './pages/goals.js';
 import { renderReview }         from './pages/review.js';
 import { renderProfile }        from './pages/profile.js';
 import { renderSettings }       from './pages/settings.js';
-import { renderPersonalSpace }  from './pages/personalSpace.js';
 import { showToast }            from './ui/feedback.js';
 
 // ─── Router ──────────────────────────────────────────────────────────────────
@@ -17,14 +16,76 @@ const SYNC_ROUTES = {
   goals:         renderGoals,
   review:        renderReview,
   profile:       renderProfile,
-  personalSpace: renderPersonalSpace,
   settings:      renderSettings,
 };
 
 // Lazy routes: module is not imported at startup; loaded on first navigation.
 const LAZY_ROUTES = {
   leaderboard: () => import('./pages/leaderboard.js').then(m => m.renderLeaderboard),
+  personalSpace: () => import('./pages/personalSpace.js').then(m => m.renderPersonalSpace),
 };
+
+export function createRouteRenderLifecycle() {
+  let generation = 0;
+  let activeCleanup = null;
+
+  function runActiveCleanup() {
+    const cleanup = activeCleanup;
+    activeCleanup = null;
+    if (!cleanup) return;
+    try {
+      cleanup();
+    } catch (error) {
+      console.error('Route renderer cleanup failed:', error);
+    }
+  }
+
+  return {
+    begin() {
+      generation += 1;
+      runActiveCleanup();
+      return generation;
+    },
+    isCurrent(token) {
+      return token === generation;
+    },
+    commit(token, candidate) {
+      const cleanup = toCleanup(candidate);
+      if (token !== generation) {
+        cleanup?.();
+        return false;
+      }
+      activeCleanup = cleanup;
+      return true;
+    },
+    dispose() {
+      generation += 1;
+      runActiveCleanup();
+    },
+  };
+}
+
+function toCleanup(candidate) {
+  const cleanup = typeof candidate === 'function'
+    ? candidate
+    : candidate && typeof candidate.cleanup === 'function'
+      ? candidate.cleanup
+      : null;
+  if (!cleanup) return null;
+
+  let called = false;
+  return () => {
+    if (called) return;
+    called = true;
+    cleanup();
+  };
+}
+
+const routeRenderLifecycle = createRouteRenderLifecycle();
+
+export function teardownActivePageRenderer() {
+  routeRenderLifecycle.dispose();
+}
 
 export function currentHash() { return window.location.hash.slice(1) || 'home'; }
 
@@ -35,33 +96,47 @@ let _prevPageIdx = -1;   // -1 = first render, skip animation
 
 export async function renderPage(hash) {
   const content = document.getElementById('content');
+  const renderToken = routeRenderLifecycle.begin();
+  if (!routeRenderLifecycle.isCurrent(renderToken)) return;
   content.dataset.route = hash;
   const newIdx = PAGE_ORDER.indexOf(hash);
 
   const syncFn = SYNC_ROUTES[hash];
   if (syncFn) {
-    syncFn(content);
+    const result = syncFn(content);
+    const cleanup = isThenable(result) ? await result : result;
+    if (!routeRenderLifecycle.commit(renderToken, cleanup)) return;
   } else if (LAZY_ROUTES[hash]) {
     let loadTimer;
     try {
       // Only show loading skeleton if the import takes longer than 200ms
       // (avoids flicker when the module is already in the browser module cache)
       loadTimer = setTimeout(() => {
-        if (content.dataset.route === hash) content.innerHTML = '<div class="lazy-page-loading"></div>';
+        if (routeRenderLifecycle.isCurrent(renderToken)) {
+          content.innerHTML = '<div class="lazy-page-loading"></div>';
+        }
       }, 200);
       const renderFn = await LAZY_ROUTES[hash]();
       clearTimeout(loadTimer);
-      if (content.dataset.route !== hash) return; // user navigated away while loading
-      renderFn(content);
+      if (!routeRenderLifecycle.isCurrent(renderToken)) return;
+      const result = renderFn(content);
+      const cleanup = isThenable(result) ? await result : result;
+      if (!routeRenderLifecycle.commit(renderToken, cleanup)) return;
     } catch {
       clearTimeout(loadTimer);
-      if (content.dataset.route !== hash) return;
+      if (!routeRenderLifecycle.isCurrent(renderToken)) return;
       showToast('頁面載入失敗，請稍後再試');
-      renderHome(content);
+      const fallbackResult = renderHome(content);
+      const fallbackCleanup = isThenable(fallbackResult) ? await fallbackResult : fallbackResult;
+      if (!routeRenderLifecycle.commit(renderToken, fallbackCleanup)) return;
     }
   } else {
-    renderHome(content);
+    const result = renderHome(content);
+    const cleanup = isThenable(result) ? await result : result;
+    if (!routeRenderLifecycle.commit(renderToken, cleanup)) return;
   }
+
+  if (!routeRenderLifecycle.isCurrent(renderToken)) return;
 
   document.querySelectorAll('.nav-item').forEach(el => {
     el.classList.toggle('active', el.dataset.page === hash);
@@ -76,6 +151,10 @@ export async function renderPage(hash) {
     content.addEventListener('animationend', () => content.classList.remove(cls), { once: true });
   }
   _prevPageIdx = newIdx === -1 ? 0 : newIdx;
+}
+
+function isThenable(value) {
+  return value && typeof value.then === 'function';
 }
 
 window.navigate = function (page) { window.location.hash = '#' + page; };

@@ -19,11 +19,36 @@ import { showToast, showXPFloat, showLevelUp } from './ui/feedback.js';
 import { updateHeader } from './ui/header.js';
 import { showProofSheet } from './ui/proofSheet.js';
 import { haptic } from './platform/haptics.js';
+import {
+  clearSessionDeletion,
+  recordSessionDeletion,
+  recordSessionDeletionAttempt,
+  recordSessionDeletionLocalSettled,
+  recordSessionDeletionRemoteConfirmed,
+} from './platform/sessionDeletionLog.js';
+import { isPersonalSpaceV2Enabled } from './personalSpace/v2/featureFlag.js';
+import { reconcileAndSavePersonalSpaceV2 } from './personalSpace/v2/controller.js';
 
 // Badge updates are injected by app.js (the badge module is warm-loaded there).
 // Before injection this is a no-op — same as the pre-warm-load behavior.
 let _updateBadge = () => {};
 export function setBadgeUpdater(fn) { _updateBadge = fn; }
+
+export function reconcilePersonalSpaceAfterSessionChange(options = {}) {
+  if (!state.user || !isPersonalSpaceV2Enabled()) return null;
+  try {
+    return reconcileAndSavePersonalSpaceV2({
+      user: state.user,
+      sessions: state.sessions,
+      queueReveal: true,
+      deletedSourceIds: options.deletedSourceIds || [],
+      reconciledAt: options.reconciledAt,
+    });
+  } catch (error) {
+    console.warn('Personal Space V2 reconciliation will retry on the next render.', error);
+    return null;
+  }
+}
 
 export function getTodayEntertainmentMinutes() {
   const todayStr = eToday();
@@ -155,7 +180,27 @@ export function submitFocusResult(taskId, elapsedSec, result, durationMin, note 
 // ─── Shared session commit ────────────────────────────────────────────────────
 
 export function commitSession(session) {
+  if (!session?.id || state.sessions.some(existing => existing.id === session.id)) {
+    return false;
+  }
   const oldLevel = getLevelInfo(state.user.totalXP || 0).level;
+
+  const energyBefore = Number.isFinite(state.energy.currentEnergy)
+    ? state.energy.currentEnergy
+    : 0;
+  const maxEnergy = Number.isFinite(state.energy.maxEnergy)
+    ? Math.max(0, state.energy.maxEnergy)
+    : 100;
+  let energyAfter = energyBefore;
+  if (session.energyCost > 0) {
+    energyAfter = Math.max(0, energyAfter - session.energyCost);
+  }
+  if (session.energyGain > 0) {
+    energyAfter = Math.min(maxEnergy, energyAfter + session.energyGain);
+  }
+  // Local-only settlement metadata makes undo exact at clamp boundaries. It is
+  // preserved by the local merge and intentionally omitted from DB field maps.
+  session._energyDeltaApplied = energyAfter - energyBefore;
 
   // Persist session
   state.sessions.push(session);
@@ -165,16 +210,10 @@ export function commitSession(session) {
   state.user.totalXP = (state.user.totalXP || 0) + session.finalXP;
 
   // Update energy
-  if (session.energyCost > 0) {
-    state.energy.currentEnergy = Math.max(0,
-      state.energy.currentEnergy - session.energyCost);
-  }
-  if (session.energyGain > 0) {
-    state.energy.currentEnergy = Math.min(state.energy.maxEnergy,
-      state.energy.currentEnergy + session.energyGain);
-  }
+  state.energy.currentEnergy = energyAfter;
   storage.saveEnergy(state.energy);
   storage.saveUser(state.user);
+  reconcilePersonalSpaceAfterSessionChange();
 
   updateHeader();
 
@@ -198,6 +237,7 @@ export function commitSession(session) {
     }, 600);
   }
   _updateBadge();
+  return true;
 }
 
 // ─── Delete (reverse settlement) ─────────────────────────────────────────────
@@ -207,30 +247,91 @@ window.deleteSession = function (sessionId) {
   if (!session) return;
   if (!confirm(`撤銷「${session.taskName}」這筆記錄？`)) return;
 
+  const ownerId = state.user?.id;
+  const deletedAt = new Date().toISOString();
+  const targetTotalXP = Math.max(
+    0,
+    (state.user.totalXP || 0) - (Number.isFinite(session.finalXP) ? session.finalXP : 0),
+  );
+  let targetEnergyCurrent = state.energy.currentEnergy;
+  if (Number.isFinite(session._energyDeltaApplied)) {
+    targetEnergyCurrent = Math.min(
+      state.energy.maxEnergy,
+      Math.max(0, state.energy.currentEnergy - session._energyDeltaApplied),
+    );
+  } else {
+    // Compatibility fallback for Sessions created before exact local deltas.
+    if (session.energyCost > 0) {
+      targetEnergyCurrent = Math.min(
+        state.energy.maxEnergy,
+        targetEnergyCurrent + session.energyCost,
+      );
+    }
+    if (session.energyGain > 0) {
+      targetEnergyCurrent = Math.max(0, targetEnergyCurrent - session.energyGain);
+    }
+  }
+  if (ownerId) {
+    try {
+      recordSessionDeletion(ownerId, sessionId, deletedAt, {
+        targetTotalXP,
+        targetEnergyCurrent,
+      });
+    } catch (error) {
+      console.warn('Session undo was stopped because its deletion log could not be saved.', error);
+      showToast('無法安全撤銷，請確認儲存空間後再試');
+      return false;
+    }
+  }
+
   // Reverse XP
-  state.user.totalXP = Math.max(0, (state.user.totalXP || 0) - session.finalXP);
+  state.user.totalXP = targetTotalXP;
 
   // Reverse energy
-  if (session.energyCost > 0) {
-    state.energy.currentEnergy = Math.min(state.energy.maxEnergy,
-      state.energy.currentEnergy + session.energyCost);
-  }
-  if (session.energyGain > 0) {
-    state.energy.currentEnergy = Math.max(0,
-      state.energy.currentEnergy - session.energyGain);
-  }
+  state.energy.currentEnergy = targetEnergyCurrent;
 
   // Remove session
   state.sessions = state.sessions.filter(s => s.id !== sessionId);
   storage.saveSessions(state.sessions);
   storage.saveUser(state.user);
   storage.saveEnergy(state.energy);
+  if (ownerId) {
+    try {
+      recordSessionDeletionLocalSettled(ownerId, sessionId, deletedAt);
+    } catch (error) {
+      console.warn('Session deletion recovery checkpoint could not be updated.', error);
+    }
+  }
+  const v2Enabled = isPersonalSpaceV2Enabled();
+  const v2Result = reconcilePersonalSpaceAfterSessionChange({
+    deletedSourceIds: [sessionId],
+    reconciledAt: deletedAt,
+  });
+  const worldSettled = !v2Enabled || Boolean(v2Result?.persisted);
 
-  // Delete from Supabase
-  db.deleteSession(sessionId).catch(console.error);
+  // Keep the local deletion tombstone until Supabase confirms the row is gone.
+  if (ownerId) {
+    try {
+      recordSessionDeletionAttempt(ownerId, sessionId, deletedAt);
+    } catch (error) {
+      console.warn('Session deletion retry metadata could not be updated.', error);
+    }
+  }
+  db.deleteSession(sessionId, ownerId)
+    .then(confirmed => {
+      if (!confirmed || !ownerId) return;
+      const confirmedAt = new Date().toISOString();
+      if (worldSettled) {
+        clearSessionDeletion(ownerId, sessionId);
+      } else {
+        recordSessionDeletionRemoteConfirmed(ownerId, sessionId, confirmedAt);
+      }
+    })
+    .catch(console.error);
 
   updateHeader();
   renderPage(currentHash());
   showToast('已撤銷');
   _updateBadge();
+  return true;
 };

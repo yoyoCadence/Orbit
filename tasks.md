@@ -62,6 +62,11 @@
   - 完成條件：目前常用場景素材可預載或快取，window view 與主要家具切頁後不再明顯延遲出現
   - 備註：應在主要場景與資產集合較穩定後再做，避免過早優化 placeholder 階段的載入策略
 
+- [ ] **PS-227** Generate controlled idle furniture variants from approved references
+  - Goal: replace one-view-only expanded props with true `front / left-wall-flush / right-wall-flush` variants that preserve material identity.
+  - Scope: legacy Idle Growth Window only; pause further volume work while the fixed-camera Personal Space V2 vertical slice is validated.
+  - Acceptance: resume only if a validated runtime interaction still needs multiple authored perspectives; preserve all completed variant assets and provenance in the meantime.
+
 - [ ] **AI-201** 建立 AI companion behavior layer 的 rule-based 狀態模型
   - 目標：先定義 `observe / approach / remind / congratulate` 等狀態與觸發條件
   - 對應 roadmap：Phase 2
@@ -95,21 +100,44 @@
 
 ## Next
 
-- [ ] **PS-227** Generate controlled idle furniture variants from approved references
-  - Goal: replace one-view-only expanded props with true `front / left-wall-flush / right-wall-flush` variants that preserve material identity.
-  - Scope: use the `orbit-idle-window-assets` reference workflow for sofa, coffee table, bookcase, filing cabinet, trophy display, rug, and other large layout-critical props; register variant metadata and camera preferences.
-  - Acceptance: each selected large prop has authored variants, no CSS rotation or mirror-only final art, and visual QA confirms material/palette/silhouette consistency across views.
+- [ ] **PS-242** Promote the fallback-proof Personal Space scene pack to final production action art
+  - Target: replace the current proof assets with reviewed protagonist, Companion, weather, and direction/state variants while preserving the V2 manifest contract.
+
+- [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
+  - Target: record low-end mobile measurements, complete the manual reduced-motion/keyboard checklist, and validate the local event contract before enabling any external analytics provider.
 
 
 ---
 
 ## In Progress
 
-- [ ] 目前無進行中的正式任務
+- [ ] **PS-240** Validate and harden the Personal Space V2 vertical slice
+  - In progress: automated merge hardening is complete, including authenticated-owner sync guards, one-time legacy Session cutover, same-route Pixi reuse, structured Reveal selectors, placement sanitization, honest sync failure feedback, and responsive runtime visual QA. Keep open until the PR is merged; low-end device, keyboard, and reduced-motion acceptance remain explicitly assigned to PS-243.
 
 ---
 
 ## Done
+
+- [x] **PS-239** Add Personal Space runtime teardown, asset cache, and mobile fallback contracts
+  - Completed: added route and viewport lifecycle ownership, visibility/context loss recovery, idempotent cleanup, successful-response asset caching, poster fallback, and focused regression coverage.
+
+- [x] **PS-238** Add Personal Space V2 World Mode and minimal Edit Mode shell
+  - Completed: added the scene-first 3:2 Full World, compact HUD/dock, shared Project/Quest/Companion interactions, and a revision-safe editor limited to existing placements.
+
+- [x] **PS-237** Integrate the home Orbit Window with lazy runtime and static fallback
+  - Completed: placed the mandatory 3:2 Orbit Window after Home stats and before Daily Plan, with poster-first lazy Pixi mounting, accessible actions, reveal acknowledgement, and non-blocking fallback.
+
+- [x] **PS-236** Build the shared Personal Space V2 world and Orbit Window view models
+  - Completed: Home, Full World, and Edit derive immutable models from one owner-scoped state and active ledger, including Momentum, Main Quest, Project, Companion, protagonist, wallet, and reveal state.
+
+- [x] **PS-235** Add reversible session reward ledger and Workspace Upgrade project engine
+  - Completed: added immutable deterministic reward entries, source fingerprints, dated Main Quest ownership, explicit deletion tombstones, winner reassignment, four-phase contributions, milestone rewards, and complete undo reconciliation.
+
+- [x] **PS-234** Add Personal Space V2 feature flag and idempotent local state migration
+  - Completed: made V2 the default with explicit legacy fallback, owner-scoped idempotent migration, fixed reward epoch and Gold cutover, persistence failure/revision guards, and no auth or schema changes.
+
+- [x] **PS-233** Audit and specify the corrected Personal Space V2 vertical slice
+  - Completed: audited v1.20.6 code, state, sync, tests, home, Personal Space runtime, assets, cache, and documentation; added product, art, technical, asset-pipeline, and vertical-slice specifications with the corrected mandatory home Orbit Window carried through all acceptance and non-goal clauses.
 
 - [x] **HW-111** Time-of-day atmosphere layer
   - Completed: `timeBand.js` maps local hour to morning/day/evening/night; `applyTimeBand()` sets `data-time-band` on `<html>` and is called on init + every hour; CSS `--time-tint` token applies a subtle hue overlay via `body::after` pseudo-element; Liquid Glass and Personal Space inherit the tint automatically.

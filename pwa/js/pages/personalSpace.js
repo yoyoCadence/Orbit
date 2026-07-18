@@ -14,29 +14,42 @@ import { renderFloorMapPanel } from '../personalSpace/ui/floorMapPanel.js';
 import { renderHudOverlayPlaceholder } from '../personalSpace/ui/hudOverlay.js';
 import { renderShopPanel, SHOP_PURCHASE_ACTION } from '../personalSpace/ui/shopPanel.js';
 import { SCENE_ACTION_TYPES } from '../personalSpace/world/sceneGraph.js';
+import { isPersonalSpaceV2Enabled } from '../personalSpace/v2/featureFlag.js';
 import { haptic } from '../platform/haptics.js';
+import { renderPersonalSpaceV2 } from './personalSpaceV2.js';
 
 let activeRuntime = null;
 let activeParallaxCleanup = null;
 let activeIdleWindowCleanup = null;
+let activeV2Cleanup = null;
 export const PERSONAL_SPACE_PURCHASE_REQUEST_EVENT = 'orbit:personal-space-purchase-request';
 
 export function renderPersonalSpace(container) {
+  if (isPersonalSpaceV2Enabled()) {
+    cleanupLegacyPersonalSpace();
+    activeV2Cleanup?.();
+    const cleanup = renderPersonalSpaceV2(container);
+    let disposed = false;
+    const ownedCleanup = () => {
+      if (disposed) return;
+      disposed = true;
+      cleanup?.();
+      if (activeV2Cleanup === ownedCleanup) activeV2Cleanup = null;
+    };
+    activeV2Cleanup = ownedCleanup;
+    return ownedCleanup;
+  }
+
+  activeV2Cleanup?.();
+  activeV2Cleanup = null;
+  return renderLegacyPersonalSpace(container);
+}
+
+function renderLegacyPersonalSpace(container) {
   const user = state.user;
   if (!user) return;
 
-  if (activeRuntime) {
-    activeRuntime.destroy();
-    activeRuntime = null;
-  }
-  if (activeParallaxCleanup) {
-    activeParallaxCleanup();
-    activeParallaxCleanup = null;
-  }
-  if (activeIdleWindowCleanup) {
-    activeIdleWindowCleanup();
-    activeIdleWindowCleanup = null;
-  }
+  cleanupLegacyPersonalSpace();
 
   const model = buildPersonalSpaceViewModel(user);
   const idleWindowModel = buildIdleWindowViewModel(user, model.personalSpaceState);
@@ -308,6 +321,22 @@ export function renderPersonalSpace(container) {
   });
   activeRuntime.mount();
   activeParallaxCleanup = createPersonalSpaceParallax(sceneContainer);
+  return cleanupLegacyPersonalSpace;
+}
+
+function cleanupLegacyPersonalSpace() {
+  if (activeRuntime) {
+    activeRuntime.destroy();
+    activeRuntime = null;
+  }
+  if (activeParallaxCleanup) {
+    activeParallaxCleanup();
+    activeParallaxCleanup = null;
+  }
+  if (activeIdleWindowCleanup) {
+    activeIdleWindowCleanup();
+    activeIdleWindowCleanup = null;
+  }
 }
 
 function createPersonalSpaceParallax(sceneContainer) {

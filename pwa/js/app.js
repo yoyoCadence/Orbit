@@ -11,11 +11,21 @@ import {
   showDailyReport, showMorningModal, checkWeeklyBonus, startDayWatcher,
 } from './dayCycle.js';
 import { createDefaultTasks }   from './defaultTasks.js';
-import { renderPage, currentHash, isTextInputTarget, isTextInputActive, markTextInputFocus } from './router.js';
+import {
+  renderPage,
+  currentHash,
+  isTextInputTarget,
+  isTextInputActive,
+  markTextInputFocus,
+  teardownActivePageRenderer,
+} from './router.js';
 import { applyTimeBand }        from './timeBand.js';
 import { showToast, showSyncBanner } from './ui/feedback.js';
 import { applyRandomThemeForToday, renderBg, initLiquidGlassReflection } from './theme.js';
 import { FLAG_STREAK_UNLOCK_NEW } from './flags.js';
+import { refreshCanonicalStateAndReconcilePersonalSpaceV2 } from './personalSpace/v2/controller.js';
+import { createAuthOperationGuard } from './platform/authOperationGuard.js';
+import { orbitWindowRuntimeDestroyer } from './personalSpace/v2/runtime/pixiSceneRuntime.js';
 
 // Lazy proxy — tour.js is not imported at startup; loaded on first call.
 window.startTour = () =>
@@ -26,6 +36,7 @@ window.startTour = () =>
 // ─── Auth session state ───────────────────────────────────────────────────────
 let _currentSession   = null;
 let _loginListenerSet = false;
+const authOperationGuard = createAuthOperationGuard();
 
 // ─── Daily Plan ───────────────────────────────────────────────────────────────
 
@@ -69,6 +80,7 @@ window._dismissTrialBanner = function () {
 };
 
 window.signOut = async function () {
+  authOperationGuard.invalidate();
   try { await authSignOut(); } catch (e) { console.error('signOut error:', e); }
   handleSignOut();
 };
@@ -139,12 +151,26 @@ function showMainApp() {
 
 // ─── Boot helpers (shared by guest / auth / cached-init paths) ────────────────
 
-function loadStateFromStorage() {
-  state.user      = storage.getUser();
-  state.tasks     = storage.getTasks();
-  state.sessions  = storage.getSessions();
-  state.energy    = storage.getEnergy();
-  state.dailyPlan = storage.getDailyPlan();
+function loadStateFromStorage({
+  authoritative = false,
+  provisionalMigration = false,
+  finalizeMigration = authoritative === true,
+} = {}) {
+  const cachedOwnerId = storage.getUser()?.id;
+  if (typeof cachedOwnerId === 'string' && cachedOwnerId.trim()) {
+    try {
+      storage.recoverPendingSessionDeletions(cachedOwnerId);
+    } catch (error) {
+      console.warn('Interrupted Session undo recovery will retry on the next load:', error);
+    }
+  }
+  return refreshCanonicalStateAndReconcilePersonalSpaceV2({
+    centralState: state,
+    storageApi: storage,
+    authoritative,
+    provisionalMigration,
+    finalizeMigration,
+  });
 }
 
 /** Day rollover + show app + periodic bonus — the sequence formerly copy-pasted ×3. */
@@ -171,20 +197,31 @@ window.continueAsGuest = function () {
 };
 
 async function loadAndStart(session) {
+  const operation = authOperationGuard.begin(session);
   _currentSession = session;
+  let remoteLoaded = false;
 
   // Pull fresh data from Supabase; fall back to localStorage cache if offline
   try {
     await db.loadFromRemote(session.user.id);
+    if (!authOperationGuard.isCurrent(operation)) return;
+    remoteLoaded = true;
   } catch (e) {
+    if (!authOperationGuard.isCurrent(operation) || e?.name === 'OwnerSessionChangedError') return;
     console.warn('Supabase load failed, using localStorage cache:', e);
   }
 
-  loadStateFromStorage();
+  if (!authOperationGuard.isCurrent(operation)) return;
+
+  loadStateFromStorage({
+    authoritative: remoteLoaded,
+    finalizeMigration: true,
+  });
 
   // Start 15-day Pro trial for new authenticated users
   if (state.user && !state.user.trialStartedAt) {
-    await db.startTrial(session.user.id);
+    const trialStarted = await db.startTrial(session.user.id);
+    if (!authOperationGuard.isCurrent(operation) || trialStarted === false) return;
     state.user = storage.getUser() ?? state.user;
   }
 
@@ -200,6 +237,9 @@ async function loadAndStart(session) {
 }
 
 function handleSignOut() {
+  authOperationGuard.invalidate();
+  teardownActivePageRenderer();
+  orbitWindowRuntimeDestroyer.destroyNow();
   if (!_currentSession && !storage.getUser()) return; // already signed out
   _currentSession = null;
   state.user     = null;
@@ -303,7 +343,11 @@ async function init() {
   onAuthStateChange(async (event, session) => {
     if (event === 'PASSWORD_RECOVERY') {
       window._showResetPasswordModal();
-    } else if (event === 'SIGNED_IN' && session && !_currentSession) {
+    } else if (
+      event === 'SIGNED_IN'
+      && session
+      && _currentSession?.user?.id !== session.user.id
+    ) {
       await loadAndStart(session);
     } else if (event === 'SIGNED_OUT') {
       handleSignOut();
@@ -315,7 +359,10 @@ async function init() {
   // seeing the main app, matching the pre-refactor behavior.)
   const cachedUser = storage.getUser();
   if (cachedUser) {
-    loadStateFromStorage();
+    const cachedResolution = authOperationGuard.begin(cachedUser.id);
+    // The cached snapshot makes the UI available immediately, but the first
+    // V2 Gold cutover remains provisional until auth/remote resolution ends.
+    loadStateFromStorage({ provisionalMigration: true });
     hideLoading();
     bootWithLocalState();
     _updateBadge();
@@ -323,30 +370,44 @@ async function init() {
     // Sync from Supabase in background (no spinner)
     getSession().then(session => {
       if (session) {
+        if (_currentSession?.user?.id === session.user.id) return;
+        const operation = authOperationGuard.begin(session);
         _currentSession = session;
         showSyncBanner('syncing');
         db.loadFromRemote(session.user.id).then(() => {
-          // Quietly refresh state from updated cache
-          state.user     = storage.getUser()     || state.user;
-          state.tasks    = storage.getTasks();
-          state.sessions = storage.getSessions();
-          state.energy   = storage.getEnergy();
+          if (!authOperationGuard.isCurrent(operation)) return;
+          // Quietly refresh canonical state and the V2 projection from the
+          // completed remote/local merge without enqueueing a reveal.
+          loadStateFromStorage({ authoritative: true });
           updateHeader();
           renderPage(currentHash());
           _updateBadge();
           showSyncBanner('synced');
-        }).catch(() => {
-          showSyncBanner('synced'); // hide banner even on failure
+        }).catch(error => {
+          if (!authOperationGuard.isCurrent(operation)) return;
+          if (error?.name === 'OwnerSessionChangedError') return;
+          // Offline is an explicit local-cache decision, so finish the cutover
+          // without treating the incomplete remote snapshot as authoritative.
+          loadStateFromStorage({ finalizeMigration: true });
+          showSyncBanner('error');
         });
+      } else {
+        if (authOperationGuard.isCurrent(cachedResolution) && !_currentSession) {
+          loadStateFromStorage({ finalizeMigration: true });
+        }
       }
-    }).catch(() => {});
+    }).catch(() => {
+      if (authOperationGuard.isCurrent(cachedResolution) && !_currentSession) {
+        loadStateFromStorage({ finalizeMigration: true });
+      }
+    });
     return;
   }
 
   // No cache: wait for Supabase session (first launch or after sign-out)
   const session = await getSession();
   if (session) {
-    await loadAndStart(session);
+    if (_currentSession?.user?.id !== session.user.id) await loadAndStart(session);
   } else {
     showLoginScreen();
   }

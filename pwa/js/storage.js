@@ -5,9 +5,20 @@
 import { supabase }  from './supabase.js';
 import { today, mergeSessionsById } from './utils.js';
 import { FLAG_DEV_BACKUP } from './flags.js';
+import {
+  filterDeletedSessions,
+  loadSessionDeletionLog,
+  recordSessionDeletionAttempt,
+  recordSessionDeletionLocalSettled,
+  recordSessionDeletionRemoteConfirmed,
+} from './platform/sessionDeletionLog.js';
 
 const PREFIX = 'yoyo_';
 const LEADERBOARD_CACHE_KEY = 'leaderboardCache';
+const PROFILE_SYNC_PENDING_KEY = 'profileSyncPending';
+const ENERGY_SYNC_PENDING_KEY = 'energySyncPending';
+const SESSION_SYNC_PENDING_KEY = 'sessionSyncPending';
+const SESSION_SYNC_CUTOVER_KEY = 'sessionSyncCutover:v1.21';
 
 function get(key) {
   try { return JSON.parse(localStorage.getItem(PREFIX + key)); } catch { return null; }
@@ -16,12 +27,196 @@ function set(key, val) {
   localStorage.setItem(PREFIX + key, JSON.stringify(val));
 }
 
-function markSessionSyncPending(sessionId) {
+function remove(key) {
+  localStorage.removeItem(PREFIX + key);
+}
+
+function createPendingSnapshot(ownerId, value) {
+  return {
+    ownerId,
+    value: { ...value },
+  };
+}
+
+function clearPendingSnapshot(key, expected) {
+  const current = get(key);
+  if (JSON.stringify(current) === JSON.stringify(expected)) remove(key);
+}
+
+function ownerSyncPendingKey(baseKey, ownerId) {
+  if (!ownerId) return null;
+  return `${baseKey}:${encodeURIComponent(String(ownerId))}`;
+}
+
+function hasCompletedSessionSyncCutover(ownerId) {
+  const marker = get(ownerSyncPendingKey(SESSION_SYNC_CUTOVER_KEY, ownerId));
+  return marker?.ownerId === ownerId && marker?.completed === true;
+}
+
+function completeSessionSyncCutover(ownerId, completedAt = new Date().toISOString()) {
+  set(ownerSyncPendingKey(SESSION_SYNC_CUTOVER_KEY, ownerId), {
+    ownerId,
+    completed: true,
+    completedAt,
+  });
+}
+
+function loadOwnerPendingSessions(ownerId) {
+  const snapshot = get(ownerSyncPendingKey(SESSION_SYNC_PENDING_KEY, ownerId));
+  if (snapshot?.ownerId !== ownerId || !Array.isArray(snapshot.value)) return [];
+  return snapshot.value
+    .filter(session => session?.id)
+    .map(session => ({ ...session, _syncPending: true }));
+}
+
+function saveOwnerPendingSessions(ownerId, sessions) {
+  const key = ownerSyncPendingKey(SESSION_SYNC_PENDING_KEY, ownerId);
+  if (!key) return;
+  const byId = new Map((Array.isArray(sessions) ? sessions : [])
+    .filter(session => session?.id)
+    .map(session => [session.id, { ...session, _syncPending: true }]));
+  if (!byId.size) {
+    remove(key);
+    return;
+  }
+  set(key, { ownerId, value: [...byId.values()] });
+}
+
+function addOwnerPendingSession(ownerId, session) {
+  if (!ownerId || !session?.id) return;
+  const pending = loadOwnerPendingSessions(ownerId)
+    .filter(candidate => candidate.id !== session.id);
+  saveOwnerPendingSessions(ownerId, [...pending, session]);
+}
+
+function clearOwnerPendingSession(ownerId, sessionId) {
+  if (!ownerId || !sessionId) return;
+  saveOwnerPendingSessions(
+    ownerId,
+    loadOwnerPendingSessions(ownerId).filter(session => session.id !== sessionId),
+  );
+}
+
+function loadOwnerPendingSnapshot(baseKey, ownerId) {
+  const key = ownerSyncPendingKey(baseKey, ownerId);
+  if (!key) return { key: null, snapshot: null };
+
+  const scoped = get(key);
+  if (scoped?.ownerId === ownerId) return { key, snapshot: scoped };
+
+  // v1.21 pre-release builds used one global sidecar per data type. Migrate it
+  // only for its recorded owner so another account can never claim it.
+  const legacy = get(baseKey);
+  if (legacy?.ownerId === ownerId) {
+    set(key, legacy);
+    clearPendingSnapshot(baseKey, legacy);
+    return { key, snapshot: legacy };
+  }
+
+  return { key, snapshot: null };
+}
+
+function isCachedOwner(expectedOwnerId) {
+  return Boolean(expectedOwnerId && get('user')?.id === expectedOwnerId);
+}
+
+function markSessionSyncPending(sessionOrId, expectedOwnerId) {
+  const sessionId = typeof sessionOrId === 'string' ? sessionOrId : sessionOrId?.id;
+  if (!sessionId) return;
   const sessions = get('sessions') ?? [];
   const idx = sessions.findIndex(s => s?.id === sessionId);
+  const pendingSession = typeof sessionOrId === 'object' ? sessionOrId : sessions[idx];
+  if (pendingSession) addOwnerPendingSession(expectedOwnerId, pendingSession);
+  if (!isCachedOwner(expectedOwnerId)) return;
   if (idx === -1) return;
   sessions[idx] = { ...sessions[idx], _syncPending: true };
   set('sessions', sessions);
+}
+
+function clearSessionSyncPending(sessionId, expectedOwnerId) {
+  clearOwnerPendingSession(expectedOwnerId, sessionId);
+  if (!isCachedOwner(expectedOwnerId)) return;
+  const sessions = get('sessions') ?? [];
+  const idx = sessions.findIndex(s => s?.id === sessionId);
+  if (idx === -1 || sessions[idx]._syncPending !== true) return;
+  const syncedSession = { ...sessions[idx] };
+  delete syncedSession._syncPending;
+  sessions[idx] = syncedSession;
+  set('sessions', sessions);
+}
+
+function legacyUndoEnergyTarget(session, energy) {
+  const maxEnergy = Number.isFinite(energy.maxEnergy) ? energy.maxEnergy : 100;
+  let current = Number.isFinite(energy.currentEnergy) ? energy.currentEnergy : maxEnergy;
+  if (Number.isFinite(session?._energyDeltaApplied)) {
+    return Math.min(maxEnergy, Math.max(0, current - session._energyDeltaApplied));
+  }
+  if (session?.energyCost > 0) current = Math.min(maxEnergy, current + session.energyCost);
+  if (session?.energyGain > 0) current = Math.max(0, current - session.energyGain);
+  return current;
+}
+
+/**
+ * Finish an undo interrupted after its durable deletion journal was written.
+ * Journal targets make the user/Energy writes idempotent across partial local
+ * persistence; settled entries only filter a resurfaced Session.
+ */
+export function recoverPendingSessionDeletions(ownerId, recoveredAt = new Date().toISOString()) {
+  if (!isCachedOwner(ownerId)) return { recoveredIds: [], settledIds: [] };
+  const entries = loadSessionDeletionLog(ownerId);
+  const entryList = Object.values(entries);
+  if (!entryList.length) return { recoveredIds: [], settledIds: [] };
+
+  let sessions = get('sessions') ?? [];
+  const user = get('user');
+  const energy = get('energy') ?? { currentEnergy: 100, maxEnergy: 100, lastResetDate: '' };
+  const recoveredIds = [];
+  const unsettledEntries = entryList.filter(entry => !entry.localSettledAt);
+
+  for (const entry of entryList) {
+    const session = sessions.find(candidate => candidate?.id === entry.sessionId);
+    if (!entry.localSettledAt) {
+      const targetTotalXP = entry.recovery?.targetTotalXP;
+      const targetEnergyCurrent = entry.recovery?.targetEnergyCurrent;
+      if (user && Number.isFinite(targetTotalXP)) user.totalXP = targetTotalXP;
+      else if (user && session) {
+        user.totalXP = Math.max(0, (user.totalXP || 0) - (session.finalXP || 0));
+      }
+      if (Number.isFinite(targetEnergyCurrent)) energy.currentEnergy = Math.min(
+        energy.maxEnergy,
+        Math.max(0, targetEnergyCurrent),
+      );
+      else if (session) energy.currentEnergy = legacyUndoEnergyTarget(session, energy);
+      recoveredIds.push(entry.sessionId);
+    }
+    sessions = sessions.filter(candidate => candidate?.id !== entry.sessionId);
+  }
+
+  // Complete all canonical writes before checkpointing the journal. A thrown
+  // localStorage write leaves entries unsettled so the same targets replay.
+  set('sessions', sessions);
+  if (user) set('user', user);
+  set('energy', energy);
+  if (unsettledEntries.length) {
+    if (user) {
+      set(
+        ownerSyncPendingKey(PROFILE_SYNC_PENDING_KEY, ownerId),
+        createPendingSnapshot(ownerId, user),
+      );
+    }
+    set(
+      ownerSyncPendingKey(ENERGY_SYNC_PENDING_KEY, ownerId),
+      createPendingSnapshot(ownerId, energy),
+    );
+  }
+  unsettledEntries.forEach(entry => {
+    recordSessionDeletionLocalSettled(ownerId, entry.sessionId, recoveredAt);
+  });
+
+  return {
+    recoveredIds,
+    settledIds: unsettledEntries.map(entry => entry.sessionId),
+  };
 }
 
 // ─── Field maps: snake_case DB row ↔ camelCase JS object ─────────────────────
@@ -118,6 +313,15 @@ function toRow(fields, obj) {
 
 // ─── Supabase async operations ────────────────────────────────────────────────
 
+export class OwnerSessionChangedError extends Error {
+  constructor(expectedOwnerId, actualOwnerId = null) {
+    super(`Authenticated owner changed during sync (expected ${expectedOwnerId}, received ${actualOwnerId || 'none'})`);
+    this.name = 'OwnerSessionChangedError';
+    this.expectedOwnerId = expectedOwnerId;
+    this.actualOwnerId = actualOwnerId;
+  }
+}
+
 export const db = {
 
   async _session() {
@@ -125,15 +329,72 @@ export const db = {
     return session;
   },
 
+  async _assertOwner(expectedOwnerId) {
+    const session = await this._session();
+    const actualOwnerId = session?.user?.id || null;
+    if (!expectedOwnerId || actualOwnerId !== expectedOwnerId) {
+      throw new OwnerSessionChangedError(expectedOwnerId, actualOwnerId);
+    }
+    return session;
+  },
+
   /** Pull all user data from Supabase → write into localStorage cache. */
   async loadFromRemote(userId) {
+    await this._assertOwner(userId);
+
     // Push any locally pending changes before overwriting with remote data
     const localUser = get('user');
-    const localSessions = get('sessions') ?? [];
-    if (localUser?._syncPending && localUser?.id === userId) {
-      const { _syncPending, ...userToSync } = localUser;
-      try { await this.upsertProfile(userToSync); } catch (err) {
-        console.warn('Could not push pending local changes before remote load:', err);
+    const {
+      key: pendingProfileKey,
+      snapshot: pendingProfile,
+    } = loadOwnerPendingSnapshot(PROFILE_SYNC_PENDING_KEY, userId);
+    const {
+      key: pendingEnergyKey,
+      snapshot: pendingEnergy,
+    } = loadOwnerPendingSnapshot(ENERGY_SYNC_PENDING_KEY, userId);
+    const sessionDeletionLog = loadSessionDeletionLog(userId);
+    const deletedSessionIds = new Set(Object.keys(sessionDeletionLog));
+    const cachedSessions = localUser?.id === userId
+      ? filterDeletedSessions(get('sessions') ?? [], deletedSessionIds)
+      : [];
+    const ownerPendingSessions = filterDeletedSessions(
+      loadOwnerPendingSessions(userId),
+      deletedSessionIds,
+    );
+    const ownerPendingIds = new Set(ownerPendingSessions.map(session => session.id));
+    const localSessions = mergeSessionsById(cachedSessions, ownerPendingSessions)
+      .map(session => ownerPendingIds.has(session.id)
+        ? { ...session, _syncPending: true }
+        : session);
+    const pendingProfileValue = pendingProfile?.ownerId === userId
+      ? pendingProfile.value
+      : localUser?._syncPending && localUser?.id === userId
+        ? (() => {
+            const userToSync = { ...localUser };
+            delete userToSync._syncPending;
+            return userToSync;
+          })()
+        : null;
+    if (pendingProfileValue) {
+      try {
+        const synced = await this.upsertProfile(pendingProfileValue, userId);
+        if (!synced) throw new Error('No authenticated profile sync session');
+        if (pendingProfile?.ownerId === userId) {
+          clearPendingSnapshot(pendingProfileKey, pendingProfile);
+        }
+      } catch (err) {
+        console.warn('Could not push pending local profile before remote load:', err);
+        throw err;
+      }
+    }
+    if (pendingEnergy?.ownerId === userId) {
+      try {
+        const synced = await this.upsertEnergy(pendingEnergy.value, userId);
+        if (!synced) throw new Error('No authenticated Energy sync session');
+        clearPendingSnapshot(pendingEnergyKey, pendingEnergy);
+      } catch (err) {
+        console.warn('Could not push pending local Energy before remote load:', err);
+        throw err;
       }
     }
 
@@ -145,54 +406,103 @@ export const db = {
       supabase.from('energy').select('*').eq('user_id', userId).single(),
     ]);
 
+    // Reward reconciliation treats this pull as authoritative. Never let a
+    // partial query failure look like a complete snapshot: stale profile XP
+    // could otherwise finalize opening Gold, while missing Sessions could
+    // reverse valid world history.
+    const isMissingSingleRow = error => error?.code === 'PGRST116';
+    if (profileRes.error && !isMissingSingleRow(profileRes.error)) throw profileRes.error;
+    if (tasksRes.error) throw tasksRes.error;
+    if (sessionsRes.error) throw sessionsRes.error;
+    if (energyRes.error && !isMissingSingleRow(energyRes.error)) throw energyRes.error;
+
+    let canonicalUser = null;
     if (profileRes.data) {
       const p = profileRes.data;
       let avatar = null;
-      try { avatar = await this.resolveAvatarUrl(p.avatar_url); } catch (err) {
+      try { avatar = await this.resolveAvatarUrl(p.avatar_url, userId); } catch (err) {
+        if (err instanceof OwnerSessionChangedError) throw err;
         console.warn('Avatar URL resolve failed:', err);
       }
-      set('user', {
+      canonicalUser = {
         id:         p.user_id,
         avatar,
         avatarPath: p.avatar_url || null,
         createdAt:  p.created_at,
         ...fromRow(PROFILE_FIELDS, p),
-      });
+      };
     }
 
-    if (tasksRes.data) {
-      set('tasks', tasksRes.data.map(t => fromRow(TASK_FIELDS, t)));
-    }
+    const canonicalTasks = (tasksRes.data ?? []).map(t => fromRow(TASK_FIELDS, t));
+    const remoteSessions = filterDeletedSessions(
+      (sessionsRes.data ?? []).map(s => fromRow(SESSION_FIELDS, s)),
+      deletedSessionIds,
+    );
+    const remoteIds = new Set(remoteSessions.map(s => s.id));
+    const needsSessionSyncCutover = !hasCompletedSessionSyncCutover(userId);
+    const mergeableLocalSessions = localSessions
+      .filter(session => (
+        session?.id
+        && (remoteIds.has(session.id)
+          || session._syncPending === true
+          || needsSessionSyncCutover)
+      ))
+      .map(session => (
+        needsSessionSyncCutover && !remoteIds.has(session.id)
+          ? { ...session, _syncPending: true }
+          : session
+      ));
+    const canonicalSessions = mergeSessionsById(remoteSessions, mergeableLocalSessions);
+    const sessionsToBackfill = mergeableLocalSessions
+      .filter(s => s?.id && s._syncPending === true && !remoteIds.has(s.id));
+    saveOwnerPendingSessions(userId, sessionsToBackfill);
 
-    if (sessionsRes.data) {
-      const remoteSessions = sessionsRes.data.map(s => fromRow(SESSION_FIELDS, s));
-      const mergedSessions = mergeSessionsById(remoteSessions, localSessions);
-      set('sessions', mergedSessions);
+    await Promise.allSettled(Object.entries(sessionDeletionLog).map(async ([sessionId, entry]) => {
+      if (entry.remoteConfirmedAt) return;
+      recordSessionDeletionAttempt(userId, sessionId, new Date().toISOString());
+      const confirmed = await this.deleteSession(sessionId, userId);
+      if (confirmed) {
+        recordSessionDeletionRemoteConfirmed(userId, sessionId, new Date().toISOString());
+      }
+    }));
 
-      const remoteIds = new Set(remoteSessions.map(s => s.id));
-      localSessions
-        .filter(s => s?.id && !remoteIds.has(s.id))
-        .forEach(s => this.insertSession(s).catch(err => {
-          console.warn('Could not backfill local session after remote load:', err);
-          markSessionSyncPending(s.id);
-        }));
-    }
+    const canonicalEnergy = energyRes.data
+      ? fromRow(ENERGY_FIELDS, energyRes.data)
+      : null;
 
-    if (energyRes.data) {
-      set('energy', fromRow(ENERGY_FIELDS, energyRes.data));
-    }
+    // Sign-out or account switching can complete while these queries are in
+    // flight. Re-check immediately before the synchronous canonical writes so
+    // an obsolete owner can never repopulate the shared local cache.
+    await this._assertOwner(userId);
+    if (canonicalUser) set('user', canonicalUser);
+    else if (localUser?.id !== userId) remove('user');
+    set('tasks', canonicalTasks);
+    set('sessions', canonicalSessions);
+    if (canonicalEnergy) set('energy', canonicalEnergy);
+    else if (localUser?.id !== userId) remove('energy');
+    if (needsSessionSyncCutover) completeSessionSyncCutover(userId);
+
+    sessionsToBackfill.forEach(s => this.insertSession(s, userId)
+      .then(inserted => {
+        if (inserted) clearSessionSyncPending(s.id, userId);
+      })
+      .catch(err => {
+        console.warn('Could not backfill local session after remote load:', err);
+        markSessionSyncPending(s.id, userId);
+      }));
   },
 
-  async upsertProfile(user) {
+  async upsertProfile(user, expectedOwnerId = user?.id) {
     // Dev-tool guard: never sync to Supabase while a dev override backup exists
     if (localStorage.getItem(FLAG_DEV_BACKUP)) return false;
     const session = await this._session();
     if (!session) return false;
+    if (expectedOwnerId && session.user.id !== expectedOwnerId) return false;
     // Keep large local previews out of profiles; avatarPath points to Storage.
     const avatarUrl = user.avatarPath || ((user.avatar && user.avatar.startsWith('data:'))
       ? null : (user.avatar || null));
     const { error } = await supabase.from('profiles').upsert({
-      user_id:    session.user.id,
+      user_id:    expectedOwnerId || session.user.id,
       avatar_url: avatarUrl,
       ...toRow(PROFILE_FIELDS, user),
     });
@@ -216,11 +526,14 @@ export const db = {
     return { path, url: signed.data?.signedUrl || null };
   },
 
-  async resolveAvatarUrl(pathOrUrl) {
+  async resolveAvatarUrl(pathOrUrl, expectedOwnerId = null) {
     if (!pathOrUrl) return null;
     if (/^(https?:|data:|blob:)/.test(pathOrUrl)) return pathOrUrl;
     const session = await this._session();
     if (!session) return null;
+    if (expectedOwnerId && session.user.id !== expectedOwnerId) {
+      throw new OwnerSessionChangedError(expectedOwnerId, session.user.id);
+    }
     const { data, error } = await supabase.storage
       .from('avatars')
       .createSignedUrl(pathOrUrl, 60 * 60 * 24 * 7);
@@ -228,40 +541,53 @@ export const db = {
     return data?.signedUrl || null;
   },
 
-  async upsertTasks(tasks) {
+  async upsertTasks(tasks, expectedOwnerId = null) {
     const session = await this._session();
-    if (!session || !tasks.length) return;
+    if (!session || (expectedOwnerId && session.user.id !== expectedOwnerId)) return false;
+    if (!tasks.length) return true;
     await supabase.from('tasks').upsert(
-      tasks.map(t => ({ user_id: session.user.id, ...toRow(TASK_FIELDS, t) })),
+      tasks.map(t => ({ user_id: expectedOwnerId || session.user.id, ...toRow(TASK_FIELDS, t) })),
       { onConflict: 'id' }
     );
+    return true;
   },
 
-  async deleteTasks(ids) {
+  async deleteTasks(ids, expectedOwnerId = null) {
     const session = await this._session();
-    if (!session || !ids.length) return;
-    await supabase.from('tasks').delete().in('id', ids);
+    if (!session || (expectedOwnerId && session.user.id !== expectedOwnerId)) return false;
+    if (!ids.length) return true;
+    await supabase.from('tasks').delete()
+      .in('id', ids)
+      .eq('user_id', expectedOwnerId || session.user.id);
+    return true;
   },
 
-  async insertSession(session) {
+  async insertSession(session, expectedOwnerId = null) {
     const authSession = await this._session();
-    if (!authSession) return;
+    if (!authSession || (expectedOwnerId && authSession.user.id !== expectedOwnerId)) return false;
     const { error } = await supabase.from('sessions').insert({
-      user_id: authSession.user.id,
+      user_id: expectedOwnerId || authSession.user.id,
       ...toRow(SESSION_FIELDS, session),
     });
     if (error) throw error;
+    return true;
   },
 
-  async deleteSession(id) {
+  async deleteSession(id, expectedOwnerId) {
     const session = await this._session();
-    if (!session) return;
-    await supabase.from('sessions').delete().eq('id', id);
+    if (!session || !expectedOwnerId || session.user.id !== expectedOwnerId) return false;
+    const { error } = await supabase
+      .from('sessions')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', expectedOwnerId);
+    if (error) throw error;
+    return true;
   },
 
   async startTrial(userId) {
     const session = await this._session();
-    if (!session) return;
+    if (!session || session.user.id !== userId) return false;
     const now    = new Date().toISOString();
     const expiry = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString();
     await supabase.from('profiles').update({
@@ -270,39 +596,61 @@ export const db = {
       trial_started_at: now,
     }).eq('user_id', userId);
     const user = get('user');
-    if (user) {
+    if (user?.id === userId) {
       user.isPro          = true;
       user.proExpiresAt   = expiry;
       user.trialStartedAt = now;
       set('user', user);
     }
+    return true;
   },
 
-  async upsertEnergy(energy) {
+  async upsertEnergy(energy, expectedOwnerId = null) {
     const session = await this._session();
-    if (!session) return;
-    await supabase.from('energy').upsert(
-      { user_id: session.user.id, ...toRow(ENERGY_FIELDS, energy) },
+    if (!session) return false;
+    if (expectedOwnerId && session.user.id !== expectedOwnerId) return false;
+    const { error } = await supabase.from('energy').upsert(
+      { user_id: expectedOwnerId || session.user.id, ...toRow(ENERGY_FIELDS, energy) },
       { onConflict: 'user_id' }
     );
+    if (error) throw error;
+    return true;
   },
 };
 
 // ─── Sync localStorage API (unchanged signatures) ─────────────────────────────
 
 export const storage = {
+  recoverPendingSessionDeletions,
 
   // ── User ─────────────────────────────────────────────────────────────────────
   getUser:    ()  => get('user'),
-  saveUser:   (u) => { set('user', u); db.upsertProfile(u).catch(console.error); },
+  saveUser:   (u) => {
+    set('user', u);
+    const ownerId = u?.id;
+    if (!ownerId) return;
+    const pending = createPendingSnapshot(ownerId, u);
+    const pendingKey = ownerSyncPendingKey(PROFILE_SYNC_PENDING_KEY, ownerId);
+    set(pendingKey, pending);
+    db.upsertProfile(u, ownerId)
+      .then(synced => {
+        if (synced) clearPendingSnapshot(pendingKey, pending);
+      })
+      .catch(console.error);
+  },
   /** Local-only write — no Supabase sync（profile 樂觀更新、dev tools 用）。 */
   saveUserLocal: (u) => {
     try { set('user', u); } catch (err) { console.error('Local user save failed:', err); }
   },
   saveUserAndSync: async (u) => {
     set('user', u);
-    const synced = await db.upsertProfile(u);
-    if (!synced) {
+    const pending = createPendingSnapshot(u?.id, u);
+    const pendingKey = ownerSyncPendingKey(PROFILE_SYNC_PENDING_KEY, u?.id);
+    if (pendingKey) set(pendingKey, pending);
+    const synced = await db.upsertProfile(u, u?.id);
+    if (synced && pendingKey) {
+      clearPendingSnapshot(pendingKey, pending);
+    } else if (!synced) {
       // No active session — mark so loadFromRemote can push before pulling
       set('user', { ...u, _syncPending: true });
     }
@@ -314,27 +662,66 @@ export const storage = {
   saveTasks:  (t) => {
     const prev = get('tasks') ?? [];
     set('tasks', t);
-    db.upsertTasks(t).catch(console.error);
+    const ownerId = get('user')?.id;
+    if (!ownerId) return;
+    db.upsertTasks(t, ownerId).catch(console.error);
     const removedIds = prev.filter(p => !t.find(n => n.id === p.id)).map(p => p.id);
-    if (removedIds.length) db.deleteTasks(removedIds).catch(console.error);
+    if (removedIds.length) db.deleteTasks(removedIds, ownerId).catch(console.error);
   },
 
   // ── Sessions ─────────────────────────────────────────────────────────────────
-  getSessions:  ()  => get('sessions') ?? [],
+  getSessions:  ()  => {
+    const sessions = get('sessions') ?? [];
+    const ownerId = get('user')?.id;
+    return ownerId
+      ? filterDeletedSessions(sessions, loadSessionDeletionLog(ownerId))
+      : sessions;
+  },
   saveSessions: (s) => {
     const prev = get('sessions') ?? [];
-    set('sessions', s);
+    const ownerId = get('user')?.id;
+    const previousById = new Map(prev.filter(session => session?.id).map(session => [session.id, session]));
+    const newIds = new Set(s
+      .filter(ns => !prev.find(ps => ps.id === ns.id))
+      .map(ns => ns.id));
+    const persistedSessions = s.map(session => (
+      newIds.has(session.id) || previousById.get(session.id)?._syncPending === true
+        ? { ...session, _syncPending: true }
+        : session
+    ));
+    set('sessions', persistedSessions);
     // Only INSERT the newly added sessions (not the whole array)
-    s.filter(ns => !prev.find(ps => ps.id === ns.id))
-     .forEach(ns => db.insertSession(ns).catch(err => {
-       console.error(err);
-       markSessionSyncPending(ns.id);
-     }));
+    if (!ownerId) return;
+    saveOwnerPendingSessions(
+      ownerId,
+      persistedSessions.filter(session => session?._syncPending === true),
+    );
+    s.filter(ns => newIds.has(ns.id))
+     .forEach(ns => db.insertSession(ns, ownerId)
+       .then(inserted => {
+         if (inserted) clearSessionSyncPending(ns.id, ownerId);
+       })
+       .catch(err => {
+         console.error(err);
+         markSessionSyncPending(ns.id, ownerId);
+       }));
   },
 
   // ── Energy ───────────────────────────────────────────────────────────────────
   getEnergy:   ()  => get('energy') ?? { currentEnergy: 100, maxEnergy: 100, lastResetDate: '' },
-  saveEnergy:  (e) => { set('energy', e); db.upsertEnergy(e).catch(console.error); },
+  saveEnergy:  (e) => {
+    set('energy', e);
+    const ownerId = get('user')?.id;
+    const pending = ownerId ? createPendingSnapshot(ownerId, e) : null;
+    const pendingKey = ownerSyncPendingKey(ENERGY_SYNC_PENDING_KEY, ownerId);
+    if (pendingKey) set(pendingKey, pending);
+    if (!ownerId) return;
+    db.upsertEnergy(e, ownerId)
+      .then(synced => {
+        if (synced && pending) clearPendingSnapshot(pendingKey, pending);
+      })
+      .catch(console.error);
+  },
 
   // ── Legacy (migration read-only) ─────────────────────────────────────────────
   getGoals:   ()  => get('goals') ?? [],
@@ -428,6 +815,8 @@ export const storage = {
 
   // ── Clear all local data (on sign-out) ────────────────────────────────────────
   clearAll: () => {
+    // Owner-scoped pending profile/Energy snapshots deliberately survive
+    // sign-out so an offline undo can be pushed when that owner returns.
     ['user','tasks','sessions','energy','goals','logs','theme','uiSkin','bgImage','dailyPlan',
       'trialBannerDismiss', LEADERBOARD_CACHE_KEY]
       .forEach(k => localStorage.removeItem(PREFIX + k));

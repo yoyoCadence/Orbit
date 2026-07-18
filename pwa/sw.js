@@ -1,6 +1,6 @@
 // Service Worker
 // Bump CACHE version on every deploy so users always get fresh code.
-const CACHE = 'orbit-v1.20.6';
+const CACHE = 'orbit-v1.21.0';
 
 const SHELL = [
   './',
@@ -40,11 +40,13 @@ const SHELL = [
   './js/ui/proofSheet.js',
   './js/ui/sessionRow.js',
   './js/platform/storageBridge.js',
+  './js/platform/authOperationGuard.js',
   './js/platform/notifications.js',
   './js/platform/haptics.js',
   './js/platform/badge.js',
   './js/platform/proofCapture.js',
   './js/platform/proofStore.js',
+  './js/platform/sessionDeletionLog.js',
   './js/platform/share.js',
   './js/platform/purchases.js',
   './js/personalSpace/index.js',
@@ -71,6 +73,29 @@ const SHELL = [
   './js/personalSpace/ui/shopPanel.js',
   './js/personalSpace/ui/dialogBubble.js',
   './js/personalSpace/ui/hudOverlay.js',
+  './js/personalSpace/v2/config.js',
+  './js/personalSpace/v2/featureFlag.js',
+  './js/personalSpace/v2/stateSchema.js',
+  './js/personalSpace/v2/migrateState.js',
+  './js/personalSpace/v2/store.js',
+  './js/personalSpace/v2/controller.js',
+  './js/personalSpace/v2/sessionAdapter.js',
+  './js/personalSpace/v2/rewardRules.js',
+  './js/personalSpace/v2/rewardLedger.js',
+  './js/personalSpace/v2/reconciler.js',
+  './js/personalSpace/v2/projectEngine.js',
+  './js/personalSpace/v2/questEngine.js',
+  './js/personalSpace/v2/momentum.js',
+  './js/personalSpace/v2/revealSelectors.js',
+  './js/personalSpace/v2/companionEngine.js',
+  './js/personalSpace/v2/viewModels.js',
+  './js/personalSpace/v2/telemetry.js',
+  './js/personalSpace/v2/content/assetManifest.js',
+  './js/personalSpace/v2/runtime/pixiSceneRuntime.js',
+  './js/personalSpace/v2/ui/orbitWindow.js',
+  './js/pages/personalSpaceV2.js',
+  './assets/personal-space/idle-window/backgrounds/office-angle-center-v2.png',
+  './assets/personal-space/idle-window/characters/building-protagonist-idle/building-protagonist-idle-1.png',
 ];
 
 // Precache on install
@@ -122,7 +147,18 @@ self.addEventListener('fetch', e => {
   } else {
     // Cache-first: images, icons, manifests
     e.respondWith(
-      caches.match(e.request).then(cached => cached || fetch(e.request))
+      caches.open(CACHE).then(cache =>
+        cache.match(e.request).then(cached => {
+          if (cached) return cached;
+          return fetch(e.request).then(response => {
+            if (!response.ok) return response;
+            return cache.put(e.request, response.clone()).then(
+              () => response,
+              () => response
+            );
+          });
+        })
+      )
     );
   }
 });

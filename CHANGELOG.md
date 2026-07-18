@@ -3,6 +3,57 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.21.0] - 2026-07-17
+
+### Added
+- 首頁核心區加入 3:2 Personal Space Orbit Window，直接呈現 Workspace Upgrade、每日 Main Quest、主角、規則式 Companion、最近世界變化與待揭曉獎勵。
+- 新增 owner-scoped Personal Space V2 狀態、固定 reward epoch、日期化 Main Quest、不可變且可逆的 Reward Ledger、四次每日貢獻完成的 Workspace Upgrade，以及 Gold／hidden stats／relationship 推導。
+- 新增 scene-first Full World 與只調整既有擺設的最小 Edit Mode；Home、World、Edit 共用同一份 world snapshot。
+- Pin 並 vendor PixiJS 8.18.1，採 poster-first、viewport lazy mount、offscreen/tab suspend、WebGL context recovery 與靜態 fallback。
+- 新增 Session deletion retry log、Home-to-Focus-to-reveal-to-World-to-undo E2E，以及 migration、ledger、runtime、route、cache、同步與 editor 回歸測試。
+- 新增隱私 allowlist、retry event id 去重且預設 no-op 的 Personal Space telemetry 合約；尚未連接任何外部分析服務。
+
+### Changed
+- Personal Space runtime 預設改為 V2，仍保留明確的 `legacy` fallback；既有 V1 key、資產、ownership 與 placements 不被覆寫。
+- 初始載入、背景同步與設定頁手動同步現在都會刷新 canonical app state，再靜默 reconcile V2；只有成功的完整 Session 查詢會視為 authoritative。
+- Service Worker 安裝殼只預載靜態 fallback poster；Pixi 與 phase props 首次成功使用後再快取，避免把完整場景材質塞進 Home install path。
+- Small／Medium／Major Reward Reveal 現在具有不同顯示時間與視覺層級；主角、Companion 與雨天狀態會同步驅動 Pixi 與靜態 poster fallback。
+
+### Fixed
+- v1.21 首次 authoritative Session pull 會先完成一次 owner-scoped legacy cutover：遠端尚無對應列的既有本機 Session 會標記待同步並保留重試；切換帳號後也只會還原該 owner 的 pending Session，cutover 完成後才丟棄一般 stale cache。
+- persisted placement 只接受有限數值與核准 anchor，避免任意 CSS 注入；Reveal 判斷改讀結構化 reward／metadata，不再因任務或專案名稱含有關鍵字而誤觸發。
+- pending profile／Energy 上推失敗時不再顯示「同步完成」，改為保留 owner sidecar 並顯示可重試的同步暫停狀態。
+- Pixi canvas 初始化後會保留 960×640 邏輯座標但貼合響應式容器，避免窄螢幕只顯示 canvas 左上角而裁掉主角與 Companion；390px 首頁也不再隱藏 Companion 狀態卡。
+- Personal Space V2 的未分帳 V1 資料只允許一個 owner claim；快取開機的 Gold cutover 會先標記 provisional，並在遠端或離線決策完成後只定稿一次。
+- Session reconcile 會先依 immutable id 去重；非 authoritative partial snapshot 不再反轉缺席來源，也不會對同一天重複發 Main Quest bundle。
+- Undo deletion journal 現在可在重啟後精準完成 XP、Session、Energy 與 V2 reversal，且 owner-scoped profile／Energy pending snapshot 會在 remote pull 前上推並跨 sign-out 保留。
+- 新 Session 在遠端 insert 前即標記 pending；authoritative merge 只保留遠端列與真正 pending 本機列，避免跨裝置刪除後被 stale cache 復活。
+- Same-device undo 使用實際套用的 Energy delta，在 0／max clamp 邊界可精準回滾。
+- Silent authoritative reversal 會移除已失效的正向 pending reveal／recent change，避免世界已回滾後仍播放舊的 +Gold／+Project 動畫。
+- 同一 Session 的 ordinary／Daily Main Quest hidden-stat grant 使用不同 immutable identity，不再因 winner promotion 原地改寫 ledger entry。
+- 遠端 load、profile／task／Session／Energy 寫入與 trial 啟用現在都綁定預期 authenticated owner；App 另以 generation token 阻止 sign-out／快速切換帳號後的舊請求回填 cache 或重繪畫面。
+- Home 同 route 重繪會先 release 再延後 destroy Pixi Application；同步 remount 會取消 teardown，因此任務結算不再重建 Application，離開 route 或登出仍會完成清理。
+- 重複 commit／remote merge 不再重複發獎；撤銷 Session 會反轉 Gold、Quest、Project、hidden stats 與 milestone rewards，且 remote resurrection 由 tombstone 阻擋。
+- Boot／migration／remote reconciliation 不再重播歷史 reveal；Home 消耗 reveal 後會立即顯示下一筆或回到穩定狀態。
+- Editor 寫入加入 world revision guard，localStorage 寫入失敗不再回報假成功；Home 與 Full World 仍保留可讀的靜態 snapshot。
+- Route、IntersectionObserver、visibility、timer、listener 與 Pixi runtime cleanup 改為冪等，避免重複 ticker／Application 與離屏持續渲染。
+- 遠端載入必須通過 profile、tasks、sessions 與 Energy 完整性檢查後才可定稿 V2；profile／Energy 待同步快照改為逐 owner sidecar，Session delete 也綁定 expected owner，避免快速切換帳號造成誤同步或誤清 tombstone。
+- Pixi 初始化途中離頁會先失效 runtime，再於 `init()` settle 後安全 destroy；Home、Full World 與登出都會走最終 route teardown，不再讀取尚未建立的 renderer 或遺留 WebGL context。
+- Reward Reveal 的 2.8 秒正常動畫與 0.7 秒 reduced-motion 動畫只在頁籤可見且 Window 位於 viewport 時前進；背景或離屏期間會保留剩餘時間，不會在玩家看不到時消耗 persisted reveal。
+
+### Validation
+- `npm run lint`：通過。
+- `npm run test`：40 個檔案、792 個測試通過。
+- `npm run test:e2e`：Chromium 26/26 通過，包含正式 Focus 結束、Pixi failure fallback、off-screen suspend/resume、三輪 Home／World route loop、reduced motion 與 legacy fallback。
+- Playwright 390×844 視覺檢查：Pixi runtime ready、主角與 Companion 可見、Project／Companion 狀態卡並列、無水平溢出。
+
+### Known limitations
+- 首個 V2 場景仍使用明確標記為 `fallback-proof` 的既有 16:9 美術，以 cover-crop 顯示於 3:2；最終 3:2 action／Companion 資產包與 1.5 MB 目標仍需後續美術驗收。
+- 低階 Android／iOS 實機效能、鍵盤操作與 reduced-motion 的人工驗證仍待完成；自動化通過不代表這些實機驗收已完成。
+- V2 世界狀態目前 local-first；跨裝置同步需要另行核准的後端 schema 設計。
+
+---
+
 ## [1.20.6] - 2026-07-07
 
 ### Changed（資料層重構，零行為/資料格式變化 — handoff Phase 14–18 完結）

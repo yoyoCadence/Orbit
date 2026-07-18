@@ -35,6 +35,9 @@ export function showSyncBanner(status) {
   if (status === 'syncing') {
     el.className = 'syncing';
     el.textContent = '☁️ 同步中…';
+  } else if (status === 'error') {
+    el.className = 'sync-error';
+    el.textContent = '⚠️ 同步暫停，將於下次連線重試';
   } else {
     el.className = 'synced';
     el.textContent = '✓ 已更新';
