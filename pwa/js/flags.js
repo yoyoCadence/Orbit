@@ -6,6 +6,8 @@ export const FLAG_SHIELD_PENDING    = 'orbit_shield_pending';    // {prevStreak}
 export const FLAG_DEV_BACKUP        = 'orbit_dev_backup';        // dev tools 覆蓋前的 user 備份（存在＝暫停上雲）
 export const FLAG_DEV_PANEL         = 'orbit_dev_panel';         // '1' = 非 localhost 也顯示開發者面板
 
+export const FLAG_PERSONAL_SPACE_RUNTIME = 'orbit_personal_space_runtime';
+
 // sessionStorage
 export const FLAG_SHIELD_DISMISSED  = 'orbit_shield_dismissed';  // '1' = 本次 session 已收合保護卡橫幅
 export const FLAG_SHIELD_SCROLL_TOP = 'orbit_shield_scroll_top'; // '1' = 導回首頁後捲到頂

@@ -11,11 +11,19 @@ import {
   showDailyReport, showMorningModal, checkWeeklyBonus, startDayWatcher,
 } from './dayCycle.js';
 import { createDefaultTasks }   from './defaultTasks.js';
-import { renderPage, currentHash, isTextInputTarget, isTextInputActive, markTextInputFocus } from './router.js';
+import {
+  renderPage,
+  currentHash,
+  isTextInputTarget,
+  isTextInputActive,
+  markTextInputFocus,
+  teardownActivePageRenderer,
+} from './router.js';
 import { applyTimeBand }        from './timeBand.js';
 import { showToast, showSyncBanner } from './ui/feedback.js';
 import { applyRandomThemeForToday, renderBg, initLiquidGlassReflection } from './theme.js';
 import { FLAG_STREAK_UNLOCK_NEW } from './flags.js';
+import { refreshCanonicalStateAndReconcilePersonalSpaceV2 } from './personalSpace/v2/controller.js';
 
 // Lazy proxy — tour.js is not imported at startup; loaded on first call.
 window.startTour = () =>
@@ -139,12 +147,26 @@ function showMainApp() {
 
 // ─── Boot helpers (shared by guest / auth / cached-init paths) ────────────────
 
-function loadStateFromStorage() {
-  state.user      = storage.getUser();
-  state.tasks     = storage.getTasks();
-  state.sessions  = storage.getSessions();
-  state.energy    = storage.getEnergy();
-  state.dailyPlan = storage.getDailyPlan();
+function loadStateFromStorage({
+  authoritative = false,
+  provisionalMigration = false,
+  finalizeMigration = authoritative === true,
+} = {}) {
+  const cachedOwnerId = storage.getUser()?.id;
+  if (typeof cachedOwnerId === 'string' && cachedOwnerId.trim()) {
+    try {
+      storage.recoverPendingSessionDeletions(cachedOwnerId);
+    } catch (error) {
+      console.warn('Interrupted Session undo recovery will retry on the next load:', error);
+    }
+  }
+  return refreshCanonicalStateAndReconcilePersonalSpaceV2({
+    centralState: state,
+    storageApi: storage,
+    authoritative,
+    provisionalMigration,
+    finalizeMigration,
+  });
 }
 
 /** Day rollover + show app + periodic bonus — the sequence formerly copy-pasted ×3. */
@@ -172,15 +194,20 @@ window.continueAsGuest = function () {
 
 async function loadAndStart(session) {
   _currentSession = session;
+  let remoteLoaded = false;
 
   // Pull fresh data from Supabase; fall back to localStorage cache if offline
   try {
     await db.loadFromRemote(session.user.id);
+    remoteLoaded = true;
   } catch (e) {
     console.warn('Supabase load failed, using localStorage cache:', e);
   }
 
-  loadStateFromStorage();
+  loadStateFromStorage({
+    authoritative: remoteLoaded,
+    finalizeMigration: true,
+  });
 
   // Start 15-day Pro trial for new authenticated users
   if (state.user && !state.user.trialStartedAt) {
@@ -200,6 +227,7 @@ async function loadAndStart(session) {
 }
 
 function handleSignOut() {
+  teardownActivePageRenderer();
   if (!_currentSession && !storage.getUser()) return; // already signed out
   _currentSession = null;
   state.user     = null;
@@ -315,7 +343,9 @@ async function init() {
   // seeing the main app, matching the pre-refactor behavior.)
   const cachedUser = storage.getUser();
   if (cachedUser) {
-    loadStateFromStorage();
+    // The cached snapshot makes the UI available immediately, but the first
+    // V2 Gold cutover remains provisional until auth/remote resolution ends.
+    loadStateFromStorage({ provisionalMigration: true });
     hideLoading();
     bootWithLocalState();
     _updateBadge();
@@ -326,20 +356,25 @@ async function init() {
         _currentSession = session;
         showSyncBanner('syncing');
         db.loadFromRemote(session.user.id).then(() => {
-          // Quietly refresh state from updated cache
-          state.user     = storage.getUser()     || state.user;
-          state.tasks    = storage.getTasks();
-          state.sessions = storage.getSessions();
-          state.energy   = storage.getEnergy();
+          // Quietly refresh canonical state and the V2 projection from the
+          // completed remote/local merge without enqueueing a reveal.
+          loadStateFromStorage({ authoritative: true });
           updateHeader();
           renderPage(currentHash());
           _updateBadge();
           showSyncBanner('synced');
         }).catch(() => {
+          // Offline is an explicit local-cache decision, so finish the cutover
+          // without treating the incomplete remote snapshot as authoritative.
+          loadStateFromStorage({ finalizeMigration: true });
           showSyncBanner('synced'); // hide banner even on failure
         });
+      } else {
+        loadStateFromStorage({ finalizeMigration: true });
       }
-    }).catch(() => {});
+    }).catch(() => {
+      loadStateFromStorage({ finalizeMigration: true });
+    });
     return;
   }
 

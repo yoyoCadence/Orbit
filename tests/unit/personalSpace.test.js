@@ -7,12 +7,14 @@ import { state } from '../../pwa/js/state.js';
 import { PERSONAL_SPACE_PURCHASE_REQUEST_EVENT, renderPersonalSpace } from '../../pwa/js/pages/personalSpace.js';
 import { buildPersonalSpaceViewModel } from '../../pwa/js/personalSpace/index.js';
 import { savePersonalSpaceState } from '../../pwa/js/personalSpace/gameState.js';
+import { setPersonalSpaceRuntime } from '../../pwa/js/personalSpace/v2/featureFlag.js';
 
 describe('renderPersonalSpace', () => {
   let container;
 
   beforeEach(() => {
     localStorage.clear();
+    setPersonalSpaceRuntime('legacy');
     container = document.createElement('div');
     state.user = {
       id: 'u1',

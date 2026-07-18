@@ -53,6 +53,7 @@ test-results/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+/.playwright-cli/
 
 # Generated visual QA scratch output
 output/playwright/

@@ -9,6 +9,7 @@ import { previewBaseXP }                       from '../engine.js';
 import { goToProCard }                         from '../ui/proNav.js';
 import { proofStats, clearAllProofs }          from '../platform/proofStore.js';
 import { FLAG_PRO_HIGHLIGHT, FLAG_DEV_BACKUP, FLAG_DEV_PANEL } from '../flags.js';
+import { refreshCanonicalStateAndReconcilePersonalSpaceV2 } from '../personalSpace/v2/controller.js';
 
 // ── Theme definitions ────────────────────────────────────────────────────────
 export const THEMES = [
@@ -882,6 +883,11 @@ function _setupListeners(container) {
     btn.classList.add('btn-syncing');
     try {
       await storage.syncFromRemote();
+      refreshCanonicalStateAndReconcilePersonalSpaceV2({
+        centralState: state,
+        storageApi: storage,
+        authoritative: true,
+      });
       window.showToast('資料已更新');
       _renderView(container);
     } catch (err) {

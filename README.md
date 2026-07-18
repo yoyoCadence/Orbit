@@ -394,6 +394,23 @@ Orbit 的核心循環不是「完成任務拿分數」，而是：
 
 個人空間是 Orbit 進入 life-sim 的第一個核心模組。
 
+### Personal Space V2 垂直切片
+
+Personal Space V2 現在是預設體驗，並保留明確的 legacy fallback。首頁統計列與「本日計劃」之間會直接顯示 3:2 Orbit Window；它不是縮圖入口，而是使用者完成真實 Session 後看見世界變化、Workspace Upgrade、每日 Main Quest、主角與 Companion 回應的主要回饋面。
+
+第一個可逆循環為：
+
+```text
+完成既有 Instant / Focus Session
+→ 可稽核 Reward Ledger
+→ Workspace Upgrade 每日推進 25%
+→ 首頁即時 reveal
+→ Full World / Edit Mode 共用同一份狀態
+→ 撤銷來源 Session 時完整回滾
+```
+
+PixiJS 8 runtime 採 poster-first、進入可視區後才載入；載入失敗、離線、reduced motion 或 WebGL context loss 時，靜態世界與任務操作仍可使用。V2 狀態依玩家分開儲存，不修改既有 legacy Personal Space 資料，也不新增 Supabase schema。
+
 ### 定位
 
 個人空間不是單純裝潢，而是：
@@ -763,4 +780,9 @@ pwa/js/platform/
 
 - [AGENTS.md](AGENTS.md)
 - [Life Sim Architecture](docs/life-sim-architecture.md)
+- [Personal Space V2 Product Spec](docs/personal-space-v2-product-spec.md)
+- [Personal Space V2 Art Bible](docs/personal-space-v2-art-bible.md)
+- [Personal Space V2 Technical Design](docs/personal-space-v2-technical-design.md)
+- [Personal Space V2 Asset Pipeline](docs/personal-space-v2-asset-pipeline.md)
+- [Personal Space V2 Vertical Slice](docs/personal-space-v2-vertical-slice.md)
 - [CLAUDE.md](CLAUDE.md)

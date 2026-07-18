@@ -194,11 +194,18 @@ Every accepted asset entry must include at least:
   source,
   qc,
   licenseRef,
-  status: 'production' | 'production-proof' | 'angle-proof'
+  status: 'production' | 'production-proof' | 'fallback-proof' | 'angle-proof'
 }
 ```
 
 Furniture metadata may additionally include `footprint`, `placementPlaneId`, `supportSurfaces`, `characterAnchors`, and legal slot ids. Character animation contracts remain separate from furniture anchors.
+
+`fallback-proof` is reserved for a temporary, explicitly non-production asset
+that proves runtime wiring or static fallback behavior but misses a V2 art
+contract such as authored 3:2 composition, animation coverage, provenance, or
+budget. It may ship only with the static fallback path intact and a documented
+replacement task; it must never be promoted to `production-proof` merely
+because runtime loading succeeds.
 
 ## Model Manifest And Licensing
 

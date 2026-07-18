@@ -169,7 +169,7 @@ For the first ruleset, `ps-v2-workspace-v1`:
 | Trigger | Ledger rewards | Reveal class |
 |---|---|---|
 | Valid ordinary productive Session | one primary hidden-stat reward from the mapping below | Small |
-| Daily Main Quest first completion | `gold:daily-main=100`, `hidden_stat:depth=3`, `quest_progress:main-focus=1`, `project_progress:workspace-upgrade=25` | Medium |
+| Daily Main Quest first completion | `gold:daily-main=100`, `hidden_stat:depth=3`, `quest_progress:main-focus:<effective-date>=1`, `project_progress:workspace-upgrade=25` | Medium |
 | Workspace Upgrade reaches 100% | `world_unlock:formal-workstation=1`, `relationship:companion-stage=1` | Major |
 
 Ordinary low-value completions do not drop Gold. Gold is fixed, non-random, and tied to an understandable source.
@@ -339,6 +339,13 @@ The unique semantic key is:
 rulesetId + sourceType + sourceId + rewardType + rewardKey
 ```
 
+`rewardKey` identifies the immutable grant variant, not only the destination
+domain field. For example, ordinary `depth +1` and Daily Main Quest `depth +3`
+use distinct hidden-stat reward keys while both carry `metadata.statKey =
+'depth'`. Daily quest progress uses `main-focus:<effective-date>`. This keeps a
+Session promotion or winner reassignment from mutating an existing ledger
+record in place.
+
 No random id or current timestamp may decide whether a reward is new. Amount and metadata are immutable for a ruleset. Changing a rule requires a new `rulesetId` plus an explicit migration/reconciliation policy.
 
 ### 6.2 Reconciliation algorithm
@@ -356,6 +363,13 @@ Reconciliation is a pure calculation followed by one local state write:
 9. Reduce Project, Quest, wallet, hidden stats, relationship, and world phase from active entries.
 10. Persist the new envelope once.
 11. Queue an animation only for a live local settlement or a still-unconsumed reveal; boot reconciliation must not replay all historical rewards.
+
+Conflicting duplicate Session payloads fail closed and are reduced to one
+deterministic record before winner selection. For a non-authoritative partial
+snapshot, absence is not proof of deletion: omitted prior rewards remain active.
+If an omitted active winner already owns `main-focus:<date>`, a newly visible
+same-date candidate receives only its ordinary reward rather than a second daily
+bundle.
 
 The reconciler runs:
 
@@ -386,6 +400,14 @@ If the app closes after the Session write but before the V2 write, boot reconcil
 
 Undo must write a durable local Session deletion tombstone before relying on the remote delete. Remote merge must filter tombstoned ids and retry deletion until Supabase confirms success. A failed/no-session delete must not silently clear the tombstone.
 
+The deletion entry is also a recovery journal. Before canonical mutation it
+stores the target XP and Energy values. Boot reapplies those absolute targets
+only while the entry is locally unsettled, removes the source Session, then
+checkpoints local settlement. Remote confirmation is recorded separately and
+the entry is cleared only after the V2 reversal is persisted. Owner-scoped
+profile/Energy pending snapshots are pushed before a later remote pull and
+survive sign-out for that owner.
+
 Undo order:
 
 ```text
@@ -402,7 +424,11 @@ confirm undo
 
 The first slice must directly test duplicate commits, repeated reconciliation, offline deletion, remote resurrection attempts, and reversal after reload.
 
-The current nominal Energy reversal is not mathematically exact at the 0/maximum clamps. A same-device fix may record the actually applied Energy delta in a local settlement sidecar. Persisting that value across devices would require an approved Session schema change. V2 rewards must not depend on Energy deltas, and no schema column may be added under this plan without approval.
+Same-device Energy reversal records the actually applied delta in local-only
+Session metadata and is exact at the 0/maximum clamps. Persisting that value
+across devices would require an approved Session schema change, so older or
+remote-only Sessions retain the nominal compatibility fallback. V2 rewards do
+not depend on Energy deltas, and no schema column is added by this slice.
 
 ## 7. Momentum and Companion rules
 
@@ -670,7 +696,15 @@ Performance acceptance is measured on a defined mid-tier Android Chrome profile 
 
 Budgets are not satisfied by hiding slow work behind a loader. Home task controls must be interactive before the runtime is ready.
 
-The Service Worker caches only approved production assets. New code/assets are added to cache strategy deliberately, and the project bump script updates the release version/cache once at final release.
+The Service Worker install shell caches only approved production assets or an explicitly labeled static fallback poster. Phase textures are cached after successful first use. New code/assets are added to cache strategy deliberately, and the project bump script updates the release version/cache once at final release.
+
+Implementation note for the vertical-slice proof: the temporary fallback
+background and protagonist poster are the only V2 visual files in the install
+shell (about 1.99 MB combined). Pixi and phase-specific props stay lazy and are
+stored by the successful-response cache path after first use. This keeps the
+synchronous Home surface poster-first and below the 2.5 MB hard fallback
+threshold. The 1.5 MB target remains an explicit art-optimization task before
+the fallback proof can be promoted to production.
 
 ## 11. Telemetry contract
 

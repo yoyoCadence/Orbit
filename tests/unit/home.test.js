@@ -8,6 +8,12 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHome } from '../../pwa/js/pages/home.js';
+import { setPersonalSpaceRuntime } from '../../pwa/js/personalSpace/v2/featureFlag.js';
+import { createDefaultPersonalSpaceV2State } from '../../pwa/js/personalSpace/v2/stateSchema.js';
+import {
+  loadPersonalSpaceV2State,
+  savePersonalSpaceV2State,
+} from '../../pwa/js/personalSpace/v2/store.js';
 
 // ─── Module mocks ─────────────────────────────────────────────────────────────
 
@@ -88,6 +94,7 @@ function makeContainer() {
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 beforeEach(() => {
+  localStorage.clear();
   // Reset state to defaults
   mockState.tasks     = [];
   mockState.sessions  = [];
@@ -105,6 +112,104 @@ beforeEach(() => {
   window.dismissStreakShield   = vi.fn();
   window.reshowShieldBanner    = vi.fn();
   window.showShieldInfo        = vi.fn();
+  window.navigate              = vi.fn();
+});
+
+describe('renderHome: mandatory Personal Space V2 Orbit Window', () => {
+  it('renders after stats and before Daily Plan and starts the real Main Quest task', () => {
+    setPersonalSpaceRuntime('v2');
+    mockState.user = { id: 'owner-home', name: 'Tester', totalXP: 0, streakDays: 3 };
+    mockState.tasks = [makeTask({
+      id: 'focus-a',
+      category: 'focus',
+      value: 'A',
+    })];
+    mockState.dailyPlan = ['focus-a'];
+    const c = makeContainer();
+
+    const cleanup = renderHome(c);
+    const stats = c.querySelector('.stats-bar');
+    const orbit = c.querySelector('[data-orbit-window]');
+    const planHeading = [...c.querySelectorAll('.section-title-row')]
+      .find(element => element.textContent.includes('本日計劃'));
+
+    expect(orbit).toBeTruthy();
+    expect(orbit.textContent).toContain('Workspace Upgrade');
+    expect(orbit.textContent).toContain('COMPANION');
+    expect(stats.compareDocumentPosition(orbit) & globalThis.Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(orbit.compareDocumentPosition(planHeading) & globalThis.Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    orbit.querySelector('[data-orbit-main-quest]').click();
+    expect(window.startFocus).toHaveBeenCalledWith('focus-a');
+    cleanup();
+  });
+
+  it('keeps the mandatory static Orbit Window visible when reconciliation cannot persist', () => {
+    setPersonalSpaceRuntime('v2');
+    mockState.user = { id: 'owner-readonly-home', name: 'Tester', totalXP: 0, streakDays: 0 };
+    const setItem = vi.spyOn(globalThis.Storage.prototype, 'setItem')
+      .mockImplementation(() => { throw new Error('quota'); });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const c = makeContainer();
+    let cleanup;
+
+    try {
+      cleanup = renderHome(c);
+      expect(c.querySelector('[data-orbit-window]')).toBeTruthy();
+      expect(c.textContent).toContain('Workspace Upgrade');
+    } finally {
+      cleanup?.();
+      setItem.mockRestore();
+      warn.mockRestore();
+      c.remove();
+    }
+  });
+
+  it('rebuilds the Orbit Window with the next reveal after acknowledgement', () => {
+    vi.useFakeTimers();
+    setPersonalSpaceRuntime('v2');
+    mockState.user = { id: 'owner-home', name: 'Tester', totalXP: 0, streakDays: 3 };
+    const baseState = createDefaultPersonalSpaceV2State(mockState.user.id);
+    savePersonalSpaceV2State(mockState.user.id, {
+      ...baseState,
+      pendingRewardReveals: [
+        { id: 'reveal-1', title: '第一筆世界變化', rewards: [] },
+        { id: 'reveal-2', title: '第二筆世界變化', rewards: [] },
+      ],
+    });
+    const c = makeContainer();
+    let cleanup;
+
+    try {
+      cleanup = renderHome(c);
+      const firstRoot = c.querySelector('[data-orbit-window]');
+      expect(firstRoot.textContent).toContain('第一筆世界變化');
+
+      vi.advanceTimersByTime(3300);
+
+      const nextRoot = c.querySelector('[data-orbit-window]');
+      expect(nextRoot).not.toBe(firstRoot);
+      expect(c.querySelectorAll('[data-orbit-window]')).toHaveLength(1);
+      expect(nextRoot.textContent).not.toContain('第一筆世界變化');
+      expect(nextRoot.textContent).toContain('第二筆世界變化');
+      expect(loadPersonalSpaceV2State(mockState.user.id).pendingRewardReveals)
+        .toEqual([expect.objectContaining({ id: 'reveal-2' })]);
+
+      vi.advanceTimersByTime(3300);
+
+      const settledRoot = c.querySelector('[data-orbit-window]');
+      expect(settledRoot).not.toBe(nextRoot);
+      expect(settledRoot.classList.contains('is-revealing')).toBe(false);
+      expect(settledRoot.textContent).not.toContain('第一筆世界變化');
+      expect(settledRoot.textContent).not.toContain('第二筆世界變化');
+      expect(loadPersonalSpaceV2State(mockState.user.id).pendingRewardReveals).toEqual([]);
+    } finally {
+      cleanup?.();
+      vi.clearAllTimers();
+      vi.useRealTimers();
+      c.remove();
+    }
+  });
 });
 
 describe('renderHome: stats bar', () => {

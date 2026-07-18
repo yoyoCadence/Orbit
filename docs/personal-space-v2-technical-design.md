@@ -545,7 +545,7 @@ The first Vertical Slice can remain local-first. The following work is not impli
 - Snapshot builder derives Main Quest and time band without copying them into V2 state.
 - Home/full/edit View Models share `worldRevision`, project, Companion, scene, and placements.
 - View Models do not mutate source state.
-- Runtime-mode resolver covers legacy default, V2 override, and invalid values.
+- Runtime-mode resolver covers the V2 default, an explicit legacy fallback, and invalid values.
 - Runtime host mount/update/suspend/resume/destroy calls are idempotent.
 - A stale View Model cannot overwrite a newer rendered revision.
 - Asset manifest resolves every active bundle entry and validates 3:2 dimensions/safe zone.
@@ -618,6 +618,57 @@ Add focused suites for V2 during development, but the final gate is the full exi
 | Local-only V2 state diverges after cross-device sync | Different world on another device | Explicitly label first slice local-first; backend sync requires approved schema design. |
 | Scope expands into all rooms/multi-camera art | Vertical Slice delay | Fixed Building scene, canonical camera, curated asset bundle, camera UI disabled. |
 
+### 16.1 Implemented vertical-slice map (2026-07-17)
+
+The shipped slice keeps the responsibilities below but consolidates the
+original proposal into fewer removable Vanilla JS modules:
+
+| Concern | Implemented source |
+|---|---|
+| Runtime selection and owner state | `featureFlag.js`, `config.js`, `stateSchema.js`, `migrateState.js`, `store.js` |
+| Session projection and reversible economy | `sessionAdapter.js`, `rewardRules.js`, `rewardLedger.js`, `reconciler.js`, `projectEngine.js`, `controller.js` |
+| Shared Home / World / Edit reads | `momentum.js`, `companionEngine.js`, `viewModels.js` |
+| Mandatory Home surface | `ui/orbitWindow.js`, `pages/home.js` |
+| Full World and bounded editor | `pages/personalSpaceV2.js`, dispatched by `pages/personalSpace.js` |
+| Lazy renderer and lifecycle | `runtime/pixiSceneRuntime.js`, `router.js` |
+| Deletion and remote reconciliation | `platform/sessionDeletionLog.js`, `sessionFlow.js`, `storage.js`, `app.js`, `pages/settings.js` |
+| Vendored dependency and cache | `scripts/vendor-pixi.mjs`, `pwa/vendor/pixi.js`, `pwa/sw.js` |
+
+The current scene registry intentionally labels reused legacy art
+`fallback-proof`. Runtime wiring, cover scaling, poster fallback, caching, and
+all five Project phases are implemented, but the final authored 3:2 action and
+Companion asset pack remains a release-art follow-up. The proposed file table
+below is retained as design history; absent files were consolidated rather than
+left as required missing modules.
+
+### 16.2 Implemented persistence and recovery invariants
+
+- The unscoped V1 Personal Space record may be claimed by exactly one normalized
+  owner. A durable claim marker prevents a later account on the same device from
+  inheriting that owner's inventory, placements, hidden stats, or legacy spend.
+- A cached authenticated boot may create a `migration.provisional` cutover. It is
+  finalized once after remote resolution, or after an explicit offline/guest
+  decision; a finalized opening-Gold baseline is never recomputed.
+- Session inputs are deterministically deduplicated by immutable `session.id`.
+  Deleted or invalid conflicting payloads fail closed. A non-authoritative
+  partial snapshot preserves omitted ledger sources and cannot issue a second
+  Main Quest bundle for a date already owned by an omitted winner.
+- Undo writes an owner-scoped deletion journal before canonical mutation. The
+  journal contains idempotent XP/Energy recovery targets, local-settlement and
+  remote-confirmation checkpoints, and remains until both the V2 reversal and
+  remote deletion are durable.
+- New Sessions are marked `_syncPending` before their insert begins. Pending
+  Sessions survive an authoritative merge; stale non-pending local rows do not.
+  Owner-scoped profile and Energy pending snapshots are pushed before a remote
+  pull and deliberately survive sign-out so an offline undo cannot resurrect
+  XP or Energy when the same owner returns.
+- Same-device Sessions store the exact applied Energy delta as local-only
+  metadata. Undo uses that delta at 0/max clamps; the DB field map intentionally
+  excludes it, so older or cross-device rows use the documented nominal fallback.
+- Pending reveals are validated against the post-reconcile active ledger. Silent
+  authoritative reversal prunes stale positive reveals and recent-change cues;
+  a live local undo may enqueue only the current reversal reveal.
+
 ## 17. Exact Implementation File Plan
 
 This is the intended change surface. Files outside it require a scope update before editing.
@@ -645,7 +696,7 @@ This is the intended change surface. Files outside it require a scope update bef
 | `pwa/js/personalSpace/v2/ui/worldMode.js` | Full-world DOM controls/status. |
 | `pwa/js/personalSpace/v2/ui/editMode.js` | Minimal fixed-camera editor controls. |
 | `scripts/vendor-pixi.mjs` | Deterministically copy pinned browser ESM and license into `pwa/vendor/`. |
-| `pwa/vendor/pixi.mjs` | Generated pinned browser artifact for static GitHub Pages deployment. |
+| `pwa/vendor/pixi.js` | Generated pinned browser ESM artifact with a broadly supported JavaScript MIME path for static deployment. |
 | `pwa/vendor/pixi.LICENSE.txt` | Dependency license distributed with vendored runtime. |
 | `pwa/assets/personal-space/v2/workspace-upgrade/` | Approved 3:2 room, poster, props, characters, Companion, lighting, weather, and effects. |
 | `tests/unit/personalSpaceV2State.test.js` | Migration/normalization/flag tests. |
@@ -709,4 +760,3 @@ The technical implementation is complete only when all of the following are true
 - Static fallback, reduced motion, context failure, reload, legacy mode, and Session reversal are tested.
 - Legacy 16:9/multi-camera state and assets remain intact and selectable.
 - No unapproved backend schema, auth, deployment, or destructive configuration change is included.
-

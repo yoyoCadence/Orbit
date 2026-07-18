@@ -93,14 +93,22 @@ async function mockSupabase(page) {
 }
 
 /** 在 page script 執行前注入 localStorage 資料。 */
-async function seedStorage(page, tasks, sessions = []) {
+async function seedStorage(page, tasks, sessions = [], user = GUEST_USER) {
   await page.addInitScript(({ user, tasks, sessions, energy }) => {
     const P = 'yoyo_';
-    localStorage.setItem(P + 'user',     JSON.stringify(user));
-    localStorage.setItem(P + 'tasks',    JSON.stringify(tasks));
-    localStorage.setItem(P + 'sessions', JSON.stringify(sessions));
-    localStorage.setItem(P + 'energy',   JSON.stringify(energy));
-  }, { user: GUEST_USER, tasks, sessions, energy: BASE_ENERGY });
+    if (!localStorage.getItem(P + 'user')) {
+      localStorage.setItem(P + 'user', JSON.stringify(user));
+    }
+    if (!localStorage.getItem(P + 'tasks')) {
+      localStorage.setItem(P + 'tasks', JSON.stringify(tasks));
+    }
+    if (!localStorage.getItem(P + 'sessions')) {
+      localStorage.setItem(P + 'sessions', JSON.stringify(sessions));
+    }
+    if (!localStorage.getItem(P + 'energy')) {
+      localStorage.setItem(P + 'energy', JSON.stringify(energy));
+    }
+  }, { user, tasks, sessions, energy: BASE_ENERGY });
 }
 
 // ─── 登入畫面 ─────────────────────────────────────────────────────────────────
@@ -275,6 +283,171 @@ test.describe('Focus 計時流程', () => {
     await page.locator('#early-end-confirm-btn').click();
     await expect(page.locator('.log-item')).toBeVisible({ timeout: 3000 });
     await expect(page.locator('.log-item').first()).toContainText('0 XP');
+  });
+});
+
+// ─── Personal Space V2 Vertical Slice ───────────────────────────────────────
+
+test.describe('Personal Space V2 垂直切片', () => {
+  test.beforeEach(async ({ page }) => {
+    await mockSupabase(page);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await seedStorage(page, [FOCUS_TASK], [], { ...GUEST_USER, totalXP: 5000 });
+    await page.goto('/');
+    await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
+  });
+
+  test('首頁 Main Quest → Focus 結算 → 世界揭露 → 完整世界 → 撤銷回滾', async ({ page }) => {
+    test.setTimeout(45000);
+    const orbit = page.locator('[data-orbit-window]');
+    await expect(orbit).toBeVisible();
+    await expect(orbit).toContainText('Workspace Upgrade');
+    await expect(orbit).toContainText('0%');
+
+    await orbit.locator('[data-orbit-main-quest]').click();
+    await expect(page.locator('#focus-overlay')).toBeVisible();
+
+    // Use the timer's supported "already completed" exit so its interval,
+    // overlay and active state follow the same production teardown as users.
+    await page.locator('.focus-skip-btn').click();
+    await page.locator('.skip-dur-btn[data-min="30"]').click();
+    await page.locator('#skip-yes').click();
+    await expect(orbit).toHaveClass(/is-revealing/);
+    await expect(page.locator('#focus-overlay')).toBeHidden();
+    await expect(page.locator('#skip-confirm')).toHaveCount(0);
+
+    await expect(orbit).toHaveAttribute('data-project-progress', '25');
+    await expect(orbit).toContainText('25%');
+    await expect(orbit).not.toHaveClass(/is-revealing/, { timeout: 3000 });
+
+    const persisted = await page.evaluate(() => JSON.parse(
+      localStorage.getItem(
+        'orbit_platform_bridge_v1:personal-space-state-v2:e2e-user'
+      ) || 'null'
+    ));
+    expect(persisted.activeProject.progress).toBe(25);
+    expect(persisted.pendingRewardReveals).toEqual([]);
+    expect(persisted.rewardLedger.filter(entry => !entry.reversedAt)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ rewardType: 'gold', amount: 100 }),
+        expect.objectContaining({ rewardType: 'project_progress', amount: 25 }),
+      ])
+    );
+
+    await expect(page.locator('#proof-skip')).toBeVisible({ timeout: 2000 });
+    await page.locator('#proof-skip').click();
+    await expect(page.locator('.pro-sheet-overlay')).toHaveCount(0);
+
+    await orbit.locator('[data-orbit-open-world]').click();
+    await expect(page.locator('[data-personal-space-v2]')).toBeVisible();
+    await expect(page.locator('[data-personal-space-v2]')).toContainText('25%');
+
+    await page.evaluate(() => window.navigate('home'));
+    await expect(page.locator('[data-orbit-window]')).toBeVisible();
+    await page.reload();
+    await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
+    await expect(page.locator('[data-orbit-window]')).toHaveAttribute('data-project-progress', '25');
+
+    const replay = await page.evaluate(async () => {
+      const { storage } = await import('/js/storage.js');
+      const { reconcileAndSavePersonalSpaceV2 } = await import(
+        '/js/personalSpace/v2/controller.js'
+      );
+      const input = {
+        user: storage.getUser(),
+        sessions: storage.getSessions(),
+        queueReveal: false,
+      };
+      reconcileAndSavePersonalSpaceV2(input);
+      const second = reconcileAndSavePersonalSpaceV2(input);
+      return {
+        activeCount: second.state.rewardLedger.filter(entry => !entry.reversedAt).length,
+        progress: second.state.activeProject.progress,
+        queueLength: second.state.pendingRewardReveals.length,
+      };
+    });
+    expect(replay).toEqual({ activeCount: 4, progress: 25, queueLength: 0 });
+
+    await page.evaluate(() => window.closeLevelUp?.());
+    page.once('dialog', dialog => dialog.accept());
+    await page.locator('.session-del-btn').first().click();
+
+    await expect(page.locator('[data-orbit-window]')).toHaveAttribute('data-project-progress', '0');
+    const reversed = await page.evaluate(() => JSON.parse(
+      localStorage.getItem(
+        'orbit_platform_bridge_v1:personal-space-state-v2:e2e-user'
+      ) || 'null'
+    ));
+    expect(reversed.activeProject.progress).toBe(0);
+    expect(reversed.rewardTombstones.some(entry => entry.sourceId)).toBe(true);
+
+    await page.locator('[data-orbit-open-world]').click();
+    await expect(page.locator('[data-personal-space-v2]')).toContainText('0%');
+    await page.reload();
+    await page.waitForSelector('[data-personal-space-v2]', { timeout: 8000 });
+    await expect(page.locator('[data-personal-space-v2]')).toContainText('0%');
+  });
+
+  test('明確 legacy flag 保留舊 Personal Space fallback', async ({ page }) => {
+    await page.evaluate(() => {
+      localStorage.setItem('orbit_personal_space_runtime', 'legacy');
+    });
+    await page.reload();
+    await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
+    await expect(page.locator('[data-orbit-window]')).toHaveCount(0);
+
+    await page.evaluate(() => window.navigate('personalSpace'));
+    await expect(page.locator('#content')).toContainText('Orbit Personal Space');
+    await expect(page.locator('[data-personal-space-v2]')).toHaveCount(0);
+  });
+
+  test('Pixi failure keeps Main Quest usable through the semantic poster', async ({ page }) => {
+    await page.addInitScript(() => {
+      globalThis.HTMLCanvasElement.prototype.getContext = () => null;
+    });
+    await page.reload();
+    await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
+
+    const orbit = page.locator('[data-orbit-window]');
+    await expect(orbit).toBeVisible();
+    await expect(orbit.locator('.orbit-window-poster')).toBeVisible();
+    await expect(orbit.locator('[data-orbit-runtime-host]'))
+      .toHaveAttribute('data-runtime-status', 'fallback', { timeout: 8000 });
+
+    await orbit.locator('[data-orbit-main-quest]').click();
+    await expect(page.locator('#focus-overlay')).toBeVisible();
+    await page.locator('.focus-skip-btn').click();
+    await page.locator('.skip-dur-btn[data-min="30"]').click();
+    await page.locator('#skip-yes').click();
+    await expect(page.locator('[data-orbit-window]')).toHaveAttribute('data-project-progress', '25');
+  });
+
+  test('suspends offscreen and keeps one canvas through repeated Home and World routes', async ({ page }) => {
+    let orbit = page.locator('[data-orbit-window]');
+    let runtimeHost = orbit.locator('[data-orbit-runtime-host]');
+    await expect(runtimeHost).toHaveAttribute('data-runtime-status', 'ready', { timeout: 8000 });
+
+    await page.locator('#content').evaluate(element => {
+      element.scrollTo({ top: element.scrollHeight, behavior: 'instant' });
+    });
+    await expect(runtimeHost).toHaveAttribute('data-runtime-status', 'suspended', { timeout: 5000 });
+    await page.locator('#content').evaluate(element => {
+      element.scrollTo({ top: 0, behavior: 'instant' });
+    });
+    await expect(runtimeHost).toHaveAttribute('data-runtime-status', 'ready', { timeout: 5000 });
+
+    for (let index = 0; index < 3; index += 1) {
+      await orbit.locator('[data-orbit-open-world]').click();
+      await expect(page.locator('[data-personal-space-v2]')).toBeVisible();
+      await expect(page.locator('canvas.orbit-window-canvas')).toHaveCount(1);
+
+      await page.evaluate(() => window.navigate('home'));
+      orbit = page.locator('[data-orbit-window]');
+      runtimeHost = orbit.locator('[data-orbit-runtime-host]');
+      await expect(orbit).toBeVisible();
+      await expect(runtimeHost).toHaveAttribute('data-runtime-status', 'ready', { timeout: 8000 });
+      await expect(page.locator('canvas.orbit-window-canvas')).toHaveCount(1);
+    }
   });
 });
 

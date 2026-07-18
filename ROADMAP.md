@@ -1,16 +1,16 @@
 # Orbit Roadmap
 
-> 2026-04-26 sync note: PS-205~PS-212 personal space 地圖系統全部完成並 merged（PR #91~97）。v1.16.x 近期工作以 SUB-13 CSV 匯出為主，personal space 下一步為 AI companion（AI-201）或 preload 優化（PS-211）。
+> 2026-07-17 sync note: Personal Space V2 首個 home-first 垂直切片（PS-233~PS-240）完成；首頁 Orbit Window、可逆 Reward Ledger、Workspace Upgrade、Full World / Edit Mode 與 lazy Pixi runtime 已整合，legacy runtime 仍保留為 fallback。
 
-目前版本：**v1.16.0**（Unreleased 已累積大量 personal space 功能，待下次打版）
+目前版本：**v1.21.0**
 
 這份文件記錄 Orbit 的公開功能規劃方向。功能依優先順序排列，會隨專案進展持續更新。
 
 ---
 
-## 近期（v1.16.x）
+## 近期（v1.21.x）
 
-- [ ] **SUB-13 資料匯出** — 一鍵匯出所有打卡紀錄為 CSV（Pro 專屬）
+- [x] **SUB-13 資料匯出** — 一鍵匯出所有打卡紀錄為 CSV（Pro 專屬）
 
 ---
 
@@ -32,6 +32,7 @@
 
 ## 已完成
 
+- v1.21.0 — **Personal Space V2 垂直切片**（PS-233~PS-240）：首頁 3:2 Orbit Window、日期化 Main Quest、可逆且去重的 Reward Ledger、Workspace Upgrade、規則式 Companion、Full World / Edit Mode、owner-scoped migration、遠端合併 reconciliation、lazy Pixi runtime 與靜態 fallback
 - v1.16.x（Unreleased）— **Personal Space 地圖系統**（PS-205~PS-212）：公司 / 豪宅樓層地圖視窗、可點擊房間切換場景、樓層漸進揭露、解鎖等級標示、上班中 / 回顧 badge、走廊移除、場景切換進場動畫；memory property 規則正式化（MEMORY_PROPERTY_RULES）；memoryViewSceneId 區分回顧導航與 stale 選擇
 - v1.15.0 — **SUB-12** Focus Timer Pro（自訂倒數時長、Web Audio 音效、Session 備注）+ **refactor** isProUser() 含試用統一判斷
 - v1.14.0 — **SUB-16** Streak 解鎖 Pro（連勝 45 天 → 自動獲得 30 天免費 Pro）+ **SUB-UX1** 所有 Pro 限定功能標上「✦ Pro 專屬」角徽
