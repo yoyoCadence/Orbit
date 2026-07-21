@@ -1,3 +1,5 @@
+import { SCENE_IDS } from '../unlockRules.js';
+
 const SCHEMA_VERSION = 1;
 
 const renderMode = oneOf('home-window', 'full-world', 'edit');
@@ -62,10 +64,9 @@ const EVENT_SCHEMAS = Object.freeze({
     renderMode,
   }),
   edit_mode_opened: schema({
-    sceneId: oneOf(
-      'office-corner', 'formal-workstation', 'small-office', 'mid-office',
-      'rough-room', 'upgraded-rental', 'buy-back-rental',
-    ),
+    // Built from the canonical scene inventory so estate/manager/memory scenes
+    // (Lv.40+) are never silently dropped by a divergent local allowlist.
+    sceneId: oneOf(...SCENE_IDS),
     ownedCountBand: oneOf('0', '1-4', '5-9', '10+'),
   }),
   quest_completed: schema({
@@ -132,10 +133,25 @@ export function emitPersonalSpaceTelemetry(eventName, properties = {}, options =
 }
 
 function normalizeOccurredAt(value) {
-  if (typeof value === 'string'
-      && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(value)
-      && Number.isFinite(Date.parse(value))) {
-    return value;
+  if (typeof value === 'string') {
+    const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{3}))?Z$/.exec(value);
+    if (match) {
+      const [, year, month, day, hour, minute, second, millis] = match.map(Number);
+      const parsed = new Date(value);
+      // JavaScript silently rolls overflowed components forward (2026-02-31 →
+      // 2026-03-03), so a passing regex is not enough. Require every UTC
+      // component to survive a parse round-trip, then canonicalize the output.
+      if (Number.isFinite(parsed.getTime())
+          && parsed.getUTCFullYear() === year
+          && parsed.getUTCMonth() === month - 1
+          && parsed.getUTCDate() === day
+          && parsed.getUTCHours() === hour
+          && parsed.getUTCMinutes() === minute
+          && parsed.getUTCSeconds() === second
+          && parsed.getUTCMilliseconds() === (millis || 0)) {
+        return parsed.toISOString();
+      }
+    }
   }
   return new Date().toISOString();
 }
@@ -166,9 +182,19 @@ function booleanValue(value) {
 }
 
 function isoDateValue(value) {
-  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
-    ? value
-    : undefined;
+  if (typeof value !== 'string') return undefined;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return undefined;
+  const [, year, month, day] = match.map(Number);
+  // Reject calendar-invalid dates (Feb 30/31, month 13, non-leap Feb 29) that a
+  // plain regex would wave through; JavaScript would otherwise normalize them.
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  if (parsed.getUTCFullYear() !== year
+      || parsed.getUTCMonth() !== month - 1
+      || parsed.getUTCDate() !== day) {
+    return undefined;
+  }
+  return value;
 }
 
 function hashEventKey(value) {

@@ -4,6 +4,7 @@ import {
   emitPersonalSpaceTelemetry,
   setPersonalSpaceTelemetryAdapter,
 } from '../../pwa/js/personalSpace/v2/telemetry.js';
+import { SCENE_IDS } from '../../pwa/js/personalSpace/unlockRules.js';
 
 afterEach(() => setPersonalSpaceTelemetryAdapter(null));
 
@@ -91,6 +92,78 @@ describe('Personal Space V2 telemetry contract', () => {
       })).not.toBeNull();
     });
     expect(local.getEvents()).toHaveLength(events.length);
+  });
+
+  it('accepts edit_mode_opened for every canonical scene, including estate/manager/memory', () => {
+    const local = createLocalTelemetryAdapter({ limit: SCENE_IDS.length });
+    setPersonalSpaceTelemetryAdapter(local);
+
+    // The high-level scenes a stale hand-written allowlist previously dropped.
+    expect(SCENE_IDS).toEqual(expect.arrayContaining([
+      'manager-room', 'large-office-suite',
+      'estate-hall', 'estate-study', 'estate-lounge', 'estate-game-room',
+      'buy-back-rental',
+    ]));
+
+    SCENE_IDS.forEach((sceneId, index) => {
+      expect(
+        emitPersonalSpaceTelemetry('edit_mode_opened', { sceneId, ownedCountBand: '5-9' }, {
+          eventId: `scene-${index}`,
+          occurredAt: '2026-07-18T00:00:00.000Z',
+        }),
+        `expected edit_mode_opened to accept canonical scene "${sceneId}"`,
+      ).not.toBeNull();
+    });
+
+    expect(local.getEvents().map(event => event.properties.sceneId)).toEqual([...SCENE_IDS]);
+  });
+
+  it('drops edit_mode_opened only for scene ids outside the canonical inventory', () => {
+    expect(emitPersonalSpaceTelemetry('edit_mode_opened', {
+      sceneId: 'not-a-real-scene',
+      ownedCountBand: '0',
+    })).toBeNull();
+  });
+
+  it('rejects calendar-invalid effectiveDate and only accepts real dates', () => {
+    const invalidDates = ['2026-02-31', '2026-02-29', '2026-13-01', '2026-00-10', '2026-04-31'];
+    invalidDates.forEach(effectiveDate => {
+      expect(
+        emitPersonalSpaceTelemetry('quest_completed', {
+          questType: 'daily-main-focus', effectiveDate, sourceCategory: 'task',
+        }, { eventId: `bad-date-${effectiveDate}` }),
+        `expected ${effectiveDate} to fail closed`,
+      ).toBeNull();
+    });
+
+    const validDates = ['2024-02-29', '2026-02-28', '2026-12-31'];
+    validDates.forEach((effectiveDate, index) => {
+      const event = emitPersonalSpaceTelemetry('quest_completed', {
+        questType: 'daily-main-focus', effectiveDate, sourceCategory: 'task',
+      }, { eventId: `good-date-${index}`, occurredAt: '2026-07-18T00:00:00.000Z' });
+      expect(event, `expected ${effectiveDate} to be accepted`).not.toBeNull();
+      expect(event.properties.effectiveDate).toBe(effectiveDate);
+    });
+  });
+
+  it('never passes an overflowed occurredAt through and canonicalizes valid ones', () => {
+    const local = createLocalTelemetryAdapter();
+    setPersonalSpaceTelemetryAdapter(local);
+    const base = { entryPoint: 'home-window', projectPhase: 'basic-desk' };
+
+    // 2026-02-31 parses to 2026-03-03 in JavaScript; it must not survive as-is.
+    const overflowed = emitPersonalSpaceTelemetry('orbit_window_opened', base, {
+      eventId: 'overflow-ts', occurredAt: '2026-02-31T00:00:00.000Z',
+    });
+    expect(overflowed.occurredAt).not.toBe('2026-02-31T00:00:00.000Z');
+    expect(overflowed.occurredAt).not.toBe('2026-03-03T00:00:00.000Z');
+    expect(overflowed.occurredAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+
+    // A valid instant without milliseconds is canonicalized via toISOString().
+    const canonical = emitPersonalSpaceTelemetry('orbit_window_opened', base, {
+      eventId: 'canonical-ts', occurredAt: '2026-07-18T09:30:00Z',
+    });
+    expect(canonical.occurredAt).toBe('2026-07-18T09:30:00.000Z');
   });
 
   it('rejects free-form or out-of-range values even when placed in allowlisted fields', () => {

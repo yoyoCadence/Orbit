@@ -1,6 +1,6 @@
 {
   "name": "orbit",
-  "version": "1.21.1",
+  "version": "1.21.2",
   "type": "module",
   "scripts": {
     "bump": "node scripts/bump.mjs",
@@ -11,7 +11,9 @@
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",
     "test:e2e": "playwright test",
-    "test:e2e:headed": "playwright test --headed"
+    "test:e2e:headed": "playwright test --headed",
+    "ps243:assets": "node scripts/ps243-asset-baseline.mjs",
+    "ps243:perf": "node scripts/ps243-perf-baseline.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",

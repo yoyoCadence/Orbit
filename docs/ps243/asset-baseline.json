@@ -1,0 +1,91 @@
+{
+  "artifact": "ps243-asset-baseline",
+  "appVersion": "1.21.2",
+  "note": "Reproducible: a pure function of committed files. No timestamps; regenerate with `npm run ps243:assets` and diff to verify.",
+  "method": {
+    "sizes": "raw file bytes on disk (fs.statSync.size)",
+    "gzip": "zlib.gzipSync level 6; deterministic estimate, not a production network trace",
+    "fileSet": "derived from pwa/js/personalSpace/v2/content/assetManifest.js"
+  },
+  "runtimeSceneAssets": {
+    "initialPaint": {
+      "files": [
+        {
+          "path": "pwa/assets/personal-space/idle-window/backgrounds/office-angle-center-v2.png",
+          "bytes": 1971296
+        },
+        {
+          "path": "pwa/assets/personal-space/idle-window/characters/building-protagonist-idle/building-protagonist-idle-1.png",
+          "bytes": 16400
+        }
+      ],
+      "totalBytes": 1987696,
+      "targetBytes": 1572864,
+      "hardThresholdBytes": 2621440,
+      "result": "FOLLOW-UP"
+    },
+    "completeProofScene": {
+      "files": [
+        {
+          "path": "pwa/assets/personal-space/idle-window/backgrounds/office-angle-center-v2.png",
+          "bytes": 1971296
+        },
+        {
+          "path": "pwa/assets/personal-space/idle-window/characters/building-protagonist-idle/building-protagonist-idle-1.png",
+          "bytes": 16400
+        },
+        {
+          "path": "pwa/assets/personal-space/idle-window/props/office-corner-desk-v3/front.png",
+          "bytes": 211827
+        },
+        {
+          "path": "pwa/assets/personal-space/idle-window/props/office-chair/prop.png",
+          "bytes": 69664
+        },
+        {
+          "path": "pwa/assets/personal-space/idle-window/props/office-shelf/prop.png",
+          "bytes": 134782
+        },
+        {
+          "path": "pwa/assets/personal-space/idle-window/props/office-desk-lamp/prop.png",
+          "bytes": 45450
+        },
+        {
+          "path": "pwa/assets/personal-space/idle-window/props/office-board/prop.png",
+          "bytes": 95500
+        },
+        {
+          "path": "pwa/assets/personal-space/idle-window/props/office-monitor-single/prop.png",
+          "bytes": 56552
+        },
+        {
+          "path": "pwa/assets/personal-space/idle-window/props/office-monitor-dual/prop.png",
+          "bytes": 76615
+        },
+        {
+          "path": "pwa/assets/personal-space/idle-window/props/office-plant/prop.png",
+          "bytes": 82649
+        }
+      ],
+      "totalBytes": 2760735,
+      "targetBytes": 4194304,
+      "hardThresholdBytes": 6291456,
+      "result": "PASS"
+    }
+  },
+  "deferredJsBundles": {
+    "personalSpaceV2AppJs": {
+      "fileCount": 20,
+      "rawBytes": 158299,
+      "gzipBytes": 38097
+    },
+    "vendoredPixi": {
+      "path": "pwa/vendor/pixi.js",
+      "rawBytes": 799299,
+      "gzipBytes": 225645
+    },
+    "combinedGzipBytes": 263742,
+    "budgetBytes": 307200,
+    "result": "PASS"
+  }
+}

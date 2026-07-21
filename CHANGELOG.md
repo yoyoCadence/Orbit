@@ -3,6 +3,22 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.21.2] - 2026-07-21
+
+回應 PR #130 Codex 驗收意見的修正。
+
+### Added
+- 新增可重現的 PS-243 驗收自動化：`tests/e2e/ps243-acceptance.test.js`（viewport matrix、水平溢位、44px 觸控目標、鍵盤順序、reduced motion、200% zoom，隨 `npm run test:e2e` 進 CI）、`scripts/ps243-asset-baseline.mjs`／`npm run ps243:assets`（由 committed manifest 衍生檔案集合，輸出 `docs/ps243/asset-baseline.json`）、`scripts/ps243-perf-baseline.mjs`／`npm run ps243:perf`（4× CPU throttle、10-loop route 與 GC 後 heap 的 BASELINE 快照）。
+- 新增 `tests/unit/ps243AssetBudget.test.js`：把資產位元組與 gzip 預算變成 CI 內的 deterministic gate，並檢查 committed evidence artifact 未過期。
+- `pwa/js/personalSpace/unlockRules.js` 匯出 canonical `SCENE_IDS`；`assetManifest.js` 匯出 `getWorkspaceAssetManifestPaths()` 作為資產證據的單一來源。
+
+### Fixed
+- `edit_mode_opened` telemetry 先前只認 7 個場景，會靜默丟棄 Lv.40+ 的 estate/manager/memory 場景（manager-room、large-office-suite、estate-hall/study/lounge/game-room）；schema 改由 canonical `SCENE_IDS` 建立，涵蓋完整場景清單。
+- Personal Space telemetry 的日期驗證改為 UTC round-trip：`2026-02-31` 等被 JavaScript 正規化的無效日曆日期現在 fail closed，`occurredAt` 統一 canonicalize 為 `toISOString()`。
+- Full World 詳情面板關閉後會把焦點還給開啟它的控制項（WCAG 2.4.3），並支援 `Escape` 關閉；補鍵盤 regression 測試。
+
+---
+
 ## [1.21.1] - 2026-07-18
 
 ### Added

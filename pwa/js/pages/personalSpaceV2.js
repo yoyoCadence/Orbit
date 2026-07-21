@@ -425,16 +425,6 @@ function editorTarget(node) {
   };
 }
 
-function openDetail(container, detailId) {
-  const panel = container.querySelector('[data-v2-detail-panel]');
-  if (!panel) return;
-  panel.hidden = false;
-  panel.querySelectorAll('[data-v2-detail]').forEach(section => {
-    section.hidden = section.dataset.v2Detail !== detailId;
-  });
-  panel.querySelector('[data-v2-detail]:not([hidden]) h2')?.focus?.();
-}
-
 function runMainQuest(mainQuest) {
   if (mainQuest.completed) return;
   if (mainQuest.actionTarget?.kind === 'create-focus-task') {
@@ -489,6 +479,37 @@ export function renderPersonalSpaceV2(container, options = {}) {
   let currentModel = null;
   let disposed = false;
   let loadTelemetryEmitted = false;
+  let detailInvoker = null;
+
+  // Open the detail panel and remember the control that opened it so focus can be
+  // returned there on close (WCAG 2.4.3). Canvas-originated opens have no DOM
+  // invoker, so fall back to the matching dock button as the return target.
+  function showDetail(detailId, invoker = null) {
+    const panel = container.querySelector('[data-v2-detail-panel]');
+    if (!panel) return;
+    const dockButton = container.querySelector(`[data-v2-open-detail="${detailId}"]`);
+    const active = document.activeElement;
+    const candidate = invoker
+      || (active && active !== document.body && container.contains(active) ? active : null)
+      || dockButton;
+    detailInvoker = candidate && typeof candidate.focus === 'function' ? candidate : null;
+    panel.hidden = false;
+    panel.querySelectorAll('[data-v2-detail]').forEach(section => {
+      section.hidden = section.dataset.v2Detail !== detailId;
+    });
+    panel.querySelector('[data-v2-detail]:not([hidden]) h2')?.focus?.();
+  }
+
+  function hideDetail() {
+    const panel = container.querySelector('[data-v2-detail-panel]');
+    if (!panel || panel.hidden) return;
+    panel.hidden = true;
+    const invoker = detailInvoker;
+    detailInvoker = null;
+    if (invoker && container.contains(invoker) && typeof invoker.focus === 'function') {
+      invoker.focus();
+    }
+  }
 
   function persist(nextState) {
     if (nextState === v2State || disposed) return;
@@ -558,9 +579,9 @@ export function renderPersonalSpaceV2(container, options = {}) {
     sceneCleanup = mountWindow(orbitWindow, {
       model: mountedModel,
       renderMode: mode,
-      onOpenWorld: mode === 'edit' ? undefined : () => openDetail(container, 'project'),
-      onProject: mode === 'edit' ? undefined : () => openDetail(container, 'project'),
-      onCompanion: mode === 'edit' ? undefined : () => openDetail(container, 'companion'),
+      onOpenWorld: mode === 'edit' ? undefined : () => showDetail('project'),
+      onProject: mode === 'edit' ? undefined : () => showDetail('project'),
+      onCompanion: mode === 'edit' ? undefined : () => showDetail('companion'),
       onMainQuest: mode === 'edit' ? undefined : () => runMainQuest(model.mainQuest),
       onRevealConsumed: acknowledgeReveal,
     });
@@ -594,12 +615,11 @@ export function renderPersonalSpaceV2(container, options = {}) {
 
     const detailButton = event.target.closest('[data-v2-open-detail]');
     if (detailButton) {
-      openDetail(container, detailButton.dataset.v2OpenDetail);
+      showDetail(detailButton.dataset.v2OpenDetail, detailButton);
       return;
     }
     if (event.target.closest('[data-v2-close-detail]')) {
-      const panel = container.querySelector('[data-v2-detail-panel]');
-      if (panel) panel.hidden = true;
+      hideDetail();
       return;
     }
     if (event.target.closest('[data-v2-main-quest]')) {
@@ -625,7 +645,17 @@ export function renderPersonalSpaceV2(container, options = {}) {
     }
   }
 
+  function handleKeydown(event) {
+    if (event.key !== 'Escape') return;
+    const panel = container.querySelector('[data-v2-detail-panel]');
+    if (panel && !panel.hidden) {
+      event.preventDefault();
+      hideDetail();
+    }
+  }
+
   container.addEventListener('click', handleClick);
+  container.addEventListener('keydown', handleKeydown);
   render(mode);
 
   return () => {
@@ -636,6 +666,7 @@ export function renderPersonalSpaceV2(container, options = {}) {
     } finally {
       sceneCleanup = null;
       container.removeEventListener('click', handleClick);
+      container.removeEventListener('keydown', handleKeydown);
       destroyRuntime();
     }
   };
