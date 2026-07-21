@@ -14,102 +14,13 @@
  */
 
 import { test, expect } from '@playwright/test';
-
-// ─── 常數 ─────────────────────────────────────────────────────────────────────
-
-const TODAY = new Date().toLocaleDateString('sv'); // matches app's today() — YYYY-MM-DD in local tz
-
-const GUEST_USER = {
-  id: 'e2e-user', name: 'E2E Tester', totalXP: 0,
-  streakDays: 0, lastStreakDate: TODAY, lastWeeklyBonusDate: '',
-  morningState: 'normal', mode: 'normal', isPublic: false,
-  createdAt: TODAY,
-  // newDayHour:0 → effectiveToday(0) always equals today(); prevents daily-report
-  // modal from appearing when CI runs in UTC before 05:00 local time
-  newDayHour: 0,
-};
-
-const INSTANT_TASK = {
-  id: 'task-instant', name: '喝水', category: 'instant',
-  impactType: 'task', taskNature: 'maintenance', value: 'B',
-  difficulty: 0.4, resistance: 1.0, emoji: '💧',
-  dailyXpCap: 100, cooldownMinutes: 0, minEffectiveMinutes: 0,
-  isDefault: true, valueConfidence: 100, createdAt: TODAY,
-};
-
-const FOCUS_TASK = {
-  id: 'task-focus', name: '深度學習', category: 'focus',
-  impactType: 'task', taskNature: 'growth', value: 'A',
-  difficulty: 0.7, resistance: 1.2, emoji: '🧠',
-  dailyXpCap: 200, cooldownMinutes: 0, minEffectiveMinutes: 1,
-  isDefault: true, valueConfidence: 100, createdAt: TODAY,
-};
-
-const BASE_ENERGY = {
-  currentEnergy: 90, maxEnergy: 100, lastResetDate: TODAY,
-};
-
-// ─── Supabase CDN mock（回傳無認證的最小 client）─────────────────────────────
-
-const SUPABASE_STUB = `
-export function createClient() {
-  const chain = () => {
-    const q = {
-      select: () => q, eq: () => q, order: () => q,
-      upsert: () => Promise.resolve({ data: null, error: null }),
-      insert: () => Promise.resolve({ data: null, error: null }),
-      delete: () => q,
-      in:     () => Promise.resolve({ data: null, error: null }),
-      single: () => Promise.resolve({ data: null, error: null }),
-      then:   (r) => Promise.resolve({ data: null, error: null }).then(r),
-    };
-    return q;
-  };
-  return {
-    auth: {
-      getSession:         () => Promise.resolve({ data: { session: null } }),
-      onAuthStateChange:  () => ({ data: { subscription: { unsubscribe: () => {} } } }),
-      signInWithPassword: () => Promise.resolve({ data: null, error: { message: 'E2E mock' } }),
-      signUp:             () => Promise.resolve({ data: null, error: { message: 'E2E mock' } }),
-      signInWithOAuth:    () => Promise.resolve({ data: null, error: null }),
-      signOut:            () => Promise.resolve({ error: null }),
-    },
-    from: () => chain(),
-  };
-}
-`;
-
-// ─── Fixtures：攔截 CDN + 注入 localStorage ──────────────────────────────────
-
-/** 設定 Supabase CDN 攔截（每個測試都要）。 */
-async function mockSupabase(page) {
-  await page.route('https://esm.sh/**', route =>
-    route.fulfill({
-      status:      200,
-      contentType: 'application/javascript; charset=utf-8',
-      body:        SUPABASE_STUB,
-    })
-  );
-}
-
-/** 在 page script 執行前注入 localStorage 資料。 */
-async function seedStorage(page, tasks, sessions = [], user = GUEST_USER) {
-  await page.addInitScript(({ user, tasks, sessions, energy }) => {
-    const P = 'yoyo_';
-    if (!localStorage.getItem(P + 'user')) {
-      localStorage.setItem(P + 'user', JSON.stringify(user));
-    }
-    if (!localStorage.getItem(P + 'tasks')) {
-      localStorage.setItem(P + 'tasks', JSON.stringify(tasks));
-    }
-    if (!localStorage.getItem(P + 'sessions')) {
-      localStorage.setItem(P + 'sessions', JSON.stringify(sessions));
-    }
-    if (!localStorage.getItem(P + 'energy')) {
-      localStorage.setItem(P + 'energy', JSON.stringify(energy));
-    }
-  }, { user, tasks, sessions, energy: BASE_ENERGY });
-}
+import {
+  FOCUS_TASK,
+  GUEST_USER,
+  INSTANT_TASK,
+  mockSupabase,
+  seedStorage,
+} from './support/seed.js';
 
 // ─── 登入畫面 ─────────────────────────────────────────────────────────────────
 

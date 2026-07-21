@@ -1,0 +1,90 @@
+{
+  "artifact": "ps243-perf-baseline",
+  "label": "BASELINE",
+  "warning": "Volatile, environment-dependent synthetic timings. Not a CI gate and not a device FPS/thermal/memory result; those remain human gates.",
+  "servedBuild": "v1.21.2",
+  "environment": {
+    "engine": "desktop Chromium (Playwright)",
+    "serverPort": 50770,
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "cpuThrottleRate": 4,
+    "reducedMotion": true,
+    "warmupLoops": 2,
+    "measuredLoops": 10
+  },
+  "method": {
+    "routeTiming": "wall-clock ms around the awaited route transition (click/navigate → runtime ready)",
+    "percentile": "nearest-rank, no interpolation",
+    "heap": "CDP HeapProfiler.collectGarbage then Runtime.getHeapUsage.usedSize"
+  },
+  "fullWorldRouteMs": {
+    "p75": 785,
+    "max": 814,
+    "samples": [
+      456,
+      814,
+      499,
+      656,
+      589,
+      655,
+      643,
+      801,
+      569,
+      785
+    ]
+  },
+  "homeRouteMs": {
+    "p75": 173,
+    "max": 214,
+    "samples": [
+      103,
+      214,
+      140,
+      134,
+      104,
+      51,
+      95,
+      208,
+      106,
+      173
+    ]
+  },
+  "canvas": {
+    "countsPerState": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "singleCanvasHeld": true
+  },
+  "jsHeap": {
+    "beforeBytes": 5794304,
+    "afterBytes": 6725712,
+    "deltaBytes": 931408
+  }
+}

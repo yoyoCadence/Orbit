@@ -103,20 +103,20 @@
 - [ ] **PS-242** Promote the fallback-proof Personal Space scene pack to final production action art
   - Target: replace the current proof assets with reviewed protagonist, Companion, weather, and direction/state variants while preserving the V2 manifest contract.
 
-- [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
-  - Target: record low-end mobile measurements, complete the manual reduced-motion/keyboard checklist, and validate the local event contract before enabling any external analytics provider.
-
 
 ---
 
 ## In Progress
 
-- [ ] **PS-240** Validate and harden the Personal Space V2 vertical slice
-  - In progress: automated merge hardening is complete, including authenticated-owner sync guards, one-time legacy Session cutover, same-route Pixi reuse, structured Reveal selectors, placement sanitization, honest sync failure feedback, and responsive runtime visual QA. Keep open until the PR is merged; low-end device, keyboard, and reduced-motion acceptance remain explicitly assigned to PS-243.
+- [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
+  - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
 
 ---
 
 ## Done
+
+- [x] **PS-240** Validate and harden the Personal Space V2 vertical slice
+  - Completed: PR #129 merged authenticated-owner sync guards, one-time legacy Session cutover, same-route Pixi reuse, structured Reveal selectors, placement sanitization, honest sync failure feedback, responsive canvas correction, 792 passing unit／integration tests, Chromium E2E 26/26, and Playwright mobile visual QA.
 
 - [x] **PS-239** Add Personal Space runtime teardown, asset cache, and mobile fallback contracts
   - Completed: added route and viewport lifecycle ownership, visibility/context loss recovery, idempotent cleanup, successful-response asset caching, poster fallback, and focused regression coverage.

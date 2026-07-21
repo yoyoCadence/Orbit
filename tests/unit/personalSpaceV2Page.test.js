@@ -13,6 +13,10 @@ import {
   resetPersonalSpaceV2Placement,
 } from '../../pwa/js/pages/personalSpaceV2.js';
 import { state } from '../../pwa/js/state.js';
+import {
+  createLocalTelemetryAdapter,
+  setPersonalSpaceTelemetryAdapter,
+} from '../../pwa/js/personalSpace/v2/telemetry.js';
 
 function v2State(overrides = {}) {
   return {
@@ -128,6 +132,7 @@ describe('Personal Space V2 full page', () => {
   afterEach(() => {
     delete globalThis.IntersectionObserver;
     delete window.startFocus;
+    setPersonalSpaceTelemetryAdapter(null);
     localStorage.clear();
     document.body.innerHTML = '';
   });
@@ -258,6 +263,76 @@ describe('Personal Space V2 full page', () => {
 
     container.querySelector('[data-v2-main-quest]').click();
     expect(window.startFocus).toHaveBeenCalledWith('focus-a');
+  });
+
+  it('emits edit_mode_opened for a high-level estate scene instead of dropping it', () => {
+    const telemetry = createLocalTelemetryAdapter();
+    setPersonalSpaceTelemetryAdapter(telemetry);
+    const source = v2State({
+      world: {
+        selectedSceneId: 'estate-hall',
+        selectedThemeId: 'default',
+        placedItems: [],
+        idleWindowLayouts: {},
+      },
+    });
+    renderPersonalSpaceV2(container, {
+      user: coreState().user,
+      coreState: coreState(),
+      reconcile: () => controllerResult(source),
+      saveState: (_ownerId, nextState) => nextState,
+      mountWindow: () => () => {},
+      effectiveDate: '2026-07-17',
+    });
+
+    container.querySelector('[data-v2-mode="edit"]').click();
+
+    const editEvents = telemetry.getEvents().filter(event => event.eventName === 'edit_mode_opened');
+    expect(editEvents).toHaveLength(1);
+    expect(editEvents[0].properties.sceneId).toBe('estate-hall');
+  });
+
+  it('returns focus to the invoking control when the detail panel is closed', () => {
+    renderPersonalSpaceV2(container, {
+      user: coreState().user,
+      coreState: coreState(),
+      reconcile: () => controllerResult(),
+      mountWindow: () => () => {},
+      effectiveDate: '2026-07-17',
+    });
+
+    const projectButton = container.querySelector('[data-v2-open-detail="project"]');
+    projectButton.focus();
+    projectButton.click();
+
+    const panel = container.querySelector('[data-v2-detail-panel]');
+    const heading = container.querySelector('[data-v2-detail="project"] h2');
+    expect(panel.hidden).toBe(false);
+    expect(document.activeElement).toBe(heading);
+
+    container.querySelector('[data-v2-close-detail]').click();
+    expect(panel.hidden).toBe(true);
+    expect(document.activeElement).toBe(projectButton);
+  });
+
+  it('closes the detail panel and restores focus on Escape', () => {
+    renderPersonalSpaceV2(container, {
+      user: coreState().user,
+      coreState: coreState(),
+      reconcile: () => controllerResult(),
+      mountWindow: () => () => {},
+      effectiveDate: '2026-07-17',
+    });
+
+    const companionButton = container.querySelector('[data-v2-open-detail="companion"]');
+    companionButton.focus();
+    companionButton.click();
+    const panel = container.querySelector('[data-v2-detail-panel]');
+    expect(panel.hidden).toBe(false);
+
+    container.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(panel.hidden).toBe(true);
+    expect(document.activeElement).toBe(companionButton);
   });
 
   it('consumes a reveal through the controller without changing world revision', () => {

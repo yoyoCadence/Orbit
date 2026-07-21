@@ -1,0 +1,191 @@
+{
+  "artifact": "ps243-asset-baseline",
+  "appVersion": "1.21.2",
+  "note": "Reproducible: a pure function of committed files with CRLF normalized to LF. No timestamps; regenerate with `npm run ps243:assets` and diff to verify.",
+  "method": {
+    "assetSizes": "raw binary file bytes on disk (fs.statSync.size)",
+    "jsBytes": "text bytes with CRLF normalized to LF (matches the committed Git blob on any platform)",
+    "gzip": "zlib.gzipSync level 6 over the LF-normalized bytes; deterministic estimate, not a production network trace",
+    "assetFileSet": "derived from pwa/js/personalSpace/v2/content/assetManifest.js",
+    "jsFileSet": "union of pwa/js/personalSpace/v2/** and the Personal Space transitive closure from pwa/js/pages/personalSpaceV2.js"
+  },
+  "runtimeSceneAssets": {
+    "initialPaint": {
+      "files": [
+        {
+          "path": "pwa/assets/personal-space/idle-window/backgrounds/office-angle-center-v2.png",
+          "bytes": 1971296
+        },
+        {
+          "path": "pwa/assets/personal-space/idle-window/characters/building-protagonist-idle/building-protagonist-idle-1.png",
+          "bytes": 16400
+        }
+      ],
+      "totalBytes": 1987696,
+      "targetBytes": 1572864,
+      "hardThresholdBytes": 2621440,
+      "result": "FOLLOW-UP"
+    },
+    "completeProofScene": {
+      "files": [
+        {
+          "path": "pwa/assets/personal-space/idle-window/backgrounds/office-angle-center-v2.png",
+          "bytes": 1971296
+        },
+        {
+          "path": "pwa/assets/personal-space/idle-window/characters/building-protagonist-idle/building-protagonist-idle-1.png",
+          "bytes": 16400
+        },
+        {
+          "path": "pwa/assets/personal-space/idle-window/props/office-corner-desk-v3/front.png",
+          "bytes": 211827
+        },
+        {
+          "path": "pwa/assets/personal-space/idle-window/props/office-chair/prop.png",
+          "bytes": 69664
+        },
+        {
+          "path": "pwa/assets/personal-space/idle-window/props/office-shelf/prop.png",
+          "bytes": 134782
+        },
+        {
+          "path": "pwa/assets/personal-space/idle-window/props/office-desk-lamp/prop.png",
+          "bytes": 45450
+        },
+        {
+          "path": "pwa/assets/personal-space/idle-window/props/office-board/prop.png",
+          "bytes": 95500
+        },
+        {
+          "path": "pwa/assets/personal-space/idle-window/props/office-monitor-single/prop.png",
+          "bytes": 56552
+        },
+        {
+          "path": "pwa/assets/personal-space/idle-window/props/office-monitor-dual/prop.png",
+          "bytes": 76615
+        },
+        {
+          "path": "pwa/assets/personal-space/idle-window/props/office-plant/prop.png",
+          "bytes": 82649
+        }
+      ],
+      "totalBytes": 2760735,
+      "targetBytes": 4194304,
+      "hardThresholdBytes": 6291456,
+      "result": "PASS"
+    }
+  },
+  "deferredJsBundles": {
+    "personalSpaceV2AppJs": {
+      "fileCount": 24,
+      "files": [
+        {
+          "path": "pwa/js/pages/personalSpaceV2.js",
+          "bytes": 25747
+        },
+        {
+          "path": "pwa/js/personalSpace/economy.js",
+          "bytes": 2349
+        },
+        {
+          "path": "pwa/js/personalSpace/gameState.js",
+          "bytes": 6322
+        },
+        {
+          "path": "pwa/js/personalSpace/unlockRules.js",
+          "bytes": 11769
+        },
+        {
+          "path": "pwa/js/personalSpace/v2/companionEngine.js",
+          "bytes": 3506
+        },
+        {
+          "path": "pwa/js/personalSpace/v2/config.js",
+          "bytes": 1172
+        },
+        {
+          "path": "pwa/js/personalSpace/v2/content/assetManifest.js",
+          "bytes": 5109
+        },
+        {
+          "path": "pwa/js/personalSpace/v2/controller.js",
+          "bytes": 21560
+        },
+        {
+          "path": "pwa/js/personalSpace/v2/featureFlag.js",
+          "bytes": 925
+        },
+        {
+          "path": "pwa/js/personalSpace/v2/migrateState.js",
+          "bytes": 2424
+        },
+        {
+          "path": "pwa/js/personalSpace/v2/momentum.js",
+          "bytes": 2094
+        },
+        {
+          "path": "pwa/js/personalSpace/v2/projectEngine.js",
+          "bytes": 3110
+        },
+        {
+          "path": "pwa/js/personalSpace/v2/questEngine.js",
+          "bytes": 2432
+        },
+        {
+          "path": "pwa/js/personalSpace/v2/reconciler.js",
+          "bytes": 10047
+        },
+        {
+          "path": "pwa/js/personalSpace/v2/revealSelectors.js",
+          "bytes": 1517
+        },
+        {
+          "path": "pwa/js/personalSpace/v2/rewardLedger.js",
+          "bytes": 8837
+        },
+        {
+          "path": "pwa/js/personalSpace/v2/rewardRules.js",
+          "bytes": 3945
+        },
+        {
+          "path": "pwa/js/personalSpace/v2/runtime/pixiSceneRuntime.js",
+          "bytes": 17665
+        },
+        {
+          "path": "pwa/js/personalSpace/v2/sessionAdapter.js",
+          "bytes": 7969
+        },
+        {
+          "path": "pwa/js/personalSpace/v2/stateSchema.js",
+          "bytes": 5543
+        },
+        {
+          "path": "pwa/js/personalSpace/v2/store.js",
+          "bytes": 4251
+        },
+        {
+          "path": "pwa/js/personalSpace/v2/telemetry.js",
+          "bytes": 7320
+        },
+        {
+          "path": "pwa/js/personalSpace/v2/ui/orbitWindow.js",
+          "bytes": 19961
+        },
+        {
+          "path": "pwa/js/personalSpace/v2/viewModels.js",
+          "bytes": 24808
+        }
+      ],
+      "rawBytes": 200382,
+      "gzipBytes": 49782
+    },
+    "vendoredPixi": {
+      "path": "pwa/vendor/pixi.js",
+      "rawBytes": 796970,
+      "gzipBytes": 225428
+    },
+    "combinedGzipBytes": 275210,
+    "budgetBytes": 307200,
+    "result": "PASS"
+  }
+}

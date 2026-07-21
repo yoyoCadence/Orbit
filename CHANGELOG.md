@@ -3,6 +3,41 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.21.2] - 2026-07-21
+
+回應 PR #130 Codex 驗收意見的修正。
+
+### Added
+- 新增可重現的 PS-243 驗收自動化：`tests/e2e/ps243-acceptance.test.js`（viewport matrix、水平溢位、44px 觸控目標、鍵盤順序、reduced motion、200% zoom，隨 `npm run test:e2e` 進 CI）、`scripts/ps243-asset-baseline.mjs`／`npm run ps243:assets`（由 committed manifest 衍生檔案集合，輸出 `docs/ps243/asset-baseline.json`）、`scripts/ps243-perf-baseline.mjs`／`npm run ps243:perf`（4× CPU throttle、10-loop route 與 GC 後 heap 的 BASELINE 快照）。
+- 新增 `tests/unit/ps243AssetBudget.test.js`：把資產位元組與 gzip 預算變成 CI 內的 deterministic gate，並檢查 committed evidence artifact 未過期。
+- `pwa/js/personalSpace/unlockRules.js` 匯出 canonical `SCENE_IDS`；`assetManifest.js` 匯出 `getWorkspaceAssetManifestPaths()` 作為資產證據的單一來源。
+
+### Fixed
+- `edit_mode_opened` telemetry 先前只認 7 個場景，會靜默丟棄 Lv.40+ 的 estate/manager/memory 場景（manager-room、large-office-suite、estate-hall/study/lounge/game-room）；schema 改由 canonical `SCENE_IDS` 建立，涵蓋完整場景清單。
+- Personal Space telemetry 的日期驗證改為 UTC round-trip：`2026-02-31` 等被 JavaScript 正規化的無效日曆日期現在 fail closed，`occurredAt` 統一 canonicalize 為 `toISOString()`。
+- Full World 詳情面板關閉後會把焦點還給開啟它的控制項（WCAG 2.4.3），並支援 `Escape` 關閉；補鍵盤 regression 測試。
+- Asset baseline 改以 CRLF→LF canonical bytes 計算，Windows autocrlf working tree 與 Linux CI 得到相同結果（先前 committed artifact 為 CRLF bytes，導致 Ubuntu freshness test 失敗）；`--check` 與 gate 比對亦 normalize 行尾。
+- 「Personal Space V2 application JS」檔案集合改為 `v2/**` 與 route entry `personalSpaceV2.js` 之 Personal Space transitive closure 的聯集（納入 `unlockRules.js`、`economy.js`、`gameState.js`），artifact 逐一列出每個 JS path。
+- `scripts/ps243-perf-baseline.mjs` 改用 runner-owned free port、監聽 spawned server early-exit、以 `APP_VERSION` marker 確認所量測的是本 checkout，並在 cleanup await server 結束；`pwa/server.cjs` 支援 `PORT` env（預設仍 3000）。
+
+---
+
+## [1.21.1] - 2026-07-18
+
+### Added
+- 新增 PS-243 production acceptance 證據矩陣，分開記錄 responsive viewport、鍵盤順序、reduced motion、200% zoom、synthetic route-loop、資產預算與仍需真機完成的驗收項目。
+
+### Fixed
+- Personal Space telemetry 現在依每個 event field 驗證有限類別、日期、布林值與數值範圍；caller retry key 僅留在本機去重，adapter id 只由可信事件 metadata 產生，無效時間與自由文字也不再原樣進入 event payload。
+
+### Validation
+- `npm run lint`：通過。
+- `npm run test`：40 個檔案、796 個測試通過。
+- `npm run test:e2e`：Chromium 26/26 通過；資源競爭造成的 timeout 案例均已單獨重跑，清理 QA session 後完整序列通過。
+- Playwright CLI：完成 320×568、390×844、768×1024、1024×768、844×390、reduced-motion、200% zoom 與 10 次 4× CPU throttle route-loop baseline。
+
+---
+
 ## [1.21.0] - 2026-07-17
 
 ### Added

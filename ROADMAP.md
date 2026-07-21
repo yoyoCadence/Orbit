@@ -1,8 +1,8 @@
 # Orbit Roadmap
 
-> 2026-07-18 sync note: Personal Space V2 的工程垂直切片（PS-233~PS-239）已整合；PS-240 正進行 merge 前的帳號隔離、Runtime 重用與分級 Reveal 驗證。最終 action art 與實機效能／無障礙驗收仍列為後續工作，legacy runtime 繼續保留為 fallback。
+> 2026-07-18 sync note: Personal Space V2 工程垂直切片與 PS-240 merge hardening 已透過 PR #129 併入 main；PS-243 正建立瀏覽器 acceptance baseline 與真機證據矩陣。最終 action art 仍由 PS-242 負責，legacy runtime 繼續保留為 fallback。
 
-目前版本：**v1.21.0**
+目前版本：**v1.21.1**
 
 這份文件記錄 Orbit 的公開功能規劃方向。功能依優先順序排列，會隨專案進展持續更新。
 
@@ -10,8 +10,7 @@
 
 ## 近期（v1.21.x）
 
-- **Personal Space V2 merge 前驗證（PS-240）** — owner-bound 遠端同步、同 route Pixi Application 重用、Small／Medium／Major Reveal、狀態化主角／Companion／雨天效果與本機 no-op telemetry 合約
-- **Personal Space V2 production acceptance（PS-242／PS-243）** — 最終 3:2 action art、低階手機效能量測、鍵盤／reduced-motion 人工驗證；未完成前不把 `fallback-proof` 素材標示為 final production art
+- **Personal Space V2 production acceptance（PS-242／PS-243）** — PS-243 進行瀏覽器 baseline、低階手機實測、鍵盤／reduced-motion 與 telemetry 驗證；PS-242 負責最終 3:2 action art。未完成前不把 `fallback-proof` 素材標示為 final production art
 
 - [x] **SUB-13 資料匯出** — 一鍵匯出所有打卡紀錄為 CSV（Pro 專屬）
 
@@ -35,6 +34,7 @@
 
 ## 已完成
 
+- v1.21.0 — **Personal Space V2 merge hardening（PS-240）**：owner-bound 同步、legacy Session cutover、Pixi Application 重用、結構化 Reveal selector、placement sanitization、同步失敗狀態與 responsive canvas 修正
 - v1.21.0 — **Personal Space V2 工程基線**（PS-233~PS-239）：首頁 3:2 Orbit Window、日期化 Main Quest、可逆且去重的 Reward Ledger、Workspace Upgrade、規則式 Companion、Full World / Edit Mode、owner-scoped migration、遠端合併 reconciliation、lazy Pixi runtime 與明確標記的靜態 fallback
 - v1.16.x（Unreleased）— **Personal Space 地圖系統**（PS-205~PS-212）：公司 / 豪宅樓層地圖視窗、可點擊房間切換場景、樓層漸進揭露、解鎖等級標示、上班中 / 回顧 badge、走廊移除、場景切換進場動畫；memory property 規則正式化（MEMORY_PROPERTY_RULES）；memoryViewSceneId 區分回顧導航與 stale 選擇
 - v1.15.0 — **SUB-12** Focus Timer Pro（自訂倒數時長、Web Audio 音效、Session 備注）+ **refactor** isProUser() 含試用統一判斷

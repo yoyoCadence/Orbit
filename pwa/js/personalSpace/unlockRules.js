@@ -99,6 +99,12 @@ const SCENE_OPTIONS = [
   { id: 'buy-back-rental', label: '買回最初租屋處', shortLabel: '最初租屋處', family: 'rental', role: 'home', minLevel: 80, memoryProperty: true },
 ];
 
+// Canonical, telemetry-safe scene identifiers derived from the single SCENE_OPTIONS
+// source of truth. Any consumer that needs the closed set of scene ids — telemetry
+// schemas in particular — must import this instead of re-copying the list, so a new
+// scene can never be silently dropped by a stale hand-written allowlist.
+export const SCENE_IDS = Object.freeze(SCENE_OPTIONS.map(option => option.id));
+
 export function getUnlockedSpaceMilestones(level) {
   return SPACE_UNLOCKS.filter(item => level >= item.level);
 }

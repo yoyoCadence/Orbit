@@ -34,6 +34,24 @@ export const WORKSPACE_PROJECT_PHASES = Object.freeze([
   phase(100, '雙螢幕正式工作站', 'Workspace Upgrade 已完成。'),
 ]);
 
+// The two images the fallback-proof scene paints before any prop loads.
+export const WORKSPACE_INITIAL_PAINT_ASSETS = Object.freeze([
+  WORKSPACE_V2_ASSETS.background,
+  WORKSPACE_V2_ASSETS.protagonist,
+]);
+
+// Deterministic, de-duplicated list of every runtime image the fallback-proof
+// workspace scene references across all project phases (background, protagonist
+// and the full prop set). The PS-243 asset baseline runner derives its file set
+// from here so recorded evidence can never drift from the manifest the runtime
+// actually loads.
+export function getWorkspaceAssetManifestPaths() {
+  return Object.freeze([...new Set([
+    ...WORKSPACE_INITIAL_PAINT_ASSETS,
+    ...PROP_DEFINITIONS.map(entry => entry.path),
+  ])]);
+}
+
 export function getWorkspaceProjectPhase(progress = 0) {
   const normalized = clampProgress(progress);
   return [...WORKSPACE_PROJECT_PHASES].reverse().find(entry => normalized >= entry.progress)
