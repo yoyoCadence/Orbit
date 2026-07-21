@@ -8,9 +8,14 @@
 // the asset baseline these numbers are volatile and environment-dependent, so
 // the artifact is a labelled BASELINE snapshot, NOT a CI gate and NOT a device
 // FPS/thermal/memory result — those remain human gates.
+//
+// The runner owns its server on a free port and verifies the served build is
+// this checkout (APP_VERSION marker) before measuring, so it can never record
+// evidence against a stale server another checkout left on a fixed port.
 
 import { spawn } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { createServer } from 'node:net';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
@@ -23,21 +28,48 @@ import {
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(HERE, '..');
-const BASE_URL = 'http://localhost:3000';
 const VIEWPORT = { width: 390, height: 844 };
 const CPU_THROTTLE_RATE = 4;
 const WARMUP_LOOPS = 2;
 const MEASURED_LOOPS = 10;
 
-async function waitForServer(url, attempts = 60) {
+const APP_VERSION = JSON.parse(readFileSync(join(REPO_ROOT, 'package.json'), 'utf8')).version;
+const VERSION_MARKER = `v${APP_VERSION}`;
+
+function getFreePort() {
+  return new Promise((resolvePort, reject) => {
+    const probe = createServer();
+    probe.on('error', reject);
+    probe.listen(0, '127.0.0.1', () => {
+      const { port } = probe.address();
+      probe.close(() => resolvePort(port));
+    });
+  });
+}
+
+// Wait for OUR server, aborting if the spawned child exits early (e.g. the port
+// was taken and it died with EADDRINUSE) so we never measure someone else.
+async function waitForServer(baseURL, exitState, attempts = 60) {
   for (let attempt = 0; attempt < attempts; attempt += 1) {
+    if (exitState.exited) {
+      throw new Error(`Dev server exited before ready (code ${exitState.code}, signal ${exitState.signal}).`);
+    }
     try {
-      const response = await fetch(url);
+      const response = await fetch(baseURL);
       if (response.ok) return;
     } catch { /* server not up yet */ }
     await new Promise(done => setTimeout(done, 250));
   }
-  throw new Error(`Dev server did not start at ${url}`);
+  throw new Error(`Dev server did not become ready at ${baseURL}`);
+}
+
+// Confirm the server is serving THIS checkout, not a stale build on the port.
+async function assertServedBuild(baseURL) {
+  const response = await fetch(`${baseURL}/js/version.js`);
+  const source = await response.text();
+  if (!source.includes(`'${VERSION_MARKER}'`)) {
+    throw new Error(`Served build is not ${VERSION_MARKER}; refusing to record evidence against it.`);
+  }
 }
 
 // Nearest-rank percentile (deterministic, no interpolation).
@@ -48,10 +80,26 @@ function percentile(samples, fraction) {
 }
 
 async function run() {
-  const server = spawn('node', ['pwa/server.cjs'], { cwd: REPO_ROOT, stdio: 'ignore' });
+  const port = process.env.PORT ? Number(process.env.PORT) : await getFreePort();
+  const baseURL = `http://127.0.0.1:${port}`;
+  const server = spawn('node', ['pwa/server.cjs'], {
+    cwd: REPO_ROOT,
+    stdio: 'ignore',
+    env: { ...process.env, PORT: String(port) },
+  });
+  const exitState = { exited: false, code: null, signal: null };
+  const serverClosed = new Promise(done => server.on('exit', (code, signal) => {
+    exitState.exited = true;
+    exitState.code = code;
+    exitState.signal = signal;
+    done();
+  }));
+
   const browser = await chromium.launch();
   try {
-    await waitForServer(BASE_URL);
+    await waitForServer(baseURL, exitState);
+    await assertServedBuild(baseURL);
+
     const context = await browser.newContext({ viewport: VIEWPORT });
     const page = await context.newPage();
     await mockSupabase(page);
@@ -75,7 +123,6 @@ async function run() {
         return page.evaluate(() => globalThis.performance?.memory?.usedJSHeapSize ?? 0);
       }
     };
-
     const waitReady = async scope => {
       await page.waitForSelector(
         `${scope} [data-orbit-runtime-host][data-runtime-status="ready"]`,
@@ -83,7 +130,7 @@ async function run() {
       );
     };
 
-    await page.goto(BASE_URL);
+    await page.goto(baseURL);
     await page.waitForSelector('#main-app:not(.hidden)', { timeout: 10_000 });
     await waitReady('[data-orbit-window]');
     await recordCanvas();
@@ -125,8 +172,10 @@ async function run() {
       label: 'BASELINE',
       warning: 'Volatile, environment-dependent synthetic timings. Not a CI gate '
         + 'and not a device FPS/thermal/memory result; those remain human gates.',
+      servedBuild: VERSION_MARKER,
       environment: {
         engine: 'desktop Chromium (Playwright)',
+        serverPort: port,
         viewport: VIEWPORT,
         cpuThrottleRate: CPU_THROTTLE_RATE,
         reducedMotion: true,
@@ -163,11 +212,15 @@ async function run() {
     const outputPath = join(REPO_ROOT, 'docs', 'ps243', 'perf-baseline.json');
     writeFileSync(outputPath, `${JSON.stringify(baseline, null, 2)}\n`);
     console.log(`Wrote ${outputPath}`);
-    console.log(`Full World p75 ${baseline.fullWorldRouteMs.p75}ms · Home p75 ${baseline.homeRouteMs.p75}ms · `
-      + `heap Δ ${baseline.jsHeap.deltaBytes} bytes · single canvas ${baseline.canvas.singleCanvasHeld}`);
+    console.log(`Served ${VERSION_MARKER} on :${port} · Full World p75 ${baseline.fullWorldRouteMs.p75}ms · `
+      + `Home p75 ${baseline.homeRouteMs.p75}ms · heap Δ ${baseline.jsHeap.deltaBytes} bytes · `
+      + `single canvas ${baseline.canvas.singleCanvasHeld}`);
   } finally {
     await browser.close();
-    server.kill();
+    if (!exitState.exited) {
+      server.kill();
+      await serverClosed;
+    }
   }
 }
 

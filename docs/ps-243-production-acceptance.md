@@ -93,15 +93,20 @@ Android and iOS devices.
 
 Reproduced by `npm run ps243:assets`; the raw evidence is committed at
 `docs/ps243/asset-baseline.json` and the budgets are gated by
-`tests/unit/ps243AssetBudget.test.js`. Static sizes are raw repository bytes.
-JavaScript gzip values are deterministic `zlib` level-6 estimates over the exact
-committed file set and are not a replacement for a production network trace.
+`tests/unit/ps243AssetBudget.test.js`. Asset sizes are raw binary bytes; JS bytes
+are read with CRLF normalized to LF so the result equals the committed Git blob
+on Windows and Linux alike (the gzip figures are deterministic `zlib` level-6
+estimates, not a production network trace). The JS file set is the union of
+`pwa/js/personalSpace/v2/**` and the Personal Space modules transitively reached
+from the route entry `pwa/js/pages/personalSpaceV2.js` (adds `personalSpaceV2.js`,
+`unlockRules.js`, `economy.js`, `gameState.js`); every path is listed in the
+artifact.
 
 | Budget | Measured | Target / threshold | Result |
 |---|---:|---:|---|
-| Personal Space V2 application JS gzip estimate (`pwa/js/personalSpace/v2/**`) | 38,097 bytes | part of 300 KB deferred budget | PASS |
-| Vendored Pixi gzip estimate (`pwa/vendor/pixi.js`) | 225,645 bytes | part of 300 KB deferred budget | PASS |
-| Combined deferred V2 + Pixi gzip estimate | 263,742 bytes | 300 KB | PASS |
+| Personal Space V2 application JS gzip estimate (24-file V2 module set) | 49,782 bytes | part of 300 KB deferred budget | PASS |
+| Vendored Pixi gzip estimate (`pwa/vendor/pixi.js`) | 225,428 bytes | part of 300 KB deferred budget | PASS |
+| Combined deferred V2 + Pixi gzip estimate | 275,210 bytes | 300 KB | PASS |
 | Initial background + protagonist | 1,987,696 bytes | 1.5 MB / 2.5 MB hard | FOLLOW-UP: above target, below hard threshold |
 | Complete proof scene + eight manifest props | 2,760,735 bytes | 4 MB / 6 MB hard | PASS |
 

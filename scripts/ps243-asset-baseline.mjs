@@ -22,7 +22,9 @@ if (process.argv.includes('--check')) {
     console.error('docs/ps243/asset-baseline.json is missing. Run `npm run ps243:assets`.');
     process.exit(1);
   }
-  if (existing !== serialized) {
+  // Compare logical content, not line endings: a Windows autocrlf checkout may
+  // smudge the committed JSON to CRLF while the canonical serialization is LF.
+  if (existing.replace(/\r\n/g, '\n') !== serialized) {
     console.error('docs/ps243/asset-baseline.json is stale. Run `npm run ps243:assets`.');
     process.exit(1);
   }

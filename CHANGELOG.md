@@ -16,6 +16,9 @@
 - `edit_mode_opened` telemetry 先前只認 7 個場景，會靜默丟棄 Lv.40+ 的 estate/manager/memory 場景（manager-room、large-office-suite、estate-hall/study/lounge/game-room）；schema 改由 canonical `SCENE_IDS` 建立，涵蓋完整場景清單。
 - Personal Space telemetry 的日期驗證改為 UTC round-trip：`2026-02-31` 等被 JavaScript 正規化的無效日曆日期現在 fail closed，`occurredAt` 統一 canonicalize 為 `toISOString()`。
 - Full World 詳情面板關閉後會把焦點還給開啟它的控制項（WCAG 2.4.3），並支援 `Escape` 關閉；補鍵盤 regression 測試。
+- Asset baseline 改以 CRLF→LF canonical bytes 計算，Windows autocrlf working tree 與 Linux CI 得到相同結果（先前 committed artifact 為 CRLF bytes，導致 Ubuntu freshness test 失敗）；`--check` 與 gate 比對亦 normalize 行尾。
+- 「Personal Space V2 application JS」檔案集合改為 `v2/**` 與 route entry `personalSpaceV2.js` 之 Personal Space transitive closure 的聯集（納入 `unlockRules.js`、`economy.js`、`gameState.js`），artifact 逐一列出每個 JS path。
+- `scripts/ps243-perf-baseline.mjs` 改用 runner-owned free port、監聽 spawned server early-exit、以 `APP_VERSION` marker 確認所量測的是本 checkout，並在 cleanup await server 結束；`pwa/server.cjs` 支援 `PORT` env（預設仍 3000）。
 
 ---
 

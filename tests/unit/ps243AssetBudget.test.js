@@ -40,6 +40,9 @@ describe('PS-243 asset baseline', () => {
       join(REPO_ROOT, 'docs', 'ps243', 'asset-baseline.json'),
       'utf8',
     );
-    expect(committed).toBe(`${JSON.stringify(baseline, null, 2)}\n`);
+    // Normalize line endings: the canonical serialization is LF, but a Windows
+    // autocrlf checkout may present the committed file as CRLF. The point is
+    // that the recorded numbers match a fresh cross-platform computation.
+    expect(committed.replace(/\r\n/g, '\n')).toBe(`${JSON.stringify(baseline, null, 2)}\n`);
   });
 });
