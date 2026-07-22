@@ -1,29 +1,98 @@
 -- ============================================================
--- 011_leaderboard_pro.sql
--- SUB-14 排行榜 Pro 強化：
---   (1) profiles 新增 display_name（全站自訂顯示名稱，Pro 專屬）
---   (2) leaderboard_view 追加 is_pro_active 與（Pro 生效才暴露的）display_name
--- 安全原則：不新增任何寬鬆 policy；display_name 由既有 profiles RLS 保護，
---          排行榜只在「公開且 Pro 生效」時暴露自訂名稱。
+-- 011_leaderboard_pro.sql  (REVISED — server-owned entitlement)
+-- SUB-14 排行榜 Pro 強化。回應 PR #132 review：
+--   Pro entitlement 目前可由使用者自寫（profiles_update 不限欄位），
+--   因此改為 client 不可寫的 server-owned entitlement，再由排行榜讀取。
+-- 安全原則：不放寬任何 policy；authenticated 不得寫 entitlement；
+--   自訂名稱僅在「公開且 Pro 生效」時經 view 暴露。
 -- 執行日期：PENDING REVIEW（尚未於 Supabase 執行）
 -- ============================================================
 
--- ── 1. profiles.display_name ────────────────────────────────
--- 全站自訂顯示名稱。長度上限 20 作為伺服器端防濫用底線；client 另會 trim +
--- 於渲染時 escape。NULL / 空字串 = 未設定，一律回退至 profiles.name。
+-- ── 1. 單一來源的 Pro 生效規則（STABLE function）───────────────
+-- view 與 client 的 my_pro_status() 都用這支，避免 SQL / JS 規則分叉。
+CREATE OR REPLACE FUNCTION is_pro_active(
+  p_is_pro boolean, p_pro_expires_at timestamptz, p_trial_started_at timestamptz
+) RETURNS boolean
+LANGUAGE sql STABLE AS $$
+  SELECT
+    (p_is_pro = true AND (p_pro_expires_at IS NULL OR p_pro_expires_at > now()))
+    OR (p_trial_started_at IS NOT NULL AND p_trial_started_at > now() - INTERVAL '15 days');
+$$;
+
+-- ── 2. Server-owned entitlement table ───────────────────────
+-- authenticated 只能「讀自己的」；沒有任何 write policy → insert/update/delete
+-- 一律被 RLS 拒絕，只有 service_role（繞過 RLS）或下方 SECURITY DEFINER RPC 能寫。
+CREATE TABLE IF NOT EXISTS entitlements (
+  user_id          uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  is_pro           boolean     NOT NULL DEFAULT false,
+  pro_expires_at   timestamptz,            -- NULL = 永久（僅在 is_pro 時有意義）
+  trial_started_at timestamptz,            -- 由 start_trial() 設定，一次性
+  updated_at       timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE entitlements ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "entitlements_select" ON entitlements
+  FOR SELECT TO authenticated
+  USING (auth.uid() = user_id);
+-- 刻意不建立 INSERT / UPDATE / DELETE policy → authenticated 無法自行取得 Pro。
+
+-- Backfill：把既有 profiles 的 Pro 狀態搬進 entitlements（過渡期用；
+-- 之後 client 不再讀寫 profiles.is_pro，未來 migration 再考慮移除該些欄位）。
+INSERT INTO entitlements (user_id, is_pro, pro_expires_at, trial_started_at)
+SELECT user_id, is_pro, pro_expires_at, trial_started_at FROM profiles
+ON CONFLICT (user_id) DO NOTHING;
+
+-- ── 3. 受控 trial：once-only，伺服器寫時間 ────────────────────
+-- client 只能「開始試用」，不能傳入時間、也不能重開；付費 Pro 仍須由受信任
+-- 後端 / service_role 寫入（見文件「待決定：付費 Pro 授予路徑」）。
+CREATE OR REPLACE FUNCTION start_trial()
+RETURNS timestamptz
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE started timestamptz;
+BEGIN
+  INSERT INTO entitlements (user_id, trial_started_at)
+    VALUES (auth.uid(), now())
+  ON CONFLICT (user_id) DO UPDATE
+    SET trial_started_at = COALESCE(entitlements.trial_started_at, now()),
+        updated_at = now()
+  RETURNING trial_started_at INTO started;
+  RETURN started;
+END;
+$$;
+REVOKE ALL ON FUNCTION start_trial() FROM public;
+GRANT EXECUTE ON FUNCTION start_trial() TO authenticated;
+
+-- current-user 讀自己的 server-authoritative Pro 狀態（供 client isProUser()）。
+CREATE OR REPLACE FUNCTION my_pro_status()
+RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT COALESCE(
+    (SELECT is_pro_active(e.is_pro, e.pro_expires_at, e.trial_started_at)
+     FROM entitlements e WHERE e.user_id = auth.uid()),
+    false);
+$$;
+REVOKE ALL ON FUNCTION my_pro_status() FROM public;
+GRANT EXECUTE ON FUNCTION my_pro_status() TO authenticated;
+
+-- ── 4. profiles.display_name（使用者內容，可自寫；Pro 閘在 view）─
+-- 長度 ≤ 20，拒絕控制字元 / 換行（emoji 允許）；client 另會 trim 並於渲染 escape。
 ALTER TABLE profiles
   ADD COLUMN IF NOT EXISTS display_name text
-  CHECK (display_name IS NULL OR char_length(display_name) <= 20);
+  CHECK (
+    display_name IS NULL
+    OR (char_length(display_name) <= 20 AND display_name !~ '[[:cntrl:]]')
+  );
 
 COMMENT ON COLUMN profiles.display_name IS
-  'SUB-14 Pro 自訂顯示名稱（全站）；NULL/空 = 回退 name。僅在 Pro 生效時對外顯示。';
+  'SUB-14 Pro 全站自訂顯示名稱；NULL/空 = 回退 name。僅在 Pro 生效時對外顯示。';
 
--- ── 2. leaderboard_view ─────────────────────────────────────
--- 沿用原有欄位順序，於尾端追加 is_pro_active 與 display_name（CREATE OR REPLACE
--- VIEW 不允許在既有欄位中間插入欄位）。is_pro_active 於伺服器端精確複製 client 的
--- isProUser()：付費（未過期或永久）或 15 天試用期內。display_name 只在 Pro 生效
--- 時暴露；Pro 失效後自動回退，非 Pro 使用者一律 NULL（不外洩）。
-CREATE OR REPLACE VIEW leaderboard_view AS
+-- ── 5. leaderboard_view：is_pro_active 讀 entitlements ───────
+-- security_barrier 防止外部條件在過濾前被下推而 leak（reviewer 建議）。
+-- 安全邊界＝顯式欄位清單 + WHERE is_public = true（見文件；view 為 security
+-- definer，本來就不沿用底層 RLS，這正是排行榜能跨使用者彙整公開資料的原因）。
+CREATE OR REPLACE VIEW leaderboard_view
+WITH (security_barrier = true) AS
 SELECT
   base.user_id,
   base.name,
@@ -37,36 +106,26 @@ SELECT
   CASE WHEN base.is_pro_active THEN NULLIF(btrim(base.display_name), '') END AS display_name
 FROM (
   SELECT
-    p.user_id,
-    p.name,
-    p.total_xp,
-    p.streak_days,
-    p.mode,
-    p.created_at,
-    COALESCE(w.week_xp, 0) AS week_xp,
-    p.avatar_url,
-    p.display_name,
-    (
-      (p.is_pro = true AND (p.pro_expires_at IS NULL OR p.pro_expires_at > now()))
-      OR (p.trial_started_at IS NOT NULL AND p.trial_started_at > now() - INTERVAL '15 days')
-    ) AS is_pro_active
+    p.user_id, p.name, p.total_xp, p.streak_days, p.mode, p.created_at,
+    COALESCE(w.week_xp, 0) AS week_xp, p.avatar_url, p.display_name,
+    is_pro_active(e.is_pro, e.pro_expires_at, e.trial_started_at) AS is_pro_active
   FROM profiles p
+  LEFT JOIN entitlements e ON e.user_id = p.user_id
   LEFT JOIN (
-    SELECT
-      user_id,
-      SUM(final_xp) AS week_xp
+    SELECT user_id, SUM(final_xp) AS week_xp
     FROM sessions
-    WHERE date >= CURRENT_DATE - INTERVAL '6 days'
-      AND is_productive_xp = true
+    WHERE date >= CURRENT_DATE - INTERVAL '6 days' AND is_productive_xp = true
     GROUP BY user_id
   ) w ON w.user_id = p.user_id
   WHERE p.is_public = true
 ) base;
 
--- Views 沿用底層 table RLS；重新授權 SELECT 給 authenticated（與 005/010 一致）。
 GRANT SELECT ON leaderboard_view TO authenticated;
 
--- ── Rollback（如需回退）────────────────────────────────────
--- 1. 還原為 010 版 leaderboard_view（不含 is_pro_active / display_name）。
--- 2. ALTER TABLE profiles DROP COLUMN IF EXISTS display_name;
---    （移除欄位前，client 需先停止讀寫 display_name。）
+-- ── Rollback ────────────────────────────────────────────────
+-- 1. 還原 010 版 leaderboard_view。
+-- 2. DROP FUNCTION my_pro_status(); DROP FUNCTION start_trial();
+--    DROP FUNCTION is_pro_active(boolean, timestamptz, timestamptz);
+-- 3. DROP TABLE entitlements;
+-- 4. ALTER TABLE profiles DROP COLUMN IF EXISTS display_name;
+--    （client 需先停止讀寫 display_name / entitlements。）
