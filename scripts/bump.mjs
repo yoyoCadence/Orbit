@@ -3,12 +3,15 @@
  * Usage: node scripts/bump.mjs [patch|minor|major]
  * Default: patch
  *
- * Updates package.json version, pwa/js/app.js APP_VERSION,
- * pwa/sw.js CACHE, and prepends a CHANGELOG stub in one atomic pass.
+ * Atomically syncs the version across package.json, pwa/js/version.js
+ * APP_VERSION, pwa/sw.js CACHE, package-lock.json and ROADMAP.md, then prepends
+ * a CHANGELOG stub. Fail-closed: if any versioned marker is missing the process
+ * exits non-zero so a partial bump is never reported as success.
  */
 import { readFileSync, writeFileSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { replaceInFile, syncPackageLock, syncRoadmapVersion } from './bumpLib.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const arg  = process.argv[2] ?? 'patch';
@@ -36,34 +39,30 @@ writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf8');
 console.log(`package.json  ${prevVStr} → ${nextVStr}`);
 
 // ── 2. pwa/js/version.js ─────────────────────────────────────────────────────
-const appPath = resolve(ROOT, 'pwa/js/version.js');
-const appSrc  = readFileSync(appPath, 'utf8');
-const appNext = appSrc.replace(
+replaceInFile(
+  resolve(ROOT, 'pwa/js/version.js'),
   /export const APP_VERSION = 'v[\d.]+';/,
-  `export const APP_VERSION = '${nextVStr}';`
+  `export const APP_VERSION = '${nextVStr}';`,
 );
-if (appNext === appSrc) {
-  console.error('WARN: APP_VERSION not updated — pattern not found in pwa/js/version.js');
-} else {
-  writeFileSync(appPath, appNext, 'utf8');
-  console.log(`pwa/js/version.js ${prevVStr} → ${nextVStr}`);
-}
+console.log(`pwa/js/version.js ${prevVStr} → ${nextVStr}`);
 
 // ── 3. pwa/sw.js ─────────────────────────────────────────────────────────────
-const swPath = resolve(ROOT, 'pwa/sw.js');
-const swSrc  = readFileSync(swPath, 'utf8');
-const swNext = swSrc.replace(
+replaceInFile(
+  resolve(ROOT, 'pwa/sw.js'),
   /const CACHE = 'orbit-v[\d.]+';/,
-  `const CACHE = 'orbit-${nextVStr}';`
+  `const CACHE = 'orbit-${nextVStr}';`,
 );
-if (swNext === swSrc) {
-  console.error('WARN: CACHE not updated — pattern not found in pwa/sw.js');
-} else {
-  writeFileSync(swPath, swNext, 'utf8');
-  console.log(`pwa/sw.js     orbit-${prevVStr} → orbit-${nextVStr}`);
-}
+console.log(`pwa/sw.js     orbit-${prevVStr} → orbit-${nextVStr}`);
 
-// ── 4. CHANGELOG.md stub ─────────────────────────────────────────────────────
+// ── 4. package-lock.json ──────────────────────────────────────────────────────
+syncPackageLock(ROOT, nextVersion);
+console.log(`package-lock.json ${prevVStr} → ${nextVStr}`);
+
+// ── 5. ROADMAP.md 目前版本 ────────────────────────────────────────────────────
+syncRoadmapVersion(ROOT, nextVStr);
+console.log(`ROADMAP.md    ${prevVStr} → ${nextVStr}`);
+
+// ── 6. CHANGELOG.md stub ─────────────────────────────────────────────────────
 const clPath = resolve(ROOT, 'CHANGELOG.md');
 const clSrc  = readFileSync(clPath, 'utf8');
 const today  = new Date().toISOString().slice(0, 10);
