@@ -334,6 +334,8 @@ test.describe('Personal Space V2 垂直切片', () => {
   });
 
   test('suspends offscreen and keeps one canvas through repeated Home and World routes', async ({ page }) => {
+    // Multiple route loops + Pixi suspend/resume; give CI headroom over the 15s default.
+    test.setTimeout(45000);
     let orbit = page.locator('[data-orbit-window]');
     let runtimeHost = orbit.locator('[data-orbit-runtime-host]');
     await expect(runtimeHost).toHaveAttribute('data-runtime-status', 'ready', { timeout: 8000 });
