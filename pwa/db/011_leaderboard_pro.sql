@@ -10,19 +10,28 @@
 
 -- ── 1. 單一來源的 Pro 生效規則（STABLE function）───────────────
 -- view 與 client 的 my_pro_status() 都用這支，避免 SQL / JS 規則分叉。
-CREATE OR REPLACE FUNCTION is_pro_active(
+-- Fail closed：整體 COALESCE(..., false) 保證回傳非 NULL boolean（無 entitlement
+-- row 時也是 false）；trial 加 <= now() 上界，未來時間戳不得判為 Pro。
+CREATE OR REPLACE FUNCTION public.is_pro_active(
   p_is_pro boolean, p_pro_expires_at timestamptz, p_trial_started_at timestamptz
 ) RETURNS boolean
-LANGUAGE sql STABLE AS $$
-  SELECT
+LANGUAGE sql STABLE
+SET search_path = ''
+AS $$
+  SELECT COALESCE(
     (p_is_pro = true AND (p_pro_expires_at IS NULL OR p_pro_expires_at > now()))
-    OR (p_trial_started_at IS NOT NULL AND p_trial_started_at > now() - INTERVAL '15 days');
+    OR (p_trial_started_at IS NOT NULL
+        AND p_trial_started_at <= now()
+        AND p_trial_started_at > now() - INTERVAL '15 days'),
+    false);
 $$;
+REVOKE ALL ON FUNCTION public.is_pro_active(boolean, timestamptz, timestamptz) FROM public, anon;
+GRANT EXECUTE ON FUNCTION public.is_pro_active(boolean, timestamptz, timestamptz) TO authenticated;
 
 -- ── 2. Server-owned entitlement table ───────────────────────
 -- authenticated 只能「讀自己的」；沒有任何 write policy → insert/update/delete
 -- 一律被 RLS 拒絕，只有 service_role（繞過 RLS）或下方 SECURITY DEFINER RPC 能寫。
-CREATE TABLE IF NOT EXISTS entitlements (
+CREATE TABLE IF NOT EXISTS public.entitlements (
   user_id          uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   is_pro           boolean     NOT NULL DEFAULT false,
   pro_expires_at   timestamptz,            -- NULL = 永久（僅在 is_pro 時有意義）
@@ -30,50 +39,58 @@ CREATE TABLE IF NOT EXISTS entitlements (
   updated_at       timestamptz NOT NULL DEFAULT now()
 );
 
-ALTER TABLE entitlements ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.entitlements ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "entitlements_select" ON entitlements
+CREATE POLICY "entitlements_select" ON public.entitlements
   FOR SELECT TO authenticated
   USING (auth.uid() = user_id);
 -- 刻意不建立 INSERT / UPDATE / DELETE policy → authenticated 無法自行取得 Pro。
 
--- Backfill：把既有 profiles 的 Pro 狀態搬進 entitlements（過渡期用；
--- 之後 client 不再讀寫 profiles.is_pro，未來 migration 再考慮移除該些欄位）。
-INSERT INTO entitlements (user_id, is_pro, pro_expires_at, trial_started_at)
-SELECT user_id, is_pro, pro_expires_at, trial_started_at FROM profiles
-ON CONFLICT (user_id) DO NOTHING;
+-- 雙層防護：table privileges + RLS。service_role 兩者皆繞過。
+REVOKE ALL ON public.entitlements FROM anon, authenticated;
+GRANT SELECT ON public.entitlements TO authenticated;
+
+-- 刻意「不」backfill：profiles.is_pro / pro_expires_at / trial_started_at 在本
+-- migration 前可由 authenticated 自寫，照搬會把偽造的 lifetime Pro / 未來 trial
+-- 洗成 server-owned entitlement，與 hardening 目的衝突。使用安全預設（無 row =
+-- 非 Pro）；試用由 start_trial() 按需建立；已知合法付費 Pro 由管理員以 service_role
+-- 依人工核准清單另行 seed。pre-production 既有 trial 於 cutover 後由使用者重開一次。
 
 -- ── 3. 受控 trial：once-only，伺服器寫時間 ────────────────────
 -- client 只能「開始試用」，不能傳入時間、也不能重開；付費 Pro 仍須由受信任
 -- 後端 / service_role 寫入（見文件「待決定：付費 Pro 授予路徑」）。
-CREATE OR REPLACE FUNCTION start_trial()
+CREATE OR REPLACE FUNCTION public.start_trial()
 RETURNS timestamptz
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = ''
+AS $$
 DECLARE started timestamptz;
 BEGIN
-  INSERT INTO entitlements (user_id, trial_started_at)
+  INSERT INTO public.entitlements AS e (user_id, trial_started_at)
     VALUES (auth.uid(), now())
   ON CONFLICT (user_id) DO UPDATE
-    SET trial_started_at = COALESCE(entitlements.trial_started_at, now()),
+    SET trial_started_at = COALESCE(e.trial_started_at, EXCLUDED.trial_started_at),
         updated_at = now()
-  RETURNING trial_started_at INTO started;
+  RETURNING e.trial_started_at INTO started;
   RETURN started;
 END;
 $$;
-REVOKE ALL ON FUNCTION start_trial() FROM public;
-GRANT EXECUTE ON FUNCTION start_trial() TO authenticated;
+REVOKE ALL ON FUNCTION public.start_trial() FROM public, anon;
+GRANT EXECUTE ON FUNCTION public.start_trial() TO authenticated;
 
 -- current-user 讀自己的 server-authoritative Pro 狀態（供 client isProUser()）。
-CREATE OR REPLACE FUNCTION my_pro_status()
+CREATE OR REPLACE FUNCTION public.my_pro_status()
 RETURNS boolean
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = ''
+AS $$
   SELECT COALESCE(
-    (SELECT is_pro_active(e.is_pro, e.pro_expires_at, e.trial_started_at)
-     FROM entitlements e WHERE e.user_id = auth.uid()),
+    (SELECT public.is_pro_active(e.is_pro, e.pro_expires_at, e.trial_started_at)
+     FROM public.entitlements e WHERE e.user_id = auth.uid()),
     false);
 $$;
-REVOKE ALL ON FUNCTION my_pro_status() FROM public;
-GRANT EXECUTE ON FUNCTION my_pro_status() TO authenticated;
+REVOKE ALL ON FUNCTION public.my_pro_status() FROM public, anon;
+GRANT EXECUTE ON FUNCTION public.my_pro_status() TO authenticated;
 
 -- ── 4. profiles.display_name（使用者內容，可自寫；Pro 閘在 view）─
 -- 長度 ≤ 20，拒絕控制字元 / 換行（emoji 允許）；client 另會 trim 並於渲染 escape。
@@ -108,7 +125,7 @@ FROM (
   SELECT
     p.user_id, p.name, p.total_xp, p.streak_days, p.mode, p.created_at,
     COALESCE(w.week_xp, 0) AS week_xp, p.avatar_url, p.display_name,
-    is_pro_active(e.is_pro, e.pro_expires_at, e.trial_started_at) AS is_pro_active
+    public.is_pro_active(e.is_pro, e.pro_expires_at, e.trial_started_at) AS is_pro_active
   FROM profiles p
   LEFT JOIN entitlements e ON e.user_id = p.user_id
   LEFT JOIN (

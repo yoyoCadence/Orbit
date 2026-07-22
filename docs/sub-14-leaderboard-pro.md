@@ -1,8 +1,9 @@
-# SUB-14 排行榜 Pro 強化 — Migration 提案 v2（送審）
+# SUB-14 排行榜 Pro 強化 — Migration 提案 v3（送審）
 
 - 狀態：**提案中；reviewer 確認 schema 後才實作 client 並執行 migration。migration 尚未於 Supabase 執行。**
 - 分支：`feat/sub-14-leaderboard-pro`；Migration：[`pwa/db/011_leaderboard_pro.sql`](../pwa/db/011_leaderboard_pro.sql)
-- v2 變更：回應 PR #132 review — entitlement 改 server-owned、修正 view 安全模型敘述、補驗證清單。
+- v2：entitlement 改 server-owned、修正 view 安全模型敘述、補驗證清單。
+- v3（本次，回應第二輪 review）：**不 backfill** 不可信 profiles Pro 值；SECURITY DEFINER 收緊（`search_path = ''` + schema qualification + 顯式權限契約）；`is_pro_active` **fail closed**（非 NULL boolean）＋ trial `<= now()` 上界；補「無 row → false」「未來 trial → false」驗證項；付費 Pro 路徑已拍板。
 
 ## 功能範圍
 
@@ -15,12 +16,17 @@ reviewer 的 P1「Pro entitlement 可被使用者偽造」其實是**整個 Pro 
 
 ## Schema 變更（server-owned entitlement）
 
-1. **`is_pro_active(is_pro, pro_expires_at, trial_started_at)` STABLE function** — 單一來源的 Pro 生效規則（付費未過期/永久，或 15 天試用內）；view 與 client 的 `my_pro_status()` 共用，避免 SQL/JS 規則分叉（對應 reviewer 對「不要 generated column、可用 view/STABLE function」的答覆）。
-2. **`entitlements` table（server-owned）** — `user_id` PK、`is_pro`、`pro_expires_at`、`trial_started_at`、`updated_at`。RLS：**只給 `SELECT` own row，不建立任何 write policy** → authenticated 無法 insert/update/delete，只有 `service_role` 或下述 SECURITY DEFINER RPC 能寫。含自 `profiles` 的 backfill。
-3. **`start_trial()` SECURITY DEFINER RPC** — client 只能「開始試用」，伺服器寫入 `now()` 且 `COALESCE` 保證一次性；不接受 client 傳入時間。
-4. **`my_pro_status()` SECURITY DEFINER RPC** — 讓 current-user 讀自己的 server-authoritative Pro 狀態，供 client `isProUser()` 使用（同一份規則）。
-5. **`profiles.display_name`** — 使用者內容（可自寫），`CHECK` 長度 ≤ 20 且拒絕控制字元/換行（emoji 允許）；client 另會 trim、渲染時 escape。
-6. **`leaderboard_view`（`security_barrier = true`）** — `is_pro_active` 改由 join `entitlements` 計算；`display_name` 只在 `is_pro_active` 時經 `CASE`＋`NULLIF(btrim(...),'')` 暴露。
+1. **`is_pro_active(...)` STABLE function（fail closed）** — 單一來源的 Pro 生效規則；view 與 `my_pro_status()` 共用，避免 SQL/JS 分叉。整體 `COALESCE(..., false)` 保證回傳非 NULL boolean（**無 entitlement row → false**）；trial 加 `<= now()` 上界，**未來時間戳不判為 Pro**。
+2. **`entitlements` table（server-owned）** — `user_id` PK、`is_pro`、`pro_expires_at`、`trial_started_at`、`updated_at`。**雙層防護**：table privileges（`REVOKE ALL FROM anon, authenticated` 後只 `GRANT SELECT` 給 authenticated）＋ RLS（只 `SELECT` own row、無 write policy）→ authenticated 無法自寫 Pro，只有 `service_role`／SECURITY DEFINER RPC 能寫。**刻意不 backfill**（見下）。
+3. **`start_trial()` SECURITY DEFINER RPC** — client 只能「開始試用」，伺服器寫 `now()`、`COALESCE` 保證一次性、不接受 client 傳入時間。
+4. **`my_pro_status()` SECURITY DEFINER RPC** — current-user 讀自己的 server-authoritative Pro 狀態，供 client `isProUser()`（同一份規則）。
+5. **SECURITY DEFINER hardening** — 兩支 RPC 皆 `SET search_path = ''` 並完整 schema qualification（`public.entitlements`、`public.is_pro_active(...)`、`auth.uid()`）；RPC 權限 `REVOKE FROM public, anon` 後只 `GRANT EXECUTE` 給 authenticated（[Supabase 官方建議](https://supabase.com/docs/guides/database/functions#security-definer-vs-invoker)）。
+6. **`profiles.display_name`** — 使用者內容（可自寫），`CHECK` 長度 ≤ 20 且拒絕控制字元/換行（emoji 允許）；client 另會 trim、渲染時 escape。
+7. **`leaderboard_view`（`security_barrier = true`）** — `is_pro_active` 改由 join `entitlements` 計算；`display_name` 只在 `is_pro_active` 時經 `CASE`＋`NULLIF(btrim(...),'')` 暴露。
+
+### 不 backfill（reviewer 決策）
+
+`profiles.is_pro/pro_expires_at/trial_started_at` 在本 migration 前可由 authenticated 自寫，若 `INSERT ... SELECT FROM profiles` 會把**偽造的 lifetime Pro／未來 trial 洗成可信 entitlement**。因此 **011 不 backfill 任何 Pro 值**：用安全預設（無 row = 非 Pro）；試用由 `start_trial()` 按需建立；已知合法付費 Pro 由管理員以 `service_role` 依人工核准清單另行 seed；pre-production 既有 trial 於 cutover 後由使用者重開一次，換取乾淨信任邊界。
 
 ## View 安全模型（修正先前錯誤敘述）
 
@@ -39,12 +45,18 @@ reviewer 的 P1「Pro entitlement 可被使用者偽造」其實是**整個 Pro 
 2. A **看不到**未公開的 C（`is_public = false`）。
 3. 非 Pro（或未設定）使用者的 `display_name` 為 `NULL`。
 4. Pro 到期後，該使用者的 `is_pro_active` 轉 false、`display_name` 自動回退。
-5. 一般 authenticated **無法**改自己的 entitlement（insert/update/delete 皆被 RLS 拒絕）；`start_trial()` 只能開始一次。
+5. 一般 authenticated **無法**改自己的 entitlement（insert/update/delete 皆被 RLS + table privileges 拒絕）；`start_trial()` 只能開始一次。
 6. A **無法**改 B 的 `display_name`（`profiles_update` 仍 `auth.uid() = user_id`）。
+7. **無 entitlement row** 的公開使用者 → `is_pro_active` 為 `false`（非 NULL）。
+8. **未來的 `trial_started_at`**（例：偽造）→ `is_pro_active` 為 `false`。
 
-## 待決定：付費 Pro 授予路徑（需 product / reviewer 拍板）
+## 付費 Pro 授予路徑（reviewer 已拍板）
 
-entitlement 改 server-owned 後，**client 不能再自行寫 `is_pro`**。試用已由 `start_trial()` RPC 解決，但**付費 Pro 需要一個受信任的寫入者**（service_role）：Supabase Edge Function／webhook（金流回呼）／或人工 admin。目前 app 是純 client PWA，尚無此後端。這是本提案唯一的架構性未決點；在拍板前，付費 Pro 可先由人工 service_role 授予。
+entitlement 改 server-owned 後，**client 不能再自行寫 `is_pro`**。試用已由 `start_trial()` RPC 解決。付費 Pro：
+
+- **目前開發階段**：由管理員以 `service_role` 在 SQL Editor 依人工核准清單授予（`service_role` **永不進 client**）。
+- **真正開放購買前**：必須改為 **Supabase Edge Function + 金流 webhook 的冪等授權**。
+- ⚠️ 本 PR 明載：**尚不可提供真實付費購買**；此限制不阻擋 schema / client slice。
 
 ## Client 變更計畫（schema 確認後才動工）
 
