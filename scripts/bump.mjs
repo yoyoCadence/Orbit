@@ -81,4 +81,30 @@ if (clNext === clSrc) {
 }
 console.log(`CHANGELOG.md  stub [${nextVersion}] added`);
 
+// ── 5. package-lock.json ──────────────────────────────────────────────────────
+const lockPath = resolve(ROOT, 'package-lock.json');
+try {
+  const lock = JSON.parse(readFileSync(lockPath, 'utf8'));
+  lock.version = nextVersion;
+  if (lock.packages && lock.packages['']) lock.packages[''].version = nextVersion;
+  writeFileSync(lockPath, JSON.stringify(lock, null, 2) + '\n', 'utf8');
+  console.log(`package-lock.json ${prevVStr} → ${nextVStr}`);
+} catch {
+  console.error('WARN: package-lock.json not updated — could not read/parse it');
+}
+
+// ── 6. ROADMAP.md 目前版本 ────────────────────────────────────────────────────
+const roadmapPath = resolve(ROOT, 'ROADMAP.md');
+const roadmapSrc = readFileSync(roadmapPath, 'utf8');
+const roadmapNext = roadmapSrc.replace(
+  /目前版本：\*\*v[\d.]+\*\*/,
+  `目前版本：**${nextVStr}**`
+);
+if (roadmapNext === roadmapSrc) {
+  console.error('WARN: 目前版本 not updated — pattern not found in ROADMAP.md');
+} else {
+  writeFileSync(roadmapPath, roadmapNext, 'utf8');
+  console.log(`ROADMAP.md    ${prevVStr} → ${nextVStr}`);
+}
+
 console.log(`\nDone! Next: fill in CHANGELOG.md, then commit & PR.`);

@@ -1,8 +1,8 @@
 # Orbit Roadmap
 
-> 2026-07-18 sync note: Personal Space V2 工程垂直切片與 PS-240 merge hardening 已透過 PR #129 併入 main；PS-243 正建立瀏覽器 acceptance baseline 與真機證據矩陣。最終 action art 仍由 PS-242 負責，legacy runtime 繼續保留為 fallback。
+> 2026-07-22 sync note: PS-243 的瀏覽器 acceptance 自動化基線與 telemetry 隱私修正已透過 PR #130 併入 main（v1.21.2）；deterministic viewport/asset gate 已進 CI，真機、installed PWA、雙帳號與輔助科技 human gate 仍待人工驗證。最終 action art 仍由 PS-242 負責，legacy runtime 繼續保留為 fallback。
 
-目前版本：**v1.21.1**
+目前版本：**v1.21.2**
 
 這份文件記錄 Orbit 的公開功能規劃方向。功能依優先順序排列，會隨專案進展持續更新。
 
@@ -10,7 +10,7 @@
 
 ## 近期（v1.21.x）
 
-- **Personal Space V2 production acceptance（PS-242／PS-243）** — PS-243 進行瀏覽器 baseline、低階手機實測、鍵盤／reduced-motion 與 telemetry 驗證；PS-242 負責最終 3:2 action art。未完成前不把 `fallback-proof` 素材標示為 final production art
+- **Personal Space V2 production acceptance（PS-242／PS-243）** — PS-243 的瀏覽器 baseline、鍵盤／reduced-motion／telemetry 驗證與可重現 asset／perf runner 已併入（v1.21.2，deterministic gate 進 CI）；低階手機實測、installed PWA、雙帳號與螢幕閱讀器等 human gate 仍待人工完成。PS-242 負責最終 3:2 action art。未完成前不把 `fallback-proof` 素材標示為 final production art
 
 - [x] **SUB-13 資料匯出** — 一鍵匯出所有打卡紀錄為 CSV（Pro 專屬）
 
