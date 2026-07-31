@@ -9,23 +9,23 @@ import {
 
 // PS-243 deterministic asset gate. Unlike the volatile route timings, raw asset
 // bytes are a pure function of committed files, so these are real CI gates: a
-// regression that inflates the proof scene or the deferred bundle fails here.
+// regression that inflates the production scene or the deferred bundle fails here.
 describe('PS-243 asset baseline', () => {
   const baseline = computeAssetBaseline();
 
-  it('locks the reproducible first-paint asset bytes below the hard fallback ceiling', () => {
+  it('keeps the PS-242 production first paint below the authored-art target', () => {
     const { initialPaint } = baseline.runtimeSceneAssets;
-    expect(initialPaint.totalBytes).toBe(1_987_696);
-    expect(initialPaint.totalBytes).toBeLessThan(BUDGETS.initialPaint.hardThresholdBytes);
-    // Honestly recorded as FOLLOW-UP: above the 1.5 MB authored-art target,
-    // still below the 2.5 MB fallback ceiling. PS-242 owns the final art.
-    expect(initialPaint.result).toBe('FOLLOW-UP');
+    expect(initialPaint.totalBytes).toBe(259_133);
+    expect(initialPaint.totalBytes).toBeLessThan(BUDGETS.initialPaint.targetBytes);
+    expect(initialPaint.result).toBe('PASS');
   });
 
-  it('keeps the complete proof scene plus eight props within budget', () => {
+  it('keeps the complete production state pack plus eight props within budget', () => {
     const { completeProofScene } = baseline.runtimeSceneAssets;
-    expect(completeProofScene.totalBytes).toBe(2_760_735);
-    expect(completeProofScene.files).toHaveLength(10); // background + protagonist + 8 props
+    expect(completeProofScene.totalBytes).toBe(1_766_935);
+    // Legacy evidence key retained for artifact compatibility: 1 background,
+    // 12 protagonist poses, 6 Companion states, 2 weather overlays, and 8 props.
+    expect(completeProofScene.files).toHaveLength(29);
     expect(completeProofScene.result).toBe('PASS');
   });
 

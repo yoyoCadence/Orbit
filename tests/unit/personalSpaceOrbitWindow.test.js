@@ -3,7 +3,14 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { getWorkspaceSceneAssets } from '../../pwa/js/personalSpace/v2/content/assetManifest.js';
+import {
+  getWorkspaceAssetManifestPaths,
+  getWorkspaceSceneAssets,
+  resolveWorkspaceVisualState,
+  WORKSPACE_INITIAL_PAINT_ASSETS,
+  WORKSPACE_V2_ASSETS,
+  WORKSPACE_VISUAL_STATES,
+} from '../../pwa/js/personalSpace/v2/content/assetManifest.js';
 import {
   getRevealDurationMs,
   mountOrbitWindow,
@@ -41,6 +48,9 @@ describe('Personal Space V2 Orbit Window', () => {
 
   it('uses cumulative five-stage Workspace Upgrade visuals', () => {
     const initial = getWorkspaceSceneAssets(0);
+    expect(initial.status).toBe('production');
+    expect(initial.dimensions).toEqual({ width: 1536, height: 1024 });
+    expect(initial.background).toContain('/v2/workspace/backgrounds/');
     expect(initial.props).toHaveLength(0);
     expect(initial.protagonistPlacement.width).toBeGreaterThanOrEqual(17);
     expect(initial.companionPlacement.width).toBeGreaterThanOrEqual(9);
@@ -50,6 +60,34 @@ describe('Personal Space V2 Orbit Window', () => {
     const completed = getWorkspaceSceneAssets(100).props.map(item => item.id);
     expect(completed).toContain('dual-monitor');
     expect(completed).not.toContain('single-monitor');
+  });
+
+  it('keeps the manifest contract while resolving every production state on demand', () => {
+    expect(WORKSPACE_V2_ASSETS.status).toBe('production');
+    expect(WORKSPACE_INITIAL_PAINT_ASSETS).toHaveLength(4);
+    expect(getWorkspaceAssetManifestPaths()).toHaveLength(29);
+    expect(new Set(getWorkspaceAssetManifestPaths()).size).toBe(29);
+    expect(WORKSPACE_VISUAL_STATES.protagonist).toEqual([
+      'idle', 'work', 'celebrate', 'rest', 'walk', 'inspect',
+    ]);
+
+    const resolved = resolveWorkspaceVisualState({
+      protagonist: { state: 'inspect', facing: 'right' },
+      companion: { state: 'remind' },
+      weather: 'rain',
+    });
+    expect(resolved.protagonist.path).toContain('player-default-inspect-right.png');
+    expect(resolved.companion.path).toContain('orbit-guide-remind.png');
+    expect(resolved.weather.path).toContain('weather-building-rain.png');
+
+    const safeFallback = resolveWorkspaceVisualState({
+      protagonist: { state: 'unknown', facing: 'up' },
+      companion: { state: 'idle' },
+      weather: 'storm',
+    });
+    expect(safeFallback.protagonist).toMatchObject({ state: 'idle', facing: 'left' });
+    expect(safeFallback.companion.state).toBe('observe');
+    expect(safeFallback.weather.state).toBe('clear');
   });
 
   it('normalizes persisted placement values before composing inline styles', () => {
@@ -86,7 +124,7 @@ describe('Personal Space V2 Orbit Window', () => {
   it('projects protagonist, Companion, weather, and distinct reveal tiers into the shared surface', () => {
     const host = document.createElement('div');
     host.innerHTML = renderOrbitWindow({
-      playerState: 'work',
+      protagonist: { state: 'work', facing: 'right' },
       companion: { state: 'remind' },
       weather: 'rain',
       pendingReveal: { id: 'major-1', kind: 'major', title: '新區域開放' },
@@ -97,6 +135,9 @@ describe('Personal Space V2 Orbit Window', () => {
     expect(root.dataset.companionState).toBe('remind');
     expect(root.dataset.weather).toBe('rain');
     expect(root.dataset.revealKind).toBe('major');
+    expect(root.querySelector('.orbit-window-protagonist').src).toContain('player-default-work-right.png');
+    expect(root.querySelector('.orbit-window-companion').src).toContain('orbit-guide-remind.png');
+    expect(root.querySelector('.orbit-window-weather').src).toContain('weather-building-rain.png');
     expect(root.querySelector('.orbit-window-major-reveal')).not.toBeNull();
     expect(root.querySelector('[data-weather="rain"]')).not.toBeNull();
     expect(getRevealDurationMs('small')).toBeLessThan(getRevealDurationMs('medium'));

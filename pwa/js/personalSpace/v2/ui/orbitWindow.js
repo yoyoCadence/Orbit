@@ -29,7 +29,7 @@ export function getRevealDurationMs(kind, reducedMotion = false) {
 
 export function renderOrbitWindow(inputModel = {}, options = {}) {
   const model = normalizeOrbitWindowModel(inputModel, options.renderMode);
-  const scene = getWorkspaceSceneAssets(model.activeProject.progress, model.placements);
+  const scene = getWorkspaceSceneAssets(model.activeProject.progress, model.placements, model);
   const rewardLines = buildRewardLines(model.pendingReveal);
   const revealKind = model.pendingReveal?.kind || null;
 
@@ -66,12 +66,21 @@ export function renderOrbitWindow(inputModel = {}, options = {}) {
               draggable="false"
               style="${placementStyle(scene.protagonistPlacement)}"
             >
-            <span
+            <img
               class="orbit-window-companion"
               data-companion-state="${escapeHtml(model.companion.state)}"
+              src="${escapeHtml(scene.companion.path)}"
+              alt=""
+              draggable="false"
               style="${placementStyle(scene.companionPlacement)}"
-            ><span></span></span>
-            <span class="orbit-window-weather" data-weather="${escapeHtml(model.weather)}"></span>
+            >
+            <img
+              class="orbit-window-weather"
+              data-weather="${escapeHtml(model.weather)}"
+              src="${escapeHtml(scene.weatherOverlay)}"
+              alt=""
+              draggable="false"
+            >
             <span class="orbit-window-light orbit-window-light--${escapeHtml(model.timeBand)}"></span>
           </span>
           <span class="orbit-window-runtime-host" data-orbit-runtime-host data-runtime-status="poster"></span>
@@ -383,6 +392,7 @@ export function normalizeOrbitWindowModel(input = {}, renderMode) {
     protagonist: {
       state: protagonist.state || input.playerState || 'idle',
       animationKey: protagonist.animationKey || protagonist.state || input.playerState || 'idle',
+      facing: protagonist.facing === 'right' || input.playerFacing === 'right' ? 'right' : 'left',
     },
     pendingReveal,
     recentWorldChange: formatRecentWorldChange(recentWorldChange),

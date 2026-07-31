@@ -1,0 +1,126 @@
+{
+  "schemaVersion": 1,
+  "taskId": "PS-242",
+  "assetId": "orbit-guide-state-pack-v1",
+  "status": "production",
+  "generatedAt": "2026-07-31",
+  "generation": {
+    "tool": "built-in image_gen",
+    "sourceOutput": "C:/Users/memor/.codex/generated_images/019fb886-e222-71f0-bd7f-ecb11d6cf3a3/exec-be9a8d38-b63d-4e77-8e95-40f51182c9d7.png",
+    "rawProjectPath": "art-pipeline/ps242/raw/companion-state-pack-sheet-magenta.png",
+    "referencePaths": [
+      "pwa/assets/personal-space/v2/workspace/backgrounds/building-formal-workstation-room-v1.png",
+      "art-pipeline/ps242/processed/protagonist-final/sheet-transparent.png"
+    ],
+    "promptPaths": [
+      "art-pipeline/ps242/prompts/companion-state-pack.txt",
+      "art-pipeline/ps242/prompts/companion-state-pack-correction.txt"
+    ],
+    "correction": "Bottom-center work eyes were revised from an anger-readable expression to calm focus; all six states are supportive and non-punitive."
+  },
+  "raw": {
+    "dimensions": { "width": 1536, "height": 1024 },
+    "bytes": 1426252,
+    "sha256": "1880ba60a40ed9f04c32c00bb2dfb86d28e64a13aabcb9f2a9f5e7fde89b3a30"
+  },
+  "chromaKey": {
+    "helper": "C:/Users/memor/.codex/skills/.system/imagegen/scripts/remove_chroma_key.py",
+    "requestedColor": "#FF00FF",
+    "sampledBorderColor": "#f706f6",
+    "options": [
+      "--auto-key border",
+      "--soft-matte",
+      "--transparent-threshold 12",
+      "--opaque-threshold 220",
+      "--despill"
+    ],
+    "output": "art-pipeline/ps242/processed/companion-state-pack-despilled.png",
+    "dimensions": { "width": 1536, "height": 1024 },
+    "bytes": 488900,
+    "transparentPixels": 1340390,
+    "partiallyTransparentPixels": 6047,
+    "sha256": "d141ea182369a38b33d77490af67494cc3b1b01813768f7772e7db9b5130751c"
+  },
+  "processor": {
+    "tool": "generate2dsprite.py process",
+    "target": "npc",
+    "mode": "state-pack",
+    "rows": 2,
+    "cols": 3,
+    "cellSize": 256,
+    "fitScale": 0.76,
+    "align": "center",
+    "sharedScale": true,
+    "componentMode": "all",
+    "edgeTouchMargin": 2,
+    "rejectEdgeTouch": true,
+    "pipelineMetadata": "art-pipeline/ps242/processed/companion-state-pack/pipeline-meta.json"
+  },
+  "sheet": {
+    "path": "art-pipeline/ps242/processed/companion-state-pack/sheet-transparent.png",
+    "dimensions": { "width": 768, "height": 512 },
+    "bytes": 253910,
+    "sha256": "6b0ad4ef88c98616bc3326129efb78022607f590c782ce813f38f1de8745876f"
+  },
+  "semanticOutputs": [
+    {
+      "state": "observe",
+      "grid": [0, 0],
+      "path": "pwa/assets/personal-space/v2/characters/companion/orbit-guide-observe.png",
+      "dimensions": { "width": 256, "height": 256 },
+      "bytes": 43396,
+      "sha256": "54f46c4bf8a63e22e1bce24dfe55fc4349b94934a652dd299674ea5032bb5e9a"
+    },
+    {
+      "state": "approach",
+      "grid": [0, 1],
+      "path": "pwa/assets/personal-space/v2/characters/companion/orbit-guide-approach.png",
+      "dimensions": { "width": 256, "height": 256 },
+      "bytes": 44227,
+      "sha256": "8666357a3f4db790d1d59b682fd192d4665e1f45567f00d5cf42c4ed47aa04ef"
+    },
+    {
+      "state": "congratulate",
+      "grid": [0, 2],
+      "path": "pwa/assets/personal-space/v2/characters/companion/orbit-guide-congratulate.png",
+      "dimensions": { "width": 256, "height": 256 },
+      "bytes": 44119,
+      "sha256": "2d91fb614ac8bb0d17fcbedb10fa908491c191945081cff5437efbd059625a35"
+    },
+    {
+      "state": "rest",
+      "grid": [1, 0],
+      "path": "pwa/assets/personal-space/v2/characters/companion/orbit-guide-rest.png",
+      "dimensions": { "width": 256, "height": 256 },
+      "bytes": 41683,
+      "sha256": "4023f3b95ef7061dd1c9204faee875bafec605dddef40ca70ef9287901e253c6"
+    },
+    {
+      "state": "work",
+      "grid": [1, 1],
+      "path": "pwa/assets/personal-space/v2/characters/companion/orbit-guide-work.png",
+      "dimensions": { "width": 256, "height": 256 },
+      "bytes": 43672,
+      "sha256": "a1fe8db2c153e5c48706292dde686a33dfbcf8ca631710b3d57703529068d34a"
+    },
+    {
+      "state": "remind",
+      "grid": [1, 2],
+      "path": "pwa/assets/personal-space/v2/characters/companion/orbit-guide-remind.png",
+      "dimensions": { "width": 256, "height": 256 },
+      "bytes": 45093,
+      "sha256": "1d6332a1fd5f0c57bbfb1326d0e19ec0eee7c11c0db0514641c8a508ebf16bab"
+    }
+  ],
+  "qc": {
+    "status": "passed",
+    "stateOrder": ["observe", "approach", "congratulate", "rest", "work", "remind"],
+    "edgeTouchFrames": [],
+    "transparentCornerAlpha": [0, 0, 0, 0],
+    "opaqueChromaKeyPixels": 0,
+    "visibleBorderPixels": 0,
+    "note": "Light and dark previews show crisp readable silhouettes with no visible magenta halo. One congratulate edge sample retains literal #FF00FF at alpha 1/255; it is effectively transparent and no opaque key pixel remains.",
+    "preview": "art-pipeline/ps242/processed/companion-state-pack/qa-light-dark.png"
+  },
+  "licenseReview": "approved project-original output; see art-pipeline/ps242/model-manifest.json"
+}

@@ -3,6 +3,24 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.22.0] - 2026-07-31
+
+### Added
+- 完成 PS-242 Personal Space V2 正式 action art：新增 3:2 Formal Workstation 背景、主角六種狀態的左右向共 12 張姿勢、Companion 六種狀態，以及 clear／rain 天氣疊圖。
+- 新增可重現的 `art-pipeline/ps242/` 產製與審核軌跡，以及包含尺寸、位元組、SHA-256、來源、QC 與授權紀錄的 production asset manifest；`npm run ps242:manifest -- --check` 可驗證 committed artifact 未漂移。
+
+### Changed
+- 靜態 poster 與 Pixi runtime 改由同一份 manifest 解析主角、Companion 與天氣狀態；Pixi 僅按需載入當前狀態資產，並保留 reduced-motion／WebGL 失敗時的靜態 fallback。
+- Personal Space V2 scene pack 從 `fallback-proof` 提升為 `production`；首屏正式資產為 259,133 bytes，完整 29 檔 state pack（含八個既有 props）為 1,766,935 bytes，皆通過既定預算。
+
+### Fixed
+- 以固定 3:2 camera identity 的正式背景取代 proof 階段裁切素材，並讓 poster 與 Pixi 不再各自使用不同的程序式 Companion／天氣呈現。
+
+### Validation
+- `npm run lint`、`npm run test`（43 files／817 tests）、PS-242／PS-243 manifest freshness gates 與 Personal Space Chromium acceptance flows 通過。
+
+---
+
 ## [1.21.2] - 2026-07-21
 
 回應 PR #130 Codex 驗收意見的修正。

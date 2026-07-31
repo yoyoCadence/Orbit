@@ -2,6 +2,7 @@
 
 - Status: **In Progress**
 - Baseline date: **2026-07-18**
+- PS-242 production-art refresh: **2026-07-31** (`feat/ps-242-production-art`)
 - Visual/performance base commit: `75d3103` (`main`, merged PR #129)
 - Acceptance branch: `test/ps-243-production-acceptance` (`v1.21.2`)
 - Automation environment: desktop Chromium, Windows, Playwright
@@ -104,15 +105,17 @@ artifact.
 
 | Budget | Measured | Target / threshold | Result |
 |---|---:|---:|---|
-| Personal Space V2 application JS gzip estimate (24-file V2 module set) | 49,782 bytes | part of 300 KB deferred budget | PASS |
+| Personal Space V2 application JS gzip estimate (24-file V2 module set) | 50,489 bytes | part of 300 KB deferred budget | PASS |
 | Vendored Pixi gzip estimate (`pwa/vendor/pixi.js`) | 225,428 bytes | part of 300 KB deferred budget | PASS |
-| Combined deferred V2 + Pixi gzip estimate | 275,210 bytes | 300 KB | PASS |
-| Initial background + protagonist | 1,987,696 bytes | 1.5 MB / 2.5 MB hard | FOLLOW-UP: above target, below hard threshold |
-| Complete proof scene + eight manifest props | 2,760,735 bytes | 4 MB / 6 MB hard | PASS |
+| Combined deferred V2 + Pixi gzip estimate | 275,917 bytes | 300 KB | PASS |
+| Initial production background + protagonist + Companion + clear weather | 259,133 bytes | 1.5 MB / 2.5 MB hard | PASS |
+| Complete 29-file production state pack + eight manifest props | 1,766,935 bytes | 4 MB / 6 MB hard | PASS |
 
-The initial-scene target remains assigned to PS-242 because the current scene is
-explicitly `fallback-proof`, not final production art. PS-243 records the
-measured baseline but does not relabel the proof assets as final.
+PS-242 now supplies an authored 3:2 background, 12 protagonist state/facing
+poses, six Companion states, and clear/rain overlays through the same runtime
+manifest contract. The scene is explicitly `production`, and both the initial
+paint and complete state pack pass their authored-art targets. PS-243 remains
+open only for the separate human-device gates below.
 
 ## Human-device acceptance checklist
 

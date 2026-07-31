@@ -1,0 +1,645 @@
+{
+  "schemaVersion": 1,
+  "taskId": "PS-242",
+  "status": "production",
+  "reviewedAt": "2026-07-31",
+  "scene": {
+    "id": "building-formal-workstation-v2",
+    "canonicalCameraId": "building-workspace-v1",
+    "dimensions": {
+      "width": 1536,
+      "height": 1024
+    },
+    "logicalDimensions": {
+      "width": 960,
+      "height": 640
+    },
+    "safeZone": {
+      "minX": 10,
+      "maxX": 90,
+      "minY": 11,
+      "maxY": 89
+    }
+  },
+  "provenance": {
+    "modelManifest": "art-pipeline/ps242/model-manifest.json",
+    "prompts": "art-pipeline/ps242/prompts/",
+    "rawSources": "art-pipeline/ps242/raw/",
+    "processedSources": "art-pipeline/ps242/processed/",
+    "review": "Automated alpha/edge/hash/budget checks plus 100%, card-size, light, and dark visual inspection."
+  },
+  "outputs": [
+    {
+      "id": "building-formal-workstation-room",
+      "label": "Building Formal Workstation room",
+      "role": "background",
+      "projectPhase": "all",
+      "source": "art-pipeline/ps242/source/building-formal-workstation-room-v1.png",
+      "qc": "passed: authored-3:2, safe-zone, visual, WebP-budget",
+      "licenseRef": "art-pipeline/ps242/model-manifest.json#openai-built-in-imagegen",
+      "path": "assets/personal-space/v2/workspace/backgrounds/building-formal-workstation-room-v1.webp",
+      "dimensions": {
+        "width": 1536,
+        "height": 1024
+      },
+      "format": "webp",
+      "alpha": false,
+      "bytes": 159396,
+      "sha256": "e26e1c91035def25b58f4a76034de1cfb7220f9afa6e45055dcb877066c09e5e",
+      "canonicalCameraId": "building-workspace-v1",
+      "status": "production"
+    },
+    {
+      "id": "player-default-idle-left",
+      "label": "Default player idle left",
+      "role": "protagonist-action",
+      "projectPhase": "all",
+      "state": "idle",
+      "facing": "left",
+      "source": "art-pipeline/ps242/processed/protagonist-final/sheet-transparent.png",
+      "qc": "passed: shared-scale, feet-anchor, no-edge-touch, alpha-despill, visual",
+      "licenseRef": "art-pipeline/ps242/model-manifest.json#openai-built-in-imagegen",
+      "path": "assets/personal-space/v2/characters/protagonist/player-default-idle-left.png",
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 41916,
+      "sha256": "216d3de6ac1153ff0bfa42cd8dd0f6481fd2d0c13abeb6c2816c5796e62ea9e6",
+      "canonicalCameraId": "building-workspace-v1",
+      "status": "production"
+    },
+    {
+      "id": "orbit-guide-observe",
+      "label": "Orbit Guide observe",
+      "role": "companion-action",
+      "projectPhase": "all",
+      "state": "observe",
+      "source": "art-pipeline/ps242/processed/companion-state-pack/sheet-transparent.png",
+      "qc": "passed: shared-scale, no-edge-touch, alpha-despill, supportive-expression, visual",
+      "licenseRef": "art-pipeline/ps242/model-manifest.json#openai-built-in-imagegen",
+      "path": "assets/personal-space/v2/characters/companion/orbit-guide-observe.png",
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 43396,
+      "sha256": "54f46c4bf8a63e22e1bce24dfe55fc4349b94934a652dd299674ea5032bb5e9a",
+      "canonicalCameraId": "building-workspace-v1",
+      "status": "production"
+    },
+    {
+      "id": "weather-building-clear-motes",
+      "label": "Building clear motes",
+      "role": "weather-effect",
+      "projectPhase": "all",
+      "state": "clear",
+      "source": "art-pipeline/ps242/processed/weather-building-clear-motes-transparent.png",
+      "qc": "passed: transparent-corners, zero-visible-chroma, sparse-safe-zone, visual, size-budget",
+      "licenseRef": "art-pipeline/ps242/model-manifest.json#openai-built-in-imagegen",
+      "path": "assets/personal-space/v2/effects/weather-building-clear-motes.png",
+      "dimensions": {
+        "width": 960,
+        "height": 640
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 14425,
+      "sha256": "0237d96d4c4984b90c0a4b6b5da950a5b1bb1c74950cffe9e8c946b32824364a",
+      "canonicalCameraId": "building-workspace-v1",
+      "status": "production"
+    },
+    {
+      "id": "player-default-idle-right",
+      "label": "Default player idle right",
+      "role": "protagonist-action",
+      "projectPhase": "all",
+      "state": "idle",
+      "facing": "right",
+      "source": "art-pipeline/ps242/processed/protagonist-final/sheet-transparent.png",
+      "qc": "passed: shared-scale, feet-anchor, no-edge-touch, alpha-despill, visual",
+      "licenseRef": "art-pipeline/ps242/model-manifest.json#openai-built-in-imagegen",
+      "path": "assets/personal-space/v2/characters/protagonist/player-default-idle-right.png",
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 41163,
+      "sha256": "725c254374c748445bbbc8c2c27a4cbd035ce0eb97d188b92e6f8ea7dce012eb",
+      "canonicalCameraId": "building-workspace-v1",
+      "status": "production"
+    },
+    {
+      "id": "player-default-work-left",
+      "label": "Default player work left",
+      "role": "protagonist-action",
+      "projectPhase": "all",
+      "state": "work",
+      "facing": "left",
+      "source": "art-pipeline/ps242/processed/protagonist-final/sheet-transparent.png",
+      "qc": "passed: shared-scale, feet-anchor, no-edge-touch, alpha-despill, visual",
+      "licenseRef": "art-pipeline/ps242/model-manifest.json#openai-built-in-imagegen",
+      "path": "assets/personal-space/v2/characters/protagonist/player-default-work-left.png",
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 43277,
+      "sha256": "92317e6454ce0c41307d5d5a925867dd93874a0a5c827c6f335bdaae760b0206",
+      "canonicalCameraId": "building-workspace-v1",
+      "status": "production"
+    },
+    {
+      "id": "player-default-work-right",
+      "label": "Default player work right",
+      "role": "protagonist-action",
+      "projectPhase": "all",
+      "state": "work",
+      "facing": "right",
+      "source": "art-pipeline/ps242/processed/protagonist-final/sheet-transparent.png",
+      "qc": "passed: shared-scale, feet-anchor, no-edge-touch, alpha-despill, visual",
+      "licenseRef": "art-pipeline/ps242/model-manifest.json#openai-built-in-imagegen",
+      "path": "assets/personal-space/v2/characters/protagonist/player-default-work-right.png",
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 42851,
+      "sha256": "4d4cd1aa8315fc1308b14c7580129d7baa31d15ffc36973ef9c64b249bd8f495",
+      "canonicalCameraId": "building-workspace-v1",
+      "status": "production"
+    },
+    {
+      "id": "player-default-celebrate-left",
+      "label": "Default player celebrate left",
+      "role": "protagonist-action",
+      "projectPhase": "all",
+      "state": "celebrate",
+      "facing": "left",
+      "source": "art-pipeline/ps242/processed/protagonist-final/sheet-transparent.png",
+      "qc": "passed: shared-scale, feet-anchor, no-edge-touch, alpha-despill, visual",
+      "licenseRef": "art-pipeline/ps242/model-manifest.json#openai-built-in-imagegen",
+      "path": "assets/personal-space/v2/characters/protagonist/player-default-celebrate-left.png",
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 47902,
+      "sha256": "88310134832be20589dd455829a0eb04832f6194a0ece94384e063c88b3b1157",
+      "canonicalCameraId": "building-workspace-v1",
+      "status": "production"
+    },
+    {
+      "id": "player-default-celebrate-right",
+      "label": "Default player celebrate right",
+      "role": "protagonist-action",
+      "projectPhase": "all",
+      "state": "celebrate",
+      "facing": "right",
+      "source": "art-pipeline/ps242/processed/protagonist-final/sheet-transparent.png",
+      "qc": "passed: shared-scale, feet-anchor, no-edge-touch, alpha-despill, visual",
+      "licenseRef": "art-pipeline/ps242/model-manifest.json#openai-built-in-imagegen",
+      "path": "assets/personal-space/v2/characters/protagonist/player-default-celebrate-right.png",
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 46880,
+      "sha256": "37db0c7335583b316a2b7044c9398bd3580bea41271e712716770305cd087aa8",
+      "canonicalCameraId": "building-workspace-v1",
+      "status": "production"
+    },
+    {
+      "id": "player-default-rest-left",
+      "label": "Default player rest left",
+      "role": "protagonist-action",
+      "projectPhase": "all",
+      "state": "rest",
+      "facing": "left",
+      "source": "art-pipeline/ps242/processed/protagonist-final/sheet-transparent.png",
+      "qc": "passed: shared-scale, feet-anchor, no-edge-touch, alpha-despill, visual",
+      "licenseRef": "art-pipeline/ps242/model-manifest.json#openai-built-in-imagegen",
+      "path": "assets/personal-space/v2/characters/protagonist/player-default-rest-left.png",
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 43737,
+      "sha256": "f268a0e9f4a63034f30f2269c3f1aa0ddab6d94df38f744ceb8d09220a455d2f",
+      "canonicalCameraId": "building-workspace-v1",
+      "status": "production"
+    },
+    {
+      "id": "player-default-rest-right",
+      "label": "Default player rest right",
+      "role": "protagonist-action",
+      "projectPhase": "all",
+      "state": "rest",
+      "facing": "right",
+      "source": "art-pipeline/ps242/processed/protagonist-final/sheet-transparent.png",
+      "qc": "passed: shared-scale, feet-anchor, no-edge-touch, alpha-despill, visual",
+      "licenseRef": "art-pipeline/ps242/model-manifest.json#openai-built-in-imagegen",
+      "path": "assets/personal-space/v2/characters/protagonist/player-default-rest-right.png",
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 42469,
+      "sha256": "24a0bc4b24de2cdb18a5b6111ffae5b61771adf70c5ad84509916bd77bd256ca",
+      "canonicalCameraId": "building-workspace-v1",
+      "status": "production"
+    },
+    {
+      "id": "player-default-walk-left",
+      "label": "Default player walk left",
+      "role": "protagonist-action",
+      "projectPhase": "all",
+      "state": "walk",
+      "facing": "left",
+      "source": "art-pipeline/ps242/processed/protagonist-final/sheet-transparent.png",
+      "qc": "passed: shared-scale, feet-anchor, no-edge-touch, alpha-despill, visual",
+      "licenseRef": "art-pipeline/ps242/model-manifest.json#openai-built-in-imagegen",
+      "path": "assets/personal-space/v2/characters/protagonist/player-default-walk-left.png",
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 44793,
+      "sha256": "7c637403b62ad6098f5bfae8b4546b8e1a343cf0591c8fc1412b2f9885b9180f",
+      "canonicalCameraId": "building-workspace-v1",
+      "status": "production"
+    },
+    {
+      "id": "player-default-walk-right",
+      "label": "Default player walk right",
+      "role": "protagonist-action",
+      "projectPhase": "all",
+      "state": "walk",
+      "facing": "right",
+      "source": "art-pipeline/ps242/processed/protagonist-final/sheet-transparent.png",
+      "qc": "passed: shared-scale, feet-anchor, no-edge-touch, alpha-despill, visual",
+      "licenseRef": "art-pipeline/ps242/model-manifest.json#openai-built-in-imagegen",
+      "path": "assets/personal-space/v2/characters/protagonist/player-default-walk-right.png",
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 45040,
+      "sha256": "11fab1e4327e54936e19c774db22dbaf53c062630f0d61acaa7329809797e5ba",
+      "canonicalCameraId": "building-workspace-v1",
+      "status": "production"
+    },
+    {
+      "id": "player-default-inspect-left",
+      "label": "Default player inspect left",
+      "role": "protagonist-action",
+      "projectPhase": "all",
+      "state": "inspect",
+      "facing": "left",
+      "source": "art-pipeline/ps242/processed/protagonist-final/sheet-transparent.png",
+      "qc": "passed: shared-scale, feet-anchor, no-edge-touch, alpha-despill, visual",
+      "licenseRef": "art-pipeline/ps242/model-manifest.json#openai-built-in-imagegen",
+      "path": "assets/personal-space/v2/characters/protagonist/player-default-inspect-left.png",
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 43423,
+      "sha256": "f69765902d8e4d9fc88552ec1e4d4241f395472f983d9a07fbc043392b4afbd6",
+      "canonicalCameraId": "building-workspace-v1",
+      "status": "production"
+    },
+    {
+      "id": "player-default-inspect-right",
+      "label": "Default player inspect right",
+      "role": "protagonist-action",
+      "projectPhase": "all",
+      "state": "inspect",
+      "facing": "right",
+      "source": "art-pipeline/ps242/processed/protagonist-final/sheet-transparent.png",
+      "qc": "passed: shared-scale, feet-anchor, no-edge-touch, alpha-despill, visual",
+      "licenseRef": "art-pipeline/ps242/model-manifest.json#openai-built-in-imagegen",
+      "path": "assets/personal-space/v2/characters/protagonist/player-default-inspect-right.png",
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 42852,
+      "sha256": "5ddc79a12b9c6f10b236e9f00379bd1f7189bbb6bf8cfda524de93309ea5e05f",
+      "canonicalCameraId": "building-workspace-v1",
+      "status": "production"
+    },
+    {
+      "id": "orbit-guide-approach",
+      "label": "Orbit Guide approach",
+      "role": "companion-action",
+      "projectPhase": "all",
+      "state": "approach",
+      "source": "art-pipeline/ps242/processed/companion-state-pack/sheet-transparent.png",
+      "qc": "passed: shared-scale, no-edge-touch, alpha-despill, supportive-expression, visual",
+      "licenseRef": "art-pipeline/ps242/model-manifest.json#openai-built-in-imagegen",
+      "path": "assets/personal-space/v2/characters/companion/orbit-guide-approach.png",
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 44227,
+      "sha256": "8666357a3f4db790d1d59b682fd192d4665e1f45567f00d5cf42c4ed47aa04ef",
+      "canonicalCameraId": "building-workspace-v1",
+      "status": "production"
+    },
+    {
+      "id": "orbit-guide-congratulate",
+      "label": "Orbit Guide congratulate",
+      "role": "companion-action",
+      "projectPhase": "all",
+      "state": "congratulate",
+      "source": "art-pipeline/ps242/processed/companion-state-pack/sheet-transparent.png",
+      "qc": "passed: shared-scale, no-edge-touch, alpha-despill, supportive-expression, visual",
+      "licenseRef": "art-pipeline/ps242/model-manifest.json#openai-built-in-imagegen",
+      "path": "assets/personal-space/v2/characters/companion/orbit-guide-congratulate.png",
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 44119,
+      "sha256": "2d91fb614ac8bb0d17fcbedb10fa908491c191945081cff5437efbd059625a35",
+      "canonicalCameraId": "building-workspace-v1",
+      "status": "production"
+    },
+    {
+      "id": "orbit-guide-rest",
+      "label": "Orbit Guide rest",
+      "role": "companion-action",
+      "projectPhase": "all",
+      "state": "rest",
+      "source": "art-pipeline/ps242/processed/companion-state-pack/sheet-transparent.png",
+      "qc": "passed: shared-scale, no-edge-touch, alpha-despill, supportive-expression, visual",
+      "licenseRef": "art-pipeline/ps242/model-manifest.json#openai-built-in-imagegen",
+      "path": "assets/personal-space/v2/characters/companion/orbit-guide-rest.png",
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 41683,
+      "sha256": "4023f3b95ef7061dd1c9204faee875bafec605dddef40ca70ef9287901e253c6",
+      "canonicalCameraId": "building-workspace-v1",
+      "status": "production"
+    },
+    {
+      "id": "orbit-guide-work",
+      "label": "Orbit Guide work",
+      "role": "companion-action",
+      "projectPhase": "all",
+      "state": "work",
+      "source": "art-pipeline/ps242/processed/companion-state-pack/sheet-transparent.png",
+      "qc": "passed: shared-scale, no-edge-touch, alpha-despill, supportive-expression, visual",
+      "licenseRef": "art-pipeline/ps242/model-manifest.json#openai-built-in-imagegen",
+      "path": "assets/personal-space/v2/characters/companion/orbit-guide-work.png",
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 43672,
+      "sha256": "a1fe8db2c153e5c48706292dde686a33dfbcf8ca631710b3d57703529068d34a",
+      "canonicalCameraId": "building-workspace-v1",
+      "status": "production"
+    },
+    {
+      "id": "orbit-guide-remind",
+      "label": "Orbit Guide remind",
+      "role": "companion-action",
+      "projectPhase": "all",
+      "state": "remind",
+      "source": "art-pipeline/ps242/processed/companion-state-pack/sheet-transparent.png",
+      "qc": "passed: shared-scale, no-edge-touch, alpha-despill, supportive-expression, visual",
+      "licenseRef": "art-pipeline/ps242/model-manifest.json#openai-built-in-imagegen",
+      "path": "assets/personal-space/v2/characters/companion/orbit-guide-remind.png",
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 45093,
+      "sha256": "1d6332a1fd5f0c57bbfb1326d0e19ec0eee7c11c0db0514641c8a508ebf16bab",
+      "canonicalCameraId": "building-workspace-v1",
+      "status": "production"
+    },
+    {
+      "id": "weather-building-rain",
+      "label": "Building rain",
+      "role": "weather-effect",
+      "projectPhase": "all",
+      "state": "rain",
+      "source": "art-pipeline/ps242/processed/weather-building-rain-transparent.png",
+      "qc": "passed: transparent-corners, zero-visible-chroma, sparse-safe-zone, visual, size-budget",
+      "licenseRef": "art-pipeline/ps242/model-manifest.json#openai-built-in-imagegen",
+      "path": "assets/personal-space/v2/effects/weather-building-rain.png",
+      "dimensions": {
+        "width": 960,
+        "height": 640
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 31582,
+      "sha256": "7aeb44765872971383edebf02bec9acebb6087fc48b5f10e2fcbd7683990e2e5",
+      "canonicalCameraId": "building-workspace-v1",
+      "status": "production"
+    },
+    {
+      "id": "corner-desk",
+      "label": "Corner desk",
+      "projectPhase": 25,
+      "role": "project-prop",
+      "source": "assets/personal-space/idle-window/props/office-corner-desk-v3/front.png",
+      "qc": "passed: existing idle-window registry; reused in canonical V2 camera",
+      "licenseRef": "pwa/assets/personal-space/idle-window/README.md#current-assets",
+      "path": "assets/personal-space/idle-window/props/office-corner-desk-v3/front.png",
+      "dimensions": {
+        "width": 524,
+        "height": 302
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 211827,
+      "sha256": "3298df6d8cf192df451650d6440464d2799c89c0cc45b6ff51990e352041ee41",
+      "canonicalCameraId": "building-workspace-v1",
+      "status": "production"
+    },
+    {
+      "id": "office-chair",
+      "label": "Office chair",
+      "projectPhase": 25,
+      "role": "project-prop",
+      "source": "assets/personal-space/idle-window/props/office-chair/prop.png",
+      "qc": "passed: existing idle-window registry; reused in canonical V2 camera",
+      "licenseRef": "pwa/assets/personal-space/idle-window/README.md#current-assets",
+      "path": "assets/personal-space/idle-window/props/office-chair/prop.png",
+      "dimensions": {
+        "width": 188,
+        "height": 321
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 69664,
+      "sha256": "e29aa250c1a0126d028afc96d4922f4d93459fdd5f59c94713101357ed7d92de",
+      "canonicalCameraId": "building-workspace-v1",
+      "status": "production"
+    },
+    {
+      "id": "office-shelf",
+      "label": "Office shelf",
+      "projectPhase": 50,
+      "role": "project-prop",
+      "source": "assets/personal-space/idle-window/props/office-shelf/prop.png",
+      "qc": "passed: existing idle-window registry; reused in canonical V2 camera",
+      "licenseRef": "pwa/assets/personal-space/idle-window/README.md#current-assets",
+      "path": "assets/personal-space/idle-window/props/office-shelf/prop.png",
+      "dimensions": {
+        "width": 265,
+        "height": 350
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 134782,
+      "sha256": "d32ee18a6f97ab8eae2ea8c0059084ce4d2bae66eaa9d1135db05c3459258d15",
+      "canonicalCameraId": "building-workspace-v1",
+      "status": "production"
+    },
+    {
+      "id": "desk-lamp",
+      "label": "Desk lamp",
+      "projectPhase": 50,
+      "role": "project-prop",
+      "source": "assets/personal-space/idle-window/props/office-desk-lamp/prop.png",
+      "qc": "passed: existing idle-window registry; reused in canonical V2 camera",
+      "licenseRef": "pwa/assets/personal-space/idle-window/README.md#current-assets",
+      "path": "assets/personal-space/idle-window/props/office-desk-lamp/prop.png",
+      "dimensions": {
+        "width": 197,
+        "height": 280
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 45450,
+      "sha256": "13fe4e5f028e2057a9d53a9ec38d3587a6be2b8be7cae95a52839ec5285b4a01",
+      "canonicalCameraId": "building-workspace-v1",
+      "status": "production"
+    },
+    {
+      "id": "planning-board",
+      "label": "Planning board",
+      "projectPhase": 75,
+      "role": "project-prop",
+      "source": "assets/personal-space/idle-window/props/office-board/prop.png",
+      "qc": "passed: existing idle-window registry; reused in canonical V2 camera",
+      "licenseRef": "pwa/assets/personal-space/idle-window/README.md#current-assets",
+      "path": "assets/personal-space/idle-window/props/office-board/prop.png",
+      "dimensions": {
+        "width": 311,
+        "height": 248
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 95500,
+      "sha256": "9b4129f9687fe88413c312e16ad8a1d0b830166ed87bbfc5a69f56dbd3d08676",
+      "canonicalCameraId": "building-workspace-v1",
+      "status": "production"
+    },
+    {
+      "id": "single-monitor",
+      "label": "Single monitor",
+      "projectPhase": 75,
+      "role": "project-prop",
+      "source": "assets/personal-space/idle-window/props/office-monitor-single/prop.png",
+      "qc": "passed: existing idle-window registry; reused in canonical V2 camera",
+      "licenseRef": "pwa/assets/personal-space/idle-window/README.md#current-assets",
+      "path": "assets/personal-space/idle-window/props/office-monitor-single/prop.png",
+      "dimensions": {
+        "width": 222,
+        "height": 259
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 56552,
+      "sha256": "d01564cab4de36d7356bf6c19061a334783bc27aea5ca7e7a72d1954bc4dba2d",
+      "canonicalCameraId": "building-workspace-v1",
+      "status": "production"
+    },
+    {
+      "id": "dual-monitor",
+      "label": "Dual monitor",
+      "projectPhase": 100,
+      "role": "project-prop",
+      "source": "assets/personal-space/idle-window/props/office-monitor-dual/prop.png",
+      "qc": "passed: existing idle-window registry; reused in canonical V2 camera",
+      "licenseRef": "pwa/assets/personal-space/idle-window/README.md#current-assets",
+      "path": "assets/personal-space/idle-window/props/office-monitor-dual/prop.png",
+      "dimensions": {
+        "width": 330,
+        "height": 266
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 76615,
+      "sha256": "14911729eccbde8946ed82f2642257d4b661ec8a18d358aa7f2ccd6f0a7e8e9a",
+      "canonicalCameraId": "building-workspace-v1",
+      "status": "production"
+    },
+    {
+      "id": "office-plant",
+      "label": "Office plant",
+      "projectPhase": 100,
+      "role": "project-prop",
+      "source": "assets/personal-space/idle-window/props/office-plant/prop.png",
+      "qc": "passed: existing idle-window registry; reused in canonical V2 camera",
+      "licenseRef": "pwa/assets/personal-space/idle-window/README.md#current-assets",
+      "path": "assets/personal-space/idle-window/props/office-plant/prop.png",
+      "dimensions": {
+        "width": 233,
+        "height": 300
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 82649,
+      "sha256": "20e6f629af506c1ad69f43821e9d2da4b3c386afb68478c663677b08b7b6ac65",
+      "canonicalCameraId": "building-workspace-v1",
+      "status": "production"
+    }
+  ]
+}

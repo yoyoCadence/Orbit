@@ -100,10 +100,6 @@
 
 ## Next
 
-- [ ] **PS-242** Promote the fallback-proof Personal Space scene pack to final production action art
-  - Target: replace the current proof assets with reviewed protagonist, Companion, weather, and direction/state variants while preserving the V2 manifest contract.
-
-
 ---
 
 ## In Progress
@@ -114,6 +110,9 @@
 ---
 
 ## Done
+
+- [x] **PS-242** Promote the fallback-proof Personal Space scene pack to final production action art
+  - Completed: shipped the authored 3:2 Formal Workstation background, 12 protagonist state／facing poses, six Companion states, clear／rain overlays, shared poster／Pixi manifest resolution, reproducible provenance／QC evidence, and passing 259,133-byte first-paint／1,766,935-byte full-pack budgets in v1.22.0.
 
 - [x] **PS-240** Validate and harden the Personal Space V2 vertical slice
   - Completed: PR #129 merged authenticated-owner sync guards, one-time legacy Session cutover, same-route Pixi reuse, structured Reveal selectors, placement sanitization, honest sync failure feedback, responsive canvas correction, 792 passing unit／integration tests, Chromium E2E 26/26, and Playwright mobile visual QA.

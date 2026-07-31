@@ -1,0 +1,7 @@
+Use case: stylized-concept
+Asset type: transparent weather-effect overlay for Orbit Personal Space V2, rain weather state
+Primary request: Create a restrained HD-2D pixel-art overlay made only of sparse cool diagonal rain streaks.
+Scene/backdrop: perfectly flat solid #FF00FF chroma-key background for local background removal.
+Style/medium: crisp premium HD-2D pixel art; thin authored blue-white pixel streaks, sparse and subtle, suitable over a dark navy office; restrained variation in streak length and brightness.
+Composition/framing: exact 3:2 landscape canvas; distribute sparse diagonal rain marks across the full canvas from upper-left toward lower-right; keep the central 60% actor/project area noticeably lighter and less dense; no large cluster or focal object.
+Constraints: rain marks only; every streak fully separated from the key background; generous empty space; no splash plane, puddles, clouds, mist, fog, glow wash, scene, room, floor, horizon, people, characters, Companion, furniture, objects, text, logos, signature, or watermark. The #FF00FF backdrop must be one perfectly uniform flat color with no gradient, texture, shadow, reflection, lighting variation, vignette, or atmospheric haze. Do not use #FF00FF in the rain marks. No cast shadows, no large bloom, no translucent colored field.
