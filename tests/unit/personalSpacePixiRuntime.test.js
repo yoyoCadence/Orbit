@@ -99,7 +99,7 @@ function createFakePixi(options = {}) {
   const Assets = {
     load: vi.fn(async paths => Object.fromEntries(paths.map(path => [
       path,
-      { width: 1672, height: 941 },
+      { path, width: 1536, height: 1024 },
     ]))),
   };
 
@@ -126,14 +126,14 @@ async function flushMicrotasks() {
 }
 
 describe('Personal Space V2 Pixi scene runtime', () => {
-  it('uniformly cover-scales and center-crops the 16:9 proof into the fixed 3:2 canvas', () => {
-    const cover = getCoverTransform(1672, 941, 960, 640);
+  it('fits the authored 3:2 production background without proof-era side cropping', () => {
+    const cover = getCoverTransform(1536, 1024, 960, 640);
 
     expect(cover.x).toBe(480);
     expect(cover.y).toBe(320);
-    expect(cover.scale).toBeCloseTo(640 / 941, 8);
-    expect(1672 * cover.scale).toBeGreaterThan(960);
-    expect(941 * cover.scale).toBeCloseTo(640, 8);
+    expect(cover.scale).toBe(0.625);
+    expect(1536 * cover.scale).toBe(960);
+    expect(1024 * cover.scale).toBe(640);
   });
 
   it('renders weather and drives protagonist and Companion motion from shared state', async () => {
@@ -153,16 +153,22 @@ describe('Personal Space V2 Pixi scene runtime', () => {
     const protagonist = app.stage.children.find(child => child.label === 'orbit-protagonist');
     const companion = app.stage.children.find(child => child.label === 'orbit-companion');
     const rain = app.stage.children.find(child => child.label === 'orbit-weather-rain');
+    const loadedPaths = fake.pixi.Assets.load.mock.calls[0][0];
     const ticker = app.ticker.add.mock.calls[0][0];
     const initialProtagonistX = protagonist.x;
     const initialCompanionY = companion.y;
+    const initialRainY = rain.y;
 
     ticker({ deltaMS: 200 });
 
-    expect(rain.children).toHaveLength(18);
+    expect(loadedPaths.some(path => path.includes('player-default-work-left.png'))).toBe(true);
+    expect(loadedPaths.some(path => path.includes('orbit-guide-congratulate.png'))).toBe(true);
+    expect(loadedPaths.some(path => path.includes('weather-building-rain.png'))).toBe(true);
+    expect(companion.texture.path).toContain('orbit-guide-congratulate.png');
+    expect(rain.texture.path).toContain('weather-building-rain.png');
     expect(protagonist.x).not.toBe(initialProtagonistX);
     expect(companion.y).not.toBe(initialCompanionY);
-    expect(rain.y).not.toBe(0);
+    expect(rain.y).not.toBe(initialRainY);
     runtime.destroy();
   });
 

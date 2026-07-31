@@ -1,16 +1,16 @@
 # Orbit Roadmap
 
-> 2026-07-22 sync note: PS-243 的瀏覽器 acceptance 自動化基線與 telemetry 隱私修正已透過 PR #130 併入 main（v1.21.2）；deterministic viewport/asset gate 已進 CI，真機、installed PWA、雙帳號與輔助科技 human gate 仍待人工驗證。最終 action art 仍由 PS-242 負責，legacy runtime 繼續保留為 fallback。
+> 2026-07-31 sync note: PS-242 已在 v1.22.0 完成正式 action art、共用 manifest 解析與可重現 provenance／QC gate；legacy runtime 繼續保留為 fallback。PS-243 的 deterministic browser gate 已進 CI，真機、installed PWA、雙帳號與輔助科技 human gate 仍待人工驗證。
 
-目前版本：**v1.21.2**
+目前版本：**v1.22.0**
 
 這份文件記錄 Orbit 的公開功能規劃方向。功能依優先順序排列，會隨專案進展持續更新。
 
 ---
 
-## 近期（v1.21.x）
+## 近期（v1.22.x）
 
-- **Personal Space V2 production acceptance（PS-242／PS-243）** — PS-243 的瀏覽器 baseline、鍵盤／reduced-motion／telemetry 驗證與可重現 asset／perf runner 已併入（v1.21.2，deterministic gate 進 CI）；低階手機實測、installed PWA、雙帳號與螢幕閱讀器等 human gate 仍待人工完成。PS-242 負責最終 3:2 action art。未完成前不把 `fallback-proof` 素材標示為 final production art
+- **Personal Space V2 production acceptance（PS-243）** — PS-242 已在 v1.22.0 交付正式 3:2 背景、主角與 Companion 狀態素材、天氣疊圖、共用 manifest 與資產預算 gate。PS-243 的瀏覽器 baseline、鍵盤／reduced-motion／telemetry 驗證與可重現 asset／perf runner 已進 CI；低階手機實測、installed PWA、雙帳號與螢幕閱讀器等 human gate 仍待人工完成。
 
 - [x] **SUB-13 資料匯出** — 一鍵匯出所有打卡紀錄為 CSV（Pro 專屬）
 
@@ -34,6 +34,7 @@
 
 ## 已完成
 
+- v1.22.0 — **Personal Space V2 production action art（PS-242）**：正式 3:2 Formal Workstation、主角六狀態左右向、Companion 六狀態、clear／rain 疊圖、poster／Pixi 共用解析與可重現 provenance／QC manifest
 - v1.21.0 — **Personal Space V2 merge hardening（PS-240）**：owner-bound 同步、legacy Session cutover、Pixi Application 重用、結構化 Reveal selector、placement sanitization、同步失敗狀態與 responsive canvas 修正
 - v1.21.0 — **Personal Space V2 工程基線**（PS-233~PS-239）：首頁 3:2 Orbit Window、日期化 Main Quest、可逆且去重的 Reward Ledger、Workspace Upgrade、規則式 Companion、Full World / Edit Mode、owner-scoped migration、遠端合併 reconciliation、lazy Pixi runtime 與明確標記的靜態 fallback
 - v1.16.x（Unreleased）— **Personal Space 地圖系統**（PS-205~PS-212）：公司 / 豪宅樓層地圖視窗、可點擊房間切換場景、樓層漸進揭露、解鎖等級標示、上班中 / 回顧 badge、走廊移除、場景切換進場動畫；memory property 規則正式化（MEMORY_PROPERTY_RULES）；memoryViewSceneId 區分回顧導航與 stale 選擇

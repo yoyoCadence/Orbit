@@ -1,0 +1,76 @@
+{
+  "id": "weather-building-clear-motes",
+  "role": "weather-effect",
+  "status": "production",
+  "generatedAt": "2026-07-31T22:31:00+08:00",
+  "generator": {
+    "mode": "OpenAI built-in image_gen",
+    "model": "not exposed by built-in tool",
+    "runOutput": "generated_images/019fb886-f265-73f2-9ddd-53579ad3698d/exec-65b8b8fc-0c8c-45b6-82bd-728b057618f4.png"
+  },
+  "promptPath": "art-pipeline/ps242/prompts/weather-building-clear-motes.txt",
+  "source": {
+    "path": "art-pipeline/ps242/raw/weather-building-clear-motes-magenta.png",
+    "dimensions": {
+      "width": 1536,
+      "height": 1024
+    },
+    "keyColorRequested": "#FF00FF",
+    "bytes": 1216383,
+    "sha256": "e856735fb8113e58d88b0ff076c2cd35ef7f10e7641ce73eb6e8558de969068f"
+  },
+  "processing": [
+    {
+      "tool": "remove_chroma_key.py",
+      "arguments": [
+        "--auto-key border",
+        "--soft-matte",
+        "--transparent-threshold 12",
+        "--opaque-threshold 220",
+        "--despill"
+      ],
+      "detectedKeyColor": "#fb03f7",
+      "output": "art-pipeline/ps242/processed/weather-building-clear-motes-transparent.png",
+      "bytes": 34927,
+      "sha256": "edbcaa4dbd62b7a7e6e3d112de48773524af95697f189716f28dcfb7afae0ace"
+    },
+    {
+      "tool": "Pillow",
+      "operation": "mechanical-resize",
+      "resampling": "nearest",
+      "dimensions": {
+        "width": 960,
+        "height": 640
+      },
+      "pngOptimize": true,
+      "compressionLevel": 9
+    }
+  ],
+  "output": {
+    "path": "pwa/assets/personal-space/v2/effects/weather-building-clear-motes.png",
+    "dimensions": {
+      "width": 960,
+      "height": 640
+    },
+    "mode": "RGBA",
+    "bytes": 14425,
+    "sha256": "0237d96d4c4984b90c0a4b6b5da950a5b1bb1c74950cffe9e8c946b32824364a"
+  },
+  "qc": {
+    "technicalStatus": "passed",
+    "humanProductionReview": "passed 2026-07-31: full-size and dark-background visual QA",
+    "transparentCorners": true,
+    "transparentPixels": 611961,
+    "partialAlphaPixels": 743,
+    "opaquePixels": 1696,
+    "visibleCoveragePercent": 0.397,
+    "centralActorAreaCoveragePercent": 0.0,
+    "visibleMagentaLikePixels": 0,
+    "transparentRgbNonzeroPixels": 0,
+    "alphaBounds": [17, 22, 945, 626],
+    "darkBackgroundVisualInspection": "passed",
+    "sizeBudgetBytes": 153600,
+    "sizeBudgetPassed": true
+  },
+  "licenseReview": "approved project-original output; see art-pipeline/ps242/model-manifest.json"
+}

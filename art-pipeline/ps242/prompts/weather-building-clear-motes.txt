@@ -1,0 +1,7 @@
+Use case: stylized-concept
+Asset type: transparent weather-effect overlay for Orbit Personal Space V2, clear weather state
+Primary request: Create a restrained HD-2D pixel-art overlay made only of sparse warm dust motes and tiny floating light specks.
+Scene/backdrop: perfectly flat solid #FF00FF chroma-key background for local background removal.
+Style/medium: crisp premium HD-2D pixel art; tiny authored pixel clusters, sparse and subtle, warm ivory and muted gold, suitable over a dark navy office.
+Composition/framing: exact 3:2 landscape canvas; distribute sparse motes across the full canvas, with slightly more near the outer thirds and edges; keep the central 60% actor/project area especially light and unobstructed; no large cluster, no focal object.
+Constraints: effect marks only; every mote fully separated from the key background; generous empty space; flat consistent pixel treatment; no scene, room, floor, horizon, people, characters, Companion, furniture, objects, text, logos, signature, or watermark. The #FF00FF backdrop must be one perfectly uniform flat color with no gradient, texture, shadow, reflection, lighting variation, vignette, or atmospheric haze. Do not use #FF00FF in the effect marks. No cast shadows. No large glow clouds, bloom fields, smoke, fog, or translucent wash.

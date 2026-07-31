@@ -125,7 +125,9 @@
 
 .orbit-window-background,
 .orbit-window-prop,
-.orbit-window-protagonist {
+.orbit-window-protagonist,
+.orbit-window-companion,
+.orbit-window-weather {
   position: absolute;
   max-width: none;
   user-select: none;
@@ -141,33 +143,15 @@
 }
 
 .orbit-window-prop,
-.orbit-window-protagonist {
+.orbit-window-protagonist,
+.orbit-window-companion {
   height: auto;
   filter: drop-shadow(0 7px 8px rgba(2, 6, 23, .25));
 }
 
 .orbit-window-companion {
-  position: absolute;
-  display: grid;
-  place-items: center;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background: radial-gradient(circle at 38% 35%, #f7fdff 0 7%, #8bd5ff 24% 48%, #4675c9 70%);
-  border: 2px solid rgba(246, 213, 139, .82);
-  box-shadow: 0 0 0 8px rgba(139, 213, 255, .13), 0 0 26px rgba(139, 213, 255, .78);
-  pointer-events: none;
+  filter: drop-shadow(0 0 12px rgba(139, 213, 255, .58));
 }
-
-.orbit-window-companion span,
-.orbit-window-companion span::after {
-  width: 3px;
-  height: 3px;
-  background: #14213d;
-  border-radius: 50%;
-}
-
-.orbit-window-companion span { position: relative; transform: translateX(-3px); }
-.orbit-window-companion span::after { content: ''; position: absolute; left: 6px; }
 
 .orbit-window-protagonist[data-player-state="work"] { animation: orbit-character-work 2.4s ease-in-out infinite; }
 .orbit-window-protagonist[data-player-state="rest"] { filter: saturate(.72) drop-shadow(0 7px 8px rgba(2, 6, 23, .25)); opacity: .88; }
@@ -175,25 +159,26 @@
 .orbit-window-protagonist[data-player-state="celebrate"] { animation: orbit-character-celebrate .72s ease-in-out infinite; }
 
 .orbit-window-companion[data-companion-state="work"] { animation: orbit-companion-work 2.2s ease-in-out infinite; }
-.orbit-window-companion[data-companion-state="rest"] { opacity: .72; box-shadow: 0 0 16px rgba(139, 213, 255, .48); }
+.orbit-window-companion[data-companion-state="rest"] { opacity: .78; filter: drop-shadow(0 0 8px rgba(139, 213, 255, .38)); }
 .orbit-window-companion[data-companion-state="approach"],
 .orbit-window-companion[data-companion-state="remind"] { animation: orbit-companion-approach 1.8s ease-in-out infinite alternate; }
 .orbit-window-companion[data-companion-state="congratulate"] { animation: orbit-character-celebrate .68s ease-in-out infinite; }
 
 .orbit-window-weather {
-  position: absolute;
-  inset: -18%;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   z-index: 68;
-  display: none;
-  pointer-events: none;
+  object-fit: cover;
+  opacity: .34;
 }
 
 .orbit-window-weather[data-weather="rain"] {
-  display: block;
-  opacity: .48;
-  background: repeating-linear-gradient(108deg, transparent 0 18px, rgba(205, 231, 255, .68) 19px 20px, transparent 21px 34px);
+  opacity: .5;
   animation: orbit-weather-rain .72s linear infinite;
 }
+
+.orbit-window-weather[data-weather="clear"] { animation: orbit-weather-motes 8s ease-in-out infinite alternate; }
 
 .orbit-window-light {
   position: absolute;
@@ -405,8 +390,13 @@
 }
 
 @keyframes orbit-weather-rain {
-  from { transform: translate3d(-2%, -8%, 0); }
-  to { transform: translate3d(3%, 8%, 0); }
+  from { transform: translate3d(-.3%, -.5%, 0); }
+  to { transform: translate3d(.4%, .7%, 0); }
+}
+
+@keyframes orbit-weather-motes {
+  from { transform: translate3d(-.2%, .1%, 0); opacity: .26; }
+  to { transform: translate3d(.25%, -.2%, 0); opacity: .38; }
 }
 
 @keyframes orbit-medium-reveal {

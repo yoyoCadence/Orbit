@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "taskId": "PS-242",
+  "generators": [
+    {
+      "id": "openai-built-in-imagegen",
+      "model": "OpenAI managed built-in image generation",
+      "version": "service build used 2026-07-31; model identifier not exposed by the built-in tool",
+      "source": "Codex built-in image_gen",
+      "license": "Project-original generated output owned by the user under the applicable OpenAI service terms",
+      "commercialUse": "Allowed subject to the project owner's applicable OpenAI account terms; no external reference pack, logo, trademark, or third-party character was used",
+      "hash": "not exposed by the built-in tool",
+      "workflowVersion": "ps242-imagegen-v1",
+      "notes": "The only visual references were existing project-owned Orbit assets. Exact prompts and raw outputs are committed under this pipeline directory."
+    },
+    {
+      "id": "orbit-legacy-idle-window-originals",
+      "model": "Existing Orbit project-original generated assets",
+      "version": "pre-PS-242",
+      "source": "pwa/assets/personal-space/idle-window/",
+      "license": "Project-owned original assets",
+      "commercialUse": "Project use approved",
+      "hash": "Per-file hashes are recorded in pwa/assets/personal-space/v2/manifest.json",
+      "workflowVersion": "legacy-idle-window-registry",
+      "notes": "Eight previously QC-passed props are reused additively; their legacy paths and provenance are preserved."
+    }
+  ],
+  "processors": [
+    {
+      "tool": "generate2dsprite.py",
+      "purpose": "Deterministic chroma cleanup, frame extraction, shared-scale alignment, edge-touch QC, and transparent exports"
+    },
+    {
+      "tool": "remove_chroma_key.py",
+      "purpose": "Border-sampled soft matte and despill for generated #FF00FF sheets"
+    },
+    {
+      "tool": "Pillow 12.2.0",
+      "purpose": "Deterministic WebP encoding and mechanical weather-overlay resizing"
+    }
+  ]
+}
