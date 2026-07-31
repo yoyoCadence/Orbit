@@ -24,11 +24,6 @@
   - Acceptance: logged-in user completes a task, attaches proof, photo survives sign-out and re-login on a different device; guest mode still works with localStorage only; no service_role key in client code.
   - Note: requires Supabase Storage RLS policy and a bucket — propose SQL migration before implementation.
 
-- [ ] **HW-105** Personal Space achievement photo wall
-  - Goal: let selected task proof photos appear as framed memories inside Personal Space.
-  - Scope: local-only photo references, simple wall/frame rendering in existing 2D scene runtime, placeholder fallback when images are unavailable.
-  - Acceptance: user can mark one local proof image as displayable and see it in a Personal Space room without touching auth/storage schema.
-
 - [ ] **HW-106** Ambient noise focus signal
   - Goal: use microphone volume level as an optional focus-environment signal, not as recording.
   - Scope: permission-gated Web Audio volume meter, no audio persistence, UI states for quiet / normal / noisy.
@@ -110,6 +105,9 @@
 ---
 
 ## Done
+
+- [x] **HW-105** Personal Space achievement photo wall
+  - Completed: users can mark one owner-scoped local proof from Home or History, see it immediately in the shared poster／Pixi Personal Space frame, and get a safe placeholder when the Session or image is unavailable; selection stays device-local and introduces no auth／schema changes.
 
 - [x] **PS-242** Promote the fallback-proof Personal Space scene pack to final production action art
   - Completed: shipped the authored 3:2 Formal Workstation background, 12 protagonist state／facing poses, six Companion states, clear／rain overlays, shared poster／Pixi manifest resolution, reproducible provenance／QC evidence, and passing 259,133-byte first-paint／1,766,935-byte full-pack budgets in v1.22.0.

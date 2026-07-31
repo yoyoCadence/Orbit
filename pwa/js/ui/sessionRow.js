@@ -4,7 +4,12 @@
 //   goals → { showNote: true, showResultLabel: true }
 
 import { escHtml, formatTime } from '../utils.js';
-import { getProof } from '../platform/proofStore.js';
+import {
+  clearAchievementPhotoSelection,
+  getAchievementPhotoSelection,
+  getProof,
+  setAchievementPhotoSelection,
+} from '../platform/proofStore.js';
 
 export const RESULT_ICON  = { complete: '✅', partial: '🔶', invalid: '❌', instant: '✓' };
 export const RESULT_LABEL = { complete: '完成', partial: '部分完成', invalid: '無效', instant: '完成' };
@@ -14,6 +19,7 @@ export function sessionRowHtml(s, {
   showNote = false,
   showResultLabel = false,
   emptyXpText = '',
+  proofWallOwnerId = null,
 } = {}) {
   const icon  = RESULT_ICON[s.result] || '✓';
   const xpStr = s.finalXP > 0
@@ -23,10 +29,10 @@ export function sessionRowHtml(s, {
       : s.result === 'invalid' ? '0 XP' : emptyXpText;
   const dur         = s.durationMinutes > 0 ? ` · ${s.durationMinutes}m` : '';
   const resultLabel = showResultLabel ? ` · ${RESULT_LABEL[s.result] || ''}` : '';
-  const proof = getProof(s.id);
-  const thumbHtml = proof
-    ? `<span class="session-proof-thumb-wrap"><img class="session-proof-thumb" src="${proof}" alt="佐證"></span>`
-    : '';
+  const thumbHtml = proofControlsHtml(s.id, {
+    ownerId: proofWallOwnerId,
+    taskName: s.taskName,
+  });
   const noteHtml = (showNote && s.note) ? `<div class="log-note">💬 ${escHtml(s.note)}</div>` : '';
 
   return `
@@ -44,13 +50,77 @@ export function sessionRowHtml(s, {
   `;
 }
 
-/** Make proof thumbnails inside `container` open the fullscreen lightbox. */
-export function bindProofThumbs(container) {
-  container.querySelectorAll('.session-proof-thumb').forEach(img => {
-    img.style.cursor = 'zoom-in';
-    img.addEventListener('click', e => {
+export function proofControlsHtml(sessionId, { ownerId = null, taskName = '' } = {}) {
+  const proof = getProof(sessionId);
+  if (!proof) return '';
+
+  const selected = getAchievementPhotoSelection(ownerId) === String(sessionId);
+  const safeTaskName = escHtml(taskName || '這筆任務');
+  const wallButton = ownerId ? `
+    <button
+      class="session-proof-wall-btn ${selected ? 'is-selected' : ''}"
+      type="button"
+      data-proof-wall-session-id="${escHtml(sessionId)}"
+      data-proof-wall-task-name="${safeTaskName}"
+      aria-label="${selected ? '取消在個人空間展示' : '在個人空間展示'}「${safeTaskName}」佐證"
+      aria-pressed="${selected}"
+      title="${selected ? '取消展示' : '展示到個人空間'}"
+    >${selected ? '✓' : '🖼'}</button>
+  ` : '';
+
+  return `
+    <span class="session-proof-thumb-wrap">
+      <button class="session-proof-preview-btn" type="button" aria-label="檢視「${safeTaskName}」佐證照片">
+        <img class="session-proof-thumb" src="${escHtml(proof)}" alt="">
+      </button>
+      ${wallButton}
+    </span>
+  `;
+}
+
+/** Bind proof preview and local Personal Space photo-wall selection controls. */
+export function bindProofThumbs(container, { ownerId = null, onPhotoWallChange } = {}) {
+  container.querySelectorAll('.session-proof-preview-btn').forEach(button => {
+    button.addEventListener('click', e => {
       e.stopPropagation();
-      window._showProofLightbox(img.src);
+      const img = button.querySelector('.session-proof-thumb');
+      if (img?.src) window._showProofLightbox?.(img.src);
+    });
+  });
+
+  container.querySelectorAll('.session-proof-wall-btn').forEach(button => {
+    button.addEventListener('click', event => {
+      event.stopPropagation();
+      const sessionId = button.dataset.proofWallSessionId;
+      const taskName = button.dataset.proofWallTaskName || '這筆任務';
+      const selected = getAchievementPhotoSelection(ownerId) === sessionId;
+      try {
+        if (selected) clearAchievementPhotoSelection(ownerId);
+        else setAchievementPhotoSelection(ownerId, sessionId);
+      } catch (error) {
+        onPhotoWallChange?.({ error, ownerId, sessionId, selected: false, taskName });
+        return;
+      }
+
+      const nextSelection = getAchievementPhotoSelection(ownerId);
+      container.querySelectorAll('.session-proof-wall-btn').forEach(candidate => {
+        const isSelected = candidate.dataset.proofWallSessionId === nextSelection;
+        const candidateTask = candidate.dataset.proofWallTaskName || '這筆任務';
+        candidate.classList.toggle('is-selected', isSelected);
+        candidate.setAttribute('aria-pressed', String(isSelected));
+        candidate.setAttribute(
+          'aria-label',
+          `${isSelected ? '取消在個人空間展示' : '在個人空間展示'}「${candidateTask}」佐證`,
+        );
+        candidate.title = isSelected ? '取消展示' : '展示到個人空間';
+        candidate.textContent = isSelected ? '✓' : '🖼';
+      });
+      onPhotoWallChange?.({
+        ownerId,
+        sessionId,
+        selected: nextSelection === sessionId,
+        taskName,
+      });
     });
   });
 }

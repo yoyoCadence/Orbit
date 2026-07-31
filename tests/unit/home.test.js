@@ -14,6 +14,7 @@ import {
   loadPersonalSpaceV2State,
   savePersonalSpaceV2State,
 } from '../../pwa/js/personalSpace/v2/store.js';
+import { saveProof } from '../../pwa/js/platform/proofStore.js';
 
 // ─── Module mocks ─────────────────────────────────────────────────────────────
 
@@ -736,5 +737,45 @@ describe('renderHome: section edit-mode toggle', () => {
     btn.click();
     expect(btn.textContent).toBe('編輯');
     expect(c.querySelector('.task-grid[data-section="growth"]').classList.contains('edit-mode')).toBe(false);
+  });
+});
+
+describe('renderHome: achievement photo wall', () => {
+  afterEach(() => { document.body.innerHTML = ''; });
+
+  it('selects one local proof and refreshes the Orbit Window frame immediately', () => {
+    setPersonalSpaceRuntime('v2');
+    mockState.user = { id: 'owner-photo', name: 'Tester', totalXP: 0, streakDays: 3 };
+    mockState.sessions = [{
+      id: 'proof-session',
+      taskId: 'task-1',
+      taskName: '完成作品集',
+      date: '2026-04-11',
+      completedAt: '2026-04-11T10:00:00.000Z',
+      result: 'complete',
+      finalXP: 40,
+      energyGain: 0,
+      durationMinutes: 30,
+      impactType: 'task',
+      value: 'A',
+    }];
+    saveProof('proof-session', 'data:image/jpeg;base64,QUJD');
+    const c = makeContainer();
+
+    const cleanup = renderHome(c);
+    const frame = () => c.querySelector('[data-achievement-photo]');
+    const wallButton = c.querySelector('[data-proof-wall-session-id="proof-session"]');
+
+    expect(frame().dataset.photoStatus).toBe('empty');
+    expect(wallButton.getAttribute('aria-pressed')).toBe('false');
+    wallButton.click();
+    expect(frame().dataset.photoStatus).toBe('selected');
+    expect(frame().querySelector('img').src).toBe('data:image/jpeg;base64,QUJD');
+    expect(wallButton.getAttribute('aria-pressed')).toBe('true');
+
+    wallButton.click();
+    expect(frame().dataset.photoStatus).toBe('empty');
+    expect(frame().querySelector('img')).toBeNull();
+    cleanup();
   });
 });
