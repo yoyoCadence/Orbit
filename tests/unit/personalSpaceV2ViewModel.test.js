@@ -375,4 +375,25 @@ describe('Personal Space V2 shared view models', () => {
     expect(getTimeBand(17)).toBe('evening');
     expect(getTimeBand(21)).toBe('night');
   });
+
+  it('projects the local achievement photo through every shared render mode', () => {
+    const achievementPhoto = {
+      status: 'selected',
+      sessionId: 'proof-session',
+      src: 'data:image/jpeg;base64,QUJD',
+      taskName: '完成作品集',
+      completedAt: '2026-07-31T10:00:00.000Z',
+    };
+    const snapshot = buildPersonalSpaceV2Snapshot({
+      coreState: { user: {}, sessions: [], achievementPhoto },
+      v2State: { world: {}, inventory: {} },
+      ledgerSnapshot: {},
+      effectiveDate: '2026-07-31',
+    });
+
+    expect(snapshot.achievementPhoto).toEqual(achievementPhoto);
+    expect(buildHomeWindowViewModel(snapshot).achievementPhoto).toEqual(achievementPhoto);
+    expect(buildFullWorldViewModel(snapshot).achievementPhoto).toEqual(achievementPhoto);
+    expect(buildEditViewModel(snapshot).achievementPhoto).toEqual(achievementPhoto);
+  });
 });

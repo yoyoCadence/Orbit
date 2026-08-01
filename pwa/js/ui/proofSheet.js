@@ -3,6 +3,8 @@
 
 import { showToast } from './feedback.js';
 import { saveProof } from '../platform/proofStore.js';
+import { state } from '../state.js';
+import { bindProofThumbs, proofControlsHtml } from './sessionRow.js';
 
 export function showProofLightbox(src) {
   const overlay = document.createElement('div');
@@ -88,15 +90,24 @@ export async function showProofSheet(sessionId, taskName) {
     if (delBtn) {
       const logItem = delBtn.closest('.log-item');
       if (logItem && !logItem.querySelector('.session-proof-thumb-wrap')) {
-        const wrap = document.createElement('span');
-        wrap.className = 'session-proof-thumb-wrap';
-        const img = document.createElement('img');
-        img.className = 'session-proof-thumb';
-        img.src = selectedDataUrl;
-        img.alt = '佐證';
-        wrap.appendChild(img);
+        const shell = document.createElement('div');
+        shell.innerHTML = proofControlsHtml(sessionId, {
+          ownerId: state.user?.id,
+          taskName,
+        });
+        const wrap = shell.firstElementChild;
         const xpSpan = logItem.querySelector('.log-xp');
-        if (xpSpan) xpSpan.before(wrap);
+        if (xpSpan && wrap) {
+          xpSpan.before(wrap);
+          bindProofThumbs(logItem, {
+            ownerId: state.user?.id,
+            onPhotoWallChange: change => showToast(
+              change.error
+                ? '無法更新個人空間展示'
+                : change.selected ? '已展示到個人空間' : '已取消個人空間展示',
+            ),
+          });
+        }
       }
     }
     close();

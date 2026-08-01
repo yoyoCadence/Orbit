@@ -3,6 +3,7 @@ import { storage }                   from '../storage.js';
 import { formatDate, sortSessionsNewestFirst } from '../utils.js';
 import { goToProCard } from '../ui/proNav.js';
 import { sessionRowHtml, bindProofThumbs } from '../ui/sessionRow.js';
+import { showToast } from '../ui/feedback.js';
 
 const FREE_DAYS = 30; // free tier history depth
 
@@ -39,7 +40,11 @@ export function renderGoals(container) {
   const groupsHtml = Object.entries(grouped).map(([date, sessions]) => {
     const totalXP = sessions.reduce((sum, s) => sum + (s.finalXP || 0), 0);
     const rowsHtml = sessions.map(s =>
-      sessionRowHtml(s, { showNote: true, showResultLabel: true })
+      sessionRowHtml(s, {
+        showNote: true,
+        showResultLabel: true,
+        proofWallOwnerId: state.user?.id,
+      })
     ).join('');
 
     return `
@@ -74,5 +79,12 @@ export function renderGoals(container) {
 
   container.querySelector('.history-lock-btn')?.addEventListener('click', () => goToProCard());
 
-  bindProofThumbs(container);
+  bindProofThumbs(container, {
+    ownerId: state.user?.id,
+    onPhotoWallChange: change => showToast(
+      change.error
+        ? '無法更新個人空間展示'
+        : change.selected ? '已展示到個人空間' : '已取消個人空間展示',
+    ),
+  });
 }

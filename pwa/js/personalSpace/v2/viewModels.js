@@ -582,6 +582,13 @@ export function buildPersonalSpaceV2Snapshot(coreOrInput = {}, v2Arg = {}, ledge
     placedItems: world.placedItems || [],
     layoutOverrides: world.idleWindowLayouts || {},
     ownedItems: v2State.inventory?.ownedItems || [],
+    achievementPhoto: coreState.achievementPhoto || {
+      status: 'empty',
+      sessionId: null,
+      src: null,
+      taskName: null,
+      completedAt: null,
+    },
   });
 }
 
@@ -613,6 +620,7 @@ function commonProjection(snapshot, renderMode) {
     weather: snapshot.weather,
     placements: snapshot.placements,
     layoutOverrides: snapshot.layoutOverrides,
+    achievementPhoto: snapshot.achievementPhoto,
   };
 }
 

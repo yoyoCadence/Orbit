@@ -3,6 +3,22 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.23.0] - 2026-07-31
+
+### Added
+- 完成 HW-105 Personal Space achievement photo wall：首頁與完成紀錄的本機佐證可標記一張為展示照片，並立即出現在首頁 Orbit Window 與完整 Personal Space 的共用相框中。
+- 新增 owner-scoped、device-local 的展示選取狀態與 `empty／unavailable／selected` fallback；Session 或圖片不存在時只呈現安全 placeholder，不讀取其他本機帳號的佐證，也不變更 auth／Supabase schema。
+
+### Changed
+- 佐證預覽與個人空間展示改為具備明確 accessible name／pressed state 的獨立 44×44 控制；清除本機佐證時也會清除展示選取 metadata。
+
+### Validation
+- `npm run lint`、`npm run test`（44 files／824 tests）、PS-242 manifest 與 PS-243 asset baseline freshness gates 通過。
+- `npm run test:e2e -- tests/e2e/ps243-acceptance.test.js --project=chromium`：8/8 通過，涵蓋 320×568 至 1024×768、橫向、鍵盤順序、reduced motion 與 200% zoom。
+- Playwright CLI 實際驗證 local proof 選取、Pixi `ready` 後相框顯示、完整 Personal Space 導航、圖片遺失 placeholder，以及 320px viewport 的 44×44 控制與零水平溢位。
+
+---
+
 ## [1.22.0] - 2026-07-31
 
 ### Added

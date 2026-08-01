@@ -16,6 +16,7 @@ import {
   mountOrbitWindow,
   normalizeOrbitWindowModel,
   renderOrbitWindow,
+  updateOrbitWindowAchievementPhoto,
 } from '../../pwa/js/personalSpace/v2/ui/orbitWindow.js';
 
 describe('Personal Space V2 Orbit Window', () => {
@@ -200,5 +201,29 @@ describe('Personal Space V2 Orbit Window', () => {
     vi.advanceTimersByTime(3500);
     expect(onRevealConsumed).toHaveBeenCalledWith('reveal:session-1');
     cleanup();
+  });
+
+  it('renders and live-updates a safe achievement photo above the shared scene surface', () => {
+    const shell = document.createElement('div');
+    shell.innerHTML = renderOrbitWindow();
+    const root = shell.querySelector('[data-orbit-window]');
+    const frame = () => root.querySelector('[data-achievement-photo]');
+
+    expect(frame().dataset.photoStatus).toBe('empty');
+    expect(updateOrbitWindowAchievementPhoto(root, {
+      status: 'selected',
+      src: 'data:image/jpeg;base64,QUJD',
+      taskName: '完成作品集',
+    })).toBe(true);
+    expect(frame().dataset.photoStatus).toBe('selected');
+    expect(frame().querySelector('img').src).toBe('data:image/jpeg;base64,QUJD');
+
+    updateOrbitWindowAchievementPhoto(root, {
+      status: 'selected',
+      src: 'data:image/svg+xml;base64,PHN2Zz4=',
+    });
+    expect(frame().dataset.photoStatus).toBe('unavailable');
+    expect(frame().querySelector('img')).toBeNull();
+    expect(frame().querySelector('.orbit-window-achievement-placeholder')).not.toBeNull();
   });
 });
