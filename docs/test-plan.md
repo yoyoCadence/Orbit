@@ -17,6 +17,19 @@
 - **位置：** `leaderboard.js` line 15
 - **說明：** `avgWeekXP < 1` 回傳 `null`，然後 line 80 `filter(r => r.growthRate !== null)` 正確過濾，沒有實際 bug，但 `null` 和正常值的語意應更明確。
 
+### BUG-3：跨日啟動流程（日報 + 晨間 modal）完全沒有 E2E 覆蓋（高優先）
+> 補記於 2026-08-04，對應 tasks.md 的 BUG-105 / BUG-106，詳見 [`bug-105-morning-modal-lockup.md`](bug-105-morning-modal-lockup.md)。
+
+- **位置：** `tests/e2e/support/seed.js` line 13-15
+- **說明：** 共用 fixture 的 `GUEST_USER` 刻意使用 `newDayHour: 0`，讓 `effectiveToday(0)` 恆等於 `today()`，
+  以避免 CI 在 UTC 05:00 前跳出日報 modal。對既有測試而言是合理選擇，但副作用是
+  `bootWithLocalState()` 的「跨日」分支（`showDailyReport()` → `showMorningModal()`）**從未被任何測試執行過**。
+  實際線上事故（晨間 modal 永久卡死、重開無效）就發生在這條路徑上。
+- **修法：** 新增獨立 fixture（`energy.lastResetDate = 昨天`、保留預設 `newDayHour: 5`）專門覆蓋此流程，至少驗證：
+  1. 日報 CTA 與晨間三顆按鈕**各自**綁到自己的 modal（不可用全域 `document.getElementById`）
+  2. `storage` 寫入失敗時 modal 仍會關閉，並出現可見的失敗回饋
+  3. 單次啟動只產生一組 modal（`SIGNED_IN` 早於 `getSession()` resolve 的時序）
+
 ---
 
 ## 二、測試計畫（共 5 個新測試檔案）
