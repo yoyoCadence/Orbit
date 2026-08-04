@@ -23,8 +23,23 @@ const SESSION_SYNC_CUTOVER_KEY = 'sessionSyncCutover:v1.21';
 function get(key) {
   try { return JSON.parse(localStorage.getItem(PREFIX + key)); } catch { return null; }
 }
+/**
+ * Writes to localStorage and reports success instead of throwing.
+ *
+ * BUG-105: a QuotaExceededError（配額用盡 / Safari 隱私模式）used to propagate
+ * into whatever UI handler triggered the write. The morning modal's click
+ * handler had no try/catch, so the throw skipped `modal.remove()` and left the
+ * user permanently stuck on a modal with no close button. Callers that need to
+ * tell the user something went wrong check the return value.
+ */
 function set(key, val) {
-  localStorage.setItem(PREFIX + key, JSON.stringify(val));
+  try {
+    localStorage.setItem(PREFIX + key, JSON.stringify(val));
+    return true;
+  } catch (err) {
+    console.error(`localStorage write failed for "${key}":`, err);
+    return false;
+  }
 }
 
 function remove(key) {
@@ -625,10 +640,11 @@ export const storage = {
 
   // ── User ─────────────────────────────────────────────────────────────────────
   getUser:    ()  => get('user'),
+  /** @returns {boolean} whether the local write succeeded (see `set`). */
   saveUser:   (u) => {
-    set('user', u);
+    const saved = set('user', u);
     const ownerId = u?.id;
-    if (!ownerId) return;
+    if (!ownerId) return saved;
     const pending = createPendingSnapshot(ownerId, u);
     const pendingKey = ownerSyncPendingKey(PROFILE_SYNC_PENDING_KEY, ownerId);
     set(pendingKey, pending);
@@ -637,6 +653,7 @@ export const storage = {
         if (synced) clearPendingSnapshot(pendingKey, pending);
       })
       .catch(console.error);
+    return saved;
   },
   /** Local-only write — no Supabase sync（profile 樂觀更新、dev tools 用）。 */
   saveUserLocal: (u) => {
@@ -709,18 +726,20 @@ export const storage = {
 
   // ── Energy ───────────────────────────────────────────────────────────────────
   getEnergy:   ()  => get('energy') ?? { currentEnergy: 100, maxEnergy: 100, lastResetDate: '' },
+  /** @returns {boolean} whether the local write succeeded (see `set`). */
   saveEnergy:  (e) => {
-    set('energy', e);
+    const saved = set('energy', e);
     const ownerId = get('user')?.id;
     const pending = ownerId ? createPendingSnapshot(ownerId, e) : null;
     const pendingKey = ownerSyncPendingKey(ENERGY_SYNC_PENDING_KEY, ownerId);
     if (pendingKey) set(pendingKey, pending);
-    if (!ownerId) return;
+    if (!ownerId) return saved;
     db.upsertEnergy(e, ownerId)
       .then(synced => {
         if (synced && pending) clearPendingSnapshot(pendingKey, pending);
       })
       .catch(console.error);
+    return saved;
   },
 
   // ── Legacy (migration read-only) ─────────────────────────────────────────────
