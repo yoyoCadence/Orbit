@@ -9,6 +9,7 @@ import { uid, today } from './utils.js';
 import {
   eToday, processYesterdayStreak, showStreakUnlockModal,
   showDailyReport, showMorningModal, checkWeeklyBonus, startDayWatcher,
+  clearDayCycleModals,
 } from './dayCycle.js';
 import { createDefaultTasks }   from './defaultTasks.js';
 import {
@@ -240,6 +241,9 @@ function handleSignOut() {
   authOperationGuard.invalidate();
   teardownActivePageRenderer();
   orbitWindowRuntimeDestroyer.destroyNow();
+  // Overlays are mounted on <body>, so hiding #main-app below leaves them
+  // floating above the login screen with a null state.user behind them.
+  clearDayCycleModals();
   if (!_currentSession && !storage.getUser()) return; // already signed out
   _currentSession = null;
   state.user     = null;

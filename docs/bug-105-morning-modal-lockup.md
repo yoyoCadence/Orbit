@@ -2,7 +2,8 @@
 
 > 建立日期：2026-08-04
 > 調查版本：v1.23.0（`origin/main` @ c1db6e8）
-> 狀態：**已定位，尚未修正**。本文件只記錄調查結果與修法提案，不含程式碼變更。
+> 狀態：**D-1 / D-3 已於 v1.23.1 修正**（分支 `fix/bug-105-morning-modal-lockup`，對應 tasks.md 的 BUG-105）。
+> **D-2 / D-4 仍未處理**，追蹤於 tasks.md 的 BUG-106。修正內容見文末第七節。
 
 ---
 
@@ -196,3 +197,38 @@ newDayHour: 0,
 
 這個選擇對既有測試是合理的，但副作用是整條 boot 路徑從未被執行過。
 修正時應新增獨立 fixture（`energy.lastResetDate = 昨天`）專門覆蓋此流程。
+
+---
+
+## 七、v1.23.1 實際修正內容
+
+對應 tasks.md 的 **BUG-105**，涵蓋 D-1、D-1a、D-1b、D-3。
+
+| 修正 | 檔案 |
+|---|---|
+| 晨間 modal handler：先 `modal.remove()` 再寫入，全段包 `try/catch`，`state.user` 為 null 時直接返回 | `pwa/js/dayCycle.js` |
+| `set()` 改為回傳 `boolean` 並 `console.error`，不再 throw；`saveUser` / `saveEnergy` 透傳結果 | `pwa/js/storage.js` |
+| 寫入失敗時以 `showToast` 明確告知「已套用但無法存到這台裝置」 | `pwa/js/dayCycle.js` |
+| 新增 `mountModal()`：掛載前先移除同 id 殘留節點 | `pwa/js/dayCycle.js` |
+| 日報／連勝解鎖 modal 改用 `modal.querySelector()` 綁定 CTA | `pwa/js/dayCycle.js` |
+| 新增並在 `handleSignOut()` 呼叫 `clearDayCycleModals()`，清除 `body >` 層級的殘留 overlay（靜態 shell 的 `#focus-duration-picker` 在 `#app` 內，不受影響） | `pwa/js/dayCycle.js`、`pwa/js/app.js` |
+
+### 順帶修正（同一流程內的既有缺陷）
+
+選擇今日狀態後未呼叫 `updateHeader()`，header 的精力值會停在前一天的數字，直到其他操作剛好觸發重繪。
+只有 `ui/header.js` 會寫入 `#hdr-energy-text`，`renderPage()` 不會。此問題由新增的 E2E 斷言揭露，一併修正。
+
+### 測試
+
+- `tests/unit/dayCycle.test.js`（10 項，jsdom）— 鎖住「寫入成功／寫入回報失敗／寫入拋錯／已登出」四種情況下 modal 都會關閉，
+  以及 CTA 綁在自己的 modal 上、同 id 不疊層、`clearDayCycleModals()` 不誤刪靜態 shell 節點
+- `tests/e2e/day-cycle-boot.test.js`（3 項）— 跨日啟動完整流程、重開不再重複詢問、寫入失敗時仍可離開並看到提示、
+  登出時 overlay 不殘留
+
+### 尚未處理
+
+- **D-2**（單次啟動重複執行 `bootWithLocalState()`）：`mountModal()` 讓疊層不再造成卡死，但**重複 boot 本身仍存在**，
+  仍會重複跑 `processYesterdayStreak()` / `checkWeeklyBonus()` 等副作用。屬 BUG-106。
+- **D-4**（Supabase client 未鎖版本）：屬 BUG-106。
+- `saveBgImage()`（`storage.js`）直接呼叫 `localStorage.setItem` 而未經 `set()`，仍會在配額不足時拋錯；
+  base64 背景圖正是最容易撐爆配額的資料，建議一併納入 BUG-106 或另開票處理。

@@ -3,6 +3,25 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.23.1] - 2026-08-04
+
+修正 BUG-105：跨日後第一次開啟 App 卡在「☀️ 今天的狀態？」，怎麼點都沒反應且重開無效。
+
+### Fixed
+- 晨間 modal 的 click handler 改為**先關閉 modal 再寫入**，並包上 `try/catch`。這兩個 modal 沒有關閉鈕／背景關閉／逾時，而「今天已詢問」的 `energy.lastResetDate` 只在 handler 跑完後才寫入，因此過去 handler 中途拋錯就等於永久卡死，且重開 App 會重演。
+- `storage.js` 的 `set()` 改為回報寫入結果而非 throw（配額用盡、Safari 隱私模式）；`saveUser` / `saveEnergy` 回傳本機寫入是否成功，晨間 modal 據此以 toast 告知「已套用但無法存到這台裝置」，不再靜默卡住。
+- 日報與連勝解鎖 modal 改用 scope 過的 `modal.querySelector()` 綁定 CTA。原本使用全域 `document.getElementById()`，在 modal 疊層時會綁到 DOM 中第一個（被壓在下面看不見的）節點，使用者看到的最上層按鈕完全沒有 listener。
+- 日報／晨間 modal 掛載前先移除同 id 的殘留節點，避免疊層。
+- 登出時一併清除殘留在 `<body>` 的 day-cycle overlay。這些 overlay 掛在 `<body>` 上，過去隱藏 `#main-app` 並不會移除它們，會浮在登入畫面上且背後的 `state.user` 已為 `null`。
+- 選擇今日狀態後補呼叫 `updateHeader()`。過去 header 的精力值會停在前一天的數字，直到其他操作剛好觸發重繪。
+
+### Validation
+- `npm run lint`、`npm run test`（45 files／834 tests，新增 `tests/unit/dayCycle.test.js` 10 項）。
+- `npm run test:e2e`：37/37 通過（`--workers=1`），新增 `tests/e2e/day-cycle-boot.test.js` 覆蓋先前完全沒有測試的跨日啟動流程。
+- 以 Playwright 實測「點擊當下 localStorage 寫入失敗」情境：修正前 modal 留在畫面且無任何提示，修正後 modal 關閉並顯示 toast。
+
+---
+
 ## [1.23.0] - 2026-07-31
 
 ### Added
