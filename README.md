@@ -16,6 +16,17 @@
 上方是等級／XP 與四項當日指標（成長XP、連勝、精力、娛樂），並直接標示今天是否達成有效日。
 中間的 PERSONAL SPACE 會隨著累積成果長出你的工作站；下方是當日 Main Quest 與計畫。
 
+### 換個樣子
+
+14 種主題，設定頁即時切換（部分為 Pro 專屬）：
+
+![主題清單](docs/screenshots/themes.png)
+
+| 極光藍 | 翡翠綠 |
+|---|---|
+| ![極光藍](docs/screenshots/theme-aurora.png) | ![翡翠綠](docs/screenshots/theme-emerald.png) |
+
+
 ## 為什麼做這個？
 
 大多數習慣追蹤 App 把所有任務一視同仁，打卡就加分。問題是：整理桌面和完成一份深度報告，對你的長期成長意義完全不同。
