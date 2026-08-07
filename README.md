@@ -18,13 +18,17 @@
 
 ### 換個樣子
 
-14 種主題，設定頁即時切換（部分為 Pro 專屬）：
+14 種主題，設定頁即時切換：
 
 ![主題清單](docs/screenshots/themes.png)
 
-| 極光藍 | 翡翠綠 |
+| 賽博龐克 | 哥德蘿莉 |
 |---|---|
-| ![極光藍](docs/screenshots/theme-aurora.png) | ![翡翠綠](docs/screenshots/theme-emerald.png) |
+| ![賽博龐克](docs/screenshots/theme-cyberpunk.png) | ![哥德蘿莉](docs/screenshots/theme-gothic.png) |
+
+| 像素 | 動漫 |
+|---|---|
+| ![像素](docs/screenshots/theme-pixel.png) | ![動漫](docs/screenshots/theme-anime.png) |
 
 
 ## 為什麼做這個？
