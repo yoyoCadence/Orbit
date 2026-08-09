@@ -10,6 +10,30 @@ Orbit 是一個以「行為分類 × 積分機制」為核心的 PWA。它不只
 
 ---
 
+## 畫面
+
+> 實機截圖，以「遊客身份」啟動（資料僅存本機，不需登入或後端）。
+
+![Orbit 主畫面](docs/screenshots/app.png)
+
+上方是等級／XP 與四項當日指標（成長XP、連勝、精力、娛樂），並直接標示今天是否達成有效日。
+中間的 PERSONAL SPACE 會隨著累積成果長出你的工作站；下方是當日 Main Quest 與計畫。
+
+### 換個樣子
+
+14 種主題，設定頁即時切換：
+
+![主題清單](docs/screenshots/themes.png)
+
+| 賽博龐克 | 哥德蘿莉 |
+|---|---|
+| ![賽博龐克](docs/screenshots/theme-cyberpunk.png) | ![哥德蘿莉](docs/screenshots/theme-gothic.png) |
+
+| 像素 | 動漫 |
+|---|---|
+| ![像素](docs/screenshots/theme-pixel.png) | ![動漫](docs/screenshots/theme-anime.png) |
+
+
 ## 為什麼做這個？
 
 大多數習慣追蹤 App 把所有任務一視同仁，打卡就加分。問題是：整理桌面和完成一份深度報告，對長期成長的意義完全不同。當兩件事都只給你一顆星星，App 獎勵的就是「看起來很忙」，而不是「真的變強」。
