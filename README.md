@@ -6,33 +6,10 @@ Orbit 是一個以「行為分類 × 積分機制」為核心的 PWA。它不只
 
 **線上版：** https://yoyocadence.github.io/Orbit/  
 **目前版本：** v1.23.1 — [查看版本歷史](CHANGELOG.md)  
-**技術：** 純 Vanilla JS（無框架）+ Supabase + PWA，可安裝到手機主畫面、離線可用
+**技術：** 純 Vanilla JS（無框架）+ Supabase + PWA，可安裝到手機主畫面、離線可用  
+**免註冊試用：** 可用「遊客身份」直接開始，資料僅存本機，不需登入或後端
 
 ---
-
-## 畫面
-
-> 實機截圖，以「遊客身份」啟動（資料僅存本機，不需登入或後端）。
-
-![Orbit 主畫面](docs/screenshots/app.png)
-
-上方是等級／XP 與四項當日指標（成長XP、連勝、精力、娛樂），並直接標示今天是否達成有效日。
-中間的 PERSONAL SPACE 會隨著累積成果長出你的工作站；下方是當日 Main Quest 與計畫。
-
-### 換個樣子
-
-14 種主題，設定頁即時切換：
-
-![主題清單](docs/screenshots/themes.png)
-
-| 賽博龐克 | 哥德蘿莉 |
-|---|---|
-| ![賽博龐克](docs/screenshots/theme-cyberpunk.png) | ![哥德蘿莉](docs/screenshots/theme-gothic.png) |
-
-| 像素 | 動漫 |
-|---|---|
-| ![像素](docs/screenshots/theme-pixel.png) | ![動漫](docs/screenshots/theme-anime.png) |
-
 
 ## 為什麼做這個？
 
@@ -62,6 +39,8 @@ Orbit 的設計出發點是：**讓系統幫你誠實地判斷今天是否真的
 - **🔥 連勝** — 節奏穩定性，只有「有效日」才 +1
 - **⚡ 精力** — 今日可用的預算，任務會消耗、恢復會回補
 - **🎭 娛樂時間** — 當日娛樂分鐘數，超過 120 分鐘就不成立有效日
+
+頂端是等級與 XP 進度條，指標列則直接標示今天是否已達成**有效日**——不用自己心算，一眼就知道這天算不算數。
 
 > **設計重點：** XP 衡量「長期價值」，Energy 衡量「當下負擔」。兩者分離，系統才不會獎勵你硬撐一天然後崩潰三天。
 
@@ -143,7 +122,7 @@ Personal Space 是 Orbit 從「工具」走向 **self-growth life sim** 的核�
   <img src="docs/screenshots/06-customization.jpg" alt="主題切換、Orbit Pro、任務管理與 CSV / PDF 匯出" width="420">
 </p>
 
-- **🎨 多種主題** — 經典（暗夜紫 / 極光藍 / 翡翠綠 / 赤焰 / 霓虹粉 / 純白光）、新風格（日系簡約 / Material / 賽博龐克 / Liquid Glass）、創意（像素 / 動漫 / 哥德蘿莉），並支援「每日隨機主題」
+- **🎨 14 種主題** — 設定頁即時切換，分三組：經典（暗夜紫 / 極光藍 / 翡翠綠 / 赤焰 / 霓虹粉 / 純白光）、新風格（日系簡約 / Material / 賽博龐克 / Liquid Glass）、創意（像素 / 動漫 / 哥德蘿莉 / GitHub），另可開啟「每日隨機主題」自動輪替
 - **🎯 任務管理** — 完整 CRUD，自訂任務的等級、難度、阻力與執行方式
 - **📤 資料匯出** — 一鍵匯出 CSV（UTF-8 BOM，Excel 開中文不亂碼）或產生 A4 PDF 成長報告
 - **⭐ Orbit Pro** — Streak Shield（連勝護盾）、365 天 Habit Heatmap、進階數據儀表板、Focus Timer 進階設定、CSV / PDF 匯出
