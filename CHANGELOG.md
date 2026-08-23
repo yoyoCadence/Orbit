@@ -3,6 +3,25 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.23.2] - 2026-08-23
+
+修正兩個各自獨立、但都會讓「新增任務」失效的問題：Liquid Galss 主題下任務表單無法捲動，以及任務同步的整份覆蓋缺口（本機新增的任務隔天消失、離線刪除的任務復活）。
+
+### Fixed
+- **Liquid Galss 主題下「新增／編輯任務」表單無法往下捲動。** 玻璃質感規則為了讓光澤與 `::after` 邊緣留在圓角內，對 `.modal-box` 設了 `overflow: hidden`；但 `.modal-box`（與 `.pro-sheet`）本身是 `max-height` + `overflow-y: auto` 的捲動容器，簡寫連帶把垂直捲動一起關掉，導致「性質／價值／難度／抗拒感」四個下拉選單與底部的儲存按鈕永遠停在畫面外。改為只裁切 x 軸，保留垂直捲動；Pro 訂閱 sheet 受同一條規則影響，一併修正。
+- **離線或同步失敗時新增的任務，隔天開啟 App 會消失。** `db.upsertTasks()` 沒有檢查 Supabase 回傳的 `error`，被拒絕的寫入（RLS、CHECK 條件、PostgREST 錯誤）會被當成成功，`saveTasks` 的 `catch` 因此從不觸發；而 `loadFromRemote()` 對任務是 `set('tasks', canonicalTasks)` 的整份覆蓋，沒有 Session 那樣的 pending 補寫機制。只要任務沒真的寫進雲端，下一次登入啟動就會被遠端快照抹掉。
+- **離線刪除的任務會在下次遠端載入時復活（同一個缺口的鏡像）。** `deleteTasks()` 同樣沒有檢查 `error`，而任務清單本身無法表達「遠端該刪哪些」——`saveTasks([])`（全部刪除）更是直接讓遠端舊任務整批被載回。
+- `db.upsertTasks()` 與 `db.deleteTasks()` 都改為 `if (error) throw error`，與 `upsertProfile` / `insertSession` 一致。
+- 新增 owner-scoped 的 `taskSyncPending` sidecar，同時保存「待 upsert 的任務」與「待刪除的 `deletedIds` tombstones」：`saveTasks()` 先標記為「尚未確認同步」，**upsert 與 delete 都獲得遠端確認後才清除**；`loadFromRemote()` 在拉取前依序補推兩者，任一失敗則中止整次拉取，讓本機快取維持權威來源。行為與既有的 profile／Energy pending 推送一致。
+- tombstone 會跨多次儲存累積直到刪除成功；某個 id 若又出現在本機清單中，就不再是 tombstone。
+- sidecar 只保存 `upsertTasks` 實際會寫出的欄位，避免任務自訂圖示的 inline data URL 讓 localStorage 用量翻倍。
+
+### Validation
+- `npm run lint`、`npm run test`（45 files／845 tests，`tests/integration/storage.test.js` 新增 11 項涵蓋 pending sidecar 生命週期、部分刪除／全部刪除的 tombstone 記錄、以及 upsert 或 delete 被拒絕時保留本機狀態）。
+- `npm run test:e2e -- --workers=1`：41/41 通過，新增 `tests/e2e/liquid-glass-modal.test.js` 在真實瀏覽器用滾輪手勢驗證 modal 捲動（純 CSS 迴歸，unit test 抓不到）。移除修正後重跑，該檔會紅 2 項。
+
+---
+
 ## [1.23.1] - 2026-08-04
 
 修正 BUG-105：跨日後第一次開啟 App 卡在「☀️ 今天的狀態？」，怎麼點都沒反應且重開無效。
