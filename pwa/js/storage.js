@@ -18,6 +18,7 @@ const LEADERBOARD_CACHE_KEY = 'leaderboardCache';
 const PROFILE_SYNC_PENDING_KEY = 'profileSyncPending';
 const ENERGY_SYNC_PENDING_KEY = 'energySyncPending';
 const SESSION_SYNC_PENDING_KEY = 'sessionSyncPending';
+const TASK_SYNC_PENDING_KEY = 'taskSyncPending';
 const SESSION_SYNC_CUTOVER_KEY = 'sessionSyncCutover:v1.21';
 
 function get(key) {
@@ -110,6 +111,35 @@ function clearOwnerPendingSession(ownerId, sessionId) {
     ownerId,
     loadOwnerPendingSessions(ownerId).filter(session => session.id !== sessionId),
   );
+}
+
+/**
+ * Trims a task down to the fields `upsertTasks` actually writes. The pending
+ * sidecar exists purely to retry the remote write, and a full copy would
+ * double the localStorage cost of inline `iconImg` data URLs.
+ */
+function syncableTask(task) {
+  const slim = {};
+  for (const [jsKey, , , write] of TASK_FIELDS) {
+    if (write) slim[jsKey] = task?.[jsKey];
+  }
+  return slim;
+}
+
+/**
+ * Records the task list as not-yet-confirmed-remote and returns the stored
+ * snapshot (re-read so `clearPendingSnapshot` compares like for like).
+ * Returns null when there is no owner or the write did not land.
+ */
+function saveOwnerPendingTasks(ownerId, tasks) {
+  const key = ownerSyncPendingKey(TASK_SYNC_PENDING_KEY, ownerId);
+  if (!key) return null;
+  const snapshot = {
+    ownerId,
+    value: (Array.isArray(tasks) ? tasks : []).map(syncableTask),
+  };
+  if (!set(key, snapshot)) return null;
+  return get(key);
 }
 
 function loadOwnerPendingSnapshot(baseKey, ownerId) {
@@ -367,6 +397,10 @@ export const db = {
       key: pendingEnergyKey,
       snapshot: pendingEnergy,
     } = loadOwnerPendingSnapshot(ENERGY_SYNC_PENDING_KEY, userId);
+    const {
+      key: pendingTasksKey,
+      snapshot: pendingTasks,
+    } = loadOwnerPendingSnapshot(TASK_SYNC_PENDING_KEY, userId);
     const sessionDeletionLog = loadSessionDeletionLog(userId);
     const deletedSessionIds = new Set(Object.keys(sessionDeletionLog));
     const cachedSessions = localUser?.id === userId
@@ -409,6 +443,21 @@ export const db = {
         clearPendingSnapshot(pendingEnergyKey, pendingEnergy);
       } catch (err) {
         console.warn('Could not push pending local Energy before remote load:', err);
+        throw err;
+      }
+    }
+    // Tasks have no per-row merge below — `set('tasks', canonicalTasks)` is a
+    // straight overwrite. A task the device never managed to upsert (offline,
+    // flaky mobile network, rejected write) would therefore disappear on the
+    // next launch, which is what "隔天任務就不見了" looked like. Push first and
+    // let a failure abort the pull so the local cache stays authoritative.
+    if (pendingTasks?.ownerId === userId && Array.isArray(pendingTasks.value)) {
+      try {
+        const synced = await this.upsertTasks(pendingTasks.value, userId);
+        if (!synced) throw new Error('No authenticated task sync session');
+        clearPendingSnapshot(pendingTasksKey, pendingTasks);
+      } catch (err) {
+        console.warn('Could not push pending local tasks before remote load:', err);
         throw err;
       }
     }
@@ -560,10 +609,14 @@ export const db = {
     const session = await this._session();
     if (!session || (expectedOwnerId && session.user.id !== expectedOwnerId)) return false;
     if (!tasks.length) return true;
-    await supabase.from('tasks').upsert(
+    // Unchecked before: a rejected write (RLS, CHECK constraint, PostgREST
+    // error) resolved as success, so `saveTasks`'s catch never fired and the
+    // task stayed local-only until the next remote pull erased it.
+    const { error } = await supabase.from('tasks').upsert(
       tasks.map(t => ({ user_id: expectedOwnerId || session.user.id, ...toRow(TASK_FIELDS, t) })),
       { onConflict: 'id' }
     );
+    if (error) throw error;
     return true;
   },
 
@@ -681,7 +734,19 @@ export const storage = {
     set('tasks', t);
     const ownerId = get('user')?.id;
     if (!ownerId) return;
-    db.upsertTasks(t, ownerId).catch(console.error);
+    // Treat the list as unsynced until Supabase confirms it. loadFromRemote
+    // overwrites the local task cache wholesale, so without this sidecar any
+    // task added while offline (or whose upsert failed) is silently dropped
+    // on the next authenticated launch.
+    const pendingKey = ownerSyncPendingKey(TASK_SYNC_PENDING_KEY, ownerId);
+    const pendingSnapshot = saveOwnerPendingTasks(ownerId, t);
+    db.upsertTasks(t, ownerId)
+      .then(synced => {
+        if (synced && pendingKey && pendingSnapshot) {
+          clearPendingSnapshot(pendingKey, pendingSnapshot);
+        }
+      })
+      .catch(console.error);
     const removedIds = prev.filter(p => !t.find(n => n.id === p.id)).map(p => p.id);
     if (removedIds.length) db.deleteTasks(removedIds, ownerId).catch(console.error);
   },

@@ -218,6 +218,32 @@ describe('storage.saveTasks()', () => {
     // chain.in 不應被以 deleteTasks 路徑呼叫
     expect(chain.in).not.toHaveBeenCalledWith('id', expect.any(Array));
   });
+
+  it('clears the pending-task sidecar once the upsert is confirmed', async () => {
+    mockGetSession.mockResolvedValue({ data: { session: FAKE_SESSION } });
+    mockFrom.mockImplementation(() => makeChain());
+
+    storage.saveTasks([makeTask()]);
+    // 寫入當下即標記為未同步，避免中途關閉 App 造成遺失
+    expect(lsGet('taskSyncPending:user-abc')).not.toBeNull();
+
+    await flushPromises();
+    expect(lsGet('taskSyncPending:user-abc')).toBeNull();
+  });
+
+  it('keeps the pending-task sidecar when the upsert is rejected', async () => {
+    mockGetSession.mockResolvedValue({ data: { session: FAKE_SESSION } });
+    const chain = makeChain();
+    chain.upsert = vi.fn(() => Promise.resolve({ data: null, error: { message: 'offline' } }));
+    mockFrom.mockImplementation(() => chain);
+
+    storage.saveTasks([makeTask({ id: 't-new', name: '新任務' })]);
+    await flushPromises();
+
+    const pending = lsGet('taskSyncPending:user-abc');
+    expect(pending.ownerId).toBe('user-abc');
+    expect(pending.value.map(t => t.id)).toEqual(['t-new']);
+  });
 });
 
 describe('storage.getSessions()', () => {
@@ -516,6 +542,60 @@ describe('db.loadFromRemote()', () => {
     expect(tasks[0].dailyXpCap).toBe(200);
     expect(tasks[0].minEffectiveMinutes).toBe(25);
     expect(tasks[0].isDefault).toBe(true);
+  });
+
+  it('pushes a pending local task before treating remote tasks as canonical', async () => {
+    const tasksChain = makeChain(TASKS_DB);
+    mockFrom.mockImplementation((table) => {
+      if (table === 'profiles') return makeChain(PROFILE_DB);
+      if (table === 'tasks')    return tasksChain;
+      if (table === 'sessions') return makeChain(SESSIONS_DB);
+      if (table === 'energy')   return makeChain(ENERGY_DB);
+      return makeChain(null);
+    });
+    lsSet('taskSyncPending:user-abc', {
+      ownerId: 'user-abc',
+      value: [{
+        id: 't-offline', name: '離線新增', category: 'instant',
+        impactType: 'task', taskNature: 'growth', value: 'B',
+        difficulty: 0.4, resistance: 1.0,
+      }],
+    });
+
+    await db.loadFromRemote('user-abc');
+
+    expect(tasksChain.upsert).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 't-offline', user_id: 'user-abc' }),
+      ]),
+      { onConflict: 'id' },
+    );
+    expect(lsGet('taskSyncPending:user-abc')).toBeNull();
+  });
+
+  it('keeps the local task cache when the pending task push fails', async () => {
+    mockFrom.mockImplementation((table) => {
+      if (table === 'profiles') return makeChain(PROFILE_DB);
+      if (table === 'tasks') {
+        const chain = makeChain(TASKS_DB);
+        chain.upsert = vi.fn(() => Promise.resolve({ data: null, error: { message: 'network down' } }));
+        return chain;
+      }
+      if (table === 'sessions') return makeChain(SESSIONS_DB);
+      if (table === 'energy')   return makeChain(ENERGY_DB);
+      return makeChain(null);
+    });
+    lsSet('tasks', [{ id: 't-offline', name: '離線新增' }]);
+    lsSet('taskSyncPending:user-abc', {
+      ownerId: 'user-abc',
+      value: [{ id: 't-offline', name: '離線新增' }],
+    });
+
+    await expect(db.loadFromRemote('user-abc')).rejects.toEqual({ message: 'network down' });
+
+    // 遠端快照沒有這筆任務；推送失敗時必須維持本機資料，不可被覆蓋
+    expect(lsGet('tasks').map(t => t.id)).toEqual(['t-offline']);
+    expect(lsGet('taskSyncPending:user-abc')).not.toBeNull();
   });
 
   it('writes sessions to localStorage with camelCase field mapping', async () => {
@@ -995,6 +1075,20 @@ describe('db.upsertTasks()', () => {
       ]),
       { onConflict: 'id' }
     );
+  });
+
+  it('throws when Supabase rejects the write', async () => {
+    mockGetSession.mockResolvedValue({ data: { session: FAKE_SESSION } });
+    const chain = makeChain();
+    chain.upsert = vi.fn(() => Promise.resolve({
+      data: null,
+      error: { message: 'new row violates check constraint' },
+    }));
+    mockFrom.mockImplementation(() => chain);
+
+    await expect(db.upsertTasks([makeTask()])).rejects.toEqual({
+      message: 'new row violates check constraint',
+    });
   });
 });
 

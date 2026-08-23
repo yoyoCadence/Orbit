@@ -5339,6 +5339,18 @@ nav {
   -webkit-backdrop-filter: blur(22px) saturate(165%);
 }
 
+/* The glass surface rule above sets `overflow: hidden` so the sheen and the
+   ::after rim stay inside the rounded corners — but .modal-box and .pro-sheet
+   are scroll containers (max-height + overflow-y: auto). The shorthand also
+   reset overflow-y, so under Liquid Galss the tall 新增 / 編輯任務表單 could
+   not be scrolled: 性質 / 價值 / 難度 / 抗拒感 選單與儲存按鈕 stayed trapped
+   below the fold. Clip the x axis only so vertical scrolling survives. */
+[data-theme="liquid-galss"] .modal-box,
+[data-theme="liquid-galss"] .pro-sheet {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
 [data-theme="liquid-galss"] #header::after,
 [data-theme="liquid-galss"] nav::after,
 [data-theme="liquid-galss"] .card::after,
