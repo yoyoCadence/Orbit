@@ -29,7 +29,7 @@ export function getRevealDurationMs(kind, reducedMotion = false) {
 
 export function renderOrbitWindow(inputModel = {}, options = {}) {
   const model = normalizeOrbitWindowModel(inputModel, options.renderMode);
-  const scene = getWorkspaceSceneAssets(model.activeProject.progress, model.placements);
+  const scene = getWorkspaceSceneAssets(model.activeProject.progress, model.placements, model);
   const rewardLines = buildRewardLines(model.pendingReveal);
   const revealKind = model.pendingReveal?.kind || null;
 
@@ -66,15 +66,25 @@ export function renderOrbitWindow(inputModel = {}, options = {}) {
               draggable="false"
               style="${placementStyle(scene.protagonistPlacement)}"
             >
-            <span
+            <img
               class="orbit-window-companion"
               data-companion-state="${escapeHtml(model.companion.state)}"
+              src="${escapeHtml(scene.companion.path)}"
+              alt=""
+              draggable="false"
               style="${placementStyle(scene.companionPlacement)}"
-            ><span></span></span>
-            <span class="orbit-window-weather" data-weather="${escapeHtml(model.weather)}"></span>
+            >
+            <img
+              class="orbit-window-weather"
+              data-weather="${escapeHtml(model.weather)}"
+              src="${escapeHtml(scene.weatherOverlay)}"
+              alt=""
+              draggable="false"
+            >
             <span class="orbit-window-light orbit-window-light--${escapeHtml(model.timeBand)}"></span>
           </span>
           <span class="orbit-window-runtime-host" data-orbit-runtime-host data-runtime-status="poster"></span>
+          ${renderAchievementPhoto(model.achievementPhoto)}
         </button>
 
         <div class="orbit-window-reward" role="status" aria-live="polite" aria-atomic="true">
@@ -383,6 +393,7 @@ export function normalizeOrbitWindowModel(input = {}, renderMode) {
     protagonist: {
       state: protagonist.state || input.playerState || 'idle',
       animationKey: protagonist.animationKey || protagonist.state || input.playerState || 'idle',
+      facing: protagonist.facing === 'right' || input.playerFacing === 'right' ? 'right' : 'left',
     },
     pendingReveal,
     recentWorldChange: formatRecentWorldChange(recentWorldChange),
@@ -390,7 +401,65 @@ export function normalizeOrbitWindowModel(input = {}, renderMode) {
     timeBand: input.timeBand || 'day',
     weather: input.weather === 'rain' ? 'rain' : 'clear',
     placements: input.placements || input.world?.placements || {},
+    achievementPhoto: normalizeAchievementPhoto(input.achievementPhoto),
   };
+}
+
+export function updateOrbitWindowAchievementPhoto(root, input = {}) {
+  const current = root?.querySelector?.('[data-achievement-photo]');
+  if (!current) return false;
+  const shell = document.createElement('div');
+  shell.innerHTML = renderAchievementPhoto(normalizeAchievementPhoto(input));
+  const next = shell.firstElementChild;
+  if (!next) return false;
+  current.replaceWith(next);
+  return true;
+}
+
+function normalizeAchievementPhoto(input = {}) {
+  const sessionId = typeof input.sessionId === 'string' && input.sessionId.trim()
+    ? input.sessionId.trim()
+    : null;
+  const src = typeof input.src === 'string'
+    && /^data:image\/(?:jpeg|png|webp);base64,[a-z0-9+/=]+$/i.test(input.src)
+    ? input.src
+    : null;
+  const requestedStatus = ['empty', 'unavailable', 'selected'].includes(input.status)
+    ? input.status
+    : 'empty';
+  const status = requestedStatus === 'selected' && !src ? 'unavailable' : requestedStatus;
+  return {
+    status,
+    sessionId,
+    src: status === 'selected' ? src : null,
+    taskName: typeof input.taskName === 'string' ? input.taskName : null,
+    completedAt: typeof input.completedAt === 'string' ? input.completedAt : null,
+  };
+}
+
+function renderAchievementPhoto(input = {}) {
+  const photo = normalizeAchievementPhoto(input);
+  const selected = photo.status === 'selected' && photo.src;
+  const title = selected
+    ? `展示中的成就佐證：${photo.taskName || '已完成任務'}`
+    : photo.status === 'unavailable'
+      ? '原本的成就佐證目前無法使用'
+      : '尚未選擇成就佐證';
+  return `
+    <span
+      class="orbit-window-achievement-frame orbit-window-achievement-frame--${photo.status}"
+      data-achievement-photo
+      data-photo-status="${photo.status}"
+      title="${escapeHtml(title)}"
+      aria-hidden="true"
+    >
+      <span class="orbit-window-achievement-mat">
+        ${selected
+          ? `<img src="${escapeHtml(photo.src)}" alt="" draggable="false">`
+          : '<span class="orbit-window-achievement-placeholder">✦</span>'}
+      </span>
+    </span>
+  `;
 }
 
 function normalizeRevealKind(value) {

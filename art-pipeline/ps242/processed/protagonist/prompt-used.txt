@@ -1,0 +1,13 @@
+Use case: stylized-concept
+Asset type: production 2D game protagonist state-and-facing sprite sheet
+Primary request: Create exactly 12 static action sprites of the same Orbit protagonist, arranged in a strict 3-row by 4-column grid, using the shown local image only as the identity and pixel-art style reference.
+Subject identity: same young adult protagonist, short tousled black hair, warm brown skin, blue work jacket with small warm-rust shirt accent, charcoal trousers and dark boots; practical, calm, capable; approximately 1:4.8 head-to-body proportion, not super-deformed.
+Grid mapping, left to right:
+row 1: idle facing left, idle facing right, working at an implied desk facing left, working at an implied desk facing right;
+row 2: celebrate facing left, celebrate facing right, healthy rest facing left, healthy rest facing right;
+row 3: walking facing left, walking facing right, inspect/notebook-check facing left, inspect/notebook-check facing right.
+Style/medium: polished HD-2D pixel art matching the reference, crisp dark outlines, restrained Building-stage navy/ochre/terracotta palette, mobile-readable silhouettes, consistent top-left scene lighting.
+Composition/framing: exactly 3 equal rows and 4 equal columns; no borders, gutters, labels, or UI. Full body visible in every cell. Same character scale, bounding box, foot baseline, costume, face, palette, and light direction in all 12 cells. Subject occupies about 58% of each cell with generous margin.
+Scene/backdrop: perfectly flat solid #FF00FF background across the entire sheet for chroma-key removal.
+Constraints: the entire subject must fit fully inside each cell; no body part, hair, hand, foot, notebook, chair suggestion, or motion accent may cross a cell edge; leave magenta margin on all four sides of every cell; do not draw any desk or furniture; preserve the character identity; only pose and facing may change.
+Avoid: gradients or texture in the magenta background, shadows on the background, cell dividers, detached effects, extra characters, redesign, text, labels, logos, signatures, watermark.

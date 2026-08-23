@@ -57,6 +57,10 @@ function documentOverflow(page) {
 
 test.describe('PS-243 acceptance baseline', () => {
   test.beforeEach(async ({ page }) => {
+    // Each test boots the app and waits for the Pixi runtime to reach ready;
+    // under shared CI load that legitimately exceeds the 15s global timeout, so
+    // give these runtime-heavy acceptance checks generous headroom.
+    test.setTimeout(45_000);
     await mockSupabase(page);
     await page.emulateMedia({ reducedMotion: 'reduce' });
     // totalXP high enough to exercise the full building-stage Orbit window.

@@ -3,6 +3,7 @@ import { effectiveToday, sortSessionsNewestFirst, escHtml } from '../utils.js';
 import { calcDailyStats, reorderTasks, previewBaseXP } from '../engine.js';
 import { storage } from '../storage.js';
 import { sessionRowHtml, bindProofThumbs } from '../ui/sessionRow.js';
+import { resolveAchievementPhoto } from '../platform/proofStore.js';
 import { FLAG_SHIELD_PENDING, FLAG_SHIELD_DISMISSED, FLAG_SHIELD_SCROLL_TOP } from '../flags.js';
 import { showToast } from '../ui/feedback.js';
 import { isPersonalSpaceV2Enabled } from '../personalSpace/v2/featureFlag.js';
@@ -19,6 +20,7 @@ import {
 import {
   mountOrbitWindow,
   renderOrbitWindow,
+  updateOrbitWindowAchievementPhoto,
 } from '../personalSpace/v2/ui/orbitWindow.js';
 import { orbitWindowRuntimeDestroyer } from '../personalSpace/v2/runtime/pixiSceneRuntime.js';
 
@@ -44,6 +46,13 @@ const IMPACT_COLOR = {
 let _container = null;
 let _orbitWindowCleanup = null;
 
+function coreStateWithAchievementPhoto() {
+  return {
+    ...state,
+    achievementPhoto: resolveAchievementPhoto(state.user?.id, state.sessions),
+  };
+}
+
 function buildHomeOrbitWindow(persistedState = null) {
   if (!state.user?.id || !isPersonalSpaceV2Enabled()) return null;
   try {
@@ -57,7 +66,7 @@ function buildHomeOrbitWindow(persistedState = null) {
           sessions: state.sessions,
         });
     const snapshot = buildPersonalSpaceV2Snapshot({
-      coreState: state,
+      coreState: coreStateWithAchievementPhoto(),
       v2State: result.state,
       ledgerSnapshot: result.ledgerSnapshot,
     });
@@ -68,7 +77,7 @@ function buildHomeOrbitWindow(persistedState = null) {
     try {
       const fallbackState = loadPersonalSpaceV2State(state.user.id);
       const snapshot = buildPersonalSpaceV2Snapshot({
-        coreState: state,
+        coreState: coreStateWithAchievementPhoto(),
         v2State: fallbackState,
         ledgerSnapshot: buildStoredPersonalSpaceV2LedgerSnapshot(fallbackState),
       });
@@ -290,7 +299,11 @@ export function renderHome(container) {
     <div class="section-title" style="margin-top:20px">📝 今日紀錄</div>
     <div class="card">
       ${recentSess.length
-        ? recentSess.map(s => sessionRowHtml(s, { showDelete: true, emptyXpText: '完成' })).join('')
+        ? recentSess.map(s => sessionRowHtml(s, {
+            showDelete: true,
+            emptyXpText: '完成',
+            proofWallOwnerId: state.user?.id,
+          })).join('')
         : `<div class="empty-state"><div class="empty-icon">⚡</div><p>點擊任務開始今日記錄！</p></div>`
       }
     </div>
@@ -375,7 +388,21 @@ export function renderHome(container) {
   });
 
   // ── Bind: proof thumbnails → lightbox ────────────────────────────────────────
-  bindProofThumbs(container);
+  bindProofThumbs(container, {
+    ownerId: state.user?.id,
+    onPhotoWallChange: change => {
+      if (change.error) {
+        showToast('無法更新個人空間展示');
+        return;
+      }
+      const nextPhoto = resolveAchievementPhoto(state.user?.id, state.sessions);
+      updateOrbitWindowAchievementPhoto(
+        container.querySelector('[data-orbit-window]'),
+        nextPhoto,
+      );
+      showToast(change.selected ? '已展示到個人空間' : '已取消個人空間展示');
+    },
+  });
 
   // ── Bind: streak shield banner buttons ───────────────────────────────────────
   container.querySelector('.shield-use-btn')?.addEventListener('click', () => window.useStreakShield());

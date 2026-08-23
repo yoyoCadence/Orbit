@@ -1,6 +1,6 @@
 {
   "artifact": "ps243-asset-baseline",
-  "appVersion": "1.21.2",
+  "appVersion": "1.23.2",
   "note": "Reproducible: a pure function of committed files with CRLF normalized to LF. No timestamps; regenerate with `npm run ps243:assets` and diff to verify.",
   "method": {
     "assetSizes": "raw binary file bytes on disk (fs.statSync.size)",
@@ -13,28 +13,112 @@
     "initialPaint": {
       "files": [
         {
-          "path": "pwa/assets/personal-space/idle-window/backgrounds/office-angle-center-v2.png",
-          "bytes": 1971296
+          "path": "pwa/assets/personal-space/v2/workspace/backgrounds/building-formal-workstation-room-v1.webp",
+          "bytes": 159396
         },
         {
-          "path": "pwa/assets/personal-space/idle-window/characters/building-protagonist-idle/building-protagonist-idle-1.png",
-          "bytes": 16400
+          "path": "pwa/assets/personal-space/v2/characters/protagonist/player-default-idle-left.png",
+          "bytes": 41916
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/characters/companion/orbit-guide-observe.png",
+          "bytes": 43396
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/effects/weather-building-clear-motes.png",
+          "bytes": 14425
         }
       ],
-      "totalBytes": 1987696,
+      "totalBytes": 259133,
       "targetBytes": 1572864,
       "hardThresholdBytes": 2621440,
-      "result": "FOLLOW-UP"
+      "result": "PASS"
     },
     "completeProofScene": {
       "files": [
         {
-          "path": "pwa/assets/personal-space/idle-window/backgrounds/office-angle-center-v2.png",
-          "bytes": 1971296
+          "path": "pwa/assets/personal-space/v2/workspace/backgrounds/building-formal-workstation-room-v1.webp",
+          "bytes": 159396
         },
         {
-          "path": "pwa/assets/personal-space/idle-window/characters/building-protagonist-idle/building-protagonist-idle-1.png",
-          "bytes": 16400
+          "path": "pwa/assets/personal-space/v2/characters/protagonist/player-default-idle-left.png",
+          "bytes": 41916
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/characters/companion/orbit-guide-observe.png",
+          "bytes": 43396
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/effects/weather-building-clear-motes.png",
+          "bytes": 14425
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/characters/protagonist/player-default-idle-right.png",
+          "bytes": 41163
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/characters/protagonist/player-default-work-left.png",
+          "bytes": 43277
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/characters/protagonist/player-default-work-right.png",
+          "bytes": 42851
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/characters/protagonist/player-default-celebrate-left.png",
+          "bytes": 47902
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/characters/protagonist/player-default-celebrate-right.png",
+          "bytes": 46880
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/characters/protagonist/player-default-rest-left.png",
+          "bytes": 43737
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/characters/protagonist/player-default-rest-right.png",
+          "bytes": 42469
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/characters/protagonist/player-default-walk-left.png",
+          "bytes": 44793
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/characters/protagonist/player-default-walk-right.png",
+          "bytes": 45040
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/characters/protagonist/player-default-inspect-left.png",
+          "bytes": 43423
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/characters/protagonist/player-default-inspect-right.png",
+          "bytes": 42852
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/characters/companion/orbit-guide-approach.png",
+          "bytes": 44227
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/characters/companion/orbit-guide-congratulate.png",
+          "bytes": 44119
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/characters/companion/orbit-guide-rest.png",
+          "bytes": 41683
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/characters/companion/orbit-guide-work.png",
+          "bytes": 43672
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/characters/companion/orbit-guide-remind.png",
+          "bytes": 45093
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/effects/weather-building-rain.png",
+          "bytes": 31582
         },
         {
           "path": "pwa/assets/personal-space/idle-window/props/office-corner-desk-v3/front.png",
@@ -69,7 +153,7 @@
           "bytes": 82649
         }
       ],
-      "totalBytes": 2760735,
+      "totalBytes": 1766935,
       "targetBytes": 4194304,
       "hardThresholdBytes": 6291456,
       "result": "PASS"
@@ -81,7 +165,7 @@
       "files": [
         {
           "path": "pwa/js/pages/personalSpaceV2.js",
-          "bytes": 25747
+          "bytes": 25929
         },
         {
           "path": "pwa/js/personalSpace/economy.js",
@@ -105,7 +189,7 @@
         },
         {
           "path": "pwa/js/personalSpace/v2/content/assetManifest.js",
-          "bytes": 5109
+          "bytes": 8817
         },
         {
           "path": "pwa/js/personalSpace/v2/controller.js",
@@ -149,7 +233,7 @@
         },
         {
           "path": "pwa/js/personalSpace/v2/runtime/pixiSceneRuntime.js",
-          "bytes": 17665
+          "bytes": 17296
         },
         {
           "path": "pwa/js/personalSpace/v2/sessionAdapter.js",
@@ -169,22 +253,22 @@
         },
         {
           "path": "pwa/js/personalSpace/v2/ui/orbitWindow.js",
-          "bytes": 19961
+          "bytes": 22505
         },
         {
           "path": "pwa/js/personalSpace/v2/viewModels.js",
-          "bytes": 24808
+          "bytes": 25028
         }
       ],
-      "rawBytes": 200382,
-      "gzipBytes": 49782
+      "rawBytes": 206667,
+      "gzipBytes": 51220
     },
     "vendoredPixi": {
       "path": "pwa/vendor/pixi.js",
       "rawBytes": 796970,
       "gzipBytes": 225428
     },
-    "combinedGzipBytes": 275210,
+    "combinedGzipBytes": 276648,
     "budgetBytes": 307200,
     "result": "PASS"
   }

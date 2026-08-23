@@ -1,6 +1,6 @@
 {
   "name": "orbit",
-  "version": "1.21.2",
+  "version": "1.23.2",
   "type": "module",
   "scripts": {
     "bump": "node scripts/bump.mjs",
@@ -12,6 +12,7 @@
     "test:ui": "vitest --ui",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
+    "ps242:manifest": "node art-pipeline/ps242/build-manifest.mjs",
     "ps243:assets": "node scripts/ps243-asset-baseline.mjs",
     "ps243:perf": "node scripts/ps243-perf-baseline.mjs"
   },

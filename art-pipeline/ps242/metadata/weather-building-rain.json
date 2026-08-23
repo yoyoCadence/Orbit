@@ -1,0 +1,76 @@
+{
+  "id": "weather-building-rain",
+  "role": "weather-effect",
+  "status": "production",
+  "generatedAt": "2026-07-31T22:31:00+08:00",
+  "generator": {
+    "mode": "OpenAI built-in image_gen",
+    "model": "not exposed by built-in tool",
+    "runOutput": "generated_images/019fb886-f265-73f2-9ddd-53579ad3698d/exec-8c73871a-86cb-4930-b050-2968ecc00272.png"
+  },
+  "promptPath": "art-pipeline/ps242/prompts/weather-building-rain.txt",
+  "source": {
+    "path": "art-pipeline/ps242/raw/weather-building-rain-magenta.png",
+    "dimensions": {
+      "width": 1536,
+      "height": 1024
+    },
+    "keyColorRequested": "#FF00FF",
+    "bytes": 1298462,
+    "sha256": "bd669dff2dae44d7d42c02ec707b9e8be337dc8f573fcf3fbdea319e41825d70"
+  },
+  "processing": [
+    {
+      "tool": "remove_chroma_key.py",
+      "arguments": [
+        "--auto-key border",
+        "--soft-matte",
+        "--transparent-threshold 12",
+        "--opaque-threshold 220",
+        "--despill"
+      ],
+      "detectedKeyColor": "#fb03f3",
+      "output": "art-pipeline/ps242/processed/weather-building-rain-transparent.png",
+      "bytes": 81139,
+      "sha256": "0d690b56361f215058e5d73d4d733ad2188f018fdfeff878564442c5bf3927d9"
+    },
+    {
+      "tool": "Pillow",
+      "operation": "mechanical-resize",
+      "resampling": "nearest",
+      "dimensions": {
+        "width": 960,
+        "height": 640
+      },
+      "pngOptimize": true,
+      "compressionLevel": 9
+    }
+  ],
+  "output": {
+    "path": "pwa/assets/personal-space/v2/effects/weather-building-rain.png",
+    "dimensions": {
+      "width": 960,
+      "height": 640
+    },
+    "mode": "RGBA",
+    "bytes": 31582,
+    "sha256": "7aeb44765872971383edebf02bec9acebb6087fc48b5f10e2fcbd7683990e2e5"
+  },
+  "qc": {
+    "technicalStatus": "passed",
+    "humanProductionReview": "passed 2026-07-31: full-size and dark-background visual QA",
+    "transparentCorners": true,
+    "transparentPixels": 608802,
+    "partialAlphaPixels": 2852,
+    "opaquePixels": 2746,
+    "visibleCoveragePercent": 0.9111,
+    "centralActorAreaCoveragePercent": 0.3725,
+    "visibleMagentaLikePixels": 0,
+    "transparentRgbNonzeroPixels": 0,
+    "alphaBounds": [11, 13, 954, 631],
+    "darkBackgroundVisualInspection": "passed",
+    "sizeBudgetBytes": 153600,
+    "sizeBudgetPassed": true
+  },
+  "licenseReview": "approved project-original output; see art-pipeline/ps242/model-manifest.json"
+}

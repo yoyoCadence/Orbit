@@ -18,6 +18,32 @@ import {
 /** Effective date for session recording — respects user's newDayHour threshold. */
 export function eToday() { return effectiveToday(state.user?.newDayHour ?? 5); }
 
+// ─── Modal mounting ──────────────────────────────────────────────────────────
+
+/**
+ * Appends a day-cycle modal to <body>, dropping any leftover node that already
+ * owns the same id first.
+ *
+ * BUG-105/BUG-106: the boot sequence can run twice in one launch, which stacked
+ * two `#daily-report-modal` overlays. Because these modals used the *global*
+ * `document.getElementById()` to bind their CTA, the listener landed on the
+ * first (hidden, underneath) node and the visible top button had none at all —
+ * pressing it did nothing, forever. Mounting through here guarantees the id is
+ * unique, and callers bind through `modal.querySelector()` so the lookup is
+ * scoped even if a duplicate ever slips through.
+ */
+function mountModal(modal) {
+  if (modal.id) document.getElementById(modal.id)?.remove();
+  document.body.appendChild(modal);
+  return modal;
+}
+
+/** Removes day-cycle overlays left on <body> (used on sign-out). */
+export function clearDayCycleModals() {
+  document.querySelectorAll('body > .modal-overlay, body > .shield-confirm-overlay')
+    .forEach(el => el.remove());
+}
+
 // ─── Energy reset ────────────────────────────────────────────────────────────
 
 /** Reset energy if we're on a new day. If morningState provided, set energy accordingly. */
@@ -166,8 +192,8 @@ export function showStreakUnlockModal() {
       <button class="btn btn-primary su-btn" id="su-close-btn">🎉 太棒了！</button>
     </div>
   `;
-  document.body.appendChild(modal);
-  document.getElementById('su-close-btn').addEventListener('click', () => {
+  mountModal(modal);
+  modal.querySelector('#su-close-btn').addEventListener('click', () => {
     modal.remove();
     renderPage(currentHash());
   });
@@ -273,7 +299,7 @@ export function showDailyReport(onDone) {
           <div class="rpt-stat-lbl">完成任務</div>
         </div>
         <div class="rpt-stat">
-          <div class="rpt-stat-val">${state.user.streakDays || 0}🔥</div>
+          <div class="rpt-stat-val">${state.user?.streakDays || 0}🔥</div>
           <div class="rpt-stat-lbl">連勝天數</div>
         </div>
       </div>
@@ -298,10 +324,16 @@ export function showDailyReport(onDone) {
       <button class="btn-primary rpt-cta" id="rpt-next-btn">☀️ 開始新的一天</button>
     </div>
   `;
-  document.body.appendChild(modal);
-  document.getElementById('rpt-next-btn').addEventListener('click', () => {
+  mountModal(modal);
+  modal.querySelector('#rpt-next-btn').addEventListener('click', () => {
+    // Close first: nothing after this point may be able to strand the user on
+    // a modal that has no other way out.
     modal.remove();
-    onDone();
+    try {
+      onDone();
+    } catch (err) {
+      console.error('Daily report follow-up failed:', err);
+    }
   });
 }
 
@@ -330,15 +362,37 @@ export function showMorningModal() {
       </div>
     </div>
   `;
-  document.body.appendChild(modal);
+  mountModal(modal);
   modal.querySelectorAll('.morning-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const ms = btn.dataset.state;
-      state.user.morningState = ms;
-      storage.saveUser(state.user);
+
+      // BUG-105: close before doing anything that can fail. This modal has no
+      // close button, no backdrop dismiss and no timeout, and the "already
+      // asked today" flag (energy.lastResetDate) only advances further down —
+      // so a throw here used to leave the user stuck across app restarts too.
       modal.remove();
-      resetEnergyIfNewDay(ms);
-      renderPage(currentHash());
+
+      // Signed out while the modal was still on screen (it lives on <body>, so
+      // hiding #main-app never removed it). Nothing left to record.
+      if (!state.user) return;
+
+      try {
+        state.user.morningState = ms;
+        const savedUser = storage.saveUser(state.user);
+        resetEnergyIfNewDay(ms);
+        if (savedUser === false) {
+          showToast('今日狀態已套用，但無法存到這台裝置（空間不足）');
+        }
+        // resetEnergyIfNewDay just changed the energy value; without this the
+        // header kept showing yesterday's number until some later action
+        // happened to refresh it.
+        updateHeader();
+        renderPage(currentHash());
+      } catch (err) {
+        console.error('Morning state could not be applied:', err);
+        showToast('今日狀態儲存失敗，可稍後在設定中調整');
+      }
     });
   });
 }

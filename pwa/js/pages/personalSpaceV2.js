@@ -19,6 +19,7 @@ import {
 } from '../personalSpace/v2/ui/orbitWindow.js';
 import { orbitWindowRuntimeDestroyer } from '../personalSpace/v2/runtime/pixiSceneRuntime.js';
 import { emitPersonalSpaceTelemetry } from '../personalSpace/v2/telemetry.js';
+import { resolveAchievementPhoto } from '../platform/proofStore.js';
 
 const EDIT_BOUNDS = Object.freeze({ minX: 6, maxX: 94, minY: 28, maxY: 92 });
 const EDIT_STEP = 2;
@@ -559,7 +560,10 @@ export function renderPersonalSpaceV2(container, options = {}) {
     sceneCleanup = null;
 
     const snapshot = buildPersonalSpaceV2Snapshot({
-      coreState,
+      coreState: {
+        ...coreState,
+        achievementPhoto: resolveAchievementPhoto(user.id, coreState.sessions),
+      },
       v2State,
       ledgerSnapshot,
       now: options.now,

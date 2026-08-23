@@ -18,13 +18,29 @@ const LEADERBOARD_CACHE_KEY = 'leaderboardCache';
 const PROFILE_SYNC_PENDING_KEY = 'profileSyncPending';
 const ENERGY_SYNC_PENDING_KEY = 'energySyncPending';
 const SESSION_SYNC_PENDING_KEY = 'sessionSyncPending';
+const TASK_SYNC_PENDING_KEY = 'taskSyncPending';
 const SESSION_SYNC_CUTOVER_KEY = 'sessionSyncCutover:v1.21';
 
 function get(key) {
   try { return JSON.parse(localStorage.getItem(PREFIX + key)); } catch { return null; }
 }
+/**
+ * Writes to localStorage and reports success instead of throwing.
+ *
+ * BUG-105: a QuotaExceededError（配額用盡 / Safari 隱私模式）used to propagate
+ * into whatever UI handler triggered the write. The morning modal's click
+ * handler had no try/catch, so the throw skipped `modal.remove()` and left the
+ * user permanently stuck on a modal with no close button. Callers that need to
+ * tell the user something went wrong check the return value.
+ */
 function set(key, val) {
-  localStorage.setItem(PREFIX + key, JSON.stringify(val));
+  try {
+    localStorage.setItem(PREFIX + key, JSON.stringify(val));
+    return true;
+  } catch (err) {
+    console.error(`localStorage write failed for "${key}":`, err);
+    return false;
+  }
 }
 
 function remove(key) {
@@ -95,6 +111,49 @@ function clearOwnerPendingSession(ownerId, sessionId) {
     ownerId,
     loadOwnerPendingSessions(ownerId).filter(session => session.id !== sessionId),
   );
+}
+
+/**
+ * Trims a task down to the fields `upsertTasks` actually writes. The pending
+ * sidecar exists purely to retry the remote write, and a full copy would
+ * double the localStorage cost of inline `iconImg` data URLs.
+ */
+function syncableTask(task) {
+  const slim = {};
+  for (const [jsKey, , , write] of TASK_FIELDS) {
+    if (write) slim[jsKey] = task?.[jsKey];
+  }
+  return slim;
+}
+
+/**
+ * Records the task list as not-yet-confirmed-remote and returns the stored
+ * snapshot (re-read so `clearPendingSnapshot` compares like for like).
+ * Returns null when there is no owner or the write did not land.
+ *
+ * `deletedIds` are tombstones: a task list alone cannot express "delete this
+ * remotely", so an offline delete would be undone by the next canonical pull
+ * (and `saveTasks([])` — delete everything — would resurrect the whole list).
+ * Tombstones accumulate across saves until the remote delete is confirmed.
+ */
+function saveOwnerPendingTasks(ownerId, tasks, removedIds = []) {
+  const key = ownerSyncPendingKey(TASK_SYNC_PENDING_KEY, ownerId);
+  if (!key) return null;
+  const list = Array.isArray(tasks) ? tasks : [];
+  const liveIds = new Set(list.map(task => task?.id).filter(Boolean));
+  const { snapshot: previous } = loadOwnerPendingSnapshot(TASK_SYNC_PENDING_KEY, ownerId);
+  const carried = previous?.ownerId === ownerId && Array.isArray(previous.deletedIds)
+    ? previous.deletedIds
+    : [];
+  const snapshot = {
+    ownerId,
+    value: list.map(syncableTask),
+    // A task present locally again is no longer a tombstone.
+    deletedIds: [...new Set([...carried, ...(removedIds ?? [])])]
+      .filter(id => id && !liveIds.has(id)),
+  };
+  if (!set(key, snapshot)) return null;
+  return get(key);
 }
 
 function loadOwnerPendingSnapshot(baseKey, ownerId) {
@@ -352,6 +411,10 @@ export const db = {
       key: pendingEnergyKey,
       snapshot: pendingEnergy,
     } = loadOwnerPendingSnapshot(ENERGY_SYNC_PENDING_KEY, userId);
+    const {
+      key: pendingTasksKey,
+      snapshot: pendingTasks,
+    } = loadOwnerPendingSnapshot(TASK_SYNC_PENDING_KEY, userId);
     const sessionDeletionLog = loadSessionDeletionLog(userId);
     const deletedSessionIds = new Set(Object.keys(sessionDeletionLog));
     const cachedSessions = localUser?.id === userId
@@ -394,6 +457,25 @@ export const db = {
         clearPendingSnapshot(pendingEnergyKey, pendingEnergy);
       } catch (err) {
         console.warn('Could not push pending local Energy before remote load:', err);
+        throw err;
+      }
+    }
+    // Tasks have no per-row merge below — `set('tasks', canonicalTasks)` is a
+    // straight overwrite. A task the device never managed to upsert (offline,
+    // flaky mobile network, rejected write) would therefore disappear on the
+    // next launch, which is what "隔天任務就不見了" looked like. The mirror
+    // image is just as bad: an unconfirmed delete would let the pull resurrect
+    // the task. Replay both halves, and let either failing abort the pull so
+    // the local cache stays authoritative.
+    if (pendingTasks?.ownerId === userId) {
+      try {
+        const upserted = await this.upsertTasks(pendingTasks.value ?? [], userId);
+        if (!upserted) throw new Error('No authenticated task sync session');
+        const deleted = await this.deleteTasks(pendingTasks.deletedIds ?? [], userId);
+        if (!deleted) throw new Error('No authenticated task sync session');
+        clearPendingSnapshot(pendingTasksKey, pendingTasks);
+      } catch (err) {
+        console.warn('Could not push pending local tasks before remote load:', err);
         throw err;
       }
     }
@@ -545,10 +627,14 @@ export const db = {
     const session = await this._session();
     if (!session || (expectedOwnerId && session.user.id !== expectedOwnerId)) return false;
     if (!tasks.length) return true;
-    await supabase.from('tasks').upsert(
+    // Unchecked before: a rejected write (RLS, CHECK constraint, PostgREST
+    // error) resolved as success, so `saveTasks`'s catch never fired and the
+    // task stayed local-only until the next remote pull erased it.
+    const { error } = await supabase.from('tasks').upsert(
       tasks.map(t => ({ user_id: expectedOwnerId || session.user.id, ...toRow(TASK_FIELDS, t) })),
       { onConflict: 'id' }
     );
+    if (error) throw error;
     return true;
   },
 
@@ -556,9 +642,12 @@ export const db = {
     const session = await this._session();
     if (!session || (expectedOwnerId && session.user.id !== expectedOwnerId)) return false;
     if (!ids.length) return true;
-    await supabase.from('tasks').delete()
+    // Unchecked before, exactly like `upsertTasks`: a rejected delete looked
+    // like success, so the tombstone was dropped and the task came back.
+    const { error } = await supabase.from('tasks').delete()
       .in('id', ids)
       .eq('user_id', expectedOwnerId || session.user.id);
+    if (error) throw error;
     return true;
   },
 
@@ -625,10 +714,11 @@ export const storage = {
 
   // ── User ─────────────────────────────────────────────────────────────────────
   getUser:    ()  => get('user'),
+  /** @returns {boolean} whether the local write succeeded (see `set`). */
   saveUser:   (u) => {
-    set('user', u);
+    const saved = set('user', u);
     const ownerId = u?.id;
-    if (!ownerId) return;
+    if (!ownerId) return saved;
     const pending = createPendingSnapshot(ownerId, u);
     const pendingKey = ownerSyncPendingKey(PROFILE_SYNC_PENDING_KEY, ownerId);
     set(pendingKey, pending);
@@ -637,6 +727,7 @@ export const storage = {
         if (synced) clearPendingSnapshot(pendingKey, pending);
       })
       .catch(console.error);
+    return saved;
   },
   /** Local-only write — no Supabase sync（profile 樂觀更新、dev tools 用）。 */
   saveUserLocal: (u) => {
@@ -664,9 +755,27 @@ export const storage = {
     set('tasks', t);
     const ownerId = get('user')?.id;
     if (!ownerId) return;
-    db.upsertTasks(t, ownerId).catch(console.error);
+    // Treat the list as unsynced until Supabase confirms it. loadFromRemote
+    // overwrites the local task cache wholesale, so without this sidecar any
+    // task added while offline (or whose upsert failed) is silently dropped
+    // on the next authenticated launch — and any delete that never landed is
+    // silently undone. The snapshot carries both halves and is only cleared
+    // once the upsert AND the delete come back confirmed.
+    const pendingKey = ownerSyncPendingKey(TASK_SYNC_PENDING_KEY, ownerId);
     const removedIds = prev.filter(p => !t.find(n => n.id === p.id)).map(p => p.id);
-    if (removedIds.length) db.deleteTasks(removedIds, ownerId).catch(console.error);
+    const pendingSnapshot = saveOwnerPendingTasks(ownerId, t, removedIds);
+    // Retries the whole tombstone backlog, not just this save's removals.
+    const deletedIds = pendingSnapshot?.deletedIds ?? removedIds;
+    Promise.all([
+      db.upsertTasks(t, ownerId),
+      db.deleteTasks(deletedIds, ownerId),
+    ])
+      .then(([upserted, deleted]) => {
+        if (upserted && deleted && pendingKey && pendingSnapshot) {
+          clearPendingSnapshot(pendingKey, pendingSnapshot);
+        }
+      })
+      .catch(console.error);
   },
 
   // ── Sessions ─────────────────────────────────────────────────────────────────
@@ -709,18 +818,20 @@ export const storage = {
 
   // ── Energy ───────────────────────────────────────────────────────────────────
   getEnergy:   ()  => get('energy') ?? { currentEnergy: 100, maxEnergy: 100, lastResetDate: '' },
+  /** @returns {boolean} whether the local write succeeded (see `set`). */
   saveEnergy:  (e) => {
-    set('energy', e);
+    const saved = set('energy', e);
     const ownerId = get('user')?.id;
     const pending = ownerId ? createPendingSnapshot(ownerId, e) : null;
     const pendingKey = ownerSyncPendingKey(ENERGY_SYNC_PENDING_KEY, ownerId);
     if (pendingKey) set(pendingKey, pending);
-    if (!ownerId) return;
+    if (!ownerId) return saved;
     db.upsertEnergy(e, ownerId)
       .then(synced => {
         if (synced && pending) clearPendingSnapshot(pendingKey, pending);
       })
       .catch(console.error);
+    return saved;
   },
 
   // ── Legacy (migration read-only) ─────────────────────────────────────────────

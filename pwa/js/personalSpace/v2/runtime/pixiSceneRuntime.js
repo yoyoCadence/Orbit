@@ -103,8 +103,24 @@ export function createPixiSceneRuntime(options = {}) {
 
     const project = renderModel.activeProject || renderModel.project || {};
     const placements = renderModel.placements || renderModel.world?.placements || {};
-    const scene = getWorkspaceSceneAssets(project.progress || 0, placements);
-    const assetPaths = [scene.background, scene.protagonist, ...scene.props.map(entry => entry.path)];
+    const protagonistState = renderModel.protagonist?.state || renderModel.playerState || 'idle';
+    const companionState = renderModel.companion?.state || renderModel.companionState || 'observe';
+    const weather = renderModel.weather || renderModel.world?.weather || 'clear';
+    const scene = getWorkspaceSceneAssets(project.progress || 0, placements, {
+      protagonist: {
+        state: protagonistState,
+        facing: renderModel.protagonist?.facing || renderModel.playerFacing,
+      },
+      companion: { state: companionState },
+      weather,
+    });
+    const assetPaths = [
+      scene.background,
+      scene.protagonist,
+      scene.companion.path,
+      scene.weatherOverlay,
+      ...scene.props.map(entry => entry.path),
+    ].filter(Boolean);
     const textures = await pixi.Assets.load(assetPaths);
     if (
       activeApp !== app
@@ -144,14 +160,14 @@ export function createPixiSceneRuntime(options = {}) {
     protagonist.label = 'orbit-protagonist';
     app.stage.addChild(protagonist);
 
-    const companion = buildCompanion(pixi, scene.companion);
-    applyPointPlacement(companion, scene.companionPlacement);
+    const companion = new pixi.Sprite(textures[scene.companion.path]);
+    applyPlacement(companion, scene.companionPlacement);
     companion.label = 'orbit-companion';
-    companion.zIndex = scene.companionPlacement.z || 42;
     app.stage.addChild(companion);
 
-    const weather = renderModel.weather || renderModel.world?.weather || 'clear';
-    const weatherOverlay = weather === 'rain' ? buildRainOverlay(pixi) : null;
+    const weatherOverlay = scene.weatherOverlay
+      ? buildWeatherOverlay(pixi, textures[scene.weatherOverlay], scene.weatherVariant.state)
+      : null;
     if (weatherOverlay) app.stage.addChild(weatherOverlay);
 
     const timeBand = renderModel.timeBand || 'day';
@@ -162,8 +178,6 @@ export function createPixiSceneRuntime(options = {}) {
     app.stage.addChild(lighting);
     app.stage.sortChildren();
 
-    const protagonistState = renderModel.protagonist?.state || renderModel.playerState || 'idle';
-    const companionState = renderModel.companion?.state || renderModel.companionState || 'observe';
     const reducedMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     const shouldCelebrate = Boolean(renderModel.pendingReveal || renderModel.world?.pendingReveal);
     if (protagonistState === 'inspect') protagonist.rotation += -0.025;
@@ -175,6 +189,8 @@ export function createPixiSceneRuntime(options = {}) {
       const protagonistY = protagonist.y;
       const companionX = companion.x;
       const companionY = companion.y;
+      const weatherX = weatherOverlay?.x || 0;
+      const weatherY = weatherOverlay?.y || 0;
       const protagonistRotation = protagonist.rotation;
       tickerUpdate = ticker => {
         elapsed += ticker.deltaMS;
@@ -192,7 +208,12 @@ export function createPixiSceneRuntime(options = {}) {
         companion.x = companionX + approachOffset + Math.sin(elapsed / 520) * 3;
         companion.y = companionY + Math.sin(elapsed / (companionState === 'congratulate' ? 180 : 720)) * companionLift;
         companion.rotation = Math.sin(elapsed / 700) * (companionState === 'work' ? 0.025 : 0.05);
-        if (weatherOverlay) weatherOverlay.y = (elapsed / 24) % 32 - 16;
+        if (weatherOverlay) {
+          const weatherSpeed = scene.weatherVariant.state === 'rain' ? 220 : 1200;
+          const weatherDrift = scene.weatherVariant.state === 'rain' ? 3 : 1.5;
+          weatherOverlay.x = weatherX + Math.sin(elapsed / (weatherSpeed * 1.7)) * weatherDrift;
+          weatherOverlay.y = weatherY + Math.sin(elapsed / weatherSpeed) * weatherDrift;
+        }
       };
       app.ticker.add(tickerUpdate);
     }
@@ -413,39 +434,17 @@ function applyPlacement(sprite, placement = {}) {
   sprite.zIndex = toNumber(placement.z, 1);
 }
 
-function applyPointPlacement(container, placement = {}) {
-  container.x = toLogicalX(placement.x ?? 50);
-  container.y = toLogicalY(placement.y ?? 50);
-  const scale = toNumber(placement.width, 7) / 7;
-  container.scale.set(scale);
-}
-
-function buildCompanion(PIXI, definition = {}) {
-  const container = new PIXI.Container();
-  const halo = new PIXI.Graphics().circle(0, 0, 30).fill({ color: definition.color || 0x8bd5ff, alpha: 0.16 });
-  const ring = new PIXI.Graphics().circle(0, 0, 18).stroke({ color: definition.accent || 0xf6d58b, width: 3, alpha: 0.9 });
-  const core = new PIXI.Graphics().circle(0, 0, 13).fill({ color: definition.color || 0x8bd5ff, alpha: 0.96 });
-  const eyeLeft = new PIXI.Graphics().circle(-4, -1, 1.7).fill({ color: 0x14213d });
-  const eyeRight = new PIXI.Graphics().circle(4, -1, 1.7).fill({ color: 0x14213d });
-  container.addChild(halo, ring, core, eyeLeft, eyeRight);
-  return container;
-}
-
-function buildRainOverlay(PIXI) {
-  const container = new PIXI.Container();
-  container.label = 'orbit-weather-rain';
-  container.zIndex = 72;
-  container.alpha = 0.46;
-  for (let index = 0; index < 18; index += 1) {
-    const drop = new PIXI.Graphics()
-      .rect(0, 0, index % 3 === 0 ? 2 : 1, 18 + (index % 4) * 5)
-      .fill({ color: 0xcde7ff, alpha: 0.72 });
-    drop.x = (index * 137 + 41) % ORBIT_WINDOW_LOGICAL_SIZE.width;
-    drop.y = (index * 83 + 17) % ORBIT_WINDOW_LOGICAL_SIZE.height;
-    drop.rotation = 0.18;
-    container.addChild(drop);
-  }
-  return container;
+function buildWeatherOverlay(PIXI, texture, state) {
+  const sprite = new PIXI.Sprite(texture);
+  const cover = getCoverTransform(texture?.width, texture?.height);
+  sprite.anchor.set(0.5);
+  sprite.x = cover.x;
+  sprite.y = cover.y;
+  sprite.scale.set(cover.scale);
+  sprite.label = `orbit-weather-${state}`;
+  sprite.zIndex = 72;
+  sprite.alpha = state === 'rain' ? 0.5 : 0.34;
+  return sprite;
 }
 
 function toLogicalX(percent) {

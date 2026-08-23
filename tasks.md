@@ -24,11 +24,6 @@
   - Acceptance: logged-in user completes a task, attaches proof, photo survives sign-out and re-login on a different device; guest mode still works with localStorage only; no service_role key in client code.
   - Note: requires Supabase Storage RLS policy and a bucket — propose SQL migration before implementation.
 
-- [ ] **HW-105** Personal Space achievement photo wall
-  - Goal: let selected task proof photos appear as framed memories inside Personal Space.
-  - Scope: local-only photo references, simple wall/frame rendering in existing 2D scene runtime, placeholder fallback when images are unavailable.
-  - Acceptance: user can mark one local proof image as displayable and see it in a Personal Space room without touching auth/storage schema.
-
 - [ ] **HW-106** Ambient noise focus signal
   - Goal: use microphone volume level as an optional focus-environment signal, not as recording.
   - Scope: permission-gated Web Audio volume meter, no audio persistence, UI states for quiet / normal / noisy.
@@ -100,9 +95,13 @@
 
 ## Next
 
-- [ ] **PS-242** Promote the fallback-proof Personal Space scene pack to final production action art
-  - Target: replace the current proof assets with reviewed protagonist, Companion, weather, and direction/state variants while preserving the V2 manifest contract.
-
+- [ ] **BUG-106** 單次啟動重複執行 `bootWithLocalState()` 造成 modal 疊層
+  - 症狀：同一次啟動出現兩層日報／晨間 modal；因 `dayCycle.js:302` 用全域 `document.getElementById('rpt-next-btn')` 綁事件，事件會綁到 DOM 中第一個（被壓在下面看不見的）modal，最上層按鈕完全沒有 listener
+  - 根因：`bootWithLocalState()` 同時被 `init()` 快取分支（`app.js:367`）與 `onAuthStateChange('SIGNED_IN')` → `loadAndStart()`（`app.js:235`）呼叫；後者的守門條件依賴 `_currentSession`，但該變數要到 `getSession().then(...)`（`app.js:375`）才賦值，token refresh／慢網路／PWA 由背景恢復時會落在空窗期
+  - 範圍：`pwa/js/app.js`、`pwa/js/dayCycle.js`（`su-close-btn` 同樣寫法）；另評估 `pwa/js/supabase.js` 從 esm.sh 載入未鎖版本 `@supabase/supabase-js@2` 的風險（auth 事件時序可能在無程式碼變更下改變）
+  - 完成條件：單次啟動只會執行一次 boot 序列，並有測試覆蓋「`SIGNED_IN` 早於 `getSession()` resolve」的時序；`showStreakUnlockModal` 一併改為 scope 綁定
+  - 備註：動到 auth boot 路徑，屬中風險，建議與 BUG-105 分開 PR
+  - 詳細調查：[`docs/bug-105-morning-modal-lockup.md`](docs/bug-105-morning-modal-lockup.md)（D-2 已重現，D-3／D-4 為靜態分析）
 
 ---
 
@@ -114,6 +113,19 @@
 ---
 
 ## Done
+
+- [x] **BUG-105** 跨日晨間 modal 卡死，無法點擊且重開無效
+  - 完成（v1.23.1）：晨間 modal 的 click handler 改為先 `modal.remove()` 再寫入並包 `try/catch`；`storage.js` 的 `set()` 改為回報寫入結果而非 throw，`saveUser` / `saveEnergy` 回傳本機寫入是否成功，失敗時以 toast 告知「已套用但無法存到這台裝置」；日報與連勝解鎖 modal 改用 scope 過的 `modal.querySelector()` 綁定 CTA；兩個 modal 掛載前先移除同 id 殘留節點；`handleSignOut()` 透過新的 `clearDayCycleModals()` 清除殘留在 `<body>` 的 overlay
+  - 另修：選擇今日狀態後補呼叫 `updateHeader()` — 原本 header 精力值會停在前一天的數字（同一流程內的既有缺陷，由新的 E2E 斷言揭露）
+  - 測試：新增 `tests/unit/dayCycle.test.js`（10 項）與 `tests/e2e/day-cycle-boot.test.js`（3 項），補上先前完全沒有覆蓋的跨日啟動流程
+  - 分支：`fix/bug-105-morning-modal-lockup`
+  - 詳細調查：[`docs/bug-105-morning-modal-lockup.md`](docs/bug-105-morning-modal-lockup.md)
+
+- [x] **HW-105** Personal Space achievement photo wall
+  - Completed: users can mark one owner-scoped local proof from Home or History, see it immediately in the shared poster／Pixi Personal Space frame, and get a safe placeholder when the Session or image is unavailable; selection stays device-local and introduces no auth／schema changes.
+
+- [x] **PS-242** Promote the fallback-proof Personal Space scene pack to final production action art
+  - Completed: shipped the authored 3:2 Formal Workstation background, 12 protagonist state／facing poses, six Companion states, clear／rain overlays, shared poster／Pixi manifest resolution, reproducible provenance／QC evidence, and passing 259,133-byte first-paint／1,766,935-byte full-pack budgets in v1.22.0.
 
 - [x] **PS-240** Validate and harden the Personal Space V2 vertical slice
   - Completed: PR #129 merged authenticated-owner sync guards, one-time legacy Session cutover, same-route Pixi reuse, structured Reveal selectors, placement sanitization, honest sync failure feedback, responsive canvas correction, 792 passing unit／integration tests, Chromium E2E 26/26, and Playwright mobile visual QA.

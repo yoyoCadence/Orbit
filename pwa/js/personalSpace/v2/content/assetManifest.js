@@ -1,18 +1,63 @@
 export const ORBIT_WINDOW_LOGICAL_SIZE = Object.freeze({ width: 960, height: 640 });
 
-const ASSET_ROOT = 'assets/personal-space/idle-window';
+const ASSET_ROOT = 'assets/personal-space/v2';
+const LEGACY_PROP_ROOT = 'assets/personal-space/idle-window/props';
+const PROTAGONIST_ROOT = `${ASSET_ROOT}/characters/protagonist`;
+const COMPANION_ROOT = `${ASSET_ROOT}/characters/companion`;
+const EFFECTS_ROOT = `${ASSET_ROOT}/effects`;
+const CANONICAL_CAMERA_ID = 'building-workspace-v1';
+
+const PROTAGONIST_VARIANTS = Object.freeze({
+  idle: facingPair('idle'),
+  work: facingPair('work'),
+  celebrate: facingPair('celebrate'),
+  rest: facingPair('rest'),
+  walk: facingPair('walk'),
+  inspect: facingPair('inspect'),
+});
+
+const COMPANION_VARIANTS = Object.freeze({
+  observe: `${COMPANION_ROOT}/orbit-guide-observe.png`,
+  approach: `${COMPANION_ROOT}/orbit-guide-approach.png`,
+  congratulate: `${COMPANION_ROOT}/orbit-guide-congratulate.png`,
+  rest: `${COMPANION_ROOT}/orbit-guide-rest.png`,
+  work: `${COMPANION_ROOT}/orbit-guide-work.png`,
+  remind: `${COMPANION_ROOT}/orbit-guide-remind.png`,
+});
+
+const WEATHER_VARIANTS = Object.freeze({
+  clear: `${EFFECTS_ROOT}/weather-building-clear-motes.png`,
+  rain: `${EFFECTS_ROOT}/weather-building-rain.png`,
+});
+
+export const WORKSPACE_VISUAL_STATES = Object.freeze({
+  protagonist: Object.freeze(Object.keys(PROTAGONIST_VARIANTS)),
+  facings: Object.freeze(['left', 'right']),
+  companion: Object.freeze([...Object.keys(COMPANION_VARIANTS), 'idle']),
+  weather: Object.freeze(Object.keys(WEATHER_VARIANTS)),
+});
 
 export const WORKSPACE_V2_ASSETS = Object.freeze({
-  id: 'building-formal-workstation-v1',
-  // Reused legacy 16:9 artwork is intentionally a fallback proof. The V2
-  // runtime cover-crops it into the canonical 3:2 viewport without distortion;
-  // it must not be mistaken for the final authored V2 scene pack.
-  status: 'fallback-proof',
-  canonicalCameraId: 'building-workspace-center-v1',
-  background: `${ASSET_ROOT}/backgrounds/office-angle-center-v2.png`,
-  protagonist: `${ASSET_ROOT}/characters/building-protagonist-idle/building-protagonist-idle-1.png`,
+  id: 'building-formal-workstation-v2',
+  status: 'production',
+  canonicalCameraId: CANONICAL_CAMERA_ID,
+  dimensions: Object.freeze({ width: 1536, height: 1024 }),
+  background: `${ASSET_ROOT}/workspace/backgrounds/building-formal-workstation-room-v1.webp`,
+  protagonist: PROTAGONIST_VARIANTS.idle.left,
+  protagonistVariants: PROTAGONIST_VARIANTS,
   safeZone: Object.freeze({ minX: 10, maxX: 90, minY: 11, maxY: 89 }),
-  companion: Object.freeze({ kind: 'orbit-guide', color: 0x8bd5ff, accent: 0xf6d58b }),
+  companion: Object.freeze({
+    kind: 'orbit-guide',
+    color: 0x8bd5ff,
+    accent: 0xf6d58b,
+    path: COMPANION_VARIANTS.observe,
+    variants: COMPANION_VARIANTS,
+  }),
+  weather: Object.freeze({
+    state: 'clear',
+    path: WEATHER_VARIANTS.clear,
+    variants: WEATHER_VARIANTS,
+  }),
 });
 
 const PROP_DEFINITIONS = Object.freeze([
@@ -38,18 +83,59 @@ export const WORKSPACE_PROJECT_PHASES = Object.freeze([
 export const WORKSPACE_INITIAL_PAINT_ASSETS = Object.freeze([
   WORKSPACE_V2_ASSETS.background,
   WORKSPACE_V2_ASSETS.protagonist,
+  WORKSPACE_V2_ASSETS.companion.path,
+  WORKSPACE_V2_ASSETS.weather.path,
 ]);
 
-// Deterministic, de-duplicated list of every runtime image the fallback-proof
-// workspace scene references across all project phases (background, protagonist
-// and the full prop set). The PS-243 asset baseline runner derives its file set
-// from here so recorded evidence can never drift from the manifest the runtime
-// actually loads.
+// Deterministic, de-duplicated list of every authored image the production
+// workspace can resolve. The runtime still loads only the active state bundle;
+// PS-243 derives its complete-scene evidence from this same contract.
 export function getWorkspaceAssetManifestPaths() {
   return Object.freeze([...new Set([
     ...WORKSPACE_INITIAL_PAINT_ASSETS,
+    ...Object.values(PROTAGONIST_VARIANTS).flatMap(Object.values),
+    ...Object.values(COMPANION_VARIANTS),
+    ...Object.values(WEATHER_VARIANTS),
     ...PROP_DEFINITIONS.map(entry => entry.path),
   ])]);
+}
+
+export function resolveWorkspaceVisualState(visualState = {}) {
+  const protagonistInput = visualState.protagonist && typeof visualState.protagonist === 'object'
+    ? visualState.protagonist
+    : {};
+  const protagonistState = normalizeKey(
+    protagonistInput.state || visualState.playerState,
+    PROTAGONIST_VARIANTS,
+    'idle',
+  );
+  const protagonistFacing = normalizeFacing(
+    protagonistInput.facing || protagonistInput.direction || visualState.protagonistFacing,
+  );
+  const companionInput = visualState.companion && typeof visualState.companion === 'object'
+    ? visualState.companion
+    : {};
+  const requestedCompanionState = companionInput.state || visualState.companionState;
+  const companionState = requestedCompanionState === 'idle'
+    ? 'observe'
+    : normalizeKey(requestedCompanionState, COMPANION_VARIANTS, 'observe');
+  const weatherState = normalizeKey(visualState.weather, WEATHER_VARIANTS, 'clear');
+
+  return {
+    protagonist: Object.freeze({
+      state: protagonistState,
+      facing: protagonistFacing,
+      path: PROTAGONIST_VARIANTS[protagonistState][protagonistFacing],
+    }),
+    companion: Object.freeze({
+      state: companionState,
+      path: COMPANION_VARIANTS[companionState],
+    }),
+    weather: Object.freeze({
+      state: weatherState,
+      path: WEATHER_VARIANTS[weatherState],
+    }),
+  };
 }
 
 export function getWorkspaceProjectPhase(progress = 0) {
@@ -58,10 +144,19 @@ export function getWorkspaceProjectPhase(progress = 0) {
     || WORKSPACE_PROJECT_PHASES[0];
 }
 
-export function getWorkspaceSceneAssets(progress = 0, placementOverrides = {}) {
+export function getWorkspaceSceneAssets(progress = 0, placementOverrides = {}, visualState = {}) {
   const normalized = clampProgress(progress);
+  const resolvedVisuals = resolveWorkspaceVisualState(visualState);
   return {
     ...WORKSPACE_V2_ASSETS,
+    protagonist: resolvedVisuals.protagonist.path,
+    protagonistVariant: resolvedVisuals.protagonist,
+    companion: {
+      ...WORKSPACE_V2_ASSETS.companion,
+      ...resolvedVisuals.companion,
+    },
+    weatherOverlay: resolvedVisuals.weather.path,
+    weatherVariant: resolvedVisuals.weather,
     phase: getWorkspaceProjectPhase(normalized),
     props: PROP_DEFINITIONS
       .filter(entry => normalized >= entry.minProgress && normalized <= entry.maxProgress)
@@ -83,14 +178,30 @@ export function getWorkspaceSceneAssets(progress = 0, placementOverrides = {}) {
       y: 73,
       width: 9,
       z: 42,
+      anchor: 'center',
     }),
   };
+}
+
+function facingPair(action) {
+  return Object.freeze({
+    left: `${PROTAGONIST_ROOT}/player-default-${action}-left.png`,
+    right: `${PROTAGONIST_ROOT}/player-default-${action}-right.png`,
+  });
+}
+
+function normalizeKey(value, variants, fallback) {
+  return typeof value === 'string' && Object.hasOwn(variants, value) ? value : fallback;
+}
+
+function normalizeFacing(value) {
+  return value === 'right' ? 'right' : 'left';
 }
 
 function prop(id, filename, minProgress, placement, maxProgress = 100) {
   return Object.freeze({
     id,
-    path: `${ASSET_ROOT}/props/${filename}`,
+    path: `${LEGACY_PROP_ROOT}/${filename}`,
     minProgress,
     maxProgress,
     placement: Object.freeze({ anchor: 'center-bottom', ...placement }),
