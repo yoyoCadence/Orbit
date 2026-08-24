@@ -78,9 +78,41 @@
   - 目標：讓未來包成 native 時有清楚替換點
   - 對應 roadmap：Phase 5 準備
 
-- [ ] **PRO-014** 排行榜 Pro 強化
-  - 目標：完成 roadmap 既有 SUB-14
-  - 對應 roadmap：銝剜?
+- [ ] **PRO-014** SUB-14／Pro entitlement 工作串
+  - 目標：先建立可信任的 server-owned Pro entitlement，再交付排行榜與 Personal Space 的 Pro 呈現
+  - 拆分：PR #132 依序完成 `PRO-014A`～`PRO-014D`；`display_name`、排行榜 glow 與 Personal Space 投影另由 `PRO-014E`～`PRO-014F` 處理
+  - 狀態：此項只作為追蹤母項，不直接進入實作；各子任務需各自遵守 `Next → In Progress → Done`
+  - 既有 PR：[#132](https://github.com/yoyoCadence/Orbit/pull/132)（Draft；開始實作前應確認最新 head）
+
+- [ ] **PRO-014B** 將前端 Pro 判定切換為 owner-scoped entitlement snapshot
+  - 目標：由已驗證的 server response 建立同步可讀的本機 snapshot，保留現有 `isProUser()` 呼叫介面，但不再信任 profile 內可由 client 改寫的 Pro 欄位
+  - 範圍：entitlement adapter／cache、登入／登出與使用者切換時的清除流程、離線與到期處理、相關 unit／integration tests；此任務不啟用 trial
+  - 完成條件：無 entitlement row、未登入、切換帳號、RPC 失敗、cache 過期等案例皆 fail closed；有效且未到期的 server snapshot 才能開啟 Pro
+  - 依賴：`PRO-014A`
+
+- [ ] **PRO-014C** 將 trial 與所有 Pro gate 切換到受控 RPC
+  - 目標：`startTrial()` 只呼叫一次性 server RPC，client 不再自行寫入 `is_pro`、`pro_expires_at` 或 `trial_started_at`
+  - 範圍：trial CTA、剩餘天數呈現、既有 Pro gate、legacy profile 欄位相容讀取／移除策略、相關 unit／integration／E2E tests
+  - 完成條件：同一使用者無法重複領取 trial；RPC 錯誤不會誤授權；所有既有 Pro 入口都只依賴受信任 snapshot；依版本規則執行一次 bump
+  - 依賴：`PRO-014B`
+
+- [ ] **PRO-014D** 在非 production 環境驗證 PR #132 migration 與權限邊界
+  - 目標：在獨立測試／preview Supabase 專案套用 migration，完成資料、RLS、RPC、權限與回滾驗證後，才把 PR #132 轉為 ready for review
+  - 完成條件：驗證 owner／非 owner、anon／authenticated、無資料列、已到期、未來開始日與重複 trial；執行 Security／Performance Advisors 與專案測試；留下套用順序、觀測與回滾紀錄
+  - 安全閘門：任何資料庫套用及 production rollout 都需另行取得明確核准；`service_role` 不得進入前端
+  - 依賴：`PRO-014A`～`PRO-014C`
+
+- [ ] **PRO-014E** 另案建立 `display_name` 與排行榜安全 read model
+  - 目標：在 entitlement foundation 穩定後，以新 PR 提出 `display_name` 寫入規則及排行榜可公開欄位，不沿用 PR #132 的混合範圍
+  - 範圍：欄位／constraint、owner-scoped update、leaderboard view 或 RPC、明確 `REVOKE`／`GRANT`、資料逃逸測試與 migration 文件
+  - 安全閘門：此項是另一個 schema proposal；實作與套用前需個別核准
+  - 依賴：`PRO-014D`
+
+- [ ] **PRO-014F** 交付 SUB-14 排行榜 glow 與 Personal Space Pro 呈現
+  - 目標：只使用安全 read model 與 entitlement snapshot 呈現 Pro 身分，不讓視覺功能回寫 entitlement
+  - 範圍：排行榜、Personal Space projection、HTML escaping、reduced motion、responsive 與視覺／E2E regression tests
+  - 完成條件：Pro／非 Pro／匿名狀態顯示正確，動態文字安全，reduced motion 下無必要動畫，且不改動 auth／entitlement schema
+  - 依賴：`PRO-014E`
 
 - [ ] **PRO-017** 邀請制解鎖 Pro
   - 目標：完成 roadmap 既有 SUB-17
@@ -113,6 +145,11 @@
 ---
 
 ## Done
+
+- [x] **PRO-014A** 將 Draft PR #132 收斂為 server-owned Pro entitlement foundation
+  - Completed: PR 範圍只保留 `pro_entitlements`、`is_pro_active`、`start_trial`、`my_pro_status`、owner-only RLS／最小 grants、migration／rollback 文件與 SQL contract tests；`display_name`、排行榜 glow、Personal Space 投影與 client cutover 已移至後續任務。
+  - Security: 不 backfill 不可信的 legacy Pro 欄位；`SECURITY DEFINER` RPC 使用空 `search_path`、fully qualified objects 與 calling-user predicate；authenticated 沒有直接寫入權限。
+  - Validation: `npm run lint`、`npm run test`（46 files／851 tests）通過；migration 尚未套用至任何 Supabase 環境，非 production 權限矩陣留給 `PRO-014D`。
 
 - [x] **BUG-105** 跨日晨間 modal 卡死，無法點擊且重開無效
   - 完成（v1.23.1）：晨間 modal 的 click handler 改為先 `modal.remove()` 再寫入並包 `try/catch`；`storage.js` 的 `set()` 改為回報寫入結果而非 throw，`saveUser` / `saveEnergy` 回傳本機寫入是否成功，失敗時以 toast 告知「已套用但無法存到這台裝置」；日報與連勝解鎖 modal 改用 scope 過的 `modal.querySelector()` 綁定 CTA；兩個 modal 掛載前先移除同 id 殘留節點；`handleSignOut()` 透過新的 `clearDayCycleModals()` 清除殘留在 `<body>` 的 overlay
