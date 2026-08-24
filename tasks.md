@@ -139,9 +139,6 @@
 
 ## In Progress
 
-- [ ] **TEST-002** 穩定 Focus 暫停／繼續 E2E 的 CI 時序
-  - In progress: 以條件式 timer 斷言取代脆弱固定等待，並只為這個必須觀察真實時間流逝的案例設定局部測試預算；不修改 Focus runtime、全域 Playwright timeout 或 CI workflow。
-
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
 
@@ -153,6 +150,10 @@
   - Completed: PR 範圍只保留 `pro_entitlements`、`is_pro_active`、`start_trial`、`my_pro_status`、owner-only RLS／最小 grants、migration／rollback 文件與 SQL contract tests；`display_name`、排行榜 glow、Personal Space 投影與 client cutover 已移至後續任務。
   - Security: 不 backfill 不可信的 legacy Pro 欄位；`SECURITY DEFINER` RPC 使用空 `search_path`、fully qualified objects 與 calling-user predicate；authenticated 沒有直接寫入權限。
   - Validation: `npm run lint`、`npm run test`（46 files／851 tests）、focused Focus E2E（1/1）與 GitHub CI run #245（lint／test／e2e／build-check）通過；migration 尚未套用至任何 Supabase 環境，非 production 權限矩陣留給 `PRO-014D`。
+
+- [x] **TEST-002** 穩定 Focus 暫停／繼續 E2E 的 CI 時序
+  - 完成：將共用 setup 改為由個別案例呼叫，讓 25 秒局部測試預算涵蓋啟動流程；以條件式 timer 斷言取代開始與繼續階段的固定等待，並保留一個 1.2 秒暫停穩定性觀察。
+  - 驗證：ESLint 通過；目標案例連跑 3 次全數通過，且在完整 2-worker E2E 中通過；GitHub CI run #247 的 lint／test／e2e／build-check 全數通過。
 
 - [x] **BUG-105** 跨日晨間 modal 卡死，無法點擊且重開無效
   - 完成（v1.23.1）：晨間 modal 的 click handler 改為先 `modal.remove()` 再寫入並包 `try/catch`；`storage.js` 的 `set()` 改為回報寫入結果而非 throw，`saveUser` / `saveEnergy` 回傳本機寫入是否成功，失敗時以 toast 告知「已套用但無法存到這台裝置」；日報與連勝解鎖 modal 改用 scope 過的 `modal.querySelector()` 綁定 CTA；兩個 modal 掛載前先移除同 id 殘留節點；`handleSignOut()` 透過新的 `clearDayCycleModals()` 清除殘留在 `<body>` 的 overlay
