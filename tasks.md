@@ -80,7 +80,7 @@
 
 - [ ] **PRO-014** SUB-14／Pro entitlement 工作串
   - 目標：先建立可信任的 server-owned Pro entitlement，再交付排行榜與 Personal Space 的 Pro 呈現
-  - 拆分：PR #132 依序完成 `PRO-014A`～`PRO-014D`；`display_name`、排行榜 glow 與 Personal Space 投影另由 `PRO-014E`～`PRO-014F` 處理
+  - 拆分：PR #132 只完成 `PRO-014A`；`PRO-014B`～`PRO-014F` 各自以後續 PR 處理，避免 schema foundation、client cutover、環境套用與呈現功能混在同一審查範圍
   - 狀態：此項只作為追蹤母項，不直接進入實作；各子任務需各自遵守 `Next → In Progress → Done`
   - 既有 PR：[#132](https://github.com/yoyoCadence/Orbit/pull/132)（Draft；開始實作前應確認最新 head）
 
@@ -96,10 +96,10 @@
   - 完成條件：同一使用者無法重複領取 trial；RPC 錯誤不會誤授權；所有既有 Pro 入口都只依賴受信任 snapshot；依版本規則執行一次 bump
   - 依賴：`PRO-014B`
 
-- [ ] **PRO-014D** 在非 production 環境驗證 PR #132 migration 與權限邊界
-  - 目標：在獨立測試／preview Supabase 專案套用 migration，完成資料、RLS、RPC、權限與回滾驗證後，才把 PR #132 轉為 ready for review
-  - 完成條件：驗證 owner／非 owner、anon／authenticated、無資料列、已到期、未來開始日與重複 trial；執行 Security／Performance Advisors 與專案測試；留下套用順序、觀測與回滾紀錄
-  - 安全閘門：任何資料庫套用及 production rollout 都需另行取得明確核准；`service_role` 不得進入前端
+- [ ] **PRO-014D** 在非 production 環境驗證 011 migration 與 cutover 邊界
+  - 目標：在獨立測試／preview Supabase 專案套用 migration，驗證資料、RLS、RPC、權限、核准名單 seed 與回滾；此任務是後續 production rollout 與 client gate 啟用的閘門，不阻擋只提交 migration 程式碼且不套用的 PR #132 完成 review／merge
+  - 完成條件：驗證 owner／非 owner、anon／authenticated、無資料列、已到期、未來開始日與重複 trial；以不含 legacy profile 欄位的管理員核准名單演練 seed，記錄名單來源／核准者／執行時點／筆數對帳與 rollback；執行 Security／Performance Advisors 與專案測試
+  - 安全閘門：`PRO-014B`／`PRO-014C` 不得在 D 驗證完成前啟用 production client gate；任何資料庫套用及 production rollout 都需另行取得明確核准；`service_role` 不得進入前端
   - 依賴：`PRO-014A`～`PRO-014C`
 
 - [ ] **PRO-014E** 另案建立 `display_name` 與排行榜安全 read model
@@ -149,11 +149,11 @@
 - [x] **PRO-014A** 將 Draft PR #132 收斂為 server-owned Pro entitlement foundation
   - Completed: PR 範圍只保留 `pro_entitlements`、`is_pro_active`、`start_trial`、`my_pro_status`、owner-only RLS／最小 grants、migration／rollback 文件與 SQL contract tests；`display_name`、排行榜 glow、Personal Space 投影與 client cutover 已移至後續任務。
   - Security: 不 backfill 不可信的 legacy Pro 欄位；`SECURITY DEFINER` RPC 使用空 `search_path`、fully qualified objects 與 calling-user predicate；authenticated 沒有直接寫入權限。
-  - Validation: `npm run lint`、`npm run test`（46 files／851 tests）、focused Focus E2E（1/1）與 GitHub CI run #245（lint／test／e2e／build-check）通過；migration 尚未套用至任何 Supabase 環境，非 production 權限矩陣留給 `PRO-014D`。
+  - Validation: `npm run lint`、`npm run test`（46 files／853 tests）、focused Focus E2E 與 GitHub CI 通過；migration 尚未套用至任何 Supabase 環境，非 production 權限矩陣留給 `PRO-014D`。
 
 - [x] **TEST-002** 穩定 Focus 暫停／繼續 E2E 的 CI 時序
   - 完成：將共用 setup 改為由個別案例呼叫，讓 25 秒局部測試預算涵蓋啟動流程；以條件式 timer 斷言取代開始與繼續階段的固定等待，並保留一個 1.2 秒暫停穩定性觀察。
-  - 驗證：ESLint 通過；目標案例連跑 3 次全數通過，且在完整 2-worker E2E 中通過；GitHub CI run #247 的 lint／test／e2e／build-check 全數通過。
+  - 驗證：ESLint 通過；目標案例連跑 3 次全數通過，且在完整 2-worker E2E 中通過；PR #132 head 的 GitHub CI run #248（lint／test／e2e／build-check）全數通過。
 
 - [x] **BUG-105** 跨日晨間 modal 卡死，無法點擊且重開無效
   - 完成（v1.23.1）：晨間 modal 的 click handler 改為先 `modal.remove()` 再寫入並包 `try/catch`；`storage.js` 的 `set()` 改為回報寫入結果而非 throw，`saveUser` / `saveEnergy` 回傳本機寫入是否成功，失敗時以 toast 告知「已套用但無法存到這台裝置」；日報與連勝解鎖 modal 改用 scope 過的 `modal.querySelector()` 綁定 CTA；兩個 modal 掛載前先移除同 id 殘留節點；`handleSignOut()` 透過新的 `clearDayCycleModals()` 清除殘留在 `<body>` 的 overlay

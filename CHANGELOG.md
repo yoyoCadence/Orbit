@@ -3,17 +3,6 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
-## [Unreleased]
-
-### Security
-- 完成 PRO-014A 的 server-owned Pro entitlement foundation 提案：新增 owner-scoped `pro_entitlements`、fail-closed `is_pro_active`、一次性 `start_trial` 與 current-user-only `my_pro_status`，並以 RLS、table privileges、空 `search_path` 與明確 function grants 收緊權限邊界。
-- migration 僅提交、尚未套用；不 backfill 既有可由 client 修改的 Pro 欄位，也不包含 client cutover、`display_name`、排行榜 glow 或 Personal Space 呈現。
-
-### Validation
-- 新增 SQL contract tests，固定 owner-only read、禁止 authenticated 直接寫入、RPC 權限與 fail-closed／once-only 規則。
-
----
-
 ## [1.23.2] - 2026-08-23
 
 修正兩個各自獨立、但都會讓「新增任務」失效的問題：Liquid Galss 主題下任務表單無法捲動，以及任務同步的整份覆蓋缺口（本機新增的任務隔天消失、離線刪除的任務復活）。

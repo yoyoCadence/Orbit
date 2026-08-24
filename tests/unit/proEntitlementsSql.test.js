@@ -42,6 +42,17 @@ describe('PRO-014A entitlement migration contract', () => {
     ]);
   });
 
+  it('maintains updated_at for real entitlement changes', () => {
+    expect(sql).toMatch(
+      /CREATE TRIGGER pro_entitlements_set_updated_at BEFORE UPDATE ON public\.pro_entitlements/i,
+    );
+    expect(sql).toMatch(
+      /ROW\(NEW\.is_pro, NEW\.pro_expires_at, NEW\.trial_started_at\) IS DISTINCT FROM ROW\(OLD\.is_pro, OLD\.pro_expires_at, OLD\.trial_started_at\)/i,
+    );
+    expect(sql).toMatch(/NEW\.updated_at = now\(\)/i);
+    expect(sql).toMatch(/NEW\.updated_at = OLD\.updated_at/i);
+  });
+
   it('fails closed for missing, expired, null, and future-dated entitlement values', () => {
     expect(sql).toMatch(/SELECT COALESCE\s*\(/i);
     expect(sql).toMatch(/p_trial_started_at <= now\(\)/i);
@@ -63,20 +74,35 @@ describe('PRO-014A entitlement migration contract', () => {
       /trial_started_at = COALESCE\(e\.trial_started_at, EXCLUDED\.trial_started_at\)/i,
     );
     expect(sql).toMatch(
-      /REVOKE ALL ON FUNCTION public\.start_trial\(\) FROM public, anon; GRANT EXECUTE ON FUNCTION public\.start_trial\(\) TO authenticated;/i,
+      /REVOKE ALL ON FUNCTION public\.start_trial\(\) FROM public, anon;/i,
+    );
+    expect(sql).toMatch(
+      /GRANT EXECUTE ON FUNCTION public\.start_trial\(\) TO authenticated;/i,
     );
   });
 
-  it('keeps status reads scoped to the calling user and RPC execution least-privileged', () => {
+  it('returns a server-derived current-user status snapshot', () => {
     expect(sql).toMatch(
       /FUNCTION public\.my_pro_status\(\)[\s\S]*?SECURITY DEFINER SET search_path = ''/i,
     );
     expect(sql).toMatch(
-      /FROM public\.pro_entitlements e WHERE e\.user_id = \(select auth\.uid\(\)\)/i,
+      /RETURNS TABLE \( is_active boolean, expires_at timestamptz, trial_ends_at timestamptz \)/i,
     );
     expect(sql).toMatch(
-      /REVOKE ALL ON FUNCTION public\.my_pro_status\(\) FROM public, anon; GRANT EXECUTE ON FUNCTION public\.my_pro_status\(\) TO authenticated;/i,
+      /FROM \(SELECT auth\.uid\(\) AS user_id\) AS caller LEFT JOIN public\.pro_entitlements e ON e\.user_id = caller\.user_id/i,
     );
+    expect(sql).toMatch(
+      /e\.trial_started_at \+ INTERVAL '15 days'/i,
+    );
+    expect(sql).toMatch(
+      /REVOKE ALL ON FUNCTION public\.my_pro_status\(\) FROM public, anon;/i,
+    );
+    expect(sql).toMatch(
+      /GRANT EXECUTE ON FUNCTION public\.my_pro_status\(\) TO authenticated;/i,
+    );
+  });
+
+  it('does not expose the internal active-status helper to client roles', () => {
     expect(sql).toMatch(
       /REVOKE ALL ON FUNCTION public\.is_pro_active\([^;]+FROM authenticated;/i,
     );

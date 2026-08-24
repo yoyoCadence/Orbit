@@ -39,6 +39,30 @@ CREATE TABLE public.pro_entitlements (
   updated_at       timestamptz NOT NULL DEFAULT now()
 );
 
+-- 管理端 seed／續期也必須留下正確更新時間；重複的 idempotent write 若沒有改變
+-- entitlement 欄位，則保留原 timestamp。
+CREATE OR REPLACE FUNCTION public.set_pro_entitlement_updated_at()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+BEGIN
+  IF ROW(NEW.is_pro, NEW.pro_expires_at, NEW.trial_started_at)
+     IS DISTINCT FROM ROW(OLD.is_pro, OLD.pro_expires_at, OLD.trial_started_at) THEN
+    NEW.updated_at = now();
+  ELSE
+    NEW.updated_at = OLD.updated_at;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.set_pro_entitlement_updated_at()
+  FROM public, anon, authenticated;
+
+CREATE TRIGGER pro_entitlements_set_updated_at
+  BEFORE UPDATE ON public.pro_entitlements
+  FOR EACH ROW EXECUTE FUNCTION public.set_pro_entitlement_updated_at();
+
 ALTER TABLE public.pro_entitlements ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "pro_entitlements_select_own" ON public.pro_entitlements
@@ -73,11 +97,7 @@ BEGIN
   INSERT INTO public.pro_entitlements AS e (user_id, trial_started_at)
     VALUES ((select auth.uid()), now())
   ON CONFLICT (user_id) DO UPDATE
-    SET trial_started_at = COALESCE(e.trial_started_at, EXCLUDED.trial_started_at),
-        updated_at = CASE
-          WHEN e.trial_started_at IS NULL THEN now()
-          ELSE e.updated_at
-        END
+    SET trial_started_at = COALESCE(e.trial_started_at, EXCLUDED.trial_started_at)
   RETURNING e.trial_started_at INTO started;
   RETURN started;
 END;
@@ -85,17 +105,29 @@ $$;
 REVOKE ALL ON FUNCTION public.start_trial() FROM public, anon;
 GRANT EXECUTE ON FUNCTION public.start_trial() TO authenticated;
 
--- current-user 讀自己的 server-authoritative Pro 狀態（供 client isProUser()）。
+-- current-user read model：連同 server 計算的到期時間回傳，讓 client 不必重複
+-- 15 天常數或自行推導有效狀態。
 CREATE OR REPLACE FUNCTION public.my_pro_status()
-RETURNS boolean
+RETURNS TABLE (
+  is_active boolean,
+  expires_at timestamptz,
+  trial_ends_at timestamptz
+)
 LANGUAGE sql STABLE SECURITY DEFINER
 SET search_path = ''
 AS $$
-  SELECT COALESCE(
-    (SELECT public.is_pro_active(e.is_pro, e.pro_expires_at, e.trial_started_at)
-     FROM public.pro_entitlements e
-     WHERE e.user_id = (select auth.uid())),
-    false);
+  SELECT
+    COALESCE(
+      public.is_pro_active(e.is_pro, e.pro_expires_at, e.trial_started_at),
+      false
+    ) AS is_active,
+    e.pro_expires_at AS expires_at,
+    CASE
+      WHEN e.trial_started_at IS NULL THEN NULL
+      ELSE e.trial_started_at + INTERVAL '15 days'
+    END AS trial_ends_at
+  FROM (SELECT auth.uid() AS user_id) AS caller
+  LEFT JOIN public.pro_entitlements e ON e.user_id = caller.user_id;
 $$;
 REVOKE ALL ON FUNCTION public.my_pro_status() FROM public, anon;
 GRANT EXECUTE ON FUNCTION public.my_pro_status() TO authenticated;
@@ -104,5 +136,6 @@ GRANT EXECUTE ON FUNCTION public.my_pro_status() TO authenticated;
 -- Client cutover 前可直接依序執行：
 -- 1. DROP FUNCTION public.my_pro_status();
 -- 2. DROP FUNCTION public.start_trial();
--- 3. DROP FUNCTION public.is_pro_active(boolean, timestamptz, timestamptz);
--- 4. DROP TABLE public.pro_entitlements;
+-- 3. DROP TABLE public.pro_entitlements;
+-- 4. DROP FUNCTION public.set_pro_entitlement_updated_at();
+-- 5. DROP FUNCTION public.is_pro_active(boolean, timestamptz, timestamptz);
