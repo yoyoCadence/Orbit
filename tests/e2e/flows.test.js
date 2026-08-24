@@ -428,33 +428,48 @@ test.describe('加入計劃流程', () => {
 // ─── Focus 計時暫停 / 繼續 ────────────────────────────────────────────────────
 
 test.describe('Focus 計時暫停與繼續', () => {
-  test.beforeEach(async ({ page }) => {
+  async function prepareFocusPause(page) {
     await mockSupabase(page);
     await seedStorage(page, [FOCUS_TASK]);
     await page.goto('/');
     await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
     await addToPlanAndStartFocus(page);
     await page.waitForSelector('#focus-overlay:not(.hidden)', { timeout: 5000 });
-  });
+  }
 
   test('暫停後計時器停止跳動，繼續後恢復跳動', async ({ page }) => {
-    // Wait for timer to start ticking
+    // This test deliberately observes real timer ticks, so give only this case
+    // enough budget when the full CI suite runs concurrently.
+    test.setTimeout(25_000);
+    await prepareFocusPause(page);
+
+    const timer = page.locator('#focus-timer');
+    const pauseButton = page.locator('#focus-pause-btn');
+    const initialValue = await timer.innerText();
+
+    await expect.poll(() => timer.innerText(), {
+      message: 'focus timer should start ticking',
+      timeout: 3000,
+    }).not.toBe(initialValue);
+
+    await pauseButton.click();
+    await expect(pauseButton).toContainText('繼續');
+    const pausedValue = await timer.innerText();
+
+    // A paused timer must remain stable across at least one normal 1s tick.
     await page.waitForTimeout(1200);
-    // Pause
-    await page.locator('#focus-pause-btn').click();
-    const pausedValue = await page.locator('#focus-timer').textContent();
-    // Wait while paused — timer should not change
-    await page.waitForTimeout(1500);
-    const stillPaused = await page.locator('#focus-timer').textContent();
-    expect(stillPaused).toBe(pausedValue);
-    // Resume
-    await page.locator('#focus-pause-btn').click();
-    await page.waitForTimeout(1200);
-    const afterResume = await page.locator('#focus-timer').textContent();
-    expect(afterResume).not.toBe(stillPaused);
+    await expect(timer).toHaveText(pausedValue);
+
+    await pauseButton.click();
+    await expect(pauseButton).toContainText('暫停');
+    await expect.poll(() => timer.innerText(), {
+      message: 'focus timer should resume ticking',
+      timeout: 3000,
+    }).not.toBe(pausedValue);
   });
 
   test('暫停按鈕文字在暫停時改為「繼續」', async ({ page }) => {
+    await prepareFocusPause(page);
     await page.locator('#focus-pause-btn').click();
     await expect(page.locator('#focus-pause-btn')).toContainText('繼續');
   });
