@@ -127,6 +127,11 @@
 
 ## Next
 
+- [ ] **TEST-002** 穩定 Focus 暫停／繼續 E2E 的 CI 時序
+  - 症狀：完整 Playwright 套件以 2 workers 執行時，Focus 暫停／繼續案例會在最後 `waitForTimeout(1200)` 耗盡全域 15 秒；單獨執行同一案例通過。
+  - 範圍：只修改 `tests/e2e/flows.test.js` 的該案例與必要測試文件／狀態；不修改 Focus runtime、全域 Playwright timeout 或 CI workflow。
+  - 完成條件：以條件式 timer 斷言取代脆弱固定等待，為這個必須觀察真實時間流逝的案例設定局部預算，focused 與完整 E2E 皆通過。
+
 - [ ] **BUG-106** 單次啟動重複執行 `bootWithLocalState()` 造成 modal 疊層
   - 症狀：同一次啟動出現兩層日報／晨間 modal；因 `dayCycle.js:302` 用全域 `document.getElementById('rpt-next-btn')` 綁事件，事件會綁到 DOM 中第一個（被壓在下面看不見的）modal，最上層按鈕完全沒有 listener
   - 根因：`bootWithLocalState()` 同時被 `init()` 快取分支（`app.js:367`）與 `onAuthStateChange('SIGNED_IN')` → `loadAndStart()`（`app.js:235`）呼叫；後者的守門條件依賴 `_currentSession`，但該變數要到 `getSession().then(...)`（`app.js:375`）才賦值，token refresh／慢網路／PWA 由背景恢復時會落在空窗期
