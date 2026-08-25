@@ -1,0 +1,157 @@
+-- ============================================================
+-- 011_leaderboard_pro.sql  (PRO-014A — server-owned entitlement foundation)
+-- Pro entitlement 目前可由使用者自寫（profiles_update 不限欄位），
+-- 因此先建立 client 不可寫的 server-owned entitlement；client cutover、
+-- display_name、排行榜與 Personal Space 呈現由後續任務處理。
+-- 安全原則：authenticated 只能讀自己的 entitlement，不能直接寫入；
+--   只有受控 RPC 可開始一次試用，付費授權仍由受信任後端處理。
+-- 執行日期：PENDING REVIEW（尚未於 Supabase 執行）
+-- ============================================================
+
+-- ── 1. 單一來源的 trial 長度與 Pro 生效規則 ──────────────────
+-- 內部 helper 不開放 client 執行，避免有效視窗與 status 到期日各自複製常數。
+CREATE OR REPLACE FUNCTION public.pro_trial_duration()
+RETURNS interval
+LANGUAGE sql IMMUTABLE
+SET search_path = ''
+AS $$
+  SELECT INTERVAL '15 days';
+$$;
+REVOKE ALL ON FUNCTION public.pro_trial_duration()
+  FROM public, anon, authenticated;
+
+-- server read RPC 使用這支，避免後續 SQL / JS 規則分叉。
+-- Fail closed：整體 COALESCE(..., false) 保證回傳非 NULL boolean（無 entitlement
+-- row 時也是 false）；trial 加 <= now() 上界，未來時間戳不得判為 Pro。
+CREATE OR REPLACE FUNCTION public.is_pro_active(
+  p_is_pro boolean, p_pro_expires_at timestamptz, p_trial_started_at timestamptz
+) RETURNS boolean
+LANGUAGE sql STABLE
+SET search_path = ''
+AS $$
+  SELECT COALESCE(
+    (p_is_pro = true AND (p_pro_expires_at IS NULL OR p_pro_expires_at > now()))
+    OR (p_trial_started_at IS NOT NULL
+        AND p_trial_started_at <= now()
+        AND p_trial_started_at > now() - public.pro_trial_duration()),
+    false);
+$$;
+REVOKE ALL ON FUNCTION public.is_pro_active(boolean, timestamptz, timestamptz) FROM public, anon;
+REVOKE ALL ON FUNCTION public.is_pro_active(boolean, timestamptz, timestamptz) FROM authenticated;
+
+-- ── 2. Server-owned entitlement table ───────────────────────
+-- authenticated 只能「讀自己的」；沒有任何 write policy → insert/update/delete
+-- 一律被 RLS 拒絕，只有 service_role（繞過 RLS）或下方 SECURITY DEFINER RPC 能寫。
+CREATE TABLE public.pro_entitlements (
+  user_id          uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  is_pro           boolean     NOT NULL DEFAULT false,
+  pro_expires_at   timestamptz,            -- NULL = 永久（僅在 is_pro 時有意義）
+  trial_started_at timestamptz,            -- 由 start_trial() 設定，一次性
+  updated_at       timestamptz NOT NULL DEFAULT now()
+);
+
+-- 管理端 seed／續期也必須留下正確更新時間；重複的 idempotent write 若沒有改變
+-- entitlement 欄位，則保留原 timestamp。
+CREATE OR REPLACE FUNCTION public.set_pro_entitlement_updated_at()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+BEGIN
+  IF ROW(NEW.is_pro, NEW.pro_expires_at, NEW.trial_started_at)
+     IS DISTINCT FROM ROW(OLD.is_pro, OLD.pro_expires_at, OLD.trial_started_at) THEN
+    NEW.updated_at = now();
+  ELSE
+    NEW.updated_at = OLD.updated_at;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.set_pro_entitlement_updated_at()
+  FROM public, anon, authenticated;
+
+CREATE TRIGGER pro_entitlements_set_updated_at
+  BEFORE UPDATE ON public.pro_entitlements
+  FOR EACH ROW EXECUTE FUNCTION public.set_pro_entitlement_updated_at();
+
+ALTER TABLE public.pro_entitlements ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "pro_entitlements_select_own" ON public.pro_entitlements
+  FOR SELECT TO authenticated
+  USING ((select auth.uid()) = user_id);
+-- 刻意不建立 INSERT / UPDATE / DELETE policy → authenticated 無法自行取得 Pro。
+
+-- 雙層防護：table privileges + RLS。service_role 兩者皆繞過。
+REVOKE ALL ON TABLE public.pro_entitlements FROM public, anon, authenticated;
+GRANT SELECT ON TABLE public.pro_entitlements TO authenticated;
+
+-- 刻意「不」backfill：profiles.is_pro / pro_expires_at / trial_started_at 在本
+-- migration 前可由 authenticated 自寫，照搬會把偽造的 lifetime Pro / 未來 trial
+-- 洗成 server-owned entitlement，與 hardening 目的衝突。使用安全預設（無 row =
+-- 非 Pro）；試用由 start_trial() 按需建立；已知合法付費 Pro 由管理員以 service_role
+-- 依人工核准清單另行 seed。pre-production 既有 trial 於 cutover 後由使用者重開一次。
+
+-- ── 3. 受控 trial：once-only，伺服器寫時間 ────────────────────
+-- client 只能「開始試用」，不能傳入時間、也不能重開；付費 Pro 仍須由受信任
+-- 後端 / service_role 寫入（見文件「待決定：付費 Pro 授予路徑」）。
+CREATE OR REPLACE FUNCTION public.start_trial()
+RETURNS timestamptz
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE started timestamptz;
+BEGIN
+  IF (select auth.uid()) IS NULL THEN
+    RAISE EXCEPTION 'authentication required' USING ERRCODE = '42501';
+  END IF;
+
+  INSERT INTO public.pro_entitlements AS e (user_id, trial_started_at)
+    VALUES ((select auth.uid()), now())
+  ON CONFLICT (user_id) DO UPDATE
+    SET trial_started_at = COALESCE(e.trial_started_at, EXCLUDED.trial_started_at)
+  RETURNING e.trial_started_at INTO started;
+  RETURN started;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.start_trial() FROM public, anon;
+GRANT EXECUTE ON FUNCTION public.start_trial() TO authenticated;
+
+-- current-user read model：連同 server 計算的到期時間回傳，讓 client 不必重複
+-- 15 天常數或自行推導有效狀態。
+CREATE OR REPLACE FUNCTION public.my_pro_status()
+RETURNS TABLE (
+  is_active boolean,
+  expires_at timestamptz,
+  trial_ends_at timestamptz
+)
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = ''
+AS $$
+  SELECT
+    COALESCE(
+      public.is_pro_active(e.is_pro, e.pro_expires_at, e.trial_started_at),
+      false
+    ) AS is_active,
+    CASE
+      WHEN e.is_pro = true THEN e.pro_expires_at
+      ELSE NULL
+    END AS expires_at,
+    CASE
+      WHEN e.trial_started_at IS NOT NULL AND e.trial_started_at <= now()
+        THEN e.trial_started_at + public.pro_trial_duration()
+      ELSE NULL
+    END AS trial_ends_at
+  FROM (SELECT auth.uid() AS user_id) AS caller
+  LEFT JOIN public.pro_entitlements e ON e.user_id = caller.user_id;
+$$;
+REVOKE ALL ON FUNCTION public.my_pro_status() FROM public, anon;
+GRANT EXECUTE ON FUNCTION public.my_pro_status() TO authenticated;
+
+-- ── Rollback ────────────────────────────────────────────────
+-- Client cutover 前可直接依序執行：
+-- 1. DROP FUNCTION public.my_pro_status();
+-- 2. DROP FUNCTION public.start_trial();
+-- 3. DROP TABLE public.pro_entitlements;
+-- 4. DROP FUNCTION public.set_pro_entitlement_updated_at();
+-- 5. DROP FUNCTION public.is_pro_active(boolean, timestamptz, timestamptz);
+-- 6. DROP FUNCTION public.pro_trial_duration();

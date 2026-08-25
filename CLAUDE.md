@@ -37,6 +37,8 @@
 2. 每張表都必須明確定義四種 policy：SELECT、INSERT、UPDATE、DELETE
 3. 未有明確 policy 的操作一律拒絕（不可依賴預設行為）
 
+例外：server-owned table 若已對 `anon`／`authenticated` 明確 `REVOKE` 寫入權限，且所有寫入只允許受控 `SECURITY DEFINER` RPC 或 `service_role`，可只建立必要的 SELECT policy，並以 migration 註解明確記錄「刻意不建立 INSERT／UPDATE／DELETE policy＝拒絕 client write」。此例外仍須同時保留 table privileges 與 RLS 雙層防護。
+
 ### Policy 寫法規範
 | Operation | USING | WITH CHECK |
 |-----------|-------|-----------|
