@@ -8,7 +8,18 @@
 -- 執行日期：PENDING REVIEW（尚未於 Supabase 執行）
 -- ============================================================
 
--- ── 1. 單一來源的 Pro 生效規則（STABLE function）───────────────
+-- ── 1. 單一來源的 trial 長度與 Pro 生效規則 ──────────────────
+-- 內部 helper 不開放 client 執行，避免有效視窗與 status 到期日各自複製常數。
+CREATE OR REPLACE FUNCTION public.pro_trial_duration()
+RETURNS interval
+LANGUAGE sql IMMUTABLE
+SET search_path = ''
+AS $$
+  SELECT INTERVAL '15 days';
+$$;
+REVOKE ALL ON FUNCTION public.pro_trial_duration()
+  FROM public, anon, authenticated;
+
 -- server read RPC 使用這支，避免後續 SQL / JS 規則分叉。
 -- Fail closed：整體 COALESCE(..., false) 保證回傳非 NULL boolean（無 entitlement
 -- row 時也是 false）；trial 加 <= now() 上界，未來時間戳不得判為 Pro。
@@ -22,7 +33,7 @@ AS $$
     (p_is_pro = true AND (p_pro_expires_at IS NULL OR p_pro_expires_at > now()))
     OR (p_trial_started_at IS NOT NULL
         AND p_trial_started_at <= now()
-        AND p_trial_started_at > now() - INTERVAL '15 days'),
+        AND p_trial_started_at > now() - public.pro_trial_duration()),
     false);
 $$;
 REVOKE ALL ON FUNCTION public.is_pro_active(boolean, timestamptz, timestamptz) FROM public, anon;
@@ -121,10 +132,14 @@ AS $$
       public.is_pro_active(e.is_pro, e.pro_expires_at, e.trial_started_at),
       false
     ) AS is_active,
-    e.pro_expires_at AS expires_at,
     CASE
-      WHEN e.trial_started_at IS NULL THEN NULL
-      ELSE e.trial_started_at + INTERVAL '15 days'
+      WHEN e.is_pro = true THEN e.pro_expires_at
+      ELSE NULL
+    END AS expires_at,
+    CASE
+      WHEN e.trial_started_at IS NOT NULL AND e.trial_started_at <= now()
+        THEN e.trial_started_at + public.pro_trial_duration()
+      ELSE NULL
     END AS trial_ends_at
   FROM (SELECT auth.uid() AS user_id) AS caller
   LEFT JOIN public.pro_entitlements e ON e.user_id = caller.user_id;
@@ -139,3 +154,4 @@ GRANT EXECUTE ON FUNCTION public.my_pro_status() TO authenticated;
 -- 3. DROP TABLE public.pro_entitlements;
 -- 4. DROP FUNCTION public.set_pro_entitlement_updated_at();
 -- 5. DROP FUNCTION public.is_pro_active(boolean, timestamptz, timestamptz);
+-- 6. DROP FUNCTION public.pro_trial_duration();

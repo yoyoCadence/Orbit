@@ -10,6 +10,7 @@ const sql = migration.replace(/--.*$/gm, '').replace(/\s+/g, ' ').trim();
 describe('PRO-014A entitlement migration contract', () => {
   it('contains only the server-owned entitlement foundation', () => {
     expect(sql).toMatch(/CREATE TABLE public\.pro_entitlements\s*\(/i);
+    expect(sql).toMatch(/CREATE OR REPLACE FUNCTION public\.pro_trial_duration\s*\(/i);
     expect(sql).toMatch(/CREATE OR REPLACE FUNCTION public\.is_pro_active\s*\(/i);
     expect(sql).toMatch(/CREATE OR REPLACE FUNCTION public\.start_trial\s*\(\s*\)/i);
     expect(sql).toMatch(/CREATE OR REPLACE FUNCTION public\.my_pro_status\s*\(\s*\)/i);
@@ -56,8 +57,20 @@ describe('PRO-014A entitlement migration contract', () => {
   it('fails closed for missing, expired, null, and future-dated entitlement values', () => {
     expect(sql).toMatch(/SELECT COALESCE\s*\(/i);
     expect(sql).toMatch(/p_trial_started_at <= now\(\)/i);
-    expect(sql).toMatch(/p_trial_started_at > now\(\) - INTERVAL '15 days'/i);
+    expect(sql).toMatch(
+      /p_trial_started_at > now\(\) - public\.pro_trial_duration\(\)/i,
+    );
     expect(sql).toMatch(/\), false\);/i);
+  });
+
+  it('keeps trial duration in one internal helper', () => {
+    expect(sql.match(/INTERVAL '15 days'/gi)).toHaveLength(1);
+    expect(sql).toMatch(
+      /FUNCTION public\.pro_trial_duration\(\)[\s\S]*?LANGUAGE sql IMMUTABLE SET search_path = ''/i,
+    );
+    expect(sql).toMatch(
+      /REVOKE ALL ON FUNCTION public\.pro_trial_duration\(\) FROM public, anon, authenticated;/i,
+    );
   });
 
   it('hardens the trial RPC and keeps the server timestamp once-only', () => {
@@ -92,7 +105,10 @@ describe('PRO-014A entitlement migration contract', () => {
       /FROM \(SELECT auth\.uid\(\) AS user_id\) AS caller LEFT JOIN public\.pro_entitlements e ON e\.user_id = caller\.user_id/i,
     );
     expect(sql).toMatch(
-      /e\.trial_started_at \+ INTERVAL '15 days'/i,
+      /WHEN e\.is_pro = true THEN e\.pro_expires_at ELSE NULL END AS expires_at/i,
+    );
+    expect(sql).toMatch(
+      /WHEN e\.trial_started_at IS NOT NULL AND e\.trial_started_at <= now\(\) THEN e\.trial_started_at \+ public\.pro_trial_duration\(\) ELSE NULL END AS trial_ends_at/i,
     );
     expect(sql).toMatch(
       /REVOKE ALL ON FUNCTION public\.my_pro_status\(\) FROM public, anon;/i,

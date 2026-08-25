@@ -7,7 +7,7 @@
 ## 本次範圍
 
 1. `public.pro_entitlements`：server-owned 的 Pro／到期／試用時間單一資料來源。
-2. `public.is_pro_active(...)`：fail-closed 的生效規則。
+2. `public.pro_trial_duration()` 與 `public.is_pro_active(...)`：唯一 trial 長度常數與 fail-closed 生效規則。
 3. `public.start_trial()`：不接受 client 時間參數、伺服器寫入且不可重開的受控 RPC。
 4. `public.my_pro_status()`：只回傳目前登入者的 `is_active`、`expires_at`、`trial_ends_at` read model，避免 client 重複 15 天常數與有效性規則。
 5. RLS、table/function grants 與可在現有 Vitest CI 執行的 SQL contract tests。
@@ -20,10 +20,10 @@
 
 ## Schema 變更（server-owned entitlement）
 
-1. **`is_pro_active(...)` STABLE function（fail closed）** — `COALESCE(..., false)` 保證回傳非 NULL boolean；trial 加 `<= now()` 上界，未來時間戳不判為 Pro。此 helper 不授權給 client roles，只供受控 DB function 呼叫。
+1. **`pro_trial_duration()` IMMUTABLE + `is_pro_active(...)` STABLE（fail closed）** — trial 長度只在內部 helper 定義一次，active window 與 status 到期日共用；`COALESCE(..., false)` 保證回傳非 NULL boolean，trial 加 `<= now()` 上界，未來時間戳不判為 Pro。兩支 helper 都不授權給 client roles，只供受控 DB function 呼叫。
 2. **`pro_entitlements` table（server-owned）** — `user_id` PK、`is_pro`、`pro_expires_at`、`trial_started_at`、`updated_at`。`BEFORE UPDATE` trigger 只在 entitlement 欄位實際改變時刷新 `updated_at`，涵蓋受控 RPC 與管理端 seed／續期。**雙層防護**：table privileges（先對 `PUBLIC`／`anon`／`authenticated` `REVOKE ALL`，再只 `GRANT SELECT` 給 `authenticated`）＋ RLS（唯一 policy 僅允許 `(select auth.uid()) = user_id` 的 `SELECT`，無 write policy）。
 3. **`start_trial()` SECURITY DEFINER RPC** — client 只能「開始試用」，伺服器寫 `now()`、`COALESCE` 保證一次性、不接受 client 傳入時間。
-4. **`my_pro_status()` SECURITY DEFINER RPC** — 只以 `auth.uid()` 查目前登入者；固定回傳一列 server-derived snapshot，無 row／未登入／資料異常時 `is_active = false` 且日期為 NULL；trial 結束日由 DB 的同一個 15 天規則計算。
+4. **`my_pro_status()` SECURITY DEFINER RPC** — 只以 `auth.uid()` 查目前登入者；固定回傳一列 server-derived snapshot，無 row／未登入／資料異常時 `is_active = false` 且日期為 NULL；`expires_at` 只在 `is_pro = true` 時回傳，未來 trial 不回傳 `trial_ends_at`，合法 trial 結束日與 active window 共用 `pro_trial_duration()`。
 5. **SECURITY DEFINER hardening** — 兩支 RPC 皆 `SET search_path = ''` 並完整 schema qualification（`public.pro_entitlements`、`public.is_pro_active(...)`、`auth.uid()`）；函式建立後立即對 `PUBLIC`／`anon` revoke，只向 `authenticated` grant 必要 RPC（[Supabase 官方建議](https://supabase.com/docs/guides/database/functions#security-definer-vs-invoker)）。
 
 ### 不 backfill（reviewer 決策）
@@ -38,7 +38,7 @@
 - `authenticated` 沒有 table write privilege，也沒有 INSERT／UPDATE／DELETE policy。
 - `SECURITY DEFINER` RPC 固定空 `search_path`、只查 calling user、拒絕公開執行。
 - trial 時間只能由 server `now()` 產生且採一次性 `COALESCE`。
-- status RPC 直接回傳 `is_active`、付費到期日與 trial 結束日，不讓 client 重複有效性常數。
+- status RPC 直接回傳 `is_active`、經狀態過濾的付費到期日與 trial 結束日，不讓 client 重複有效性常數或渲染無意義／未來日期。
 - entitlement 實際變更會由 trigger 維護 `updated_at`，重複 no-op trial 不會改寫 timestamp。
 - migration 不含 `display_name`、`leaderboard_view` 或 client/UI cutover。
 
@@ -52,9 +52,10 @@
 2. authenticated 對自己的 row 直接 insert／update／delete 全部失敗。
 3. anon 無法讀 table，也無法執行兩支 RPC。
 4. `start_trial()` 重複與併發呼叫都回傳同一個 `trial_started_at`。
-5. 無 row、已到期、未來 trial 與 NULL 組合都由 `my_pro_status()` fail closed，且回傳的 `trial_ends_at` 由 DB 計算。
+5. 無 row、已到期、未來 trial 與 NULL 組合都由 `my_pro_status()` fail closed；`is_pro = false` 不回 `expires_at`，未來 trial 不回 `trial_ends_at`，合法 trial 結束日由共享 helper 計算。
 6. 管理端實際變更 entitlement 時 `updated_at` 會刷新；重複 no-op trial 不會改寫 timestamp。
 7. Supabase Security／Performance Advisors 無新增警告。
+8. 依 preview 專案當下的 Data API exposure 設定驗證 `my_pro_status` RPC；不得為了 client read 擴大 `pro_entitlements` table exposure。
 
 ## 既有 Pro cutover 程序（須於 PRO-014D 演練）
 
@@ -76,4 +77,4 @@
 
 ## Rollback
 
-在 client cutover 前，依 `011_leaderboard_pro.sql` 末段反向移除 `my_pro_status`、`start_trial`、`is_pro_active` 與 `pro_entitlements` 即可。若已進入 client cutover，必須先把 client gate 回退到相容讀路徑，再移除 DB objects；禁止直接在 production 嘗試未演練的 rollback。
+在 client cutover 前，依 `011_leaderboard_pro.sql` 末段順序移除 `my_pro_status`、`start_trial`、`pro_entitlements`、trigger helper、`is_pro_active` 與 `pro_trial_duration`。若已進入 client cutover，必須先把 client gate 回退到相容讀路徑，再移除 DB objects；禁止直接在 production 嘗試未演練的 rollback。

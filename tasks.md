@@ -82,12 +82,12 @@
   - 目標：先建立可信任的 server-owned Pro entitlement，再交付排行榜與 Personal Space 的 Pro 呈現
   - 拆分：PR #132 只完成 `PRO-014A`；`PRO-014B`～`PRO-014F` 各自以後續 PR 處理，避免 schema foundation、client cutover、環境套用與呈現功能混在同一審查範圍
   - 狀態：此項只作為追蹤母項，不直接進入實作；各子任務需各自遵守 `Next → In Progress → Done`
-  - 既有 PR：[#132](https://github.com/yoyoCadence/Orbit/pull/132)（Draft；開始實作前應確認最新 head）
+  - 既有 PR：[#132](https://github.com/yoyoCadence/Orbit/pull/132)（Ready for review；開始後續任務前應確認最新 head）
 
 - [ ] **PRO-014B** 將前端 Pro 判定切換為 owner-scoped entitlement snapshot
   - 目標：由已驗證的 server response 建立同步可讀的本機 snapshot，保留現有 `isProUser()` 呼叫介面，但不再信任 profile 內可由 client 改寫的 Pro 欄位
   - 範圍：entitlement adapter／cache、登入／登出與使用者切換時的清除流程、離線與到期處理、相關 unit／integration tests；此任務不啟用 trial
-  - 完成條件：無 entitlement row、未登入、切換帳號、RPC 失敗、cache 過期等案例皆 fail closed；有效且未到期的 server snapshot 才能開啟 Pro
+  - 完成條件：PostgREST `.rpc('my_pro_status')` 的單列陣列需明確 normalize；空陣列、非陣列、缺欄位、RPC 錯誤、無 entitlement row、未登入、切換帳號與 cache 過期皆 fail closed；有效且未到期的 server snapshot 才能開啟 Pro
   - 依賴：`PRO-014A`
 
 - [ ] **PRO-014C** 將 trial 與所有 Pro gate 切換到受控 RPC
@@ -98,7 +98,7 @@
 
 - [ ] **PRO-014D** 在非 production 環境驗證 011 migration 與 cutover 邊界
   - 目標：在獨立測試／preview Supabase 專案套用 migration，驗證資料、RLS、RPC、權限、核准名單 seed 與回滾；此任務是後續 production rollout 與 client gate 啟用的閘門，不阻擋只提交 migration 程式碼且不套用的 PR #132 完成 review／merge
-  - 完成條件：驗證 owner／非 owner、anon／authenticated、無資料列、已到期、未來開始日與重複 trial；以不含 legacy profile 欄位的管理員核准名單演練 seed，記錄名單來源／核准者／執行時點／筆數對帳與 rollback；執行 Security／Performance Advisors 與專案測試
+  - 完成條件：在真實 PostgreSQL／Supabase preview 實際 parse 並套用 011（不可只依賴 regex contract tests）；確認該專案 Data API exposure 設定下 `my_pro_status` RPC 可用且不為此擴大 table exposure；驗證 owner／非 owner、anon／authenticated、無資料列、已到期、未來開始日與重複 trial；以不含 legacy profile 欄位的管理員核准名單演練 seed，記錄名單來源／核准者／執行時點／筆數對帳與 rollback；執行 Security／Performance Advisors 與專案測試
   - 安全閘門：`PRO-014B`／`PRO-014C` 不得在 D 驗證完成前啟用 production client gate；任何資料庫套用及 production rollout 都需另行取得明確核准；`service_role` 不得進入前端
   - 依賴：`PRO-014A`～`PRO-014C`
 
@@ -146,10 +146,10 @@
 
 ## Done
 
-- [x] **PRO-014A** 將 Draft PR #132 收斂為 server-owned Pro entitlement foundation
+- [x] **PRO-014A** 將 PR #132 收斂為 server-owned Pro entitlement foundation
   - Completed: PR 範圍只保留 `pro_entitlements`、`is_pro_active`、`start_trial`、`my_pro_status`、owner-only RLS／最小 grants、migration／rollback 文件與 SQL contract tests；`display_name`、排行榜 glow、Personal Space 投影與 client cutover 已移至後續任務。
   - Security: 不 backfill 不可信的 legacy Pro 欄位；`SECURITY DEFINER` RPC 使用空 `search_path`、fully qualified objects 與 calling-user predicate；authenticated 沒有直接寫入權限。
-  - Validation: `npm run lint`、`npm run test`（46 files／853 tests）、focused Focus E2E 與 GitHub CI 通過；migration 尚未套用至任何 Supabase 環境，非 production 權限矩陣留給 `PRO-014D`。
+  - Validation: `npm run lint`、`npm run test`（46 files／854 tests）、focused Focus E2E 與 GitHub CI 通過；migration 尚未套用至任何 Supabase 環境，非 production 權限矩陣留給 `PRO-014D`。
 
 - [x] **TEST-002** 穩定 Focus 暫停／繼續 E2E 的 CI 時序
   - 完成：將共用 setup 改為由個別案例呼叫，讓 25 秒局部測試預算涵蓋啟動流程；以條件式 timer 斷言取代開始與繼續階段的固定等待，並保留一個 1.2 秒暫停穩定性觀察。
