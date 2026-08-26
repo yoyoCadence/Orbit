@@ -40,14 +40,6 @@
   - Acceptance: user can complete tasks offline and see a clear pending-sync state when connection returns.
 
 
-- [ ] **BUG-107** `supabase.js` 從 esm.sh 載入未鎖版本的 client
-  - 症狀：`pwa/js/supabase.js` 匯入 `https://esm.sh/@supabase/supabase-js@2`（浮動 2.x）。auth 事件的時序與名稱在 2.x 之間有差異，可能在完全沒有 repo 變更的情況下改變 boot 行為；首次載入時 esm.sh 不可用則整個 App 無法啟動。
-  - 補充現況：該 URL 的 pathname 不以 `.js` 結尾，因此走的是 `sw.js` 的 cache-first 分支且不在 `SHELL` 內；`activate` 又會刪掉非當前 `CACHE` 的內容 —— 等於每次版本 bump 都會重新解析一次版本，實際跑在使用者裝置上的 client 版本由部署時點決定。
-  - 範圍：`pwa/js/supabase.js`、`pwa/sw.js` 的 `SHELL`，以及（若採 vendored）`scripts/` 下的 vendor 腳本；不含 auth 流程或 schema 變更。
-  - 可行做法：(1) 鎖到精確版本 `@2.x.y`；(2) 比照 `pwa/vendor/pixi.js` vendored 進 repo 並加入 `SHELL`。做法 2 一併解決可用性與供應鏈風險。
-  - 完成條件：實際載入的 client 版本由 repo 決定且可稽核；離線啟動不依賴第三方 CDN 的即時可用性；`SHELL` 與版本流程同步更新。
-  - 備註：動到 App 啟動時的實際載入路徑，屬中風險，建議獨立 PR。來源為 BUG-106 的 D-4 評估，見 [`docs/bug-105-morning-modal-lockup.md`](docs/bug-105-morning-modal-lockup.md) 第八節。
-
 - [ ] **INFRA-101** 設定 Custom SMTP（Resend）並自訂 email 寄件人名稱與模板
   - 目標：讓 auth email（重設密碼等）以「Orbit」名義寄出，而非「Supabase Auth」；並把 email 內容換成品牌模板
   - 目前限制：Supabase 內建 email 每天只能寄 2 封，Sender name 無法自訂，不適合正式上線
@@ -138,6 +130,16 @@
 ---
 
 ## In Progress
+
+- [ ] **BUG-107** `supabase.js` 從 esm.sh 載入未鎖版本的 client
+  - 症狀：`pwa/js/supabase.js` 匯入 `https://esm.sh/@supabase/supabase-js@2`（浮動 2.x）。auth 事件的時序與名稱在 2.x 之間有差異，可能在完全沒有 repo 變更的情況下改變 boot 行為；首次載入時 esm.sh 不可用則整個 App 無法啟動。
+  - 補充現況：該 URL 的 pathname 不以 `.js` 結尾，因此走的是 `sw.js` 的 cache-first 分支且不在 `SHELL` 內；`activate` 又會刪掉非當前 `CACHE` 的內容 —— 等於每次版本 bump 都會重新解析一次版本，實際跑在使用者裝置上的 client 版本由部署時點決定。
+  - 範圍：`pwa/js/supabase.js`、`pwa/sw.js` 的 `SHELL`，以及（若採 vendored）`scripts/` 下的 vendor 腳本；不含 auth 流程或 schema 變更。
+  - 可行做法：(1) 鎖到精確版本 `@2.x.y`；(2) 比照 `pwa/vendor/pixi.js` vendored 進 repo 並加入 `SHELL`。做法 2 一併解決可用性與供應鏈風險。
+  - 完成條件：實際載入的 client 版本由 repo 決定且可稽核；離線啟動不依賴第三方 CDN 的即時可用性；`SHELL` 與版本流程同步更新。
+  - 備註：動到 App 啟動時的實際載入路徑，屬中風險，建議獨立 PR。來源為 BUG-106 的 D-4 評估，見 [`docs/bug-105-morning-modal-lockup.md`](docs/bug-105-morning-modal-lockup.md) 第八節。
+  - 進行中：採做法 (2) vendored —— 以 `scripts/vendor-supabase.mjs` 由 `node_modules` 產生 `pwa/vendor/supabase.js`，`pwa/js/supabase.js` 改為同源相對匯入，並將該檔加入 `sw.js` 的 `SHELL`。
+  - 分支：`fix/bug-107-vendor-supabase`
 
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
