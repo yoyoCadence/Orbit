@@ -127,17 +127,12 @@
 
 ## Next
 
-- [ ] **BUG-106** 單次啟動重複執行 `bootWithLocalState()` 造成 modal 疊層
-  - 症狀：同一次啟動出現兩層日報／晨間 modal；因 `dayCycle.js:302` 用全域 `document.getElementById('rpt-next-btn')` 綁事件，事件會綁到 DOM 中第一個（被壓在下面看不見的）modal，最上層按鈕完全沒有 listener
-  - 根因：`bootWithLocalState()` 同時被 `init()` 快取分支（`app.js:367`）與 `onAuthStateChange('SIGNED_IN')` → `loadAndStart()`（`app.js:235`）呼叫；後者的守門條件依賴 `_currentSession`，但該變數要到 `getSession().then(...)`（`app.js:375`）才賦值，token refresh／慢網路／PWA 由背景恢復時會落在空窗期
-  - 範圍：`pwa/js/app.js`、`pwa/js/dayCycle.js`（`su-close-btn` 同樣寫法）；另評估 `pwa/js/supabase.js` 從 esm.sh 載入未鎖版本 `@supabase/supabase-js@2` 的風險（auth 事件時序可能在無程式碼變更下改變）
-  - 完成條件：單次啟動只會執行一次 boot 序列，並有測試覆蓋「`SIGNED_IN` 早於 `getSession()` resolve」的時序；`showStreakUnlockModal` 一併改為 scope 綁定
-  - 備註：動到 auth boot 路徑，屬中風險，建議與 BUG-105 分開 PR
-  - 詳細調查：[`docs/bug-105-morning-modal-lockup.md`](docs/bug-105-morning-modal-lockup.md)（D-2 已重現，D-3／D-4 為靜態分析）
-
 ---
 
 ## In Progress
+
+- [ ] **BUG-106** 單次啟動重複執行 `bootWithLocalState()` 造成 modal 疊層
+  - In progress: 以 launch + owner 為範圍的 boot gate 收斂重複執行的 boot 序列，補上「`SIGNED_IN` 早於 `getSession()` resolve」的時序測試，並評估 `supabase.js` 未鎖版本的風險。不改動 auth 流程本身、Supabase client 載入方式或 day-cycle 的 UI。
 
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
