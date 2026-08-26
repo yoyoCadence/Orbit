@@ -20,6 +20,7 @@
 
 ### Validation
 - `npm run lint`、`npm run test`（49 files／867 tests）。新增 `tests/unit/vendoredSupabaseClient.test.js`（5 項）鎖住：匯入不得回到遠端 URL、vendored 產物與 `package.json` 鎖定版本一致、`SHELL` 有收錄、模組確實輸出可用的 `createClient` 且不汙染全域。把匯入改回 esm.sh 後重跑，該檔會紅 1 項。
+- 該測試在建立 client 前會補上 WebSocket 佔位：realtime client 在建構時會解析 WebSocket constructor，瀏覽器一定有，但 Node 要到 22 才有全域版本、CI 跑的是 20 —— 不補的話這項斷言能不能跑會取決於 runner 的 Node 版本。
 - `npm run test:e2e -- --workers=1`：41/41 通過。E2E 的 Supabase stub 由攔截 `https://esm.sh/**` 改為攔截 `**/vendor/supabase.js`；以「讓 stub 直接 throw」反向驗證過攔截確實生效。
 
 ---

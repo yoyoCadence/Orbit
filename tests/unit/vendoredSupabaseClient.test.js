@@ -40,10 +40,8 @@ describe('vendored Supabase client', () => {
   });
 
   it('precaches the vendored client in the service worker shell', () => {
-    const shell = serviceWorkerSource.slice(
-      serviceWorkerSource.indexOf('const SHELL = ['),
-      serviceWorkerSource.indexOf('];', serviceWorkerSource.indexOf('const SHELL = [')),
-    );
+    const shellStart = serviceWorkerSource.indexOf('const SHELL = [');
+    const shell = serviceWorkerSource.slice(shellStart, serviceWorkerSource.indexOf('];', shellStart));
     expect(shell).toContain("'./vendor/supabase.js'");
     expect(shell).toContain("'./js/supabase.js'");
   });
@@ -53,8 +51,18 @@ describe('vendored Supabase client', () => {
     expect(typeof createClient).toBe('function');
     expect(globalThis.supabase).toBeUndefined();
 
-    const client = createClient('https://example.supabase.co', 'anon-key-for-test');
-    expect(typeof client.auth.getSession).toBe('function');
-    expect(typeof client.from).toBe('function');
+    // The realtime client resolves a WebSocket constructor while constructing.
+    // A browser always has one; Node only exposes it globally from 22 and CI
+    // runs 20, so stub it rather than let the runner's version decide whether
+    // this assertion can run at all.
+    const nativeWebSocket = globalThis.WebSocket;
+    if (nativeWebSocket === undefined) globalThis.WebSocket = class WebSocketStub {};
+    try {
+      const client = createClient('https://example.supabase.co', 'anon-key-for-test');
+      expect(typeof client.auth.getSession).toBe('function');
+      expect(typeof client.from).toBe('function');
+    } finally {
+      if (nativeWebSocket === undefined) delete globalThis.WebSocket;
+    }
   });
 });
