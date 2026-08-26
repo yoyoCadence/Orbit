@@ -26,6 +26,7 @@ import { applyRandomThemeForToday, renderBg, initLiquidGlassReflection } from '.
 import { FLAG_STREAK_UNLOCK_NEW } from './flags.js';
 import { refreshCanonicalStateAndReconcilePersonalSpaceV2 } from './personalSpace/v2/controller.js';
 import { createAuthOperationGuard } from './platform/authOperationGuard.js';
+import { createBootSequenceGuard } from './platform/bootSequenceGuard.js';
 import { orbitWindowRuntimeDestroyer } from './personalSpace/v2/runtime/pixiSceneRuntime.js';
 
 // Lazy proxy — tour.js is not imported at startup; loaded on first call.
@@ -38,6 +39,7 @@ window.startTour = () =>
 let _currentSession   = null;
 let _loginListenerSet = false;
 const authOperationGuard = createAuthOperationGuard();
+const bootSequenceGuard  = createBootSequenceGuard();
 
 // ─── Daily Plan ───────────────────────────────────────────────────────────────
 
@@ -176,6 +178,16 @@ function loadStateFromStorage({
 
 /** Day rollover + show app + periodic bonus — the sequence formerly copy-pasted ×3. */
 function bootWithLocalState() {
+  // BUG-106: the cached-user branch and a 'SIGNED_IN' that lands before
+  // getSession() resolves can both reach this in one launch. Revealing the app
+  // again is harmless, but replaying the day rollover is not: it stacks a
+  // second daily-report / morning modal, and re-runs the streak and weekly
+  // bonus against the just-pulled remote profile, which may still be missing
+  // the lastStreakDate / lastWeeklyBonusDate the first pass wrote locally.
+  if (!bootSequenceGuard.claim(state.user?.id ?? null)) {
+    showMainApp();
+    return;
+  }
   processYesterdayStreak();
   if (state.energy.lastResetDate !== eToday()) {
     showMainApp();
@@ -239,6 +251,9 @@ async function loadAndStart(session) {
 
 function handleSignOut() {
   authOperationGuard.invalidate();
+  // Releases the launch-scoped boot claim so the next sign-in runs the day
+  // rollover again — for a different account, or the same one after a reset.
+  bootSequenceGuard.reset();
   teardownActivePageRenderer();
   orbitWindowRuntimeDestroyer.destroyNow();
   // Overlays are mounted on <body>, so hiding #main-app below leaves them

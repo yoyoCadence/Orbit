@@ -14,6 +14,7 @@ export default defineConfig({
       ['tests/unit/goals.test.js',            'jsdom'],
       ['tests/unit/feedback.test.js',         'jsdom'],
       ['tests/unit/dayCycle.test.js',         'jsdom'],
+      ['tests/unit/appBootSequence.test.js',  'jsdom'],
       ['tests/unit/storage-mapping.test.js',  'jsdom'],
       ['tests/unit/focusTimer.test.js',       'jsdom'],
       ['tests/unit/proofCapture.test.js',     'jsdom'],
