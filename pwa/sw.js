@@ -1,6 +1,6 @@
 // Service Worker
 // Bump CACHE version on every deploy so users always get fresh code.
-const CACHE = 'orbit-v1.23.3';
+const CACHE = 'orbit-v1.23.4';
 
 const SHELL = [
   './',
@@ -11,6 +11,7 @@ const SHELL = [
   './js/flags.js',
   './js/state.js',
   './js/storage.js',
+  './vendor/supabase.js',
   './js/supabase.js',
   './js/auth.js',
   './js/config.js',

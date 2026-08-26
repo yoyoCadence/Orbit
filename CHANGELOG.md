@@ -3,6 +3,28 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.23.4] - 2026-08-26
+
+修正 BUG-107：Supabase client 一直是從 esm.sh 以浮動 `@2` 載入的。實際跑在使用者裝置上的版本由部署時點決定，repo 無從得知；而首次載入時 esm.sh 只要不可用，整個 App 就無法啟動。
+
+### Fixed
+- **實際載入的 Supabase client 版本改由 repo 決定。** `pwa/js/supabase.js` 原本匯入 `https://esm.sh/@supabase/supabase-js@2`。該 URL 的 pathname 不以 `.js` 結尾，因此走的是 `sw.js` 的 cache-first 分支而非 stale-while-revalidate，且不在 `SHELL` 內；`activate` 又會刪掉所有非當前 `CACHE` 的內容 —— 等於每次版本 bump 都會重新向 esm.sh 解析一次 2.x，解析到哪個版本就用到下次 bump。auth 事件的時序與名稱在 2.x 之間有差異，這讓 boot 行為可能在完全沒有 repo 變更的情況下改變（正是 BUG-106 的驅動因素之一）。
+- **離線與首次啟動不再依賴第三方 CDN 的即時可用性。** client 改為 vendored 進 repo 的同源 `pwa/vendor/supabase.js`，並加入 `pwa/sw.js` 的 `SHELL` 精快取清單，與既有的 `pwa/vendor/pixi.js` 做法一致。
+
+### Added
+- `scripts/vendor-supabase.mjs` 與 `npm run vendor:supabase`：由 `node_modules` 產生 `pwa/vendor/supabase.js`，並在版本不符時直接失敗。`@supabase/supabase-js` 以精確版本 `2.112.4` 進 `dependencies`。
+
+### Notes
+- 來源用的是套件自帶的 UMD browser bundle，不是 `dist/index.mjs` —— 後者仍帶 `@supabase/auth-js` 等 bare specifier，瀏覽器無法解析。UMD 以 ES module 載入時，頂層的 `var supabase` 只存在於模組作用域，不會外洩成全域；vendor 腳本附加的 footer 只 re-export `createClient`，也就是 `pwa/js/supabase.js` 目前用到的全部介面。
+- 未改動任何 auth 流程、token 處理或 schema；改的只有 client 的載入路徑。
+
+### Validation
+- `npm run lint`、`npm run test`（49 files／867 tests）。新增 `tests/unit/vendoredSupabaseClient.test.js`（5 項）鎖住：匯入不得回到遠端 URL、vendored 產物與 `package.json` 鎖定版本一致、`SHELL` 有收錄、模組確實輸出可用的 `createClient` 且不汙染全域。把匯入改回 esm.sh 後重跑，該檔會紅 1 項。
+- 該測試在建立 client 前會補上 WebSocket 佔位：realtime client 在建構時會解析 WebSocket constructor，瀏覽器一定有，但 Node 要到 22 才有全域版本、CI 跑的是 20 —— 不補的話這項斷言能不能跑會取決於 runner 的 Node 版本。
+- `npm run test:e2e -- --workers=1`：41/41 通過。E2E 的 Supabase stub 由攔截 `https://esm.sh/**` 改為攔截 `**/vendor/supabase.js`；以「讓 stub 直接 throw」反向驗證過攔截確實生效。
+
+---
+
 ## [1.23.3] - 2026-08-26
 
 修正 BUG-106：同一次啟動可能跑兩次完整的 boot 序列。除了疊出兩層日報／晨間 modal，第二次還會用剛拉回來的遠端 profile 重跑連勝與週獎勵結算。
