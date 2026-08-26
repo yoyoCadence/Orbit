@@ -3,6 +3,26 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.23.3] - 2026-08-26
+
+修正 BUG-106：同一次啟動可能跑兩次完整的 boot 序列。除了疊出兩層日報／晨間 modal，第二次還會用剛拉回來的遠端 profile 重跑連勝與週獎勵結算。
+
+### Fixed
+- **同一次啟動不再重複執行日輪替 boot 序列。** `bootWithLocalState()` 有兩條各自獨立的呼叫路徑：`init()` 的快取使用者分支，以及 `onAuthStateChange('SIGNED_IN')` → `loadAndStart()`。後者的守門條件比對 `_currentSession`，但那個變數要到 `getSession()` resolve 後才被賦值 —— 當 Supabase 先送出 `SIGNED_IN`（token 需要 refresh、網路慢、PWA 由背景恢復）時，整段 boot 會再跑一次。
+- **連勝與週一致性獎勵不再有被重複結算的空間。** 第二次 boot 發生在 `db.loadFromRemote()` 之後，而遠端 profile 可能還沒帶到第一次 boot 剛寫進本機的 `lastStreakDate` / `lastWeeklyBonusDate`（該次 upsert 尚未落地或失敗），`processYesterdayStreak()` 與 `checkWeeklyBonus()` 的「今天已處理」防護會因此失效。這是疊層之外較不明顯、但後果更嚴重的一半。
+- 新增 `pwa/js/platform/bootSequenceGuard.js`：以「本次啟動 + owner id」為範圍的一次性 claim。重複呼叫只會再次顯示主畫面後返回，不重跑日輪替；登出時釋放 claim，因此登出後重新登入、以及直接切換到另一個帳號都仍會正常重跑 boot。
+- 收斂的範圍只有 boot 序列，不含遠端同步：早到的 `SIGNED_IN` 帶著可用的 session，仍會完成 `loadFromRemote()`，而後到的 `getSession()` 會因 `_currentSession` 已被賦值而自行短路，遠端只會拉一次。
+
+### Validation
+- `npm run lint`、`npm run test`（48 files／862 tests）。新增 `tests/unit/bootSequenceGuard.test.js`（4 項）與 `tests/unit/appBootSequence.test.js`（4 項，jsdom）—— 後者直接在「`SIGNED_IN` 早於 `getSession()` resolve」的時序下驅動 `app.js`。移除修正後重跑，該檔會紅 3 項（`showDailyReport` 被呼叫 2 次）。
+- `npm run test:e2e -- --workers=1`：41/41 通過，含既有的跨日啟動流程 `tests/e2e/day-cycle-boot.test.js`。
+
+### Notes
+- `showStreakUnlockModal()` 的 CTA 已於 v1.23.1 隨 BUG-105 改為 scope 綁定，本次確認無須再改。
+- BUG-106 範圍內的 `supabase.js` 未鎖版本風險（D-4）已評估但維持現狀，理由與可行做法記於 [`docs/bug-105-morning-modal-lockup.md`](docs/bug-105-morning-modal-lockup.md) 第八節，另立 BUG-107 追蹤。
+
+---
+
 ## [1.23.2] - 2026-08-23
 
 修正兩個各自獨立、但都會讓「新增任務」失效的問題：Liquid Galss 主題下任務表單無法捲動，以及任務同步的整份覆蓋缺口（本機新增的任務隔天消失、離線刪除的任務復活）。

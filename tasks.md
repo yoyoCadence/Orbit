@@ -40,6 +40,14 @@
   - Acceptance: user can complete tasks offline and see a clear pending-sync state when connection returns.
 
 
+- [ ] **BUG-107** `supabase.js` 從 esm.sh 載入未鎖版本的 client
+  - 症狀：`pwa/js/supabase.js` 匯入 `https://esm.sh/@supabase/supabase-js@2`（浮動 2.x）。auth 事件的時序與名稱在 2.x 之間有差異，可能在完全沒有 repo 變更的情況下改變 boot 行為；首次載入時 esm.sh 不可用則整個 App 無法啟動。
+  - 補充現況：該 URL 的 pathname 不以 `.js` 結尾，因此走的是 `sw.js` 的 cache-first 分支且不在 `SHELL` 內；`activate` 又會刪掉非當前 `CACHE` 的內容 —— 等於每次版本 bump 都會重新解析一次版本，實際跑在使用者裝置上的 client 版本由部署時點決定。
+  - 範圍：`pwa/js/supabase.js`、`pwa/sw.js` 的 `SHELL`，以及（若採 vendored）`scripts/` 下的 vendor 腳本；不含 auth 流程或 schema 變更。
+  - 可行做法：(1) 鎖到精確版本 `@2.x.y`；(2) 比照 `pwa/vendor/pixi.js` vendored 進 repo 並加入 `SHELL`。做法 2 一併解決可用性與供應鏈風險。
+  - 完成條件：實際載入的 client 版本由 repo 決定且可稽核；離線啟動不依賴第三方 CDN 的即時可用性；`SHELL` 與版本流程同步更新。
+  - 備註：動到 App 啟動時的實際載入路徑，屬中風險，建議獨立 PR。來源為 BUG-106 的 D-4 評估，見 [`docs/bug-105-morning-modal-lockup.md`](docs/bug-105-morning-modal-lockup.md) 第八節。
+
 - [ ] **INFRA-101** 設定 Custom SMTP（Resend）並自訂 email 寄件人名稱與模板
   - 目標：讓 auth email（重設密碼等）以「Orbit」名義寄出，而非「Supabase Auth」；並把 email 內容換成品牌模板
   - 目前限制：Supabase 內建 email 每天只能寄 2 封，Sender name 無法自訂，不適合正式上線
@@ -127,14 +135,6 @@
 
 ## Next
 
-- [ ] **BUG-106** 單次啟動重複執行 `bootWithLocalState()` 造成 modal 疊層
-  - 症狀：同一次啟動出現兩層日報／晨間 modal；因 `dayCycle.js:302` 用全域 `document.getElementById('rpt-next-btn')` 綁事件，事件會綁到 DOM 中第一個（被壓在下面看不見的）modal，最上層按鈕完全沒有 listener
-  - 根因：`bootWithLocalState()` 同時被 `init()` 快取分支（`app.js:367`）與 `onAuthStateChange('SIGNED_IN')` → `loadAndStart()`（`app.js:235`）呼叫；後者的守門條件依賴 `_currentSession`，但該變數要到 `getSession().then(...)`（`app.js:375`）才賦值，token refresh／慢網路／PWA 由背景恢復時會落在空窗期
-  - 範圍：`pwa/js/app.js`、`pwa/js/dayCycle.js`（`su-close-btn` 同樣寫法）；另評估 `pwa/js/supabase.js` 從 esm.sh 載入未鎖版本 `@supabase/supabase-js@2` 的風險（auth 事件時序可能在無程式碼變更下改變）
-  - 完成條件：單次啟動只會執行一次 boot 序列，並有測試覆蓋「`SIGNED_IN` 早於 `getSession()` resolve」的時序；`showStreakUnlockModal` 一併改為 scope 綁定
-  - 備註：動到 auth boot 路徑，屬中風險，建議與 BUG-105 分開 PR
-  - 詳細調查：[`docs/bug-105-morning-modal-lockup.md`](docs/bug-105-morning-modal-lockup.md)（D-2 已重現，D-3／D-4 為靜態分析）
-
 ---
 
 ## In Progress
@@ -145,6 +145,15 @@
 ---
 
 ## Done
+
+- [x] **BUG-106** 單次啟動重複執行 `bootWithLocalState()` 造成 modal 疊層
+  - 完成（v1.23.3）：新增 `pwa/js/platform/bootSequenceGuard.js`，以「本次啟動 + owner id」為範圍的一次性 claim 收斂 boot 序列；`bootWithLocalState()` 重複呼叫只會再次顯示主畫面後返回，`handleSignOut()` 釋放 claim，因此登出後重新登入與直接切換帳號都仍會正常重跑 boot。新模組一併加入 `pwa/sw.js` 的 `SHELL` 精快取清單。
+  - 另修：疊層之外，第二次 boot 發生在 `db.loadFromRemote()` 之後，遠端 profile 可能還沒帶到第一次 boot 剛寫進本機的 `lastStreakDate` / `lastWeeklyBonusDate`，`processYesterdayStreak()` 與 `checkWeeklyBonus()` 的「今天已處理」防護會失效 —— 連勝與週一致性獎勵因此可能被重複結算。
+  - 範圍界線：只收斂 boot 序列，不收斂遠端同步。早到的 `SIGNED_IN` 仍會完成 `loadFromRemote()`，後到的 `getSession()` 會因 `_currentSession` 已被賦值而短路，遠端只拉一次。`showStreakUnlockModal()` 的 CTA 已於 v1.23.1 隨 BUG-105 改為 scope 綁定，本次確認無須再改。
+  - 測試：`tests/unit/bootSequenceGuard.test.js`（4 項）與 `tests/unit/appBootSequence.test.js`（4 項，jsdom，直接在「`SIGNED_IN` 早於 `getSession()` resolve」的時序下驅動 `app.js`）；移除修正後該檔紅 3 項。`npm run lint`、`npm run test`（48 files／862 tests）、`npm run test:e2e -- --workers=1`（41/41）通過。
+  - D-4：`supabase.js` 未鎖版本的風險已評估但維持現狀，另立 `BUG-107` 追蹤。
+  - 分支：`fix/bug-106-duplicate-boot`
+  - 詳細調查：[`docs/bug-105-morning-modal-lockup.md`](docs/bug-105-morning-modal-lockup.md)（第八節）
 
 - [x] **PRO-014A** 將 PR #132 收斂為 server-owned Pro entitlement foundation
   - Completed: PR 範圍只保留 `pro_entitlements`、`is_pro_active`、`start_trial`、`my_pro_status`、owner-only RLS／最小 grants、migration／rollback 文件與 SQL contract tests；`display_name`、排行榜 glow、Personal Space 投影與 client cutover 已移至後續任務。

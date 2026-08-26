@@ -2,8 +2,9 @@
 
 > 建立日期：2026-08-04
 > 調查版本：v1.23.0（`origin/main` @ c1db6e8）
-> 狀態：**D-1 / D-3 已於 v1.23.1 修正**（分支 `fix/bug-105-morning-modal-lockup`，對應 tasks.md 的 BUG-105）。
-> **D-2 / D-4 仍未處理**，追蹤於 tasks.md 的 BUG-106。修正內容見文末第七節。
+> 狀態：**D-1 / D-3 已於 v1.23.1 修正**（分支 `fix/bug-105-morning-modal-lockup`，對應 tasks.md 的 BUG-105，見第七節）。
+> **D-2 已於 v1.23.3 修正**（分支 `fix/bug-106-duplicate-boot`，對應 tasks.md 的 BUG-106，見第八節）。
+> **D-4 已評估但維持現狀**，理由與可行做法見第八節，另立 tasks.md 的 BUG-107 追蹤。
 
 ---
 
@@ -232,3 +233,71 @@ newDayHour: 0,
 - **D-4**（Supabase client 未鎖版本）：屬 BUG-106。
 - `saveBgImage()`（`storage.js`）直接呼叫 `localStorage.setItem` 而未經 `set()`，仍會在配額不足時拋錯；
   base64 背景圖正是最容易撐爆配額的資料，建議一併納入 BUG-106 或另開票處理。
+
+---
+
+## 八、v1.23.3 實際修正內容（BUG-106）
+
+對應 tasks.md 的 **BUG-106**，涵蓋 D-2，並完成 D-4 的風險評估。
+
+### D-2：單次啟動只跑一次 boot 序列
+
+| 修正 | 檔案 |
+|---|---|
+| 新增 `createBootSequenceGuard()` —— 以「本次啟動 + owner id」為範圍的一次性 claim | `pwa/js/platform/bootSequenceGuard.js`（新檔） |
+| `bootWithLocalState()` 先 `claim()`，重複呼叫只做 `showMainApp()` 後返回，不再重跑日輪替 | `pwa/js/app.js` |
+| `handleSignOut()` 釋放 claim，讓下一次登入（同帳號或換帳號）正常重跑 boot | `pwa/js/app.js` |
+| 新模組加入 service worker 的 `SHELL` 精快取清單 | `pwa/sw.js` |
+
+選擇「擋住 boot 序列」而不是「擋住第二次 `loadAndStart()`」的理由：
+早到的 `SIGNED_IN` 帶著一個可用的 session，讓它繼續完成遠端載入是安全的
+（`getSession()` 後到時會因為 `_currentSession` 已被賦值而自行短路，遠端只會拉一次）；
+真正不能重跑的是日輪替的副作用。
+
+疊層之外，重複 boot 還有一個較不明顯但更嚴重的後果：
+第二次 boot 發生在 `db.loadFromRemote()` 之後，而遠端 profile 可能還沒帶到
+第一次 boot 剛寫進本機的 `lastStreakDate` / `lastWeeklyBonusDate`
+（該次 upsert 尚未落地或失敗），於是 `processYesterdayStreak()` 與
+`checkWeeklyBonus()` 的「今天已處理」防護會失效 —— 連勝可能被算兩次，
+週一致性獎勵可能重複發 +60 XP。
+
+`showStreakUnlockModal()` 的 `su-close-btn` 已於 v1.23.1 隨 D-3 一併改為
+`mountModal()` + `modal.querySelector()`，本次確認無須再改。
+
+### 測試
+
+- `tests/unit/bootSequenceGuard.test.js`（4 項，node）—— gate 本身：重複 claim 被擋、換帳號重新 claim、`reset()` 後可再 claim、訪客視為獨立身分
+- `tests/unit/appBootSequence.test.js`（4 項，jsdom）—— 直接在「`SIGNED_IN` 早於 `getSession()` resolve」的時序下驅動 `app.js`：
+  早到的 `SIGNED_IN` 不再重跑 boot 序列但遠端仍會載入、後到的 `getSession()` 不重複拉遠端、登出後重新登入會重跑、切換帳號會重跑
+- 反向驗證：移除 `app.js` 的 gate 後重跑，`appBootSequence.test.js` 紅 3 項（`showDailyReport` 被呼叫 2 次），確認測試真的鎖住這個缺陷
+
+---
+
+### D-4 風險評估：`supabase.js` 未鎖版本（本次不修）
+
+`pwa/js/supabase.js` 仍是 `import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'`。
+評估後**維持現狀**，另立 backlog 處理，理由與現況如下。
+
+**現況比想像中更不確定**：這個跨網域 URL 的 pathname 不以 `.js` 結尾，
+因此不會走 `sw.js` 的 stale-while-revalidate，而是落到 cache-first 分支
+（[`pwa/sw.js`](../pwa/sw.js) 的 `fetch` handler）。它也不在 `SHELL` 內，
+所以只會在啟用後第一次實際請求時被機會性快取。而 `activate` 會刪掉所有非當前
+`CACHE` 的快取 —— **等於每次版本 bump 都會重新向 esm.sh 要一次，
+當下 esm.sh 解析到哪個 2.x 就固定成那個版本用到下次 bump**。
+換句話說，實際跑在使用者裝置上的 client 版本，目前由「部署時點」決定，repo 無從得知。
+
+| 風險 | 影響 |
+|---|---|
+| auth 事件時序／名稱在 2.x 之間變動 | 可在沒有任何 repo 變更的情況下改變 boot 行為（正是 D-2 的驅動因素；boot gate 已降低其後果，但沒有消除來源） |
+| 首次載入時 esm.sh 不可用或被網路封鎖 | 整個 App 無法啟動（該版本快取未建立前沒有本機副本） |
+| 第三方來源以完整權限執行 | 該模組與 App 同源執行，可觸及 anon key 與使用者 session |
+
+**可行做法**（擇一，需獨立 PR）：
+
+1. 鎖到精確版本（`@2.x.y`）—— 改動最小，但仍相依 esm.sh 可用性
+2. 比照 `pwa/vendor/pixi.js` 的既有做法 vendored 進 repo（`scripts/vendor-supabase.mjs` + 加入 `SHELL`）—— 一併解決可用性與供應鏈風險
+
+**不在本次 PR 處理的理由**：兩種做法都會改變 App 啟動時的實際載入路徑，
+且做法 2 需同步 `SHELL` 清單與 vendor 腳本；BUG-106 的驗收重點是收斂重複 boot，
+把載入方式的變更混進同一個 PR 會讓「boot 行為是否真的被修好」失去乾淨的對照。
+已於 tasks.md 立 **BUG-107** 追蹤。
