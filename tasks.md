@@ -131,22 +131,21 @@
 
 ## In Progress
 
-- [ ] **BUG-107** `supabase.js` 從 esm.sh 載入未鎖版本的 client
-  - 症狀：`pwa/js/supabase.js` 匯入 `https://esm.sh/@supabase/supabase-js@2`（浮動 2.x）。auth 事件的時序與名稱在 2.x 之間有差異，可能在完全沒有 repo 變更的情況下改變 boot 行為；首次載入時 esm.sh 不可用則整個 App 無法啟動。
-  - 補充現況：該 URL 的 pathname 不以 `.js` 結尾，因此走的是 `sw.js` 的 cache-first 分支且不在 `SHELL` 內；`activate` 又會刪掉非當前 `CACHE` 的內容 —— 等於每次版本 bump 都會重新解析一次版本，實際跑在使用者裝置上的 client 版本由部署時點決定。
-  - 範圍：`pwa/js/supabase.js`、`pwa/sw.js` 的 `SHELL`，以及（若採 vendored）`scripts/` 下的 vendor 腳本；不含 auth 流程或 schema 變更。
-  - 可行做法：(1) 鎖到精確版本 `@2.x.y`；(2) 比照 `pwa/vendor/pixi.js` vendored 進 repo 並加入 `SHELL`。做法 2 一併解決可用性與供應鏈風險。
-  - 完成條件：實際載入的 client 版本由 repo 決定且可稽核；離線啟動不依賴第三方 CDN 的即時可用性；`SHELL` 與版本流程同步更新。
-  - 備註：動到 App 啟動時的實際載入路徑，屬中風險，建議獨立 PR。來源為 BUG-106 的 D-4 評估，見 [`docs/bug-105-morning-modal-lockup.md`](docs/bug-105-morning-modal-lockup.md) 第八節。
-  - 進行中：採做法 (2) vendored —— 以 `scripts/vendor-supabase.mjs` 由 `node_modules` 產生 `pwa/vendor/supabase.js`，`pwa/js/supabase.js` 改為同源相對匯入，並將該檔加入 `sw.js` 的 `SHELL`。
-  - 分支：`fix/bug-107-vendor-supabase`
-
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
 
 ---
 
 ## Done
+
+- [x] **BUG-107** `supabase.js` 從 esm.sh 載入未鎖版本的 client
+  - 完成（v1.23.4）：採可行做法 (2)。新增 `scripts/vendor-supabase.mjs`（`npm run vendor:supabase`）由 `node_modules` 產生 `pwa/vendor/supabase.js`，`@supabase/supabase-js` 以精確版本 `2.112.4` 進 `dependencies`；`pwa/js/supabase.js` 改為同源相對匯入，該檔並加入 `pwa/sw.js` 的 `SHELL`。
+  - 三項完成條件對應：版本由 repo 決定且可稽核（鎖版本 + vendored 產物已 commit + 腳本版本不符即失敗）；首次／離線啟動不再依賴 esm.sh 的即時可用性（同源且進 `SHELL` 精快取）；`SHELL` 與版本流程同步更新（`npm run bump -- patch` → `npm run ps243:assets`）。
+  - 實作備註：來源是套件自帶的 UMD browser bundle，不是 `dist/index.mjs` —— 後者仍帶 `@supabase/auth-js` 等 bare specifier，瀏覽器無法解析。UMD 以 ES module 載入時頂層 `var supabase` 只存在於模組作用域，不外洩全域；vendor 腳本的 footer 只 re-export `createClient`（目前唯一用到的介面），要擴充需明確修改腳本。
+  - 範圍界線：只改 client 的載入路徑，未動 auth 流程、token 處理或 schema。
+  - 測試：新增 `tests/unit/vendoredSupabaseClient.test.js`（5 項）；把匯入改回 esm.sh 後該檔紅 1 項。E2E 的 Supabase stub 改攔截 `**/vendor/supabase.js`，並以「讓 stub 直接 throw」反向驗證攔截生效。`npm run lint`、`npm run test`（49 files／867 tests）、`npm run test:e2e -- --workers=1`（41/41）通過。
+  - 分支：`fix/bug-107-vendor-supabase`
+  - 詳細調查：[`docs/bug-105-morning-modal-lockup.md`](docs/bug-105-morning-modal-lockup.md)（第八節 D-4 與其後續結果）
 
 - [x] **BUG-106** 單次啟動重複執行 `bootWithLocalState()` 造成 modal 疊層
   - 完成（v1.23.3）：新增 `pwa/js/platform/bootSequenceGuard.js`，以「本次啟動 + owner id」為範圍的一次性 claim 收斂 boot 序列；`bootWithLocalState()` 重複呼叫只會再次顯示主畫面後返回，`handleSignOut()` 釋放 claim，因此登出後重新登入與直接切換帳號都仍會正常重跑 boot。新模組一併加入 `pwa/sw.js` 的 `SHELL` 精快取清單。

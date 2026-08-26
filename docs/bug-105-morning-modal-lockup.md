@@ -301,3 +301,10 @@ newDayHour: 0,
 且做法 2 需同步 `SHELL` 清單與 vendor 腳本；BUG-106 的驗收重點是收斂重複 boot，
 把載入方式的變更混進同一個 PR 會讓「boot 行為是否真的被修好」失去乾淨的對照。
 已於 tasks.md 立 **BUG-107** 追蹤。
+
+**後續結果（BUG-107，v1.23.4）**：已採做法 2。`scripts/vendor-supabase.mjs`
+由 `node_modules` 產生 `pwa/vendor/supabase.js`（`@supabase/supabase-js` 鎖在
+`2.112.4`，來源是套件自帶的 UMD browser bundle，因為 `dist/index.mjs` 仍帶
+`@supabase/auth-js` 等瀏覽器無法解析的 bare specifier），`pwa/js/supabase.js`
+改為同源相對匯入，該檔並加入 `pwa/sw.js` 的 `SHELL`。上表三項風險因此都由 repo
+決定：版本可稽核、首次載入不再依賴 esm.sh、執行的程式碼是 commit 過的內容。

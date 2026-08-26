@@ -64,9 +64,9 @@ export function createClient() {
 }
 `;
 
-/** Intercept the Supabase CDN import (required in every test). */
+/** Intercept the vendored Supabase client import (required in every test). */
 export async function mockSupabase(page) {
-  await page.route('https://esm.sh/**', route =>
+  await page.route('**/vendor/supabase.js', route =>
     route.fulfill({
       status:      200,
       contentType: 'application/javascript; charset=utf-8',
