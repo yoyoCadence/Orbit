@@ -8,6 +8,9 @@ export const FLAG_DEV_PANEL         = 'orbit_dev_panel';         // '1' = 非 lo
 
 export const FLAG_PERSONAL_SPACE_RUNTIME = 'orbit_personal_space_runtime';
 
+export const FLAG_PRO_ENTITLEMENT        = 'orbit_pro_entitlement';        // owner-scoped Pro entitlement snapshot（只由已驗證的 server response 寫入）
+export const FLAG_PRO_ENTITLEMENT_SOURCE = 'orbit_pro_entitlement_source'; // 'server' = 由 snapshot 判定 Pro；預設 'legacy'，須待 PRO-014D 驗證後才可切換
+
 // sessionStorage
 export const FLAG_SHIELD_DISMISSED  = 'orbit_shield_dismissed';  // '1' = 本次 session 已收合保護卡橫幅
 export const FLAG_SHIELD_SCROLL_TOP = 'orbit_shield_scroll_top'; // '1' = 導回首頁後捲到頂

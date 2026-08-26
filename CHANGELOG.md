@@ -3,6 +3,33 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.24.0] - 2026-08-26
+
+PRO-014B：把前端的 Pro 判定從「profile 裡 client 自己就能寫的欄位」換成「只由已驗證的 server response 建立的 owner-scoped snapshot」。**本版預設不啟用**，legacy 判定維持原樣。
+
+### Added
+- **`pwa/js/platform/proEntitlement.js`：owner-scoped Pro entitlement snapshot adapter。** 由 `my_pro_status()` 的回應建立本機 snapshot，並提供既有 `isProUser()` 需要的同步讀取介面。授權條件是四項同時成立：server 回報 `is_active`、snapshot 屬於當前 owner、entitlement 本身未到期、snapshot 仍在離線 grace window（24 小時）內。任何一項不成立、或回應格式不符預期，一律 fail closed。
+- **`db.refreshProEntitlement(userId)`**：登入載入遠端資料後刷新 snapshot。session owner 與請求的 owner 不符時直接清除、不打 RPC。
+- **兩個 flag key**：`orbit_pro_entitlement`（snapshot）與 `orbit_pro_entitlement_source`（判定來源，`legacy` / `server`）。
+
+### Changed
+- **`storage.isProUser()` 在 `server` 來源下只看 snapshot**，不再讀 `isPro` / `proExpiresAt` / `trialStartedAt`。這三個欄位在 profile 上是 client 可寫的，等於任何人都能從 console 給自己開 Pro —— 這正是這個工作串要拔掉的信任錨點。
+- **`storage.clearAll()` 一併清除 snapshot**，避免登出後殘留的 snapshot 被下一個帳號沿用。
+
+### Notes
+- **預設仍是 `legacy`，production 行為完全沒變。** migration 011 目前只 commit 進 repo、沒有套用到任何資料庫（套用是 PRO-014D 的工作，需要另行核准）。若現在就切到 `server`，RPC 不存在 → 每次呼叫都 fail closed → 現有付費使用者立刻失去 Pro。因此 `legacy` 下 `refreshProEntitlement()` 直接 no-op，連 RPC 都不會發。
+- **離線與 RPC 錯誤是兩件事，處理方式不同。** 回應裡帶 `error`（function 不存在、權限不足）是權威訊號，直接清掉 snapshot；而 fetch 本身 throw（離線、網路中斷）則保留既有 snapshot，讓 24 小時 grace window 生效 —— 訂閱者在飛機上不會突然失去 Pro，但被撤銷的權限也不可能無限期留在裝置上。
+- **PostgREST 的單列陣列是明確斷言而不是容錯。** `my_pro_status()` 是 `RETURNS TABLE`，回應必須正好是一列；空陣列、單一物件、多列都當作「合約與這份 client 不符」而 fail closed。猜哪一種讀法才對，正是 gate 漏授權的典型路徑。
+- 未動 auth 流程、token 處理或 schema；`startTrial()` 仍是舊行為，切換到受控 RPC 是 PRO-014C。
+
+### Validation
+- `npm run lint`、`npm run test`（51 files／919 tests）、`npm run test:e2e -- --workers=1`（41/41）。
+- 新增 `tests/unit/proEntitlement.test.js`（41 項）逐條對應 tasks.md 的完成條件：單列陣列 normalize，以及空陣列／非陣列／多列／缺欄位／壞時間戳／RPC 錯誤／無 entitlement row／未登入／切換帳號／cache 過期／entitlement 到期／trial 結束／時鐘倒轉／snapshot 被竄改，全部 fail closed。
+- 新增 `tests/unit/proEntitlementGate.test.js`（11 項）鎖住整合面：legacy 下行為不變且不呼叫 RPC；server 下即使 profile 欄位寫著 Pro 也判定為 false。
+- 反向驗證：把 `isProUser()` 的 server 分支改回讀 legacy 欄位後重跑，`proEntitlementGate.test.js` 紅 4 項。
+
+---
+
 ## [1.23.4] - 2026-08-26
 
 修正 BUG-107：Supabase client 一直是從 esm.sh 以浮動 `@2` 載入的。實際跑在使用者裝置上的版本由部署時點決定，repo 無從得知；而首次載入時 esm.sh 只要不可用，整個 App 就無法啟動。
