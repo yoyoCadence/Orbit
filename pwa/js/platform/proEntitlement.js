@@ -36,7 +36,9 @@
 // NOT ENABLED IN PRODUCTION YET. Migration 011 has not been applied to any
 // database, so the RPC does not exist yet and every call would fail closed —
 // which would strip Pro from current paying users. REPO_PRO_ENTITLEMENT_SOURCE
-// is therefore `legacy`; PRO-014D is the gate that must pass before it moves.
+// is therefore `legacy`. Flipping it is its own task (PRO-014H) whose
+// prerequisites are PRO-014C, PRO-014D and PRO-014I, plus explicit approval
+// under AGENTS.md §3 — finishing PRO-014D alone does not license the change.
 
 import { FLAG_PRO_ENTITLEMENT, FLAG_PRO_ENTITLEMENT_SOURCE } from '../flags.js';
 
@@ -246,7 +248,7 @@ export function applyProStatusResponse({ ownerId, rows, error, nowMs = Date.now(
  * deploys `server`, a device cannot fall back to `legacy` — that would hand the
  * client-writable profile fields their authority back, which is the whole thing
  * this task exists to remove. While the repo still says `legacy`, a device may
- * opt *into* `server` so the cutover can be verified locally before PRO-014D;
+ * opt *into* `server` so the cutover can be verified locally before PRO-014H;
  * that direction only ever removes trust, never restores it.
  */
 export function getProEntitlementSource() {

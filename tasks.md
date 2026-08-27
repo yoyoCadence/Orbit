@@ -81,16 +81,27 @@
 - [ ] **PRO-014** SUB-14／Pro entitlement 工作串
   - 目標：先建立可信任的 server-owned Pro entitlement，再交付排行榜與 Personal Space 的 Pro 呈現
   - 拆分：PR #132 只完成 `PRO-014A`；`PRO-014B`～`PRO-014F` 各自以後續 PR 處理，避免 schema foundation、client cutover、環境套用與呈現功能混在同一審查範圍
-  - **執行順序（PR #146 覆驗定案，勿自行推導）**：`PRO-014A`（完成）→ `PRO-014B`（完成）→ `PRO-014C`（實作 RPC／gate，維持 legacy）→ `PRO-014D`（preview 驗證）→ `PRO-014H`（production cutover）。`PRO-014E` → `PRO-014F` 為呈現層，接在 D 之後。`PRO-014G` 為可選 hardening，不在主線上。
+  - **執行順序（PR #146／#148 覆驗定案，勿自行推導）**：`PRO-014A`（完成）→ `PRO-014B`（完成）→ `PRO-014C`（實作 RPC／gate，維持 legacy）→ `PRO-014D`（preview 驗證）→ `PRO-014I`（production 套用 011）→ `PRO-014H`（production cutover）。`PRO-014E` → `PRO-014F` 為呈現層，接在 D 之後。`PRO-014G` 為可選 hardening，不在主線上。
+  - **時序注意**：`PRO-014C` 的 client 會呼叫 `start_trial()`，因此 `PRO-014I` 必須在 C 部署到 production 之前或同時完成，否則 trial 會有一段完全失效的空窗。
   - 狀態：此項只作為追蹤母項，不直接進入實作；各子任務需各自遵守 `Next → In Progress → Done`
   - 既有 PR：[#132](https://github.com/yoyoCadence/Orbit/pull/132)（Ready for review；開始後續任務前應確認最新 head）
+
+- [ ] **PRO-014I** 在 production 套用 011 migration
+  - 目標：把 `pro_entitlements`、`is_pro_active`、`start_trial`、`my_pro_status` 實際建立在 production 資料庫
+  - 為什麼獨立一項：`PRO-014D` 只在 preview 專案套用，`PRO-014H` 的範圍明寫「不含新功能」—— 原本沒有任何任務負責 production 套用（PR #148 驗收發現）。缺了它，`PRO-014C` 送出的 client 會呼叫一個在 production 不存在的 function，trial 整段失效。
+  - 範圍：套用 011、驗證 RLS 與 grants、核准名單 seed（若有）、rollback 演練；不含 client 變更
+  - 完成條件：production 上 `my_pro_status()` 與 `start_trial()` 可由 `authenticated` 呼叫且 owner-scoped；`anon` 無法存取；rollback 已演練並記錄；執行 Security／Performance Advisors
+  - **前置：`PRO-014D` 完成。** 依 AGENTS.md §3，資料庫套用需另行取得明確核准；`service_role` 不得進入前端
+  - **時序要求**：必須在 `PRO-014C` 的 client 部署到 production **之前或同時**完成，否則兩者之間會出現 trial 完全失效的空窗
+  - 依賴：`PRO-014D`
 
 - [ ] **PRO-014H** Production Pro entitlement client cutover
   - 目標：把 `REPO_PRO_ENTITLEMENT_SOURCE` 由 `legacy` 切到 `server`，讓 production 的 `isProUser()` 實際改用 server-derived UI projection
   - 範圍：repo 常數變更、付費／非付費／trial／離線／切換帳號的實機驗證、rollback 程序；不含新功能
   - 完成條件：切換後付費使用者維持 Pro、非付費不會誤授權、離線在 grace window 內維持、超出後 fail closed；rollback（切回 `legacy`）已實際演練並記錄
-  - **前置：`PRO-014C` 與 `PRO-014D` 完成。** 依 AGENTS.md §3 高風險規則，production rollout 需另行取得明確核准
-  - 依賴：`PRO-014C`、`PRO-014D`
+  - **前置：`PRO-014C`、`PRO-014D`、`PRO-014I` 完成。** 依 AGENTS.md §3 高風險規則，production rollout 需另行取得明確核准
+  - 一併移除 `PRO-014C` 建立的 legacy 相容層（client 寫回 `trial_started_at`）—— cutover 後 legacy gate 不再被使用
+  - 依賴：`PRO-014C`、`PRO-014D`、`PRO-014I`
 
 - [ ] **PRO-014G**（可選）為 entitlement projection 加上 server 簽章的 anti-tamper hardening
   - **狀態：可選，非任何任務的前置。** PR #146 覆驗定案採「UI entitlement projection ＋ server-side enforcement」，signed receipt 不再是 `PRO-014B` 的必要條件。
@@ -103,11 +114,18 @@
   - 依賴：`PRO-014B`
 
 - [ ] **PRO-014C** 將 trial 改用受控 RPC，完成 server-source Pro gate 準備
-  - 目標：`startTrial()` 只呼叫一次性 server RPC，client 不再自行寫入 `is_pro`、`pro_expires_at` 或 `trial_started_at`；完成日後切到 `server` source 所需的 gate 路徑
-  - 範圍：trial CTA、剩餘天數呈現、`server` source 下的既有 Pro gate、legacy profile 欄位相容讀取／移除策略、相關 unit／integration／E2E tests
-  - 完成條件：同一使用者無法重複領取 trial；RPC 錯誤不會誤授權；明確啟用 `server` source 的測試中，所有既有 Pro 入口都只依賴 `PRO-014B` 的 server-derived UI projection、不再讀 client 可寫的 profile Pro 欄位；production 預設仍維持 legacy 行為；依版本規則執行一次 bump
+  - 目標：`startTrial()` 的授權來源改為一次性 server RPC（`start_trial()`），client 不再自行決定 `is_pro`、`pro_expires_at` 或 `trial_started_at` 的值；同時完成日後切到 `server` source 所需的 gate 路徑
+  - **legacy 相容策略（PR #148 驗收定案，勿自行改動）**：RPC 成功後，client 仍把 server 回傳的 `trial_started_at` 寫回 profile，作為**明確標示的 legacy 相容層**。理由：production 走 `legacy` source，而 `storage.isTrialUser()` 只讀 `user.trialStartedAt`；`refreshProEntitlement()` 在 `legacy` 下第一行就 return，projection 根本不會被填，所以「讓 legacy gate 改讀 projection」不可行。這層相容在 `PRO-014H` cutover 時才移除。**client 寫入的值必須來自 RPC 回應，不得由 client 自行計算。**
+  - 範圍：trial CTA、trial 橫幅與剩餘天數呈現（`app.js` 的 `isTrialUser()`／`getTrialDaysRemaining()` 呼叫點、`settings.js` 兩處）、**`app.js` 的 trial 自動啟動路徑**、`server` source 下的既有 Pro gate、legacy profile 欄位相容層、相關 unit／integration／E2E tests
+  - 完成條件：
+    - 同一使用者無法重複領取 trial；RPC 錯誤不會誤授權
+    - **`startTrial()` 的回傳值不得使 boot 序列提前返回。** `app.js` 目前是 `if (… || trialStarted === false) return;`，而該 return 在 `hideLoading()` 與隱藏 login screen **之前** —— 「已領取過」若回傳 `false`，使用者會卡在 loading 畫面。需明確定義「已領取」與「失敗」的回傳語意並分開處理，且有測試覆蓋「第二次登入仍能正常開機」
+    - **逐一列出**下列既有 Pro 入口在 `server` source 下的驗證結果（不得只以「既有測試綠」代替，`tests/unit/proEntitlementGate.test.js` 的 server source 測試在 `PRO-014B` 就已存在）：`dayCycle.js:72/91/99/117`、`focusTimer.js:48/343/516`、`goals.js:11`、`home.js:211`、`profile.js:76/182`、`review.js:21/233`、`settings.js:88/422/548/861/867`、`theme.js:29`
+    - trial 顯示面（`isTrialUser()`／`getTrialDaysRemaining()`）在 `server` 與 `legacy` 兩種 source 下都顯示正確天數
+    - `legacy` source 下的迴歸測試：trial 開始後 `isProUser()` 仍為 true（相容層有效）
+    - 依版本規則執行一次 bump
   - 範圍界線：本任務**維持 `REPO_PRO_ENTITLEMENT_SOURCE = legacy`**，只實作 RPC 與 gate，不做 cutover。切換是 `PRO-014H`。
-  - 依賴：`PRO-014B`（已完成）
+  - 依賴：`PRO-014B`（已完成）。**注意**：本任務送出的 client 會呼叫 `start_trial()`，該 function 需先隨 011 套用到目標資料庫才會存在 —— 見 `PRO-014D`（preview）與 `PRO-014I`（production）。
 
 - [ ] **PRO-014D** 在非 production 環境驗證 011 migration 與 cutover 邊界
   - 目標：在獨立測試／preview Supabase 專案套用 migration，驗證資料、RLS、RPC、權限、核准名單 seed 與回滾；此任務是後續 production rollout 與 client gate 啟用的閘門，不阻擋只提交 migration 程式碼且不套用的 PR #132 完成 review／merge

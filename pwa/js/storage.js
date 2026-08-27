@@ -887,8 +887,8 @@ export const storage = {
    * PRO-014B: under the `server` source the decision comes only from the
    * owner-scoped snapshot built from `my_pro_status()`, never from the
    * client-writable profile fields. The legacy path stays the default until
-   * PRO-014D has verified migration 011 against a real project — flipping it
-   * before the RPC exists would fail closed and strip Pro from paying users.
+   * PRO-014H performs the cutover — flipping it before migration 011 exists in
+   * the target database would fail closed and strip Pro from paying users.
    */
   isProUser() {
     if (isServerProEntitlementEnabled()) return isProFromSnapshot(get('user')?.id || null);
