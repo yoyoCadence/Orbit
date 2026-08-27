@@ -102,10 +102,10 @@
   - 提案文件：[`docs/pro-014-entitlement-integrity.md`](docs/pro-014-entitlement-integrity.md)
   - 依賴：`PRO-014B`
 
-- [ ] **PRO-014C** 將 trial 與所有 Pro gate 切換到受控 RPC
-  - 目標：`startTrial()` 只呼叫一次性 server RPC，client 不再自行寫入 `is_pro`、`pro_expires_at` 或 `trial_started_at`
-  - 範圍：trial CTA、剩餘天數呈現、既有 Pro gate、legacy profile 欄位相容讀取／移除策略、相關 unit／integration／E2E tests
-  - 完成條件：同一使用者無法重複領取 trial；RPC 錯誤不會誤授權；所有既有 Pro 入口都只依賴 `PRO-014B` 的 server-derived UI projection，不再讀 client 可寫的 profile Pro 欄位；依版本規則執行一次 bump
+- [ ] **PRO-014C** 將 trial 改用受控 RPC，完成 server-source Pro gate 準備
+  - 目標：`startTrial()` 只呼叫一次性 server RPC，client 不再自行寫入 `is_pro`、`pro_expires_at` 或 `trial_started_at`；完成日後切到 `server` source 所需的 gate 路徑
+  - 範圍：trial CTA、剩餘天數呈現、`server` source 下的既有 Pro gate、legacy profile 欄位相容讀取／移除策略、相關 unit／integration／E2E tests
+  - 完成條件：同一使用者無法重複領取 trial；RPC 錯誤不會誤授權；明確啟用 `server` source 的測試中，所有既有 Pro 入口都只依賴 `PRO-014B` 的 server-derived UI projection、不再讀 client 可寫的 profile Pro 欄位；production 預設仍維持 legacy 行為；依版本規則執行一次 bump
   - 範圍界線：本任務**維持 `REPO_PRO_ENTITLEMENT_SOURCE = legacy`**，只實作 RPC 與 gate，不做 cutover。切換是 `PRO-014H`。
   - 依賴：`PRO-014B`（已完成）
 
