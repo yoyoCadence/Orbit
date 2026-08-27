@@ -65,12 +65,7 @@ const YESTERDAY = (() => {
 
 function seedSignedInUser() {
   state.user = {
-    id: 'u1', name: 'Tester',
-    // newDayHour:0 → effectiveToday(0) always equals today(). With 5, the
-    // energy reset is not yet due before 05:00 local, so these tests failed
-    // purely by what time CI happened to run (UTC 02:xx). Same reason and
-    // same fix as GUEST_USER in tests/e2e/support/seed.js.
-    newDayHour: 0,
+    id: 'u1', name: 'Tester', newDayHour: 5,
     morningState: 'normal', streakDays: 3, totalXP: 0,
   };
   state.sessions = [];
