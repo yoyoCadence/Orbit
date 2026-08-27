@@ -126,21 +126,22 @@
 
 ## In Progress
 
+- [ ] **PRO-014B** 將前端 Pro 判定切換為 owner-scoped entitlement snapshot
+  - 目標：由已驗證的 server response 建立同步可讀的本機 snapshot，保留現有 `isProUser()` 呼叫介面，但不再信任 profile 內可由 client 改寫的 Pro 欄位
+  - 範圍：entitlement adapter／cache、登入／登出與使用者切換時的清除流程、離線與到期處理、相關 unit／integration tests；此任務不啟用 trial
+  - 完成條件：PostgREST `.rpc('my_pro_status')` 的單列陣列需明確 normalize；空陣列、非陣列、缺欄位、RPC 錯誤、無 entitlement row、未登入、切換帳號與 cache 過期皆 fail closed；有效且未到期的 server snapshot 才能開啟 Pro
+  - 依賴：`PRO-014A`
+  - 進行中（[PR #146](https://github.com/yoyoCadence/Orbit/pull/146) 驗收退回）：adapter、snapshot、旗標與測試已在 PR 上，但驗收找到一個未關閉的缺口 —— snapshot 是純 localStorage JSON，格式完全合法的偽造內容一樣會被授權，等於 client trust anchor 只是從 profile 欄位換到另一個 key。
+  - 已於該 PR 修正：`expires_at`／`trial_ends_at` 欄位缺席改為 fail closed（原本被當成終身 Pro）；localStorage 寫入／清除失敗改為 fail closed；判定來源改由 repo 控制，使用者端無法降級回 legacy。
+  - **仍阻擋 Done**：snapshot 的來源完整性。需要 server 簽章的 entitlement receipt，屬 RPC／schema 變更 —— 已另立 `PRO-014G` 提案，依 AGENTS.md §3 取得核准後才實作。此任務要等 G 落地才算完成。
+  - 分支：`feat/pro-014b-entitlement-snapshot`
+
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
 
 ---
 
 ## Done
-
-- [x] **PRO-014B** 將前端 Pro 判定切換為 owner-scoped entitlement snapshot
-  - 完成（v1.24.0）：新增 `pwa/js/platform/proEntitlement.js`，由 `my_pro_status()` 的已驗證回應建立 owner-scoped snapshot，並保留 `storage.isProUser()` 的同步呼叫介面。授權需四項同時成立：server 回報 `is_active`、snapshot 屬於當前 owner、entitlement 未到期、snapshot 仍在離線 grace window（24 小時）內。`db.refreshProEntitlement()` 在登入載入遠端資料後刷新；`storage.clearAll()` 一併清除 snapshot。
-  - **未啟用（重要）**：判定來源 flag `orbit_pro_entitlement_source` 預設 `legacy`，production 行為完全沒變，`legacy` 下連 RPC 都不會發。migration 011 尚未套用到任何資料庫，現在切到 `server` 會讓 RPC 不存在 → fail closed → 現有付費使用者立刻失去 Pro。**切換到 `server` 是 `PRO-014D` 完成後的動作**，與 PRO-014D 已寫明的安全閘門一致。
-  - 完成條件對應：PostgREST 單列陣列以明確斷言 normalize（空陣列／非陣列／多列／缺欄位／壞時間戳皆 fail closed）；RPC 錯誤、無 entitlement row、未登入、切換帳號、cache 過期、entitlement 到期、trial 結束、時鐘倒轉、snapshot 被竄改皆 fail closed；只有有效且未到期的 server snapshot 能開 Pro。
-  - 設計決定：回應裡帶 `error` 是權威訊號（function 不存在／權限不足），直接清除 snapshot；fetch 本身 throw（離線）則保留 snapshot 讓 grace window 生效。兩者刻意分開處理。
-  - 範圍界線：未動 auth 流程、token 處理或 schema。`startTrial()` 維持舊行為（切換到受控 RPC 屬 `PRO-014C`）。
-  - 測試：`tests/unit/proEntitlement.test.js`（41 項）、`tests/unit/proEntitlementGate.test.js`（11 項）。把 `isProUser()` 的 server 分支改回讀 legacy 欄位後重跑，後者紅 4 項。`npm run lint`、`npm run test`（51 files／919 tests）、`npm run test:e2e -- --workers=1`（41/41）通過。
-  - 分支：`feat/pro-014b-entitlement-snapshot`
 
 - [x] **BUG-107** `supabase.js` 從 esm.sh 載入未鎖版本的 client
   - 完成（v1.23.4）：採可行做法 (2)。新增 `scripts/vendor-supabase.mjs`（`npm run vendor:supabase`）由 `node_modules` 產生 `pwa/vendor/supabase.js`，`@supabase/supabase-js` 以精確版本 `2.112.4` 進 `dependencies`；`pwa/js/supabase.js` 改為同源相對匯入，該檔並加入 `pwa/sw.js` 的 `SHELL`。
