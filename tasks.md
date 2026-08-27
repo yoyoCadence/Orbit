@@ -84,6 +84,16 @@
   - 狀態：此項只作為追蹤母項，不直接進入實作；各子任務需各自遵守 `Next → In Progress → Done`
   - 既有 PR：[#132](https://github.com/yoyoCadence/Orbit/pull/132)（Ready for review；開始後續任務前應確認最新 head）
 
+- [ ] **PRO-014G** 為 entitlement snapshot 加上 server 簽章的來源完整性（提案待核准）
+  - 目標：讓 client 端的 Pro snapshot 無法以「手寫一段格式合法的 localStorage JSON」偽造；client 必須驗證只有 server 產得出來的簽章才建立 snapshot
+  - 現況：PRO-014B 已把 trust anchor 從 profile 欄位移到裝置本機（血徑從「同步到所有裝置＋外溢到排行榜 read model」縮小為「只影響當前裝置」），但偽造門檻沒有改變
+  - 範圍：`my_pro_status()` 增加 detached JWS receipt 欄位、資料庫端簽章金鑰、公鑰 vendored 進 repo、client 以 Web Crypto 驗章、記憶體中保存已驗證結果
+  - 完成條件：格式合法但未簽章的偽造 snapshot 被拒（回歸測試）；receipt `exp` 過期 fail closed；公鑰載入失敗 fail closed；離線首次啟動仍需驗章
+  - **前置：本項是提案，依 AGENTS.md §3 需先取得核准才實作**；建議與 `PRO-014D` 合併規劃（011 尚未套用，趁該次一併改 migration 較乾淨）
+  - 提案文件：[`docs/pro-014-entitlement-integrity.md`](docs/pro-014-entitlement-integrity.md)
+  - 注意：簽章不會讓 client gate 變成安全邊界（裝置擁有者仍可改 JS）。有實際價值的 Pro 能力必須由 server 自行判斷 `is_pro_active`，`isProUser()` 只負責 UI —— 這點需在 `PRO-014F` 交付時重新確認
+  - 依賴：`PRO-014B`
+
 - [ ] **PRO-014C** 將 trial 與所有 Pro gate 切換到受控 RPC
   - 目標：`startTrial()` 只呼叫一次性 server RPC，client 不再自行寫入 `is_pro`、`pro_expires_at` 或 `trial_started_at`
   - 範圍：trial CTA、剩餘天數呈現、既有 Pro gate、legacy profile 欄位相容讀取／移除策略、相關 unit／integration／E2E tests

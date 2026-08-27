@@ -1,24 +1,35 @@
 // Owner-scoped Pro entitlement snapshot (PRO-014B).
 //
 // The legacy Pro gate reads `is_pro` / `pro_expires_at` / `trial_started_at`
-// off the profile row — fields the client itself is allowed to write, so a
-// user can grant themselves Pro from the console. This module replaces that
-// trust anchor with a snapshot built only from a verified server response
-// (`my_pro_status()`, an owner-scoped SECURITY DEFINER RPC), while keeping the
-// synchronous read shape the existing `storage.isProUser()` call sites need.
+// off the profile row. Those fields are client-writable *and server-persisted*,
+// so granting yourself Pro from the console syncs to every one of your devices
+// and would feed the leaderboard read model in PRO-014E/F. This module narrows
+// the blast radius to one device by building the decision from a server
+// response (`my_pro_status()`, an owner-scoped SECURITY DEFINER RPC) instead,
+// while keeping the synchronous read shape `storage.isProUser()` needs.
 //
-// Everything here fails closed. A snapshot grants Pro only when all of the
-// following hold: the server said `is_active`, the snapshot belongs to the
-// current owner, the entitlement itself has not expired, and the snapshot is
-// still inside its offline grace window. Anything unexpected — a malformed
-// response, an RPC error, a different owner, no snapshot at all — reads as
-// "not Pro" rather than "assume Pro".
+// ── KNOWN GAP: the snapshot is not integrity-verified ────────────────────────
+// The snapshot is plain localStorage JSON. A well-formed forgery written by
+// hand is accepted exactly like a real one — the trust anchor has been moved
+// off the profile row, not removed. Closing that needs a server-signed
+// entitlement receipt the client can verify, which changes the RPC contract;
+// it is proposed in docs/pro-014-entitlement-integrity.md and tracked as
+// PRO-014G, pending approval under AGENTS.md §3.
+//
+// This gate is therefore a UI affordance, not a security boundary. Anything
+// genuinely valuable behind Pro must be enforced server-side (RLS, or an RPC
+// that checks `is_pro_active` itself) and must never rely on this module.
+//
+// Within that boundary everything fails closed. A snapshot grants Pro only
+// when all of the following hold: the server said `is_active`, the snapshot
+// belongs to the current owner, the entitlement has not expired, the snapshot
+// is inside its offline grace window, and no storage write or clear has been
+// lost. Anything unexpected reads as "not Pro" rather than "assume Pro".
 //
 // NOT ENABLED IN PRODUCTION YET. Migration 011 has not been applied to any
 // database, so the RPC does not exist yet and every call would fail closed —
-// which would strip Pro from current paying users. The source flag therefore
-// defaults to `legacy`; PRO-014D is the gate that must pass before `server`
-// is switched on.
+// which would strip Pro from current paying users. REPO_PRO_ENTITLEMENT_SOURCE
+// is therefore `legacy`; PRO-014D is the gate that must pass before it moves.
 
 import { FLAG_PRO_ENTITLEMENT, FLAG_PRO_ENTITLEMENT_SOURCE } from '../flags.js';
 
@@ -27,7 +38,17 @@ export const PRO_ENTITLEMENT_SOURCE = Object.freeze({
   SERVER: 'server',
 });
 
-export const DEFAULT_PRO_ENTITLEMENT_SOURCE = PRO_ENTITLEMENT_SOURCE.LEGACY;
+/**
+ * The deployed source of truth for the Pro decision, controlled by this repo —
+ * NOT by anything on the user's device.
+ *
+ * Cutover is a code change here, reviewed and deployed like any other. That is
+ * deliberate: when this reads `server`, no localStorage value can move it back
+ * to `legacy`, so a user cannot re-enable the client-writable profile path by
+ * editing a key. The only override a device may apply is the strictly stricter
+ * direction (legacy → server, for local verification), never the reverse.
+ */
+export const REPO_PRO_ENTITLEMENT_SOURCE = PRO_ENTITLEMENT_SOURCE.LEGACY;
 
 // How long a snapshot stays usable without a successful refresh. This is the
 // offline grace window: a subscriber who opens the app on a plane keeps Pro for
@@ -53,6 +74,13 @@ export function normalizeProStatusRows(rows) {
   if (!row || typeof row !== 'object') return null;
   if (typeof row.is_active !== 'boolean') return null;
 
+  // Every column the RPC declares must be present. An absent `expires_at`
+  // used to normalize to null, which reads as "no expiry" — so a truncated or
+  // unexpected response granted *lifetime* Pro. A missing column means the
+  // response is not the contract, and that fails closed like any other shape
+  // mismatch.
+  if (!('expires_at' in row) || !('trial_ends_at' in row)) return null;
+
   const expiresAt = normalizeTimestamp(row.expires_at);
   const trialEndsAt = normalizeTimestamp(row.trial_ends_at);
   if (expiresAt === undefined || trialEndsAt === undefined) return null;
@@ -60,12 +88,12 @@ export function normalizeProStatusRows(rows) {
   return { isActive: row.is_active, expiresAt, trialEndsAt };
 }
 
-// null and absent both mean "no such date" (lifetime Pro has no expiry, a user
-// who never started a trial has no trial end). Anything else must parse as a
-// real instant; `undefined` is returned for "invalid", which the caller treats
-// as a malformed row rather than as a missing date.
+// Only an explicit null means "no such date" — that is what the RPC returns for
+// lifetime Pro and for a user who never started a trial. Anything else must
+// parse as a real instant; `undefined` signals "invalid" to the caller, which
+// treats it as a malformed row.
 function normalizeTimestamp(value) {
-  if (value === null || value === undefined) return null;
+  if (value === null) return null;
   if (typeof value !== 'string') return undefined;
   const parsed = Date.parse(value);
   return Number.isNaN(parsed) ? undefined : new Date(parsed).toISOString();
@@ -97,12 +125,31 @@ export function readProEntitlementSnapshot() {
   }
 }
 
+// Set when a write or a clear did not land. While it is set, whatever sits in
+// localStorage cannot be trusted to reflect the last server answer: a failed
+// clear leaves a stale *active* snapshot readable, and a failed write leaves the
+// previous one in place. Both must read as "not Pro" until a refresh succeeds,
+// so this latch overrides every read. It is deliberately in-memory: a storage
+// layer that just failed is not where you record that storage failed.
+let storageWriteLost = false;
+
+/** Test seam: a fresh module state without reaching into the latch directly. */
+export function resetProEntitlementStorageState() {
+  storageWriteLost = false;
+}
+
+export function hasLostProEntitlementWrite() {
+  return storageWriteLost;
+}
+
 export function writeProEntitlementSnapshot(snapshot) {
   if (!snapshot) return false;
   try {
     localStorage.setItem(FLAG_PRO_ENTITLEMENT, JSON.stringify(snapshot));
+    storageWriteLost = false;
     return true;
   } catch {
+    storageWriteLost = true;
     return false;
   }
 }
@@ -110,9 +157,11 @@ export function writeProEntitlementSnapshot(snapshot) {
 export function clearProEntitlementSnapshot() {
   try {
     localStorage.removeItem(FLAG_PRO_ENTITLEMENT);
+    storageWriteLost = false;
+    return true;
   } catch {
-    // A storage failure must not leave the caller believing Pro is still granted;
-    // every read re-validates, so a snapshot that cannot be removed still expires.
+    storageWriteLost = true;
+    return false;
   }
 }
 
@@ -122,6 +171,7 @@ export function clearProEntitlementSnapshot() {
  */
 export function isProFromSnapshot(ownerId, nowMs = Date.now()) {
   if (!ownerId) return false;                              // signed out / guest
+  if (storageWriteLost) return false;                      // storage state unreliable
 
   const snapshot = readProEntitlementSnapshot();
   if (!snapshot) return false;                             // never fetched, or unreadable
@@ -164,27 +214,58 @@ export function applyProStatusResponse({ ownerId, rows, error, nowMs = Date.now(
     return false;
   }
 
-  writeProEntitlementSnapshot(snapshot);
+  // A lost write means the stored snapshot no longer reflects this answer, so
+  // the answer is not usable — even when the server said the user is active.
+  if (!writeProEntitlementSnapshot(snapshot)) return false;
   return isProFromSnapshot(ownerId, nowMs);
 }
 
+/**
+ * Resolves the effective source.
+ *
+ * The repo constant is the floor and it can only be raised. Once this repo
+ * deploys `server`, a device cannot fall back to `legacy` — that would hand the
+ * client-writable profile fields their authority back, which is the whole thing
+ * this task exists to remove. While the repo still says `legacy`, a device may
+ * opt *into* `server` so the cutover can be verified locally before PRO-014D;
+ * that direction only ever removes trust, never restores it.
+ */
 export function getProEntitlementSource() {
+  if (REPO_PRO_ENTITLEMENT_SOURCE === PRO_ENTITLEMENT_SOURCE.SERVER) {
+    return PRO_ENTITLEMENT_SOURCE.SERVER;
+  }
+  return readLocalSourceOverride() === PRO_ENTITLEMENT_SOURCE.SERVER
+    ? PRO_ENTITLEMENT_SOURCE.SERVER
+    : REPO_PRO_ENTITLEMENT_SOURCE;
+}
+
+function readLocalSourceOverride() {
   try {
-    const stored = localStorage.getItem(FLAG_PRO_ENTITLEMENT_SOURCE);
-    return Object.values(PRO_ENTITLEMENT_SOURCE).includes(stored)
-      ? stored
-      : DEFAULT_PRO_ENTITLEMENT_SOURCE;
+    return localStorage.getItem(FLAG_PRO_ENTITLEMENT_SOURCE);
   } catch {
-    return DEFAULT_PRO_ENTITLEMENT_SOURCE;
+    return null;
   }
 }
 
-export function setProEntitlementSource(source) {
-  if (!Object.values(PRO_ENTITLEMENT_SOURCE).includes(source)) {
-    throw new TypeError(`Unsupported Pro entitlement source: ${source}`);
+/**
+ * Local-only escalation to `server`, for verifying the cutover on a device.
+ * There is deliberately no way to write `legacy` here: downgrading is not a
+ * setting, it is a deployment decision made by REPO_PRO_ENTITLEMENT_SOURCE.
+ */
+export function enableServerProEntitlementLocally() {
+  localStorage.setItem(FLAG_PRO_ENTITLEMENT_SOURCE, PRO_ENTITLEMENT_SOURCE.SERVER);
+  return getProEntitlementSource();
+}
+
+/** Drops the local escalation. Never lowers the repo-deployed source. */
+export function clearLocalProEntitlementOverride() {
+  try {
+    localStorage.removeItem(FLAG_PRO_ENTITLEMENT_SOURCE);
+  } catch {
+    // Nothing to fail closed about: the repo constant still governs, and it is
+    // the stricter of the two whenever it says `server`.
   }
-  localStorage.setItem(FLAG_PRO_ENTITLEMENT_SOURCE, source);
-  return source;
+  return getProEntitlementSource();
 }
 
 export function isServerProEntitlementEnabled() {

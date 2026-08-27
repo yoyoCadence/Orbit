@@ -42,8 +42,8 @@ vi.mock('../../pwa/js/supabase.js', () => ({
 import { FLAG_PRO_ENTITLEMENT } from '../../pwa/js/flags.js';
 import {
   isProFromSnapshot,
-  PRO_ENTITLEMENT_SOURCE,
-  setProEntitlementSource,
+  enableServerProEntitlementLocally,
+  resetProEntitlementStorageState,
   writeProEntitlementSnapshot,
 } from '../../pwa/js/platform/proEntitlement.js';
 import { db, storage } from '../../pwa/js/storage.js';
@@ -69,6 +69,7 @@ const activeRow = () => [{
 
 beforeEach(() => {
   localStorage.clear();
+  resetProEntitlementStorageState();
   rpcMock.mockReset();
   sessionUserId.current = OWNER;
 });
@@ -88,7 +89,7 @@ describe('legacy source（預設）', () => {
 
 describe('server source', () => {
   beforeEach(() => {
-    setProEntitlementSource(PRO_ENTITLEMENT_SOURCE.SERVER);
+    enableServerProEntitlementLocally();
   });
 
   it('不再信任 profile 裡可被 client 改寫的 Pro 欄位', () => {
