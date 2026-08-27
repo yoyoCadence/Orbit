@@ -3,6 +3,42 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.24.0] - 2026-08-26
+
+PRO-014B：把前端 Pro 判定的依據，從「profile 裡 client 自己就能寫、而且會同步到所有裝置的欄位」，換成「由 `my_pro_status()` 推導的裝置本機 **UI entitlement projection**」。**本版預設不啟用**，legacy 判定維持原樣。
+
+### Added
+- **`pwa/js/platform/proEntitlement.js`：owner-scoped Pro entitlement snapshot adapter。** 授權需五項同時成立：server 回報 `is_active`、snapshot 屬於當前 owner、entitlement 未到期、snapshot 仍在離線 grace window（24 小時）內、且沒有任何 localStorage 寫入／清除失敗。任一不成立、或回應格式不符預期，一律 fail closed。
+- **`resolveProEntitlementSource(repoSource, storedOverride)`**：判定來源的解析規則抽成純函式，讓 cutover 後的分支（repo `server` + 裝置寫 `legacy`）可以被直接測到，而不是只覆蓋今天部署的那一支。
+- **`db.refreshProEntitlement(userId)`**：登入載入遠端資料後刷新 snapshot。session owner 與請求的 owner 不符時直接清除、不打 RPC。
+- **兩個 flag key**：`orbit_pro_entitlement`（snapshot）與 `orbit_pro_entitlement_source`（本機覆寫，只寫得出 `server`）。
+- **[`docs/pro-014-entitlement-integrity.md`](docs/pro-014-entitlement-integrity.md)**：snapshot 來源完整性的設計提案（PRO-014G），待核准。
+
+### Changed
+- **`storage.isProUser()` 在 `server` 來源下只看 snapshot**，不再讀 `isPro` / `proExpiresAt` / `trialStartedAt`。
+- **`storage.clearAll()` 一併清除 snapshot**，避免登出後殘留的 snapshot 被下一個帳號沿用。
+- **判定來源改由 repo 常數 `REPO_PRO_ENTITLEMENT_SOURCE` 控制**，cutover 是一次程式碼變更與部署。裝置端只能往嚴格的方向覆寫（legacy → server）以便本機驗證，**沒有任何 API 寫得出 `legacy`** —— 否則使用者可以在 cutover 後把自己降級回舊的 client-writable 路徑。
+
+### Notes
+- **這是 UI entitlement projection，不是安全邊界（PR #146 覆驗定案）。** projection 是純 localStorage JSON，格式合法的手寫偽造會被照樣接受 —— 而且即使加上簽章也一樣，因為純前端 PWA 的裝置擁有者可以直接改 `isProUser()`。因此**安全控制在 server**：有實際價值的 Pro 資料／API／操作必須由 RLS 或 RPC 自行驗證 `is_pro_active`，已寫入 `PRO-014F` 的完成條件。
+- **那這一版買到了什麼**：偽造的授權不再往返伺服器，因此不會同步到該使用者的其他裝置，也不會外溢到 PRO-014E／F 的排行榜 read model。舊的 profile 欄位偽造兩者都會。這是縮小血徑，不是「不可繞過」。
+- **`PRO-014G`（signed receipt）改列為可選 hardening**，不是任何任務的前置。它能把本機偽造的門檻從「改一個 key」提高到「改應用程式碼」，但要引入 RPC contract 變更與簽章金鑰管理；是否值得由產品需求決定，不是安全需求。見 [`docs/pro-014-entitlement-integrity.md`](docs/pro-014-entitlement-integrity.md)。
+- 目前 `isProUser()` 的呼叫點全部在 UI 層（保護卡、專注音效、主題、回顧月數、Personal Space 呈現），`PRO-014F` 交付付費呈現時需重新確認。
+- **預設仍是 `legacy`，production 行為完全沒變。** migration 011 只 commit 進 repo、沒有套用到任何資料庫（套用是 PRO-014D 的工作）。若現在切到 `server`，RPC 不存在 → fail closed → 現有付費使用者立刻失去 Pro。因此 `legacy` 下 `refreshProEntitlement()` 直接 no-op，連 RPC 都不會發。
+- **離線與 RPC 錯誤是兩件事。** 回應帶 `error`（function 不存在、權限不足）是權威訊號，直接清掉 snapshot；fetch 本身 throw（離線）則保留既有 snapshot 讓 grace window 生效。
+- **storage 失敗必須撐得過重新載入。** 記憶體 latch 只保護當前這一次執行；重新載入後 latch 消失，躺在 localStorage 裡的舊 active snapshot 會重新生效。因此寫入失敗時會 best-effort 移除舊 snapshot —— quota 失敗正好是「移除很可能會成功」的情況。若 `setItem` 與 `removeItem` 同時失效，`SNAPSHOT_TTL_MS` 是最後一道防線：殘留最多到 grace window 結束，不會無限期。
+- **PostgREST 的單列陣列是明確斷言而不是容錯。** 空陣列、單一物件、多列都當作「合約與這份 client 不符」而 fail closed。**欄位缺席也是** —— 缺 `expires_at` 一度被 normalize 成 null（＝無到期日），等於截斷的回應會拿到終身 Pro。
+- 未動 auth 流程、token 處理或 schema；`startTrial()` 仍是舊行為，切換到受控 RPC 是 PRO-014C。
+
+### Validation
+- `npm run lint`、`npm run test`（51 files／937 tests）、`npm run test:e2e -- --workers=1`（41/41）。
+- `tests/unit/proEntitlement.test.js`（59 項）：單列陣列 normalize，以及空陣列／非陣列／多列／**欄位缺席**／壞時間戳／RPC 錯誤／無 entitlement row／未登入／切換帳號／cache 過期／entitlement 到期／trial 結束／時鐘倒轉／snapshot 被竄改／**storage 寫入失敗**／**storage 清除失敗**／**寫入失敗後重新載入**／**來源降級（cutover 前後兩種 repo source 都直接跑過 resolver）**，全部 fail closed。
+- `tests/unit/proEntitlementGate.test.js`（11 項）：legacy 下行為不變且不呼叫 RPC；server 下即使 profile 欄位寫著 Pro 也判定為 false。
+- 反向驗證：把 `isProUser()` 的 server 分支改回讀 legacy 欄位後重跑，`proEntitlementGate.test.js` 紅 4 項。
+- 沒有「合法 JSON 偽造被拒」的回歸測試 —— 依上述定案，那不是這一層要達成的性質；它是可選任務 `PRO-014G` 的驗收條件。
+
+---
+
 ## [1.23.4] - 2026-08-26
 
 修正 BUG-107：Supabase client 一直是從 esm.sh 以浮動 `@2` 載入的。實際跑在使用者裝置上的版本由部署時點決定，repo 無從得知；而首次載入時 esm.sh 只要不可用，整個 App 就無法啟動。

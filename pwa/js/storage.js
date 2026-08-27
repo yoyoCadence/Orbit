@@ -6,6 +6,12 @@ import { supabase }  from './supabase.js';
 import { today, mergeSessionsById } from './utils.js';
 import { FLAG_DEV_BACKUP } from './flags.js';
 import {
+  applyProStatusResponse,
+  clearProEntitlementSnapshot,
+  isProFromSnapshot,
+  isServerProEntitlementEnabled,
+} from './platform/proEntitlement.js';
+import {
   filterDeletedSessions,
   loadSessionDeletionLog,
   recordSessionDeletionAttempt,
@@ -674,6 +680,32 @@ export const db = {
     return true;
   },
 
+  /**
+   * Refreshes the owner-scoped Pro entitlement snapshot from the server.
+   *
+   * No-ops under the legacy source so production never calls an RPC that
+   * does not exist there yet. A response-level error is authoritative and
+   * drops the snapshot; a thrown network failure leaves it in place so the
+   * offline grace window in proEntitlement.js can apply.
+   */
+  async refreshProEntitlement(userId) {
+    if (!isServerProEntitlementEnabled()) return false;
+
+    const session = await this._session();
+    if (!session || session.user.id !== userId) {
+      clearProEntitlementSnapshot();
+      return false;
+    }
+
+    try {
+      const { data, error } = await supabase.rpc('my_pro_status');
+      return applyProStatusResponse({ ownerId: userId, rows: data, error });
+    } catch (err) {
+      console.warn('Pro entitlement refresh failed, keeping cached snapshot:', err);
+      return false;
+    }
+  },
+
   async startTrial(userId) {
     const session = await this._session();
     if (!session || session.user.id !== userId) return false;
@@ -851,7 +883,15 @@ export const storage = {
     const end = new Date(user.trialStartedAt).getTime() + 15 * 24 * 60 * 60 * 1000;
     return Date.now() < end;
   },
+  /**
+   * PRO-014B: under the `server` source the decision comes only from the
+   * owner-scoped snapshot built from `my_pro_status()`, never from the
+   * client-writable profile fields. The legacy path stays the default until
+   * PRO-014D has verified migration 011 against a real project — flipping it
+   * before the RPC exists would fail closed and strip Pro from paying users.
+   */
   isProUser() {
+    if (isServerProEntitlementEnabled()) return isProFromSnapshot(get('user')?.id || null);
     return this.isPaidProUser() || this.isTrialUser();
   },
   getProExpiry: () => get('user')?.proExpiresAt || null,
@@ -931,6 +971,9 @@ export const storage = {
     ['user','tasks','sessions','energy','goals','logs','theme','uiSkin','bgImage','dailyPlan',
       'trialBannerDismiss', LEADERBOARD_CACHE_KEY]
       .forEach(k => localStorage.removeItem(PREFIX + k));
+    // The entitlement snapshot must never outlive its owner's session: a
+    // leftover snapshot is exactly how the next account would inherit Pro.
+    clearProEntitlementSnapshot();
   },
 };
 

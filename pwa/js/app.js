@@ -219,6 +219,11 @@ async function loadAndStart(session) {
     await db.loadFromRemote(session.user.id);
     if (!authOperationGuard.isCurrent(operation)) return;
     remoteLoaded = true;
+    // PRO-014B: refresh the owner-scoped entitlement snapshot from the
+    // verified server response. No-ops under the default legacy source, so
+    // this costs production nothing until PRO-014D has cleared the cutover.
+    await db.refreshProEntitlement(session.user.id);
+    if (!authOperationGuard.isCurrent(operation)) return;
   } catch (e) {
     if (!authOperationGuard.isCurrent(operation) || e?.name === 'OwnerSessionChangedError') return;
     console.warn('Supabase load failed, using localStorage cache:', e);

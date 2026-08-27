@@ -84,6 +84,7 @@ const storage = vi.hoisted(() => ({
 
 const db = vi.hoisted(() => ({
   loadFromRemote: vi.fn(() => Promise.resolve()),
+  refreshProEntitlement: vi.fn(() => Promise.resolve(false)),
   startTrial: vi.fn(() => Promise.resolve(true)),
 }));
 

@@ -81,26 +81,39 @@
 - [ ] **PRO-014** SUB-14／Pro entitlement 工作串
   - 目標：先建立可信任的 server-owned Pro entitlement，再交付排行榜與 Personal Space 的 Pro 呈現
   - 拆分：PR #132 只完成 `PRO-014A`；`PRO-014B`～`PRO-014F` 各自以後續 PR 處理，避免 schema foundation、client cutover、環境套用與呈現功能混在同一審查範圍
+  - **執行順序（PR #146 覆驗定案，勿自行推導）**：`PRO-014A`（完成）→ `PRO-014B`（完成）→ `PRO-014C`（實作 RPC／gate，維持 legacy）→ `PRO-014D`（preview 驗證）→ `PRO-014H`（production cutover）。`PRO-014E` → `PRO-014F` 為呈現層，接在 D 之後。`PRO-014G` 為可選 hardening，不在主線上。
   - 狀態：此項只作為追蹤母項，不直接進入實作；各子任務需各自遵守 `Next → In Progress → Done`
   - 既有 PR：[#132](https://github.com/yoyoCadence/Orbit/pull/132)（Ready for review；開始後續任務前應確認最新 head）
 
-- [ ] **PRO-014B** 將前端 Pro 判定切換為 owner-scoped entitlement snapshot
-  - 目標：由已驗證的 server response 建立同步可讀的本機 snapshot，保留現有 `isProUser()` 呼叫介面，但不再信任 profile 內可由 client 改寫的 Pro 欄位
-  - 範圍：entitlement adapter／cache、登入／登出與使用者切換時的清除流程、離線與到期處理、相關 unit／integration tests；此任務不啟用 trial
-  - 完成條件：PostgREST `.rpc('my_pro_status')` 的單列陣列需明確 normalize；空陣列、非陣列、缺欄位、RPC 錯誤、無 entitlement row、未登入、切換帳號與 cache 過期皆 fail closed；有效且未到期的 server snapshot 才能開啟 Pro
-  - 依賴：`PRO-014A`
+- [ ] **PRO-014H** Production Pro entitlement client cutover
+  - 目標：把 `REPO_PRO_ENTITLEMENT_SOURCE` 由 `legacy` 切到 `server`，讓 production 的 `isProUser()` 實際改用 server-derived UI projection
+  - 範圍：repo 常數變更、付費／非付費／trial／離線／切換帳號的實機驗證、rollback 程序；不含新功能
+  - 完成條件：切換後付費使用者維持 Pro、非付費不會誤授權、離線在 grace window 內維持、超出後 fail closed；rollback（切回 `legacy`）已實際演練並記錄
+  - **前置：`PRO-014C` 與 `PRO-014D` 完成。** 依 AGENTS.md §3 高風險規則，production rollout 需另行取得明確核准
+  - 依賴：`PRO-014C`、`PRO-014D`
+
+- [ ] **PRO-014G**（可選）為 entitlement projection 加上 server 簽章的 anti-tamper hardening
+  - **狀態：可選，非任何任務的前置。** PR #146 覆驗定案採「UI entitlement projection ＋ server-side enforcement」，signed receipt 不再是 `PRO-014B` 的必要條件。
+  - 何時才做：只有在產品明確需要提高「離線 UI 防竄改」的門檻時才啟動。判斷依據是產品需求，不是安全需求 —— 真正的安全控制在 server 端（見 `PRO-014F`）。
+  - 為什麼不預設做：簽章擋得掉「手寫一段合法的 localStorage JSON」，但擋不掉裝置擁有者直接改 `isProUser()`。它會引入 RPC contract 變更、簽章私鑰保管、公鑰佈署與輪替等高風險複雜度，若所有呼叫點都只是 UI 顯示／隱藏，投入與所得不成比例。
+  - 範圍（若啟動）：`my_pro_status()` 增加 detached JWS receipt 欄位、資料庫端簽章金鑰、公鑰 vendored 進 repo、client 以 Web Crypto 驗章、已驗證結果只存記憶體
+  - 完成條件（若啟動）：格式合法但未簽章的偽造 projection 被拒（回歸測試）；receipt `exp` 過期 fail closed；公鑰載入失敗 fail closed；離線首次啟動仍需驗章
+  - **前置：屬 RPC／schema 變更，依 AGENTS.md §3 需先取得核准**；若啟動，建議與 `PRO-014D` 合併規劃
+  - 提案文件：[`docs/pro-014-entitlement-integrity.md`](docs/pro-014-entitlement-integrity.md)
+  - 依賴：`PRO-014B`
 
 - [ ] **PRO-014C** 將 trial 與所有 Pro gate 切換到受控 RPC
   - 目標：`startTrial()` 只呼叫一次性 server RPC，client 不再自行寫入 `is_pro`、`pro_expires_at` 或 `trial_started_at`
   - 範圍：trial CTA、剩餘天數呈現、既有 Pro gate、legacy profile 欄位相容讀取／移除策略、相關 unit／integration／E2E tests
-  - 完成條件：同一使用者無法重複領取 trial；RPC 錯誤不會誤授權；所有既有 Pro 入口都只依賴受信任 snapshot；依版本規則執行一次 bump
-  - 依賴：`PRO-014B`
+  - 完成條件：同一使用者無法重複領取 trial；RPC 錯誤不會誤授權；所有既有 Pro 入口都只依賴 `PRO-014B` 的 server-derived UI projection，不再讀 client 可寫的 profile Pro 欄位；依版本規則執行一次 bump
+  - 範圍界線：本任務**維持 `REPO_PRO_ENTITLEMENT_SOURCE = legacy`**，只實作 RPC 與 gate，不做 cutover。切換是 `PRO-014H`。
+  - 依賴：`PRO-014B`（已完成）
 
 - [ ] **PRO-014D** 在非 production 環境驗證 011 migration 與 cutover 邊界
   - 目標：在獨立測試／preview Supabase 專案套用 migration，驗證資料、RLS、RPC、權限、核准名單 seed 與回滾；此任務是後續 production rollout 與 client gate 啟用的閘門，不阻擋只提交 migration 程式碼且不套用的 PR #132 完成 review／merge
   - 完成條件：在真實 PostgreSQL／Supabase preview 實際 parse 並套用 011（不可只依賴 regex contract tests）；確認該專案 Data API exposure 設定下 `my_pro_status` RPC 可用且不為此擴大 table exposure；驗證 owner／非 owner、anon／authenticated、無資料列、已到期、未來開始日與重複 trial；以不含 legacy profile 欄位的管理員核准名單演練 seed，記錄名單來源／核准者／執行時點／筆數對帳與 rollback；執行 Security／Performance Advisors 與專案測試
-  - 安全閘門：`PRO-014B`／`PRO-014C` 不得在 D 驗證完成前啟用 production client gate；任何資料庫套用及 production rollout 都需另行取得明確核准；`service_role` 不得進入前端
-  - 依賴：`PRO-014A`～`PRO-014C`
+  - 安全閘門：production client cutover（`PRO-014H`）不得在 D 驗證完成前執行；任何資料庫套用及 production rollout 都需另行取得明確核准；`service_role` 不得進入前端
+  - 依賴：`PRO-014A`（已完成）、`PRO-014C`。`PRO-014B` 已完成且不阻擋本項。
 
 - [ ] **PRO-014E** 另案建立 `display_name` 與排行榜安全 read model
   - 目標：在 entitlement foundation 穩定後，以新 PR 提出 `display_name` 寫入規則及排行榜可公開欄位，不沿用 PR #132 的混合範圍
@@ -112,6 +125,7 @@
   - 目標：只使用安全 read model 與 entitlement snapshot 呈現 Pro 身分，不讓視覺功能回寫 entitlement
   - 範圍：排行榜、Personal Space projection、HTML escaping、reduced motion、responsive 與視覺／E2E regression tests
   - 完成條件：Pro／非 Pro／匿名狀態顯示正確，動態文字安全，reduced motion 下無必要動畫，且不改動 auth／entitlement schema
+  - **完成條件（server-side enforcement，PR #146 覆驗新增）**：任何有實際價值的 Pro 資料、API 或操作，都必須由 server 自行驗證 `is_pro_active`（RLS policy 或 RPC 內部判斷），**不得**相信 `storage.isProUser()` 或任何由 client 傳入的 Pro 狀態。交付時需逐項列出本次新增的 Pro 入口分別由哪一層強制授權；純顯示／隱藏可只靠 client projection，取得資料或觸發運算則不可。
   - 依賴：`PRO-014E`
 
 - [ ] **PRO-017** 邀請制解鎖 Pro
@@ -137,6 +151,15 @@
 ---
 
 ## Done
+
+- [x] **PRO-014B** 將前端 Pro 判定改為 server-derived 的 UI entitlement projection
+  - 完成（v1.24.0）：新增 `pwa/js/platform/proEntitlement.js`，由 `my_pro_status()` 的回應推導 owner-scoped、有 TTL、fail-closed 的本機 UI projection，保留 `storage.isProUser()` 的同步呼叫介面。`db.refreshProEntitlement()` 在登入載入遠端資料後刷新；`storage.clearAll()` 一併清除。
+  - **定位（PR #146 覆驗定案）**：這是 **UI 呈現用的投影，不是安全邊界**。Orbit 是純前端 PWA，裝置擁有者可直接改 JS，因此任何 client-local 機制（包含簽章）都擋不住本機竄改。本任務達成的是「不再讓 client 可寫的授權狀態同步到其他裝置或外溢到 read model」，而非「client 端不可繞過」。安全控制在 server —— 見 `PRO-014F` 的完成條件與 [`docs/pro-014-entitlement-integrity.md`](docs/pro-014-entitlement-integrity.md) 第 0 節。
+  - 完成條件對應：PostgREST 單列陣列以明確斷言 normalize（空陣列／非陣列／多列／缺欄位／壞時間戳皆 fail closed）；RPC 錯誤、無 entitlement row、未登入、切換帳號、cache 過期、entitlement 到期、trial 結束、時鐘倒轉、projection 被竄改、localStorage 寫入／清除失敗（含**重新載入後**）皆 fail closed；判定來源由 repo 常數控制且裝置端無法降級。
+  - 設計決定：回應帶 `error` 是權威訊號（function 不存在／權限不足），直接清除 projection；fetch 本身 throw（離線）則保留，讓 24 小時 grace window 生效。寫入失敗時 best-effort 移除舊 projection，使 fail-closed 撐得過重新載入。
+  - 範圍界線：本任務**不做 production cutover** —— `REPO_PRO_ENTITLEMENT_SOURCE` 維持 `legacy`，切換是 `PRO-014H`。未動 auth 流程、token 處理或 schema；`startTrial()` 維持舊行為（屬 `PRO-014C`）。
+  - 測試：`tests/unit/proEntitlement.test.js`（59 項）、`tests/unit/proEntitlementGate.test.js`（11 項）。三項反向驗證：server 分支改回讀 legacy 欄位 → gate 測試紅 4 項；拿掉 best-effort 移除 → 「寫入失敗後重新載入」紅；`resolveProEntitlementSource()` 以兩種 repo source 各跑四組。`npm run lint`、`npm run test`（51 files／937 tests，`TZ=UTC` 同樣全過）、`npm run test:e2e -- --workers=1`（41/41）通過。
+  - PR：[#146](https://github.com/yoyoCadence/Orbit/pull/146)
 
 - [x] **BUG-107** `supabase.js` 從 esm.sh 載入未鎖版本的 client
   - 完成（v1.23.4）：採可行做法 (2)。新增 `scripts/vendor-supabase.mjs`（`npm run vendor:supabase`）由 `node_modules` 產生 `pwa/vendor/supabase.js`，`@supabase/supabase-js` 以精確版本 `2.112.4` 進 `dependencies`；`pwa/js/supabase.js` 改為同源相對匯入，該檔並加入 `pwa/sw.js` 的 `SHELL`。
