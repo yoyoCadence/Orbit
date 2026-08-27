@@ -9,6 +9,7 @@ PRO-014B：把前端 Pro 判定的依據，從「profile 裡 client 自己就能
 
 ### Added
 - **`pwa/js/platform/proEntitlement.js`：owner-scoped Pro entitlement snapshot adapter。** 授權需五項同時成立：server 回報 `is_active`、snapshot 屬於當前 owner、entitlement 未到期、snapshot 仍在離線 grace window（24 小時）內、且沒有任何 localStorage 寫入／清除失敗。任一不成立、或回應格式不符預期，一律 fail closed。
+- **`resolveProEntitlementSource(repoSource, storedOverride)`**：判定來源的解析規則抽成純函式，讓 cutover 後的分支（repo `server` + 裝置寫 `legacy`）可以被直接測到，而不是只覆蓋今天部署的那一支。
 - **`db.refreshProEntitlement(userId)`**：登入載入遠端資料後刷新 snapshot。session owner 與請求的 owner 不符時直接清除、不打 RPC。
 - **兩個 flag key**：`orbit_pro_entitlement`（snapshot）與 `orbit_pro_entitlement_source`（本機覆寫，只寫得出 `server`）。
 - **[`docs/pro-014-entitlement-integrity.md`](docs/pro-014-entitlement-integrity.md)**：snapshot 來源完整性的設計提案（PRO-014G），待核准。
@@ -23,12 +24,13 @@ PRO-014B：把前端 Pro 判定的依據，從「profile 裡 client 自己就能
 - **這個 gate 是 UI 機制，不是安全邊界。** Orbit 是純前端 PWA，裝置擁有者永遠可以直接改 JS。任何有實際價值的 Pro 能力都必須由 server 自行判斷 `is_pro_active`，不得依賴 `isProUser()`。目前所有呼叫點都在 UI 層（保護卡、專注音效、主題、回顧月數、Personal Space 呈現），但 PRO-014F 交付付費呈現時需重新確認。
 - **預設仍是 `legacy`，production 行為完全沒變。** migration 011 只 commit 進 repo、沒有套用到任何資料庫（套用是 PRO-014D 的工作）。若現在切到 `server`，RPC 不存在 → fail closed → 現有付費使用者立刻失去 Pro。因此 `legacy` 下 `refreshProEntitlement()` 直接 no-op，連 RPC 都不會發。
 - **離線與 RPC 錯誤是兩件事。** 回應帶 `error`（function 不存在、權限不足）是權威訊號，直接清掉 snapshot；fetch 本身 throw（離線）則保留既有 snapshot 讓 grace window 生效。
+- **storage 失敗必須撐得過重新載入。** 記憶體 latch 只保護當前這一次執行；重新載入後 latch 消失，躺在 localStorage 裡的舊 active snapshot 會重新生效。因此寫入失敗時會 best-effort 移除舊 snapshot —— quota 失敗正好是「移除很可能會成功」的情況。若 `setItem` 與 `removeItem` 同時失效，`SNAPSHOT_TTL_MS` 是最後一道防線：殘留最多到 grace window 結束，不會無限期。
 - **PostgREST 的單列陣列是明確斷言而不是容錯。** 空陣列、單一物件、多列都當作「合約與這份 client 不符」而 fail closed。**欄位缺席也是** —— 缺 `expires_at` 一度被 normalize 成 null（＝無到期日），等於截斷的回應會拿到終身 Pro。
 - 未動 auth 流程、token 處理或 schema；`startTrial()` 仍是舊行為，切換到受控 RPC 是 PRO-014C。
 
 ### Validation
-- `npm run lint`、`npm run test`（51 files／927 tests）、`npm run test:e2e -- --workers=1`（41/41）。
-- `tests/unit/proEntitlement.test.js`（49 項）：單列陣列 normalize，以及空陣列／非陣列／多列／**欄位缺席**／壞時間戳／RPC 錯誤／無 entitlement row／未登入／切換帳號／cache 過期／entitlement 到期／trial 結束／時鐘倒轉／snapshot 被竄改／**storage 寫入失敗**／**storage 清除失敗**／**來源降級**，全部 fail closed。
+- `npm run lint`、`npm run test`（51 files／937 tests）、`npm run test:e2e -- --workers=1`（41/41）。
+- `tests/unit/proEntitlement.test.js`（59 項）：單列陣列 normalize，以及空陣列／非陣列／多列／**欄位缺席**／壞時間戳／RPC 錯誤／無 entitlement row／未登入／切換帳號／cache 過期／entitlement 到期／trial 結束／時鐘倒轉／snapshot 被竄改／**storage 寫入失敗**／**storage 清除失敗**／**寫入失敗後重新載入**／**來源降級（cutover 前後兩種 repo source 都直接跑過 resolver）**，全部 fail closed。
 - `tests/unit/proEntitlementGate.test.js`（11 項）：legacy 下行為不變且不呼叫 RPC；server 下即使 profile 欄位寫著 Pro 也判定為 false。
 - 反向驗證：把 `isProUser()` 的 server 分支改回讀 legacy 欄位後重跑，`proEntitlementGate.test.js` 紅 4 項。
 - 尚無「合法 JSON 偽造被拒」的回歸測試 —— 該測試是 `PRO-014G` 的驗收條件，簽章實作落地時一併補上。

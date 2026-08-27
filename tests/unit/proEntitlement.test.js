@@ -23,6 +23,7 @@ import {
   PRO_ENTITLEMENT_SOURCE,
   REPO_PRO_ENTITLEMENT_SOURCE,
   resetProEntitlementStorageState,
+  resolveProEntitlementSource,
   SNAPSHOT_TTL_MS,
   writeProEntitlementSnapshot,
 } from '../../pwa/js/platform/proEntitlement.js';
@@ -225,13 +226,26 @@ describe('entitlement source —— 由 repo 控制，使用者端不得降級',
     expect(isServerProEntitlementEnabled()).toBe(false);
   });
 
-  it('localStorage 寫入 legacy 無法把已部署的 server 降級回 legacy', () => {
+  // 直接跑 resolver 的兩種 repo source。只透過模組常數測，等於只覆蓋今天部署的
+  // 那一支，cutover 後的分支會在沒人發現的情況下失去保護。
+  const { LEGACY, SERVER } = PRO_ENTITLEMENT_SOURCE;
+  it.each([
+    ['cutover 後：裝置寫 legacy 也降不下來', SERVER, LEGACY,          SERVER],
+    ['cutover 後：裝置沒有覆寫',             SERVER, null,            SERVER],
+    ['cutover 後：垃圾值也降不下來',         SERVER, 'legacy ',       SERVER],
+    ['cutover 後：裝置寫 server（同向）',    SERVER, SERVER,          SERVER],
+    ['cutover 前：裝置沒有覆寫',             LEGACY, null,            LEGACY],
+    ['cutover 前：裝置寫 legacy',            LEGACY, LEGACY,          LEGACY],
+    ['cutover 前：裝置只能往嚴格方向升級',   LEGACY, SERVER,          SERVER],
+    ['cutover 前：無法辨識的值不提升權限',   LEGACY, 'server-ish',    LEGACY],
+  ])('%s', (_label, repoSource, storedOverride, expected) => {
+    expect(resolveProEntitlementSource(repoSource, storedOverride)).toBe(expected);
+  });
+
+  it('getProEntitlementSource() 就是把兩個輸入交給同一個 resolver', () => {
     localStorage.setItem(FLAG_PRO_ENTITLEMENT_SOURCE, PRO_ENTITLEMENT_SOURCE.LEGACY);
-    // 以 repo 常數為 server 的部署情境模擬：解析函式只允許往嚴格的方向走。
-    const resolved = REPO_PRO_ENTITLEMENT_SOURCE === PRO_ENTITLEMENT_SOURCE.SERVER
-      ? getProEntitlementSource()
-      : PRO_ENTITLEMENT_SOURCE.SERVER;
-    expect(resolved).toBe(PRO_ENTITLEMENT_SOURCE.SERVER);
+    expect(getProEntitlementSource())
+      .toBe(resolveProEntitlementSource(REPO_PRO_ENTITLEMENT_SOURCE, PRO_ENTITLEMENT_SOURCE.LEGACY));
   });
 
   it('無法辨識的值不會提升權限', () => {
@@ -294,6 +308,52 @@ describe('storage 失敗必須 fail closed', () => {
 
     expect(granted).toBe(false);
     expect(isProFromSnapshot(OWNER, NOW)).toBe(false);
+  });
+
+  // PR #146 驗收 Blocker：記憶體 latch 只保護當前這一次執行。重新載入後 latch
+  // 消失，若舊的 active snapshot 還躺在 localStorage 裡就會重新生效。
+  // resetProEntitlementStorageState() 在這裡代表「重新載入」。
+  it('寫入失敗後重新載入，仍不得恢復授權', () => {
+    writeProEntitlementSnapshot(snapshot());
+    expect(isProFromSnapshot(OWNER, NOW)).toBe(true);
+
+    // server 改口說沒有，但覆寫因 quota 失敗。
+    const setItem = Storage.prototype.setItem;
+    Storage.prototype.setItem = () => { throw new Error('QuotaExceededError'); };
+    try {
+      applyProStatusResponse({
+        ownerId: OWNER,
+        rows: [{ is_active: false, expires_at: null, trial_ends_at: null }],
+        error: null,
+        nowMs: NOW,
+      });
+    } finally {
+      Storage.prototype.setItem = setItem;
+    }
+
+    expect(isProFromSnapshot(OWNER, NOW)).toBe(false);   // 本次執行
+    resetProEntitlementStorageState();                   // ← 重新載入
+    expect(localStorage.getItem(FLAG_PRO_ENTITLEMENT)).toBeNull();
+    expect(isProFromSnapshot(OWNER, NOW)).toBe(false);   // 重新載入後
+  });
+
+  it('清除失敗後重新載入，殘留的 snapshot 最多只能撐到 grace window 結束', () => {
+    writeProEntitlementSnapshot(snapshot());
+
+    const removeItem = Storage.prototype.removeItem;
+    Storage.prototype.removeItem = () => { throw new Error('nope'); };
+    try {
+      applyProStatusResponse({ ownerId: OWNER, rows: [], error: null, nowMs: NOW });
+    } finally {
+      Storage.prototype.removeItem = removeItem;
+    }
+
+    expect(isProFromSnapshot(OWNER, NOW)).toBe(false);   // 本次執行
+    resetProEntitlementStorageState();                   // ← 重新載入
+
+    // setItem 與 removeItem 同時失效是唯一撐得過重新載入的情況，
+    // 此時 TTL 是最後一道防線：最多殘留到 grace window 結束。
+    expect(isProFromSnapshot(OWNER, NOW + SNAPSHOT_TTL_MS)).toBe(false);
   });
 
   it('後續成功的寫入會解除 fail-closed latch', () => {

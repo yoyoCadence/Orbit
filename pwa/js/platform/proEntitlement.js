@@ -150,6 +150,18 @@ export function writeProEntitlementSnapshot(snapshot) {
     return true;
   } catch {
     storageWriteLost = true;
+    // The in-memory latch only protects this runtime. Whatever is still on disk
+    // is now a snapshot the server has already superseded, and a reload would
+    // read it back and grant Pro from it. Removing it is what actually makes the
+    // failure survive a reload — and a quota failure is precisely the case where
+    // removing something is likely to succeed.
+    try {
+      localStorage.removeItem(FLAG_PRO_ENTITLEMENT);
+    } catch {
+      // Both writing and removing failed. The snapshot on disk outlives this
+      // runtime; SNAPSHOT_TTL_MS is the remaining backstop, so it can grant Pro
+      // for at most the rest of the grace window rather than indefinitely.
+    }
     return false;
   }
 }
@@ -231,12 +243,25 @@ export function applyProStatusResponse({ ownerId, rows, error, nowMs = Date.now(
  * that direction only ever removes trust, never restores it.
  */
 export function getProEntitlementSource() {
-  if (REPO_PRO_ENTITLEMENT_SOURCE === PRO_ENTITLEMENT_SOURCE.SERVER) {
-    return PRO_ENTITLEMENT_SOURCE.SERVER;
+  return resolveProEntitlementSource(REPO_PRO_ENTITLEMENT_SOURCE, readLocalSourceOverride());
+}
+
+/**
+ * The resolution rule as a pure function of both inputs.
+ *
+ * Split out from `getProEntitlementSource()` so the post-cutover branch —
+ * repo `server` with a device trying to store `legacy` — can be executed
+ * directly. Testing it only through the module constant would exercise
+ * whichever branch this repo happens to be deployed on today and silently
+ * stop covering the other one.
+ */
+export function resolveProEntitlementSource(repoSource, storedOverride) {
+  if (repoSource === PRO_ENTITLEMENT_SOURCE.SERVER) {
+    return PRO_ENTITLEMENT_SOURCE.SERVER;         // deployed cutover: not downgradable
   }
-  return readLocalSourceOverride() === PRO_ENTITLEMENT_SOURCE.SERVER
-    ? PRO_ENTITLEMENT_SOURCE.SERVER
-    : REPO_PRO_ENTITLEMENT_SOURCE;
+  return storedOverride === PRO_ENTITLEMENT_SOURCE.SERVER
+    ? PRO_ENTITLEMENT_SOURCE.SERVER               // device opted into the stricter path
+    : PRO_ENTITLEMENT_SOURCE.LEGACY;
 }
 
 function readLocalSourceOverride() {
