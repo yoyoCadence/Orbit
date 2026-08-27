@@ -84,14 +84,14 @@
   - 狀態：此項只作為追蹤母項，不直接進入實作；各子任務需各自遵守 `Next → In Progress → Done`
   - 既有 PR：[#132](https://github.com/yoyoCadence/Orbit/pull/132)（Ready for review；開始後續任務前應確認最新 head）
 
-- [ ] **PRO-014G** 為 entitlement snapshot 加上 server 簽章的來源完整性（提案待核准）
-  - 目標：讓 client 端的 Pro snapshot 無法以「手寫一段格式合法的 localStorage JSON」偽造；client 必須驗證只有 server 產得出來的簽章才建立 snapshot
-  - 現況：PRO-014B 已把 trust anchor 從 profile 欄位移到裝置本機（血徑從「同步到所有裝置＋外溢到排行榜 read model」縮小為「只影響當前裝置」），但偽造門檻沒有改變
-  - 範圍：`my_pro_status()` 增加 detached JWS receipt 欄位、資料庫端簽章金鑰、公鑰 vendored 進 repo、client 以 Web Crypto 驗章、記憶體中保存已驗證結果
-  - 完成條件：格式合法但未簽章的偽造 snapshot 被拒（回歸測試）；receipt `exp` 過期 fail closed；公鑰載入失敗 fail closed；離線首次啟動仍需驗章
-  - **前置：本項是提案，依 AGENTS.md §3 需先取得核准才實作**；建議與 `PRO-014D` 合併規劃（011 尚未套用，趁該次一併改 migration 較乾淨）
+- [ ] **PRO-014G**（可選）為 entitlement projection 加上 server 簽章的 anti-tamper hardening
+  - **狀態：可選，非任何任務的前置。** PR #146 覆驗定案採「UI entitlement projection ＋ server-side enforcement」，signed receipt 不再是 `PRO-014B` 的必要條件。
+  - 何時才做：只有在產品明確需要提高「離線 UI 防竄改」的門檻時才啟動。判斷依據是產品需求，不是安全需求 —— 真正的安全控制在 server 端（見 `PRO-014F`）。
+  - 為什麼不預設做：簽章擋得掉「手寫一段合法的 localStorage JSON」，但擋不掉裝置擁有者直接改 `isProUser()`。它會引入 RPC contract 變更、簽章私鑰保管、公鑰佈署與輪替等高風險複雜度，若所有呼叫點都只是 UI 顯示／隱藏，投入與所得不成比例。
+  - 範圍（若啟動）：`my_pro_status()` 增加 detached JWS receipt 欄位、資料庫端簽章金鑰、公鑰 vendored 進 repo、client 以 Web Crypto 驗章、已驗證結果只存記憶體
+  - 完成條件（若啟動）：格式合法但未簽章的偽造 projection 被拒（回歸測試）；receipt `exp` 過期 fail closed；公鑰載入失敗 fail closed；離線首次啟動仍需驗章
+  - **前置：屬 RPC／schema 變更，依 AGENTS.md §3 需先取得核准**；若啟動，建議與 `PRO-014D` 合併規劃
   - 提案文件：[`docs/pro-014-entitlement-integrity.md`](docs/pro-014-entitlement-integrity.md)
-  - 注意：簽章不會讓 client gate 變成安全邊界（裝置擁有者仍可改 JS）。有實際價值的 Pro 能力必須由 server 自行判斷 `is_pro_active`，`isProUser()` 只負責 UI —— 這點需在 `PRO-014F` 交付時重新確認
   - 依賴：`PRO-014B`
 
 - [ ] **PRO-014C** 將 trial 與所有 Pro gate 切換到受控 RPC
@@ -117,6 +117,7 @@
   - 目標：只使用安全 read model 與 entitlement snapshot 呈現 Pro 身分，不讓視覺功能回寫 entitlement
   - 範圍：排行榜、Personal Space projection、HTML escaping、reduced motion、responsive 與視覺／E2E regression tests
   - 完成條件：Pro／非 Pro／匿名狀態顯示正確，動態文字安全，reduced motion 下無必要動畫，且不改動 auth／entitlement schema
+  - **完成條件（server-side enforcement，PR #146 覆驗新增）**：任何有實際價值的 Pro 資料、API 或操作，都必須由 server 自行驗證 `is_pro_active`（RLS policy 或 RPC 內部判斷），**不得**相信 `storage.isProUser()` 或任何由 client 傳入的 Pro 狀態。交付時需逐項列出本次新增的 Pro 入口分別由哪一層強制授權；純顯示／隱藏可只靠 client projection，取得資料或觸發運算則不可。
   - 依賴：`PRO-014E`
 
 - [ ] **PRO-017** 邀請制解鎖 Pro
@@ -136,14 +137,15 @@
 
 ## In Progress
 
-- [ ] **PRO-014B** 將前端 Pro 判定切換為 owner-scoped entitlement snapshot
-  - 目標：由已驗證的 server response 建立同步可讀的本機 snapshot，保留現有 `isProUser()` 呼叫介面，但不再信任 profile 內可由 client 改寫的 Pro 欄位
-  - 範圍：entitlement adapter／cache、登入／登出與使用者切換時的清除流程、離線與到期處理、相關 unit／integration tests；此任務不啟用 trial
-  - 完成條件：PostgREST `.rpc('my_pro_status')` 的單列陣列需明確 normalize；空陣列、非陣列、缺欄位、RPC 錯誤、無 entitlement row、未登入、切換帳號與 cache 過期皆 fail closed；有效且未到期的 server snapshot 才能開啟 Pro
+- [ ] **PRO-014B** 將前端 Pro 判定改為 server-derived 的 UI entitlement projection
+  - 目標：`isProUser()` 的依據改為「由已驗證的 server response 推導、owner-scoped、有 TTL、fail-closed 的**本機 UI projection**」，取代 profile 內 client 可寫且會同步上雲的 Pro 欄位。保留現有同步呼叫介面。
+  - **定位（PR #146 覆驗後定案）**：這是 **UI 呈現用的投影，不是安全邊界**。Orbit 是純前端 PWA，裝置擁有者可直接改 JS，因此任何 client-local 機制（包含簽章）都擋不住本機竄改。這項任務要達成的是「不再讓 client 可寫的授權狀態同步到其他裝置或外溢到 read model」，而不是「client 端不可繞過」。
+  - 範圍：entitlement adapter／projection cache、登入／登出與切換帳號的清除流程、離線與到期處理、相關 unit／integration tests；此任務不啟用 trial，也不做 production cutover
+  - 完成條件：PostgREST `.rpc('my_pro_status')` 的單列陣列需明確 normalize；空陣列、非陣列、多列、缺欄位、壞時間戳、RPC 錯誤、無 entitlement row、未登入、切換帳號、cache 過期、entitlement 到期、時鐘倒轉、localStorage 寫入／清除失敗（含重新載入後）皆 fail closed；判定來源由 repo 控制且裝置端無法降級；只有有效且未到期的 server projection 能開 Pro
   - 依賴：`PRO-014A`
-  - 進行中（[PR #146](https://github.com/yoyoCadence/Orbit/pull/146) 驗收退回）：adapter、snapshot、旗標與測試已在 PR 上，但驗收找到一個未關閉的缺口 —— snapshot 是純 localStorage JSON，格式完全合法的偽造內容一樣會被授權，等於 client trust anchor 只是從 profile 欄位換到另一個 key。
-  - 已於該 PR 修正：`expires_at`／`trial_ends_at` 欄位缺席改為 fail closed（原本被當成終身 Pro）；localStorage 寫入／清除失敗改為 fail closed；判定來源改由 repo 控制，使用者端無法降級回 legacy。
-  - **仍阻擋 Done**：snapshot 的來源完整性。需要 server 簽章的 entitlement receipt，屬 RPC／schema 變更 —— 已另立 `PRO-014G` 提案，依 AGENTS.md §3 取得核准後才實作。此任務要等 G 落地才算完成。
+  - 進行中（[PR #146](https://github.com/yoyoCadence/Orbit/pull/146)）：實作與測試已完成並通過覆驗。**剩餘範圍只有一項** —— 待 `PRO-014D` 在真實環境驗證 011 後，把 `REPO_PRO_ENTITLEMENT_SOURCE` 由 `legacy` 切到 `server` 並驗證。在那之前 production 行為不變。
+  - 不再阻擋 Done：`PRO-014G`（signed receipt）已改列為**可選**的 anti-tamper hardening，不是本任務的前置。
+  - 相關原則：有實際價值的 Pro 資料／API／操作必須由 server 自行驗證 `is_pro_active` —— 見 `PRO-014F` 的完成條件與 [`docs/pro-014-entitlement-integrity.md`](docs/pro-014-entitlement-integrity.md)。
   - 分支：`feat/pro-014b-entitlement-snapshot`
 
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance

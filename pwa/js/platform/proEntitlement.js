@@ -8,17 +8,24 @@
 // response (`my_pro_status()`, an owner-scoped SECURITY DEFINER RPC) instead,
 // while keeping the synchronous read shape `storage.isProUser()` needs.
 //
-// ── KNOWN GAP: the snapshot is not integrity-verified ────────────────────────
-// The snapshot is plain localStorage JSON. A well-formed forgery written by
-// hand is accepted exactly like a real one — the trust anchor has been moved
-// off the profile row, not removed. Closing that needs a server-signed
-// entitlement receipt the client can verify, which changes the RPC contract;
-// it is proposed in docs/pro-014-entitlement-integrity.md and tracked as
-// PRO-014G, pending approval under AGENTS.md §3.
+// ── WHAT THIS IS, AND WHAT IT IS NOT ─────────────────────────────────────────
+// This is a UI entitlement projection, NOT a security boundary. The snapshot is
+// plain localStorage JSON, so a well-formed forgery written by hand is accepted
+// exactly like a real one — and even signing it would not change that, because
+// the device owner can edit `isProUser()` itself in an unminified static PWA.
 //
-// This gate is therefore a UI affordance, not a security boundary. Anything
-// genuinely valuable behind Pro must be enforced server-side (RLS, or an RPC
-// that checks `is_pro_active` itself) and must never rely on this module.
+// So the security control lives on the server: anything genuinely valuable
+// behind Pro — data, an API, a computation — must check `is_pro_active` itself
+// (RLS policy, or inside the RPC) and must never trust this module or any Pro
+// state sent by the client. Showing and hiding UI is all this is for.
+//
+// What it does buy, over the profile fields it replaces: a forged grant no
+// longer round-trips to the server, so it cannot sync to the user's other
+// devices or leak into the leaderboard read model.
+//
+// PRO-014G (docs/pro-014-entitlement-integrity.md) would raise the local
+// forgery bar with a signed receipt. It is optional hardening, deliberately not
+// a prerequisite — see that doc for why.
 //
 // Within that boundary everything fails closed. A snapshot grants Pro only
 // when all of the following hold: the server said `is_active`, the snapshot

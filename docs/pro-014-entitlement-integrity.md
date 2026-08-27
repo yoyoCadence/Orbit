@@ -1,15 +1,45 @@
-# PRO-014G 提案：entitlement snapshot 的來源完整性
+# Pro entitlement：安全模型定案，與 PRO-014G（可選 hardening）提案
 
-狀態：**提案，尚未實作。** 涉及 RPC 回傳值變更，依 AGENTS.md §3 需先取得核准。
+狀態：**已定案採「UI entitlement projection ＋ server-side enforcement」。**
+PRO-014G（signed receipt）為**可選**的 anti-tamper hardening，**不是任何任務的前置**，
+尚未實作；若日後啟動，因涉及 RPC 回傳值變更，仍須依 AGENTS.md §3 先取得核准。
 
-來源：[PR #146](https://github.com/yoyoCadence/Orbit/pull/146) 的驗收意見（Blocker 1）。
+來源：[PR #146](https://github.com/yoyoCadence/Orbit/pull/146) 的驗收與覆驗結論。
 
 ---
 
-## 1. 問題
+## 0. 定案：安全控制在 server，client 只做投影
 
-PRO-014B 把 Pro 判定的依據從 profile 欄位換成 `my_pro_status()` 建立的本機 snapshot。
-但那個 snapshot 是**純 localStorage JSON，沒有任何來源完整性證明**：
+這是整份文件最重要的一節，其餘各節都是它的推導與備案。
+
+**Orbit 是純前端 PWA，JS 未混淆、靜態部署。裝置擁有者永遠可以直接改程式：**
+
+```js
+storage.isProUser = () => true;   // 任何 client-local 機制都擋不住這一行
+```
+
+因此：
+
+| 層 | 負責什麼 | 可否被裝置擁有者繞過 |
+|---|---|---|
+| `storage.isProUser()`（client projection） | UI 顯示／隱藏、鎖／不鎖、要不要導去購買頁 | **可以** —— 本來就不是安全邊界 |
+| server（RLS policy／RPC 內部判斷 `is_pro_active`） | 付費資料、付費 API、雲端運算 | 不可以 |
+
+**規則**：任何有實際價值的 Pro 資料、API 或操作，必須由 server 自行驗證 `is_pro_active`，
+不得相信 `isProUser()` 或任何由 client 傳入的 Pro 狀態。已寫入 `PRO-014F` 的完成條件。
+
+目前 `isProUser()` 的呼叫點（保護卡、專注音效、主題、回顧月數、Personal Space 呈現）
+全部是 UI 層，此結論成立；`PRO-014F` 交付付費呈現時需重新確認。
+
+**那 PRO-014B 買到了什麼？** 偽造的授權不再往返伺服器 —— 不會同步到該使用者的其他裝置，
+也不會外溢到排行榜 read model。這是實質改善，但它的性質是「縮小血徑」，不是「不可繞過」。
+
+---
+
+## 1. PRO-014G 要處理的是什麼
+
+PRO-014B 的 projection 是**純 localStorage JSON，沒有任何來源完整性證明**，
+格式完全合法的手寫內容會被照樣接受：
 
 ```js
 localStorage.setItem('orbit_pro_entitlement', JSON.stringify({
@@ -34,27 +64,15 @@ localStorage.setItem('orbit_pro_entitlement', JSON.stringify({
 
 血徑變小了，門檻沒有變。
 
-## 2. 一個必須先講清楚的前提
+## 2. 簽章能買到什麼、買不到什麼
 
-**簽章不會讓 client gate 變成安全邊界。**
+見第 0 節：**簽章不會讓 client gate 變成安全邊界**，那一層永遠可被裝置擁有者繞過。
 
-Orbit 是純前端 PWA，JS 未混淆、靜態部署。裝置擁有者永遠可以直接改程式：
+簽章的價值明確且有限：把「隨手改一個 localStorage key」擋掉，讓本機偽造必須動到
+應用程式碼本身。它是**提高門檻**，不是**建立邊界**，因此定位為可選 hardening。
 
-```js
-storage.isProUser = () => true;      // 簽章驗到一半也擋不住這個
-```
-
-所以簽章的價值是**明確且有限**的：它把「隨手改一個 localStorage key」擋掉，
-讓偽造需要動到應用程式碼本身。它**不能**取代伺服器端授權。
-
-推論（與驗收意見第 4 點一致，這裡寫進文件避免日後被誤讀）：
-
-> 任何有實際價值的 Pro 能力 —— 付費資料、付費 API、雲端運算 ——
-> **必須由伺服器自己判斷 `is_pro_active`**，不得依賴 client 傳來的任何東西。
-> `isProUser()` 只負責 UI：顯示或隱藏、鎖或不鎖、要不要導去購買頁。
-
-目前 `isProUser()` 的呼叫點（保護卡、專注音效、主題、回顧月數、Personal Space 呈現）
-全部都是 UI 層。這個結論現在成立，但需要在 PRO-014F 交付排行榜／付費呈現時重新確認。
+判斷是否啟動時，問的應該是「離線 UI 的防竄改門檻對產品是否重要到值得這些複雜度」，
+而不是「我們需不需要安全性」—— 後者的答案永遠在 server 端。
 
 ## 3. 提案：server 簽章的 entitlement receipt
 
@@ -117,17 +135,14 @@ payload 至少包含：
 | Client 端 Web Crypto 驗章 | 中 —— 動到啟動路徑，但不涉及 auth 流程 |
 | 公鑰 vendored 進 repo | 低 —— 公鑰本來就是公開的 |
 
-## 5. 建議順序
+## 5. 若日後啟動的順序
 
-1. **先取得本提案的核准**（AGENTS.md §3）。
-2. 與 `PRO-014D` 合併規劃：011 還沒套用，趁這次一起改比套用後再改 migration 乾淨。
-3. 實作順序：RPC 加簽 → client 驗章 → 加入「合法 JSON 偽造被拒」的回歸測試 → 才把 `REPO_PRO_ENTITLEMENT_SOURCE` 切到 `server`。
-4. `PRO-014F` 交付付費呈現時，重新確認第 2 節的「只在 UI 層」結論仍然成立。
+1. **先取得核准**（AGENTS.md §3）—— 涉及 RPC contract 與簽章金鑰。
+2. 與 `PRO-014D` 合併規劃：011 還沒套用，趁那次一起改比套用後再改 migration 乾淨。
+3. 實作順序：RPC 加簽 → client 驗章 → 加入「合法 JSON 偽造被拒」的回歸測試。
 
-## 6. 在核准之前
+## 6. 現況
 
-`REPO_PRO_ENTITLEMENT_SOURCE` 維持 `legacy`，production 不受影響。
-PRO-014B 停在 In Progress，不得標為 Done。
-
-`pwa/js/platform/proEntitlement.js` 的檔頭已寫明這個缺口，避免後續有人誤以為
-snapshot 是可信來源而把真正有價值的能力掛上去。
+- `REPO_PRO_ENTITLEMENT_SOURCE` 維持 `legacy`，production 行為不變；切到 `server` 的閘門是 `PRO-014D`。
+- `PRO-014B` 已依第 0 節重新定義為 UI entitlement projection，**不再以 PRO-014G 為完成前置**。
+- `pwa/js/platform/proEntitlement.js` 檔頭寫明它不是安全邊界，避免後續有人把真正有價值的能力掛上去。
