@@ -5,8 +5,12 @@
  * 兩件事必須同時成立：
  *   1. 預設的 legacy source 下，production 行為完全沒變，而且不會呼叫尚未
  *      存在的 `my_pro_status()` RPC。
- *   2. server source 下，判定只看受信任的 snapshot —— profile 裡那些 client
- *      可以自己改寫的 `isPro` / `proExpiresAt` / `trialStartedAt` 不再算數。
+ *   2. server source 下，判定只看 server-derived 的 UI projection —— profile
+ *      裡那些 client 可以自己改寫的 `isPro` / `proExpiresAt` /
+ *      `trialStartedAt` 不再算數。
+ *
+ * 注意：projection 是 UI 呈現用的投影，不是安全邊界（見 proEntitlement.js
+ * 檔頭）。這裡鎖的是「判定依據換了」，不是「client 端不可繞過」。
  *
  * 環境：jsdom（需要 localStorage）；supabase 全 mock。
  */
