@@ -132,22 +132,6 @@
   - 提案文件：[`docs/pro-014-entitlement-integrity.md`](docs/pro-014-entitlement-integrity.md)
   - 依賴：`PRO-014B`
 
-- [ ] **PRO-014C** 在分支實作 trial 受控 RPC 與 server-source gate 路徑（**不得合併**）
-  - 目標：`startTrial()` 的授權來源改為一次性 server RPC（`start_trial()`），client 不再自行決定 `is_pro`、`pro_expires_at` 或 `trial_started_at` 的值；同時完成日後切到 `server` source 所需的 gate 路徑
-  - **legacy 相容策略（PR #148 驗收定案，勿自行改動）**：RPC 成功後，client 仍把 server 回傳的 `trial_started_at` 寫回 profile，作為**明確標示的 legacy 相容層**。理由：production 走 `legacy` source，而 `storage.isTrialUser()` 只讀 `user.trialStartedAt`；`refreshProEntitlement()` 在 `legacy` 下第一行就 return，projection 根本不會被填，所以「讓 legacy gate 改讀 projection」不可行。這層相容在 `PRO-014H` cutover 時才移除。**client 寫入的值必須來自 RPC 回應，不得由 client 自行計算。**
-  - 範圍：trial CTA、trial 橫幅與剩餘天數呈現（`app.js` 的 `isTrialUser()`／`getTrialDaysRemaining()` 呼叫點、`settings.js` 兩處）、**`app.js` 的 trial 自動啟動路徑**、`server` source 下的既有 Pro gate、legacy profile 欄位相容層、相關 unit／integration／E2E tests
-  - 完成條件：
-    - **`start_trial()` 是冪等的，不是「拒絕重複」**：011 的 contract 是 `ON CONFLICT (user_id) DO UPDATE SET trial_started_at = COALESCE(e.trial_started_at, EXCLUDED.trial_started_at)` ＋ `RETURNING`，所以重複呼叫**回傳相同的 `trial_started_at`、不重設也不延長 trial、不 raise**。client 必須照這個語意實作：重複呼叫不是錯誤路徑。
-    - RPC 錯誤（未登入、網路失敗）不會誤授權
-    - **`startTrial()` 的回傳值不得使 boot 序列提前返回。** `app.js` 目前是 `if (… || trialStarted === false) return;`，而該 return 在 `hideLoading()` 與隱藏 login screen **之前**，回傳 `false` 會讓使用者卡在 loading 畫面。冪等的 `start_trial()` 讓「已領取」不再是錯誤路徑，因此正常情況下不該回傳 `false`；但 RPC 真正失敗（未登入、網路中斷）時仍會走到這裡。需明確定義失敗時的回傳語意與 boot 的處理方式，並有測試覆蓋「第二次登入仍能正常開機」與「RPC 失敗時仍能完成開機」
-    - **逐一列出**下列既有 Pro 入口在 `server` source 下的驗證結果（不得只以「既有測試綠」代替，`tests/unit/proEntitlementGate.test.js` 的 server source 測試在 `PRO-014B` 就已存在）：`dayCycle.js:72/91/99/117`、`focusTimer.js:48/343/516`、`goals.js:11`、`home.js:211`、`profile.js:76/182`、`review.js:21/233`、`settings.js:88/422/548/861/867`、`theme.js:29`
-    - trial 顯示面（`isTrialUser()`／`getTrialDaysRemaining()`）在 `server` 與 `legacy` 兩種 source 下都顯示正確天數
-    - `legacy` source 下的迴歸測試：trial 開始後 `isProUser()` 仍為 true（相容層有效）
-    - 依版本規則執行一次 bump
-    - **本任務的 Done ＝ 分支實作完成、CI 全綠、PR 開著等待閘門，不含合併。** 合併與部署是 `PRO-014J`，前置為 `PRO-014I`（production 已套用 011）。在那之前合併會把呼叫不存在 function 的 client 送上 production。
-  - 範圍界線：本任務**維持 `REPO_PRO_ENTITLEMENT_SOURCE = legacy`**，只實作 RPC 與 gate，不做 cutover，**也不合併**。cutover 是 `PRO-014H`，合併部署是 `PRO-014J`。
-  - 依賴：`PRO-014B`（已完成）
-
 - [ ] **PRO-014D** 在非 production 環境驗證 011 migration 與 cutover 邊界
   - 目標：在獨立測試／preview Supabase 專案套用 migration，驗證資料、RLS、RPC、權限、核准名單 seed 與回滾；此任務是後續 production rollout 與 client gate 啟用的閘門，不阻擋只提交 migration 程式碼且不套用的 PR #132 完成 review／merge
   - 完成條件：在真實 PostgreSQL／Supabase preview 實際 parse 並套用 011（不可只依賴 regex contract tests）；確認該專案 Data API exposure 設定下 `my_pro_status` RPC 可用且不為此擴大 table exposure；驗證 owner／非 owner、anon／authenticated、無資料列、已到期、未來開始日與重複 trial；以不含 legacy profile 欄位的管理員核准名單演練 seed，記錄名單來源／核准者／執行時點／筆數對帳與 rollback；執行 Security／Performance Advisors 與專案測試
@@ -183,6 +167,24 @@
 ---
 
 ## In Progress
+
+- [ ] **PRO-014C** 在分支實作 trial 受控 RPC 與 server-source gate 路徑（**不得合併**）
+  - 目標：`startTrial()` 的授權來源改為一次性 server RPC（`start_trial()`），client 不再自行決定 `is_pro`、`pro_expires_at` 或 `trial_started_at` 的值；同時完成日後切到 `server` source 所需的 gate 路徑
+  - **legacy 相容策略（PR #148 驗收定案，勿自行改動）**：RPC 成功後，client 仍把 server 回傳的 `trial_started_at` 寫回 profile，作為**明確標示的 legacy 相容層**。理由：production 走 `legacy` source，而 `storage.isTrialUser()` 只讀 `user.trialStartedAt`；`refreshProEntitlement()` 在 `legacy` 下第一行就 return，projection 根本不會被填，所以「讓 legacy gate 改讀 projection」不可行。這層相容在 `PRO-014H` cutover 時才移除。**client 寫入的值必須來自 RPC 回應，不得由 client 自行計算。**
+  - 範圍：trial CTA、trial 橫幅與剩餘天數呈現（`app.js` 的 `isTrialUser()`／`getTrialDaysRemaining()` 呼叫點、`settings.js` 兩處）、**`app.js` 的 trial 自動啟動路徑**、`server` source 下的既有 Pro gate、legacy profile 欄位相容層、相關 unit／integration／E2E tests
+  - 完成條件：
+    - **`start_trial()` 是冪等的，不是「拒絕重複」**：011 的 contract 是 `ON CONFLICT (user_id) DO UPDATE SET trial_started_at = COALESCE(e.trial_started_at, EXCLUDED.trial_started_at)` ＋ `RETURNING`，所以重複呼叫**回傳相同的 `trial_started_at`、不重設也不延長 trial、不 raise**。client 必須照這個語意實作：重複呼叫不是錯誤路徑。
+    - RPC 錯誤（未登入、網路失敗）不會誤授權
+    - **`startTrial()` 的回傳值不得使 boot 序列提前返回。** `app.js` 目前是 `if (… || trialStarted === false) return;`，而該 return 在 `hideLoading()` 與隱藏 login screen **之前**，回傳 `false` 會讓使用者卡在 loading 畫面。冪等的 `start_trial()` 讓「已領取」不再是錯誤路徑，因此正常情況下不該回傳 `false`；但 RPC 真正失敗（未登入、網路中斷）時仍會走到這裡。需明確定義失敗時的回傳語意與 boot 的處理方式，並有測試覆蓋「第二次登入仍能正常開機」與「RPC 失敗時仍能完成開機」
+    - **逐一列出**下列既有 Pro 入口在 `server` source 下的驗證結果（不得只以「既有測試綠」代替，`tests/unit/proEntitlementGate.test.js` 的 server source 測試在 `PRO-014B` 就已存在）：`dayCycle.js:72/91/99/117`、`focusTimer.js:48/343/516`、`goals.js:11`、`home.js:211`、`profile.js:76/182`、`review.js:21/233`、`settings.js:88/422/548/861/867`、`theme.js:29`
+    - trial 顯示面（`isTrialUser()`／`getTrialDaysRemaining()`）在 `server` 與 `legacy` 兩種 source 下都顯示正確天數
+    - `legacy` source 下的迴歸測試：trial 開始後 `isProUser()` 仍為 true（相容層有效）
+    - 依版本規則執行一次 bump
+    - **本任務的 Done ＝ 分支實作完成、CI 全綠、PR 開著等待閘門，不含合併。** 合併與部署是 `PRO-014J`，前置為 `PRO-014I`（production 已套用 011）。在那之前合併會把呼叫不存在 function 的 client 送上 production。
+  - 範圍界線：本任務**維持 `REPO_PRO_ENTITLEMENT_SOURCE = legacy`**，只實作 RPC 與 gate，不做 cutover，**也不合併**。cutover 是 `PRO-014H`，合併部署是 `PRO-014J`。
+  - 依賴：`PRO-014B`（已完成）
+  - 進行中：分支 `feat/pro-014c-trial-rpc`。**該 PR 開為 Draft 且標明不得合併** —— 合併是 `PRO-014J`，前置 `PRO-014I`。
+
 
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
