@@ -16,6 +16,8 @@ export default defineConfig({
       ['tests/unit/dayCycle.test.js',         'jsdom'],
       ['tests/unit/appBootSequence.test.js',  'jsdom'],
       ['tests/unit/proEntitlement.test.js',    'jsdom'],
+      ['tests/unit/proTrialRpc.test.js',       'jsdom'],
+      ['tests/unit/proGateCallSites.test.js',  'jsdom'],
       ['tests/unit/proEntitlementGate.test.js','jsdom'],
       ['tests/unit/storage-mapping.test.js',  'jsdom'],
       ['tests/unit/focusTimer.test.js',       'jsdom'],

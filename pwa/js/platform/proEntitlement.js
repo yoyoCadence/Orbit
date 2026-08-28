@@ -206,6 +206,32 @@ export function isProFromSnapshot(ownerId, nowMs = Date.now()) {
   return nowMs < entitlementExpiryMs(snapshot);
 }
 
+/**
+ * PRO-014C: when the trial ends, according to the server.
+ *
+ * The trial countdown UI needs a date, not just the boolean `isProFromSnapshot`
+ * gives it. Every guard that function applies applies here too — a projection
+ * that cannot grant Pro must not be able to render a countdown either — so this
+ * defers to it rather than re-deriving the checks and drifting from them.
+ *
+ * Under the `server` source this replaces the client's 15-day arithmetic: the
+ * duration lives in `pro_trial_duration()` and the client should not hold a
+ * second copy of it.
+ *
+ * @returns {string|null} ISO timestamp, or null when there is no usable trial.
+ */
+export function getTrialEndsAtFromSnapshot(ownerId, nowMs = Date.now()) {
+  if (!isProFromSnapshot(ownerId, nowMs)) return null;
+
+  const snapshot = readProEntitlementSnapshot();
+  const trialEndsAt = snapshot?.trialEndsAt;
+  if (typeof trialEndsAt !== 'string') return null;        // paid or lifetime, no trial
+
+  const endsAtMs = Date.parse(trialEndsAt);
+  if (Number.isNaN(endsAtMs) || endsAtMs <= nowMs) return null;
+  return trialEndsAt;
+}
+
 // The server decides *whether* the entitlement is active; these dates decide
 // *until when*. Both absent on an active entitlement means lifetime Pro, which
 // is the only case that has no ceiling of its own.
