@@ -68,7 +68,7 @@
 ## 部署順序、相容期與觀測
 
 1. PR #132 完成 `PRO-014A` 的 code review／CI 後即可合併，但不得在任何 Supabase 環境套用 migration；`PRO-014D` 不阻擋 #132 review。
-2. `PRO-014B` 完成可信 snapshot 與 fail-closed cache；`PRO-014C` 再完成 trial／Pro gate cutover，但兩者在 D 驗證前都不得啟用 production gate。
+2. `PRO-014B` 完成 server-derived 的 UI entitlement projection 與 fail-closed cache（已完成，非安全邊界 —— 見 [`pro-014-entitlement-integrity.md`](pro-014-entitlement-integrity.md) 第 0 節）；`PRO-014C` 完成 trial RPC 與 gate 路徑但**不做 cutover**。production cutover 是 `PRO-014H`，**前置為 `PRO-014J`**（J 已涵蓋 C／D／`PRO-014I`，並額外保證 C 的 client 已實際部署且通過 production 煙霧測試），並需另行核准。
 3. `PRO-014D` 取得明確核准後，在獨立非 production 專案套用 011，依上述程序演練核准名單 seed、權限矩陣、觀測與 rollback。
 4. preview 通過後才另案核准 production schema-first rollout：先 migration／seed／對帳，再啟用 client gate；任何階段失敗都停止後續步驟。
 5. 觀測 RPC permission errors、`start_trial` 錯誤率、row 數與到期分布；不得記錄 access token 或 service key。真實付款授權必須來自受信任後端／金流 webhook，不得把 privileged key 放進 client。

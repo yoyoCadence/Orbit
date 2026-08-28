@@ -81,16 +81,46 @@
 - [ ] **PRO-014** SUB-14／Pro entitlement 工作串
   - 目標：先建立可信任的 server-owned Pro entitlement，再交付排行榜與 Personal Space 的 Pro 呈現
   - 拆分：PR #132 只完成 `PRO-014A`；`PRO-014B`～`PRO-014F` 各自以後續 PR 處理，避免 schema foundation、client cutover、環境套用與呈現功能混在同一審查範圍
-  - **執行順序（PR #146 覆驗定案，勿自行推導）**：`PRO-014A`（完成）→ `PRO-014B`（完成）→ `PRO-014C`（實作 RPC／gate，維持 legacy）→ `PRO-014D`（preview 驗證）→ `PRO-014H`（production cutover）。`PRO-014E` → `PRO-014F` 為呈現層，接在 D 之後。`PRO-014G` 為可選 hardening，不在主線上。
+  - **執行順序（PR #146／#148／#149 覆驗定案，勿自行推導）** —— schema-first，資料庫先於 client：
+    1. `PRO-014A` 提交 migration 011（**完成**）
+    2. `PRO-014B` server-derived UI projection（**完成**）
+    3. `PRO-014C` 在分支實作 trial RPC 與 gate 路徑 —— **實作完成即為 Done，但該 PR 不得合併**
+    4. `PRO-014D` 以 `PRO-014C` 的分支 ＋ 011 在 preview 專案驗證
+    5. `PRO-014I` 在 production 套用並驗證 011
+    6. `PRO-014J` 才合併並部署 `PRO-014C` 的 client
+    7. `PRO-014H` 另案核准後執行 cutover（旗標切到 `server`）
+  - **為什麼 C 的實作與部署要拆開**：`.github/workflows/deploy.yml` 在每次 push `main` 後自動部署 `pwa/`，所以**合併 = 部署**。`PRO-014C` 的 client 會呼叫 `start_trial()`，若在 `PRO-014I` 之前合併，該 function 在 production 還不存在，trial 會整段失效。舊版寫「I 必須在 C 部署之前或同時完成」既與順序衝突，「同時」也無法保證原子性 —— 因此把合併本身變成一個有前置的具名任務（`PRO-014J`），而不是塞在 C 裡的但書。
+  - `PRO-014E` → `PRO-014F` 為呈現層，接在 `PRO-014D` 之後。`PRO-014G` 為可選 hardening，不在主線上。
   - 狀態：此項只作為追蹤母項，不直接進入實作；各子任務需各自遵守 `Next → In Progress → Done`
   - 既有 PR：[#132](https://github.com/yoyoCadence/Orbit/pull/132)（Ready for review；開始後續任務前應確認最新 head）
+
+- [ ] **PRO-014I** 在 production 套用 011 migration
+  - 目標：把 `pro_entitlements`、`is_pro_active`、`start_trial`、`my_pro_status` 實際建立在 production 資料庫
+  - 為什麼獨立一項：`PRO-014D` 只在 preview 專案套用，`PRO-014H` 的範圍明寫「不含新功能」—— 原本沒有任何任務負責 production 套用（PR #148 驗收發現）。缺了它，`PRO-014C` 送出的 client 會呼叫一個在 production 不存在的 function，trial 整段失效。
+  - 範圍：套用 011、驗證 RLS 與 grants、核准名單 seed（若有）、確認 rollback runbook 適用；不含 client 變更、不含實際執行 rollback
+  - 完成條件：production 上 `my_pro_status()` 與 `start_trial()` 可由 `authenticated` 呼叫且 owner-scoped；`anon` 無法存取；執行 Security／Performance Advisors
+  - **rollback：只驗證 readiness，不在 production 實際執行。** 實際的 rollback 演練證據來自 `PRO-014D` 的 preview 專案（011 的 Rollback 區塊已定義順序）；本任務只需確認該 runbook 對 production 適用、DROP 順序與相依性無誤、並記錄由誰在何時可執行。**不得為了驗收而主動移除 production 的 RPC 或資料表** —— 那本身就是一次故障。
+  - **前置：`PRO-014D` 完成。** 依 AGENTS.md §3，資料庫套用需另行取得明確核准；`service_role` 不得進入前端
+  - **時序要求**：必須在 `PRO-014J`（合併並部署 `PRO-014C` 的 client）之前完成。順序由任務前置強制，不靠人工協調。
+  - 依賴：`PRO-014D`
+
+- [ ] **PRO-014J** 合併並部署 `PRO-014C` 的 client
+  - 目標：在 production 已具備 011 的前提下，才把 `PRO-014C` 的分支合併進 `main`（＝經 `deploy.yml` 自動部署）
+  - 為什麼是獨立任務：`deploy.yml` 在 push `main` 後自動部署 `pwa/`，所以合併等於部署，而「合併」在 Task Lifecycle 裡原本只是 C 完成的副作用，沒有任何前置能擋住它。把它變成具名任務，順序才由前置強制，而不是靠但書提醒（PR #149 覆驗發現）。
+  - 範圍：確認前置、合併 `PRO-014C` 的 PR、部署後的 production 煙霧測試；不含新功能、不含旗標切換
+  - 完成條件：合併前確認 `PRO-014I` 已完成且 production 的 `start_trial()` 可呼叫；部署後實際在 production 走一次「新帳號開始 trial」與「同一帳號再次呼叫**回傳相同 `trial_started_at`、未被重設或延長**」；確認 `legacy` source 下 trial 開始後 `isProUser()` 仍為 true（`PRO-014C` 的相容層有效）；確認第二次登入不會卡在 loading 畫面
+  - **前置：`PRO-014C`（分支實作完成）、`PRO-014D`、`PRO-014I` 全部完成**
+  - 回退方式：revert 該合併 commit 即可讓 client 回到舊行為；資料庫端不需要動
+  - 依賴：`PRO-014C`、`PRO-014D`、`PRO-014I`
 
 - [ ] **PRO-014H** Production Pro entitlement client cutover
   - 目標：把 `REPO_PRO_ENTITLEMENT_SOURCE` 由 `legacy` 切到 `server`，讓 production 的 `isProUser()` 實際改用 server-derived UI projection
   - 範圍：repo 常數變更、付費／非付費／trial／離線／切換帳號的實機驗證、rollback 程序；不含新功能
-  - 完成條件：切換後付費使用者維持 Pro、非付費不會誤授權、離線在 grace window 內維持、超出後 fail closed；rollback（切回 `legacy`）已實際演練並記錄
-  - **前置：`PRO-014C` 與 `PRO-014D` 完成。** 依 AGENTS.md §3 高風險規則，production rollout 需另行取得明確核准
-  - 依賴：`PRO-014C`、`PRO-014D`
+  - 完成條件：切換後付費使用者維持 Pro、非付費不會誤授權、離線在 grace window 內維持、超出後 fail closed
+  - **rollback 是「旗標＋相容層」兩件事，不能只切回 `legacy`**：本任務會移除 `PRO-014C` 的 legacy 寫回相容層，而 `legacy` gate 的 `isTrialUser()` 只讀 `user.trialStartedAt`。若只把旗標切回 `legacy` 而不還原相容層，trial 使用者會直接失去 Pro —— rollback 本身變成一次故障。演練與記錄需涵蓋兩者同時還原。
+  - **前置：`PRO-014J` 完成（因此 C／D／I 皆已完成且 client 已上線）。** 依 AGENTS.md §3 高風險規則，production rollout 需另行取得明確核准
+  - 一併移除 `PRO-014C` 建立的 legacy 相容層（client 寫回 `trial_started_at`）—— cutover 後 legacy gate 不再被使用。**移除與旗標切換應在同一次變更內**，rollback 時也一起還原。
+  - 依賴：`PRO-014J`
 
 - [ ] **PRO-014G**（可選）為 entitlement projection 加上 server 簽章的 anti-tamper hardening
   - **狀態：可選，非任何任務的前置。** PR #146 覆驗定案採「UI entitlement projection ＋ server-side enforcement」，signed receipt 不再是 `PRO-014B` 的必要條件。
@@ -102,18 +132,27 @@
   - 提案文件：[`docs/pro-014-entitlement-integrity.md`](docs/pro-014-entitlement-integrity.md)
   - 依賴：`PRO-014B`
 
-- [ ] **PRO-014C** 將 trial 改用受控 RPC，完成 server-source Pro gate 準備
-  - 目標：`startTrial()` 只呼叫一次性 server RPC，client 不再自行寫入 `is_pro`、`pro_expires_at` 或 `trial_started_at`；完成日後切到 `server` source 所需的 gate 路徑
-  - 範圍：trial CTA、剩餘天數呈現、`server` source 下的既有 Pro gate、legacy profile 欄位相容讀取／移除策略、相關 unit／integration／E2E tests
-  - 完成條件：同一使用者無法重複領取 trial；RPC 錯誤不會誤授權；明確啟用 `server` source 的測試中，所有既有 Pro 入口都只依賴 `PRO-014B` 的 server-derived UI projection、不再讀 client 可寫的 profile Pro 欄位；production 預設仍維持 legacy 行為；依版本規則執行一次 bump
-  - 範圍界線：本任務**維持 `REPO_PRO_ENTITLEMENT_SOURCE = legacy`**，只實作 RPC 與 gate，不做 cutover。切換是 `PRO-014H`。
+- [ ] **PRO-014C** 在分支實作 trial 受控 RPC 與 server-source gate 路徑（**不得合併**）
+  - 目標：`startTrial()` 的授權來源改為一次性 server RPC（`start_trial()`），client 不再自行決定 `is_pro`、`pro_expires_at` 或 `trial_started_at` 的值；同時完成日後切到 `server` source 所需的 gate 路徑
+  - **legacy 相容策略（PR #148 驗收定案，勿自行改動）**：RPC 成功後，client 仍把 server 回傳的 `trial_started_at` 寫回 profile，作為**明確標示的 legacy 相容層**。理由：production 走 `legacy` source，而 `storage.isTrialUser()` 只讀 `user.trialStartedAt`；`refreshProEntitlement()` 在 `legacy` 下第一行就 return，projection 根本不會被填，所以「讓 legacy gate 改讀 projection」不可行。這層相容在 `PRO-014H` cutover 時才移除。**client 寫入的值必須來自 RPC 回應，不得由 client 自行計算。**
+  - 範圍：trial CTA、trial 橫幅與剩餘天數呈現（`app.js` 的 `isTrialUser()`／`getTrialDaysRemaining()` 呼叫點、`settings.js` 兩處）、**`app.js` 的 trial 自動啟動路徑**、`server` source 下的既有 Pro gate、legacy profile 欄位相容層、相關 unit／integration／E2E tests
+  - 完成條件：
+    - **`start_trial()` 是冪等的，不是「拒絕重複」**：011 的 contract 是 `ON CONFLICT (user_id) DO UPDATE SET trial_started_at = COALESCE(e.trial_started_at, EXCLUDED.trial_started_at)` ＋ `RETURNING`，所以重複呼叫**回傳相同的 `trial_started_at`、不重設也不延長 trial、不 raise**。client 必須照這個語意實作：重複呼叫不是錯誤路徑。
+    - RPC 錯誤（未登入、網路失敗）不會誤授權
+    - **`startTrial()` 的回傳值不得使 boot 序列提前返回。** `app.js` 目前是 `if (… || trialStarted === false) return;`，而該 return 在 `hideLoading()` 與隱藏 login screen **之前**，回傳 `false` 會讓使用者卡在 loading 畫面。冪等的 `start_trial()` 讓「已領取」不再是錯誤路徑，因此正常情況下不該回傳 `false`；但 RPC 真正失敗（未登入、網路中斷）時仍會走到這裡。需明確定義失敗時的回傳語意與 boot 的處理方式，並有測試覆蓋「第二次登入仍能正常開機」與「RPC 失敗時仍能完成開機」
+    - **逐一列出**下列既有 Pro 入口在 `server` source 下的驗證結果（不得只以「既有測試綠」代替，`tests/unit/proEntitlementGate.test.js` 的 server source 測試在 `PRO-014B` 就已存在）：`dayCycle.js:72/91/99/117`、`focusTimer.js:48/343/516`、`goals.js:11`、`home.js:211`、`profile.js:76/182`、`review.js:21/233`、`settings.js:88/422/548/861/867`、`theme.js:29`
+    - trial 顯示面（`isTrialUser()`／`getTrialDaysRemaining()`）在 `server` 與 `legacy` 兩種 source 下都顯示正確天數
+    - `legacy` source 下的迴歸測試：trial 開始後 `isProUser()` 仍為 true（相容層有效）
+    - 依版本規則執行一次 bump
+    - **本任務的 Done ＝ 分支實作完成、CI 全綠、PR 開著等待閘門，不含合併。** 合併與部署是 `PRO-014J`，前置為 `PRO-014I`（production 已套用 011）。在那之前合併會把呼叫不存在 function 的 client 送上 production。
+  - 範圍界線：本任務**維持 `REPO_PRO_ENTITLEMENT_SOURCE = legacy`**，只實作 RPC 與 gate，不做 cutover，**也不合併**。cutover 是 `PRO-014H`，合併部署是 `PRO-014J`。
   - 依賴：`PRO-014B`（已完成）
 
 - [ ] **PRO-014D** 在非 production 環境驗證 011 migration 與 cutover 邊界
   - 目標：在獨立測試／preview Supabase 專案套用 migration，驗證資料、RLS、RPC、權限、核准名單 seed 與回滾；此任務是後續 production rollout 與 client gate 啟用的閘門，不阻擋只提交 migration 程式碼且不套用的 PR #132 完成 review／merge
   - 完成條件：在真實 PostgreSQL／Supabase preview 實際 parse 並套用 011（不可只依賴 regex contract tests）；確認該專案 Data API exposure 設定下 `my_pro_status` RPC 可用且不為此擴大 table exposure；驗證 owner／非 owner、anon／authenticated、無資料列、已到期、未來開始日與重複 trial；以不含 legacy profile 欄位的管理員核准名單演練 seed，記錄名單來源／核准者／執行時點／筆數對帳與 rollback；執行 Security／Performance Advisors 與專案測試
   - 安全閘門：production client cutover（`PRO-014H`）不得在 D 驗證完成前執行；任何資料庫套用及 production rollout 都需另行取得明確核准；`service_role` 不得進入前端
-  - 依賴：`PRO-014A`（已完成）、`PRO-014C`。`PRO-014B` 已完成且不阻擋本項。
+  - 依賴：`PRO-014A`（已完成）、`PRO-014C` 的**分支實作**（不需先合併 —— 合併是 `PRO-014J`，且前置為本項與 `PRO-014I`）。`PRO-014B` 已完成且不阻擋本項。
 
 - [ ] **PRO-014E** 另案建立 `display_name` 與排行榜安全 read model
   - 目標：在 entitlement foundation 穩定後，以新 PR 提出 `display_name` 寫入規則及排行榜可公開欄位，不沿用 PR #132 的混合範圍

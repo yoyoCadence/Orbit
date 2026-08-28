@@ -143,6 +143,6 @@ payload 至少包含：
 
 ## 6. 現況
 
-- `REPO_PRO_ENTITLEMENT_SOURCE` 維持 `legacy`，production 行為不變；切到 `server` 的閘門是 `PRO-014D`。
+- `REPO_PRO_ENTITLEMENT_SOURCE` 維持 `legacy`，production 行為不變；切到 `server` 是 `PRO-014H`，**前置為 `PRO-014J`**（J 已涵蓋 `PRO-014C`／`PRO-014D`／`PRO-014I`，並額外保證 C 的 client 已實際部署且通過 production 煙霧測試），並需依 AGENTS.md §3 另行核准。
 - `PRO-014B` 已依第 0 節重新定義為 UI entitlement projection，**不再以 PRO-014G 為完成前置**。
 - `pwa/js/platform/proEntitlement.js` 檔頭寫明它不是安全邊界，避免後續有人把真正有價值的能力掛上去。
