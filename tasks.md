@@ -108,7 +108,7 @@
   - 目標：在 production 已具備 011 的前提下，才把 `PRO-014C` 的分支合併進 `main`（＝經 `deploy.yml` 自動部署）
   - 為什麼是獨立任務：`deploy.yml` 在 push `main` 後自動部署 `pwa/`，所以合併等於部署，而「合併」在 Task Lifecycle 裡原本只是 C 完成的副作用，沒有任何前置能擋住它。把它變成具名任務，順序才由前置強制，而不是靠但書提醒（PR #149 覆驗發現）。
   - 範圍：確認前置、合併 `PRO-014C` 的 PR、部署後的 production 煙霧測試；不含新功能、不含旗標切換
-  - 完成條件：合併前確認 `PRO-014I` 已完成且 production 的 `start_trial()` 可呼叫；部署後實際在 production 走一次「新帳號開始 trial」與「同一帳號重複領取被拒」；確認 `legacy` source 下 trial 開始後 `isProUser()` 仍為 true（`PRO-014C` 的相容層有效）；確認第二次登入不會卡在 loading 畫面
+  - 完成條件：合併前確認 `PRO-014I` 已完成且 production 的 `start_trial()` 可呼叫；部署後實際在 production 走一次「新帳號開始 trial」與「同一帳號再次呼叫**回傳相同 `trial_started_at`、未被重設或延長**」；確認 `legacy` source 下 trial 開始後 `isProUser()` 仍為 true（`PRO-014C` 的相容層有效）；確認第二次登入不會卡在 loading 畫面
   - **前置：`PRO-014C`（分支實作完成）、`PRO-014D`、`PRO-014I` 全部完成**
   - 回退方式：revert 該合併 commit 即可讓 client 回到舊行為；資料庫端不需要動
   - 依賴：`PRO-014C`、`PRO-014D`、`PRO-014I`
@@ -116,9 +116,10 @@
 - [ ] **PRO-014H** Production Pro entitlement client cutover
   - 目標：把 `REPO_PRO_ENTITLEMENT_SOURCE` 由 `legacy` 切到 `server`，讓 production 的 `isProUser()` 實際改用 server-derived UI projection
   - 範圍：repo 常數變更、付費／非付費／trial／離線／切換帳號的實機驗證、rollback 程序；不含新功能
-  - 完成條件：切換後付費使用者維持 Pro、非付費不會誤授權、離線在 grace window 內維持、超出後 fail closed；rollback（切回 `legacy`）已實際演練並記錄
+  - 完成條件：切換後付費使用者維持 Pro、非付費不會誤授權、離線在 grace window 內維持、超出後 fail closed
+  - **rollback 是「旗標＋相容層」兩件事，不能只切回 `legacy`**：本任務會移除 `PRO-014C` 的 legacy 寫回相容層，而 `legacy` gate 的 `isTrialUser()` 只讀 `user.trialStartedAt`。若只把旗標切回 `legacy` 而不還原相容層，trial 使用者會直接失去 Pro —— rollback 本身變成一次故障。演練與記錄需涵蓋兩者同時還原。
   - **前置：`PRO-014J` 完成（因此 C／D／I 皆已完成且 client 已上線）。** 依 AGENTS.md §3 高風險規則，production rollout 需另行取得明確核准
-  - 一併移除 `PRO-014C` 建立的 legacy 相容層（client 寫回 `trial_started_at`）—— cutover 後 legacy gate 不再被使用
+  - 一併移除 `PRO-014C` 建立的 legacy 相容層（client 寫回 `trial_started_at`）—— cutover 後 legacy gate 不再被使用。**移除與旗標切換應在同一次變更內**，rollback 時也一起還原。
   - 依賴：`PRO-014J`
 
 - [ ] **PRO-014G**（可選）為 entitlement projection 加上 server 簽章的 anti-tamper hardening
@@ -136,8 +137,9 @@
   - **legacy 相容策略（PR #148 驗收定案，勿自行改動）**：RPC 成功後，client 仍把 server 回傳的 `trial_started_at` 寫回 profile，作為**明確標示的 legacy 相容層**。理由：production 走 `legacy` source，而 `storage.isTrialUser()` 只讀 `user.trialStartedAt`；`refreshProEntitlement()` 在 `legacy` 下第一行就 return，projection 根本不會被填，所以「讓 legacy gate 改讀 projection」不可行。這層相容在 `PRO-014H` cutover 時才移除。**client 寫入的值必須來自 RPC 回應，不得由 client 自行計算。**
   - 範圍：trial CTA、trial 橫幅與剩餘天數呈現（`app.js` 的 `isTrialUser()`／`getTrialDaysRemaining()` 呼叫點、`settings.js` 兩處）、**`app.js` 的 trial 自動啟動路徑**、`server` source 下的既有 Pro gate、legacy profile 欄位相容層、相關 unit／integration／E2E tests
   - 完成條件：
-    - 同一使用者無法重複領取 trial；RPC 錯誤不會誤授權
-    - **`startTrial()` 的回傳值不得使 boot 序列提前返回。** `app.js` 目前是 `if (… || trialStarted === false) return;`，而該 return 在 `hideLoading()` 與隱藏 login screen **之前** —— 「已領取過」若回傳 `false`，使用者會卡在 loading 畫面。需明確定義「已領取」與「失敗」的回傳語意並分開處理，且有測試覆蓋「第二次登入仍能正常開機」
+    - **`start_trial()` 是冪等的，不是「拒絕重複」**：011 的 contract 是 `ON CONFLICT (user_id) DO UPDATE SET trial_started_at = COALESCE(e.trial_started_at, EXCLUDED.trial_started_at)` ＋ `RETURNING`，所以重複呼叫**回傳相同的 `trial_started_at`、不重設也不延長 trial、不 raise**。client 必須照這個語意實作：重複呼叫不是錯誤路徑。
+    - RPC 錯誤（未登入、網路失敗）不會誤授權
+    - **`startTrial()` 的回傳值不得使 boot 序列提前返回。** `app.js` 目前是 `if (… || trialStarted === false) return;`，而該 return 在 `hideLoading()` 與隱藏 login screen **之前**，回傳 `false` 會讓使用者卡在 loading 畫面。冪等的 `start_trial()` 讓「已領取」不再是錯誤路徑，因此正常情況下不該回傳 `false`；但 RPC 真正失敗（未登入、網路中斷）時仍會走到這裡。需明確定義失敗時的回傳語意與 boot 的處理方式，並有測試覆蓋「第二次登入仍能正常開機」與「RPC 失敗時仍能完成開機」
     - **逐一列出**下列既有 Pro 入口在 `server` source 下的驗證結果（不得只以「既有測試綠」代替，`tests/unit/proEntitlementGate.test.js` 的 server source 測試在 `PRO-014B` 就已存在）：`dayCycle.js:72/91/99/117`、`focusTimer.js:48/343/516`、`goals.js:11`、`home.js:211`、`profile.js:76/182`、`review.js:21/233`、`settings.js:88/422/548/861/867`、`theme.js:29`
     - trial 顯示面（`isTrialUser()`／`getTrialDaysRemaining()`）在 `server` 與 `legacy` 兩種 source 下都顯示正確天數
     - `legacy` source 下的迴歸測試：trial 開始後 `isProUser()` 仍為 true（相容層有效）
