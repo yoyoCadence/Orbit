@@ -39,6 +39,7 @@ const mockStorage = vi.hoisted(() => ({
   isProUser:             vi.fn(() => false),
   isPaidProUser:         vi.fn(() => false),
   isTrialUser:           vi.fn(() => false),
+  getTrialProgressPercent: vi.fn(() => null),
   getTrialDaysRemaining: vi.fn(() => 0),
   getProExpiry:          vi.fn(() => null),
   syncFromRemote:        vi.fn(() => Promise.resolve()),

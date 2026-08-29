@@ -207,6 +207,54 @@ export function isProFromSnapshot(ownerId, nowMs = Date.now()) {
 }
 
 /**
+ * PRO-014C: is this a *paid* entitlement, and when does it end?
+ *
+ * `isProFromSnapshot()` answers "may this device show Pro"; the settings page
+ * additionally needs "is this person a paying customer, or on a trial", because
+ * it renders a different banner for each. Leaving that question on the legacy
+ * profile fields meant a paying customer with a valid projection but no `isPro`
+ * on their profile was shown the upgrade pitch.
+ *
+ * `expires_at` is ambiguous in the RPC contract: `CASE WHEN e.is_pro THEN
+ * e.pro_expires_at ELSE NULL END` returns null both for "not paid" and for
+ * "paid, lifetime". So paid-ness is inferred from what else could explain an
+ * active entitlement:
+ *
+ *   - a future `expiresAt`                        → paid with an expiry
+ *   - no `expiresAt` and no live trial            → only lifetime paid explains it
+ *   - no `expiresAt` and a live trial             → attribute it to the trial
+ *
+ * The last line is the conservative reading: a lifetime purchase made during an
+ * active trial is indistinguishable here and is shown as a trial rather than
+ * claiming someone is a paying customer on a guess. Resolving it properly needs
+ * `is_pro` in the projection — an RPC contract change, tracked as PRO-014N.
+ *
+ * @returns {{isPaid: boolean, expiresAt: string|null}|null} null when the
+ *   projection cannot grant Pro at all.
+ */
+export function getPaidProStateFromSnapshot(ownerId, nowMs = Date.now()) {
+  if (!isProFromSnapshot(ownerId, nowMs)) return null;
+
+  const snapshot = readProEntitlementSnapshot();
+  const expiresAtMs = parseTimestamp(snapshot?.expiresAt);
+  const trialEndsAtMs = parseTimestamp(snapshot?.trialEndsAt);
+
+  if (expiresAtMs !== null && expiresAtMs > nowMs) {
+    return { isPaid: true, expiresAt: snapshot.expiresAt };
+  }
+  if (expiresAtMs === null && (trialEndsAtMs === null || trialEndsAtMs <= nowMs)) {
+    return { isPaid: true, expiresAt: null };            // lifetime
+  }
+  return { isPaid: false, expiresAt: null };             // the trial explains it
+}
+
+function parseTimestamp(value) {
+  if (typeof value !== 'string') return null;
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+/**
  * PRO-014C: when the trial ends, according to the server.
  *
  * The trial countdown UI needs a date, not just the boolean `isProFromSnapshot`

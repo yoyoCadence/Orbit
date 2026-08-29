@@ -133,6 +133,15 @@
   - **前置：屬 RPC／schema 變更，依 AGENTS.md §3 需先取得核准**；建議與 `PRO-014I` 的 production 套用一併規劃，避免第二次 migration 時序問題
   - 依賴：`PRO-014C`
 
+- [ ] **PRO-014N** `my_pro_status()` 回傳 `is_pro`，消除 `expires_at` 的歧義
+  - 問題（`PRO-014C` 實作時發現）：RPC 的 `CASE WHEN e.is_pro = true THEN e.pro_expires_at ELSE NULL END` 讓 `expires_at = null` 同時代表「沒有付費」與「終身付費」。client 因此無法在「終身付費」與「試用中」之間可靠區分。
+  - 目前的處理：`getPaidProStateFromSnapshot()` 用「還有什麼能解釋這個 active」來推斷 —— 未到期的 `expires_at` ⇒ 付費；沒有 `expires_at` 且沒有生效中的試用 ⇒ 終身付費；沒有 `expires_at` 但試用生效中 ⇒ 算試用。最後一條是保守讀法：在試用期間購買終身方案的人會被顯示成試用中。
+  - 範圍：`my_pro_status()` 增加 `is_pro boolean` 回傳欄位、client 改讀該欄位、移除推斷邏輯與其測試
+  - 完成條件：終身付費與試用可明確區分，不需推斷；試用期間購買終身方案顯示為付費
+  - **前置：屬 RPC contract 變更，依 AGENTS.md §3 需先取得核准**；建議與 `PRO-014I` 的 production 套用一併規劃
+  - 影響：純呈現層的正確性，不影響授權判定（`isProUser()` 兩種情況都是 true）
+  - 依賴：`PRO-014C`
+
 - [ ] **PRO-014M** 開發者面板的 Pro 狀態切換支援 `server` source
   - 目標：`_devApplyPro()` 在 `server` source 下也能切換 Pro／試用／免費狀態
   - 現況（`PRO-014C` 實作時發現）：`pwa/js/pages/settings.js` 的開發者面板直接寫 `u.isPro` / `u.proExpiresAt` / `u.trialStartedAt`。`server` source 下這些欄位不再被讀，面板變成無效。
@@ -187,21 +196,19 @@
 
 ## In Progress
 
+- [ ] **PRO-014C** 在分支實作 trial 受控 RPC 與 server-source gate 路徑（**不得合併**）
+  - 進行中（分支 `feat/pro-014c-trial-rpc`，[PR #150](https://github.com/yoyoCadence/Orbit/pull/150) Draft）：核心 RPC 與 boot 邏輯已通過驗收；第一輪驗收找到兩個 server-source 呈現缺口，已修正並補上設定頁整合測試，待覆驗。
+  - 第一輪驗收修正：`isPaidProUser()`／`getProExpiry()` 原本仍讀 legacy profile 欄位，導致「projection 有效付費、profile 沒有 `isPro`」時付費使用者被顯示成尚未訂閱；設定頁的試用進度條寫死 15 天，server 的 `pro_trial_duration()` 若改變會算出負值。兩者都已改為由 server contract 推導。
+  - Done 的定義依規格：分支實作完成、CI 全綠、PR 開為 Draft 等待閘門，**不含合併**。合併與部署是 `PRO-014J`，前置 `PRO-014I`。
+  - 實作時發現三處範圍外問題，已立案：`PRO-014L`（SUB-16 連勝解鎖，**擋 cutover**）、`PRO-014M`（開發者面板）、`PRO-014N`（`expires_at` 歧義）。
+  - 依賴：`PRO-014B`（已完成）
+
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
 
 ---
 
 ## Done
-
-- [x] **PRO-014C** 在分支實作 trial 受控 RPC 與 server-source gate 路徑（**不得合併**）
-  - 完成（v1.25.0，分支 `feat/pro-014c-trial-rpc`）：`startTrial()` 改為呼叫 `start_trial()` RPC，回傳 `{ ok, ownerChanged, trialStartedAt }`；`is_pro` 與 `pro_expires_at` 不再因試用被寫入；試用剩餘天數在兩種 source 下都由正確來源推導。
-  - **Done 的定義依規格：分支實作完成、CI 全綠、PR 開為 Draft 等待閘門，不含合併。** 合併與部署是 `PRO-014J`，前置 `PRO-014I`（production 已套用 011）。
-  - 相容層：RPC 成功後仍把 **server 回傳的** `trial_started_at` 寫回 profile。沒有這層，`legacy` source 下的試用者會拿不到任何 Pro 功能。`PRO-014H` 移除。
-  - 失敗語意：只有 `ownerChanged` 允許中止 boot；RPC 失敗非致命，下次啟動再試。`app.js` 的提前返回在 `hideLoading()` 之前，選錯會讓使用者卡在 loading 畫面。
-  - 連帶修好：舊實作把 `is_pro` 一併寫成 true，導致設定頁對試用者顯示「已是 Pro 用戶」，底下的試用倒數 UI 從未有機會出現。
-  - 實作時發現兩處範圍外的 client 端 Pro 授權，已立案：`PRO-014L`（SUB-16 連勝解鎖）與 `PRO-014M`（開發者面板）。**`PRO-014L` 必須在 `PRO-014H` cutover 前完成**，否則連勝解鎖會靜默失效。
-  - 測試：`tests/unit/proTrialRpc.test.js`（19 項）、`tests/unit/proGateCallSites.test.js`（7 項，鎖住 19 個 gate 呼叫點）、`appBootSequence.test.js` 新增 3 項。反向驗證：中止條件改回 `!trial.ok` → 「RPC 失敗仍能完成開機」紅。`npm run lint`、`npm run test`（53 files／966 tests）、`npm run test:e2e -- --workers=1`（41/41）通過。
 
 - [x] **PRO-014B** 將前端 Pro 判定改為 server-derived 的 UI entitlement projection
   - 完成（v1.24.0）：新增 `pwa/js/platform/proEntitlement.js`，由 `my_pro_status()` 的回應推導 owner-scoped、有 TTL、fail-closed 的本機 UI projection，保留 `storage.isProUser()` 的同步呼叫介面。`db.refreshProEntitlement()` 在登入載入遠端資料後刷新；`storage.clearAll()` 一併清除。

@@ -8,6 +8,7 @@ import { FLAG_DEV_BACKUP } from './flags.js';
 import {
   applyProStatusResponse,
   clearProEntitlementSnapshot,
+  getPaidProStateFromSnapshot,
   getTrialEndsAtFromSnapshot,
   isProFromSnapshot,
   isServerProEntitlementEnabled,
@@ -925,7 +926,18 @@ export const storage = {
   getLogs:    ()  => get('logs')  ?? [],
 
   // ── Pro / Trial status ───────────────────────────────────────────────────────
-  isPaidProUser: () => {
+  /**
+   * PRO-014C: paid-vs-trial must follow the same source as isProUser().
+   *
+   * Reading the legacy profile fields here while isProUser() read the
+   * projection produced a paying customer with isProUser() true and
+   * isPaidProUser() false — the settings page then hid the active banner and
+   * pitched them the subscription they already own.
+   */
+  isPaidProUser() {
+    if (isServerProEntitlementEnabled()) {
+      return getPaidProStateFromSnapshot(get('user')?.id || null)?.isPaid === true;
+    }
     const user = get('user');
     if (!user || !user.isPro) return false;
     if (!user.proExpiresAt) return true;            // lifetime Pro
@@ -962,11 +974,40 @@ export const storage = {
     if (isServerProEntitlementEnabled()) return isProFromSnapshot(get('user')?.id || null);
     return this.isPaidProUser() || this.isTrialUser();
   },
-  getProExpiry: () => get('user')?.proExpiresAt || null,
+  /** Only meaningful when isPaidProUser(); null there means a lifetime plan. */
+  getProExpiry() {
+    if (isServerProEntitlementEnabled()) {
+      return getPaidProStateFromSnapshot(get('user')?.id || null)?.expiresAt ?? null;
+    }
+    return get('user')?.proExpiresAt || null;
+  },
   getTrialDaysRemaining() {
     const endMs = this._trialEndMs();
     if (endMs === null) return 0;
     return Math.max(0, Math.ceil((endMs - Date.now()) / (24 * 60 * 60 * 1000)));
+  },
+  /**
+   * How far through the trial the user is, 0–100, or null when unknown.
+   *
+   * The settings page used to compute this as `(15 - daysLeft) / 15`, which
+   * hardcodes the trial length on the client. Under the `server` source the
+   * end date comes from pro_trial_duration(), so a change there would have
+   * produced a wrong — possibly negative — bar. The span is derived from the
+   * actual start and end instead, and null (rather than a guess) is returned
+   * when the start is not known, so the caller can omit the bar.
+   */
+  getTrialProgressPercent() {
+    const endMs = this._trialEndMs();
+    if (endMs === null) return null;
+
+    const startMs = Date.parse(get('user')?.trialStartedAt ?? '');
+    if (Number.isNaN(startMs)) return null;
+
+    const totalMs = endMs - startMs;
+    if (totalMs <= 0) return null;
+
+    const elapsedMs = totalMs - (endMs - Date.now());
+    return Math.max(0, Math.min(100, Math.round(elapsedMs / totalMs * 100)));
   },
   getTrialBannerDismissDate:  ()  => get('trialBannerDismiss') || '',
   saveTrialBannerDismissDate: (d) => set('trialBannerDismiss', d),
