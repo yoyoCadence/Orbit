@@ -95,15 +95,6 @@
   - 狀態：此項只作為追蹤母項，不直接進入實作；各子任務需各自遵守 `Next → In Progress → Done`
   - 既有 PR：[#132](https://github.com/yoyoCadence/Orbit/pull/132)（Ready for review；開始後續任務前應確認最新 head）
 
-- [ ] **PRO-014J** 合併並部署 `PRO-014C` 的 client
-  - 目標：在 production 已具備 011 的前提下，才把 `PRO-014C` 的分支合併進 `main`（＝經 `deploy.yml` 自動部署）
-  - 為什麼是獨立任務：`deploy.yml` 在 push `main` 後自動部署 `pwa/`，所以合併等於部署，而「合併」在 Task Lifecycle 裡原本只是 C 完成的副作用，沒有任何前置能擋住它。把它變成具名任務，順序才由前置強制，而不是靠但書提醒（PR #149 覆驗發現）。
-  - 範圍：確認前置、合併 `PRO-014C` 的 PR、部署後的 production 煙霧測試；不含新功能、不含旗標切換
-  - 完成條件：合併前確認 `PRO-014I` 已完成且 production 的 `start_trial()` 可呼叫；部署後實際在 production 走一次「新帳號開始 trial」與「同一帳號再次呼叫**回傳相同 `trial_started_at`、未被重設或延長**」；確認 `legacy` source 下 trial 開始後 `isProUser()` 仍為 true（`PRO-014C` 的相容層有效）；確認第二次登入不會卡在 loading 畫面
-  - **前置：`PRO-014C`（分支實作完成）、`PRO-014D`、`PRO-014I` 全部完成**
-  - 回退方式：revert 該合併 commit 即可讓 client 回到舊行為；資料庫端不需要動
-  - 依賴：`PRO-014C`、`PRO-014D`、`PRO-014I`
-
 - [ ] **PRO-014H** Production Pro entitlement client cutover
   - 目標：把 `REPO_PRO_ENTITLEMENT_SOURCE` 由 `legacy` 切到 `server`，讓 production 的 `isProUser()` 實際改用 server-derived UI projection
   - 範圍：repo 常數變更、付費／非付費／trial／離線／切換帳號的實機驗證、rollback 程序；不含新功能
@@ -179,6 +170,15 @@
 ---
 
 ## In Progress
+
+- [ ] **PRO-014J** 合併並部署 `PRO-014C` 的 client
+  - 目標：在 production 已具備 011 的前提下，才把 `PRO-014C` 的分支合併進 `main`（＝經 `deploy.yml` 自動部署）
+  - 為什麼是獨立任務：`deploy.yml` 在 push `main` 後自動部署 `pwa/`，所以合併等於部署，而「合併」在 Task Lifecycle 裡原本只是 C 完成的副作用，沒有任何前置能擋住它。把它變成具名任務，順序才由前置強制，而不是靠但書提醒（PR #149 覆驗發現）。
+  - 範圍：確認前置、合併 `PRO-014C` 的 PR、部署後的 production 煙霧測試；不含新功能、不含旗標切換
+  - 完成條件：合併前確認 `PRO-014I` 已完成且 production 的 `start_trial()` 可呼叫；部署後實際在 production 走一次「新帳號開始 trial」與「同一帳號再次呼叫**回傳相同 `trial_started_at`、未被重設或延長**」；確認 `legacy` source 下 trial 開始後 `isProUser()` 仍為 true（`PRO-014C` 的相容層有效）；確認第二次登入不會卡在 loading 畫面
+  - **前置：`PRO-014C`（分支實作完成）、`PRO-014D`、`PRO-014I` 全部完成**
+  - 回退方式：revert 該合併 commit 即可讓 client 回到舊行為；資料庫端不需要動
+  - 依賴：`PRO-014C`、`PRO-014D`、`PRO-014I`
 
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
