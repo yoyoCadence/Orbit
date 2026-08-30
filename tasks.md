@@ -95,16 +95,6 @@
   - 狀態：此項只作為追蹤母項，不直接進入實作；各子任務需各自遵守 `Next → In Progress → Done`
   - 既有 PR：[#132](https://github.com/yoyoCadence/Orbit/pull/132)（Ready for review；開始後續任務前應確認最新 head）
 
-- [ ] **PRO-014I** 在 production 套用 011 migration
-  - 目標：把 `pro_entitlements`、`is_pro_active`、`start_trial`、`my_pro_status` 實際建立在 production 資料庫
-  - 為什麼獨立一項：`PRO-014D` 只在 preview 專案套用，`PRO-014H` 的範圍明寫「不含新功能」—— 原本沒有任何任務負責 production 套用（PR #148 驗收發現）。缺了它，`PRO-014C` 送出的 client 會呼叫一個在 production 不存在的 function，trial 整段失效。
-  - 範圍：套用 011、驗證 RLS 與 grants、核准名單 seed（若有）、確認 rollback runbook 適用；不含 client 變更、不含實際執行 rollback
-  - 完成條件：production 上 `my_pro_status()` 與 `start_trial()` 可由 `authenticated` 呼叫且 owner-scoped；`anon` 無法存取；執行 Security／Performance Advisors
-  - **rollback：只驗證 readiness，不在 production 實際執行。** 實際的 rollback 演練證據來自 `PRO-014D` 的 preview 專案（011 的 Rollback 區塊已定義順序）；本任務只需確認該 runbook 對 production 適用、DROP 順序與相依性無誤、並記錄由誰在何時可執行。**不得為了驗收而主動移除 production 的 RPC 或資料表** —— 那本身就是一次故障。
-  - **前置：`PRO-014D` 完成。** 依 AGENTS.md §3，資料庫套用需另行取得明確核准；`service_role` 不得進入前端
-  - **時序要求**：必須在 `PRO-014J`（合併並部署 `PRO-014C` 的 client）之前完成。順序由任務前置強制，不靠人工協調。
-  - 依賴：`PRO-014D`
-
 - [ ] **PRO-014J** 合併並部署 `PRO-014C` 的 client
   - 目標：在 production 已具備 011 的前提下，才把 `PRO-014C` 的分支合併進 `main`（＝經 `deploy.yml` 自動部署）
   - 為什麼是獨立任務：`deploy.yml` 在 push `main` 後自動部署 `pwa/`，所以合併等於部署，而「合併」在 Task Lifecycle 裡原本只是 C 完成的副作用，沒有任何前置能擋住它。把它變成具名任務，順序才由前置強制，而不是靠但書提醒（PR #149 覆驗發現）。
@@ -196,6 +186,14 @@
 ---
 
 ## Done
+
+- [x] **PRO-014I** 在 production 套用 011 migration
+  - 完成（2026-08-30）：經明確核准後，將未修改的 `pwa/db/011_leaderboard_pro.sql` 套用至 Orbit production `oenuhbjadvpspppaelnz`；migration history 為 `20260830001920_pro_014i_apply_011_leaderboard_pro`。
+  - Seed：production 的 3 筆 legacy profile Pro／trial 欄位皆屬 client 可寫資料，不作為可信授權來源；本次核准名單為 0 筆，未回填、未新增測試 entitlement。
+  - 覆驗：RLS、owner-only SELECT policy、最小 table／function grants、兩支 RPC 的空 `search_path` 均正確；以兩個既有 auth role 在 rollback transaction 中驗證 trial 冪等、owner isolation 與 status，結束後 row count 仍為 0；anon 對兩支 RPC 與 table Data API 都回 HTTP 401。
+  - Advisors／rollback：Security／Performance Advisors 已執行；011 新增物件只有兩則預期的 authenticated `SECURITY DEFINER` 提醒，另記錄既有 `leaderboard_view`／`handle_new_user`／Auth 與舊 RLS performance findings。production 未執行 rollback，六步 runbook readiness 已確認。
+  - 證據：[`docs/pro-014i-production-validation.md`](docs/pro-014i-production-validation.md)。未合併 PR、未部署 client、未切換 entitlement source；下一步仍是另行核准 `PRO-014J`。
+  - 依賴：`PRO-014D`（已完成）
 
 - [x] **PRO-014D** 在非 production 環境驗證 011 migration 與 cutover 邊界
   - 完成（2026-08-30）：以隔離的本機 Supabase（Postgres 17／Auth／PostgREST／Kong）實際套用未修改的 011，未建立付費 branch、未連結或變更 production。
