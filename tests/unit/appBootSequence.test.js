@@ -88,6 +88,16 @@ const db = vi.hoisted(() => ({
   startTrial: vi.fn(() => Promise.resolve({ ok: true, ownerChanged: false, trialStartedAt: null })),
 }));
 
+const authFlow = vi.hoisted(() => ({
+  showLoginScreen: vi.fn(),
+  hideLoading: vi.fn(),
+}));
+
+const feedback = vi.hoisted(() => ({
+  showToast: vi.fn(),
+  showSyncBanner: vi.fn(),
+}));
+
 vi.mock('../../pwa/js/storage.js', () => ({
   storage, db,
   migrateV1toV2: vi.fn(),
@@ -104,14 +114,9 @@ vi.mock('../../pwa/js/personalSpace/v2/controller.js', () => ({
   }),
 }));
 
-vi.mock('../../pwa/js/authFlow.js', () => ({
-  showLoginScreen: vi.fn(),
-  hideLoading: vi.fn(),
-}));
+vi.mock('../../pwa/js/authFlow.js', () => authFlow);
 vi.mock('../../pwa/js/ui/header.js', () => ({ updateHeader: vi.fn() }));
-vi.mock('../../pwa/js/ui/feedback.js', () => ({
-  showToast: vi.fn(), showSyncBanner: vi.fn(),
-}));
+vi.mock('../../pwa/js/ui/feedback.js', () => feedback);
 vi.mock('../../pwa/js/sessionFlow.js', () => ({ setBadgeUpdater: vi.fn() }));
 vi.mock('../../pwa/js/focusTimer.js', () => ({}));
 vi.mock('../../pwa/js/defaultTasks.js', () => ({ createDefaultTasks: () => [] }));
@@ -165,9 +170,16 @@ beforeEach(() => {
   vi.resetModules();
   Object.values(dayCycle).forEach(fn => fn.mockClear());
   db.loadFromRemote.mockClear();
+  db.loadFromRemote.mockResolvedValue();
+  db.refreshProEntitlement.mockClear();
+  db.refreshProEntitlement.mockResolvedValue(false);
   db.startTrial.mockClear();
   db.startTrial.mockResolvedValue({ ok: true, ownerChanged: false, trialStartedAt: null });
+  Object.values(authFlow).forEach(fn => fn.mockClear());
+  Object.values(feedback).forEach(fn => fn.mockClear());
+  storage.saveUser.mockClear();
   storage.getUser.mockImplementation(() => cache.user);
+  storage.saveUser.mockImplementation(user => { cache.user = user; });
   storage.clearAll.mockImplementation(() => { cache.user = null; cache.tasks = []; });
   auth.callback = null;
   auth.sessionResolve = null;
@@ -180,6 +192,11 @@ beforeEach(() => {
     <div id="main-app" class="hidden"></div>
     <div id="header"></div>
     <div id="content"></div>
+    <div id="trial-banner" class="hidden"></div>
+    <button id="setup-avatar-btn" type="button"></button>
+    <input id="setup-avatar-input" type="file">
+    <div id="setup-avatar-preview"></div>
+    <form id="setup-form"><input id="setup-name"></form>
   `;
 });
 
@@ -282,6 +299,111 @@ describe('app boot sequencing', () => {
 
     expect(db.startTrial).not.toHaveBeenCalled();
     expect(document.getElementById('main-app').classList.contains('hidden')).toBe(false);
+  });
+
+  it('初始設定只更新表單欄位，完整保留既有 profile 與 start_trial 時間戳', async () => {
+    const startedAt = '2026-08-30T05:14:06.352515+00:00';
+    const existingProfile = {
+      ...makeUser('owner-new'),
+      name: '',
+      avatar: 'https://example.test/avatar.png',
+      avatarPath: 'avatars/owner-new.png',
+      totalXP: 1234,
+      streakDays: 45,
+      lastStreakDate: '2026-08-29',
+      lastWeeklyBonusDate: '2026-08-25',
+      morningState: 'great',
+      mode: 'expert',
+      isPublic: true,
+      titleTemplate: 'builder',
+      customTitle: 'Orbit Builder',
+      newDayHour: 3,
+      isPro: true,
+      proExpiresAt: '2027-08-30T00:00:00.000Z',
+      trialStartedAt: null,
+      streakShieldCount: 2,
+      streakShieldResetMonth: '2026-08',
+      streakUnlockUsed: true,
+      focusDefaultMinutes: 50,
+      focusSoundEnabled: false,
+      createdAt: '2025-01-02',
+      futureProfileField: 'preserve-me',
+    };
+    cache.user = null;
+    cache.tasks = [];
+    auth.getSession.mockImplementation(
+      () => new Promise(resolve => { auth.sessionResolve = resolve; }),
+    );
+    db.loadFromRemote.mockImplementationOnce(async userId => {
+      cache.user = { ...existingProfile, id: userId };
+      cache.tasks = [];
+    });
+    db.startTrial.mockImplementationOnce(async () => {
+      cache.user = { ...cache.user, trialStartedAt: startedAt };
+      return { ok: true, ownerChanged: false, trialStartedAt: startedAt };
+    });
+
+    await import('../../pwa/js/app.js');
+    await flush();
+    await auth.callback('SIGNED_IN', sessionFor('owner-new'));
+    await flush();
+
+    expect(document.getElementById('setup-screen').classList.contains('hidden')).toBe(false);
+    document.getElementById('setup-name').value = 'PRO014J Smoke';
+    document.getElementById('setup-form').dispatchEvent(
+      new Event('submit', { bubbles: true, cancelable: true }),
+    );
+
+    expect(storage.saveUser).toHaveBeenLastCalledWith({
+      ...existingProfile,
+      id: 'owner-new',
+      name: 'PRO014J Smoke',
+      trialStartedAt: startedAt,
+    });
+  });
+
+  it.each([
+    ['沒有', null],
+    ['只有其他帳號的', makeUser('owner-other')],
+  ])('遠端載入失敗且%s快取時，不得進入 setup 或寫回 profile', async (_label, cachedUser) => {
+    cache.user = cachedUser;
+    cache.tasks = [];
+    auth.getSession.mockImplementation(
+      () => new Promise(resolve => { auth.sessionResolve = resolve; }),
+    );
+    db.loadFromRemote.mockRejectedValueOnce(new Error('offline'));
+
+    await import('../../pwa/js/app.js');
+    await flush();
+    await auth.callback('SIGNED_IN', sessionFor('owner-no-cache'));
+    await flush();
+
+    expect(authFlow.showLoginScreen).toHaveBeenCalled();
+    expect(feedback.showSyncBanner).toHaveBeenCalledWith('error');
+    expect(feedback.showToast).toHaveBeenCalledWith('無法載入雲端資料，請檢查連線後重新整理。');
+    expect(document.getElementById('setup-screen').classList.contains('hidden')).toBe(true);
+    expect(storage.saveUser).not.toHaveBeenCalled();
+    expect(db.startTrial).not.toHaveBeenCalled();
+  });
+
+  it('遠端載入失敗但有同帳號快取時，即使任務為空也只離線開機、不進 setup', async () => {
+    cache.user = makeUser('owner-offline');
+    cache.tasks = [];
+    auth.getSession.mockImplementation(
+      () => new Promise(resolve => { auth.sessionResolve = resolve; }),
+    );
+    db.loadFromRemote.mockRejectedValueOnce(new Error('offline'));
+
+    await import('../../pwa/js/app.js');
+    await flush();
+    await auth.callback('SIGNED_IN', sessionFor('owner-offline'));
+    await flush();
+
+    expect(document.getElementById('setup-screen').classList.contains('hidden')).toBe(true);
+    expect(document.getElementById('main-app').classList.contains('hidden')).toBe(false);
+    expect(authFlow.showLoginScreen).not.toHaveBeenCalled();
+    expect(feedback.showSyncBanner).toHaveBeenCalledWith('error');
+    expect(storage.saveUser).not.toHaveBeenCalled();
   });
 
   it('直接切換到另一個帳號會重跑 boot 序列', async () => {

@@ -3,9 +3,25 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.25.1] - 2026-08-30
+
+### Fixed
+- **初始設定不再重建並截斷既有 profile**：setup 改為以既有 profile 為基底，只覆寫使用者在表單實際編輯的名稱／頭像；`trialStartedAt`、付費狀態、連勝獎勵、偏好設定與未來新增欄位都會保留。
+- **遠端載入失敗不再把空任務誤判為新帳號**：只有成功取得 canonical remote snapshot 才能進 setup；失敗時僅允許同 owner 的本機快取離線開機，無快取或 owner 不符則顯示錯誤並停止，避免把不完整資料同步回 Supabase。
+- 擴充開機序列回歸測試，完整驗證 19 個同步 profile 欄位、`trialStartedAt` 與非同步本機欄位都能保留，並覆蓋「無快取 fail closed」及「同 owner 快取離線開機」。
+
+### Notes
+- `v1.25.0` 首次 production smoke 找到上述 client writeback 問題；`v1.25.1` 是 `PRO-014J` 的窄幅部署 hotfix，不包含 entitlement source cutover。
+
+### Validation
+- `npm run lint`、`npm test`（54 files／979 tests，`TZ=UTC` 同樣全過）、`npm run test:e2e -- --workers=1`（41/41）。
+- `tests/unit/appBootSequence.test.js` 共 11 項；新增完整 profile 保留、未知未來欄位、無快取／異 owner fail closed、同 owner 空任務快取離線開機等回歸情境。
+
+---
+
 ## [1.25.0] - 2026-08-28
 
-PRO-014C：試用的授權來源由 client 改為受控 server RPC。**這個版本尚未部署** —— 它呼叫的 `start_trial()` 要等 `PRO-014I` 在 production 套用 migration 011 後才存在，合併與部署是 `PRO-014J`。
+PRO-014C：試用的授權來源由 client 改為受控 server RPC。原合併前紀錄為「等待 `PRO-014I` 在 production 套用 migration 011 後才能部署」；前置完成後已由 PR #150 部署，首次 production smoke 發現的 setup client writeback 問題由 v1.25.1／PR #151 修正。
 
 ### Changed
 - **`startTrial()` 改為呼叫 `start_trial()` RPC，client 不再自行決定授權值。** 舊實作直接把 `is_pro: true`、`pro_expires_at: now+15d`、`trial_started_at: now` 寫進 profile —— 三個欄位都是 client 可寫的，等於試用資格由前端自己發放。現在時間戳一律來自 RPC 回應。

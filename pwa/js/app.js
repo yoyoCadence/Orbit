@@ -116,11 +116,24 @@ function showSetup() {
     e.preventDefault();
     const name = document.getElementById('setup-name').value.trim();
     if (!name) return;
+    // Authenticated setup can be reached with an existing profile (for example,
+    // when the remote task list is empty). Treat setup as a partial update:
+    // preserve every existing field, including future profile fields unknown to
+    // this form, and only replace values the user actually edits here.
+    const existingProfile = storage.getUser() ?? state.user ?? {};
 
     state.user = {
-      id: _currentSession?.user?.id || uid(), name, avatar: avatarData, totalXP: 0,
-      streakDays: 0, lastStreakDate: '', lastWeeklyBonusDate: '',
-      morningState: 'normal', newDayHour: 5, createdAt: today(),
+      ...existingProfile,
+      id: _currentSession?.user?.id || existingProfile.id || uid(),
+      name,
+      avatar: avatarData ?? existingProfile.avatar ?? null,
+      totalXP: existingProfile.totalXP ?? 0,
+      streakDays: existingProfile.streakDays ?? 0,
+      lastStreakDate: existingProfile.lastStreakDate ?? '',
+      lastWeeklyBonusDate: existingProfile.lastWeeklyBonusDate ?? '',
+      morningState: existingProfile.morningState ?? 'normal',
+      newDayHour: existingProfile.newDayHour ?? 5,
+      createdAt: existingProfile.createdAt ?? today(),
     };
     storage.saveUser(state.user);
 
@@ -227,6 +240,7 @@ async function loadAndStart(session) {
   } catch (e) {
     if (!authOperationGuard.isCurrent(operation) || e?.name === 'OwnerSessionChangedError') return;
     console.warn('Supabase load failed, using localStorage cache:', e);
+    showSyncBanner('error');
   }
 
   if (!authOperationGuard.isCurrent(operation)) return;
@@ -235,6 +249,17 @@ async function loadAndStart(session) {
     authoritative: remoteLoaded,
     finalizeMigration: true,
   });
+
+  // An empty task list only means "new account" after a successful canonical
+  // remote load. If the pull failed, setup must never rebuild and sync a profile
+  // from incomplete local state. Same-owner cache may still boot offline; an
+  // absent or foreign-owner cache fails closed and waits for a retry.
+  const hasCurrentOwnerCache = state.user?.id === session.user.id;
+  if (!remoteLoaded && !hasCurrentOwnerCache) {
+    showLoginScreen();
+    showToast('無法載入雲端資料，請檢查連線後重新整理。');
+    return;
+  }
 
   // Start the Pro trial for new authenticated users. PRO-014C: the server
   // grants it, and `start_trial()` is idempotent, so a repeat call is a normal
@@ -251,7 +276,7 @@ async function loadAndStart(session) {
   hideLoading();
   document.getElementById('login-screen').classList.add('hidden');
 
-  if (!state.tasks.length) {
+  if (!state.tasks.length && remoteLoaded) {
     // New user: no tasks yet — show setup to customise profile + seed defaults
     showSetup();
   } else {
