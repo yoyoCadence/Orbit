@@ -236,10 +236,15 @@ async function loadAndStart(session) {
     finalizeMigration: true,
   });
 
-  // Start 15-day Pro trial for new authenticated users
+  // Start the Pro trial for new authenticated users. PRO-014C: the server
+  // grants it, and `start_trial()` is idempotent, so a repeat call is a normal
+  // result rather than an error. Only a changed owner may abort the boot — an
+  // RPC failure must not, because the abort below sits before `hideLoading()`
+  // and would leave the user stranded on the loading screen over something as
+  // ordinary as being offline. A failed trial start is retried next launch.
   if (state.user && !state.user.trialStartedAt) {
-    const trialStarted = await db.startTrial(session.user.id);
-    if (!authOperationGuard.isCurrent(operation) || trialStarted === false) return;
+    const trial = await db.startTrial(session.user.id);
+    if (!authOperationGuard.isCurrent(operation) || trial.ownerChanged) return;
     state.user = storage.getUser() ?? state.user;
   }
 

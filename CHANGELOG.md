@@ -3,6 +3,37 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.25.0] - 2026-08-28
+
+PRO-014C：試用的授權來源由 client 改為受控 server RPC。**這個版本尚未部署** —— 它呼叫的 `start_trial()` 要等 `PRO-014I` 在 production 套用 migration 011 後才存在，合併與部署是 `PRO-014J`。
+
+### Changed
+- **`startTrial()` 改為呼叫 `start_trial()` RPC，client 不再自行決定授權值。** 舊實作直接把 `is_pro: true`、`pro_expires_at: now+15d`、`trial_started_at: now` 寫進 profile —— 三個欄位都是 client 可寫的，等於試用資格由前端自己發放。現在時間戳一律來自 RPC 回應。
+- **`is_pro` 與 `pro_expires_at` 不再因試用被寫入。** 試用不是購買。連帶修好一個被遮住的 UI：設定頁的 `_proSectionHtml()` 先檢查 `isPaidProUser()`，而舊實作讓試用者這項為 true，因此試用者看到的是「你已是 Orbit Pro 用戶．有效期至 …」，**底下那段試用倒數 UI（`pro-trial-status`）從來沒有機會顯示**。現在試用者會正確看到倒數。
+- **試用剩餘天數在兩種 source 下都正確。** `isTrialUser()` 與 `getTrialDaysRemaining()` 原本只讀 profile 的 `trialStartedAt` 並自行加 15 天；現在 `server` source 下改用 projection 的 `trialEndsAt`（由 `pro_trial_duration()` 算出），`legacy` 維持原推導。
+- **`isPaidProUser()` 與 `getProExpiry()` 一併改為跟隨同一個 source。** 它們原本仍讀 legacy profile 欄位，於是「projection 有效付費、profile 沒有 `isPro`」時會出現 `isProUser() === true` 但 `isPaidProUser() === false` —— 設定頁因此對付費使用者隱藏 active banner，改成推銷他們已經擁有的訂閱。
+- **試用進度條不再寫死 15 天。** 設定頁原本算 `(15 - daysLeft) / 15`。server 的 `pro_trial_duration()` 若改為 30 天，這個算式會得出 `-60%`。改為由真實起訖推導並 clamp 到 0–100；起始時間未知時省略進度條，而不是畫一個猜出來的值。
+
+### Added
+- **`getTrialEndsAtFromSnapshot()`**：projection 的試用到期日讀取器。它轉呼叫 `isProFromSnapshot()`，因此所有 fail-closed 條件自動適用 —— 不能授權的 projection 也不能拿來畫倒數。
+- **legacy 相容層（暫時性，隨 `PRO-014H` 移除）**：RPC 成功後仍把 **server 回傳的** `trial_started_at` 寫回 profile。production 走 `legacy` source，其 `isTrialUser()` 只讀該欄位，而 `refreshProEntitlement()` 在 `legacy` 下直接 return、projection 不會被填 —— 沒有這層，試用者在 production 會拿不到任何 Pro 功能。
+
+### Notes
+- **`start_trial()` 是冪等的，不是「拒絕重複」。** 011 的 `ON CONFLICT … COALESCE` 保留既有時間戳並回傳，不重設、不延長、不 raise。所以重複呼叫是正常結果，client 不得當成錯誤路徑。
+- **失敗語意分成兩種，因為 boot 會因此中斷。** `app.js` 的提前返回位在 `hideLoading()` 與隱藏 login screen **之前**，回傳值選錯會讓使用者卡在 loading 畫面。現在 `startTrial()` 回傳 `{ ok, ownerChanged, trialStartedAt }`：只有 `ownerChanged` 允許中止開機，RPC 失敗（離線、未登入）是非致命的，下次啟動再試。
+- **兩處 client 端 Pro 寫入尚未處理，已立案**：`dayCycle.js` 的 SUB-16 連勝解鎖（45 天 → 30 天 Pro）與設定頁的開發者面板，兩者都直接寫 `state.user.isPro`。在 `server` source 下它們會失效，修好需要 server 端支援 —— 見 `PRO-014L`／`PRO-014M`。測試已把現況鎖住，避免被誤認為已處理。
+- **`expires_at` 在 RPC contract 裡有歧義**：`CASE WHEN e.is_pro THEN e.pro_expires_at ELSE NULL END` 讓 `null` 同時代表「沒有付費」與「終身付費」。目前用「還有什麼能解釋這個 active」來推斷，並採保守讀法（試用期間購買終身方案會顯示成試用中）。徹底解法是讓 RPC 回傳 `is_pro` —— 見 `PRO-014N`。
+
+### Validation
+- `npm run lint`、`npm run test`（54 files／975 tests，`TZ=UTC` 同樣全過）、`npm run test:e2e -- --workers=1`（41/41）。
+- 新增 `tests/unit/proTrialRpc.test.js`（19 項）：冪等、owner 不符、未登入、RPC error／throw、回應格式不符、相容層寫回失敗、兩種 source 的天數一致、legacy 迴歸。
+- 新增 `tests/unit/proGateCallSites.test.js`（7 項）：把 19 個 Pro gate 呼叫點依檔案鎖成登記表，並斷言除明列例外外沒有模組直接讀寫 profile 的 Pro 欄位。
+- `tests/unit/appBootSequence.test.js` 新增 3 項：RPC 失敗仍能完成開機、owner 改變仍會中斷、第二次登入不再呼叫 RPC。
+- 新增 `tests/unit/proSettingsProjection.test.js`（9 項）：**用真實的 storage 模組**渲染設定頁，覆蓋 server-source 的實際組合 —— 付費 projection ＋ 非 Pro profile、終身方案、已到期、試用倒數與進度條、非 15 天的試用長度、起始時間未知、付費與試用並存時的優先序。`settings.test.js` 把三個判定各自 mock，測不到這些組合。
+- 反向驗證三項：`app.js` 的中止條件改回 `!trial.ok` →「RPC 失敗仍能完成開機」紅；`isPaidProUser()` 改回只讀 profile → 付費呈現 3 項紅；進度條改回 `(15 - daysLeft) / 15` → 30 天試用那項得到 `width:-60%`。
+
+---
+
 ## [1.24.0] - 2026-08-26
 
 PRO-014B：把前端 Pro 判定的依據，從「profile 裡 client 自己就能寫、而且會同步到所有裝置的欄位」，換成「由 `my_pro_status()` 推導的裝置本機 **UI entitlement projection**」。**本版預設不啟用**，legacy 判定維持原樣。

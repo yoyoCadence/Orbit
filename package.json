@@ -1,6 +1,6 @@
 {
   "name": "orbit",
-  "version": "1.24.0",
+  "version": "1.25.0",
   "type": "module",
   "scripts": {
     "bump": "node scripts/bump.mjs",
@@ -11,6 +11,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",
+    "test:pro014d:data-api": "node scripts/pro014d-data-api-check.mjs",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "ps242:manifest": "node art-pipeline/ps242/build-manifest.mjs",

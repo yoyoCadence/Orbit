@@ -8,6 +8,8 @@ import { FLAG_DEV_BACKUP } from './flags.js';
 import {
   applyProStatusResponse,
   clearProEntitlementSnapshot,
+  getPaidProStateFromSnapshot,
+  getTrialEndsAtFromSnapshot,
   isProFromSnapshot,
   isServerProEntitlementEnabled,
 } from './platform/proEntitlement.js';
@@ -26,6 +28,11 @@ const ENERGY_SYNC_PENDING_KEY = 'energySyncPending';
 const SESSION_SYNC_PENDING_KEY = 'sessionSyncPending';
 const TASK_SYNC_PENDING_KEY = 'taskSyncPending';
 const SESSION_SYNC_CUTOVER_KEY = 'sessionSyncCutover:v1.21';
+
+// Mirrors pro_trial_duration() in pwa/db/011_leaderboard_pro.sql. Only the
+// `legacy` source needs it — under `server` the trial end comes from the
+// projection, so this copy disappears with the legacy path at PRO-014H.
+const TRIAL_DURATION_MS = 15 * 24 * 60 * 60 * 1000;
 
 function get(key) {
   try { return JSON.parse(localStorage.getItem(PREFIX + key)); } catch { return null; }
@@ -387,6 +394,15 @@ export class OwnerSessionChangedError extends Error {
   }
 }
 
+// PRO-014C: start_trial() returns a timestamptz, which PostgREST renders as an
+// ISO string. Anything else means the response is not the contract, and a trial
+// must not be recorded from a value this client cannot read.
+function _normalizeTrialTimestamp(value) {
+  if (typeof value !== 'string') return null;
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? null : new Date(parsed).toISOString();
+}
+
 export const db = {
 
   async _session() {
@@ -706,24 +722,63 @@ export const db = {
     }
   },
 
+  /**
+   * PRO-014C: the server grants the trial, the client only reports it.
+   *
+   * `start_trial()` is idempotent — its `ON CONFLICT … COALESCE` keeps any
+   * existing `trial_started_at` and returns it, without resetting, extending,
+   * or raising. So a repeat call is a normal result, not an error path, and
+   * callers must not treat it as failure.
+   *
+   * `is_pro` and `pro_expires_at` are no longer written: a trial is not a
+   * purchase, and those were the client-writable fields this workstream exists
+   * to stop trusting. `trial_started_at` is still written back — see below.
+   *
+   * @returns {{ok: boolean, ownerChanged: boolean, trialStartedAt: string|null}}
+   *   `ownerChanged` is the only outcome a boot sequence may abort on. An RPC
+   *   failure returns `ok: false` and must stay non-fatal: the trial is worth
+   *   retrying next launch, not worth stranding the user on a loading screen.
+   */
   async startTrial(userId) {
     const session = await this._session();
-    if (!session || session.user.id !== userId) return false;
-    const now    = new Date().toISOString();
-    const expiry = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString();
-    await supabase.from('profiles').update({
-      is_pro:           true,
-      pro_expires_at:   expiry,
-      trial_started_at: now,
-    }).eq('user_id', userId);
+    if (!session || session.user.id !== userId) {
+      return { ok: false, ownerChanged: true, trialStartedAt: null };
+    }
+
+    let startedAt = null;
+    try {
+      const { data, error } = await supabase.rpc('start_trial');
+      if (error) throw error;
+      startedAt = _normalizeTrialTimestamp(data);
+    } catch (err) {
+      console.warn('start_trial RPC failed:', err);
+      return { ok: false, ownerChanged: false, trialStartedAt: null };
+    }
+    if (!startedAt) return { ok: false, ownerChanged: false, trialStartedAt: null };
+
+    // ── LEGACY COMPATIBILITY LAYER — remove together with PRO-014H ──────────
+    // Production still runs the `legacy` source, whose isTrialUser() reads
+    // user.trialStartedAt; refreshProEntitlement() no-ops under `legacy`, so
+    // the projection is never populated there and cannot back the trial. The
+    // value written is always the server's — the client never computes it.
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ trial_started_at: startedAt })
+        .eq('user_id', userId);
+      if (error) throw error;
+    } catch (err) {
+      // Non-fatal: the local write below still lets this session behave
+      // correctly, and the next successful profile sync carries the value up.
+      console.warn('trial_started_at legacy write-back failed:', err);
+    }
+
     const user = get('user');
     if (user?.id === userId) {
-      user.isPro          = true;
-      user.proExpiresAt   = expiry;
-      user.trialStartedAt = now;
+      user.trialStartedAt = startedAt;
       set('user', user);
     }
-    return true;
+    return { ok: true, ownerChanged: false, trialStartedAt: startedAt };
   },
 
   async upsertEnergy(energy, expectedOwnerId = null) {
@@ -871,17 +926,42 @@ export const storage = {
   getLogs:    ()  => get('logs')  ?? [],
 
   // ── Pro / Trial status ───────────────────────────────────────────────────────
-  isPaidProUser: () => {
+  /**
+   * PRO-014C: paid-vs-trial must follow the same source as isProUser().
+   *
+   * Reading the legacy profile fields here while isProUser() read the
+   * projection produced a paying customer with isProUser() true and
+   * isPaidProUser() false — the settings page then hid the active banner and
+   * pitched them the subscription they already own.
+   */
+  isPaidProUser() {
+    if (isServerProEntitlementEnabled()) {
+      return getPaidProStateFromSnapshot(get('user')?.id || null)?.isPaid === true;
+    }
     const user = get('user');
     if (!user || !user.isPro) return false;
     if (!user.proExpiresAt) return true;            // lifetime Pro
     return new Date(user.proExpiresAt) > new Date();
   },
-  isTrialUser: () => {
-    const user = get('user');
-    if (!user?.trialStartedAt) return false;
-    const end = new Date(user.trialStartedAt).getTime() + 15 * 24 * 60 * 60 * 1000;
-    return Date.now() < end;
+  /**
+   * PRO-014C: under the `server` source the trial end comes from the projection
+   * (the server computed it with pro_trial_duration()); under `legacy` it is
+   * still derived from the profile field, which is the only thing that source
+   * has. Both paths must render the same countdown for the same user.
+   */
+  _trialEndMs() {
+    if (isServerProEntitlementEnabled()) {
+      const endsAt = getTrialEndsAtFromSnapshot(get('user')?.id || null);
+      return endsAt ? Date.parse(endsAt) : null;
+    }
+    const startedAt = get('user')?.trialStartedAt;
+    if (!startedAt) return null;
+    const startedMs = Date.parse(startedAt);
+    return Number.isNaN(startedMs) ? null : startedMs + TRIAL_DURATION_MS;
+  },
+  isTrialUser() {
+    const endMs = this._trialEndMs();
+    return endMs !== null && Date.now() < endMs;
   },
   /**
    * PRO-014B: under the `server` source the decision comes only from the
@@ -894,12 +974,40 @@ export const storage = {
     if (isServerProEntitlementEnabled()) return isProFromSnapshot(get('user')?.id || null);
     return this.isPaidProUser() || this.isTrialUser();
   },
-  getProExpiry: () => get('user')?.proExpiresAt || null,
-  getTrialDaysRemaining: () => {
-    const user = get('user');
-    if (!user?.trialStartedAt) return 0;
-    const end = new Date(user.trialStartedAt).getTime() + 15 * 24 * 60 * 60 * 1000;
-    return Math.max(0, Math.ceil((end - Date.now()) / (24 * 60 * 60 * 1000)));
+  /** Only meaningful when isPaidProUser(); null there means a lifetime plan. */
+  getProExpiry() {
+    if (isServerProEntitlementEnabled()) {
+      return getPaidProStateFromSnapshot(get('user')?.id || null)?.expiresAt ?? null;
+    }
+    return get('user')?.proExpiresAt || null;
+  },
+  getTrialDaysRemaining() {
+    const endMs = this._trialEndMs();
+    if (endMs === null) return 0;
+    return Math.max(0, Math.ceil((endMs - Date.now()) / (24 * 60 * 60 * 1000)));
+  },
+  /**
+   * How far through the trial the user is, 0–100, or null when unknown.
+   *
+   * The settings page used to compute this as `(15 - daysLeft) / 15`, which
+   * hardcodes the trial length on the client. Under the `server` source the
+   * end date comes from pro_trial_duration(), so a change there would have
+   * produced a wrong — possibly negative — bar. The span is derived from the
+   * actual start and end instead, and null (rather than a guess) is returned
+   * when the start is not known, so the caller can omit the bar.
+   */
+  getTrialProgressPercent() {
+    const endMs = this._trialEndMs();
+    if (endMs === null) return null;
+
+    const startMs = Date.parse(get('user')?.trialStartedAt ?? '');
+    if (Number.isNaN(startMs)) return null;
+
+    const totalMs = endMs - startMs;
+    if (totalMs <= 0) return null;
+
+    const elapsedMs = totalMs - (endMs - Date.now());
+    return Math.max(0, Math.min(100, Math.round(elapsedMs / totalMs * 100)));
   },
   getTrialBannerDismissDate:  ()  => get('trialBannerDismiss') || '',
   saveTrialBannerDismissDate: (d) => set('trialBannerDismiss', d),

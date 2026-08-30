@@ -113,15 +113,21 @@ function _proSectionHtml() {
   }
 
   // ── Trial countdown bar ───────────────────────────────────────────────────
+  // PRO-014C: the fill used to be `(15 - daysLeft) / 15`, which hardcoded the
+  // trial length here. The server owns it (pro_trial_duration()), so the span
+  // is computed from the real start and end instead; null means the start is
+  // unknown and the bar is omitted rather than drawn from a guess.
+  const trialProgress = storage.getTrialProgressPercent();
+  const trialBarHtml = trialProgress === null ? '' : `
+      <div class="pro-trial-bar-track">
+        <div class="pro-trial-bar-fill" style="width:${trialProgress}%"></div>
+      </div>`;
   const trialHtml = isTrial ? `
     <div class="pro-trial-status">
       <div class="pro-trial-top">
         <span class="pro-trial-label">免費試用中</span>
         <span class="pro-trial-days"><strong>${daysLeft}</strong> 天後到期</span>
-      </div>
-      <div class="pro-trial-bar-track">
-        <div class="pro-trial-bar-fill" style="width:${Math.round((15 - daysLeft) / 15 * 100)}%"></div>
-      </div>
+      </div>${trialBarHtml}
     </div>
     <div class="pro-section-divider"></div>` : '';
 

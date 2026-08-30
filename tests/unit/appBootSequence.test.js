@@ -85,7 +85,7 @@ const storage = vi.hoisted(() => ({
 const db = vi.hoisted(() => ({
   loadFromRemote: vi.fn(() => Promise.resolve()),
   refreshProEntitlement: vi.fn(() => Promise.resolve(false)),
-  startTrial: vi.fn(() => Promise.resolve(true)),
+  startTrial: vi.fn(() => Promise.resolve({ ok: true, ownerChanged: false, trialStartedAt: null })),
 }));
 
 vi.mock('../../pwa/js/storage.js', () => ({
@@ -165,6 +165,8 @@ beforeEach(() => {
   vi.resetModules();
   Object.values(dayCycle).forEach(fn => fn.mockClear());
   db.loadFromRemote.mockClear();
+  db.startTrial.mockClear();
+  db.startTrial.mockResolvedValue({ ok: true, ownerChanged: false, trialStartedAt: null });
   storage.getUser.mockImplementation(() => cache.user);
   storage.clearAll.mockImplementation(() => { cache.user = null; cache.tasks = []; });
   auth.callback = null;
@@ -234,6 +236,52 @@ describe('app boot sequencing', () => {
     await flush();
 
     expect(dayCycle.showDailyReport).toHaveBeenCalledTimes(2);
+  });
+
+  // ── PRO-014C：trial 啟動不得中斷開機 ───────────────────────────────────────
+  //
+  // app.js 的提前返回位在 hideLoading() 與隱藏 login screen 之前，所以
+  // startTrial() 的回傳語意直接決定使用者會不會卡在 loading 畫面。
+  //
+  // 用「切換帳號」情境測，因為那是 loadAndStart() 必須自己跑完 boot 序列的
+  // 情況 —— 快取分支已經替 owner-a 開過機，showDailyReport 要到 2 只能靠
+  // loadAndStart() 沒有中途返回。
+
+  async function switchAccountWithoutTrial(nextOwnerId) {
+    await bootWithPendingSession('owner-a');
+    expect(dayCycle.showDailyReport).toHaveBeenCalledTimes(1);
+
+    cache.user = { ...makeUser(nextOwnerId), trialStartedAt: null };
+    await auth.callback('SIGNED_IN', sessionFor(nextOwnerId));
+    await flush();
+  }
+
+  it('RPC 失敗時仍能完成開機 —— 試用啟動失敗是非致命的', async () => {
+    db.startTrial.mockResolvedValueOnce({ ok: false, ownerChanged: false, trialStartedAt: null });
+
+    await switchAccountWithoutTrial('owner-b');
+
+    expect(db.startTrial).toHaveBeenCalledWith('owner-b');
+    expect(dayCycle.showDailyReport).toHaveBeenCalledTimes(2);
+    expect(document.getElementById('main-app').classList.contains('hidden')).toBe(false);
+  });
+
+  it('owner 改變時仍會中斷 —— 那是唯一該中止開機的情況', async () => {
+    db.startTrial.mockResolvedValueOnce({ ok: false, ownerChanged: true, trialStartedAt: null });
+
+    await switchAccountWithoutTrial('owner-b');
+
+    expect(db.startTrial).toHaveBeenCalledWith('owner-b');
+    expect(dayCycle.showDailyReport).toHaveBeenCalledTimes(1);   // 沒有跑完
+  });
+
+  it('第二次登入不再呼叫 start_trial —— 相容層已寫入 trialStartedAt', async () => {
+    await bootWithPendingSession('owner-a');   // makeUser 帶有 trialStartedAt
+    await auth.callback('SIGNED_IN', sessionFor('owner-a'));
+    await flush();
+
+    expect(db.startTrial).not.toHaveBeenCalled();
+    expect(document.getElementById('main-app').classList.contains('hidden')).toBe(false);
   });
 
   it('直接切換到另一個帳號會重跑 boot 序列', async () => {

@@ -59,6 +59,9 @@ export default [
     languageOptions: {
       globals: {
         // Vitest globals (not needed since we import explicitly, but just in case)
+        // `process` is used by tests that read repo files relative to the
+        // vitest root (jsdom does not guarantee a file: import.meta.url).
+        process: 'readonly',
       },
     },
   },
