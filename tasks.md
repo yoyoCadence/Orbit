@@ -176,6 +176,7 @@
   - 為什麼是獨立任務：`deploy.yml` 在 push `main` 後自動部署 `pwa/`，所以合併等於部署，而「合併」在 Task Lifecycle 裡原本只是 C 完成的副作用，沒有任何前置能擋住它。把它變成具名任務，順序才由前置強制，而不是靠但書提醒（PR #149 覆驗發現）。
   - 範圍：確認前置、合併 `PRO-014C` 的 PR、部署後的 production 煙霧測試；不含新功能、不含旗標切換
   - 完成條件：合併前確認 `PRO-014I` 已完成且 production 的 `start_trial()` 可呼叫；部署後實際在 production 走一次「新帳號開始 trial」與「同一帳號再次呼叫**回傳相同 `trial_started_at`、未被重設或延長**」；確認 `legacy` source 下 trial 開始後 `isProUser()` 仍為 true（`PRO-014C` 的相容層有效）；確認第二次登入不會卡在 loading 畫面
+  - 進度（2026-08-30）：PR #150 已合併並部署；首次 production smoke 驗證 RPC 成功與冪等，但發現 setup 重建 profile 會覆寫既有欄位。修正與擴大回歸測試在 PR #151，待人工檢查、合併、部署後重跑 production smoke，完成前維持 In Progress。
   - **前置：`PRO-014C`（分支實作完成）、`PRO-014D`、`PRO-014I` 全部完成**
   - 回退方式：revert 該合併 commit 即可讓 client 回到舊行為；資料庫端不需要動
   - 依賴：`PRO-014C`、`PRO-014D`、`PRO-014I`
