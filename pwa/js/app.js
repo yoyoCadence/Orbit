@@ -116,11 +116,17 @@ function showSetup() {
     e.preventDefault();
     const name = document.getElementById('setup-name').value.trim();
     if (!name) return;
+    // `start_trial()` runs before a new authenticated user reaches setup.
+    // Preserve its server timestamp when setup replaces the temporary profile;
+    // otherwise saveUser() writes null back to the legacy compatibility field.
+    const trialStartedAt = storage.getUser()?.trialStartedAt
+      ?? state.user?.trialStartedAt
+      ?? null;
 
     state.user = {
       id: _currentSession?.user?.id || uid(), name, avatar: avatarData, totalXP: 0,
       streakDays: 0, lastStreakDate: '', lastWeeklyBonusDate: '',
-      morningState: 'normal', newDayHour: 5, createdAt: today(),
+      morningState: 'normal', newDayHour: 5, createdAt: today(), trialStartedAt,
     };
     storage.saveUser(state.user);
 

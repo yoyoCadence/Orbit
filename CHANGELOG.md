@@ -3,6 +3,17 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.25.1] - 2026-08-30
+
+### Fixed
+- **新帳號完成初始設定後不再遺失 Pro 試用狀態**：保留 `start_trial()` 回傳並已存入本機的 `trialStartedAt`，避免設定名稱／頭像時重建 profile 將 legacy 相容欄位覆寫為 `null`。
+- 新增註冊後完成初始設定的開機序列回歸測試，驗證伺服器試用時間戳會傳入 `storage.saveUser()`。
+
+### Notes
+- `v1.25.0` 首次 production smoke 找到上述 client writeback 問題；`v1.25.1` 是 `PRO-014J` 的窄幅部署 hotfix，不包含 entitlement source cutover。
+
+---
+
 ## [1.25.0] - 2026-08-28
 
 PRO-014C：試用的授權來源由 client 改為受控 server RPC。**這個版本尚未部署** —— 它呼叫的 `start_trial()` 要等 `PRO-014I` 在 production 套用 migration 011 後才存在，合併與部署是 `PRO-014J`。

@@ -167,7 +167,9 @@ beforeEach(() => {
   db.loadFromRemote.mockClear();
   db.startTrial.mockClear();
   db.startTrial.mockResolvedValue({ ok: true, ownerChanged: false, trialStartedAt: null });
+  storage.saveUser.mockClear();
   storage.getUser.mockImplementation(() => cache.user);
+  storage.saveUser.mockImplementation(user => { cache.user = user; });
   storage.clearAll.mockImplementation(() => { cache.user = null; cache.tasks = []; });
   auth.callback = null;
   auth.sessionResolve = null;
@@ -180,6 +182,11 @@ beforeEach(() => {
     <div id="main-app" class="hidden"></div>
     <div id="header"></div>
     <div id="content"></div>
+    <div id="trial-banner" class="hidden"></div>
+    <button id="setup-avatar-btn" type="button"></button>
+    <input id="setup-avatar-input" type="file">
+    <div id="setup-avatar-preview"></div>
+    <form id="setup-form"><input id="setup-name"></form>
   `;
 });
 
@@ -282,6 +289,39 @@ describe('app boot sequencing', () => {
 
     expect(db.startTrial).not.toHaveBeenCalled();
     expect(document.getElementById('main-app').classList.contains('hidden')).toBe(false);
+  });
+
+  it('新帳號完成初始設定時保留 start_trial 的伺服器時間戳', async () => {
+    const startedAt = '2026-08-30T05:14:06.352515+00:00';
+    cache.user = null;
+    cache.tasks = [];
+    auth.getSession.mockImplementation(
+      () => new Promise(resolve => { auth.sessionResolve = resolve; }),
+    );
+    db.loadFromRemote.mockImplementationOnce(async userId => {
+      cache.user = { ...makeUser(userId), name: '', trialStartedAt: null };
+      cache.tasks = [];
+    });
+    db.startTrial.mockImplementationOnce(async () => {
+      cache.user = { ...cache.user, trialStartedAt: startedAt };
+      return { ok: true, ownerChanged: false, trialStartedAt: startedAt };
+    });
+
+    await import('../../pwa/js/app.js');
+    await flush();
+    await auth.callback('SIGNED_IN', sessionFor('owner-new'));
+    await flush();
+
+    expect(document.getElementById('setup-screen').classList.contains('hidden')).toBe(false);
+    document.getElementById('setup-name').value = 'PRO014J Smoke';
+    document.getElementById('setup-form').dispatchEvent(
+      new Event('submit', { bubbles: true, cancelable: true }),
+    );
+
+    expect(storage.saveUser).toHaveBeenLastCalledWith(expect.objectContaining({
+      id: 'owner-new',
+      trialStartedAt: startedAt,
+    }));
   });
 
   it('直接切換到另一個帳號會重跑 boot 序列', async () => {
