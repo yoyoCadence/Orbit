@@ -13,6 +13,11 @@
 
 ## Backlog
 
+- [ ] **BUG-109** Email local-part 超過 30 字元時 Supabase signup 失敗
+  - 目標：讓合法但 `@` 前綴超過 30 字元的 email 能完成註冊，同時維持 profile `name` 的 30 字元限制。
+  - 根因：production 的 `handle_new_user()` 以 `split_part(NEW.email, '@', 1)` 建立 profile 名稱，未截斷即寫入受 `profiles_name_check` 約束的欄位，Auth 因 trigger exception 回傳 `500 Database error saving new user`。
+  - 範圍：提出並核准 migration 後修正 signup trigger，補長 email 整合測試；此項涉及 Auth／schema，不納入 BUG-108 的 Service Worker hotfix。
+
 - [ ] **HW-104** Camera proof capture for task deliverables
   - Goal: allow users to attach an optional local photo proof to a completed task or session, optimized for mobile camera capture.
   - Scope: PWA-only file/camera input, local preview/compression, localStorage-safe metadata shape; no cloud upload or schema changes.
@@ -171,12 +176,19 @@
 
 ## In Progress
 
+- [ ] **BUG-108** Service Worker 快取 Supabase Data API 舊回應
+  - 目標：Service Worker 只攔截同來源靜態資源，任何 Supabase／跨來源 GET 都直接交由瀏覽器網路層處理。
+  - 根因：`sw.js` 的「Images / others」cache-first 分支沒有 origin guard，production 實際把 owner-scoped `profiles`／`tasks`／`sessions`／`energy` REST 回應存入 `orbit-v1.25.1`。登出再登入時讀回 setup 前的空 tasks 與舊 profile，`remoteLoaded` 仍被誤認為成功。
+  - 完成條件：跨來源 GET 不呼叫 `respondWith()`、不開啟或寫入 app cache；同來源圖片 cache-first 行為維持；部署後以全新帳號驗證 setup 後第二次登入直接進主畫面、任務與 `trial_started_at` 不變，且 Cache Storage 無 Supabase REST URL。
+  - 範圍：v1.25.2 client hotfix、回歸測試與 production smoke；不修改 Auth、Supabase schema／migration 或 entitlement source。
+
 - [ ] **PRO-014J** 合併並部署 `PRO-014C` 的 client
   - 目標：在 production 已具備 011 的前提下，才把 `PRO-014C` 的分支合併進 `main`（＝經 `deploy.yml` 自動部署）
   - 為什麼是獨立任務：`deploy.yml` 在 push `main` 後自動部署 `pwa/`，所以合併等於部署，而「合併」在 Task Lifecycle 裡原本只是 C 完成的副作用，沒有任何前置能擋住它。把它變成具名任務，順序才由前置強制，而不是靠但書提醒（PR #149 覆驗發現）。
   - 範圍：確認前置、合併 `PRO-014C` 的 PR、部署後的 production 煙霧測試；不含新功能、不含旗標切換
   - 完成條件：合併前確認 `PRO-014I` 已完成且 production 的 `start_trial()` 可呼叫；部署後實際在 production 走一次「新帳號開始 trial」與「同一帳號再次呼叫**回傳相同 `trial_started_at`、未被重設或延長**」；確認 `legacy` source 下 trial 開始後 `isProUser()` 仍為 true（`PRO-014C` 的相容層有效）；確認第二次登入不會卡在 loading 畫面
   - 進度（2026-08-30）：PR #150 已合併並部署；首次 production smoke 驗證 RPC 成功與冪等，但發現 setup 重建 profile 會覆寫既有欄位。修正與擴大回歸測試在 PR #151，待人工檢查、合併、部署後重跑 production smoke，完成前維持 In Progress。
+  - 進度（2026-08-31）：PR #151 已合併部署；第二次 production smoke 的首次 trial、setup 欄位保留、試用 UI 與預設任務皆通過，但第二次登入被 BUG-108 的 stale Supabase REST cache 導回 setup。待 v1.25.2 部署並重跑 smoke 後才能完成本任務。
   - **前置：`PRO-014C`（分支實作完成）、`PRO-014D`、`PRO-014I` 全部完成**
   - 回退方式：revert 該合併 commit 即可讓 client 回到舊行為；資料庫端不需要動
   - 依賴：`PRO-014C`、`PRO-014D`、`PRO-014I`

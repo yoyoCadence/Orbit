@@ -18,6 +18,7 @@ beforeAll(async () => {
     addEventListener: (type, handler) => { listeners[type] = handler; },
     skipWaiting: vi.fn(),
     clients: { claim: vi.fn() },
+    location: { origin: 'https://orbit.test' },
   });
   vi.stubGlobal('caches', cachesApi);
   vi.stubGlobal('fetch', fetchMock);
@@ -29,6 +30,19 @@ beforeEach(() => {
 });
 
 describe('service worker image cache-first strategy', () => {
+  it('leaves cross-origin Supabase GET requests to the browser network layer', () => {
+    const request = {
+      method: 'GET',
+      url: 'https://project.supabase.co/rest/v1/tasks?select=*',
+    };
+
+    expect(dispatchFetch(request)).toBeUndefined();
+    expect(cachesApi.open).not.toHaveBeenCalled();
+    expect(cache.match).not.toHaveBeenCalled();
+    expect(cache.put).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('persists a successful network response and reuses a cached response', async () => {
     const request = { method: 'GET', url: 'https://orbit.test/assets/workspace.png' };
     const clonedResponse = { ok: true, source: 'clone' };

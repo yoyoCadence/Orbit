@@ -3,6 +3,22 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.25.2] - 2026-08-31
+
+### Fixed
+- **Service Worker 不再快取 Supabase Data API 或任何跨來源 GET 回應**：fetch handler 只接管與 PWA 同來源的請求；owner-scoped `profiles`、`tasks`、`sessions`、`energy` 等資料一律由瀏覽器直接走網路，不會落入通用 cache-first 分支。
+- **登出後再次登入不再讀回 setup 前的空 snapshot**：v1.25.2 的新 cache 名稱會在 Service Worker activate 時刪除 `orbit-v1.25.1`（包含其中既有的 Supabase REST 回應），之後也不再重新收錄跨來源資料。
+
+### Notes
+- `PRO-014J` 在 PR #151 部署後的第二輪 production smoke 找到 BUG-108：首次 trial、setup profile 保留、15 天試用 UI 與 13 個預設任務皆正確，但第二次登入從 Service Worker cache 取得舊 profile／空 tasks，再次進入 setup。本版是該 production blocker 的 client-only hotfix，不修改 Auth、Supabase schema／migration 或 entitlement source。
+- 同輪 smoke 發現 email local-part 超過 30 字元會被既有 signup trigger 的 profile name constraint 擋下，已立 `BUG-109` 另案處理，未混入本版。
+
+### Validation
+- `tests/unit/serviceWorkerImageCache.test.js` 新增跨來源 Supabase GET 邊界測試；修正前會收到 `respondWith()` Promise 並進入 cache-first，修正後完全不開啟／讀寫 app cache，同來源圖片既有行為仍通過。
+- `npm run lint`、`TZ=UTC npm test`（54 files／980 tests）、`npm run test:e2e -- --workers=1`（41/41）全數通過；版本 bump 後以 `npm run ps243:assets` 同步可重現資產基準。
+
+---
+
 ## [1.25.1] - 2026-08-30
 
 ### Fixed
