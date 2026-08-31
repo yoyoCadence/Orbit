@@ -1,6 +1,6 @@
 // Service Worker
 // Bump CACHE version on every deploy so users always get fresh code.
-const CACHE = 'orbit-v1.25.1';
+const CACHE = 'orbit-v1.25.2';
 
 const SHELL = [
   './',
@@ -117,7 +117,7 @@ self.addEventListener('activate', e => {
   self.clients.claim();
 });
 
-// Fetch strategy:
+// Fetch strategy (same-origin requests only):
 //   HTML             → network-first  (entry point must always be fresh so SW updates are detected)
 //   JS / CSS         → stale-while-revalidate (serve cache instantly; fetch in background for next load)
 //   Images / others  → cache-first   (rarely change, save bandwidth)
@@ -125,6 +125,12 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
 
   const url = new URL(e.request.url);
+  // Never cache authenticated APIs or any other cross-origin response. The
+  // generic cache-first branch previously stored owner-scoped Supabase REST
+  // snapshots, so a later login received stale profile/tasks while appearing
+  // to have completed a successful remote load.
+  if (url.origin !== self.location.origin) return;
+
   const isHtml   = url.pathname.endsWith('.html') || url.pathname === '/';
   const isJsCss  = /\.(js|css)$/.test(url.pathname);
 
