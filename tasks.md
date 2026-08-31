@@ -18,6 +18,11 @@
   - 根因：production 的 `handle_new_user()` 以 `split_part(NEW.email, '@', 1)` 建立 profile 名稱，未截斷即寫入受 `profiles_name_check` 約束的欄位，Auth 因 trigger exception 回傳 `500 Database error saving new user`。
   - 範圍：提出並核准 migration 後修正 signup trigger，補長 email 整合測試；此項涉及 Auth／schema，不納入 BUG-108 的 Service Worker hotfix。
 
+- [ ] **BUG-110** 註冊成功後直接登出，登入按鈕維持 disabled
+  - 目標：同一個 App session 內完成註冊後直接登出，切回登入 tab 並填妥帳密時可以立即登入，不需重新載入頁面。
+  - 根因初判：`authFlow.js` 的成功 signup 路徑把 `#auth-submit` 設為 disabled／「註冊中…」後交由 auth state change 啟動 App，但登出回到登入畫面時沒有重設 disabled 狀態；切換 tab 只更新文字。
+  - 範圍：另案補 auth flow 回歸測試並重設表單 UI 狀態；不影響 BUG-108／PRO-014J 的「重新開 App 後第二次登入」production 驗收，也不修改 Supabase Auth 或 schema。
+
 - [ ] **HW-104** Camera proof capture for task deliverables
   - Goal: allow users to attach an optional local photo proof to a completed task or session, optimized for mobile camera capture.
   - Scope: PWA-only file/camera input, local preview/compression, localStorage-safe metadata shape; no cloud upload or schema changes.
@@ -176,29 +181,26 @@
 
 ## In Progress
 
-- [ ] **BUG-108** Service Worker 快取 Supabase Data API 舊回應
-  - 目標：Service Worker 只攔截同來源靜態資源，任何 Supabase／跨來源 GET 都直接交由瀏覽器網路層處理。
-  - 根因：`sw.js` 的「Images / others」cache-first 分支沒有 origin guard，production 實際把 owner-scoped `profiles`／`tasks`／`sessions`／`energy` REST 回應存入 `orbit-v1.25.1`。登出再登入時讀回 setup 前的空 tasks 與舊 profile，`remoteLoaded` 仍被誤認為成功。
-  - 完成條件：跨來源 GET 不呼叫 `respondWith()`、不開啟或寫入 app cache；同來源圖片 cache-first 行為維持；部署後以全新帳號驗證 setup 後第二次登入直接進主畫面、任務與 `trial_started_at` 不變，且 Cache Storage 無 Supabase REST URL。
-  - 範圍：v1.25.2 client hotfix、回歸測試與 production smoke；不修改 Auth、Supabase schema／migration 或 entitlement source。
-
-- [ ] **PRO-014J** 合併並部署 `PRO-014C` 的 client
-  - 目標：在 production 已具備 011 的前提下，才把 `PRO-014C` 的分支合併進 `main`（＝經 `deploy.yml` 自動部署）
-  - 為什麼是獨立任務：`deploy.yml` 在 push `main` 後自動部署 `pwa/`，所以合併等於部署，而「合併」在 Task Lifecycle 裡原本只是 C 完成的副作用，沒有任何前置能擋住它。把它變成具名任務，順序才由前置強制，而不是靠但書提醒（PR #149 覆驗發現）。
-  - 範圍：確認前置、合併 `PRO-014C` 的 PR、部署後的 production 煙霧測試；不含新功能、不含旗標切換
-  - 完成條件：合併前確認 `PRO-014I` 已完成且 production 的 `start_trial()` 可呼叫；部署後實際在 production 走一次「新帳號開始 trial」與「同一帳號再次呼叫**回傳相同 `trial_started_at`、未被重設或延長**」；確認 `legacy` source 下 trial 開始後 `isProUser()` 仍為 true（`PRO-014C` 的相容層有效）；確認第二次登入不會卡在 loading 畫面
-  - 進度（2026-08-30）：PR #150 已合併並部署；首次 production smoke 驗證 RPC 成功與冪等，但發現 setup 重建 profile 會覆寫既有欄位。修正與擴大回歸測試在 PR #151，待人工檢查、合併、部署後重跑 production smoke，完成前維持 In Progress。
-  - 進度（2026-08-31）：PR #151 已合併部署；第二次 production smoke 的首次 trial、setup 欄位保留、試用 UI 與預設任務皆通過，但第二次登入被 BUG-108 的 stale Supabase REST cache 導回 setup。待 v1.25.2 部署並重跑 smoke 後才能完成本任務。
-  - **前置：`PRO-014C`（分支實作完成）、`PRO-014D`、`PRO-014I` 全部完成**
-  - 回退方式：revert 該合併 commit 即可讓 client 回到舊行為；資料庫端不需要動
-  - 依賴：`PRO-014C`、`PRO-014D`、`PRO-014I`
-
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
 
 ---
 
 ## Done
+
+- [x] **BUG-108** Service Worker 快取 Supabase Data API 舊回應
+  - 完成（v1.25.2，PR [#152](https://github.com/yoyoCadence/Orbit/pull/152)，merge `55edfaf`）：Service Worker 只攔截同來源 GET；跨來源 Supabase Data API 不再呼叫 `respondWith()` 或進入 app cache，activate 會清除含舊 REST snapshot 的 `orbit-v1.25.1`。
+  - Production 覆驗（2026-08-31）：全新帳號完成 trial 與 setup 後建立 13 個預設任務；重新開 App 第二次登入直接載入既有設定頁，未回到 setup。實際 network 記錄顯示 profile／tasks／sessions／energy GET 皆向 Supabase 回 HTTP 200。
+  - Cache 證據：受 `sw.js` 控制的 production 頁面只有 `orbit-v1.25.2`；第二次登入後 104 筆 cache request 的跨來源數為 0，無 Supabase REST URL。
+  - 範圍確認：未修改 Auth、Supabase schema／migration 或 entitlement source；測試帳號、auth session 與所有關聯列已刪除並逐表確認 0 殘留。完整證據見 [`docs/pro-014j-production-validation.md`](docs/pro-014j-production-validation.md)。
+
+- [x] **PRO-014J** 合併並部署 `PRO-014C` 的 client
+  - 完成（2026-08-31）：PR #150、#151、#152 已依序合併部署；最終 production commit `55edfaf` 的 GitHub Pages deployment 成功，PR #152 的 lint／test／E2E／build-check 四項 CI 全綠。
+  - Trial／profile：首次註冊只呼叫一次 `start_trial()`；setup 只更新輸入欄位，名稱為 `Smoke152`，profile／entitlement 的 trial 起點未被重設。設定頁顯示「免費試用中」、15 天與版本 v1.25.2。
+  - RPC 冪等：v1.25.0 的第一輪 production smoke 已對同帳號重複呼叫 `start_trial()` 並確認回傳同一時間；最終 v1.25.2 smoke 的第二次登入沒有再次呼叫 RPC，試用期限也未延長。
+  - 第二次登入：重新開 App 後直接讀回 13 個任務與既有 profile，沒有 loading 卡死或誤進 setup；network 證明四組 owner-scoped Supabase GET 皆重新走網路，且沒有再次呼叫 `start_trial()`。
+  - 清理／後續：測試帳號與資料 0 殘留；`REPO_PRO_ENTITLEMENT_SOURCE` 仍為 `legacy`，沒有執行 `PRO-014H` cutover。驗收另發現 BUG-110，已獨立列入 Backlog，不影響本任務完成。完整證據見 [`docs/pro-014j-production-validation.md`](docs/pro-014j-production-validation.md)。
+  - 依賴：`PRO-014C`、`PRO-014D`、`PRO-014I`（皆已完成）
 
 - [x] **PRO-014I** 在 production 套用 011 migration
   - 完成（2026-08-30）：經明確核准後，將未修改的 `pwa/db/011_leaderboard_pro.sql` 套用至 Orbit production `oenuhbjadvpspppaelnz`；migration history 為 `20260830001920_pro_014i_apply_011_leaderboard_pro`。

@@ -12,10 +12,13 @@
 ### Notes
 - `PRO-014J` 在 PR #151 部署後的第二輪 production smoke 找到 BUG-108：首次 trial、setup profile 保留、15 天試用 UI 與 13 個預設任務皆正確，但第二次登入從 Service Worker cache 取得舊 profile／空 tasks，再次進入 setup。本版是該 production blocker 的 client-only hotfix，不修改 Auth、Supabase schema／migration 或 entitlement source。
 - 同輪 smoke 發現 email local-part 超過 30 字元會被既有 signup trigger 的 profile name constraint 擋下，已立 `BUG-109` 另案處理，未混入本版。
+- 同來源邊界也代表 Supabase Storage 與 `export.js` 使用的跨來源 jsPDF／html2canvas 不再由 Orbit Service Worker 快取；功能仍可走網路，但離線能力不由本 cache 提供。若未來需要離線支援，應為核准的來源建立明確 allowlist 與失敗策略，不回復通用跨來源 cache-first。
+- 合併後驗收另發現註冊成功後直接登出時，登入按鈕會維持 disabled 直到重新載入頁面，已立 `BUG-110` 另案處理；不影響重新開 App 的第二次登入與本版 cache 修正。
 
 ### Validation
 - `tests/unit/serviceWorkerImageCache.test.js` 新增跨來源 Supabase GET 邊界測試；修正前會收到 `respondWith()` Promise 並進入 cache-first，修正後完全不開啟／讀寫 app cache，同來源圖片既有行為仍通過。
 - `npm run lint`、`TZ=UTC npm test`（54 files／980 tests）、`npm run test:e2e -- --workers=1`（41/41）全數通過；版本 bump 後以 `npm run ps243:assets` 同步可重現資產基準。
+- PR #152 合併部署後的 production smoke 通過：新帳號 trial／setup／13 個預設任務／15 天試用 UI 正確；重新開 App 第二次登入未進 setup，Supabase owner-scoped GET 全部回 200，`start_trial()` 未重複呼叫；`orbit-v1.25.2` 的 104 筆 cache request 中跨來源為 0。證據見 [`docs/pro-014j-production-validation.md`](docs/pro-014j-production-validation.md)。
 
 ---
 
