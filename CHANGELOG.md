@@ -3,6 +3,26 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.26.0] - 2026-09-01
+
+### Added
+- **`grant_streak_unlock()` server RPC 與 migration 012**：不接受任何 client 參數，直接從 caller 的 sessions 重算有效日；連續 45 個有效日才由 server 發放 30 天 Pro，並以 entitlement row lock 與 `streak_unlock_granted_at` 保證每個帳號只領一次。
+- **PRO-014L 本機驗收套件**：新增 SQL contract、pgTAP、真實 Auth／PostgREST Data API 並行 claim、rollback rehearsal 與 client source 相容測試。
+
+### Fixed
+- **SUB-16 不再由 `dayCycle.js` 自行寫入 Pro 與到期日**：client 只提出無參數判定請求；legacy 相容欄位也只鏡射 server 回傳值。`server` source 下成功後會刷新 entitlement projection，因此未來 cutover 不會讓連勝獎勵靜默失效。
+
+### Notes
+- 本版目前只完成 repo 與隔離本機 Supabase 驗證；migration 012 尚未套用 production，client 不得先合併部署，`REPO_PRO_ENTITLEMENT_SOURCE` 也仍維持 `legacy`。production schema-first rollout 需要另行核准。
+- Server 已不採信 client 提供的 streak／expiry，但 sessions 仍是帳號擁有者可寫、可回填的產品紀錄；這是單一使用者階段明確接受的窄版風險，不宣稱為 anti-fraud 邊界。
+
+### Validation
+- SQL contract／client targeted tests 42/42；隔離 Supabase pgTAP 24/24；真實 Data API 的兩個並行 claim 得到一次 `granted` 與一次 `already_granted`，兩者 server timestamps 相同，重複 claim、匿名、偽造參數與直接 marker 重設皆符合 fail-closed 預期。
+- Rollback → 重套 012 → pgTAP 再次 24/24；`supabase db lint` 無 schema errors；Advisors 與 012 套用前相比新增 finding 為 0（19 項均為既有 schema finding）。完整證據見 [`docs/pro-014l-local-validation.md`](docs/pro-014l-local-validation.md)。
+- `npm run lint`、`TZ=UTC npm test`（57 files／1004 tests）、`npm run test:e2e -- --workers=1`（41/41）、`npm run ps243:assets` 與 `git diff --check` 通過。
+
+---
+
 ## [1.25.2] - 2026-08-31
 
 ### Fixed

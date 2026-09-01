@@ -61,6 +61,50 @@ export function resetEnergyIfNewDay(morningState) {
 
 // ─── Streak end-of-day processing ────────────────────────────────────────────
 
+const _streakUnlockRequests = new Map();
+
+/**
+ * PRO-014L: the client only asks; `grant_streak_unlock()` derives the streak
+ * from server sessions and owns the once-only award. No local streak value is
+ * sent or trusted. Duplicate boot paths share one in-flight request per owner.
+ */
+export function requestStreakUnlock() {
+  const ownerId = state.user?.id;
+  if (!ownerId || state.user.streakUnlockUsed || storage.isProUser()) {
+    return Promise.resolve(false);
+  }
+
+  const inFlight = _streakUnlockRequests.get(ownerId);
+  if (inFlight) return inFlight;
+
+  const request = (async () => {
+    const response = await db.grantStreakUnlock(ownerId);
+    if (!response.ok || response.ownerChanged || state.user?.id !== ownerId) return false;
+
+    state.user = storage.getUser() ?? state.user;
+    if (response.result?.granted !== true) return false;
+
+    sessionStorage.setItem(FLAG_STREAK_UNLOCK_NEW, '1');
+    // showMainApp() consumes the same flag during synchronous boot. When the
+    // RPC resolves later, this fallback consumes it so the celebration is not
+    // postponed until the next launch. The remove-before-show order prevents a
+    // duplicate if both paths meet in the same turn.
+    setTimeout(() => {
+      if (!sessionStorage.getItem(FLAG_STREAK_UNLOCK_NEW)) return;
+      sessionStorage.removeItem(FLAG_STREAK_UNLOCK_NEW);
+      showStreakUnlockModal();
+    }, 0);
+    return true;
+  })().finally(() => {
+    if (_streakUnlockRequests.get(ownerId) === request) {
+      _streakUnlockRequests.delete(ownerId);
+    }
+  });
+
+  _streakUnlockRequests.set(ownerId, request);
+  return request;
+}
+
 /** Check yesterday's stats and update streak (called once per day on launch). */
 export function processYesterdayStreak() {
   if (!state.user) return;
@@ -91,18 +135,6 @@ export function processYesterdayStreak() {
     if (storage.isProUser() && (state.user.streakShieldCount || 0) > 0 && prevStreak >= 2) {
       localStorage.setItem(FLAG_SHIELD_PENDING, JSON.stringify({ prevStreak }));
     }
-  }
-
-  // SUB-16: 45-day streak → 30-day free Pro (granted once per account)
-  if (
-    state.user.streakDays >= 45 &&
-    !storage.isProUser() &&
-    !state.user.streakUnlockUsed
-  ) {
-    state.user.isPro           = true;
-    state.user.proExpiresAt    = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-    state.user.streakUnlockUsed = true;
-    sessionStorage.setItem(FLAG_STREAK_UNLOCK_NEW, '1');
   }
 
   state.user.lastStreakDate = todayStr;

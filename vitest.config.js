@@ -17,6 +17,8 @@ export default defineConfig({
       ['tests/unit/appBootSequence.test.js',  'jsdom'],
       ['tests/unit/proEntitlement.test.js',    'jsdom'],
       ['tests/unit/proTrialRpc.test.js',       'jsdom'],
+      ['tests/unit/proStreakUnlockRpc.test.js','jsdom'],
+      ['tests/unit/streakUnlockDayCycle.test.js','jsdom'],
       ['tests/unit/proGateCallSites.test.js',  'jsdom'],
       ['tests/unit/proSettingsProjection.test.js','jsdom'],
       ['tests/unit/proEntitlementGate.test.js','jsdom'],

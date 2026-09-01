@@ -115,13 +115,17 @@
   - 一併移除 `PRO-014C` 建立的 legacy 相容層（client 寫回 `trial_started_at`）—— cutover 後 legacy gate 不再被使用。**移除與旗標切換應在同一次變更內**，rollback 時也一起還原。
   - 依賴：`PRO-014J`、`PRO-014L`
 
-- [ ] **PRO-014L** SUB-16 連勝解鎖改由 server 授權
+- [ ] **PRO-014L** SUB-16 連勝解鎖改由 server 授權 — **In Progress**
   - 目標：45 天連勝換 30 天 Pro 的授權由 server 發放，而不是 client 自行寫入
   - 現況（`PRO-014C` 實作時發現）：`pwa/js/dayCycle.js` 直接寫 `state.user.isPro = true` 與 `proExpiresAt`，再經 `saveUser()` 同步上雲。這是 client 決定的 Pro 授權 —— 與 `startTrial()` 原本的問題同一類，只是沒被 `PRO-014C` 的範圍涵蓋。
   - **在 `server` source 下會直接失效**：`isProUser()` 改讀 projection 後，寫 `state.user.isPro` 不再有任何效果，連勝解鎖等於靜默消失。因此這項必須在 `PRO-014H` cutover 前完成，否則就是一個功能迴歸。
   - 範圍：新的 `grant_streak_unlock()` RPC（migration 變更）、`dayCycle.js` 的授權路徑、once-per-account 的 server 端強制、相關測試
   - 完成條件：同一帳號無法重複領取；連勝條件由 server 驗證而非 client 傳入；`server` 與 `legacy` 兩種 source 下都正確
   - **前置：屬 RPC／schema 變更，依 AGENTS.md §3 需先取得核准**；建議與 `PRO-014I` 的 production 套用一併規劃，避免第二次 migration 時序問題
+  - Repo／local 實作（v1.26.0，分支 `feat/pro-014l-streak-unlock-rpc`）：新增 `012_streak_unlock_server.sql` 與無參數 `grant_streak_unlock()`；RPC 依 caller sessions 重算 45 個連續有效日、以 entitlement row lock ＋ `streak_unlock_granted_at` 強制每帳號一次，client 僅採用 server 回傳的 expiry，並保留 `legacy`／`server` 兩種 source 的相容路徑。
+  - 本機驗證：pgTAP 24/24、真實 Auth／PostgREST Data API（並行 claim 僅一次成功、匿名／偽造參數／直接 marker 寫入均拒絕）、rollback → 重套 migration、DB lint 通過；Advisors 012 前後皆 19 項既有 finding，新增 0 項；repo lint、57 files／1004 tests 與 E2E 41/41 全綠。證據見 [`docs/pro-014l-local-validation.md`](docs/pro-014l-local-validation.md)。
+  - **仍未完成的 rollout 閘門**：012 尚未套用 production，client 也不得先合併部署；需另行核准後先 schema-first 套用／驗證 012，再合併本 client。`REPO_PRO_ENTITLEMENT_SOURCE` 仍為 `legacy`，未執行 `PRO-014H`。
+  - 已接受的窄版風險：server 不信任 client 傳入的 streak／expiry，但 sessions 本身仍可由帳號擁有者新增、修改與回填；現階段只有單一使用者，未把 anti-fraud session 簽章納入本任務。
   - 依賴：`PRO-014C`
 
 - [ ] **PRO-014N** `my_pro_status()` 回傳 `is_pro`，消除 `expires_at` 的歧義

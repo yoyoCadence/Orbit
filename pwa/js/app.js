@@ -7,7 +7,7 @@ import { setBadgeUpdater } from './sessionFlow.js';
 import './focusTimer.js'; // binds window.startFocus / endFocus / skipFocus / …
 import { uid, today } from './utils.js';
 import {
-  eToday, processYesterdayStreak, showStreakUnlockModal,
+  eToday, processYesterdayStreak, requestStreakUnlock, showStreakUnlockModal,
   showDailyReport, showMorningModal, checkWeeklyBonus, startDayWatcher,
   clearDayCycleModals,
 } from './dayCycle.js';
@@ -191,6 +191,11 @@ function loadStateFromStorage({
 
 /** Day rollover + show app + periodic bonus — the sequence formerly copy-pasted ×3. */
 function bootWithLocalState() {
+  // PRO-014L: run this before the launch guard so a cached boot without an Auth
+  // session can retry after the signed-in remote load arrives. The helper
+  // de-duplicates concurrent calls and treats unauthenticated guests as a no-op.
+  void requestStreakUnlock();
+
   // BUG-106: the cached-user branch and a 'SIGNED_IN' that lands before
   // getSession() resolves can both reach this in one launch. Revealing the app
   // again is harmless, but replaying the day rollover is not: it stacks a
