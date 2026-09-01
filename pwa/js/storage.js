@@ -403,6 +403,44 @@ function _normalizeTrialTimestamp(value) {
   return Number.isNaN(parsed) ? null : new Date(parsed).toISOString();
 }
 
+const STREAK_UNLOCK_STATUSES = new Set([
+  'granted',
+  'already_granted',
+  'active_entitlement',
+  'not_eligible',
+]);
+
+/** Strictly normalize the single-row `grant_streak_unlock()` RPC contract. */
+function _normalizeStreakUnlockResponse(rows) {
+  if (!Array.isArray(rows) || rows.length !== 1) return null;
+  const row = rows[0];
+  if (!row || !STREAK_UNLOCK_STATUSES.has(row.status)) return null;
+  if (typeof row.granted !== 'boolean' || typeof row.is_active !== 'boolean') return null;
+  if (row.granted !== (row.status === 'granted')) return null;
+
+  const expiresAt = row.expires_at === null
+    ? null
+    : _normalizeTrialTimestamp(row.expires_at);
+  const grantedAt = row.granted_at === null
+    ? null
+    : _normalizeTrialTimestamp(row.granted_at);
+  if (row.expires_at !== null && !expiresAt) return null;
+  if (row.granted_at !== null && !grantedAt) return null;
+
+  const wasAwarded = row.status === 'granted' || row.status === 'already_granted';
+  if (wasAwarded && !grantedAt) return null;
+  if (row.status === 'granted' && (!row.is_active || !expiresAt)) return null;
+  if (!wasAwarded && grantedAt !== null) return null;
+
+  return {
+    status: row.status,
+    granted: row.granted,
+    isActive: row.is_active,
+    expiresAt,
+    grantedAt,
+  };
+}
+
 export const db = {
 
   async _session() {
@@ -779,6 +817,65 @@ export const db = {
       set('user', user);
     }
     return { ok: true, ownerChanged: false, trialStartedAt: startedAt };
+  },
+
+  /**
+   * PRO-014L: ask the server to evaluate and, when eligible, grant SUB-16.
+   *
+   * The RPC accepts no streak, date, or expiry input. A successful claim is
+   * mirrored into the legacy profile only from the server response so the
+   * current production source keeps working until PRO-014H removes this layer.
+   */
+  async grantStreakUnlock(userId) {
+    const session = await this._session();
+    if (!session || session.user.id !== userId) {
+      return { ok: false, ownerChanged: true, result: null };
+    }
+
+    let result = null;
+    try {
+      const { data, error } = await supabase.rpc('grant_streak_unlock');
+      if (error) throw error;
+      result = _normalizeStreakUnlockResponse(data);
+    } catch (err) {
+      console.warn('grant_streak_unlock RPC failed:', err);
+      return { ok: false, ownerChanged: false, result: null };
+    }
+    if (!result) return { ok: false, ownerChanged: false, result: null };
+
+    const wasAwarded = result.status === 'granted' || result.status === 'already_granted';
+    if (wasAwarded) {
+      const legacyPayload = {
+        is_pro: result.isActive,
+        pro_expires_at: result.expiresAt,
+        streak_unlock_used: true,
+      };
+      try {
+        const { error } = await supabase
+          .from('profiles')
+          .update(legacyPayload)
+          .eq('user_id', userId);
+        if (error) throw error;
+      } catch (err) {
+        console.warn('streak unlock legacy write-back failed:', err);
+      }
+
+      const user = get('user');
+      if (user?.id === userId) {
+        user.isPro = result.isActive;
+        user.proExpiresAt = result.expiresAt;
+        user.streakUnlockUsed = true;
+        set('user', user);
+      }
+
+      // Under the future server source, the entitlement projection — not the
+      // compatibility fields above — is the UI authority.
+      if (isServerProEntitlementEnabled()) {
+        await this.refreshProEntitlement(userId);
+      }
+    }
+
+    return { ok: true, ownerChanged: false, result };
   },
 
   async upsertEnergy(energy, expectedOwnerId = null) {

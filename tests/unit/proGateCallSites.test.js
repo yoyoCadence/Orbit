@@ -71,7 +71,7 @@ function countCalls(source, needle) {
 // 每一個既有 Pro 入口，依檔案分組。改動這張表必須是刻意的：新增 gate 要在這裡
 // 登記，移除 gate 要在這裡刪掉。
 const EXPECTED_GATES = {
-  'dayCycle.js': 4,        // streak shield 月配額、消耗、連勝解鎖條件、shield banner
+  'dayCycle.js': 4,        // streak shield 月配額、消耗、server 解鎖請求、shield banner
   'focusTimer.js': 3,      // 專注音效開關、播放、結算畫面的筆記欄位
   'pages/goals.js': 1,     // 歷史區間
   'pages/home.js': 1,      // 保護卡 pill
@@ -100,7 +100,6 @@ describe('Pro gate 呼叫點', () => {
       'platform/proEntitlement.js': '註解中引用欄位名以說明取代了什麼',
       'app.js': '讀 trialStartedAt 只為決定要不要啟動試用，不是 Pro 判定',
       'pages/settings.js': '_devApplyPro() 開發者面板；見下方單獨的測試',
-      'dayCycle.js': 'SUB-16 連勝解鎖仍在 client 端寫入 Pro 欄位；見下方單獨的測試',
     };
 
     const offenders = files
@@ -112,18 +111,17 @@ describe('Pro gate 呼叫點', () => {
     expect(offenders).toEqual([]);
   });
 
-  // 這兩處在 server source 下會失效，但修好它們需要 server 端支援，屬 PRO-014C
-  // 範圍外。測試把現況鎖起來，避免它們被誤認為已經處理過。
-  it('已知的 client 端 Pro 寫入點僅剩兩處，且都已立案追蹤', () => {
+  it('SUB-16 不再由 dayCycle 寫入 Pro；只保留開發者面板的刻意 override', () => {
     const dayCycle = files.find(f => f.path === 'dayCycle.js').source;
     const settings = files.find(f => f.path === 'pages/settings.js').source;
 
-    expect(dayCycle).toContain('state.user.isPro           = true;');   // SUB-16 連勝解鎖
-    expect(settings).toContain('function _devApplyPro(status)');        // 開發者面板
+    expect(dayCycle).not.toMatch(/state\.user\.(isPro|proExpiresAt)\s*=/);
+    expect(dayCycle).toContain('db.grantStreakUnlock(ownerId)');
+    expect(settings).toContain('function _devApplyPro(status)');
 
     // 其餘檔案都不得寫入 Pro 欄位。
     const writers = files
-      .filter(({ path }) => !['storage.js', 'dayCycle.js', 'pages/settings.js'].includes(path))
+      .filter(({ path }) => !['storage.js', 'pages/settings.js'].includes(path))
       .filter(({ source }) => /\.(isPro|proExpiresAt|trialStartedAt)\s*=/.test(source))
       .map(({ path }) => path);
     expect(writers).toEqual([]);

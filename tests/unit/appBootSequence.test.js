@@ -55,6 +55,7 @@ vi.mock('../../pwa/js/auth.js', () => ({
 
 const dayCycle = vi.hoisted(() => ({
   processYesterdayStreak: vi.fn(),
+  requestStreakUnlock: vi.fn(() => Promise.resolve(false)),
   checkWeeklyBonus: vi.fn(),
   showDailyReport: vi.fn(),
   showMorningModal: vi.fn(),
