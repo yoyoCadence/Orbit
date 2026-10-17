@@ -135,11 +135,6 @@
 
 > 2026-10-17 核准：使用者明確核准 `BUG-110`（auth flow 表單 UI）、`PRO-014O`（entitlement 啟動流程）、`BUG-109`（只撰寫 migration 與測試，production 套用由使用者執行），並排定 `HW-110`、`HW-106`、`HW-107`。
 
-- [ ] **BUG-110** 註冊成功後直接登出，登入按鈕維持 disabled
-  - 目標：同一個 App session 內完成註冊後直接登出，切回登入 tab 並填妥帳密時可以立即登入，不需重新載入頁面。
-  - 根因初判：`authFlow.js` 的成功 signup 路徑把 `#auth-submit` 設為 disabled／「註冊中…」後交由 auth state change 啟動 App，但登出回到登入畫面時沒有重設 disabled 狀態；切換 tab 只更新文字。
-  - 範圍：另案補 auth flow 回歸測試並重設表單 UI 狀態；不影響 BUG-108／PRO-014J 的「重新開 App 後第二次登入」production 驗收，也不修改 Supabase Auth 或 schema。
-
 - [ ] **PRO-014O** Cached-user 啟動路徑不保證 refresh Pro entitlement projection
   - 現況（`PRO-014M` 實作時發現）：`pwa/js/app.js` 的 `init()` 有本機 user 快取時走背景同步 `getSession()` → `db.loadFromRemote()` → `loadStateFromStorage()`，這條路徑**沒有**呼叫 `db.refreshProEntitlement()`。refresh 只在 `loadAndStart()` 內執行，而回訪使用者是否進入 `loadAndStart()` 取決於 `SIGNED_IN` 事件是否搶在 `getSession()` resolve 之前（BUG-106 記錄的同一個 race），沒有保證。
   - 影響：`legacy` source 下無影響（refresh 直接 no-op）。切到 `server` 後，回訪使用者的 projection 可能長期不更新；超過 `SNAPSHOT_TTL_MS`（24 小時）即 fail closed，付費／試用使用者會失去 Pro，直到某次啟動剛好走到 `loadAndStart()` 或重新登入。
@@ -170,6 +165,11 @@
 ---
 
 ## In Progress
+
+- [ ] **BUG-110** 註冊成功後直接登出，登入按鈕維持 disabled
+  - 目標：同一個 App session 內完成註冊後直接登出，切回登入 tab 並填妥帳密時可以立即登入，不需重新載入頁面。
+  - 根因初判：`authFlow.js` 的成功 signup 路徑把 `#auth-submit` 設為 disabled／「註冊中…」後交由 auth state change 啟動 App，但登出回到登入畫面時沒有重設 disabled 狀態；切換 tab 只更新文字。
+  - 範圍：另案補 auth flow 回歸測試並重設表單 UI 狀態；不影響 BUG-108／PRO-014J 的「重新開 App 後第二次登入」production 驗收，也不修改 Supabase Auth 或 schema。
 
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
