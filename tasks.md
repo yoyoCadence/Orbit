@@ -159,11 +159,6 @@
 
 > 2026-10-17 排程：Next 為空且 PS-243 只剩 human-device gate，依 Backlog 中不涉及 auth／schema／部署的低風險項目排入 Next；高風險項目仍待個別核准。
 
-- [ ] **DOC-201** 補一份 personal space state 流程說明文件
-  - 目標：說明 `user.totalXP -> level -> unlock -> gold -> ownedItems -> scene` 的資料流
-  - 對應 roadmap：Phase 2
-  - 完成條件：新文件涵蓋 legacy 與 V2 兩條路徑的資料來源、計算位置（檔案／函式）、持久化 key 與同步邊界；內容以目前 `main` 的程式碼為準並可逐項對照
-
 - [ ] **PLAT-201** 定義 `platform` adapters 在 PWA 與 future hybrid shell 的行為差異表
   - 目標：讓未來包成 native 時有清楚替換點
   - 對應 roadmap：Phase 5 準備
@@ -180,6 +175,11 @@
 ---
 
 ## In Progress
+
+- [ ] **DOC-201** 補一份 personal space state 流程說明文件
+  - 目標：說明 `user.totalXP -> level -> unlock -> gold -> ownedItems -> scene` 的資料流
+  - 對應 roadmap：Phase 2
+  - 完成條件：新文件涵蓋 legacy 與 V2 兩條路徑的資料來源、計算位置（檔案／函式）、持久化 key 與同步邊界；內容以目前 `main` 的程式碼為準並可逐項對照
 
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
