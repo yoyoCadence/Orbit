@@ -27,6 +27,7 @@ import { FLAG_STREAK_UNLOCK_NEW } from './flags.js';
 import { refreshCanonicalStateAndReconcilePersonalSpaceV2 } from './personalSpace/v2/controller.js';
 import { createAuthOperationGuard } from './platform/authOperationGuard.js';
 import { createBootSequenceGuard } from './platform/bootSequenceGuard.js';
+import { isOnline, onConnectivityChange } from './platform/network.js';
 import { orbitWindowRuntimeDestroyer } from './personalSpace/v2/runtime/pixiSceneRuntime.js';
 
 // Lazy proxy — tour.js is not imported at startup; loaded on first call.
@@ -240,7 +241,7 @@ async function loadAndStart(session) {
   } catch (e) {
     if (!authOperationGuard.isCurrent(operation) || e?.name === 'OwnerSessionChangedError') return;
     console.warn('Supabase load failed, using localStorage cache:', e);
-    showSyncBanner('error');
+    _showSyncFailure();
   }
 
   if (!authOperationGuard.isCurrent(operation)) return;
@@ -374,8 +375,75 @@ function _updateBadge() {
   const count = state.sessions.filter(s => s.date === todayStr && s.result !== 'invalid').length;
   _badgeMod.setBadge(count).catch(() => {});
 }
-// sessionFlow calls this after every commit/delete (no-op until badge module loads)
-setBadgeUpdater(_updateBadge);
+// ── HW-110: offline queue visibility and reconnect sync ─────────────────────
+// Offline writes already wait in owner-scoped pending sidecars, and
+// db.loadFromRemote() pushes them. This makes that queue visible and pushes it
+// as soon as the connection returns instead of at the next launch. Guests have
+// no remote account, so none of this applies without a session.
+let _needsResync = false;
+let _reconnectSync = null;
+
+function _pendingSyncCount() {
+  return storage.getPendingSyncSummary(_currentSession?.user?.id ?? null).total;
+}
+
+function _showSyncFailure() {
+  _needsResync = true;
+  showSyncBanner(isOnline() ? 'error' : 'offline', { pending: _pendingSyncCount() });
+}
+
+/** Keeps the offline banner's pending count current after local writes. */
+function _refreshOfflineHint() {
+  if (!_currentSession || isOnline()) return;
+  showSyncBanner('offline', { pending: _pendingSyncCount() });
+}
+
+// Deliberately not authOperationGuard.begin(): a new generation would cancel a
+// loadAndStart() still in flight. Session identity is checked after each await
+// instead, and loadFromRemote() itself rejects when the owner changes.
+async function _syncAfterReconnect() {
+  const session = _currentSession;
+  if (!session || _reconnectSync) return;
+  showSyncBanner('syncing');
+  _reconnectSync = (async () => {
+    try {
+      await db.loadFromRemote(session.user.id);
+      if (_currentSession !== session) return;
+      await db.refreshProEntitlement(session.user.id);
+      if (_currentSession !== session) return;
+      _needsResync = false;
+      loadStateFromStorage({ authoritative: true });
+      updateHeader();
+      // Re-rendering under a focused text field would throw away what is being typed.
+      if (!isTextInputActive()) renderPage(currentHash());
+      _updateBadge();
+      showSyncBanner('synced');
+    } catch (error) {
+      if (_currentSession !== session || error?.name === 'OwnerSessionChangedError') return;
+      console.warn('Reconnect sync failed; pending changes stay queued:', error);
+      _showSyncFailure();
+    } finally {
+      _reconnectSync = null;
+    }
+  })();
+  await _reconnectSync;
+}
+
+onConnectivityChange(online => {
+  if (!online) {
+    _needsResync = true;
+    _refreshOfflineHint();
+  } else if (_needsResync) {
+    _syncAfterReconnect();
+  }
+});
+
+// sessionFlow calls this after every commit/delete (no-op until badge module
+// loads); HW-110 also refreshes the offline pending count from the same hook.
+setBadgeUpdater(() => {
+  _updateBadge();
+  _refreshOfflineHint();
+});
 
 // Tap header to scroll main content to top (mirrors iOS status-bar tap behavior)
 document.getElementById('header')?.addEventListener('click', e => {
@@ -449,7 +517,7 @@ async function init() {
           // Offline is an explicit local-cache decision, so finish the cutover
           // without treating the incomplete remote snapshot as authoritative.
           loadStateFromStorage({ finalizeMigration: true });
-          showSyncBanner('error');
+          _showSyncFailure();
         });
       } else {
         if (authOperationGuard.isCurrent(cachedResolution) && !_currentSession) {

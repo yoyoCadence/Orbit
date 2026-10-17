@@ -28,16 +28,25 @@ export function showXPFloat(text) {
 
 let _syncHideTimer = null;
 
-export function showSyncBanner(status) {
+/**
+ * @param {'syncing'|'synced'|'error'|'offline'} status
+ * @param {{pending?: number}} [options] HW-110: changes still waiting for the
+ *   server, shown on the offline and error states so the queue is visible.
+ */
+export function showSyncBanner(status, { pending = 0 } = {}) {
   const el = document.getElementById('sync-banner');
   if (!el) return;
   clearTimeout(_syncHideTimer);
+  const pendingText = pending > 0 ? `${pending} 筆待同步` : '';
   if (status === 'syncing') {
     el.className = 'syncing';
     el.textContent = '☁️ 同步中…';
+  } else if (status === 'offline') {
+    el.className = 'sync-offline';
+    el.textContent = `📴 離線中 · ${pendingText || '變更先存本機'}，連線後自動同步`;
   } else if (status === 'error') {
     el.className = 'sync-error';
-    el.textContent = '⚠️ 同步暫停，將於下次連線重試';
+    el.textContent = `⚠️ 同步暫停，將於下次連線重試${pendingText ? ` · ${pendingText}` : ''}`;
   } else {
     el.className = 'synced';
     el.textContent = '✓ 已更新';

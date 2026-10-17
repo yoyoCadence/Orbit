@@ -141,11 +141,6 @@
   - **需專案擁有者執行**：production 資料庫操作，Claude 不具權限；依 AGENTS.md §3 屬 schema 變更的套用。
   - 依賴：`BUG-109`
 
-- [ ] **HW-110** Offline action queue and sync hints
-  - Goal: make offline task completion feel intentional and visible.
-  - Scope: local pending-action queue UI, sync status messaging, reuse existing storage bridge patterns; no schema migration.
-  - Acceptance: user can complete tasks offline and see a clear pending-sync state when connection returns.
-
 - [ ] **HW-106** Ambient noise focus signal
   - Goal: use microphone volume level as an optional focus-environment signal, not as recording.
   - Scope: permission-gated Web Audio volume meter, no audio persistence, UI states for quiet / normal / noisy.
@@ -166,6 +161,14 @@
 ---
 
 ## Done
+
+- [x] **HW-110** Offline action queue and sync hints
+  - Goal: make offline task completion feel intentional and visible.
+  - Scope: local pending-action queue UI, sync status messaging, reuse existing storage bridge patterns; no schema migration.
+  - Acceptance: user can complete tasks offline and see a clear pending-sync state when connection returns.
+  - 完成（2026-10-17）：沿用既有 owner-scoped pending sidecar（Sessions、Session 刪除、tasks、profile、Energy），新增唯讀的 `storage.getPendingSyncSummary()` 與 `platform/network.js`。離線時同步列顯示「📴 離線中 · N 筆待同步」並在每次本機寫入後更新數量；啟動同步因離線失敗時改顯示離線狀態而非一般錯誤；連線恢復後立即推送並重新整理，不必等下次開啟 App。遊客模式不顯示同步提示。
+  - 驗證：`offlineSyncHints.test.js`（9 項）與 `appBootSequence.test.js` 新增 6 項；v1.26.0。
+  - 設計：連線恢復的同步刻意不呼叫 `authOperationGuard.begin()`（會取消進行中的 `loadAndStart()`），改在每個 await 後確認 session 未變；只有在同步曾失敗或曾離線時才重試；有輸入框聚焦時不重新 render 頁面。未修改 schema 或同步協定。
 
 - [x] **BUG-109** Email local-part 超過 30 字元時 Supabase signup 失敗
   - 目標：讓合法但 `@` 前綴超過 30 字元的 email 能完成註冊，同時維持 profile `name` 的 30 字元限制。

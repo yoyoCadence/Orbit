@@ -229,6 +229,27 @@ function legacyUndoEnergyTarget(session, energy) {
 }
 
 /**
+ * HW-110: what this owner still has waiting for the server, read only from the
+ * existing owner-scoped pending sidecars. `total` counts Sessions and Session
+ * deletions one by one, and each of tasks／profile／Energy as one change.
+ */
+export function getPendingSyncSummary(ownerId) {
+  const empty = { sessions: 0, deletions: 0, tasks: false, profile: false, energy: false, total: 0 };
+  if (!ownerId) return empty;
+  const hasSnapshot = baseKey => Boolean(loadOwnerPendingSnapshot(baseKey, ownerId).snapshot);
+  const sessions = loadOwnerPendingSessions(ownerId).length;
+  const deletions = Object.values(loadSessionDeletionLog(ownerId))
+    .filter(entry => !entry.remoteConfirmedAt).length;
+  const tasks = hasSnapshot(TASK_SYNC_PENDING_KEY);
+  const profile = hasSnapshot(PROFILE_SYNC_PENDING_KEY);
+  const energy = hasSnapshot(ENERGY_SYNC_PENDING_KEY);
+  return {
+    sessions, deletions, tasks, profile, energy,
+    total: sessions + deletions + Number(tasks) + Number(profile) + Number(energy),
+  };
+}
+
+/**
  * Finish an undo interrupted after its durable deletion journal was written.
  * Journal targets make the user/Energy writes idempotent across partial local
  * persistence; settled entries only filter a resurfaced Session.
@@ -804,6 +825,7 @@ export const db = {
 
 export const storage = {
   recoverPendingSessionDeletions,
+  getPendingSyncSummary,
 
   // ── User ─────────────────────────────────────────────────────────────────────
   getUser:    ()  => get('user'),
