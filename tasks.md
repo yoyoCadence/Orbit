@@ -135,13 +135,6 @@
 
 > 2026-10-17 核准：使用者明確核准 `BUG-110`（auth flow 表單 UI）、`PRO-014O`（entitlement 啟動流程）、`BUG-109`（只撰寫 migration 與測試，production 套用由使用者執行），並排定 `HW-110`、`HW-106`、`HW-107`。
 
-- [ ] **PRO-014O** Cached-user 啟動路徑不保證 refresh Pro entitlement projection
-  - 現況（`PRO-014M` 實作時發現）：`pwa/js/app.js` 的 `init()` 有本機 user 快取時走背景同步 `getSession()` → `db.loadFromRemote()` → `loadStateFromStorage()`，這條路徑**沒有**呼叫 `db.refreshProEntitlement()`。refresh 只在 `loadAndStart()` 內執行，而回訪使用者是否進入 `loadAndStart()` 取決於 `SIGNED_IN` 事件是否搶在 `getSession()` resolve 之前（BUG-106 記錄的同一個 race），沒有保證。
-  - 影響：`legacy` source 下無影響（refresh 直接 no-op）。切到 `server` 後，回訪使用者的 projection 可能長期不更新；超過 `SNAPSHOT_TTL_MS`（24 小時）即 fail closed，付費／試用使用者會失去 Pro，直到某次啟動剛好走到 `loadAndStart()` 或重新登入。
-  - 範圍：cached-user 背景同步成功後，以同一個 `authOperationGuard` owner 檢查補上 refresh；在 `tests/unit/appBootSequence.test.js` 鎖住兩條啟動路徑都會 refresh。不涉及 RPC／schema，但屬 entitlement 啟動流程，實作前先附上變更說明
-  - **擋 `PRO-014H`**：cutover 前必須完成
-  - 依賴：`PRO-014B`
-
 - [ ] **BUG-109** Email local-part 超過 30 字元時 Supabase signup 失敗
   - 目標：讓合法但 `@` 前綴超過 30 字元的 email 能完成註冊，同時維持 profile `name` 的 30 字元限制。
   - 根因：production 的 `handle_new_user()` 以 `split_part(NEW.email, '@', 1)` 建立 profile 名稱，未截斷即寫入受 `profiles_name_check` 約束的欄位，Auth 因 trigger exception 回傳 `500 Database error saving new user`。
@@ -165,6 +158,13 @@
 ---
 
 ## In Progress
+
+- [ ] **PRO-014O** Cached-user 啟動路徑不保證 refresh Pro entitlement projection
+  - 現況（`PRO-014M` 實作時發現）：`pwa/js/app.js` 的 `init()` 有本機 user 快取時走背景同步 `getSession()` → `db.loadFromRemote()` → `loadStateFromStorage()`，這條路徑**沒有**呼叫 `db.refreshProEntitlement()`。refresh 只在 `loadAndStart()` 內執行，而回訪使用者是否進入 `loadAndStart()` 取決於 `SIGNED_IN` 事件是否搶在 `getSession()` resolve 之前（BUG-106 記錄的同一個 race），沒有保證。
+  - 影響：`legacy` source 下無影響（refresh 直接 no-op）。切到 `server` 後，回訪使用者的 projection 可能長期不更新；超過 `SNAPSHOT_TTL_MS`（24 小時）即 fail closed，付費／試用使用者會失去 Pro，直到某次啟動剛好走到 `loadAndStart()` 或重新登入。
+  - 範圍：cached-user 背景同步成功後，以同一個 `authOperationGuard` owner 檢查補上 refresh；在 `tests/unit/appBootSequence.test.js` 鎖住兩條啟動路徑都會 refresh。不涉及 RPC／schema，但屬 entitlement 啟動流程，實作前先附上變更說明
+  - **擋 `PRO-014H`**：cutover 前必須完成
+  - 依賴：`PRO-014B`
 
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
