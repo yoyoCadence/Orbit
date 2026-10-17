@@ -3,6 +3,23 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.27.0] - 2026-10-17
+
+### Added
+- **Focus 模式可選擇偵測環境音（HW-106）**：專注畫面新增「🎙 偵測環境音」按鈕，點擊並允許麥克風後即時顯示「🤫 環境安靜／🙂 環境一般／📢 環境吵雜」。每次專注都需要使用者主動開啟。
+- 新增 `platform/ambientNoise.js`：以 `getUserMedia` 音訊與 `AnalyserNode` 計算平滑後的 RMS 音量（dBFS）並分類；門檻為相對值，不代表校正過的分貝數。
+
+### Privacy
+- 只讀即時音量：沒有 `MediaRecorder`、不保存、不上傳任何音訊或音量資料。
+- 離開 focus 畫面（結束、略過、倒數完成、縮小到背景計時）或 App 進入背景時，立即停止所有麥克風 track，瀏覽器的錄音指示隨之消失；權限對話框期間離開畫面，事後才取得的麥克風也會立即關閉。
+- 不支援麥克風的瀏覽器不顯示控制項；權限被拒時顯示「無法使用麥克風」，不重複詢問。
+
+### Validation
+- 新增 `tests/unit/ambientNoise.test.js`（7 項：分類、dBFS、只要求音訊、stop 關閉 track 與 AudioContext、權限被拒、AudioContext 失敗仍釋放麥克風）與 `tests/unit/focusAmbient.test.js`（9 項：未點擊不開麥克風、各離開路徑與背景都停止、權限期間離開、權限被拒）；拿掉縮小／背景的停止呼叫時 5 項失敗。
+- `npm run lint`、`npm test`（60 files／1036 tests）通過；`tests/e2e` 41/41 通過（本機以容器內建 Chromium 執行）。版本 bump 後以 `npm run ps243:assets` 同步可重現資產基準。
+
+---
+
 ## [1.26.0] - 2026-10-17
 
 ### Added
