@@ -3,6 +3,22 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.25.4] - 2026-10-17
+
+### Fixed
+- **登出後回到登入畫面時，登入按鈕不再卡在 disabled（BUG-110）**：成功送出後按鈕會停在「登入中…」／「註冊中…」並 disabled，由 `onAuthStateChange` 接手啟動 App；登出呼叫 `showLoginScreen()` 時因 submit listener 已註冊而直接返回，表單無法再送出，只能重新載入頁面。現在每次顯示登入畫面都會先重設按鈕狀態與文字。
+
+### Notes
+- 實際範圍比原記錄大：不只「註冊後直接登出」，任何一次成功的密碼登入後在同一個頁面 session 登出都會觸發。
+- 只修改登入表單的 UI 狀態；未修改 `auth.js`、Supabase Auth 設定或 schema。依 AGENTS.md §3，此 auth flow 變更已取得使用者明確核准。
+
+### Validation
+- 新增 `tests/unit/authFlow.test.js`（4 項）：登入後登出、註冊（自動登入）後登出再登入、listener 不重複註冊、登入失敗照舊恢復；移除修正時前兩項失敗。
+- `npm run lint`、`npm test`（56 files／997 tests）通過；版本 bump 後以 `npm run ps243:assets` 同步可重現資產基準。
+- `tests/e2e` 41/41 通過（本機以容器內建 Chromium 執行）。
+
+---
+
 ## [1.25.3] - 2026-10-17
 
 ### Fixed

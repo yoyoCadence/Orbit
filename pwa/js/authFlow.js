@@ -156,6 +156,13 @@ export function showLoginScreen() {
   document.getElementById('main-app').classList.add('hidden');
   document.getElementById('login-screen').classList.remove('hidden');
 
+  // BUG-110: a successful submit leaves the button disabled ("登入中…") because
+  // the app takes over through onAuthStateChange. Returning here after sign-out
+  // must hand the user a usable form again, without a page reload.
+  const submitBtn = document.getElementById('auth-submit');
+  submitBtn.disabled    = false;
+  submitBtn.textContent = _authTab === 'signin' ? '登入' : '註冊';
+
   if (_loginListenerSet) return;
   _loginListenerSet = true;
 
