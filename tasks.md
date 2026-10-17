@@ -141,11 +141,6 @@
   - **需專案擁有者執行**：production 資料庫操作，Claude 不具權限；依 AGENTS.md §3 屬 schema 變更的套用。
   - 依賴：`BUG-109`
 
-- [ ] **HW-110** Offline action queue and sync hints
-  - Goal: make offline task completion feel intentional and visible.
-  - Scope: local pending-action queue UI, sync status messaging, reuse existing storage bridge patterns; no schema migration.
-  - Acceptance: user can complete tasks offline and see a clear pending-sync state when connection returns.
-
 - [ ] **HW-106** Ambient noise focus signal
   - Goal: use microphone volume level as an optional focus-environment signal, not as recording.
   - Scope: permission-gated Web Audio volume meter, no audio persistence, UI states for quiet / normal / noisy.
@@ -159,6 +154,11 @@
 ---
 
 ## In Progress
+
+- [ ] **HW-110** Offline action queue and sync hints
+  - Goal: make offline task completion feel intentional and visible.
+  - Scope: local pending-action queue UI, sync status messaging, reuse existing storage bridge patterns; no schema migration.
+  - Acceptance: user can complete tasks offline and see a clear pending-sync state when connection returns.
 
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
