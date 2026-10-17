@@ -23,11 +23,6 @@
   - 根因初判：`authFlow.js` 的成功 signup 路徑把 `#auth-submit` 設為 disabled／「註冊中…」後交由 auth state change 啟動 App，但登出回到登入畫面時沒有重設 disabled 狀態；切換 tab 只更新文字。
   - 範圍：另案補 auth flow 回歸測試並重設表單 UI 狀態；不影響 BUG-108／PRO-014J 的「重新開 App 後第二次登入」production 驗收，也不修改 Supabase Auth 或 schema。
 
-- [ ] **HW-104** Camera proof capture for task deliverables
-  - Goal: allow users to attach an optional local photo proof to a completed task or session, optimized for mobile camera capture.
-  - Scope: PWA-only file/camera input, local preview/compression, localStorage-safe metadata shape; no cloud upload or schema changes.
-  - Acceptance: a completed session can show a small proof thumbnail locally, and clearing local cache removes it.
-
 - [ ] **HW-112** 佐證圖片雲端同步（Supabase Storage）
   - Goal: upload proof photos to Supabase Storage so they persist across devices and app reinstalls.
   - Scope: `platform/badge.js` → new `pwa/js/platform/proofStorage.js` adapter; bucket `orbit-proof`, path `{user_id}/{sessionId}.jpg`; RLS: SELECT/INSERT/DELETE scoped to `auth.uid()`; use existing `compressImage()` output; graceful fallback to localStorage-only for guests.
@@ -72,21 +67,14 @@
   - Scope: legacy Idle Growth Window only; pause further volume work while the fixed-camera Personal Space V2 vertical slice is validated.
   - Acceptance: resume only if a validated runtime interaction still needs multiple authored perspectives; preserve all completed variant assets and provenance in the meantime.
 
-- [ ] **AI-201** 建立 AI companion behavior layer 的 rule-based 狀態模型
-  - 目標：先定義 `observe / approach / remind / congratulate` 等狀態與觸發條件
-  - 對應 roadmap：Phase 2
-
 - [ ] **AI-202** 定義 companion relationship stage 與 hidden stats 的最小映射規則
   - 目標：讓 companion 關係變化可由真實行為驅動，而不是聊天次數
   - 對應 roadmap：Phase 2 / Phase 4
 
-- [ ] **DOC-201** 補一份 personal space state 流程說明文件
-  - 目標：說明 `user.totalXP -> level -> unlock -> gold -> ownedItems -> scene` 的資料流
+- [ ] **AI-203** 為 Companion `remind` 接上 `missedPatterns` 資料來源
+  - 現況（AI-201 盤點時發現）：`companionEngine.js` 只有在 Low Momentum 且 `missedPatterns` 含使用者選定目標時才回傳 `remind`，但 `viewModels.js` 讀取的 `coreState.missedPatterns` 沒有任何寫入點，所以這個狀態在 production 永遠不會出現。
+  - 待決：「使用者選定目標」的資料來源（Goals 頁的目標或 V2 state 的新欄位）與規格所說 bounded remind 的頻率上限；屬產品決策，需先 Mode A 提案
   - 對應 roadmap：Phase 2
-
-- [ ] **PLAT-201** 定義 `platform` adapters 在 PWA 與 future hybrid shell 的行為差異表
-  - 目標：讓未來包成 native 時有清楚替換點
-  - 對應 roadmap：Phase 5 準備
 
 - [ ] **PRO-014** SUB-14／Pro entitlement 工作串
   - 目標：先建立可信任的 server-owned Pro entitlement，再交付排行榜與 Personal Space 的 Pro 呈現
@@ -133,14 +121,6 @@
   - 影響：純呈現層的正確性，不影響授權判定（`isProUser()` 兩種情況都是 true）
   - 依賴：`PRO-014C`
 
-- [ ] **PRO-014M** 開發者面板的 Pro 狀態切換支援 `server` source
-  - 目標：`_devApplyPro()` 在 `server` source 下也能切換 Pro／試用／免費狀態
-  - 現況（`PRO-014C` 實作時發現）：`pwa/js/pages/settings.js` 的開發者面板直接寫 `u.isPro` / `u.proExpiresAt` / `u.trialStartedAt`。`server` source 下這些欄位不再被讀，面板變成無效。
-  - 範圍：改為寫入 owner-scoped projection（`writeProEntitlementSnapshot()`），或依當前 source 分派；僅開發者面板，不影響 production 路徑
-  - 完成條件：兩種 source 下都能切換出付費／試用／免費三種狀態並被 `isProUser()` 正確反映
-  - 備註：純開發工具、低風險，但缺了它就無法在裝置上人工驗證 `server` source 的行為 —— `PRO-014H` 的實機驗證會需要
-  - 依賴：`PRO-014C`
-
 - [ ] **PRO-014G**（可選）為 entitlement projection 加上 server 簽章的 anti-tamper hardening
   - **狀態：可選，非任何任務的前置。** PR #146 覆驗定案採「UI entitlement projection ＋ server-side enforcement」，signed receipt 不再是 `PRO-014B` 的必要條件。
   - 何時才做：只有在產品明確需要提高「離線 UI 防竄改」的門檻時才啟動。判斷依據是產品需求，不是安全需求 —— 真正的安全控制在 server 端（見 `PRO-014F`）。
@@ -166,16 +146,36 @@
 
 - [ ] **PRO-017** 邀請制解鎖 Pro
   - 目標：完成 roadmap 既有 SUB-17
-  - 對應 roadmap：銝剜?
+  - 對應 roadmap：中期
 
 - [ ] **AI-015** AI 晨間報告
   - 目標：完成 roadmap 既有 SUB-15
-  - 對應 roadmap：?瑟? 2.x
+  - 對應 roadmap：長期（v2.x）
 
 
 ---
 
 ## Next
+
+> 2026-10-17 排程：Next 為空且 PS-243 只剩 human-device gate，依 Backlog 中不涉及 auth／schema／部署的低風險項目排入 Next；高風險項目仍待個別核准。
+
+- [ ] **DOC-201** 補一份 personal space state 流程說明文件
+  - 目標：說明 `user.totalXP -> level -> unlock -> gold -> ownedItems -> scene` 的資料流
+  - 對應 roadmap：Phase 2
+  - 完成條件：新文件涵蓋 legacy 與 V2 兩條路徑的資料來源、計算位置（檔案／函式）、持久化 key 與同步邊界；內容以目前 `main` 的程式碼為準並可逐項對照
+
+- [ ] **PLAT-201** 定義 `platform` adapters 在 PWA 與 future hybrid shell 的行為差異表
+  - 目標：讓未來包成 native 時有清楚替換點
+  - 對應 roadmap：Phase 5 準備
+  - 完成條件：`pwa/js/platform/` 每個 adapter 一列，記錄 PWA 現況、未來 hybrid shell 的預期替換點、降級行為與相關高風險邊界；純文件，不修改 adapter 程式碼
+
+- [ ] **PRO-014M** 開發者面板的 Pro 狀態切換支援 `server` source
+  - 目標：`_devApplyPro()` 在 `server` source 下也能切換 Pro／試用／免費狀態
+  - 現況（`PRO-014C` 實作時發現）：`pwa/js/pages/settings.js` 的開發者面板直接寫 `u.isPro` / `u.proExpiresAt` / `u.trialStartedAt`。`server` source 下這些欄位不再被讀，面板變成無效。
+  - 範圍：改為寫入 owner-scoped projection（`writeProEntitlementSnapshot()`），或依當前 source 分派；僅開發者面板，不影響 production 路徑
+  - 完成條件：兩種 source 下都能切換出付費／試用／免費三種狀態並被 `isProUser()` 正確反映
+  - 備註：純開發工具、低風險，但缺了它就無法在裝置上人工驗證 `server` source 的行為 —— `PRO-014H` 的實機驗證會需要
+  - 依賴：`PRO-014C`
 
 ---
 
@@ -187,6 +187,11 @@
 ---
 
 ## Done
+
+- [x] **AI-201** 建立 AI companion behavior layer 的 rule-based 狀態模型
+  - 完成（2026-10-17，由 PS-236 涵蓋，未另建模組）：`pwa/js/personalSpace/v2/companionEngine.js` 的 `getCompanionReaction()` 已是 deterministic、presentation-only 的 rule-based 狀態模型，定義 `observe / approach / remind / congratulate / rest / work` 六個狀態，觸發優先序與 [`docs/personal-space-v2-vertical-slice.md`](docs/personal-space-v2-vertical-slice.md) 的 Companion 規格一致（project 完成 → progress reveal → recovery → 一般 Session → Strong／Peak Momentum → Low Momentum＋使用者選定目標 → observe），由 `tests/unit/personalSpaceV2ViewModel.test.js` 覆蓋。
+  - 為什麼不另做：再建立一套平行的 behavior model 會讓 Companion 有兩個互相競爭的狀態來源，違反 AGENTS.md §6。
+  - 發現：`remind` 分支依賴 `coreState.missedPatterns`，但目前沒有任何程式碼寫入該欄位，production 中 `remind` 不會被觸發；已另立 `AI-203` 追蹤。
 
 - [x] **BUG-108** Service Worker 快取 Supabase Data API 舊回應
   - 完成（v1.25.2，PR [#152](https://github.com/yoyoCadence/Orbit/pull/152)，merge `55edfaf`）：Service Worker 只攔截同來源 GET；跨來源 Supabase Data API 不再呼叫 `respondWith()` 或進入 app cache，activate 會清除含舊 REST snapshot 的 `orbit-v1.25.1`。
