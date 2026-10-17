@@ -706,6 +706,12 @@ export const db = {
    */
   async refreshProEntitlement(userId) {
     if (!isServerProEntitlementEnabled()) return false;
+    // PRO-014M dev-tool guard, mirroring upsertProfile(): while a dev override
+    // backup exists, the projection on disk is the simulated one and must not
+    // be replaced by the server's. This grants nothing a hand-written snapshot
+    // could not already (see proEntitlement.js), SNAPSHOT_TTL_MS still expires
+    // it, and the panel's reset drops both so the next launch refetches.
+    if (localStorage.getItem(FLAG_DEV_BACKUP)) return false;
 
     const session = await this._session();
     if (!session || session.user.id !== userId) {

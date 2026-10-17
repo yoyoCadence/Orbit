@@ -9,6 +9,13 @@ import { previewBaseXP }                       from '../engine.js';
 import { goToProCard }                         from '../ui/proNav.js';
 import { proofStats, clearAllProofs }          from '../platform/proofStore.js';
 import { FLAG_PRO_HIGHLIGHT, FLAG_DEV_BACKUP, FLAG_DEV_PANEL } from '../flags.js';
+import {
+  buildProEntitlementSnapshot,
+  clearProEntitlementSnapshot,
+  getProEntitlementSource,
+  isServerProEntitlementEnabled,
+  writeProEntitlementSnapshot,
+} from '../platform/proEntitlement.js';
 import { refreshCanonicalStateAndReconcilePersonalSpaceV2 } from '../personalSpace/v2/controller.js';
 
 // ── Theme definitions ────────────────────────────────────────────────────────
@@ -299,8 +306,32 @@ function _devApplyLevel(level) {
   location.reload();
 }
 
+/**
+ * PRO-014M: the dev override for the `server` source. isProUser() reads only
+ * the owner-scoped projection there, so the profile fields `_devApplyPro()`
+ * writes for `legacy` would have no effect. Shapes mirror the legacy override:
+ * paid is lifetime, trial started yesterday with 14 days left.
+ */
+function _devProSnapshot(ownerId, status, nowMs = Date.now()) {
+  return buildProEntitlementSnapshot(ownerId, {
+    isActive:    status === 'paid' || status === 'trial',
+    expiresAt:   null,
+    trialEndsAt: status === 'trial' ? new Date(nowMs + 14 * 24 * 60 * 60 * 1000).toISOString() : null,
+  }, nowMs);
+}
+
 function _devApplyPro(status) {
   const u = storage.getUser() ?? {};
+  if (isServerProEntitlementEnabled()) {
+    const snapshot = _devProSnapshot(u.id, status);
+    if (!snapshot) { window.showToast('需要登入帳號才能模擬 server 授權'); return; }
+    // The backup is what stops refreshProEntitlement() from replacing this
+    // projection on the next launch, so it must exist before the write.
+    _devBackupOnce();
+    if (!writeProEntitlementSnapshot(snapshot)) { window.showToast('無法寫入本機 Pro projection'); return; }
+    location.reload();
+    return;
+  }
   _devBackupOnce();
   if (status === 'paid') {
     u.isPro = true; u.proExpiresAt = null; u.trialStartedAt = null;
@@ -319,6 +350,9 @@ function _devReset() {
   const backup = localStorage.getItem(FLAG_DEV_BACKUP);
   if (backup) storage.saveUserLocal(JSON.parse(backup));
   localStorage.removeItem(FLAG_DEV_BACKUP);
+  // A simulated projection must not outlive the override. Dropping it fails
+  // closed until the next launch refetches the real one from the server.
+  clearProEntitlementSnapshot();
   location.reload();
 }
 
@@ -361,7 +395,7 @@ function _devPanelHtml() {
         </div>
 
         <div>
-          <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">會員狀態（目前：${proLabel}）</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">會員狀態（目前：${proLabel} · ${getProEntitlementSource()} source）</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="${proStatus === 'free'  ? activeCls : inactCls}" id="dev-pro-free">免費</button>
             <button class="${proStatus === 'trial' ? activeCls : inactCls}" id="dev-pro-trial">試用（15 天）</button>
