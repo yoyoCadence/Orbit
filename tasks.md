@@ -141,11 +141,6 @@
   - **需專案擁有者執行**：production 資料庫操作，Claude 不具權限；依 AGENTS.md §3 屬 schema 變更的套用。
   - 依賴：`BUG-109`
 
-- [ ] **HW-106** Ambient noise focus signal
-  - Goal: use microphone volume level as an optional focus-environment signal, not as recording.
-  - Scope: permission-gated Web Audio volume meter, no audio persistence, UI states for quiet / normal / noisy.
-  - Acceptance: focus mode can show a live ambient state and stops microphone tracks when leaving the view.
-
 - [ ] **HW-107** Location context mode
   - Goal: support optional coarse context labels such as home / work / outside for task suggestions.
   - Scope: privacy-first local-only geolocation prompt, coarse saved labels, no precise coordinate sync.
@@ -161,6 +156,13 @@
 ---
 
 ## Done
+
+- [x] **HW-106** Ambient noise focus signal
+  - Goal: use microphone volume level as an optional focus-environment signal, not as recording.
+  - Scope: permission-gated Web Audio volume meter, no audio persistence, UI states for quiet / normal / noisy.
+  - Acceptance: focus mode can show a live ambient state and stops microphone tracks when leaving the view.
+  - 完成（2026-10-17，v1.27.0）：Focus 畫面新增使用者主動開啟的「偵測環境音」，即時顯示安靜／一般／吵雜；新增 `platform/ambientNoise.js`（只讀 RMS 音量，無 MediaRecorder、不保存不上傳）。結束、略過、倒數完成、縮小與 App 進入背景都會停止所有麥克風 track，權限對話框期間離開畫面也會在取得後立即關閉。
+  - 驗證：`ambientNoise.test.js`（7 項）與 `focusAmbient.test.js`（9 項），移除縮小／背景停止呼叫時對應測試失敗；e2e 41/41。門檻為未校正的相對值，真機上不同麥克風的分界需再觀察。
 
 - [x] **HW-110** Offline action queue and sync hints
   - Goal: make offline task completion feel intentional and visible.

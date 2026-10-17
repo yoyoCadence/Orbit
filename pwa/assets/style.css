@@ -4386,7 +4386,8 @@ nav {
 }
 .focus-pause-btn { min-width: 96px; }
 
-.focus-desk-btn {
+.focus-desk-btn,
+.focus-ambient-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -4400,11 +4401,28 @@ nav {
   font-weight: 700;
   cursor: pointer;
 }
-.focus-desk-btn[aria-pressed="true"] {
+.focus-desk-btn[aria-pressed="true"],
+.focus-ambient-btn[aria-pressed="true"] {
   background: color-mix(in srgb, var(--primary) 28%, var(--surface-2));
   border-color: color-mix(in srgb, var(--primary-lt) 72%, var(--border));
   box-shadow: 0 0 18px color-mix(in srgb, var(--primary) 28%, transparent);
 }
+
+/* HW-106 ambient noise signal */
+.focus-ambient {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0 4px;
+}
+.focus-ambient-status {
+  min-height: 18px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.focus-ambient-status[data-level="quiet"] { color: #10b981; }
+.focus-ambient-status[data-level="noisy"] { color: #d97706; }
 
 #focus-overlay.focus-desk-mode {
   background:

@@ -9,6 +9,7 @@ import { getMinEffectiveMinutes } from './engine.js';
 import { submitFocusResult } from './sessionFlow.js';
 import { showToast } from './ui/feedback.js';
 import { haptic } from './platform/haptics.js';
+import { startAmbientNoiseMonitor, supportsAmbientNoise } from './platform/ambientNoise.js';
 
 // ─── Focus timer state ───────────────────────────────────────────────────────
 
@@ -25,6 +26,8 @@ const focus = {
   deskStableSince:   0,
   deskMotionCleanup: null,
   deskAutoSuppressed: false,
+  ambient:           null,   // HW-106 monitor handle while the microphone is open
+  ambientRequest:    0,      // bumps on stop so a late permission grant is discarded
 };
 
 let _focusDeskToggleAt = 0;
@@ -261,6 +264,76 @@ window.toggleFocusDeskMode = async function () {
   _setFocusDeskMode(!focus.deskMode, 'manual');
 };
 
+// ─── HW-106: ambient noise focus signal ──────────────────────────────────────
+// Opt-in per Session: the microphone opens only after the user taps the
+// control, only a quiet / normal / noisy label is shown, and it is released as
+// soon as the focus view is left (end, skip, minimise) or the app is hidden.
+
+const AMBIENT_LABELS = { quiet: '🤫 環境安靜', normal: '🙂 環境一般', noisy: '📢 環境吵雜' };
+
+function _ensureAmbientControl() {
+  const box = document.querySelector('#focus-overlay .focus-box');
+  if (!box || document.getElementById('focus-ambient') || !supportsAmbientNoise()) return;
+  const wrap = document.createElement('div');
+  wrap.id = 'focus-ambient';
+  wrap.className = 'focus-ambient';
+  wrap.innerHTML = `
+    <button type="button" id="focus-ambient-btn" class="focus-ambient-btn" aria-pressed="false">🎙 偵測環境音</button>
+    <span id="focus-ambient-status" class="focus-ambient-status" role="status" aria-live="polite"></span>`;
+  wrap.querySelector('button').addEventListener('click', event => {
+    event.preventDefault();
+    event.stopPropagation();
+    window.toggleFocusAmbient();
+  });
+  box.insertBefore(wrap, box.querySelector('.focus-skip-btn') || null);
+}
+
+function _setAmbientUi(active, text = '', level = '') {
+  const btn = document.getElementById('focus-ambient-btn');
+  const status = document.getElementById('focus-ambient-status');
+  if (btn) {
+    btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    btn.textContent = active ? '關閉環境音偵測' : '🎙 偵測環境音';
+  }
+  if (status) {
+    status.textContent = text;
+    status.dataset.level = level;
+  }
+}
+
+function _stopFocusAmbient() {
+  focus.ambientRequest += 1;
+  focus.ambient?.stop();
+  focus.ambient = null;
+  _setAmbientUi(false);
+}
+
+window.toggleFocusAmbient = async function () {
+  if (!focus.active) return;
+  if (focus.ambient) { _stopFocusAmbient(); return; }
+  const request = ++focus.ambientRequest;
+  _setAmbientUi(true, '等待麥克風權限…');
+  try {
+    const monitor = await startAmbientNoiseMonitor({
+      onLevel: ({ level }) => _setAmbientUi(true, AMBIENT_LABELS[level], level),
+    });
+    // The view may have been left while the permission prompt was open.
+    if (request !== focus.ambientRequest || !focus.active) {
+      monitor.stop();
+      return;
+    }
+    focus.ambient = monitor;
+  } catch {
+    if (request !== focus.ambientRequest) return;
+    _setAmbientUi(false, '無法使用麥克風');
+  }
+};
+
+// A backgrounded app must not keep the microphone open.
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) _stopFocusAmbient();
+});
+
 function _launchFocus(taskId, task, targetMin) {
   haptic('focusStart');
   focus.active          = true;
@@ -284,6 +357,8 @@ function _launchFocus(taskId, task, targetMin) {
 
   document.getElementById('focus-overlay').classList.remove('hidden');
   _prepareFocusDeskMode();
+  _ensureAmbientControl();
+  _stopFocusAmbient();
   focus.intervalId = setInterval(_tickFocus, 1000);
   _tickFocus();
 }
@@ -296,6 +371,7 @@ function _tickFocus() {
     clearInterval(focus.intervalId);
     document.getElementById('focus-timer').textContent = '00:00';
     _stopFocusDeskMode();
+    _stopFocusAmbient();
     document.getElementById('focus-overlay').classList.add('hidden');
     document.getElementById('focus-pip').classList.add('hidden');
     _playFocusChime('end');
@@ -373,6 +449,7 @@ window.endFocus = function () {
 
   clearInterval(focus.intervalId);
   _stopFocusDeskMode();
+  _stopFocusAmbient();
   document.getElementById('focus-overlay').classList.add('hidden');
   document.getElementById('focus-pip').classList.add('hidden');
   _showResultPicker(Math.floor(focus.elapsedSec / 60));
@@ -383,6 +460,7 @@ window.minimizeFocus = function () {
   if (!focus.active) return;
   const task = state.tasks.find(t => t.id === focus.taskId);
   _setFocusDeskMode(false, 'reset');
+  _stopFocusAmbient();   // minimising leaves the focus view
   document.getElementById('focus-pip-emoji').textContent = task?.emoji || '🎯';
   document.getElementById('focus-overlay').classList.add('hidden');
   document.getElementById('focus-pip').classList.remove('hidden');
@@ -452,6 +530,7 @@ function _showEarlyEndConfirm() {
     clearInterval(focus.intervalId);
     const dur = Math.floor(focus.elapsedSec / 60);
     _stopFocusDeskMode();
+    _stopFocusAmbient();
     document.getElementById('focus-overlay').classList.add('hidden');
     document.getElementById('focus-pip').classList.add('hidden');
     _submitFocusResult('invalid', dur);
@@ -505,6 +584,7 @@ window.skipFocus = function () {
     modal.remove();
     clearInterval(focus.intervalId);
     _stopFocusDeskMode();
+    _stopFocusAmbient();
     document.getElementById('focus-overlay').classList.add('hidden');
     document.getElementById('focus-pip').classList.add('hidden');
     _submitFocusResult('complete', selected);
@@ -559,6 +639,7 @@ function _showResultPicker(durationMin) {
 /** Focus-timer teardown, then hand settlement to sessionFlow. */
 function _submitFocusResult(result, durationMin, note = '') {
   _stopFocusDeskMode();
+  _stopFocusAmbient();
   focus.active = false;
   submitFocusResult(focus.taskId, focus.elapsedSec, result, durationMin, note);
 }
