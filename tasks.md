@@ -166,17 +166,19 @@
 
 ## In Progress
 
-- [ ] **BUG-110** 註冊成功後直接登出，登入按鈕維持 disabled
-  - 目標：同一個 App session 內完成註冊後直接登出，切回登入 tab 並填妥帳密時可以立即登入，不需重新載入頁面。
-  - 根因初判：`authFlow.js` 的成功 signup 路徑把 `#auth-submit` 設為 disabled／「註冊中…」後交由 auth state change 啟動 App，但登出回到登入畫面時沒有重設 disabled 狀態；切換 tab 只更新文字。
-  - 範圍：另案補 auth flow 回歸測試並重設表單 UI 狀態；不影響 BUG-108／PRO-014J 的「重新開 App 後第二次登入」production 驗收，也不修改 Supabase Auth 或 schema。
-
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
 
 ---
 
 ## Done
+
+- [x] **BUG-110** 註冊成功後直接登出，登入按鈕維持 disabled
+  - 目標：同一個 App session 內完成註冊後直接登出，切回登入 tab 並填妥帳密時可以立即登入，不需重新載入頁面。
+  - 根因初判：`authFlow.js` 的成功 signup 路徑把 `#auth-submit` 設為 disabled／「註冊中…」後交由 auth state change 啟動 App，但登出回到登入畫面時沒有重設 disabled 狀態；切換 tab 只更新文字。
+  - 範圍：另案補 auth flow 回歸測試並重設表單 UI 狀態；不影響 BUG-108／PRO-014J 的「重新開 App 後第二次登入」production 驗收，也不修改 Supabase Auth 或 schema。
+  - 完成（2026-10-17，v1.25.4，經使用者核准）：`showLoginScreen()` 在 listener 早退前重設 `#auth-submit` 的 disabled 與文字。實際範圍比初判大：任何一次成功的密碼登入後在同一頁面 session 登出都會卡住，不只註冊路徑。
+  - 驗證：新增 `tests/unit/authFlow.test.js`（4 項），移除修正時登入／註冊後登出兩項失敗；未修改 `auth.js`、Supabase Auth 或 schema。
 
 - [x] **PRO-014M** 開發者面板的 Pro 狀態切換支援 `server` source
   - 目標：`_devApplyPro()` 在 `server` source 下也能切換 Pro／試用／免費狀態
