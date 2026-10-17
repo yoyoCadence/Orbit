@@ -135,10 +135,11 @@
 
 > 2026-10-17 核准：使用者明確核准 `BUG-110`（auth flow 表單 UI）、`PRO-014O`（entitlement 啟動流程）、`BUG-109`（只撰寫 migration 與測試，production 套用由使用者執行），並排定 `HW-110`、`HW-106`、`HW-107`。
 
-- [ ] **BUG-109** Email local-part 超過 30 字元時 Supabase signup 失敗
-  - 目標：讓合法但 `@` 前綴超過 30 字元的 email 能完成註冊，同時維持 profile `name` 的 30 字元限制。
-  - 根因：production 的 `handle_new_user()` 以 `split_part(NEW.email, '@', 1)` 建立 profile 名稱，未截斷即寫入受 `profiles_name_check` 約束的欄位，Auth 因 trigger exception 回傳 `500 Database error saving new user`。
-  - 範圍：提出並核准 migration 後修正 signup trigger，補長 email 整合測試；此項涉及 Auth／schema，不納入 BUG-108 的 Service Worker hotfix。
+- [ ] **BUG-109A** 在 production 套用 013 signup trigger migration
+  - 目標：讓 production 的 `handle_new_user()` 截斷超過 30 字元的名稱來源，長 email local-part 與長 Google 顯示名稱都能註冊。
+  - 步驟：依 [`docs/bug-109-signup-name-truncation.md`](docs/bug-109-signup-name-truncation.md) 的 runbook：先以 `pg_get_functiondef` 比對 production 函式與 004、記錄回滾來源，在非 production 環境跑 `tests/database/bug109.test.sql`，再套用並驗證。
+  - **需專案擁有者執行**：production 資料庫操作，Claude 不具權限；依 AGENTS.md §3 屬 schema 變更的套用。
+  - 依賴：`BUG-109`
 
 - [ ] **HW-110** Offline action queue and sync hints
   - Goal: make offline task completion feel intentional and visible.
@@ -165,6 +166,13 @@
 ---
 
 ## Done
+
+- [x] **BUG-109** Email local-part 超過 30 字元時 Supabase signup 失敗
+  - 目標：讓合法但 `@` 前綴超過 30 字元的 email 能完成註冊，同時維持 profile `name` 的 30 字元限制。
+  - 根因：production 的 `handle_new_user()` 以 `split_part(NEW.email, '@', 1)` 建立 profile 名稱，未截斷即寫入受 `profiles_name_check` 約束的欄位，Auth 因 trigger exception 回傳 `500 Database error saving new user`。
+  - 範圍：提出並核准 migration 後修正 signup trigger，補長 email 整合測試；此項涉及 Auth／schema，不納入 BUG-108 的 Service Worker hotfix。
+  - 完成（2026-10-17，repo 部分，經使用者核准；production 套用另列 `BUG-109A`）：新增 `pwa/db/013_signup_profile_name.sql`，只把 `handle_new_user()` 的名稱來源包進 `left(..., 30)`，其餘與 004 相同。實際範圍比原記錄大：Google OAuth 顯示名稱超過 30 字元也走同一條失敗路徑。
+  - 驗證：本機 PostgreSQL 16.15（stub `auth.users`＋001＋004）以 `tests/database/bug109.test.sql` 重現 `profiles_name_check` 失敗；套用 013 後 6 項檢查全過且 rollback 後 0 列。`tests/unit/signupTriggerSql.test.js` 鎖住 migration 與 004 只差 `left(..., 30)`。套用步驟與回滾見 [`docs/bug-109-signup-name-truncation.md`](docs/bug-109-signup-name-truncation.md)。
 
 - [x] **PRO-014O** Cached-user 啟動路徑不保證 refresh Pro entitlement projection
   - 現況（`PRO-014M` 實作時發現）：`pwa/js/app.js` 的 `init()` 有本機 user 快取時走背景同步 `getSession()` → `db.loadFromRemote()` → `loadStateFromStorage()`，這條路徑**沒有**呼叫 `db.refreshProEntitlement()`。refresh 只在 `loadAndStart()` 內執行，而回訪使用者是否進入 `loadAndStart()` 取決於 `SIGNED_IN` 事件是否搶在 `getSession()` resolve 之前（BUG-106 記錄的同一個 race），沒有保證。
