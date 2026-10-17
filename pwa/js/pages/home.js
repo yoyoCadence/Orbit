@@ -23,6 +23,7 @@ import {
   updateOrbitWindowAchievementPhoto,
 } from '../personalSpace/v2/ui/orbitWindow.js';
 import { orbitWindowRuntimeDestroyer } from '../personalSpace/v2/runtime/pixiSceneRuntime.js';
+import { mountPlaceHint } from '../ui/placeHint.js';
 
 // ─── Value / impactType labels ────────────────────────────────────────────────
 
@@ -252,6 +253,9 @@ export function renderHome(container) {
 
     ${homeOrbitWindow?.html || ''}
 
+    <!-- HW-107: filled only when the owner opted into location context -->
+    <div class="place-hint" id="place-hint" role="status" hidden></div>
+
     <!-- 本日計劃 -->
     <div class="section-title-row">
       <span>📋 本日計劃</span>
@@ -308,6 +312,11 @@ export function renderHome(container) {
       }
     </div>
   `;
+
+  mountPlaceHint(container.querySelector('#place-hint'), {
+    ownerId: state.user?.id,
+    tasks: state.tasks,
+  }).catch(() => {});
 
   const orbitRoot = container.querySelector('[data-orbit-window]');
   if (orbitRoot && homeOrbitWindow) {

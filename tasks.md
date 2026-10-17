@@ -141,11 +141,6 @@
   - **需專案擁有者執行**：production 資料庫操作，Claude 不具權限；依 AGENTS.md §3 屬 schema 變更的套用。
   - 依賴：`BUG-109`
 
-- [ ] **HW-107** Location context mode
-  - Goal: support optional coarse context labels such as home / work / outside for task suggestions.
-  - Scope: privacy-first local-only geolocation prompt, coarse saved labels, no precise coordinate sync.
-  - Acceptance: user can opt in, assign current place to a label, and see context-aware task hints.
-
 ---
 
 ## In Progress
@@ -156,6 +151,14 @@
 ---
 
 ## Done
+
+- [x] **HW-107** Location context mode
+  - Goal: support optional coarse context labels such as home / work / outside for task suggestions.
+  - Scope: privacy-first local-only geolocation prompt, coarse saved labels, no precise coordinate sync.
+  - Acceptance: user can opt in, assign current place to a label, and see context-aware task hints.
+  - 完成（2026-10-17，v1.28.0）：設定頁新增 opt-in 的「位置情境（實驗）」：可把目前位置設為「家」或「公司」並清除；首頁在啟用且有保存位置時顯示「📍 在家／在公司／在外面 · 適合：…」，依既有任務欄位（taskNature、impactType、category）挑最多 3 個任務，永不建議娛樂。新增 `platform/placeContext.js` 與 `ui/placeHint.js`。
+  - 隱私：只在本機依 owner 保存使用者指定的粗略座標（3 位小數，約 110 公尺），不上傳、不同步；即時位置只用於比對、不保存；未啟用或沒有保存位置時完全不呼叫定位；首頁 10 分鐘內只定位一次。
+  - 驗證：`placeContext.test.js`（15 項）、`placeContextSettings.test.js`（6 項）；e2e 41/41。位置與任務的對應規則是第一版假設，需實際使用後調整。
 
 - [x] **HW-106** Ambient noise focus signal
   - Goal: use microphone volume level as an optional focus-environment signal, not as recording.

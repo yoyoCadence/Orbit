@@ -17,6 +17,14 @@ import {
   writeProEntitlementSnapshot,
 } from '../platform/proEntitlement.js';
 import { refreshCanonicalStateAndReconcilePersonalSpaceV2 } from '../personalSpace/v2/controller.js';
+import {
+  clearPlaceContext,
+  getCoarsePosition,
+  loadPlaceContext,
+  savePlaceContext,
+  supportsGeolocation,
+} from '../platform/placeContext.js';
+import { resetPlaceHintCache } from '../ui/placeHint.js';
 
 // ── Theme definitions ────────────────────────────────────────────────────────
 export const THEMES = [
@@ -410,6 +418,80 @@ function _devPanelHtml() {
     </div>`;
 }
 
+// ── HW-107: location context (opt-in, device-local) ─────────────────────────
+
+const PLACE_NAMES = { home: '家', work: '公司' };
+
+function _placeContextHtml() {
+  if (!supportsGeolocation()) {
+    return `
+    <div class="card">
+      <div class="card-title">📍 位置情境（實驗）</div>
+      <p style="font-size:12px;color:var(--text-muted)">這台裝置不支援定位。</p>
+    </div>`;
+  }
+  const ctx = loadPlaceContext(state.user?.id);
+  const placeRow = label => `
+      <div class="mode-row" style="margin-top:10px">
+        <div class="mode-info">
+          <div class="mode-name">${PLACE_NAMES[label]}</div>
+          <div class="mode-desc">${ctx.places[label] ? '已設定' : '未設定'}</div>
+        </div>
+        <button class="btn btn-outline btn-sm" data-place-set="${label}" ${ctx.enabled ? '' : 'disabled'}>設為目前位置</button>
+      </div>`;
+  return `
+    <div class="card" id="place-context-card">
+      <div class="card-title">📍 位置情境（實驗）</div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">
+        依你在家、在公司或在外面，於首頁提示適合的任務。只在這台裝置保存你指定的粗略位置（約 100 公尺），不會上傳或同步。
+      </p>
+      <div class="mode-row">
+        <div class="mode-info">
+          <div class="mode-name">啟用位置情境</div>
+          <div class="mode-desc">開啟後才會在首頁讀取一次粗略位置</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="place-context-toggle" ${ctx.enabled ? 'checked' : ''}>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      ${placeRow('home')}
+      ${placeRow('work')}
+      <button class="btn-text-danger" id="place-context-clear" style="margin-top:12px;text-align:left">清除位置資料</button>
+    </div>`;
+}
+
+function _bindPlaceContext(container) {
+  const ownerId = state.user?.id;
+  container.querySelector('#place-context-toggle')?.addEventListener('change', event => {
+    savePlaceContext(ownerId, { enabled: event.target.checked });
+    resetPlaceHintCache();
+    _renderView(container);
+  });
+  container.querySelectorAll('[data-place-set]').forEach(button => {
+    button.addEventListener('click', async () => {
+      const label = button.dataset.placeSet;
+      button.disabled = true;
+      try {
+        const position = await getCoarsePosition({ maximumAgeMs: 0 });
+        savePlaceContext(ownerId, { places: { [label]: position } });
+        resetPlaceHintCache();
+        window.showToast(`已把目前位置設為「${PLACE_NAMES[label]}」`);
+      } catch {
+        window.showToast('無法取得位置，請確認已允許定位');
+      }
+      // The router reuses the page container; only repaint if settings is still shown.
+      if (container.isConnected && container.querySelector('#place-context-card')) _renderView(container);
+    });
+  });
+  container.querySelector('#place-context-clear')?.addEventListener('click', () => {
+    clearPlaceContext(ownerId);
+    resetPlaceHintCache();
+    window.showToast('位置資料已清除');
+    _renderView(container);
+  });
+}
+
 // ── Main render ──────────────────────────────────────────────────────────────
 export function renderSettings(container) {
   _renderView(container);
@@ -631,6 +713,8 @@ function _renderView(container) {
         </select>
       </div>
     </div>
+
+    ${_placeContextHtml()}
 
     <!-- Tasks -->
     <div class="card">
@@ -895,6 +979,9 @@ function _setupListeners(container) {
   container.querySelector('#dev-pro-trial')?.addEventListener('click', () => _devApplyPro('trial'));
   container.querySelector('#dev-pro-paid')?.addEventListener('click',  () => _devApplyPro('paid'));
   container.querySelector('#dev-reset')?.addEventListener('click', _devReset);
+
+  // HW-107 location context
+  _bindPlaceContext(container);
 
   // CSV export — Pro: run; free: redirect to Pro card
   container.querySelector('#export-csv-btn')?.addEventListener('click', () => {
