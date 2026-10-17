@@ -3,6 +3,23 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.26.0] - 2026-10-17
+
+### Added
+- **離線時看得到待同步的變更，連線恢復後立即同步（HW-110）**：離線時頂部同步列顯示「📴 離線中 · N 筆待同步，連線後自動同步」，每次在離線狀態完成或刪除任務後更新數量；啟動時若因離線無法同步，改顯示離線狀態而不是一般的「同步暫停」。網路恢復後立即推送佇列並重新整理畫面，不必等到下次開啟 App。
+- 新增 `platform/network.js` 連線狀態 adapter 與唯讀的 `storage.getPendingSyncSummary()`；待同步資料沿用既有的 owner-scoped pending sidecar（Sessions、Session 刪除、tasks、profile、Energy），沒有新的儲存格式。
+
+### Notes
+- 連線恢復的同步只在先前同步失敗或曾離線時執行，避免每次網路切換都重新拉取；刻意不呼叫 `authOperationGuard.begin()`，以免取消仍在進行的登入啟動流程，改在每個 await 後確認 session 未變。
+- 有輸入框聚焦時不重新 render 頁面，避免吃掉正在輸入的內容。
+- 遊客模式沒有遠端帳號，不顯示同步提示。未修改 schema、Auth 或同步協定。
+
+### Validation
+- 新增 `tests/unit/offlineSyncHints.test.js`（9 項：pending 摘要、跨 owner 隔離、連線 adapter、同步列文案）與 `tests/unit/appBootSequence.test.js` 的 6 項 HW-110 啟動整合測試；移除 `app.js` 接線時 HW-110 測試失敗。
+- `npm run lint`、`npm test`（58 files／1020 tests）通過；`tests/e2e` 41/41 通過（本機以容器內建 Chromium 執行）。版本 bump 後以 `npm run ps243:assets` 同步可重現資產基準。
+
+---
+
 ## [1.25.5] - 2026-10-17
 
 ### Fixed

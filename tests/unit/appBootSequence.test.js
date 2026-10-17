@@ -76,6 +76,7 @@ const storage = vi.hoisted(() => ({
   isTrialUser: vi.fn(() => false),
   isProUser: vi.fn(() => false),
   recoverPendingSessionDeletions: vi.fn(),
+  getPendingSyncSummary: vi.fn(() => ({ total: 0 })),
   saveUser: vi.fn(),
   saveTasks: vi.fn(),
   saveDailyPlan: vi.fn(),
@@ -112,6 +113,20 @@ vi.mock('../../pwa/js/personalSpace/v2/controller.js', () => ({
     centralState.sessions = cache.sessions;
     centralState.energy   = cache.energy;
   }),
+}));
+
+const network = vi.hoisted(() => ({
+  online: true,
+  handlers: [],
+  emit(value) {
+    network.online = value;
+    return Promise.all(network.handlers.map(handler => handler(value)));
+  },
+}));
+
+vi.mock('../../pwa/js/platform/network.js', () => ({
+  isOnline: () => network.online,
+  onConnectivityChange: handler => { network.handlers.push(handler); return () => {}; },
 }));
 
 vi.mock('../../pwa/js/authFlow.js', () => authFlow);
@@ -183,6 +198,9 @@ beforeEach(() => {
   storage.clearAll.mockImplementation(() => { cache.user = null; cache.tasks = []; });
   auth.callback = null;
   auth.sessionResolve = null;
+  network.online = true;
+  network.handlers = [];
+  storage.getPendingSyncSummary.mockImplementation(() => ({ total: 0 }));
   sessionStorage.clear();
   // Keeps warmEnhancementModules() from dynamically importing the real modules.
   window.requestIdleCallback = () => 0;
@@ -379,7 +397,7 @@ describe('app boot sequencing', () => {
     await flush();
 
     expect(authFlow.showLoginScreen).toHaveBeenCalled();
-    expect(feedback.showSyncBanner).toHaveBeenCalledWith('error');
+    expect(feedback.showSyncBanner).toHaveBeenCalledWith('error', { pending: 0 });
     expect(feedback.showToast).toHaveBeenCalledWith('無法載入雲端資料，請檢查連線後重新整理。');
     expect(document.getElementById('setup-screen').classList.contains('hidden')).toBe(true);
     expect(storage.saveUser).not.toHaveBeenCalled();
@@ -402,7 +420,7 @@ describe('app boot sequencing', () => {
     expect(document.getElementById('setup-screen').classList.contains('hidden')).toBe(true);
     expect(document.getElementById('main-app').classList.contains('hidden')).toBe(false);
     expect(authFlow.showLoginScreen).not.toHaveBeenCalled();
-    expect(feedback.showSyncBanner).toHaveBeenCalledWith('error');
+    expect(feedback.showSyncBanner).toHaveBeenCalledWith('error', { pending: 0 });
     expect(storage.saveUser).not.toHaveBeenCalled();
   });
 
@@ -451,7 +469,7 @@ describe('PRO-014O：快取分支的 entitlement refresh', () => {
     await flush();
 
     expect(db.refreshProEntitlement).not.toHaveBeenCalled();
-    expect(feedback.showSyncBanner).toHaveBeenCalledWith('error');
+    expect(feedback.showSyncBanner).toHaveBeenCalledWith('error', { pending: 0 });
   });
 
   it('SIGNED_IN 先到時只 refresh 一次，後到的 getSession() 不重複', async () => {
@@ -476,5 +494,88 @@ describe('PRO-014O：快取分支的 entitlement refresh', () => {
 
     expect(db.refreshProEntitlement).toHaveBeenCalledTimes(1);
     expect(feedback.showSyncBanner).not.toHaveBeenCalledWith('synced');
+  });
+});
+
+// ─── HW-110：離線時顯示待同步數量，連線恢復後立即推送 ─────────────────────────
+
+describe('HW-110：離線佇列提示與連線恢復同步', () => {
+  async function bootOfflineWithPending(pending = 3) {
+    network.online = false;
+    storage.getPendingSyncSummary.mockImplementation(() => ({ total: pending }));
+    db.loadFromRemote.mockRejectedValueOnce(new Error('Failed to fetch'));
+    await bootWithPendingSession('owner-a');
+    auth.sessionResolve(sessionFor('owner-a'));
+    await flush();
+  }
+
+  it('離線啟動時顯示離線狀態與待同步數量，而不是一般的同步錯誤', async () => {
+    await bootOfflineWithPending(3);
+
+    expect(storage.getPendingSyncSummary).toHaveBeenCalledWith('owner-a');
+    expect(feedback.showSyncBanner).toHaveBeenLastCalledWith('offline', { pending: 3 });
+  });
+
+  it('連線恢復後立即推送並重新整理，不必等下次開啟 App', async () => {
+    await bootOfflineWithPending(2);
+    expect(db.loadFromRemote).toHaveBeenCalledTimes(1);
+
+    db.loadFromRemote.mockResolvedValueOnce();
+    await network.emit(true);
+    await flush();
+
+    expect(db.loadFromRemote).toHaveBeenCalledTimes(2);
+    expect(db.refreshProEntitlement).toHaveBeenCalledWith('owner-a');
+    expect(feedback.showSyncBanner).toHaveBeenLastCalledWith('synced');
+  });
+
+  it('連線恢復後的同步仍失敗時，保留佇列並顯示待同步數量', async () => {
+    await bootOfflineWithPending(2);
+
+    db.loadFromRemote.mockRejectedValueOnce(new Error('503'));
+    await network.emit(true);
+    await flush();
+
+    expect(feedback.showSyncBanner).toHaveBeenLastCalledWith('error', { pending: 2 });
+  });
+
+  it('啟動同步成功、之後只是網路短暫切換時，不重複拉取', async () => {
+    await bootWithPendingSession('owner-a');
+    auth.sessionResolve(sessionFor('owner-a'));
+    await flush();
+    expect(db.loadFromRemote).toHaveBeenCalledTimes(1);
+
+    await network.emit(true);
+    await flush();
+
+    expect(db.loadFromRemote).toHaveBeenCalledTimes(1);
+  });
+
+  it('離線事件會把之後的上線標記為需要同步', async () => {
+    await bootWithPendingSession('owner-a');
+    auth.sessionResolve(sessionFor('owner-a'));
+    await flush();
+
+    storage.getPendingSyncSummary.mockImplementation(() => ({ total: 1 }));
+    await network.emit(false);
+    expect(feedback.showSyncBanner).toHaveBeenLastCalledWith('offline', { pending: 1 });
+
+    await network.emit(true);
+    await flush();
+    expect(db.loadFromRemote).toHaveBeenCalledTimes(2);
+  });
+
+  it('沒有登入 session（遊客）時不顯示離線同步提示，也不嘗試推送', async () => {
+    seedCachedUser('guest-local');
+    auth.getSession.mockResolvedValue(null);
+    await import('../../pwa/js/app.js');
+    await flush();
+
+    await network.emit(false);
+    await network.emit(true);
+    await flush();
+
+    expect(feedback.showSyncBanner).not.toHaveBeenCalledWith('offline', expect.anything());
+    expect(db.loadFromRemote).not.toHaveBeenCalled();
   });
 });
