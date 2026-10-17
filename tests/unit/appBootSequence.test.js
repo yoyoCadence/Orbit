@@ -418,3 +418,63 @@ describe('app boot sequencing', () => {
     expect(db.loadFromRemote).toHaveBeenCalledWith('owner-b');
   });
 });
+
+// ─── PRO-014O：cached-user 啟動也要 refresh Pro entitlement projection ─────────
+//
+// 回訪使用者通常走 init() 的快取分支：getSession() → 背景 loadFromRemote()，
+// 只有 SIGNED_IN 搶在 getSession() 之前才會進 loadAndStart()。若快取分支不
+// refresh，切到 `server` source 後 projection 會在 SNAPSHOT_TTL_MS 後 fail closed，
+// 付費使用者失去 Pro。
+
+describe('PRO-014O：快取分支的 entitlement refresh', () => {
+  it('getSession() 先 resolve（沒有 SIGNED_IN）時，遠端同步後仍會 refresh', async () => {
+    await bootWithPendingSession('owner-a');
+    expect(db.refreshProEntitlement).not.toHaveBeenCalled();
+
+    auth.sessionResolve(sessionFor('owner-a'));
+    await flush();
+
+    expect(db.loadFromRemote).toHaveBeenCalledWith('owner-a');
+    expect(db.refreshProEntitlement).toHaveBeenCalledTimes(1);
+    expect(db.refreshProEntitlement).toHaveBeenCalledWith('owner-a');
+    // 與 loadAndStart() 相同的順序：先拉遠端，再 refresh，最後才宣告同步完成
+    expect(db.loadFromRemote.mock.invocationCallOrder[0])
+      .toBeLessThan(db.refreshProEntitlement.mock.invocationCallOrder[0]);
+    expect(feedback.showSyncBanner).toHaveBeenCalledWith('synced');
+  });
+
+  it('遠端同步失敗（離線）時不 refresh，保留既有 snapshot 讓 grace window 生效', async () => {
+    db.loadFromRemote.mockRejectedValueOnce(new Error('offline'));
+    await bootWithPendingSession('owner-a');
+
+    auth.sessionResolve(sessionFor('owner-a'));
+    await flush();
+
+    expect(db.refreshProEntitlement).not.toHaveBeenCalled();
+    expect(feedback.showSyncBanner).toHaveBeenCalledWith('error');
+  });
+
+  it('SIGNED_IN 先到時只 refresh 一次，後到的 getSession() 不重複', async () => {
+    await bootWithPendingSession('owner-a');
+    await auth.callback('SIGNED_IN', sessionFor('owner-a'));
+    await flush();
+    auth.sessionResolve(sessionFor('owner-a'));
+    await flush();
+
+    expect(db.refreshProEntitlement).toHaveBeenCalledTimes(1);
+  });
+
+  it('refresh 期間登出時，不再以舊 owner 宣告同步完成', async () => {
+    await bootWithPendingSession('owner-a');
+    db.refreshProEntitlement.mockImplementationOnce(async () => {
+      await auth.callback('SIGNED_OUT', null);
+      return false;
+    });
+
+    auth.sessionResolve(sessionFor('owner-a'));
+    await flush();
+
+    expect(db.refreshProEntitlement).toHaveBeenCalledTimes(1);
+    expect(feedback.showSyncBanner).not.toHaveBeenCalledWith('synced');
+  });
+});
