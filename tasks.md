@@ -141,14 +141,14 @@
   - **需專案擁有者執行**：production 資料庫操作，Claude 不具權限；依 AGENTS.md §3 屬 schema 變更的套用。
   - 依賴：`BUG-109`
 
+---
+
+## In Progress
+
 - [ ] **HW-107** Location context mode
   - Goal: support optional coarse context labels such as home / work / outside for task suggestions.
   - Scope: privacy-first local-only geolocation prompt, coarse saved labels, no precise coordinate sync.
   - Acceptance: user can opt in, assign current place to a label, and see context-aware task hints.
-
----
-
-## In Progress
 
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
