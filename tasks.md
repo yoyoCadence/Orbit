@@ -159,11 +159,6 @@
 
 > 2026-10-17 排程：Next 為空且 PS-243 只剩 human-device gate，依 Backlog 中不涉及 auth／schema／部署的低風險項目排入 Next；高風險項目仍待個別核准。
 
-- [ ] **DOC-201** 補一份 personal space state 流程說明文件
-  - 目標：說明 `user.totalXP -> level -> unlock -> gold -> ownedItems -> scene` 的資料流
-  - 對應 roadmap：Phase 2
-  - 完成條件：新文件涵蓋 legacy 與 V2 兩條路徑的資料來源、計算位置（檔案／函式）、持久化 key 與同步邊界；內容以目前 `main` 的程式碼為準並可逐項對照
-
 - [ ] **PLAT-201** 定義 `platform` adapters 在 PWA 與 future hybrid shell 的行為差異表
   - 目標：讓未來包成 native 時有清楚替換點
   - 對應 roadmap：Phase 5 準備
@@ -187,6 +182,13 @@
 ---
 
 ## Done
+
+- [x] **DOC-201** 補一份 personal space state 流程說明文件
+  - 目標：說明 `user.totalXP -> level -> unlock -> gold -> ownedItems -> scene` 的資料流
+  - 對應 roadmap：Phase 2
+  - 完成條件：新文件涵蓋 legacy 與 V2 兩條路徑的資料來源、計算位置（檔案／函式）、持久化 key 與同步邊界；內容以目前 `main` 的程式碼為準並可逐項對照
+  - 完成（2026-10-17）：新增 [`docs/personal-space-state-flow.md`](docs/personal-space-state-flow.md)，逐項列出 runtime 選擇、共用 XP／level 上游、legacy 與 V2 的計算位置與寫入點、6 個實際 localStorage key 與 Supabase 同步邊界，並附 DevTools 對照指令。
+  - 發現：兩個 runtime 都沒有寫入 `spentGold`／`ownedItems` 的程式碼（shop 只派送無 listener 的 purchase request，符合 V2 slice 的刻意延後）；V2 不依 `level` 解鎖場景；AGENTS.md §17 的重置指令使用了不存在的 key `orbit_personal-space-state`，已更正為實際的 storageBridge key 並補上 V2 key。
 
 - [x] **AI-201** 建立 AI companion behavior layer 的 rule-based 狀態模型
   - 完成（2026-10-17，由 PS-236 涵蓋，未另建模組）：`pwa/js/personalSpace/v2/companionEngine.js` 的 `getCompanionReaction()` 已是 deterministic、presentation-only 的 rule-based 狀態模型，定義 `observe / approach / remind / congratulate / rest / work` 六個狀態，觸發優先序與 [`docs/personal-space-v2-vertical-slice.md`](docs/personal-space-v2-vertical-slice.md) 的 Companion 規格一致（project 完成 → progress reveal → recovery → 一般 Session → Strong／Peak Momentum → Low Momentum＋使用者選定目標 → observe），由 `tests/unit/personalSpaceV2ViewModel.test.js` 覆蓋。

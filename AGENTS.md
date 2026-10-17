@@ -260,6 +260,12 @@ location.reload();
 ### 測試時重置個人空間本地狀態
 
 ```js
-localStorage.removeItem('orbit_personal-space-state');
+// storageBridge 會替 key 加上 `orbit_platform_bridge_v1:` 前綴
+const u = JSON.parse(localStorage.getItem('yoyo_user'));
+localStorage.removeItem('orbit_platform_bridge_v1:personal-space-state');            // legacy
+localStorage.removeItem(`orbit_platform_bridge_v1:personal-space-state-v2:${encodeURIComponent(u.id)}`); // V2（目前帳號）
+localStorage.removeItem('orbit_platform_bridge_v1:personal-space-state-v2:legacy-claim');
 location.reload();
 ```
+
+完整的 `totalXP -> level -> unlock -> gold -> ownedItems -> scene` 資料流、持久化 key 與同步邊界見 [`docs/personal-space-state-flow.md`](docs/personal-space-state-flow.md)。
