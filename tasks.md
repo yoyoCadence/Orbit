@@ -159,11 +159,6 @@
 
 > 2026-10-17 排程：Next 為空且 PS-243 只剩 human-device gate，依 Backlog 中不涉及 auth／schema／部署的低風險項目排入 Next；高風險項目仍待個別核准。
 
-- [ ] **PLAT-201** 定義 `platform` adapters 在 PWA 與 future hybrid shell 的行為差異表
-  - 目標：讓未來包成 native 時有清楚替換點
-  - 對應 roadmap：Phase 5 準備
-  - 完成條件：`pwa/js/platform/` 每個 adapter 一列，記錄 PWA 現況、未來 hybrid shell 的預期替換點、降級行為與相關高風險邊界；純文件，不修改 adapter 程式碼
-
 - [ ] **PRO-014M** 開發者面板的 Pro 狀態切換支援 `server` source
   - 目標：`_devApplyPro()` 在 `server` source 下也能切換 Pro／試用／免費狀態
   - 現況（`PRO-014C` 實作時發現）：`pwa/js/pages/settings.js` 的開發者面板直接寫 `u.isPro` / `u.proExpiresAt` / `u.trialStartedAt`。`server` source 下這些欄位不再被讀，面板變成無效。
@@ -182,6 +177,13 @@
 ---
 
 ## Done
+
+- [x] **PLAT-201** 定義 `platform` adapters 在 PWA 與 future hybrid shell 的行為差異表
+  - 目標：讓未來包成 native 時有清楚替換點
+  - 對應 roadmap：Phase 5 準備
+  - 完成條件：`pwa/js/platform/` 每個 adapter 一列，記錄 PWA 現況、未來 hybrid shell 的預期替換點、降級行為與相關高風險邊界；純文件，不修改 adapter 程式碼
+  - 完成（2026-10-17）：新增 [`docs/platform-adapters.md`](docs/platform-adapters.md)，`pwa/js/platform/` 12 個模組各一列（8 個裝置能力 adapter＋4 個平台無關邏輯模組），記錄呼叫端、PWA 現況、不支援時的降級、hybrid 替換點與高風險邊界；另列出 9 類仍散落在 `platform/` 之外的平台能力與建議收斂順序（僅提案）。
+  - 發現：`notifications.js`、`purchases.js` 與 `badge.js` 的 `scheduleLocalReminder()` 沒有呼叫端；`proofCapture.js` 的 `supportsProofCapture()` 未被使用（`sessionFlow.js` 以 inline 檢查取代）；`storageBridge` 為同步介面，是 hybrid 替換的最大決策點；`pages/home.js` 直接呼叫 `navigator.vibrate(50)` 繞過 `haptics.js`。
 
 - [x] **DOC-201** 補一份 personal space state 流程說明文件
   - 目標：說明 `user.totalXP -> level -> unlock -> gold -> ownedItems -> scene` 的資料流
