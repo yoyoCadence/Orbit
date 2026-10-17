@@ -428,7 +428,13 @@ async function init() {
         const operation = authOperationGuard.begin(session);
         _currentSession = session;
         showSyncBanner('syncing');
-        db.loadFromRemote(session.user.id).then(() => {
+        db.loadFromRemote(session.user.id).then(async () => {
+          if (!authOperationGuard.isCurrent(operation)) return;
+          // PRO-014O: returning users usually land here rather than in
+          // loadAndStart(), which only runs when SIGNED_IN beats getSession().
+          // Without this refresh the `server` source would let a paying
+          // user's projection age out after SNAPSHOT_TTL_MS. No-op on legacy.
+          await db.refreshProEntitlement(session.user.id);
           if (!authOperationGuard.isCurrent(operation)) return;
           // Quietly refresh canonical state and the V2 projection from the
           // completed remote/local merge without enqueueing a reveal.

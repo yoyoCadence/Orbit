@@ -3,6 +3,23 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.25.5] - 2026-10-17
+
+### Fixed
+- **回訪使用者的啟動路徑也會 refresh Pro entitlement projection（PRO-014O）**：有本機快取時，App 走 `init()` 的背景同步分支（`getSession()` → `loadFromRemote()`），這條路徑原本不呼叫 `refreshProEntitlement()`；只有 `SIGNED_IN` 事件搶在 `getSession()` 之前時才會經過 `loadAndStart()` 而 refresh。現在背景同步成功後，以同一個 `authOperationGuard` owner 檢查補上 refresh，再更新畫面與宣告同步完成。
+
+### Notes
+- production 仍是 `legacy` source，`refreshProEntitlement()` 在 legacy 下直接 no-op，本版對目前使用者沒有行為差異；這是 `PRO-014H` cutover 的前置：切到 `server` 後，若沒有這個 refresh，回訪的付費／試用使用者會在 `SNAPSHOT_TTL_MS`（24 小時）後 fail closed 而失去 Pro。
+- 遠端同步失敗（離線）時不 refresh，保留既有 snapshot 讓離線 grace window 生效；refresh 期間登出或切換帳號時，不再以舊 owner 更新畫面。
+- 依 AGENTS.md §3，entitlement 啟動流程變更已取得使用者明確核准；未修改 RPC、schema 或 `REPO_PRO_ENTITLEMENT_SOURCE`。
+
+### Validation
+- `tests/unit/appBootSequence.test.js` 新增 4 項：快取分支在沒有 `SIGNED_IN` 時仍 refresh 且順序在 `loadFromRemote()` 之後、離線不 refresh、`SIGNED_IN` 先到時只 refresh 一次、refresh 期間登出不宣告同步完成；移除修正時第 1、4 項失敗。
+- `npm run lint`、`npm test`（56 files／1001 tests）通過；版本 bump 後以 `npm run ps243:assets` 同步可重現資產基準。
+- `tests/e2e` 41/41 通過（本機以容器內建 Chromium 執行）。
+
+---
+
 ## [1.25.4] - 2026-10-17
 
 ### Fixed
