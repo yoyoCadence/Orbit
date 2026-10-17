@@ -3,6 +3,23 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.28.0] - 2026-10-17
+
+### Added
+- **位置情境（實驗功能，HW-107）**：設定頁新增「📍 位置情境」：啟用後可把目前位置設為「家」或「公司」，也可一鍵清除。首頁會依你目前在家、在公司或在外面，顯示一行「📍 在家 · 適合：記帳、整理環境」的提示，從既有任務中挑最多 3 個（在家：維持／恢復；在公司：成長／責任；在外面：即時任務；永不建議娛樂）。
+- 新增 `platform/placeContext.js`（低精度單次定位、距離比對、owner-scoped 本機設定）與 `ui/placeHint.js`（首頁提示與任務建議規則）。
+
+### Privacy
+- 預設關閉；未啟用或尚未保存任何位置時，App 完全不呼叫定位。
+- 只保存使用者指定的「家／公司」粗略座標（四捨五入到 3 位小數，約 110 公尺），以 storageBridge 依帳號存在這台裝置，不上傳、不同步；目前位置只用來比對，不保存。
+- 首頁 10 分鐘內只定位一次；定位被拒或逾時則不顯示提示。
+
+### Validation
+- 新增 `tests/unit/placeContext.test.js`（15 項：座標四捨五入、距離、標籤判定、低精度請求、owner 隔離與只存粗略座標、清除、任務建議、提示的 opt-in／快取／跳脫／過期 slot／被拒）與 `tests/unit/placeContextSettings.test.js`（6 項：預設關閉、啟用後設定位置、定位失敗、清除、不支援定位、定位期間離開設定頁不重繪）。
+- `npm run lint`、`npm test`（62 files／1057 tests）通過；`tests/e2e` 41/41 通過（本機以容器內建 Chromium 執行）。版本 bump 後以 `npm run ps243:assets` 同步可重現資產基準。
+
+---
+
 ## [1.27.0] - 2026-10-17
 
 ### Added
