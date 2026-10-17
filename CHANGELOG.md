@@ -3,6 +3,26 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.25.3] - 2026-10-17
+
+### Fixed
+- **開發者面板的 Pro 狀態切換在 `server` entitlement source 下恢復作用（PRO-014M）**：`server` source 只讀 owner-scoped projection，原本寫入 profile 的 `isPro`／`proExpiresAt`／`trialStartedAt` 不再有任何效果。面板改為依 source 分派：`server` 寫入與 legacy 覆蓋同形狀的 projection（付費＝終身、試用＝剩 14 天、免費＝非 active），`legacy` 維持原行為；面板同時顯示目前生效的 source。
+- 開發者覆蓋期間（`orbit_dev_backup` 存在），`refreshProEntitlement()` 不再以 server 回應覆寫模擬的 projection，與既有「覆蓋期間暫停 profile 上雲」使用同一個開關；「還原原始資料」會一併清除模擬的 projection，下次啟動重新向 server 取得。
+
+### Notes
+- 只影響開發者面板（localhost／ngrok 或手動開啟 `orbit_dev_panel`）。production 預設仍為 `legacy` source，`REPO_PRO_ENTITLEMENT_SOURCE` 未變更，沒有執行 `PRO-014H` cutover。
+- projection 本來就不是安全邊界（見 `proEntitlement.js` 檔頭）：refresh 暫停不會讓任何人取得手寫 snapshot 原本拿不到的東西，`SNAPSHOT_TTL_MS` 仍會讓模擬值在 24 小時內失效，且覆蓋期間 profile 不上雲，模擬值不會同步到其他裝置。
+- 盤點時發現 legacy 覆蓋本身在登入且連線的情況下撐不過重新整理：`_devApplyPro()` 只寫本機 user，重新載入後 `loadFromRemote()` 會以遠端 profile 覆寫。此為既有行為，未在本版變更。
+- 實作時另發現 cached-user 啟動路徑不保證呼叫 `refreshProEntitlement()`：切到 `server` source 後，回訪的付費使用者可能在 24 小時 TTL 後失去 Pro。已立 `PRO-014O` 並列為 `PRO-014H` cutover 前置，未在本版修正。
+
+### Validation
+- 新增 `tests/unit/proDevPanel.test.js`（12 項）：以真實 storage／proEntitlement 渲染設定頁並點擊面板，覆蓋兩種 source 的付費／試用／免費、owner 切換、無 owner、還原與 source 顯示；移除實作時 server source 的 6 項會失敗。
+- `tests/unit/proEntitlementGate.test.js` 新增 dev backup 期間不呼叫 `my_pro_status()`、還原後恢復 refresh 的回歸測試；移除 guard 時失敗。
+- `npm run lint`、`npm test`（55 files／993 tests）通過；版本 bump 後以 `npm run ps243:assets` 同步可重現資產基準。
+- `tests/e2e` 41/41 通過（本機以容器內建 Chromium 執行；repo 的 Playwright 設定未變更）。
+
+---
+
 ## [1.25.2] - 2026-08-31
 
 ### Fixed

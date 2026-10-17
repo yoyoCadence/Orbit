@@ -163,6 +163,26 @@ describe('server source', () => {
     expect(storage.isProUser()).toBe(true);
   });
 
+  // PRO-014M：開發者面板的模擬 projection 在 dev backup 存在期間不被 server 覆寫，
+  // 與 upsertProfile() 的 dev 覆蓋保護同一個開關；還原後恢復正常 refresh。
+  it('dev backup 存在時不呼叫 RPC，也不覆寫模擬的 snapshot', async () => {
+    seedLegacyProUser();
+    writeProEntitlementSnapshot({
+      ownerId: OWNER, isActive: true, expiresAt: null, trialEndsAt: null, fetchedAtMs: Date.now(),
+    });
+    localStorage.setItem('orbit_dev_backup', '{}');
+
+    await expect(db.refreshProEntitlement(OWNER)).resolves.toBe(false);
+    expect(rpcMock).not.toHaveBeenCalled();
+    expect(storage.isProUser()).toBe(true);
+
+    localStorage.removeItem('orbit_dev_backup');
+    rpcMock.mockResolvedValueOnce({ data: [{ is_active: false, expires_at: null, trial_ends_at: null }], error: null });
+    await expect(db.refreshProEntitlement(OWNER)).resolves.toBe(false);
+    expect(rpcMock).toHaveBeenCalledWith('my_pro_status');
+    expect(storage.isProUser()).toBe(false);
+  });
+
   it('登出（clearAll）清除 snapshot', async () => {
     seedLegacyProUser();
     rpcMock.mockResolvedValueOnce({ data: activeRow(), error: null });

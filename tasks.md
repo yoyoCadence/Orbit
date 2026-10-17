@@ -101,7 +101,14 @@
   - **前置：`PRO-014J` 完成（因此 C／D／I 皆已完成且 client 已上線），以及 `PRO-014L` 完成。** 依 AGENTS.md §3 高風險規則，production rollout 需另行取得明確核准
   - **為什麼 `PRO-014L` 是前置**：SUB-16 連勝解鎖目前在 client 端寫 `state.user.isPro`。切到 `server` source 後那個寫入不再有任何效果，連勝解鎖會靜默失效 —— cutover 不該挾帶一個功能迴歸。
   - 一併移除 `PRO-014C` 建立的 legacy 相容層（client 寫回 `trial_started_at`）—— cutover 後 legacy gate 不再被使用。**移除與旗標切換應在同一次變更內**，rollback 時也一起還原。
-  - 依賴：`PRO-014J`、`PRO-014L`
+  - 依賴：`PRO-014J`、`PRO-014L`、`PRO-014O`（cached-user 啟動不保證 refresh projection，cutover 後會讓回訪付費使用者在 24 小時後失去 Pro）
+
+- [ ] **PRO-014O** Cached-user 啟動路徑不保證 refresh Pro entitlement projection
+  - 現況（`PRO-014M` 實作時發現）：`pwa/js/app.js` 的 `init()` 有本機 user 快取時走背景同步 `getSession()` → `db.loadFromRemote()` → `loadStateFromStorage()`，這條路徑**沒有**呼叫 `db.refreshProEntitlement()`。refresh 只在 `loadAndStart()` 內執行，而回訪使用者是否進入 `loadAndStart()` 取決於 `SIGNED_IN` 事件是否搶在 `getSession()` resolve 之前（BUG-106 記錄的同一個 race），沒有保證。
+  - 影響：`legacy` source 下無影響（refresh 直接 no-op）。切到 `server` 後，回訪使用者的 projection 可能長期不更新；超過 `SNAPSHOT_TTL_MS`（24 小時）即 fail closed，付費／試用使用者會失去 Pro，直到某次啟動剛好走到 `loadAndStart()` 或重新登入。
+  - 範圍：cached-user 背景同步成功後，以同一個 `authOperationGuard` owner 檢查補上 refresh；在 `tests/unit/appBootSequence.test.js` 鎖住兩條啟動路徑都會 refresh。不涉及 RPC／schema，但屬 entitlement 啟動流程，實作前先附上變更說明
+  - **擋 `PRO-014H`**：cutover 前必須完成
+  - 依賴：`PRO-014B`
 
 - [ ] **PRO-014L** SUB-16 連勝解鎖改由 server 授權
   - 目標：45 天連勝換 30 天 Pro 的授權由 server 發放，而不是 client 自行寫入
@@ -159,14 +166,6 @@
 
 > 2026-10-17 排程：Next 為空且 PS-243 只剩 human-device gate，依 Backlog 中不涉及 auth／schema／部署的低風險項目排入 Next；高風險項目仍待個別核准。
 
-- [ ] **PRO-014M** 開發者面板的 Pro 狀態切換支援 `server` source
-  - 目標：`_devApplyPro()` 在 `server` source 下也能切換 Pro／試用／免費狀態
-  - 現況（`PRO-014C` 實作時發現）：`pwa/js/pages/settings.js` 的開發者面板直接寫 `u.isPro` / `u.proExpiresAt` / `u.trialStartedAt`。`server` source 下這些欄位不再被讀，面板變成無效。
-  - 範圍：改為寫入 owner-scoped projection（`writeProEntitlementSnapshot()`），或依當前 source 分派；僅開發者面板，不影響 production 路徑
-  - 完成條件：兩種 source 下都能切換出付費／試用／免費三種狀態並被 `isProUser()` 正確反映
-  - 備註：純開發工具、低風險，但缺了它就無法在裝置上人工驗證 `server` source 的行為 —— `PRO-014H` 的實機驗證會需要
-  - 依賴：`PRO-014C`
-
 ---
 
 ## In Progress
@@ -177,6 +176,17 @@
 ---
 
 ## Done
+
+- [x] **PRO-014M** 開發者面板的 Pro 狀態切換支援 `server` source
+  - 目標：`_devApplyPro()` 在 `server` source 下也能切換 Pro／試用／免費狀態
+  - 現況（`PRO-014C` 實作時發現）：`pwa/js/pages/settings.js` 的開發者面板直接寫 `u.isPro` / `u.proExpiresAt` / `u.trialStartedAt`。`server` source 下這些欄位不再被讀，面板變成無效。
+  - 範圍：改為寫入 owner-scoped projection（`writeProEntitlementSnapshot()`），或依當前 source 分派；僅開發者面板，不影響 production 路徑
+  - 完成條件：兩種 source 下都能切換出付費／試用／免費三種狀態並被 `isProUser()` 正確反映
+  - 備註：純開發工具、低風險，但缺了它就無法在裝置上人工驗證 `server` source 的行為 —— `PRO-014H` 的實機驗證會需要
+  - 依賴：`PRO-014C`
+  - 完成（2026-10-17，v1.25.3）：`_devApplyPro()` 依 entitlement source 分派。`server` 寫入與 legacy 覆蓋同形狀的 owner-scoped projection（付費＝終身、試用＝剩 14 天、免費＝非 active），`legacy` 行為不變；面板顯示目前 source。dev backup 存在時 `refreshProEntitlement()` 不覆寫模擬的 projection（與既有暫停 profile 上雲同一開關），「還原」一併清除 projection。
+  - 驗證：新增 `tests/unit/proDevPanel.test.js`（12 項，真實 storage／proEntitlement）與 `proEntitlementGate.test.js` 的 refresh guard 回歸測試；移除實作時對應測試失敗。
+  - 發現：(1) cached-user 啟動路徑不保證 refresh projection，cutover 後會讓回訪付費使用者在 24 小時後失去 Pro，已立 `PRO-014O` 並列為 `PRO-014H` 前置；(2) legacy 覆蓋在登入且連線時撐不過重新整理（`loadFromRemote()` 以遠端 profile 覆寫），屬既有行為，未變更。
 
 - [x] **PLAT-201** 定義 `platform` adapters 在 PWA 與 future hybrid shell 的行為差異表
   - 目標：讓未來包成 native 時有清楚替換點
