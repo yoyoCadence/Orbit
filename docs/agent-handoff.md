@@ -4,7 +4,7 @@
 
 任務本身的定義與驗收條件以 [`tasks.md`](../tasks.md) 為準；本檔只記錄進行中的狀態、與使用者約定的工作規則，以及接手需要的操作細節。
 
-> 最後更新：2026-10-18（UTC 11:45 左右）。main = `b128cd1`（v1.30.0，#173 已合併）。
+> 最後更新：2026-10-18（UTC 12:30 左右）。main = `86a5126`（v1.30.0，#174 已合併）。使用者要求在此告一段落，由另一個 agent 接手。
 
 ## 1. 接手前先讀
 
@@ -27,13 +27,31 @@
 - 合併 PR 時使用完整 40 字元 SHA 作為 `expectedHeadSha`。
 - Commit 結尾加 `Co-Authored-By` 與 `Claude-Session` 兩行；PR 描述結尾加 Claude Code 標記；不要寫入 model 名稱。
 
-## 3. 進行中的工作
+## 3. 進行中的工作（接手從這裡開始）
 
-- **等待使用者決定的提案**（核准前不改程式碼）：
-  - PS-246：[`docs/ps-246-v2-placement-overrides.md`](ps-246-v2-placement-overrides.md)，已由 #171 合併。四個決定：方案 A、Edit Mode 入口（A1／A2）、PS-246B、`unmappedPlacements` 摘要（S1／S2）。
-  - AI-203：[`docs/ai-203-companion-remind-proposal.md`](ai-203-companion-remind-proposal.md)，已由 #172 合併。決定項見提案 §9（建議 F4 每日固定時段）。
-  - PRO-014Q：[`docs/pro-014q-dev-backup-owner-scope.md`](pro-014q-dev-backup-owner-scope.md)，已由 #173 合併。建議 S0 立即止血＋Q6 移除開發者面板的模擬、改用測試帳號。review 發現 main 上已存在、只影響開發者模式裝置的問題：模擬資料可能推到真實帳號，模擬中登出後無法再登入。**請使用者自行檢查**自己帳號 `profiles` 的 `is_pro`、`pro_expires_at`、`total_xp`。
-- 核准後的流程：把提案的驗收條件寫進對應任務，再實作；PS-246 與 PRO-014Q 實作完移到 Done，AI-203 核准後建立 AI-203B。
+使用者在 2026-10-18 核准了三份提案（細節記在 `tasks.md` Next 的「2026-10-18 核准」註記），並要求**依序實作，每項一個 PR，從 PS-246 開始**。順序與狀態：
+
+1. **PS-246（實作中，WIP 已推送）**：分支 `feat/ps-246-ignore-legacy-placements`，commit `7b7d31f`，**尚未開 PR**。
+   - 核准：方案 A、A1、不建立 PS-246B、S1。驗收條件＝[`docs/ps-246-v2-placement-overrides.md`](ps-246-v2-placement-overrides.md) §8。
+   - 已完成：
+     - `pwa/js/personalSpace/v2/viewModels.js`：移除 `resolvePlacements()`，`placements` 固定為 `{}`（附 PS-246 註解）；`world.idleWindowLayouts`、`world.placedItems` 仍照常保存。
+     - `pwa/js/pages/personalSpaceV2.js`：移除 `listPersonalSpaceV2EditablePlacements`、`adjust…`、`reset…`、`resetAll…` 與其 helper、`editorMarkup`、`editorTarget`、`persist()`、`saveState` 選項與 import、nudge／reset 的 click 處理。Edit Mode 改為說明文字（「工作站家具的位置由固定視角的場景決定，目前不能移動…」），沒有任何按鈕。
+     - `tests/unit/personalSpaceV2Page.test.js`：移除編輯函式的測試；Edit Mode 測試改為確認沒有按鈕、`saveState` 不被呼叫。
+     - lint 通過；相關 4 個測試檔 43 tests 通過（尚未跑全套與 e2e）。
+   - 剩下的工作：
+     - 新增 view model 回歸測試：有 legacy 覆寫（含 `x`／`y`）的 V2 state，每件家具的 placement 等於 `PROP_DEFINITIONS`；`world.idleWindowLayouts`／`placedItems` 不被改動。
+     - 移除 `pwa/assets/style.css` 中不再使用的 `.personal-space-v2-editor-list`、`.personal-space-v2-editor-item`、`.personal-space-v2-nudge` 等樣式（先 grep 確認）。
+     - S1：修改 `docs/personal-space-v2-technical-design.md` §7.2（約第 280 行）中 `migration.unmappedPlacements` 的文字，改為「legacy 項目保留在 legacy state 與 V2 的 `world.idleWindowLayouts`，V2 不套用」；約第 248 行 schema 範例中的 `unmappedPlacements: []` 一併處理。
+     - `docs/personal-space-state-flow.md` 第 143 行（Edit Mode 調整既有擺放）改為現況。
+     - `tasks.md`：PS-246 移到 Done；CHANGELOG；`npm run bump -- patch`（同一個 commit）。
+     - 全套 `npm test`、e2e，開 PR，review（Codex 額度用完時用獨立 Claude review），CI 全綠才合併。
+2. **AI-203B**（Next）：依 `tasks.md` 的 AI-203B 與提案 §8 實作 A／G1／F4／D2 與台詞。`npm run bump -- minor`。
+3. **PRO-014Q S0**（In Progress）：「↩ 還原原始資料並重啟」改為完整清理＋確認對話框，見 [`docs/pro-014q-dev-backup-owner-scope.md`](pro-014q-dev-backup-owner-scope.md) §4 S0（實際 key 與必須排除的 legacy-claim key 都寫在那裡）。`npm run bump -- patch`。
+4. **PRO-014Q Q6**：移除開發者面板的等級與 Pro 模擬、舊 backup 的一次性清理、測試帳號說明文件。**preview 專案的測試帳號要由專案擁有者建立**（agent 沒有 Supabase 權限）；實作前先確認。Q6 上線時更新 `tasks.md` 中「PRO-014H 的實機驗證需要 PRO-014M」的說明。
+
+其他：
+
+- **請專案擁有者自行檢查**：若曾在自己的帳號用過開發者面板的「模擬 Pro」或「模擬等級」後按「還原」，確認 Supabase 中該帳號 `profiles` 的 `is_pro`、`pro_expires_at`、`total_xp` 是否正確（PRO-014Q 發現的既有問題）。
 - 草稿 PR [#154](https://github.com/yoyoCadence/Orbit/pull/154)（`feat/pro-014l-streak-unlock-rpc`，PRO-014L）不是本工作階段開的；它改的 SUB-16 路徑與 `PRO-014P` 相同。
 - Codex review 額度在 2026-10-18 兩度用完（中間短暫恢復，對 #172、#173 找到 6 個 P2，都已修正）。額度用完時依 §2 改用獨立 Claude review（只讀 agent，對照程式碼回報 P1／P2／P3，修完再請它複查）。
 - 教訓：三份提案的獨立 review 各找到 P1（PRO-014Q 連續四輪）。提案的事實與設計都要對照程式碼驗證；逐條修補一直被找到新漏洞時，要退一步改結構（PRO-014Q 由修補 backup 改為移除模擬，AI-203 由 F3 改為 F4）。
@@ -58,9 +76,10 @@
 | #168 | v1.29.0 | PS-244 Blender 渲染的工作站房間與 8 件家具（含獨立 review 的椅子 z 與覆寫修正） |
 | #169 | v1.30.0 | PS-245 Blender 精細化：家具真實構造、螢幕 UI、地板木紋、地毯、護牆框線板、壁燈、時鐘、插座、捲簾與窗簾（含獨立 review 的壁燈陰影與時鐘位置修正） |
 | #170 | — | 交接紀錄：記錄 #169；寫提案前須依 AGENTS §15 移動任務；渲染時間統一 |
-| #171 | — | PS-246 提案：V2 不套用 legacy 位置覆寫（等待核准） |
-| #172 | — | AI-203 提案：Companion remind 的資料來源與頻率（等待核准） |
-| #173 | — | PRO-014Q 變更說明：開發者面板模擬的外流問題，建議 S0＋Q6（等待核准） |
+| #171 | — | PS-246 提案：V2 不套用 legacy 位置覆寫（已核准） |
+| #172 | — | AI-203 提案：Companion remind 的資料來源與頻率（已核准，實作為 AI-203B） |
+| #173 | — | PRO-014Q 變更說明：開發者面板模擬的外流問題，建議 S0＋Q6（已核准） |
+| #174 | — | 交接紀錄：記錄 #173 |
 
 教訓：#155–#164 在 Codex review 出現前就合併，造成 #165、#166、#167 的回頭修正。這就是 §2 合併條件的由來。獨立 review 在 #167、#168、#169 都找到真正的問題（例如椅子畫在螢幕後面、壁燈在相框下投出暗影），所以複查不能省。
 
@@ -69,17 +88,16 @@
 ### 需要使用者決定或執行
 
 - **BUG-109A**：在 production 套用 `pwa/db/013_signup_profile_name.sql`，需專案擁有者執行，步驟見 `docs/bug-109-signup-name-truncation.md`。
+- **PRO-014Q Q6 的測試帳號**：在 preview Supabase 專案建立（見 §3 第 4 點）。
 - **角色 3D 化**：主角與 Companion 仍是 PS-242 的像素 sprite。改成 3D 會推翻已核准素材（主角 12 個姿勢、Companion 6 個狀態），範圍很大，等使用者決定。
-- **PRO-014P**：entitlement 流程，實作前需提案與核准，擋 `PRO-014H` cutover。與草稿 PR #154（PRO-014L）改同一段 SUB-16 路徑。
-- **PRO-014Q**：變更說明見 §3，等使用者決定。
-- **PS-246**：舊 16:9 相機的位置覆寫（`x`／`y`）仍會套用到 V2 家具（`width`／`anchor` 已在 #168 改為不套用）。提案見 `docs/ps-246-v2-placement-overrides.md`，等使用者決定四件事：方案 A、Edit Mode 入口（A1／A2）、是否建立 PS-246B、`migration.unmappedPlacements` 摘要（S1 改規格／S2 實作）。
-- **AI-203**：Companion `remind` 的資料來源與頻率。提案已合併（#172），等使用者決定。
+- **PRO-014P**：entitlement 流程，實作前需提案與核准，擋 `PRO-014H` cutover。與草稿 PR #154（PRO-014L）改同一段 SUB-16 路徑，寫提案前先問使用者先後順序。
 - **PS-243**：真機、installed PWA、雙帳號、螢幕閱讀器等 human gate。
+- 尚未回答：高風險項目（如 entitlement）連變更說明都要不要先問再排程（PRO-014Q 變更說明 §7）。在得到答案前，維持「寫變更說明可以，實作前一定要核准」。
 
-### 可直接做（低風險）
+### 可直接做（已核准）
 
-- `tasks.md` 的 Next 只有需要使用者執行的 BUG-109A。
-- 上面需要核准的項目，可以先寫成提案文件交給使用者決定；寫提案不是實作，不違反 AGENTS §3 的「先說明再核准」。但依 AGENTS §15，任務要先在 `tasks.md` 從 Backlog 明確移到 Next，再移到 In Progress（附日期與理由，不可靜默調整順序），才能開始寫。PS-246、AI-203、PRO-014Q 都在 In Progress，等待使用者決定；PRO-014P 仍在 Backlog（與草稿 PR #154 改同一段路徑，寫提案前先問使用者先後順序）。高風險項目（如 entitlement）連變更說明都要不要先問使用者再排程，已列為 PRO-014Q 的待決定事項。
+- 依 §3 的順序：PS-246 → AI-203B → PRO-014Q S0 → PRO-014Q Q6（Q6 需先有測試帳號）。
+- Backlog 新增的 AI-204（Companion 台詞文案統一）與 HW-113（今日計畫日期對齊）尚未排程；要做時依 AGENTS §15 先移入 Next。
 - 椅子右扶手與一個腳輪畫在書桌之上（PS-244 起既有，約 10 px，記錄在 `tasks.md` 的 PS-245）。修正要拆分椅子的渲染層，再用 `render_pack.py --only office-chair` 重渲椅子。`tasks.md` 目前沒有對應任務，要做需先建立任務。
 
 ## 6. PS-245 精細化：實作計畫
