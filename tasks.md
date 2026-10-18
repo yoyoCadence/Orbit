@@ -145,16 +145,17 @@
 
 ## In Progress
 
-- [ ] **BUG-112** HW-106／HW-107／HW-110 的 review 後續修正（隱私競態與同步狀態）
-  - 問題（PR #162–#164 Codex review）：位置定位進行中按「清除」或關閉，晚到的座標仍被寫回；麥克風權限請求進行中再按按鈕會再要求一次麥克風、無法取消；連線恢復同步在 Session 補傳仍在佇列時就顯示「✓ 已更新」，且可能與啟動同步同時執行而重複補傳。
-  - 修正方向：以 request 序號讓清除／關閉作廢進行中的定位；權限請求期間再按即取消；遠端載入回傳補傳完成的 promise，只有佇列清空才顯示已同步；所有遠端載入經同一入口序列化。
-
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
 
 ---
 
 ## Done
+
+- [x] **BUG-112** HW-106／HW-107／HW-110 的 review 後續修正（隱私競態與同步狀態）
+  - 問題（PR #162–#164 Codex review）：位置定位進行中按「清除」或關閉，晚到的座標仍被寫回；麥克風權限請求進行中再按按鈕會再要求一次麥克風、無法取消；連線恢復同步在 Session 補傳仍在佇列時就顯示「✓ 已更新」，且可能與啟動同步同時執行而重複補傳。
+  - 修正方向：以 request 序號讓清除／關閉作廢進行中的定位；權限請求期間再按即取消；遠端載入回傳補傳完成的 promise，只有佇列清空才顯示已同步；所有遠端載入經同一入口序列化。
+  - 完成（2026-10-18，v1.28.2）：`settings.js` 以 `_placeRequestSeq` 作廢被清除／關閉的定位；`focusTimer.js` 新增 `ambientPending`；`app.js` 以 `_loadRemote()` 序列化遠端載入並以 `_reportSyncResult()` 依實際佇列回報；`storage.loadFromRemote()` 回傳 `{ backfilled }`。新增 7 項回歸測試，修正前 6 項失敗。
 
 - [x] **BUG-111** Service worker 預快取漏列模組，更新後離線無法啟動
   - 問題：`sw.js` 的 `SHELL` 漏了 5 個啟動必載模組（含 v1.26–v1.28 新增的 `network.js`、`ambientNoise.js`、`placeContext.js`、`placeHint.js`）與 5 個舊版 Personal Space 延遲模組；更新後第一次離線開啟時模組圖無法執行（PR #163、#164 Codex review 指出）。

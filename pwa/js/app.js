@@ -230,7 +230,7 @@ async function loadAndStart(session) {
 
   // Pull fresh data from Supabase; fall back to localStorage cache if offline
   try {
-    await db.loadFromRemote(session.user.id);
+    await _loadRemote(session.user.id);
     if (!authOperationGuard.isCurrent(operation)) return;
     remoteLoaded = true;
     // PRO-014B: refresh the owner-scoped entitlement projection from the
@@ -382,6 +382,32 @@ function _updateBadge() {
 // no remote account, so none of this applies without a session.
 let _needsResync = false;
 let _reconnectSync = null;
+let _remoteSync = null;   // settles once the latest remote load and its backfills finish
+
+// Every remote load goes through here so a reconnect never runs concurrently
+// with the startup load: both would replay the same pending snapshots and
+// insert the same backfilled Sessions twice.
+function _loadRemote(ownerId) {
+  const load = db.loadFromRemote(ownerId);
+  const settled = load.then(result => result?.backfilled, () => {});
+  _remoteSync = settled;
+  settled.then(() => { if (_remoteSync === settled) _remoteSync = null; });
+  return load;
+}
+
+// A resolved load can still leave writes queued: Session backfills settle
+// after it and a failed deletion stays in the log. Only an empty queue reads
+// as synced; anything else stays flagged for the next reconnect.
+async function _reportSyncResult(loaded, isCurrent) {
+  await loaded?.backfilled;
+  if (!isCurrent()) return;
+  if (_pendingSyncCount() > 0) {
+    _showSyncFailure();
+    return;
+  }
+  _needsResync = false;
+  showSyncBanner('synced');
+}
 
 function _pendingSyncCount() {
   return storage.getPendingSyncSummary(_currentSession?.user?.id ?? null).total;
@@ -407,17 +433,18 @@ async function _syncAfterReconnect() {
   showSyncBanner('syncing');
   _reconnectSync = (async () => {
     try {
-      await db.loadFromRemote(session.user.id);
+      if (_remoteSync) await _remoteSync;
+      if (_currentSession !== session) return;
+      const loaded = await _loadRemote(session.user.id);
       if (_currentSession !== session) return;
       await db.refreshProEntitlement(session.user.id);
       if (_currentSession !== session) return;
-      _needsResync = false;
       loadStateFromStorage({ authoritative: true });
       updateHeader();
       // Re-rendering under a focused text field would throw away what is being typed.
       if (!isTextInputActive()) renderPage(currentHash());
       _updateBadge();
-      showSyncBanner('synced');
+      await _reportSyncResult(loaded, () => _currentSession === session);
     } catch (error) {
       if (_currentSession !== session || error?.name === 'OwnerSessionChangedError') return;
       console.warn('Reconnect sync failed; pending changes stay queued:', error);
@@ -496,7 +523,7 @@ async function init() {
         const operation = authOperationGuard.begin(session);
         _currentSession = session;
         showSyncBanner('syncing');
-        db.loadFromRemote(session.user.id).then(async () => {
+        _loadRemote(session.user.id).then(async loaded => {
           if (!authOperationGuard.isCurrent(operation)) return;
           // PRO-014O: returning users usually land here rather than in
           // loadAndStart(), which only runs when SIGNED_IN beats getSession().
@@ -510,7 +537,7 @@ async function init() {
           updateHeader();
           renderPage(currentHash());
           _updateBadge();
-          showSyncBanner('synced');
+          await _reportSyncResult(loaded, () => authOperationGuard.isCurrent(operation));
         }).catch(error => {
           if (!authOperationGuard.isCurrent(operation)) return;
           if (error?.name === 'OwnerSessionChangedError') return;

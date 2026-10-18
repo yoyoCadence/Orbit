@@ -164,6 +164,29 @@ describe('HW-106：Focus 環境噪音訊號', () => {
     window.restoreFocus();
   });
 
+  it('權限對話框期間再按一次會取消請求，不再要求麥克風，晚到的授權立即關閉', async () => {
+    let grant;
+    ambient.start = vi.fn(() => new Promise(resolve => { grant = resolve; }));
+    startFocus();
+    button().click();
+    expect(button().textContent).toBe('關閉環境音偵測');
+
+    button().click();
+    expect(ambient.start).toHaveBeenCalledTimes(1);
+    expect(button().getAttribute('aria-pressed')).toBe('false');
+
+    grant({ stop: ambient.stop });
+    await flush();
+    expect(ambient.stop).toHaveBeenCalledTimes(1);
+    expect(button().getAttribute('aria-pressed')).toBe('false');
+
+    // A fresh press after cancelling asks again.
+    ambient.start = vi.fn(async ({ onLevel }) => ({ stop: ambient.stop, onLevel }));
+    await enableAmbient();
+    expect(ambient.start).toHaveBeenCalledTimes(1);
+    expect(button().getAttribute('aria-pressed')).toBe('true');
+  });
+
   it('權限被拒時顯示提示且不留在開啟狀態', async () => {
     ambient.start = vi.fn(async () => { throw Object.assign(new Error('denied'), { name: 'NotAllowedError' }); });
     startFocus();

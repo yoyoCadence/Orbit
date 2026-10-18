@@ -975,7 +975,7 @@ describe('db.loadFromRemote()', () => {
 
   it('handles null data gracefully (no crash when tables are empty)', async () => {
     mockFrom.mockImplementation(() => makeChain(null));
-    await expect(db.loadFromRemote('user-abc')).resolves.toBeUndefined();
+    await expect(db.loadFromRemote('user-abc')).resolves.toEqual({ backfilled: expect.any(Promise) });
   });
 
   it('rejects a failed Session query before replacing the local canonical snapshot', async () => {

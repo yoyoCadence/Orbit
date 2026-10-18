@@ -607,7 +607,9 @@ export const db = {
     else if (localUser?.id !== userId) remove('energy');
     if (needsSessionSyncCutover) completeSessionSyncCutover(userId);
 
-    sessionsToBackfill.forEach(s => this.insertSession(s, userId)
+    // Boot does not wait for these inserts; callers that report sync status
+    // await `backfilled` before reading the pending queue.
+    const backfills = sessionsToBackfill.map(s => this.insertSession(s, userId)
       .then(inserted => {
         if (inserted) clearSessionSyncPending(s.id, userId);
       })
@@ -615,6 +617,7 @@ export const db = {
         console.warn('Could not backfill local session after remote load:', err);
         markSessionSyncPending(s.id, userId);
       }));
+    return { backfilled: Promise.all(backfills) };
   },
 
   async upsertProfile(user, expectedOwnerId = user?.id) {
