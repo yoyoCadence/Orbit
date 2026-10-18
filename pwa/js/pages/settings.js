@@ -461,9 +461,15 @@ function _placeContextHtml() {
     </div>`;
 }
 
+// Bumped by every place action. A position that resolves after the user cleared
+// the data or switched the mode off belongs to a cancelled request and must not
+// be written back.
+let _placeRequestSeq = 0;
+
 function _bindPlaceContext(container) {
   const ownerId = state.user?.id;
   container.querySelector('#place-context-toggle')?.addEventListener('change', event => {
+    _placeRequestSeq += 1;
     savePlaceContext(ownerId, { enabled: event.target.checked });
     resetPlaceHintCache();
     _renderView(container);
@@ -472,12 +478,15 @@ function _bindPlaceContext(container) {
     button.addEventListener('click', async () => {
       const label = button.dataset.placeSet;
       button.disabled = true;
+      const request = ++_placeRequestSeq;
       try {
         const position = await getCoarsePosition({ maximumAgeMs: 0 });
+        if (request !== _placeRequestSeq) return;
         savePlaceContext(ownerId, { places: { [label]: position } });
         resetPlaceHintCache();
         window.showToast(`已把目前位置設為「${PLACE_NAMES[label]}」`);
       } catch {
+        if (request !== _placeRequestSeq) return;
         window.showToast('無法取得位置，請確認已允許定位');
       }
       // The router reuses the page container; only repaint if settings is still shown.
@@ -485,6 +494,7 @@ function _bindPlaceContext(container) {
     });
   });
   container.querySelector('#place-context-clear')?.addEventListener('click', () => {
+    _placeRequestSeq += 1;
     clearPlaceContext(ownerId);
     resetPlaceHintCache();
     window.showToast('位置資料已清除');

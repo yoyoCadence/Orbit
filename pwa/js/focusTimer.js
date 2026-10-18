@@ -28,6 +28,7 @@ const focus = {
   deskAutoSuppressed: false,
   ambient:           null,   // HW-106 monitor handle while the microphone is open
   ambientRequest:    0,      // bumps on stop so a late permission grant is discarded
+  ambientPending:    false,  // permission prompt open; pressing again cancels it
 };
 
 let _focusDeskToggleAt = 0;
@@ -303,6 +304,7 @@ function _setAmbientUi(active, text = '', level = '') {
 
 function _stopFocusAmbient() {
   focus.ambientRequest += 1;
+  focus.ambientPending = false;
   focus.ambient?.stop();
   focus.ambient = null;
   _setAmbientUi(false);
@@ -310,21 +312,27 @@ function _stopFocusAmbient() {
 
 window.toggleFocusAmbient = async function () {
   if (!focus.active) return;
-  if (focus.ambient) { _stopFocusAmbient(); return; }
+  // The button already reads 「關閉」 while the prompt is open, so a second press
+  // must cancel the pending request rather than ask for the microphone again.
+  if (focus.ambient || focus.ambientPending) { _stopFocusAmbient(); return; }
   const request = ++focus.ambientRequest;
+  focus.ambientPending = true;
   _setAmbientUi(true, '等待麥克風權限…');
   try {
     const monitor = await startAmbientNoiseMonitor({
       onLevel: ({ level }) => _setAmbientUi(true, AMBIENT_LABELS[level], level),
     });
-    // The view may have been left while the permission prompt was open.
+    // The view may have been left, or the request cancelled, while the
+    // permission prompt was open.
     if (request !== focus.ambientRequest || !focus.active) {
       monitor.stop();
       return;
     }
+    focus.ambientPending = false;
     focus.ambient = monitor;
   } catch {
     if (request !== focus.ambientRequest) return;
+    focus.ambientPending = false;
     _setAmbientUi(false, '無法使用麥克風');
   }
 };

@@ -520,13 +520,67 @@ describe('HW-110：離線佇列提示與連線恢復同步', () => {
     await bootOfflineWithPending(2);
     expect(db.loadFromRemote).toHaveBeenCalledTimes(1);
 
-    db.loadFromRemote.mockResolvedValueOnce();
+    db.loadFromRemote.mockImplementationOnce(async () => {
+      storage.getPendingSyncSummary.mockImplementation(() => ({ total: 0 }));
+    });
     await network.emit(true);
     await flush();
 
     expect(db.loadFromRemote).toHaveBeenCalledTimes(2);
     expect(db.refreshProEntitlement).toHaveBeenCalledWith('owner-a');
     expect(feedback.showSyncBanner).toHaveBeenLastCalledWith('synced');
+  });
+
+  it('Session 補傳完成前不顯示「已更新」；佇列清空後才顯示', async () => {
+    await bootOfflineWithPending(1);
+
+    let finishBackfill;
+    db.loadFromRemote.mockResolvedValueOnce({
+      backfilled: new Promise(resolve => { finishBackfill = resolve; }),
+    });
+    await network.emit(true);
+    await flush();
+    expect(feedback.showSyncBanner).not.toHaveBeenCalledWith('synced');
+
+    storage.getPendingSyncSummary.mockImplementation(() => ({ total: 0 }));
+    finishBackfill();
+    await flush();
+    expect(feedback.showSyncBanner).toHaveBeenLastCalledWith('synced');
+  });
+
+  it('載入成功但仍有寫入留在佇列（補傳或刪除失敗）時顯示待同步，下次上線再推送', async () => {
+    await bootOfflineWithPending(2);
+
+    db.loadFromRemote.mockResolvedValueOnce({ backfilled: Promise.resolve() });
+    await network.emit(true);
+    await flush();
+    expect(feedback.showSyncBanner).toHaveBeenLastCalledWith('error', { pending: 2 });
+    expect(feedback.showSyncBanner).not.toHaveBeenCalledWith('synced');
+
+    await network.emit(false);
+    await network.emit(true);
+    await flush();
+    expect(db.loadFromRemote).toHaveBeenCalledTimes(3);
+  });
+
+  it('啟動同步仍在進行時恢復連線，不會同時跑第二個載入，而是等它結束再推送', async () => {
+    let finishStartup;
+    db.loadFromRemote.mockImplementationOnce(() => new Promise(resolve => { finishStartup = resolve; }));
+    await bootWithPendingSession('owner-a');
+    auth.sessionResolve(sessionFor('owner-a'));
+    await flush();
+    expect(db.loadFromRemote).toHaveBeenCalledTimes(1);
+
+    storage.getPendingSyncSummary.mockImplementation(() => ({ total: 1 }));
+    await network.emit(false);
+    const reconnect = network.emit(true);
+    await flush();
+    expect(db.loadFromRemote).toHaveBeenCalledTimes(1);
+
+    finishStartup();
+    await reconnect;
+    await flush();
+    expect(db.loadFromRemote).toHaveBeenCalledTimes(2);
   });
 
   it('連線恢復後的同步仍失敗時，保留佇列並顯示待同步數量', async () => {
