@@ -193,7 +193,10 @@
   - 同一個旗標也讓 `upsertProfile()` 對新帳號直接 return；`settings.js` 的 `_devReset()` 會把 backup 裡**前一個帳號**的 user 還原回去。
   - 方向：改用 owner-scoped、專屬 Pro 模擬的標記；或在 owner 改變時清除或驗證 backup。屬 entitlement 路徑，實作前附變更說明。
   - 依賴：`PRO-014M`
-  - In progress（2026-10-18）：撰寫變更說明 `docs/pro-014q-dev-backup-owner-scope.md`，不改程式碼。
+  - In progress（2026-10-18）：變更說明 [`docs/pro-014q-dev-backup-owner-scope.md`](docs/pro-014q-dev-backup-owner-scope.md) 已完成，**等待使用者核准**。核准前不改程式碼。
+    - 建議 Q2：backup 只在 `backup.id` 等於目前帳號時生效；`upsertProfile`、`refreshProEntitlement`、`_devReset` 三處都改為 owner-scoped。不需改資料格式。
+    - 盤點補充：換帳號不一定經過登出（`SIGNED_IN` 且 user id 不同時直接 `loadAndStart()`），所以只在 `clearAll()` 清除 backup 不夠。
+    - 待使用者決定：是否核准 Q2；是否加上登出時清除（Q1）；格式錯誤的 backup 視為不屬於任何人或照舊擋住。
 
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
