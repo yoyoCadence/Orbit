@@ -193,10 +193,10 @@
   - 同一個旗標也讓 `upsertProfile()` 對新帳號直接 return；`settings.js` 的 `_devReset()` 會把 backup 裡**前一個帳號**的 user 還原回去。
   - 方向：改用 owner-scoped、專屬 Pro 模擬的標記；或在 owner 改變時清除或驗證 backup。屬 entitlement 路徑，實作前附變更說明。
   - 依賴：`PRO-014M`
-  - In progress（2026-10-18）：變更說明 [`docs/pro-014q-dev-backup-owner-scope.md`](docs/pro-014q-dev-backup-owner-scope.md) 已完成，**等待使用者核准**。核准前不改程式碼。
-    - 建議 Q2：backup 只在 `backup.id` 等於目前帳號時生效；`upsertProfile`、`refreshProEntitlement`、`_devReset` 三處都改為 owner-scoped。不需改資料格式。
-    - 盤點補充：換帳號不一定經過登出（`SIGNED_IN` 且 user id 不同時直接 `loadAndStart()`），所以只在 `clearAll()` 清除 backup 不夠。
-    - 待使用者決定：是否核准 Q2；是否加上登出時清除（Q1）；格式錯誤的 backup 視為不屬於任何人或照舊擋住。
+  - In progress（2026-10-18）：變更說明 [`docs/pro-014q-dev-backup-owner-scope.md`](docs/pro-014q-dev-backup-owner-scope.md) 已完成（依獨立 review 改寫），**等待使用者核准**。核准前不改程式碼。
+    - review 發現 main 上已存在的問題：模擬期間 `saveUser()` 排入的 pending profile snapshot 不會被清除，按「還原」後下一次啟動會把模擬的 `totalXP`（`legacy` 下還有 `isPro`）推到真實帳號。只影響開發者模式的裝置。
+    - 建議 Q3：開始模擬時 backup 必定屬於目前帳號（有其他帳號或格式錯誤的 backup 就拒絕模擬）；還原時丟棄該 owner 的 pending profile；guard 只放行明確屬於其他帳號的 backup，格式錯誤 fail closed；面板提供「清除殘留」。
+    - 待使用者決定：是否核准 Q3；格式錯誤的 backup 是否 fail closed；高風險項目的變更說明是否也要先問再排程；並自行檢查自己帳號的 `profiles` 是否被模擬值覆寫。
 
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.

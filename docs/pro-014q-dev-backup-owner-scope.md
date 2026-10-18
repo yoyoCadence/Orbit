@@ -1,70 +1,120 @@
-# PRO-014Q 變更說明：開發者面板的 backup 只對建立它的帳號生效
+# PRO-014Q 變更說明：開發者面板的模擬資料不可外流，backup 只擋自己的帳號
 
-> 狀態：**變更說明，等待使用者核准**（2026-10-18）。屬 entitlement 路徑（AGENTS.md §3），核准前不改程式碼。
+> 狀態：**變更說明，等待使用者核准**（2026-10-18，依獨立 review 改寫）。屬 entitlement 路徑，核准前不改程式碼。
 
 ## 1. 結論
 
-- 建議做法：`FLAG_DEV_BACKUP` 只在「backup 裡的 `id` 等於目前帳號」時才生效。帳號不同時，三個呼叫點都把它當成不存在。
-- 不需要改資料格式：backup 本來就是整個 user 物件的 JSON，裡面有 `id`。
-- 影響範圍只有開發者模式的裝置。開發者模式要符合下列任一條件：localhost、ngrok，或 `orbit_dev_panel = '1'`（`settings.js` `_isDevMode()`）。一般使用者的裝置不會有這個旗標。
+這項任務要處理兩個問題，第二個比原本的描述嚴重：
 
-## 2. 問題
+1. **原本的問題**：`FLAG_DEV_BACKUP` 只檢查存不存在。開發者換帳號後，新帳號的 profile 不上雲，`server` source 下 entitlement 也不 refresh。
+2. **review 時發現、main 上已存在的問題**：結束模擬（「↩ 還原原始資料並重啟」）之後，下一次啟動會把**模擬期間的 user**（含模擬的 `totalXP`，`legacy` source 下還有 `isPro`）推到真實帳號的 `profiles`。
+   - `legacy`（目前 production）下，`profiles.is_pro` 由 client 寫入，repo 的 migration 沒有欄位層級的保護。所以這條路徑會把**真的 Pro** 寫進開發者的真實帳號，模擬的 XP 也會覆蓋真實 XP。
 
-`FLAG_DEV_BACKUP`（`orbit_dev_backup`）由等級模擬器與 Pro 模擬器建立（`settings.js` `_devBackupOnce()`）。三個地方只檢查它**存不存在**，不檢查它屬於誰：
+影響範圍仍只有開發者模式的裝置。條件是 localhost、ngrok，或 `localStorage.orbit_dev_panel === '1'`（`settings.js` `_isDevMode()`）。一般使用者的裝置沒有這個旗標，行為不變。
 
-| 呼叫點 | 行為 | 換帳號後的結果 |
-|---|---|---|
-| `storage.upsertProfile()` | 存在就 return false，不上雲 | 新帳號的 profile 永遠不會上雲 |
-| `storage.refreshProEntitlement()` | 存在就 return false，不呼叫 RPC | `server` source 下新帳號拿不到 entitlement，fail closed |
-| `settings.js` `_devReset()` | 把 backup 存回本機 user，再刪除旗標 | 把**前一個帳號**的 user 寫到目前帳號的本機資料上 |
+建議方案 **Q3**（§4）：
 
-backup 也不會在登出時清除：`storage.clearAll()` 沒有刪它，所以它會一直留到開發者按「重設」。
+- 模擬開始時，backup 一定屬於目前帳號；
+- 結束模擬時，丟棄模擬期間排入的 profile 同步；
+- guard 只放行「明確屬於其他帳號」的 backup，格式錯誤一律擋住（fail closed）。
 
-另外，換帳號不一定經過登出：`app.js` 的 `onAuthStateChange` 遇到 `SIGNED_IN`、而且 user id 不同時，會直接呼叫 `loadAndStart()`，不會呼叫 `clearAll()`。所以只在登出時清除，仍有漏洞。
+## 2. 現況
 
-## 3. 方案
+### 2.1 三個只檢查「存在」的地方
 
-| 方案 | 做法 | 評估 |
-|---|---|---|
-| **Q2（建議）owner-scoped** | 新增 `readDevBackup()`，回傳解析後的 backup（失敗回 null）；新增 `hasDevBackupFor(ownerId)`。三個呼叫點都改成只對 `backup.id === ownerId` 生效 | 涵蓋所有換帳號路徑；舊的 backup 不必遷移 |
-| Q1 登出時清除 | `clearAll()` 一併刪除 `FLAG_DEV_BACKUP` | 一行就能改，但不涵蓋不經登出的換帳號（§2） |
-| Q1＋Q2 | 兩者都做 | Q2 已經足夠；Q1 只讓登出後的狀態更乾淨 |
+| 呼叫點 | 行為 |
+|---|---|
+| `storage.upsertProfile()` | backup 存在就 return false，不上雲 |
+| `storage.refreshProEntitlement()` | backup 存在就 return false，不呼叫 RPC（`legacy` source 下在這之前就已經 return） |
+| `settings.js` `_devReset()` | 把 backup 存回本機 user，刪除旗標與模擬的 projection |
 
-建議只做 Q2，理由：
+- backup 由 `_devBackupOnce()` 建立，內容是 `JSON.stringify(storage.getUser() ?? {})`。沒有 user 時是 `{}`，**不一定有 `id`**。
+- 只有在不存在時才會寫入，所以既有的 backup 不會被替換。
+- `storage.clearAll()` 不刪 backup。
+- 換帳號不一定經過登出：`app.js` 的 `onAuthStateChange` 遇到 `SIGNED_IN` 且 user id 不同時，直接 `loadAndStart()`，不呼叫 `clearAll()`。
 
-- Q1 會在登出時丟掉 backup。真實 profile 本來就在 server 上，因為模擬期間 `upsertProfile()` 不會上雲，所以丟掉 backup 不會遺失資料。
-- 但 Q1 會改變「重設」按鈕的既有行為：重新登入同一帳號後，面板不會再顯示有 backup。
-- 要不要加 Q1，交給使用者決定（§6）。
+### 2.2 模擬資料外流的路徑（main 上已存在）
 
-## 4. Q2 的具體變更（核准後實作）
+1. 模擬期間，正常使用就會呼叫 `storage.saveUser()`，例如完成 Session（`sessionFlow.js`）或換日（`dayCycle.js`）。
+2. `saveUser()` 先把**整個 user**（含模擬值）寫成該 owner 的 pending profile snapshot（`profileSyncPending:<ownerId>`），再呼叫 `upsertProfile()`。
+3. `upsertProfile()` 因 backup 存在而 return false，所以 pending snapshot 不會被清除。登出時也會保留，因為 `clearAll()` 刻意不刪 owner-scoped 的 pending。
+4. 開發者按「還原」：`_devReset()` 刪除 backup 並重新載入，但**不處理 pending snapshot**。
+5. 啟動時 `loadFromRemote()` 發現該 owner 有 pending profile，於是呼叫 `upsertProfile()`。此時 guard 已經不在，模擬值就被推上雲端。
 
-1. **`pwa/js/storage.js`**（或 `flags.js` 旁的小 helper）：
-   - `readDevBackup()`：`JSON.parse(localStorage.getItem(FLAG_DEV_BACKUP))`；格式錯誤或沒有字串 `id` 時回 `null`。
-   - `hasDevBackupFor(ownerId)`：`readDevBackup()?.id === ownerId`。
-2. **`upsertProfile(user, expectedOwnerId = user?.id)`**：把 `if (localStorage.getItem(FLAG_DEV_BACKUP))` 改為 `if (hasDevBackupFor(expectedOwnerId))`。
-3. **`refreshProEntitlement(userId)`**：改為 `if (hasDevBackupFor(userId))`。帳號不同時照常呼叫 RPC。
-4. **`settings.js` `_devReset()`**：
-   - backup 的 `id` 與目前 user 相同：還原（照舊）。
-   - 不同：不還原，只刪除旗標與模擬的 projection，避免把別人的 user 寫進來。
-   - 面板的 `hasBackup` 顯示也改成 owner-scoped。
-5. **格式錯誤的 backup**（無法 parse，或沒有 `id`）：
-   - 這是唯一的行為選擇點。建議視為「不屬於任何人」，也就是不擋 refresh 與 upsert。
-   - 代價：舊格式若沒有 `id`，模擬中的 projection 可能被 server 結果覆蓋。這只發生在開發者裝置上，而且是 fail open 到「真實的 server 結果」，不會授予任何權限。
-6. **測試**（`tests/unit/proEntitlement.test.js`、`tests/unit/proDevPanel.test.js`）：
-   - 同帳號有 backup：`refreshProEntitlement` 與 `upsertProfile` 照舊略過。
-   - 不同帳號有 backup：兩者照常執行。
-   - `_devReset()` 遇到不同帳號的 backup：不呼叫 `saveUserLocal`，旗標被刪除。
-   - 格式錯誤的 backup：不擋 refresh 與 upsert。
-7. **版本**：patch（`npm run bump`）。
+## 3. 為什麼原本的方案 Q2 不行
 
-## 5. 不會改變的事
+原 Q2 是「backup 只在 `backup.id === 目前帳號` 時生效」，review 找到兩個漏洞：
 
-- `legacy` source（目前 production）下，`refreshProEntitlement()` 一開始就 return，不受影響。
-- 同一個開發者帳號的模擬流程完全照舊。
+- **P1**：`_devBackupOnce()` 只在 backup 不存在時寫入。若裝置上留著帳號 B 的 backup（或 `{}`），帳號 A 開始模擬時不會寫入自己的 backup。`hasDevBackupFor(A)` 為 false，A 的模擬值會在下一次 `saveUser()` 直接上雲。這比現在更糟：現在任何 backup 都會擋。
+- **P1**：Q2 沒有處理 §2.2 的 pending snapshot。Q1（登出時清除 backup）也一樣，清掉 guard 後，下次登入會把該 owner 的模擬 pending 推上雲。
+
+## 4. 方案 Q3（建議）
+
+### 4.1 backup 的歸屬
+
+- 新增 `readDevBackup()`：解析失敗、不是物件，或沒有非空字串的 `id` 時，回傳 `{ malformed: true }`；否則回傳 `{ ownerId, user }`。
+- 新增 `isDevBackupBlocking(ownerId)`：
+  - 沒有 backup → 不擋；
+  - 格式錯誤 → **擋**（fail closed，與現況相同）；
+  - `ownerId` 為空 → **擋**；
+  - `backup.ownerId === ownerId` → 擋；
+  - 只有「格式正確且屬於其他帳號」時才不擋。
+- `upsertProfile(user, expectedOwnerId)` 改為 `if (isDevBackupBlocking(expectedOwnerId)) return false`。
+- `refreshProEntitlement(userId)` 同樣改寫。
+
+### 4.2 開始模擬
+
+`_devBackupOnce()` 改為：
+
+- 沒有登入的 user（沒有 `id`）：拒絕模擬並顯示提示。不再寫入 `{}`。
+- 沒有 backup：寫入目前 user（照舊）。
+- 已有**目前帳號**的 backup：不覆寫（照舊，保留模擬前的狀態）。
+- 已有**其他帳號**或格式錯誤的 backup：**拒絕模擬**，提示先清除殘留的模擬。不自動覆寫，因為那會讓另一個帳號的 pending 失去保護。
+
+### 4.3 結束模擬（同一個帳號）
+
+`_devReset()` 在現有步驟之前，先丟棄目前 owner 的 pending profile snapshot（`profileSyncPending:<ownerId>`）。
+
+- 這會一併丟掉模擬期間真實發生的 profile 變動，例如連勝推進。
+- 這與現在的語意一致：還原 backup 本來就會回到模擬前的 user。
+- Sessions 的同步不受 backup 影響，模擬期間完成的 Session 照常保存。
+
+### 4.4 清除殘留（其他帳號或格式錯誤）
+
+開發者面板的「還原」按鈕目前只在 `hasBackup` 時顯示。改為依 backup 的狀態顯示不同按鈕：
+
+- **目前帳號的 backup**：「↩ 還原原始資料並重啟」（§4.3）。
+- **其他帳號或格式錯誤的 backup**：「清除殘留的模擬資料」。
+  - 刪除 backup 本身；
+  - 刪除 backup 所屬 owner 的 pending profile snapshot（格式錯誤時無法得知 owner，只刪 backup）；
+  - 不還原 user，不動目前帳號的資料。
+
+### 4.5 不採用 Q1（登出時清除 backup）
+
+backup 跨登出保留，該 owner 的同步就會一直被擋，直到開發者在同一個帳號按「還原」（§4.3）。這是安全的預設。登出時清除會打開 §2.2 的路徑。
+
+## 5. 對 production 的影響
+
+- `upsertProfile()` 的 guard 在 `legacy`（production）下也會執行。但只有 localStorage 有 `orbit_dev_backup` 的裝置會進入新的判斷，其他裝置 `getItem` 回 `null`，行為不變。
 - 不涉及 schema、RPC、RLS 或 Supabase 設定。
+- **建議專案擁有者自行檢查**：如果曾在自己的帳號用過開發者面板的「模擬 Pro」或「模擬等級」，之後按過「還原」，請到 Supabase 確認該帳號 `profiles` 的 `is_pro`、`pro_expires_at`、`total_xp` 是否正確。
 
-## 6. 需要使用者決定
+## 6. 測試（核准後實作）
 
-1. **是否核准 Q2**（建議：核准）。
-2. **是否加上 Q1**（登出時清除 backup）：建議不加，理由見 §3。
-3. **格式錯誤的 backup**：建議視為不屬於任何人（§4 第 5 點）。另一個選擇是視為屬於所有人，也就是照舊擋住，那就和現在一樣 fail closed。
+- 既有的 `'{}'` guard 測試照舊通過，因為格式錯誤仍會擋：
+  - `tests/unit/proEntitlementGate.test.js`（dev backup 存在時不呼叫 RPC）；
+  - `tests/unit/storage-mapping.test.js`（`orbit_dev_backup` 存在時不上雲）。
+- 新增：
+  - 其他帳號的 backup 不擋 refresh 與 upsert；同帳號、格式錯誤、`ownerId` 為空時都擋。
+  - 有其他帳號的 backup 時，`_devApplyLevel()`／`_devApplyPro()` 拒絕模擬，不寫入任何 user 或 projection。
+  - **回歸測試（§2.2）**：模擬中 `saveUser()` 排入 pending → `_devReset()` → 下一次 `loadFromRemote()` 不會 upsert 模擬值。
+  - 清除殘留：刪除 backup 與該 owner 的 pending，不呼叫 `saveUserLocal`。
+  - 面板依 backup 狀態顯示正確的按鈕（`tests/unit/proDevPanel.test.js`）。
+- 版本：`npm run bump -- patch`。
+
+## 7. 需要使用者決定
+
+1. **是否核准 Q3**（建議：核准）。
+2. **格式錯誤的 backup**：Q3 建議擋住（fail closed），並提供「清除殘留」按鈕。這修正了初稿「視為不屬於任何人」的建議，因為那會讓模擬值外流。
+3. **排程**：2026-10-17 的 Next 規則是只自行排入低風險項目。PRO-014Q 屬 entitlement 路徑，這次為了寫變更說明移入 In Progress。若希望高風險項目連變更說明都要先問，請告知，我會把它移回 Backlog。
+4. **§5 的帳號檢查**：需要你自己確認，我沒有 Supabase 的權限。
