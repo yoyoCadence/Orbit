@@ -31,7 +31,7 @@
 
 | PR | 分支 | 內容 | 狀態與下一步 |
 |---|---|---|---|
-| [#167](https://github.com/yoyoCadence/Orbit/pull/167) | `docs/review-followups` | 依 #155–#160 的 Codex review 修正 `docs/personal-space-state-flow.md` 與 `docs/platform-adapters.md`；AI-203 改為 Mode A 提案；新增 `PRO-014P`、`PRO-014Q`；本檔 | 獨立 review 的 4 個 P2 已修正（見下方狀態）。下一步：CI 綠後合併 |
+| [#167](https://github.com/yoyoCadence/Orbit/pull/167) | `docs/review-followups` | 依 #155–#160 的 Codex review 修正 `docs/personal-space-state-flow.md` 與 `docs/platform-adapters.md`；AI-203 改為 Mode A 提案；新增 `PRO-014P`、`PRO-014Q`；本檔 | 獨立 review 兩輪的 P2 都已修正（見下方狀態）。下一步：CI 綠後合併 |
 | [#168](https://github.com/yoyoCadence/Orbit/pull/168) | `feat/ps-244-blender-workstation` | PS-244：Blender 渲染的房間與 8 件家具（v1.29.0） | Codex 的兩個 P2 已在 `4f5a781` 修正；獨立 review 的 P1（椅子 z）與 P2（舊覆寫的 width／anchor）已在 `d1e6f17` 修正。下一步：CI 綠後合併 |
 
 兩個 PR 都改 `tasks.md`，但段落不同；`git merge-tree` 顯示沒有衝突。後合併的那個若 GitHub 顯示需要更新，再 merge main 即可。
@@ -40,7 +40,7 @@
 
 > **狀態（2026-10-18 06:20 UTC）**：Codex 額度用完，改用獨立 Claude review（使用者核准）。
 > - #168：獨立 review 回報 P1（椅子畫在螢幕後面）、P2（舊編輯器覆寫的 `width`／`anchor` 讓新 PNG 縮小）與 P3（speck filter），都已在 `d1e6f17` 修正並加測試；已請 reviewer 確認修正。
-> - #167：獨立 review 回報 4 個 P2（PRO-014 執行順序與前置、PRO-014P 的問題敘述與 `unknown` 定義、本表的下一步），以及多個 P3，已一併修正。
+> - #167：獨立 review 第一輪回報 4 個 P2，涵蓋 PRO-014 執行順序與前置、PRO-014P 的問題敘述與 `unknown` 定義，以及本表的下一步，另有多個 P3，都已修正。複查又找到 3 個 P2：`FLAG_DEV_BACKUP` 的條件、訪客的定義、`home.js` 的錯誤處理敘述，也已修正。
 > - 所有 Codex 先前的 finding 都已修正並 resolve。
 > - 合併順序：先 #168，再 #167。#167 合併時把本檔 §3／§4 更新成合併後的狀態。
 

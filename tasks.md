@@ -99,11 +99,11 @@
       - RPC 成功且 snapshot 寫入成功，依結果回 `pro` 或 `not-pro`；
       - 否則若有 `SNAPSHOT_TTL_MS` 內的 snapshot，以它判定（離線 grace window）；
       - 都沒有才是 `unknown`。
-    - 沒有 session 的訪客不會有 server entitlement，視為 `not-pro`。
+    - 從未登入過的訪客（沒有任何 owner）不會有 server entitlement，視為 `not-pro`。曾登入的 owner 只是 session 暫時無法還原時，若也沒有 TTL 內的 snapshot，仍是 `unknown`。
     - 在 `server` source 下，換日處理（補卡、offer、SUB-16、推進 `lastStreakDate`）只在 `pro` 或 `not-pro` 時執行。
     - `unknown` 時整個換日處理延後：記錄**確切的待處理日期**（可能不只一天），不推進 `lastStreakDate`。得到權威結果時依序重播這些日期，各自依當天的 Sessions 判定，而不是只處理「新的昨天」。
   - 完成條件：
-    - `unknown` 的每種來源（過期 snapshot 下的網路例外、RPC error、格式不符、寫入失敗、`FLAG_DEV_BACKUP`）都不重設連勝、不補保護卡、不消耗 `streakUnlockUsed`，且不推進 `lastStreakDate`
+    - `unknown` 的每種來源（snapshot 過期或不存在時的網路例外與 `FLAG_DEV_BACKUP` 略過、RPC error、格式不符、寫入失敗）都不重設連勝、不補保護卡、不消耗 `streakUnlockUsed`，且不推進 `lastStreakDate`
     - TTL 內的 snapshot 在離線時照常判定
     - 跨日：第一天 `unknown`、隔天才得到權威結果時，第一天的 Sessions 仍被評估（有效則延續連勝）
     - `pro` 時補卡並提供保護 offer；`not-pro` 時照常重設，SUB-16 條件照舊
