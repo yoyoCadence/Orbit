@@ -145,6 +145,10 @@
 
 ## In Progress
 
+- [ ] **BUG-112** HW-106／HW-107／HW-110 的 review 後續修正（隱私競態與同步狀態）
+  - 問題（PR #162–#164 Codex review）：位置定位進行中按「清除」或關閉，晚到的座標仍被寫回；麥克風權限請求進行中再按按鈕會再要求一次麥克風、無法取消；連線恢復同步在 Session 補傳仍在佇列時就顯示「✓ 已更新」，且可能與啟動同步同時執行而重複補傳。
+  - 修正方向：以 request 序號讓清除／關閉作廢進行中的定位；權限請求期間再按即取消；遠端載入回傳補傳完成的 promise，只有佇列清空才顯示已同步；所有遠端載入經同一入口序列化。
+
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
 
