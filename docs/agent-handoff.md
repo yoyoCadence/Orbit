@@ -29,10 +29,10 @@
 
 ## 3. 進行中的工作
 
-- **等待使用者決定的提案**（都在 `tasks.md` 的 In Progress；核准前不改程式碼）：
+- **等待使用者決定的提案**（核准前不改程式碼）：
   - PS-246：[`docs/ps-246-v2-placement-overrides.md`](ps-246-v2-placement-overrides.md)，已由 #171 合併。四個決定：方案 A、Edit Mode 入口（A1／A2）、PS-246B、`unmappedPlacements` 摘要（S1／S2）。
   - AI-203：[`docs/ai-203-companion-remind-proposal.md`](ai-203-companion-remind-proposal.md)，分支 `docs/ai-203-proposal`。決定項見提案 §9。
-  - PRO-014Q：`docs/pro-014q-dev-backup-owner-scope.md`，分支 `docs/pro-014q-proposal`（尚未開 PR）。review 發現 main 上已存在、只影響開發者模式裝置的問題：模擬資料可能推到真實帳號，模擬中登出後無法再登入。
+  - PRO-014Q：`docs/pro-014q-dev-backup-owner-scope.md`，只在分支 `docs/pro-014q-proposal` 上（尚未開 PR；PRO-014Q 移入 In Progress 的 commit 也只在該分支，合併前 main 上仍是 Backlog）。review 發現 main 上已存在、只影響開發者模式裝置的問題：模擬資料可能推到真實帳號，模擬中登出後無法再登入。
 - 核准後的流程：把提案的驗收條件寫進對應任務，再實作；PS-246 與 PRO-014Q 實作完移到 Done，AI-203 核准後建立 AI-203B。
 - 草稿 PR [#154](https://github.com/yoyoCadence/Orbit/pull/154)（`feat/pro-014l-streak-unlock-rpc`，PRO-014L）不是本工作階段開的；它改的 SUB-16 路徑與 `PRO-014P` 相同。
 - Codex review 額度在 2026-10-18 用完；之後的 PR 依 §2 改用獨立 Claude review（只讀 agent，對照程式碼回報 P1／P2／P3，修完再請它複查）。
@@ -76,7 +76,7 @@
 ### 可直接做（低風險）
 
 - `tasks.md` 的 Next 只有需要使用者執行的 BUG-109A。
-- 上面需要核准的項目，可以先寫成提案文件交給使用者決定；寫提案不是實作，不違反 AGENTS §3 的「先說明再核准」。但依 AGENTS §15，任務要先在 `tasks.md` 從 Backlog 明確移到 Next，再移到 In Progress（附日期與理由，不可靜默調整順序），才能開始寫。PS-246、AI-203、PRO-014Q 已移入 In Progress；PRO-014P 仍在 Backlog。高風險項目（如 entitlement）連變更說明都要不要先問使用者再排程，已列為 PRO-014Q 的待決定事項。
+- 上面需要核准的項目，可以先寫成提案文件交給使用者決定；寫提案不是實作，不違反 AGENTS §3 的「先說明再核准」。但依 AGENTS §15，任務要先在 `tasks.md` 從 Backlog 明確移到 Next，再移到 In Progress（附日期與理由，不可靜默調整順序），才能開始寫。PS-246、AI-203 已移入 In Progress；PRO-014Q 的移動只在分支 `docs/pro-014q-proposal` 上；PRO-014P 仍在 Backlog。高風險項目（如 entitlement）連變更說明都要不要先問使用者再排程，已列為 PRO-014Q 的待決定事項。
 - 椅子右扶手與一個腳輪畫在書桌之上（PS-244 起既有，約 10 px，記錄在 `tasks.md` 的 PS-245）。修正要拆分椅子的渲染層，再用 `render_pack.py --only office-chair` 重渲椅子。`tasks.md` 目前沒有對應任務，要做需先建立任務。
 
 ## 6. PS-245 精細化：實作計畫
