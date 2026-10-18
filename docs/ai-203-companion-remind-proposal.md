@@ -8,11 +8,12 @@
   - 這是現有資料裡唯一由使用者每天明確選擇的來源。
   - 新手導覽的教學任務（instant、B 級）與 instant／恢復型任務不算。
   - 不新增資料欄位。
-- **`missedPatterns` 由 view model 即時推導**，不寫入任何 state，`companionEngine.js` 不改。
-- **三個保護條件**，避免出現得太早或太頻繁：
+- **`missedPatterns` 由 view model 即時推導**，`companionEngine.js` 不改。
+- **保護條件**，避免出現得太早或太頻繁：
   - 歷史不足時不提醒：有 Session 的日期少於 3 天，就不出現 `remind`（§5）；
   - 今天已完成一次合格的專注就結束；
-  - 日曆日與 effective date 不同時（00:00 到 `newDayHour`）不提醒（§4.2）。
+  - 日曆日與 effective date 不同時（00:00 到 `newDayHour`）不提醒（§4.2）；
+  - **每個 effective day 最多一段提醒**（§7.1 F3）：第一次出現時記錄時間，超過 30 分鐘（時長待決定）就回到 `observe`，當天不再出現。這需要在 V2 state 新增一個本機欄位，是唯一的寫入。
 - **需要使用者決定**的產品問題見 §9：
   - Momentum 不看日曆天；
   - 首頁小卡上的呈現方式；
@@ -115,9 +116,15 @@ art bible 要求 Companion 的表情與肢體不暗示憤怒、被拋棄，或�
 
 | 選項 | 做法 | 評估 |
 |---|---|---|
-| **F1（建議）條件式** | 只在 §4 的 `missedPatterns` 非空且 Momentum 為 `low` 時出現。今天完成一次合格的專注，或把任務移出今日計畫，就結束 | 不需持久化，可測試；上限來自使用者自己的行動 |
+| F1 只用條件 | 只在 §4 的 `missedPatterns` 非空且 Momentum 為 `low` 時出現。今天完成一次合格的專注，或把任務移出今日計畫，就結束 | 不需持久化，可測試；上限來自使用者自己的行動 |
 | F2 時段限制 | F1 再加上「本地時間 12:00 之後才出現」 | 早上剛排好計畫時不會立刻被提醒；要注入時間（`options.now` 已存在） |
-| F3 次數冷卻 | 記錄 `lastRemindedOn`，每天最多出現 N 次 | 要新增持久化欄位，以及「已顯示提醒」的 reducer 指令（product spec §8.3 允許 reducer 改 durable state）。範圍較大，第一版不建議 |
+| **F3（建議）每日一段** | F1 的條件之外，加上每個 effective day 最多一段提醒：第一次出現時記錄 `companion.remindWindow = { date, firstShownAt }`，之後只在 `firstShownAt` 起 30 分鐘內出現；超過就回到 `observe`，當天不再出現 | 真正的上限。需要一個本機 V2 state 欄位（不同步 Supabase），由頁面層在第一次顯示時寫入，selector 只讀取它，所以仍是純函式（product spec §8.3 允許 reducer 或 store 寫入 durable state）。`stateSchema.js` 會保留 `companion` 的未知欄位，舊版 client 不會刪除它 |
+
+F3 的細節：
+
+- 寫入點：建立快照後，若 `companion.state === 'remind'` 且 `remindWindow.date !== effectiveDate`，頁面層以 `expectedRevision` 寫入 `{ date: effectiveDate, firstShownAt: now }`。寫入失敗（revision 衝突）時下一次 render 再試，最多晚一次。
+- 判斷：`remindWindow.date === effectiveDate` 且 `now - firstShownAt > 30 分鐘` 時，view model 傳入空的 `missedPatterns`。
+- 首頁小卡與完整頁面讀同一份 state，所以兩邊一起結束；重新掛載也不會重新開始。
 
 ### 7.2 首頁小卡上的呈現
 
@@ -136,21 +143,25 @@ art bible 要求 Companion 的表情與肢體不暗示憤怒、被拋棄，或�
 名詞：「已推進」指今天有一筆 Session 屬於符合 Main Quest 資格的任務，且 `result` 為 `complete`、`partial` 或 `instant`，不限時長。這比 Main Quest 的完成條件（`complete` 且至少 25 分鐘）寬鬆：只要開始做，提醒就結束。
 
 - 以下全部成立時，Companion 為 `remind`，台詞 key 為 `companion.goal.gentle-reminder`：
+  - 沒有更高優先的反應：沒有待播放的 reveal；今天最新的一筆 Session 不是有效的恢復（`rest`），也不是有效的一般任務（`approach`）；
   - Momentum 為 `low`，且 `observedDays ≥ 3`（選 G1 時）；
   - 日曆日等於 effective date；
   - 首頁的今日計畫中有符合 Main Quest 資格的任務；
-  - 今天還沒有「已推進」的 Session。
+  - 今天還沒有「已推進」的 Session；
+  - 選 F3 時：今天還沒有提醒紀錄，或距離 `firstShownAt` 不到 30 分鐘。
 - 下列任一情況不出現 `remind`：
   - 今日計畫為空，或只有不合格的任務（instant、恢復、娛樂、B 級以下、封存或停用、已刪除）；
   - 今日計畫只有 `tour-task`；
   - 00:00 到 `newDayHour` 之間；
   - 今天已有「已推進」的 Session，即使之後又記了別的 Session；
   - 有 Session 的日期少於 3 天（選 G1 時）；
-  - Momentum 不是 `low`。
+  - Momentum 不是 `low`；
+  - 選 F3 時：今天的提醒已超過 30 分鐘。
+- 選 F3 時：第一次出現 `remind` 時寫入 `companion.remindWindow`；同一天重新載入或重新掛載，不會重設 `firstShownAt`；隔一個 effective day 可以再出現一次。
 - 從 `coreState.dailyPlan` 移除最後一個合格任務後，重新建立的快照不再是 `remind`。
 - 注入的 `now` 在 00:00 到 `newDayHour` 之間時不出現 `remind`，與執行測試的機器時間無關。
 - 首頁小卡與完整頁面的 Companion **狀態與台詞 key** 一致（台詞文字的統一另立任務，見 §9 第 6 點）；選 D2 時，靜態 fallback 的 `remind` 動畫不循環。
-- 不新增 state 欄位、不寫入 state；`companionEngine.js` 的優先順序不變。
+- 除了 F3 的 `companion.remindWindow` 之外，不新增 state 欄位、不寫入 state；`companionEngine.js` 的優先順序不變。
 - 只在選 F2 時：本地 12:00 前不出現，用 `options.now` 測試。
 
 ## 9. 需要使用者決定
@@ -158,7 +169,7 @@ art bible 要求 Companion 的表情與肢體不暗示憤怒、被拋棄，或�
 1. **目標來源**：A 今日計畫（建議）／B 新增目標欄位。
 2. **歷史不足**：G1 少於 3 天不提醒（建議）／G0 不保護。
 3. **Momentum**：M1 維持（建議）／M2 另立任務改為日曆天。
-4. **頻率**：F1 條件式（建議）／F2 加時段限制。
+4. **頻率**：F3 每日一段（建議，時長預設 30 分鐘，可調）／F1 只用條件（使用者不理會時會整天掛著）／F2 加時段限制。
 5. **靜態 fallback 的動畫**：D2 只播一次，與 Pixi 一致（建議）／D1 維持循環。
 6. **台詞**：`companion.goal.gentle-reminder` 在兩個檔案的文字不同，擇一或另寫：
    - 「你選擇的目標還在這裡，準備好時再開始。」（`ui/orbitWindow.js`）
