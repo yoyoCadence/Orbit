@@ -12,7 +12,7 @@
 - **三個保護條件**，避免出現得太早或太頻繁：
   - 歷史不足時不提醒：有 Session 的日期少於 3 天，就不出現 `remind`（§5）；
   - 今天已完成一次合格的專注就結束；
-  - 計畫日期與 effective date 不一致時不使用該計畫（§4.2）。
+  - 日曆日與 effective date 不同時（00:00 到 `newDayHour`）不提醒（§4.2）。
 - **需要使用者決定**的產品問題見 §9：
   - Momentum 不看日曆天；
   - 首頁小卡上的呈現方式；
@@ -33,7 +33,7 @@
 | Momentum | `pwa/js/personalSpace/v2/momentum.js` | 取**最近 7 個有 Session 的日期**計算有效天數：0–2 `low`、3–4 `stable`、5–6 `strong`、7 `peak`。**沒有任何 Session 的新使用者是 `low`** |
 | Effective date | `viewModels.js` `resolveEffectiveDate()` | Sessions 與快照用 `newDayHour`（預設 5 點）切日；今日計畫用日曆日。vertical slice §7.1 已指出兩者必須對齊 |
 | 優先順序 | `companionEngine.js` | 第 3、4 條只看今天**最新**的一筆非 `invalid` Session |
-| 呈現 | `ui/orbitWindow.js`、`pages/personalSpaceV2.js`、`pwa/assets/style.css` | 首頁小卡與完整頁面共用同一份快照；vertical slice 要求兩者一致。首頁 COMPANION 卡會一直顯示台詞，`remind` 動畫是無限循環 |
+| 呈現 | `ui/orbitWindow.js`、`pages/personalSpaceV2.js`、`runtime/pixiSceneRuntime.js`、`pwa/assets/style.css` | 首頁小卡與完整頁面共用同一份快照；vertical slice 要求兩者一致。首頁 COMPANION 卡會一直顯示台詞。Pixi 場景載入後，`remind` 的靠近動作只播一次（約 0.9 秒）；只有 Pixi 未載入時的靜態 fallback，CSS 動畫會無限循環 |
 
 ## 3. 「使用者選定的目標」從哪裡來
 
@@ -50,9 +50,9 @@
 在 `buildPersonalSpaceV2Snapshot()` 中推導，取代 `coreState.missedPatterns`：
 
 ```js
-// effectiveDate：快照的 effective date
-// planRecord：storage 原始的 { date, taskIds }（需新增讀取原始紀錄的方法，見 4.2）
-const planIds = planRecord?.date === effectiveDate ? planRecord.taskIds : [];
+// effectiveDate：快照的 effective date；calendarDate：裝置的日曆日（utils.today()）
+// coreState.dailyPlan：與首頁今日計畫清單相同的資料（storage.getDailyPlan()）
+const planIds = calendarDate === effectiveDate ? coreState.dailyPlan : [];
 // 不可重用 recentSessions：它只保留 7 筆
 const todaySessions = sessions.filter(s => s?.date === effectiveDate);
 const workedOnGoalToday = todaySessions.some(s =>
@@ -71,12 +71,19 @@ missedPatterns = (workedOnGoalToday || momentum.observedDays < 3) ? [] : planIds
 
 ### 4.2 日期對齊
 
-`storage.getDailyPlan()` 只比對日曆日。若直接使用，會有兩個問題：
+今日計畫存成 `{ date, taskIds }`，`date` 是**日曆日**；Sessions 與快照則用 `newDayHour` 切日。在 00:00 到 `newDayHour` 之間，兩者不同，而且今日計畫本身的日期就不可靠：
 
-- 00:00 到 `newDayHour` 之間重新載入，計畫會變空（effective date 還是昨天，但日曆日已換）。這是安全的方向：不提醒。
-- 00:00 到 `newDayHour` 之間建立的計畫，記在新的日曆日。若 app 在換日時沒開著，`dayCycle.js` 的重設不會發生，到了早上這份計畫會被當成當天的計畫。
+- 首頁清單用 `storage.getDailyPlan()`，日曆日一換就回傳空陣列。這時 effective date 還是昨天，如果改讀原始紀錄，Companion 會提醒一份首頁顯示為空的計畫，使用者也無法從清單移除任務來結束提醒。
+- `saveDailyPlan()` 每次儲存都把**整份**計畫蓋上當下的日曆日。若 app 開著跨過午夜，記憶體中仍是昨天的計畫；這時新增、移除或拖曳排序任何一項，整份昨天的計畫都會變成今天的。`dayCycle.js` 的重設只在 app 開著、跨過 `newDayHour` 時執行。
 
-做法：讀取原始的 `{ date, taskIds }`，只有在 `date === effectiveDate` 時才使用。上面第二種情況，計畫是凌晨為「新的一天」排的，早上使用它符合使用者的意圖。這屬於本任務能處理的範圍。把今日計畫整體改成以 effective date 為準（vertical slice §7.1）影響 Main Quest，另立任務。
+所以本任務不嘗試修正日期，只做兩件事：
+
+1. **只用首頁顯示的計畫**：`coreState.dailyPlan`（`storage.getDailyPlan()` 的結果），提醒內容永遠與使用者看到的清單一致。
+2. **00:00 到 `newDayHour` 之間不提醒**：日曆日不等於 effective date 時，`planIds` 為空。
+
+另一項要求：計畫必須在**每次建立快照時**讀取，不能只在 app 載入時讀一次，否則從清單移除任務不會結束提醒。V2 controller 目前每次 refresh 都會呼叫 `storageApi.getDailyPlan()`，實作時要用測試固定這個行為。
+
+今日計畫的日期模型本身（午夜後儲存會把舊計畫改成新日期、與 effective date 不一致）影響 Main Quest 與首頁，vertical slice §7.1 已要求對齊。建議另立任務，不放在 AI-203B。
 
 ## 5. 歷史不足時不提醒
 
@@ -110,25 +117,34 @@ art bible 要求 Companion 的表情與肢體不暗示憤怒、被拋棄，或�
 
 ### 7.2 首頁小卡上的呈現
 
-同一份快照同時驅動首頁小卡與完整頁面，vertical slice 要求兩者一致，所以不建議只在其中一處隱藏 `remind`。但首頁是開 app 的第一個畫面：COMPANION 卡一直顯示台詞，而 `remind` 動畫是無限循環，正是 §7.1 要避免的「被盯」感。
+同一份快照同時驅動首頁小卡與完整頁面，vertical slice 要求兩者一致，所以不建議只在其中一處隱藏 `remind`。
 
-- **D2（建議）**：狀態與台詞兩處一致，但首頁小卡上的 `remind` 動畫只播一次，然後停在靜止姿勢（只改 CSS）。
-- D1：維持現狀，兩處都無限循環。
+- 動畫：Pixi 場景載入後，`remind` 的靠近動作只播一次（約 0.9 秒）。只有 Pixi 未載入時的靜態 fallback，CSS 會讓 `remind`（與 `approach` 共用）無限循環。
+- 文字：首頁 COMPANION 卡會一直顯示台詞，直到條件結束。這是「被盯」感的主要來源，F1 的結束條件就是為此設計。
+
+選項：
+
+- **D2（建議）**：靜態 fallback 的 `remind` 動畫改為只播一次，與 Pixi 一致（只改 CSS）。
+- D1：維持現狀。
 
 ## 8. 驗收條件草稿（AI-203B，核准後寫入 tasks.md）
 
+名詞：「已推進」指今天有一筆 Session 屬於符合 Main Quest 資格的任務，且 `result` 為 `complete`、`partial` 或 `instant`，不限時長。這比 Main Quest 的完成條件（`complete` 且至少 25 分鐘）寬鬆：只要開始做，提醒就結束。
+
 - 以下全部成立時，Companion 為 `remind`，台詞 key 為 `companion.goal.gentle-reminder`：
   - Momentum 為 `low`，且 `observedDays ≥ 3`（選 G1 時）；
-  - 今日計畫的日期等於 effective date，其中有符合 Main Quest 資格、而且今天還沒完成的任務；
-  - 今天沒有合格專注任務的有效 Session。
+  - 日曆日等於 effective date；
+  - 首頁的今日計畫中有符合 Main Quest 資格的任務；
+  - 今天還沒有「已推進」的 Session。
 - 下列任一情況不出現 `remind`：
-  - 今日計畫為空，或只有不合格的任務（instant、恢復、娛樂、教學、B 級以下、封存或停用、已刪除）；
-  - 計畫日期與 effective date 不同（包含 00:00 到 `newDayHour`）；
-  - 今天已有一筆合格專注任務的有效 Session，即使之後又記了別的 Session；
+  - 今日計畫為空，或只有不合格的任務（instant、恢復、娛樂、B 級以下、封存或停用、已刪除）；
+  - 今日計畫只有 `tour-task`；
+  - 00:00 到 `newDayHour` 之間；
+  - 今天已有「已推進」的 Session，即使之後又記了別的 Session；
   - 有 Session 的日期少於 3 天（選 G1 時）；
   - Momentum 不是 `low`。
-- 新手導覽期間不出現 `remind`。
-- 首頁小卡與完整頁面的 Companion 狀態與台詞一致；選 D2 時，首頁小卡的 `remind` 動畫不循環。
+- 從首頁清單移除最後一個合格任務後，下一次 refresh 不再是 `remind`。
+- 首頁小卡與完整頁面的 Companion **狀態與台詞 key** 一致（台詞文字的統一另立任務，見 §9 第 6 點）；選 D2 時，靜態 fallback 的 `remind` 動畫不循環。
 - 不新增 state 欄位、不寫入 state；`companionEngine.js` 的優先順序不變。
 - 只在選 F2 時：本地 12:00 前不出現，用 `options.now` 測試。
 
@@ -138,9 +154,10 @@ art bible 要求 Companion 的表情與肢體不暗示憤怒、被拋棄，或�
 2. **歷史不足**：G1 少於 3 天不提醒（建議）／G0 不保護。
 3. **Momentum**：M1 維持（建議）／M2 另立任務改為日曆天。
 4. **頻率**：F1 條件式（建議）／F2 加時段限制。
-5. **首頁呈現**：D2 動畫只播一次（建議）／D1 維持循環。
+5. **靜態 fallback 的動畫**：D2 只播一次，與 Pixi 一致（建議）／D1 維持循環。
 6. **台詞**：`companion.goal.gentle-reminder` 在兩個檔案的文字不同，擇一或另寫：
    - 「你選擇的目標還在這裡，準備好時再開始。」（`ui/orbitWindow.js`）
    - 「你選擇的目標仍在這裡，準備好時再回來就好。」（`pages/personalSpaceV2.js`）
 
    其實 8 個 Companion 台詞 key 在這兩個檔案的文字**全部**不同。建議另立一個小任務統一成一份文案表，不放在 AI-203B 裡。
+7. **另立任務**：今日計畫的日期模型與 effective date 對齊（§4.2，影響 Main Quest 與首頁）。建議建立，但不放在 AI-203B。
