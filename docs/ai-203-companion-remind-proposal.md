@@ -124,7 +124,7 @@ F3 的細節：
 
 - **資料格式**：`companion.remindWindow = { date: 'YYYY-MM-DD', firstShownAtMs: number }`。時間存成 epoch 毫秒數字，不存 `Date`：`writeJSON()` 會把 `Date` 變成 ISO 字串，重新載入後相減會得到 `NaN`，提醒就永遠不會結束。讀取時驗證它是有限數字，否則視為沒有紀錄。
 - **寫入走有 revision 的狀態轉換**：
-  - 新增純函式 `recordCompanionRemindWindow(v2State, { effectiveDate, nowMs })`。只有在 `remindWindow.date !== effectiveDate` 時才回傳新 state，並遞增 `worldRevision`，與 `pages/personalSpaceV2.js` 的 `withWorldRevision()` 相同。
+  - 新增純函式 `recordCompanionRemindWindow(v2State, { effectiveDate, nowMs })`。在**沒有有效的今日紀錄**時才回傳新 state，並遞增 `worldRevision`。「沒有有效的今日紀錄」指 `remindWindow.date !== effectiveDate`，或 `firstShownAtMs` 不是有限數字（格式錯誤的紀錄會被修復，而不是一直被當成沒有紀錄），與 `pages/personalSpaceV2.js` 的 `withWorldRevision()` 相同。
   - 由頁面既有的 `persist()` 以 `expectedRevision` 儲存。
   - revision 衝突時照現有流程重新 reconcile，再重新判斷。兩個分頁同時寫入時，後寫入的那一方會衝突，不會覆寫先寫入的紀錄，所以不會讓當天的提醒重新開始。
   - 頁面層不直接改 state 物件。
@@ -168,7 +168,7 @@ F3 的細節：
 - 選 F3 時：
   - 第一次出現 `remind` 時，經 `recordCompanionRemindWindow()` 寫入 `companion.remindWindow`，`worldRevision` 加 1；
   - 同一天重新載入或重新掛載，不會重設 `firstShownAtMs`；隔一個 effective day 可以再出現一次；
-  - `firstShownAtMs` 是數字；格式錯誤（字串、`NaN`）時視為沒有紀錄；
+  - `firstShownAtMs` 是數字；格式錯誤（字串、`NaN`）時視為沒有紀錄，並在下一次顯示時由 `recordCompanionRemindWindow()` 以有效的時間覆寫；
   - 兩份 state 帶著相同的 revision 同時寫入時，第二個寫入以 revision 衝突失敗，不會覆寫第一個；
   - 頁面開著不動時，`firstShownAtMs + 30 分鐘` 之後會自動 refresh 並離開 `remind`（用假計時器測試）；unmount 時取消計時器。
 - 從 `coreState.dailyPlan` 移除最後一個合格任務後，重新建立的快照不再是 `remind`。
