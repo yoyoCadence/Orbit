@@ -199,8 +199,10 @@
 
 .orbit-window-achievement-frame {
   position: absolute;
-  top: 17%;
-  left: 31%;
+  /* PS-244: free back-wall space between the planning board and the shelf
+     (art-pipeline/ps244-blender/process_pack.py PHOTO_FRAME mirrors this). */
+  top: 20%;
+  left: 47%;
   z-index: 94;
   width: clamp(34px, 13.5%, 86px);
   aspect-ratio: 4 / 3;

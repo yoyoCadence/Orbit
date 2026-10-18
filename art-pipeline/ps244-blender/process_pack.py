@@ -9,8 +9,9 @@ Usage:
   sampling noise below ALPHA_FLOOR, and derives the runtime placement
   (centre x, bottom y, width; all % of the frame) from the trimmed box. A prop
   drawn with that placement lands pixel-exact on the background.
-- Writes placements.json next to this script; assetManifest.js must match it
-  (tests/unit/ps244WorkspacePlacements.test.js enforces that).
+- Writes placements.json next to this script and rewrites PROP_DEFINITIONS in
+  assetManifest.js from it (tests/unit/ps244WorkspacePlacements.test.js keeps
+  the two in sync).
 - Builds one composite preview per Workspace Upgrade phase, including the
   protagonist and Companion at their runtime placements, for visual QA.
 
@@ -19,6 +20,7 @@ Requires Pillow and numpy.
 import argparse
 import json
 import os
+import re
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
@@ -27,6 +29,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, '..', '..'))
 PWA = os.path.join(REPO, 'pwa')
 V2 = 'assets/personal-space/v2'
+ASSET_MANIFEST = os.path.join(PWA, 'js', 'personalSpace', 'v2', 'content', 'assetManifest.js')
 BACKGROUND_PATH = f'{V2}/workspace/backgrounds/building-formal-workstation-room-v2.webp'
 PROP_DIR = f'{V2}/workspace/props'
 FRAME = (1536, 1024)
@@ -91,7 +94,7 @@ def trim_prop(im):
     keep = (window >= ALPHA_FLOOR) & (box_mean(window >= ALPHA_FLOOR, SPECK_WINDOW) >= SPECK_DENSITY)
     kept = np.argwhere(keep)
     (ty, tx), (by, bx) = kept.min(0), kept.max(0)
-    box = (x0 + tx, y0 + ty, x0 + bx + 1, y0 + by + 1)
+    box = tuple(int(v) for v in (x0 + tx, y0 + ty, x0 + bx + 1, y0 + by + 1))
     cropped = rgba[box[1]:box[3], box[0]:box[2]].copy()
     cropped[:, :, 3][~keep[ty:by + 1, tx:bx + 1]] = 0
     return Image.fromarray(cropped, 'RGBA'), box
@@ -136,6 +139,24 @@ def draw_photo_frame(canvas):
     draw.rectangle((left + pad, top + pad, left + w - pad, top + w * 3 / 4 + pad), fill=(233, 223, 198))
 
 
+def sync_asset_manifest(placements):
+    lines = ['const PROP_DEFINITIONS = Object.freeze([']
+    for pid, spec in PROPS.items():
+        pl = placements[pid]
+        place = f"{{ x: {pl['x']}, y: {pl['y']}, width: {pl['width']}, z: {spec['z']} }}"
+        until = f", {spec['max']}" if spec['max'] != 100 else ''
+        lines.append(f"  prop('{pid}', {spec['min']}, {place}{until}),")
+    lines.append(']);')
+    with open(ASSET_MANIFEST, encoding='utf-8') as fh:
+        source = fh.read()
+    updated, count = re.subn(r'const PROP_DEFINITIONS = Object\.freeze\(\[\n.*?\n\]\);',
+                             '\n'.join(lines), source, count=1, flags=re.S)
+    if count != 1:
+        raise RuntimeError('PROP_DEFINITIONS block not found in assetManifest.js')
+    with open(ASSET_MANIFEST, 'w', encoding='utf-8') as fh:
+        fh.write(updated)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('render_dir')
@@ -169,6 +190,7 @@ def main():
                 'props': {pid: {'path': f'{PROP_DIR}/{pid}.png', **pl} for pid, pl in placements.items()},
             }, fh, indent=2)
             fh.write('\n')
+        sync_asset_manifest(placements)
 
     os.makedirs(args.preview_dir, exist_ok=True)
     for progress in PHASES:

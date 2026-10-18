@@ -10,7 +10,7 @@ Everything is generated from code. There are no external models, textures or HDR
 |---|---|
 | `scene.py` | Builds the room, props, toon materials, Freestyle outlines, lights and the canonical camera (`building-workspace-v2`) |
 | `render_pack.py` | Renders `room.png` (transparent film) and each prop alone, with room surfaces and its support surface as shadow catchers |
-| `process_pack.py` | Composites the room over the backdrop → WebP. Trims props (noise floor plus speck filter) → PNG. Writes `placements.json` and per-phase QA previews |
+| `process_pack.py` | Composites the room over the backdrop → WebP. Trims props (noise floor plus speck filter) → PNG. Writes `placements.json`, rewrites `PROP_DEFINITIONS` in `assetManifest.js`, and renders per-phase QA previews (with the HW-105 photo frame) |
 | `placements.json` | Placement of every prop as measured from its trimmed render; `assetManifest.js` must match it (`tests/unit/ps244WorkspacePlacements.test.js`) |
 | `model-manifest.json` | Generator, version, license and processing provenance |
 | `previews/phase-*.jpg` | Composites for each project phase (0/25/50/75/100) with the protagonist and Companion at runtime placements |
@@ -23,7 +23,6 @@ python3 -m venv /tmp/bpyenv && /tmp/bpyenv/bin/pip install bpy==5.2.2
 
 /tmp/bpyenv/bin/python art-pipeline/ps244-blender/render_pack.py /tmp/ps244-renders --width 1536 --samples 96
 python3 art-pipeline/ps244-blender/process_pack.py /tmp/ps244-renders --write-runtime
-# then copy placements.json values into PROP_DEFINITIONS in assetManifest.js
 npm run ps242:manifest && npm run ps243:assets
 ```
 
