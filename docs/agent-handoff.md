@@ -4,7 +4,7 @@
 
 任務本身的定義與驗收條件以 [`tasks.md`](../tasks.md) 為準；本檔只記錄進行中的狀態、與使用者約定的工作規則，以及接手需要的操作細節。
 
-> 最後更新：2026-10-18（UTC 06:20 左右）。main = `5644536`（v1.28.2）。標有「（#168 加入）」的檔案與任務，要等 #168 合併後才會在 main 上出現。
+> 最後更新：2026-10-18（UTC 06:20 左右）。main = `3b6a948`（v1.29.0，#168 已合併）。
 
 ## 1. 接手前先讀
 
@@ -31,18 +31,15 @@
 
 | PR | 分支 | 內容 | 狀態與下一步 |
 |---|---|---|---|
-| [#167](https://github.com/yoyoCadence/Orbit/pull/167) | `docs/review-followups` | 依 #155–#160 的 Codex review 修正 `docs/personal-space-state-flow.md` 與 `docs/platform-adapters.md`；AI-203 改為 Mode A 提案；新增 `PRO-014P`、`PRO-014Q`；本檔 | 獨立 review 兩輪的 P2 都已修正（見下方狀態）。下一步：CI 綠後合併 |
-| [#168](https://github.com/yoyoCadence/Orbit/pull/168) | `feat/ps-244-blender-workstation` | PS-244：Blender 渲染的房間與 8 件家具（v1.29.0） | Codex 的兩個 P2 已在 `4f5a781` 修正；獨立 review 的 P1（椅子 z）與 P2（舊覆寫的 width／anchor）已在 `d1e6f17` 修正。下一步：CI 綠後合併 |
-
-兩個 PR 都改 `tasks.md`，但段落不同；`git merge-tree` 顯示沒有衝突。後合併的那個若 GitHub 顯示需要更新，再 merge main 即可。
+| [#167](https://github.com/yoyoCadence/Orbit/pull/167) | `docs/review-followups` | 依 #155–#160 的 Codex review 修正 `docs/personal-space-state-flow.md` 與 `docs/platform-adapters.md`；AI-203 改為 Mode A 提案；新增 `PRO-014P`、`PRO-014Q`；本檔 | 獨立 review 三輪的 P2 都已修正（見下方狀態），已 merge main。下一步：CI 綠後合併 |
 
 另有一個草稿 PR [#154](https://github.com/yoyoCadence/Orbit/pull/154)（`feat/pro-014l-streak-unlock-rpc`，PRO-014L），不是本工作階段開的；它改的 SUB-16 路徑與 `PRO-014P` 相同。
 
 > **狀態（2026-10-18 06:20 UTC）**：Codex 額度用完，改用獨立 Claude review（使用者核准）。
-> - #168：獨立 review 回報 P1（椅子畫在螢幕後面）、P2（舊編輯器覆寫的 `width`／`anchor` 讓新 PNG 縮小）與 P3（speck filter），都已在 `d1e6f17` 修正並加測試；已請 reviewer 確認修正。
-> - #167：獨立 review 第一輪回報 4 個 P2，涵蓋 PRO-014 執行順序與前置、PRO-014P 的問題敘述與 `unknown` 定義，以及本表的下一步，另有多個 P3，都已修正。複查又找到 3 個 P2：`FLAG_DEV_BACKUP` 的條件、訪客的定義、`home.js` 的錯誤處理敘述，也已修正。
+> - #168：獨立 review 回報 P1（椅子畫在螢幕後面）、P2（舊編輯器覆寫的 `width`／`anchor` 讓新 PNG 縮小）與 P3（speck filter），都已在 `d1e6f17` 修正並加測試，reviewer 確認後合併。
+> - #167：獨立 review 第一輪回報 4 個 P2，涵蓋 PRO-014 執行順序與前置、PRO-014P 的問題敘述與 `unknown` 定義，以及本表的下一步，另有多個 P3，都已修正。複查又找到 3 個 P2：`FLAG_DEV_BACKUP` 的條件、訪客的定義、`home.js` 的錯誤處理敘述；第三輪再找到 1 個 P2（訪客也有本機 `user.id`），都已修正。
 > - 所有 Codex 先前的 finding 都已修正並 resolve。
-> - 合併順序：先 #168，再 #167。#167 合併時把本檔 §3／§4 更新成合併後的狀態。
+> - #167 合併後，把本檔 §3 改成「無進行中的 PR」，並在 §4 補上 #167。
 
 ## 4. 本次工作階段已完成（2026-10-17～18）
 
@@ -60,6 +57,7 @@
 | #164 | v1.28.0 | HW-107 位置情境 |
 | #165 | v1.28.1 | BUG-111 Service Worker 預快取漏列模組（更新後離線無法啟動）＋ import 圖測試 |
 | #166 | v1.28.2 | BUG-112 位置／麥克風請求可取消；同步只在佇列清空才顯示完成 |
+| #168 | v1.29.0 | PS-244 Blender 渲染的工作站房間與 8 件家具（含獨立 review 的椅子 z 與覆寫修正） |
 
 教訓：#155–#164 在 Codex review 出現前就合併，造成 #165、#166 的回頭修正。這就是 §2 合併條件的由來。
 
@@ -68,10 +66,10 @@
 ### 需要使用者決定或執行
 
 - **BUG-109A**：在 production 套用 `pwa/db/013_signup_profile_name.sql`，需專案擁有者執行，步驟見 `docs/bug-109-signup-name-truncation.md`。
-- **PS-245（精細化，#168 加入）**：使用者原本就要求「精細模型」，PS-244 只解決一致性。實作計畫見 §6。
+- **PS-245（精細化）**：使用者原本就要求「精細模型」，PS-244 只解決一致性。實作計畫見 §6。
 - **角色 3D 化**：主角與 Companion 仍是 PS-242 的像素 sprite。改成 3D 會推翻已核准素材（主角 12 個姿勢、Companion 6 個狀態），範圍很大，等使用者決定。
 - **PRO-014P、PRO-014Q**：entitlement 流程，實作前需提案與核准。PRO-014P 擋 `PRO-014H` cutover。
-- **PS-246（#168 加入）**：舊 16:9 相機的位置覆寫（`x`／`y`）仍會套用到 V2 家具，屬使用者資料語意變更，需先提案。`width`／`anchor` 已在 #168 改為不套用。
+- **PS-246**：舊 16:9 相機的位置覆寫（`x`／`y`）仍會套用到 V2 家具，屬使用者資料語意變更，需先提案。`width`／`anchor` 已在 #168 改為不套用。
 - **AI-203**：Companion `remind` 的資料來源與頻率，產出規格給使用者核准。
 - **PS-243**：真機、installed PWA、雙帳號、螢幕閱讀器等 human gate。
 
@@ -81,7 +79,7 @@
 
 ## 6. PS-245 精細化：已規劃、尚未實作
 
-使用者原始需求是「用 blender 的精細模型去完善『空間』分頁」。PS-244 只處理一致性。PS-245 尚無任何程式碼；前一個 session 在 #168 合併前，從 `feat/ps-244-blender-workstation` 開了本機 worktree（分支 `feat/ps-245-blender-detail`，**未推送**）。接手時從合併後的 main 開新分支即可。
+使用者原始需求是「用 blender 的精細模型去完善『空間』分頁」。PS-244 只處理一致性。PS-245 尚無任何程式碼；#168 已合併，接手時從 main 開新分支即可（前一個 session 的本機分支 `feat/ps-245-blender-detail` 沒有任何 commit，也未推送）。
 
 程式碼只改 `art-pipeline/ps244-blender/scene.py`；素材、manifest、測試數字、CHANGELOG 與版本由下面的完成流程更新。相機 `CAMERA` 不動，角色寬度 24／13 不必重新校準。實作計畫：
 
@@ -114,7 +112,7 @@
     - 書桌附近加插座。
   - 窗：後側兩格加半放的捲簾，靠後牆的角落加窗簾。
   - 左牆在畫面上只占約 6% 寬，不值得加細節。
-- **避開成就相框（#168 加入）**：相框的 DOM 位置是 `top:20% left:47%`，寬度 `clamp(34px, 13.5%, 86px)`。寬螢幕約佔 x 47–56%、y 20–30%；手機上是 13.5% 寬，約佔 x 47–60.5%、y 20–36%。後牆新物件兩者都要避開。`previews/` 只畫出 960px 的情況。
+- **避開成就相框**：相框的 DOM 位置是 `top:20% left:47%`，寬度 `clamp(34px, 13.5%, 86px)`。寬螢幕約佔 x 47–56%、y 20–30%；手機上是 13.5% 寬，約佔 x 47–60.5%、y 20–36%。後牆新物件兩者都要避開。`previews/` 只畫出 960px 的情況。
 - **完成流程**：
   1. 先用 `--width 768 --samples 24` 的草稿檢查構圖。
   2. 再跑全解析度（約 35–50 分鐘）。
@@ -125,7 +123,7 @@
 
 ## 7. PS-244／PS-245 的 Blender 管線操作
 
-詳見 [`art-pipeline/ps244-blender/README.md`](../art-pipeline/ps244-blender/README.md)（#168 加入）。重點：
+詳見 [`art-pipeline/ps244-blender/README.md`](../art-pipeline/ps244-blender/README.md)。重點：
 
 ```bash
 python3 -m venv /tmp/bpyenv
@@ -138,7 +136,7 @@ npm run ps242:manifest && npm run ps243:assets
 - 全解析度渲染（房間＋8 件）在 4 核 CPU 上約 30–45 分鐘（本工作階段實測約 30 分鐘）。只重渲某一件時加 `--only <id>`（例如 `--only room`）。草稿可用 `--width 768 --samples 24`（約 3 分鐘）。
 - 渲染原始檔（`room.png`、各家具 PNG）**沒有提交**，只提交處理後的 runtime 素材、`placements.json` 與 `previews/`。在新容器接手必須重新渲染。
 - 只能用 Cycles（容器沒有 EGL，EEVEE 不能用）。
-- `process_pack.py --write-runtime` 會改寫 `assetManifest.js` 的 `PROP_DEFINITIONS`；`tests/unit/ps244WorkspacePlacements.test.js`（#168 加入）檢查兩者一致。
+- `process_pack.py --write-runtime` 會改寫 `assetManifest.js` 的 `PROP_DEFINITIONS`；`tests/unit/ps244WorkspacePlacements.test.js`檢查兩者一致。
 - 素材位元組變動後要更新 `tests/unit/ps243AssetBudget.test.js` 釘住的數字。
 - `previews/phase-*.jpg` 會畫出 HW-105 成就相框（位置與 `pwa/assets/style.css` 的 `.orbit-window-achievement-frame` 同步），用來檢查重疊。
 
