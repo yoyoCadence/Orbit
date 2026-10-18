@@ -103,7 +103,13 @@ S0 堵住「模擬 → 還原 → 外流」。限制：
 
 - 清理後若離線，沒有本機快取，會回到登入畫面，等連線後再載入。
 - 刪除本機 user 會略過快取 Sessions 的合併。尚未同步的 Sessions 仍保存在 owner-scoped 的 pending sidecar 中，不會遺失；只有還沒完成 session-sync cutover 的舊裝置例外。
-- S0 單獨上線也是安全的：模擬仍會寫入本機 user，但在按下「還原」之前，所有上雲都被擋住，而「還原」會刪除所有 pending 與本機 user。原本「其他帳號被擋住」的問題仍在，要等 Q6。
+- S0 單獨上線**不會外流**：模擬仍會寫入本機 user，但在按下「還原」之前，所有上雲都被擋住，而「還原」會刪除所有 pending 與本機 user。原本「其他帳號被擋住」的問題仍在，要等 Q6。
+- **S0 會遺失模擬期間真實獲得的 profile 進度**：
+  - 模擬期間完成真實的 Session 時，`sessionFlow.commitSession()` 分別呼叫 `saveSessions()` 與 `saveUser()`。Session 的上傳不受 backup 擋住，profile（含 `totalXP`、連勝）的上傳會被擋住，只留在 pending 中。
+  - S0 刪除 pending 之後，server 上保留了那些 Session，但 `profiles.total_xp` 仍是舊值；沒有任何流程會從 Sessions 重算 `total_xp`。
+  - 這些進度無法可靠地復原：pending 裡的 user 同時混有模擬值與真實變動，舊格式的 backup 也沒有記錄模擬開始的時間。
+  - 因此「還原」與「清除殘留」都要先顯示確認對話框，寫明「模擬期間獲得的 XP 與連勝變動會被捨棄，已記錄的 Session 會保留」，由開發者決定。
+  - 想避免這個損失，就不要在模擬期間記錄真實的 Session。Q6 移除模擬之後，這個問題就不會再發生。
 
 登出、換帳號時的處理交給 Q6。
 
@@ -123,7 +129,7 @@ S0 堵住「模擬 → 還原 → 外流」。限制：
    - 已存在的 backup 一律視為「可能有帳號正在模擬」：`upsertProfile()` 與 `refreshProEntitlement()` 的 guard 照舊擋住所有帳號（fail closed，與現況相同）。
    - 模擬的 projection 一定與 backup 一起出現：`_devApplyPro()` 先寫 backup 再寫 projection，「還原」與 `clearAll()` 都會清除 projection。projection 本身也從不上傳。
    - 開發者面板只在 backup 存在時顯示「清除殘留的模擬資料」，按下後做 S0 的完整清理。
-   - 清除所有 pending 會丟掉這台開發裝置上尚未同步的真實 profile 變動。只發生在開發者裝置上，而且只在開發者主動按下時。
+   - 清除所有 pending 會丟掉這台開發裝置上尚未同步的真實 profile 變動，包括模擬期間記錄 Session 獲得的 XP（見 S0 的說明）。只發生在開發者裝置上，而且只在開發者看過確認對話框、主動按下時。
 4. **登出後回不來**：Q6 之後不會再產生新的 backup。既有 backup 造成的卡住，從任一能登入的帳號（或訪客）按「清除殘留」即可解除。
 
 ### 替代：Q5 改良（不建議）
@@ -149,6 +155,7 @@ Q4 可以再補上 review 找到的兩條路徑，但它仍然依賴「找出所
 ## 6. 測試（核准後實作）
 
 - **S0**：模擬中 `saveUser()` 排入 pending（目前帳號與另一個帳號各一份）→ `_devReset()` → 兩份 pending 都被刪除、本機 user 被刪除，之後兩個帳號的 `loadFromRemote()` 都不會 upsert 模擬值。
+- **S0 確認對話框**：取消時不做任何清理；文字包含「模擬期間獲得的 XP 與連勝變動會被捨棄」。
 - **V2 回歸**：在模擬等級期間 finalize 的 V2 state（`openingGold` 依模擬 XP 計算）→ 清理 → 重新載入後重新遷移，`openingGold` 依真實 `totalXP` 計算；legacy state 與 legacy claim 保持不變。
 - **Q6 清理**：
   - 既有 backup 擋住所有帳號（既有的 `'{}'` 測試照舊通過：`proEntitlementGate.test.js`、`storage-mapping.test.js`）；
