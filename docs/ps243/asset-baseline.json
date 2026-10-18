@@ -1,6 +1,6 @@
 {
   "artifact": "ps243-asset-baseline",
-  "appVersion": "1.29.0",
+  "appVersion": "1.30.0",
   "note": "Reproducible: a pure function of committed files with CRLF normalized to LF. No timestamps; regenerate with `npm run ps243:assets` and diff to verify.",
   "method": {
     "assetSizes": "raw binary file bytes on disk (fs.statSync.size)",
@@ -14,7 +14,7 @@
       "files": [
         {
           "path": "pwa/assets/personal-space/v2/workspace/backgrounds/building-formal-workstation-room-v2.webp",
-          "bytes": 70924
+          "bytes": 82546
         },
         {
           "path": "pwa/assets/personal-space/v2/characters/protagonist/player-default-idle-left.png",
@@ -29,7 +29,7 @@
           "bytes": 14425
         }
       ],
-      "totalBytes": 170661,
+      "totalBytes": 182283,
       "targetBytes": 1572864,
       "hardThresholdBytes": 2621440,
       "result": "PASS"
@@ -38,7 +38,7 @@
       "files": [
         {
           "path": "pwa/assets/personal-space/v2/workspace/backgrounds/building-formal-workstation-room-v2.webp",
-          "bytes": 70924
+          "bytes": 82546
         },
         {
           "path": "pwa/assets/personal-space/v2/characters/protagonist/player-default-idle-left.png",
@@ -122,38 +122,38 @@
         },
         {
           "path": "pwa/assets/personal-space/v2/workspace/props/corner-desk.png",
-          "bytes": 66512
+          "bytes": 72509
         },
         {
           "path": "pwa/assets/personal-space/v2/workspace/props/office-chair.png",
-          "bytes": 25102
+          "bytes": 29891
         },
         {
           "path": "pwa/assets/personal-space/v2/workspace/props/office-shelf.png",
-          "bytes": 131923
+          "bytes": 129475
         },
         {
           "path": "pwa/assets/personal-space/v2/workspace/props/desk-lamp.png",
-          "bytes": 5149
+          "bytes": 5778
         },
         {
           "path": "pwa/assets/personal-space/v2/workspace/props/planning-board.png",
-          "bytes": 32642
+          "bytes": 46408
         },
         {
           "path": "pwa/assets/personal-space/v2/workspace/props/single-monitor.png",
-          "bytes": 12141
+          "bytes": 15639
         },
         {
           "path": "pwa/assets/personal-space/v2/workspace/props/dual-monitor.png",
-          "bytes": 20327
+          "bytes": 25458
         },
         {
           "path": "pwa/assets/personal-space/v2/workspace/props/office-plant.png",
-          "bytes": 52987
+          "bytes": 56446
         }
       ],
-      "totalBytes": 1252207,
+      "totalBytes": 1298650,
       "targetBytes": 4194304,
       "hardThresholdBytes": 6291456,
       "result": "PASS"
@@ -189,7 +189,7 @@
         },
         {
           "path": "pwa/js/personalSpace/v2/content/assetManifest.js",
-          "bytes": 9356
+          "bytes": 9357
         },
         {
           "path": "pwa/js/personalSpace/v2/controller.js",
@@ -260,15 +260,15 @@
           "bytes": 25028
         }
       ],
-      "rawBytes": 207206,
-      "gzipBytes": 51586
+      "rawBytes": 207207,
+      "gzipBytes": 51579
     },
     "vendoredPixi": {
       "path": "pwa/vendor/pixi.js",
       "rawBytes": 796970,
       "gzipBytes": 225428
     },
-    "combinedGzipBytes": 277014,
+    "combinedGzipBytes": 277007,
     "budgetBytes": 307200,
     "result": "PASS"
   }

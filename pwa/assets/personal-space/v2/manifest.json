@@ -51,8 +51,8 @@
       },
       "format": "webp",
       "alpha": false,
-      "bytes": 70924,
-      "sha256": "00f35f2ddbe197cc685cf629fc2f5a937d3de3d6825c0895f8b81a213fe93ba1",
+      "bytes": 82546,
+      "sha256": "31ccec5e879864b0c647200ec9f09a65807e64d0ba42ea082fd29d14830b340e",
       "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     },
@@ -498,13 +498,13 @@
       "licenseRef": "art-pipeline/ps244-blender/model-manifest.json#orbit-blender-procedural-workstation",
       "path": "assets/personal-space/v2/workspace/props/corner-desk.png",
       "dimensions": {
-        "width": 362,
-        "height": 265
+        "width": 363,
+        "height": 267
       },
       "format": "png",
       "alpha": true,
-      "bytes": 66512,
-      "sha256": "74646b15d82dddf018979ceddb6501ef6710f11f0b6e6710b6ae8de85f980cb6",
+      "bytes": 72509,
+      "sha256": "7fc4f8611e82b8f9932b4c9ea861ea3620f7ede5d2b277e742ab1261b88d3ac0",
       "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     },
@@ -518,13 +518,13 @@
       "licenseRef": "art-pipeline/ps244-blender/model-manifest.json#orbit-blender-procedural-workstation",
       "path": "assets/personal-space/v2/workspace/props/office-chair.png",
       "dimensions": {
-        "width": 124,
-        "height": 231
+        "width": 136,
+        "height": 266
       },
       "format": "png",
       "alpha": true,
-      "bytes": 25102,
-      "sha256": "61b0d3e5a86b1938a5d64690d7c9105f0b3c99e2cfccd7c38d4ccf1081749748",
+      "bytes": 29891,
+      "sha256": "9df268246debc9926d4b9a07c9d11b72d16a722997065f8cc351c809b53a4569",
       "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     },
@@ -538,13 +538,13 @@
       "licenseRef": "art-pipeline/ps244-blender/model-manifest.json#orbit-blender-procedural-workstation",
       "path": "assets/personal-space/v2/workspace/props/office-shelf.png",
       "dimensions": {
-        "width": 606,
+        "width": 534,
         "height": 292
       },
       "format": "png",
       "alpha": true,
-      "bytes": 131923,
-      "sha256": "9ee118e77cfb227a7616f525a75703cb427008fd0d6e8b1ec41381179c1e9bc3",
+      "bytes": 129475,
+      "sha256": "9bf8bf7fea126feebdeafc606034c61e53955df672103a0eb94fc8fa2d286678",
       "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     },
@@ -558,13 +558,13 @@
       "licenseRef": "art-pipeline/ps244-blender/model-manifest.json#orbit-blender-procedural-workstation",
       "path": "assets/personal-space/v2/workspace/props/desk-lamp.png",
       "dimensions": {
-        "width": 57,
+        "width": 58,
         "height": 79
       },
       "format": "png",
       "alpha": true,
-      "bytes": 5149,
-      "sha256": "3c45fb71b0e94efdbcbf61aa4d03886e731f7479d471ff271873e9cc5d7f1e56",
+      "bytes": 5778,
+      "sha256": "bb2c123e3496fe0e3465936ef8d0b4a0173b31a1d111f538ca09239e66444169",
       "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     },
@@ -578,13 +578,13 @@
       "licenseRef": "art-pipeline/ps244-blender/model-manifest.json#orbit-blender-procedural-workstation",
       "path": "assets/personal-space/v2/workspace/props/planning-board.png",
       "dimensions": {
-        "width": 208,
-        "height": 154
+        "width": 218,
+        "height": 164
       },
       "format": "png",
       "alpha": true,
-      "bytes": 32642,
-      "sha256": "93279e456958743425596b126d1a5dd4327f4c315e0425896b42f9b667441c1e",
+      "bytes": 46408,
+      "sha256": "52f43b85bae7d659461ca9a041aa393914ea2bee6ecc42daee80345a02aac0a1",
       "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     },
@@ -598,13 +598,13 @@
       "licenseRef": "art-pipeline/ps244-blender/model-manifest.json#orbit-blender-procedural-workstation",
       "path": "assets/personal-space/v2/workspace/props/single-monitor.png",
       "dimensions": {
-        "width": 109,
-        "height": 113
+        "width": 108,
+        "height": 114
       },
       "format": "png",
       "alpha": true,
-      "bytes": 12141,
-      "sha256": "1c199ba98b40ed46dea52cf127efb5866eab4883e49a1bcb0b2cc6cd6d429b9c",
+      "bytes": 15639,
+      "sha256": "5dcc6569f573401cceb63c33bf2aa5793c70f182371834daf955f01663bdbf8d",
       "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     },
@@ -619,12 +619,12 @@
       "path": "assets/personal-space/v2/workspace/props/dual-monitor.png",
       "dimensions": {
         "width": 198,
-        "height": 114
+        "height": 115
       },
       "format": "png",
       "alpha": true,
-      "bytes": 20327,
-      "sha256": "087fac118c1ee555a18448cc7af82adf90d892d1207996786db26fb9a82a2f1d",
+      "bytes": 25458,
+      "sha256": "74c0824cc44cb06a7fb72bcad8e3c7d7517d55df8b53e7021ac82c80818eda70",
       "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     },
@@ -638,13 +638,13 @@
       "licenseRef": "art-pipeline/ps244-blender/model-manifest.json#orbit-blender-procedural-workstation",
       "path": "assets/personal-space/v2/workspace/props/office-plant.png",
       "dimensions": {
-        "width": 354,
-        "height": 248
+        "width": 358,
+        "height": 255
       },
       "format": "png",
       "alpha": true,
-      "bytes": 52987,
-      "sha256": "35a7901b28e6a8e5bae0fcb67d50c6cbf9f945d67716b8188cbbf2bbd66ae613",
+      "bytes": 56446,
+      "sha256": "45d86abac1bdb975892dc2c506efed50c31695174f2aac6fd38d12c39f8bf5bd",
       "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     }

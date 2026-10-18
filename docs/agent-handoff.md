@@ -4,7 +4,7 @@
 
 任務本身的定義與驗收條件以 [`tasks.md`](../tasks.md) 為準；本檔只記錄進行中的狀態、與使用者約定的工作規則，以及接手需要的操作細節。
 
-> 最後更新：2026-10-18（UTC 06:20 左右）。main = `3b6a948`（v1.29.0，#168 已合併）。
+> 最後更新：2026-10-18（UTC 07:05 左右）。main = `aa98bdb`（v1.29.0，#167、#168 已合併）。
 
 ## 1. 接手前先讀
 
@@ -27,19 +27,11 @@
 - 合併 PR 時使用完整 40 字元 SHA 作為 `expectedHeadSha`。
 - Commit 結尾加 `Co-Authored-By` 與 `Claude-Session` 兩行；PR 描述結尾加 Claude Code 標記；不要寫入 model 名稱。
 
-## 3. 進行中的 PR
+## 3. 進行中的工作
 
-| PR | 分支 | 內容 | 狀態與下一步 |
-|---|---|---|---|
-| [#167](https://github.com/yoyoCadence/Orbit/pull/167) | `docs/review-followups` | 依 #155–#160 的 Codex review 修正 `docs/personal-space-state-flow.md` 與 `docs/platform-adapters.md`；AI-203 改為 Mode A 提案；新增 `PRO-014P`、`PRO-014Q`；本檔 | 獨立 review 三輪的 P2 都已修正（見下方狀態），已 merge main。下一步：CI 綠後合併 |
-
-另有一個草稿 PR [#154](https://github.com/yoyoCadence/Orbit/pull/154)（`feat/pro-014l-streak-unlock-rpc`，PRO-014L），不是本工作階段開的；它改的 SUB-16 路徑與 `PRO-014P` 相同。
-
-> **狀態（2026-10-18 06:20 UTC）**：Codex 額度用完，改用獨立 Claude review（使用者核准）。
-> - #168：獨立 review 回報 P1（椅子畫在螢幕後面）、P2（舊編輯器覆寫的 `width`／`anchor` 讓新 PNG 縮小）與 P3（speck filter），都已在 `d1e6f17` 修正並加測試，reviewer 確認後合併。
-> - #167：獨立 review 第一輪回報 4 個 P2，涵蓋 PRO-014 執行順序與前置、PRO-014P 的問題敘述與 `unknown` 定義，以及本表的下一步，另有多個 P3，都已修正。複查又找到 3 個 P2：`FLAG_DEV_BACKUP` 的條件、訪客的定義、`home.js` 的錯誤處理敘述；第三輪再找到 1 個 P2（訪客也有本機 `user.id`），都已修正。
-> - 所有 Codex 先前的 finding 都已修正並 resolve。
-> - #167 合併後，把本檔 §3 改成「無進行中的 PR」，並在 §4 補上 #167。
+- **PS-245（精細化）**：分支 `feat/ps-245-blender-detail`，PR [#169](https://github.com/yoyoCadence/Orbit/pull/169)。獨立 review 回報 2 個 P2：壁燈在光暈裡投出暗影且有一塊落在相框下、任務的完成紀錄與範圍不符；另有 P3，包括時鐘與壁燈重疊。已修正並重渲房間，等獨立 review 複查後合併。合併後本節改為「無進行中的工作」。
+- 草稿 PR [#154](https://github.com/yoyoCadence/Orbit/pull/154)（`feat/pro-014l-streak-unlock-rpc`，PRO-014L）不是本工作階段開的；它改的 SUB-16 路徑與 `PRO-014P` 相同。
+- Codex review 額度在 2026-10-18 用完；之後的 PR 依 §2 改用獨立 Claude review（只讀 agent，對照程式碼回報 P1／P2／P3，修完再請它複查）。
 
 ## 4. 本次工作階段已完成（2026-10-17～18）
 
@@ -57,16 +49,16 @@
 | #164 | v1.28.0 | HW-107 位置情境 |
 | #165 | v1.28.1 | BUG-111 Service Worker 預快取漏列模組（更新後離線無法啟動）＋ import 圖測試 |
 | #166 | v1.28.2 | BUG-112 位置／麥克風請求可取消；同步只在佇列清空才顯示完成 |
+| #167 | — | 依 review 修正 state-flow／platform-adapters 文件；AI-203 改為提案；新增 PRO-014P／Q；本交接紀錄 |
 | #168 | v1.29.0 | PS-244 Blender 渲染的工作站房間與 8 件家具（含獨立 review 的椅子 z 與覆寫修正） |
 
-教訓：#155–#164 在 Codex review 出現前就合併，造成 #165、#166 的回頭修正。這就是 §2 合併條件的由來。
+教訓：#155–#164 在 Codex review 出現前就合併，造成 #165、#166、#167 的回頭修正。這就是 §2 合併條件的由來。獨立 review 在 #167、#168 又各找到真正的問題（例如椅子畫在螢幕後面），所以複查不能省。
 
 ## 5. 還差什麼
 
 ### 需要使用者決定或執行
 
 - **BUG-109A**：在 production 套用 `pwa/db/013_signup_profile_name.sql`，需專案擁有者執行，步驟見 `docs/bug-109-signup-name-truncation.md`。
-- **PS-245（精細化）**：使用者原本就要求「精細模型」，PS-244 只解決一致性。實作計畫見 §6。
 - **角色 3D 化**：主角與 Companion 仍是 PS-242 的像素 sprite。改成 3D 會推翻已核准素材（主角 12 個姿勢、Companion 6 個狀態），範圍很大，等使用者決定。
 - **PRO-014P、PRO-014Q**：entitlement 流程，實作前需提案與核准。PRO-014P 擋 `PRO-014H` cutover。
 - **PS-246**：舊 16:9 相機的位置覆寫（`x`／`y`）仍會套用到 V2 家具，屬使用者資料語意變更，需先提案。`width`／`anchor` 已在 #168 改為不套用。
@@ -75,11 +67,11 @@
 
 ### 可直接做（低風險）
 
-- #167、#168 合併後，依 `tasks.md` 的 Next 繼續。
+- PS-245 合併後，依 `tasks.md` 的 Next 繼續；目前 Next 只有需要使用者執行的 BUG-109A，其餘待辦都需要使用者決定或核准（見上）。
 
-## 6. PS-245 精細化：已規劃、尚未實作
+## 6. PS-245 精細化：實作計畫
 
-使用者原始需求是「用 blender 的精細模型去完善『空間』分頁」。PS-244 只處理一致性。PS-245 尚無任何程式碼；#168 已合併，接手時從 main 開新分支即可（前一個 session 的本機分支 `feat/ps-245-blender-detail` 沒有任何 commit，也未推送）。
+使用者原始需求是「用 blender 的精細模型去完善『空間』分頁」。PS-244 只處理一致性，PS-245 依下列計畫實作（PR #169）。門、牆面掛畫與重新取景刻意不做，理由見 `tasks.md` 的 PS-245。下列內容保留作為設計紀錄。
 
 程式碼只改 `art-pipeline/ps244-blender/scene.py`；素材、manifest、測試數字、CHANGELOG 與版本由下面的完成流程更新。相機 `CAMERA` 不動，角色寬度 24／13 不必重新校準。實作計畫：
 

@@ -63,14 +63,14 @@ export const WORKSPACE_V2_ASSETS = Object.freeze({
 });
 
 const PROP_DEFINITIONS = Object.freeze([
-  prop('corner-desk', 25, { x: 38.997, y: 66.113, width: 23.568, z: 24 }),
-  prop('office-chair', 25, { x: 39.974, y: 66.211, width: 8.073, z: 30 }),
-  prop('office-shelf', 50, { x: 72.331, y: 54.395, width: 39.453, z: 22 }),
-  prop('desk-lamp', 50, { x: 32.91, y: 47.754, width: 3.711, z: 29 }),
-  prop('planning-board', 75, { x: 39.128, y: 38.281, width: 13.542, z: 10 }),
-  prop('single-monitor', 75, { x: 40.723, y: 48.438, width: 7.096, z: 28 }, 99),
-  prop('dual-monitor', 100, { x: 40.495, y: 48.535, width: 12.891, z: 28 }),
-  prop('office-plant', 100, { x: 72.461, y: 64.844, width: 23.047, z: 23 }),
+  prop('corner-desk', 25, { x: 38.965, y: 66.309, width: 23.633, z: 24 }),
+  prop('office-chair', 25, { x: 39.714, y: 69.434, width: 8.854, z: 30 }),
+  prop('office-shelf', 50, { x: 69.466, y: 54.395, width: 34.766, z: 22 }),
+  prop('desk-lamp', 50, { x: 32.943, y: 47.754, width: 3.776, z: 29 }),
+  prop('planning-board', 75, { x: 39.193, y: 39.062, width: 14.193, z: 10 }),
+  prop('single-monitor', 75, { x: 40.755, y: 48.438, width: 7.031, z: 28 }, 99),
+  prop('dual-monitor', 100, { x: 40.495, y: 48.438, width: 12.891, z: 28 }),
+  prop('office-plant', 100, { x: 72.135, y: 64.746, width: 23.307, z: 23 }),
 ]);
 
 export const WORKSPACE_PROJECT_PHASES = Object.freeze([

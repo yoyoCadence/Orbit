@@ -4,7 +4,7 @@
 
 > 2026-07-31 HW-105 sync note: v1.23.0 已完成 device-local achievement photo wall；使用者可從本機佐證選一張展示在 Personal Space，共用 poster／Pixi 相框並在圖片不可用時安全 fallback，未新增 auth／schema 依賴。
 
-目前版本：**v1.29.0**
+目前版本：**v1.30.0**
 
 這份文件記錄 Orbit 的公開功能規劃方向。功能依優先順序排列，會隨專案進展持續更新。
 
@@ -36,6 +36,7 @@
 
 ## 已完成
 
+- v1.30.0 — **Personal Space Blender 工作站精細化（PS-245）**：家具做出真實構造（抽屜把手、彎曲椅背與腳輪、鍵帽、螢幕 UI、紅線計畫板），房間加入木紋、地毯、壁燈、時鐘、捲簾與窗簾；相機與角色比例不變
 - v1.29.0 — **Personal Space Blender 工作站素材（PS-244）**：房間與 8 件 Workspace Upgrade 家具由同一個程序化 Blender 場景與相機渲染（toon＋輪廓線），接觸陰影隨家具移動、placement 由 3D 投影推得、角色依 1.7 m 校準，素材總量 −29%
 - v1.23.0 — **Personal Space achievement photo wall（HW-105）**：owner-scoped 本機佐證選取、Home／History 44px 控制、poster／Pixi 共用相框、圖片遺失 placeholder 與無 auth／schema 變更的隱私邊界
 - v1.22.0 — **Personal Space V2 production action art（PS-242）**：正式 3:2 Formal Workstation、主角六狀態左右向、Companion 六狀態、clear／rain 疊圖、poster／Pixi 共用解析與可重現 provenance／QC manifest
