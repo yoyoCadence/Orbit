@@ -82,20 +82,27 @@ V2 遷移在 finalize 時，用 `totalXP` 換算等級來計算 `openingGold`（
 只改 `_devReset()`（「↩ 還原原始資料並重啟」），改成下面的完整清理。Q6 第 3 點的「清除殘留」使用同一套清理：
 
 - 刪除 backup；
-- 刪除**所有** `profileSyncPending:*`，以及 v1.21 預發布版可能留下的無 owner 全域 key `profileSyncPending`；
+- 刪除**所有** pending profile：實際的 localStorage key 是 `yoyo_profileSyncPending:<encodeURIComponent(ownerId)>`，以及 v1.21 預發布版可能留下的無 owner 全域 key `yoyo_profileSyncPending`；
 - 刪除本機 user，不再把 backup 存回本機；
 - 清除 projection snapshot；
-- 刪除這台裝置上所有帳號的 V2 state（`personal-space-state-v2:<ownerId>`），保留 legacy state 與 legacy claim；
+- 刪除這台裝置上所有帳號的 V2 state：實際的 key 是 `orbit_platform_bridge_v1:personal-space-state-v2:<encodeURIComponent(ownerId)>`。
+  - **必須明確排除** `orbit_platform_bridge_v1:personal-space-state-v2:legacy-claim`。它與 V2 state 共用前綴，若用前綴刪除會一併刪掉，之後另一個帳號就能認領 legacy state（`v2/store.js`）。
+  - legacy state（`orbit_platform_bridge_v1:personal-space-state`）也保留；
 - 重新載入，讓真實資料從 server 取回。
 
 為什麼要刪 V2 state：
 
 - §2.4：若 V2 遷移在模擬等級期間 finalize，`openingGold` 會依模擬的 `totalXP` 永久算定，`loadControllerState()` 之後原樣回傳，不會重算。
-- 刪除後下一次載入會重新遷移，以真實的 `totalXP` 重新 finalize。
-- 代價很小：
-  - V2 目前不寫入 `spentGold`，沒有購買紀錄會遺失；
-  - reward ledger、Project、Companion 由已同步的 Sessions 重新 reconcile；
-  - 會遺失的只有本機的擺放微調（PS-246 也將停用）與已播放過的 reveal 狀態（可能重播一次）。
+- 刪除後下一次載入會重新遷移，以 server 上的 `total_xp` 重新 finalize。
+- 會重建的：
+  - Companion 關係階段與 hidden stats：legacy 基準加上 reward ledger；
+  - Workspace Project：由 ledger 推導；
+  - reward ledger 本身：由已同步的 Sessions 重新 reconcile；
+  - `spentGold`、`ownedItems`：V2 從未寫入，沒有東西會遺失。
+- 會遺失的：
+  - 本機的擺放微調（PS-246 也將停用）；
+  - **尚未播放**的 reveal（`pendingRewardReveals`）與 `recentWorldChange`：載入時的大量 reconcile 以 `queueReveal: false` 執行，所以這些不會重新排入，已播放過的也不會重播。
+- **開場 Gold 可能偏低**：重新遷移用 `total_xp − 紀元後 Sessions 的 XP` 計算開場等級。S0 已捨棄模擬期間記錄的 Session 所得 XP（見下方），所以 `total_xp` 少了這部分，但那些 Session 仍會被扣除。結果是開場等級與開場 Gold 偏低，最低為 0。這也是確認對話框要寫明的損失之一。若要修正，專案擁有者需要在 Supabase 手動補回該帳號的 `total_xp`。
 
 為什麼是「所有」pending，而不只目前帳號的：backup 可能是別的帳號先前模擬時留下的。只刪目前帳號的 pending，其他帳號的模擬 pending 會在 guard 消失後外流。
 
@@ -108,7 +115,7 @@ S0 堵住「模擬 → 還原 → 外流」。限制：
   - 模擬期間完成真實的 Session 時，`sessionFlow.commitSession()` 分別呼叫 `saveSessions()` 與 `saveUser()`。Session 的上傳不受 backup 擋住，profile（含 `totalXP`、連勝）的上傳會被擋住，只留在 pending 中。
   - S0 刪除 pending 之後，server 上保留了那些 Session，但 `profiles.total_xp` 仍是舊值；沒有任何流程會從 Sessions 重算 `total_xp`。
   - 這些進度無法可靠地復原：pending 裡的 user 同時混有模擬值與真實變動，舊格式的 backup 也沒有記錄模擬開始的時間。
-  - 因此「還原」與「清除殘留」都要先顯示確認對話框，寫明「模擬期間獲得的 XP 與連勝變動會被捨棄，已記錄的 Session 會保留」，由開發者決定。
+  - 因此「還原」與「清除殘留」都要先顯示確認對話框，寫明「模擬期間獲得的 XP 與連勝變動會被捨棄，已記錄的 Session 會保留；個人空間的開場 Gold 可能因此偏低」，由開發者決定。
   - 想避免這個損失，就不要在模擬期間記錄真實的 Session。Q6 移除模擬之後，這個問題就不會再發生。
 
 登出、換帳號時的處理交給 Q6。
@@ -156,7 +163,10 @@ Q4 可以再補上 review 找到的兩條路徑，但它仍然依賴「找出所
 
 - **S0**：模擬中 `saveUser()` 排入 pending（目前帳號與另一個帳號各一份）→ `_devReset()` → 兩份 pending 都被刪除、本機 user 被刪除，之後兩個帳號的 `loadFromRemote()` 都不會 upsert 模擬值。
 - **S0 確認對話框**：取消時不做任何清理；文字包含「模擬期間獲得的 XP 與連勝變動會被捨棄」。
-- **V2 回歸**：在模擬等級期間 finalize 的 V2 state（`openingGold` 依模擬 XP 計算）→ 清理 → 重新載入後重新遷移，`openingGold` 依真實 `totalXP` 計算；legacy state 與 legacy claim 保持不變。
+- **V2 回歸**：
+  - 在模擬等級期間 finalize 的 V2 state（`openingGold` 依模擬 XP 計算）→ 清理 → 重新載入後重新遷移，`openingGold` 依 server 的 `total_xp` 計算；
+  - legacy state 與 legacy claim key 保持不變；
+  - 另一個帳號在清理後無法認領 legacy state。
 - **Q6 清理**：
   - 既有 backup 擋住所有帳號（既有的 `'{}'` 測試照舊通過：`proEntitlementGate.test.js`、`storage-mapping.test.js`）；
   - 「清除殘留」刪除 backup、所有 `profileSyncPending:*`、本機 user 與 projection；
