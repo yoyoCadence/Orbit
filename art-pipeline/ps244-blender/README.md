@@ -29,7 +29,7 @@ python3 -m venv /tmp/bpyenv
 npm run ps242:manifest && npm run ps243:assets
 ```
 
-The full pack (room plus 8 props, 1536×1024, 96 samples) takes roughly 35–50 minutes on a 4-core CPU since PS-245. `--width 768 --samples 24` gives a 3-minute draft for composition checks. Cycles is seeded (`scene.cycles.seed = 244`), so reruns on the same Blender version reproduce the same frames.
+The full pack (room plus 8 props, 1536×1024, 96 samples) takes roughly 30–50 minutes on a 4-core CPU (PS-245 measured about 31 minutes). `--width 768 --samples 24` gives a 3-minute draft for composition checks. Cycles is seeded (`scene.cycles.seed = 244`), so reruns on the same Blender version reproduce the same frames.
 
 ## Design decisions
 
