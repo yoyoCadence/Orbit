@@ -8,6 +8,7 @@
 - 任務應可直接執行，不依賴聊天上下文
 - 任務粒度保持小而明確
 - 任務內容以目前 repo 現況與 `README.md`、`ROADMAP.md` 為準
+- 接手進行中的工作（未合併的 PR、與使用者約定的合併規則、待決事項）先看 [`docs/agent-handoff.md`](docs/agent-handoff.md)；每完成一個段落開 PR 時一併更新它
 
 ---
 
@@ -84,14 +85,15 @@
   - 現況（2026-10-18 對照 `storage.refreshProEntitlement()` 與 `applyProStatusResponse()`）：所有非 Pro 的情況都回 `false`，呼叫端分不出來。各情況的 snapshot 處理不同：
     - **網路例外**（`supabase.rpc()` throw）：保留舊 snapshot；過期後 `isProFromSnapshot()` 仍判為非 Pro
     - **RPC 回傳 `error`、資料格式不符、沒有 session 或 owner 不符**：清除 snapshot
-    - **snapshot 寫入失敗**：不更新，維持寫入前的狀態
+    - **snapshot 寫入失敗**：`writeProEntitlementSnapshot()` 設定 lost-write latch 並立即 `removeItem()`，所以通常會**刪除**舊 snapshot；只有刪除也失敗時，舊 snapshot 才留在磁碟上（由 `SNAPSHOT_TTL_MS` 兜底）
     - **明確非 Pro**：寫入非 Pro 的 snapshot；只有這種是權威結果
   - 方向（實作前需提案與核准，屬 entitlement 啟動流程）：
     - `refreshProEntitlement()` 改回傳可區分的結果，例如 `{ status: 'pro' | 'not-pro' | 'unknown' }`；只有 RPC 成功、snapshot 寫入成功且判定非 Pro 才是 `not-pro`
     - 在 `server` source 下，只有 `pro` 或 `not-pro` 才能做不可逆的換日處理
-    - `unknown`（上述任何失敗）時延後連勝重設：保留待處理狀態、當天不標記為已處理，下次 refresh 得到權威結果再處理
+    - `unknown`（上述任何失敗）時延後連勝重設：記錄**確切的待處理日期**（可能不只一天），不推進 `lastStreakDate`；下次 refresh 得到權威結果時，依序重播這些日期，各自依當天的 Sessions 判定，而不是只處理「新的昨天」
   - 完成條件：
     - `unknown` 的每種來源（網路例外、RPC error、格式不符、寫入失敗）都不重設連勝
+    - 跨日：第一天 `unknown`、隔天才得到權威結果時，第一天的 Sessions 仍被評估（有效則延續連勝），不會因為只看新的昨天而被重設
     - `pro` 時提供保護 offer
     - `not-pro` 時照常重設
     - 每個情況各有測試；既有只看布林值的呼叫端（`loadAndStart`、cached-user 背景同步、連線恢復同步）行為不變
