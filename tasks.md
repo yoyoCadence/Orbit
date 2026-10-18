@@ -210,7 +210,8 @@
   - In progress（2026-10-18）：變更說明 [`docs/pro-014q-dev-backup-owner-scope.md`](docs/pro-014q-dev-backup-owner-scope.md) 已完成（經四輪獨立 review 後重寫），**等待使用者核准**。核准前不改程式碼。
     - review 發現 main 上已存在的兩個問題（只影響開發者模式的裝置）：模擬的 `totalXP`（`legacy` 下還有 `isPro`）可能被推到真實帳號；模擬中的帳號登出後在同一台裝置上無法再登入。
     - 結論：逐條修補 backup（Q2–Q4）與讀取時 overlay（Q5）都被找到新的外流路徑。overlay 會改變 `isProUser()`，而 `dayCycle.js` 依它寫入真實資料。
-    - 建議：S0（「還原」改為完整清理：刪除 backup、所有 pending profile、本機 user 與 projection 後重新載入）＋ Q6（移除開發者面板的等級與 Pro 模擬，改用 preview 專案的測試帳號；舊 backup 照舊 fail closed，並提供一次性清理）。
+    - 建議：S0（「還原」改為完整清理：刪除 backup、所有 pending profile、本機 user、projection，以及這台裝置所有帳號的 V2 state〔保留 legacy-claim key〕後重新載入）＋ Q6（移除開發者面板的等級與 Pro 模擬，改用 preview 專案的測試帳號；舊 backup 照舊 fail closed，並提供同一套一次性清理）。
+    - S0／Q6 清理的代價（只在開發者裝置、按下前有確認對話框）：模擬期間記錄真實 Session 所得的 XP 與連勝變動會被捨棄（Session 本身保留），因此重新遷移的個人空間開場 Gold 可能偏低；本機擺放微調與未播放的 reveal 會遺失。詳見變更說明 §4 S0。
     - 待使用者決定：S0、Q6（或 Q5 改良）、測試帳號由誰建立、高風險項目的變更說明是否也要先問再排程；並自行檢查自己帳號的 `profiles` 是否被模擬值覆寫。
 
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
