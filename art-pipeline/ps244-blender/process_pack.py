@@ -1,0 +1,177 @@
+"""Turn PS-244 Blender renders into runtime assets, placements and previews.
+
+Usage:
+    python3 process_pack.py <render_dir> [--write-runtime] [--preview-dir DIR]
+
+- Composites room.png over the designed backdrop and encodes the background
+  WebP (1536x1024).
+- Trims every prop render to its solid core plus a shadow margin, drops
+  sampling noise below ALPHA_FLOOR, and derives the runtime placement
+  (centre x, bottom y, width; all % of the frame) from the trimmed box. A prop
+  drawn with that placement lands pixel-exact on the background.
+- Writes placements.json next to this script; assetManifest.js must match it
+  (tests/unit/ps244WorkspacePlacements.test.js enforces that).
+- Builds one composite preview per Workspace Upgrade phase, including the
+  protagonist and Companion at their runtime placements, for visual QA.
+
+Requires Pillow and numpy.
+"""
+import argparse
+import json
+import os
+
+import numpy as np
+from PIL import Image, ImageDraw, ImageFilter
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+REPO = os.path.abspath(os.path.join(HERE, '..', '..'))
+PWA = os.path.join(REPO, 'pwa')
+V2 = 'assets/personal-space/v2'
+BACKGROUND_PATH = f'{V2}/workspace/backgrounds/building-formal-workstation-room-v2.webp'
+PROP_DIR = f'{V2}/workspace/props'
+FRAME = (1536, 1024)
+ALPHA_FLOOR = 14          # below this the catcher output is sampling noise
+CORE_ALPHA = 200          # solid geometry
+SHADOW_MARGIN = 0.25      # of frame width; low sun casts long shadows
+SPECK_WINDOW = 7          # px; isolated noise below this density is dropped
+SPECK_DENSITY = 0.35
+
+# Mirrors PROP_DEFINITIONS phases and z order in assetManifest.js.
+PROPS = {
+    'corner-desk':    {'min': 25,  'max': 100, 'z': 24},
+    'office-chair':   {'min': 25,  'max': 100, 'z': 26},
+    'office-shelf':   {'min': 50,  'max': 100, 'z': 22},
+    'desk-lamp':      {'min': 50,  'max': 100, 'z': 29},
+    'planning-board': {'min': 75,  'max': 100, 'z': 10},
+    'single-monitor': {'min': 75,  'max': 99,  'z': 28},
+    'dual-monitor':   {'min': 100, 'max': 100, 'z': 28},
+    'office-plant':   {'min': 100, 'max': 100, 'z': 23},
+}
+# Mirrors protagonist/Companion placements in getWorkspaceSceneAssets().
+CHARACTERS = {
+    'protagonist': {'path': f'{V2}/characters/protagonist/player-default-idle-left.png',
+                    'x': lambda p: 58 if p >= 25 else 51, 'y': 87, 'width': 24, 'anchor': 'center-bottom'},
+    'companion': {'path': f'{V2}/characters/companion/orbit-guide-observe.png',
+                  'x': lambda p: 69 if p >= 75 else 73, 'y': 73, 'width': 13, 'anchor': 'center'},
+}
+PHASES = (0, 25, 50, 75, 100)
+
+
+def backdrop(size):
+    """Soft navy stage behind the cut-away diorama."""
+    w, h = size
+    base = Image.new('RGB', size, (14, 19, 41))
+    glow = Image.new('L', size, 0)
+    ImageDraw.Draw(glow).ellipse((int(w * 0.08), int(h * 0.05), int(w * 0.92), int(h * 1.05)), fill=110)
+    glow = glow.filter(ImageFilter.GaussianBlur(w * 0.08))
+    return Image.composite(Image.new('RGB', size, (36, 48, 92)), base, glow)
+
+
+def load_frame(path):
+    im = Image.open(path).convert('RGBA')
+    return im if im.size == FRAME else im.resize(FRAME, Image.LANCZOS)
+
+
+def trim_prop(im):
+    rgba = np.array(im)
+    alpha = rgba[:, :, 3]
+    core = np.argwhere(alpha >= CORE_ALPHA)
+    if not len(core):
+        raise ValueError('prop render has no solid pixels')
+    (top, left), (bottom, right) = core.min(0), core.max(0)
+    margin = int(FRAME[0] * SHADOW_MARGIN)
+    y0, y1 = max(0, top - margin), min(FRAME[1] - 1, bottom + margin)
+    x0, x1 = max(0, left - margin), min(FRAME[0] - 1, right + margin)
+    window = alpha[y0:y1 + 1, x0:x1 + 1]
+    # Real shadows are contiguous; catcher sampling noise is isolated specks.
+    keep = (window >= ALPHA_FLOOR) & (box_mean(window >= ALPHA_FLOOR, SPECK_WINDOW) >= SPECK_DENSITY)
+    kept = np.argwhere(keep)
+    (ty, tx), (by, bx) = kept.min(0), kept.max(0)
+    box = (x0 + tx, y0 + ty, x0 + bx + 1, y0 + by + 1)
+    cropped = rgba[box[1]:box[3], box[0]:box[2]].copy()
+    cropped[:, :, 3][~keep[ty:by + 1, tx:bx + 1]] = 0
+    return Image.fromarray(cropped, 'RGBA'), box
+
+
+def box_mean(mask, size):
+    """Mean of a boolean mask over a size×size neighbourhood (edge-padded)."""
+    pad = size // 2
+    padded = np.pad(mask.astype(np.float32), pad, mode='edge')
+    integral = padded.cumsum(0).cumsum(1)
+    integral = np.pad(integral, ((1, 0), (1, 0)))
+    h, w = mask.shape
+    total = (integral[size:size + h, size:size + w] - integral[:h, size:size + w]
+             - integral[size:size + h, :w] + integral[:h, :w])
+    return total / (size * size)
+
+
+def placement_for(box):
+    left, top, right, bottom = box
+    return {
+        'x': round((left + right) / 2 / FRAME[0] * 100, 3),
+        'y': round(bottom / FRAME[1] * 100, 3),
+        'width': round((right - left) / FRAME[0] * 100, 3),
+    }
+
+
+def place(canvas, sprite, x, y, width, anchor='center-bottom'):
+    w = round(canvas.width * width / 100)
+    h = round(sprite.height * w / sprite.width)
+    sprite = sprite.resize((w, h), Image.LANCZOS)
+    cx, cy = canvas.width * x / 100, canvas.height * y / 100
+    top = cy - h / 2 if anchor == 'center' else cy - h
+    canvas.alpha_composite(sprite, (round(cx - w / 2), round(top)))
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('render_dir')
+    parser.add_argument('--write-runtime', action='store_true')
+    parser.add_argument('--preview-dir', default=os.path.join(HERE, 'previews'))
+    args = parser.parse_args()
+
+    room = load_frame(os.path.join(args.render_dir, 'room.png'))
+    background = backdrop(FRAME).convert('RGBA')
+    background.alpha_composite(room)
+    background = background.convert('RGB')
+
+    sprites, placements = {}, {}
+    for prop_id in PROPS:
+        sprite, box = trim_prop(load_frame(os.path.join(args.render_dir, f'{prop_id}.png')))
+        sprites[prop_id] = sprite
+        placements[prop_id] = {**placement_for(box), 'z': PROPS[prop_id]['z'], 'bbox': list(box)}
+
+    if args.write_runtime:
+        bg_out = os.path.join(PWA, *BACKGROUND_PATH.split('/'))
+        os.makedirs(os.path.dirname(bg_out), exist_ok=True)
+        background.save(bg_out, 'WEBP', quality=86, method=6)
+        prop_out = os.path.join(PWA, *PROP_DIR.split('/'))
+        os.makedirs(prop_out, exist_ok=True)
+        for prop_id, sprite in sprites.items():
+            sprite.save(os.path.join(prop_out, f'{prop_id}.png'), optimize=True)
+        with open(os.path.join(HERE, 'placements.json'), 'w', encoding='utf-8') as fh:
+            json.dump({
+                'frame': {'width': FRAME[0], 'height': FRAME[1]},
+                'background': BACKGROUND_PATH,
+                'props': {pid: {'path': f'{PROP_DIR}/{pid}.png', **pl} for pid, pl in placements.items()},
+            }, fh, indent=2)
+            fh.write('\n')
+
+    os.makedirs(args.preview_dir, exist_ok=True)
+    for progress in PHASES:
+        canvas = background.convert('RGBA')
+        layers = [(PROPS[pid]['z'], pid) for pid in PROPS
+                  if PROPS[pid]['min'] <= progress <= PROPS[pid]['max']]
+        for _, pid in sorted(layers):
+            pl = placements[pid]
+            place(canvas, sprites[pid], pl['x'], pl['y'], pl['width'])
+        for spec in CHARACTERS.values():
+            sprite = Image.open(os.path.join(PWA, *spec['path'].split('/'))).convert('RGBA')
+            place(canvas, sprite, spec['x'](progress), spec['y'], spec['width'], spec['anchor'])
+        canvas.convert('RGB').resize((768, 512), Image.LANCZOS).save(
+            os.path.join(args.preview_dir, f'phase-{progress:03d}.jpg'), quality=86)
+    print(json.dumps({pid: {k: v for k, v in pl.items() if k != 'bbox'} for pid, pl in placements.items()}, indent=1))
+
+
+if __name__ == '__main__':
+    main()

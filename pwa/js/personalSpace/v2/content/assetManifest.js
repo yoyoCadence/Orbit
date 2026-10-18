@@ -1,11 +1,13 @@
 export const ORBIT_WINDOW_LOGICAL_SIZE = Object.freeze({ width: 960, height: 640 });
 
 const ASSET_ROOT = 'assets/personal-space/v2';
-const LEGACY_PROP_ROOT = 'assets/personal-space/idle-window/props';
+// PS-244: room and props are rendered by art-pipeline/ps244-blender from one
+// camera; placements below come from its placements.json (test-enforced).
+const PROP_ROOT = `${ASSET_ROOT}/workspace/props`;
 const PROTAGONIST_ROOT = `${ASSET_ROOT}/characters/protagonist`;
 const COMPANION_ROOT = `${ASSET_ROOT}/characters/companion`;
 const EFFECTS_ROOT = `${ASSET_ROOT}/effects`;
-const CANONICAL_CAMERA_ID = 'building-workspace-v1';
+const CANONICAL_CAMERA_ID = 'building-workspace-v2';
 
 const PROTAGONIST_VARIANTS = Object.freeze({
   idle: facingPair('idle'),
@@ -42,7 +44,7 @@ export const WORKSPACE_V2_ASSETS = Object.freeze({
   status: 'production',
   canonicalCameraId: CANONICAL_CAMERA_ID,
   dimensions: Object.freeze({ width: 1536, height: 1024 }),
-  background: `${ASSET_ROOT}/workspace/backgrounds/building-formal-workstation-room-v1.webp`,
+  background: `${ASSET_ROOT}/workspace/backgrounds/building-formal-workstation-room-v2.webp`,
   protagonist: PROTAGONIST_VARIANTS.idle.left,
   protagonistVariants: PROTAGONIST_VARIANTS,
   safeZone: Object.freeze({ minX: 10, maxX: 90, minY: 11, maxY: 89 }),
@@ -167,16 +169,17 @@ export function getWorkspaceSceneAssets(progress = 0, placementOverrides = {}, v
           ...normalizePlacementOverride(placementOverrides[entry.id]),
         },
       })),
+    // PS-244: sized so the chibi sprite matches a 1.7 m figure in the Blender camera.
     protagonistPlacement: normalizePlacementOverride(placementOverrides.protagonist, {
       x: normalized >= 25 ? 58 : 51,
       y: 87,
-      width: 17,
+      width: 24,
       z: 40,
     }),
     companionPlacement: normalizePlacementOverride(placementOverrides.companion, {
       x: normalized >= 75 ? 69 : 73,
       y: 73,
-      width: 9,
+      width: 13,
       z: 42,
       anchor: 'center',
     }),
@@ -198,10 +201,10 @@ function normalizeFacing(value) {
   return value === 'right' ? 'right' : 'left';
 }
 
-function prop(id, filename, minProgress, placement, maxProgress = 100) {
+function prop(id, minProgress, placement, maxProgress = 100) {
   return Object.freeze({
     id,
-    path: `${LEGACY_PROP_ROOT}/${filename}`,
+    path: `${PROP_ROOT}/${id}.png`,
     minProgress,
     maxProgress,
     placement: Object.freeze({ anchor: 'center-bottom', ...placement }),

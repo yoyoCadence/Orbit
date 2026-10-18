@@ -1,0 +1,65 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { describe, expect, it } from 'vitest';
+import {
+  getWorkspaceSceneAssets,
+  WORKSPACE_V2_ASSETS,
+} from '../../pwa/js/personalSpace/v2/content/assetManifest.js';
+
+// PS-244: the room and every prop come from one Blender camera. A prop lands
+// pixel-exact on the room only with the placement process_pack.py derived from
+// its trimmed render, so the runtime contract must match placements.json.
+const placements = JSON.parse(readFileSync(
+  new URL('../../art-pipeline/ps244-blender/placements.json', import.meta.url),
+  'utf8',
+));
+const pwaFile = path => new URL(`../../pwa/${path}`, import.meta.url);
+
+describe('PS-244 Blender workstation placements', () => {
+  const fullScene = getWorkspaceSceneAssets(100);
+  const singleMonitorScene = getWorkspaceSceneAssets(75);
+  const runtimeProps = new Map(
+    [...fullScene.props, ...singleMonitorScene.props].map(entry => [entry.id, entry]),
+  );
+
+  it('uses the Blender background and camera', () => {
+    expect(WORKSPACE_V2_ASSETS.background).toBe(placements.background);
+    expect(WORKSPACE_V2_ASSETS.canonicalCameraId).toBe('building-workspace-v2');
+    expect(WORKSPACE_V2_ASSETS.dimensions).toEqual(placements.frame);
+    expect(existsSync(pwaFile(placements.background))).toBe(true);
+  });
+
+  it('places every prop exactly where the render pipeline measured it', () => {
+    expect([...runtimeProps.keys()].sort()).toEqual(Object.keys(placements.props).sort());
+    for (const [id, expected] of Object.entries(placements.props)) {
+      const entry = runtimeProps.get(id);
+      expect(entry.path).toBe(expected.path);
+      expect(entry.placement).toEqual(expect.objectContaining({
+        x: expected.x,
+        y: expected.y,
+        width: expected.width,
+        z: expected.z,
+        anchor: 'center-bottom',
+      }));
+      expect(existsSync(pwaFile(expected.path))).toBe(true);
+    }
+  });
+
+  it('derives each placement from the trimmed box in the 1536×1024 frame', () => {
+    const { width, height } = placements.frame;
+    for (const { bbox, x, y, width: w } of Object.values(placements.props)) {
+      const [left, top, right, bottom] = bbox;
+      expect(left).toBeGreaterThanOrEqual(0);
+      expect(top).toBeGreaterThanOrEqual(0);
+      expect(right).toBeLessThanOrEqual(width);
+      expect(bottom).toBeLessThanOrEqual(height);
+      expect(x).toBeCloseTo(((left + right) / 2 / width) * 100, 2);
+      expect(y).toBeCloseTo((bottom / height) * 100, 2);
+      expect(w).toBeCloseTo(((right - left) / width) * 100, 2);
+    }
+  });
+
+  it('keeps the protagonist and Companion at the calibrated Blender scale', () => {
+    expect(fullScene.protagonistPlacement.width).toBe(24);
+    expect(fullScene.companionPlacement.width).toBe(13);
+  });
+});
