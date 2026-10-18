@@ -118,13 +118,21 @@ art bible 要求 Companion 的表情與肢體不暗示憤怒、被拋棄，或�
 |---|---|---|
 | F1 只用條件 | 只在 §4 的 `missedPatterns` 非空且 Momentum 為 `low` 時出現。今天完成一次合格的專注，或把任務移出今日計畫，就結束 | 不需持久化，可測試；上限來自使用者自己的行動 |
 | F2 時段限制 | F1 再加上「本地時間 12:00 之後才出現」 | 早上剛排好計畫時不會立刻被提醒；要注入時間（`options.now` 已存在） |
-| **F3（建議）每日一段** | F1 的條件之外，加上每個 effective day 最多一段提醒：第一次出現時記錄 `companion.remindWindow = { date, firstShownAt }`，之後只在 `firstShownAt` 起 30 分鐘內出現；超過就回到 `observe`，當天不再出現 | 真正的上限。需要一個本機 V2 state 欄位（不同步 Supabase），由頁面層在第一次顯示時寫入，selector 只讀取它，所以仍是純函式（product spec §8.3 允許 reducer 或 store 寫入 durable state）。`stateSchema.js` 會保留 `companion` 的未知欄位，舊版 client 不會刪除它 |
+| **F3（建議）每日一段** | F1 的條件之外，加上每個 effective day 最多一段提醒：第一次出現時記錄 `companion.remindWindow = { date, firstShownAtMs }`，之後只在 `firstShownAtMs` 起 30 分鐘內出現；超過就回到 `observe`，當天不再出現 | 真正的上限。需要一個本機 V2 state 欄位（不同步 Supabase），由有 revision 的狀態轉換在第一次顯示時寫入，selector 只讀取它，所以仍是純函式（product spec §8.3 要求 durable state 經 reducer 變更）。`stateSchema.js` 會保留 `companion` 的未知欄位，舊版 client 不會刪除它 |
 
 F3 的細節：
 
-- 寫入點：建立快照後，若 `companion.state === 'remind'` 且 `remindWindow.date !== effectiveDate`，頁面層以 `expectedRevision` 寫入 `{ date: effectiveDate, firstShownAt: now }`。寫入失敗（revision 衝突）時下一次 render 再試，最多晚一次。
-- 判斷：`remindWindow.date === effectiveDate` 且 `now - firstShownAt > 30 分鐘` 時，view model 傳入空的 `missedPatterns`。
-- 首頁小卡與完整頁面讀同一份 state，所以兩邊一起結束；重新掛載也不會重新開始。
+- **資料格式**：`companion.remindWindow = { date: 'YYYY-MM-DD', firstShownAtMs: number }`。時間存成 epoch 毫秒數字，不存 `Date`：`writeJSON()` 會把 `Date` 變成 ISO 字串，重新載入後相減會得到 `NaN`，提醒就永遠不會結束。讀取時驗證它是有限數字，否則視為沒有紀錄。
+- **寫入走有 revision 的狀態轉換**：
+  - 新增純函式 `recordCompanionRemindWindow(v2State, { effectiveDate, nowMs })`。只有在 `remindWindow.date !== effectiveDate` 時才回傳新 state，並遞增 `worldRevision`，與 `pages/personalSpaceV2.js` 的 `withWorldRevision()` 相同。
+  - 由頁面既有的 `persist()` 以 `expectedRevision` 儲存。
+  - revision 衝突時照現有流程重新 reconcile，再重新判斷。兩個分頁同時寫入時，後寫入的那一方會衝突，不會覆寫先寫入的紀錄，所以不會讓當天的提醒重新開始。
+  - 頁面層不直接改 state 物件。
+- **判斷**：`remindWindow.date === effectiveDate`，且 `nowMs - firstShownAtMs ≥ 30 分鐘` 時，view model 傳入空的 `missedPatterns`。
+- **到期時重新 render**：
+  - 快照只在 render 時重建，`dayCycle.js` 的換日監看也不會每分鐘重繪 Companion。若使用者開著頁面不動，提醒會一直掛著。
+  - 所以首頁小卡與完整頁面在顯示 `remind` 時，要排一個計時器，在 `firstShownAtMs + 30 分鐘` 觸發 refresh，並在 unmount 時取消。
+  - 兩頁讀同一份 state，所以會一起結束；重新掛載不會重新開始。
 
 ### 7.2 首頁小卡上的呈現
 
@@ -148,7 +156,7 @@ F3 的細節：
   - 日曆日等於 effective date；
   - 首頁的今日計畫中有符合 Main Quest 資格的任務；
   - 今天還沒有「已推進」的 Session；
-  - 選 F3 時：今天還沒有提醒紀錄，或距離 `firstShownAt` 不到 30 分鐘。
+  - 選 F3 時：今天還沒有提醒紀錄，或距離 `firstShownAtMs` 不到 30 分鐘。
 - 下列任一情況不出現 `remind`：
   - 今日計畫為空，或只有不合格的任務（instant、恢復、娛樂、B 級以下、封存或停用、已刪除）；
   - 今日計畫只有 `tour-task`；
@@ -157,7 +165,12 @@ F3 的細節：
   - 有 Session 的日期少於 3 天（選 G1 時）；
   - Momentum 不是 `low`；
   - 選 F3 時：今天的提醒已超過 30 分鐘。
-- 選 F3 時：第一次出現 `remind` 時寫入 `companion.remindWindow`；同一天重新載入或重新掛載，不會重設 `firstShownAt`；隔一個 effective day 可以再出現一次。
+- 選 F3 時：
+  - 第一次出現 `remind` 時，經 `recordCompanionRemindWindow()` 寫入 `companion.remindWindow`，`worldRevision` 加 1；
+  - 同一天重新載入或重新掛載，不會重設 `firstShownAtMs`；隔一個 effective day 可以再出現一次；
+  - `firstShownAtMs` 是數字；格式錯誤（字串、`NaN`）時視為沒有紀錄；
+  - 兩份 state 帶著相同的 revision 同時寫入時，第二個寫入以 revision 衝突失敗，不會覆寫第一個；
+  - 頁面開著不動時，`firstShownAtMs + 30 分鐘` 之後會自動 refresh 並離開 `remind`（用假計時器測試）；unmount 時取消計時器。
 - 從 `coreState.dailyPlan` 移除最後一個合格任務後，重新建立的快照不再是 `remind`。
 - 注入的 `now` 在 00:00 到 `newDayHour` 之間時不出現 `remind`，與執行測試的機器時間無關。
 - 首頁小卡與完整頁面的 Companion **狀態與台詞 key** 一致（台詞文字的統一另立任務，見 §9 第 6 點）；選 D2 時，靜態 fallback 的 `remind` 動畫不循環。
