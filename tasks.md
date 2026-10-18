@@ -99,7 +99,7 @@
       - RPC 成功且 snapshot 寫入成功，依結果回 `pro` 或 `not-pro`；
       - 否則若有 `SNAPSHOT_TTL_MS` 內的 snapshot，以它判定（離線 grace window）；
       - 都沒有才是 `unknown`。
-    - 從未登入過的訪客（沒有任何 owner）不會有 server entitlement，視為 `not-pro`。曾登入的 owner 只是 session 暫時無法還原時，若也沒有 TTL 內的 snapshot，仍是 `unknown`。
+    - 從未登入過的訪客不會有 server entitlement，視為 `not-pro`。訪客也有本機 `uid()` 產生的 `user.id`，目前沒有訪客標記，實作需新增。曾登入的 owner 只是 session 暫時無法還原時，若也沒有 TTL 內的 snapshot，仍是 `unknown`。
     - 在 `server` source 下，換日處理（補卡、offer、SUB-16、推進 `lastStreakDate`）只在 `pro` 或 `not-pro` 時執行。
     - `unknown` 時整個換日處理延後：記錄**確切的待處理日期**（可能不只一天），不推進 `lastStreakDate`。得到權威結果時依序重播這些日期，各自依當天的 Sessions 判定，而不是只處理「新的昨天」。
   - 完成條件：
