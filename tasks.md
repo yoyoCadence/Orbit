@@ -145,6 +145,12 @@
 
 ## In Progress
 
+- [ ] **PS-244** 以 Blender 預渲染 Formal Workstation 環境素材（房間＋8 件家具×5 階段）
+  - 目標：用同一個 Blender 場景與固定相機重做「空間」分頁的房間背景與 8 件 Workspace Upgrade 家具，修正目前繪製房間＋舊像素家具混用造成的風格、透視、比例與接觸陰影不一致。
+  - 範圍（2026-10-17 使用者核准方向）：Blender 預渲染、插畫感 toon 風格、一次交付完整工作站一套；runtime 仍為 Pixi，不新增 3D runtime、不變更 JS 預算；主角與 Companion 手繪 sprite 不重做，以 1.7 m 比例假人校準相機讓角色比例一致。
+  - 產出：`art-pipeline/ps244-blender/` 可重現的 bpy 腳本、provenance 與 placement 紀錄；`pwa/assets/personal-space/v2/workspace/` 新背景與透明家具；`assetManifest.js` 改用由 3D 投影計算的 placement；legacy idle-window 素材保留不刪。
+  - 完成條件：五個專案階段的合成預覽通過目視 QA；`npm run ps242:manifest -- --check`、`npm run ps243:assets -- --check` 與資產預算測試通過；e2e 通過。
+
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
 
