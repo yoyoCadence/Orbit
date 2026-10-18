@@ -5,13 +5,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FLAG_PERSONAL_SPACE_RUNTIME } from '../../pwa/js/flags.js';
 import { renderPersonalSpace } from '../../pwa/js/pages/personalSpace.js';
-import {
-  adjustPersonalSpaceV2Placement,
-  listPersonalSpaceV2EditablePlacements,
-  renderPersonalSpaceV2,
-  resetAllPersonalSpaceV2Placements,
-  resetPersonalSpaceV2Placement,
-} from '../../pwa/js/pages/personalSpaceV2.js';
+import { renderPersonalSpaceV2 } from '../../pwa/js/pages/personalSpaceV2.js';
 import { state } from '../../pwa/js/state.js';
 import {
   createLocalTelemetryAdapter,
@@ -82,39 +76,6 @@ function controllerResult(personalSpaceState = v2State()) {
     },
   };
 }
-
-describe('Personal Space V2 placement commands', () => {
-  it('lists and adjusts only existing placed items or layout overrides', () => {
-    const source = v2State();
-    const before = JSON.stringify(source);
-    const items = listPersonalSpaceV2EditablePlacements(source);
-    const next = adjustPersonalSpaceV2Placement(source, items[0], { x: -50, y: 40 });
-
-    expect(items.map(item => item.itemId)).toEqual(['corner-desk', 'desk-lamp']);
-    expect(next.world.placedItems[0].placement).toMatchObject({ x: '6%', y: '92%' });
-    expect(next.worldRevision).toBe(4);
-    expect(next.rewardLedger).toEqual(source.rewardLedger);
-    expect(next.economy).toEqual(source.economy);
-    expect(JSON.stringify(source)).toBe(before);
-  });
-
-  it('resets one or all coordinate overrides without removing support metadata', () => {
-    const source = v2State();
-    const items = listPersonalSpaceV2EditablePlacements(source);
-    const one = resetPersonalSpaceV2Placement(source, items[0]);
-    const all = resetAllPersonalSpaceV2Placements(source);
-
-    expect(one.world.placedItems[0].placement).toEqual({ anchor: 'center-bottom' });
-    expect(one.world.idleWindowLayouts.office.placements).toHaveProperty('desk-lamp');
-    expect(all.world.placedItems[0].placement).toEqual({ anchor: 'center-bottom' });
-    expect(all.world.idleWindowLayouts.office).toMatchObject({
-      cameraProfileId: 'center',
-      placements: {},
-    });
-    expect(all.worldRevision).toBe(source.worldRevision + 1);
-    expect(all.rewardLedger).toEqual(source.rewardLedger);
-  });
-});
 
 describe('Personal Space V2 full page', () => {
   let container;
@@ -202,7 +163,7 @@ describe('Personal Space V2 full page', () => {
     warn.mockRestore();
   });
 
-  it('switches to a separate Edit Mode, saves a nudge, and never changes rewards', () => {
+  it('switches to a separate Edit Mode that explains the fixed layout and writes nothing', () => {
     const source = v2State();
     const releases = [];
     const destroyRuntime = vi.fn();
@@ -230,17 +191,13 @@ describe('Personal Space V2 full page', () => {
     expect(releases[0]).toHaveBeenCalledTimes(1);
     expect(destroyRuntime).not.toHaveBeenCalled();
 
-    container.querySelector('[data-v2-editor-item][data-source="placed-item"] [data-dx="2"]').click();
-    expect(saveState).toHaveBeenCalledWith(
-      'user-1',
-      expect.any(Object),
-      { expectedRevision: source.worldRevision },
-    );
-    const saved = saveState.mock.calls[0][1];
-    expect(saved.world.placedItems[0].placement.x).toBe('22%');
-    expect(saved.rewardLedger).toEqual(source.rewardLedger);
-    expect(saved.hiddenStats).toEqual(source.hiddenStats);
-    expect(saved.economy).toEqual(source.economy);
+    // PS-246: legacy idle-window overrides are neither listed nor editable, and
+    // nothing in Edit Mode can clear them.
+    const editor = container.querySelector('[data-v2-editor]');
+    expect(editor.textContent).toContain('目前不能移動');
+    expect(editor.querySelector('button')).toBeNull();
+    expect(container.querySelector('[data-v2-nudge], [data-v2-reset-item], [data-v2-reset-all]')).toBeNull();
+    expect(saveState).not.toHaveBeenCalled();
 
     cleanup();
     cleanup();
