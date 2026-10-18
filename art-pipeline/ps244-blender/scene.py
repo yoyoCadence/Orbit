@@ -12,6 +12,7 @@ import math
 import random
 
 import bpy
+import numpy as np
 from mathutils import Euler, Vector
 
 # ── room dimensions ──────────────────────────────────────────────────────────
@@ -117,10 +118,120 @@ def plank_material():
     brick.inputs['Row Height'].default_value = 0.22
     nt.links.new(coord.outputs['Object'], mapping.inputs['Vector'])
     nt.links.new(mapping.outputs['Vector'], brick.inputs['Vector'])
+    # Wood grain: distorted bands along each plank, multiplied in lightly so
+    # the toon shading still reads as flat colour at card size.
+    grain = nt.nodes.new('ShaderNodeTexWave')
+    grain.wave_type = 'BANDS'
+    grain.bands_direction = 'Y'
+    grain.inputs['Scale'].default_value = 9.0
+    grain.inputs['Distortion'].default_value = 7.0
+    grain.inputs['Detail'].default_value = 3.0
+    nt.links.new(coord.outputs['Object'], grain.inputs['Vector'])
+    ramp = nt.nodes.new('ShaderNodeValToRGB')
+    ramp.color_ramp.elements[0].color = (*srgb('#c9b39c'), 1)
+    ramp.color_ramp.elements[1].color = (1, 1, 1, 1)
+    nt.links.new(grain.outputs['Fac'], ramp.inputs['Fac'])
+    planks = mix_color(nt, 0.55, brick.outputs['Color'], ramp.outputs['Color'], 'MULTIPLY')
+    link_diffuse_color(nt, planks)
+    return m
+
+
+def mix_color(nt, factor, a, b, blend):
+    mix = nt.nodes.new('ShaderNodeMix')
+    mix.data_type = 'RGBA'
+    mix.blend_type = blend
+    mix.inputs['Factor'].default_value = factor
+    nt.links.new(a, next(s for s in mix.inputs if s.name == 'A' and s.type == 'RGBA'))
+    nt.links.new(b, next(s for s in mix.inputs if s.name == 'B' and s.type == 'RGBA'))
+    return next(s for s in mix.outputs if s.type == 'RGBA')
+
+
+def link_diffuse_color(nt, socket):
     for node in nt.nodes:
         if node.type in ('BSDF_TOON', 'BSDF_PRINCIPLED') and getattr(node, 'component', 'DIFFUSE') == 'DIFFUSE':
             target = 'Color' if node.type == 'BSDF_TOON' else 'Base Color'
-            nt.links.new(brick.outputs['Color'], node.inputs[target])
+            nt.links.new(socket, node.inputs[target])
+
+
+def cork_material():
+    m = toon_material('cork', srgb('#d7b98c'), 0.95)
+    nt = m.node_tree
+    noise = nt.nodes.new('ShaderNodeTexNoise')
+    noise.inputs['Scale'].default_value = 140.0
+    noise.inputs['Detail'].default_value = 4.0
+    ramp = nt.nodes.new('ShaderNodeValToRGB')
+    ramp.color_ramp.elements[0].position = 0.35
+    ramp.color_ramp.elements[0].color = (*srgb('#b38f5f'), 1)
+    ramp.color_ramp.elements[1].position = 0.7
+    ramp.color_ramp.elements[1].color = (*srgb('#e2c79c'), 1)
+    nt.links.new(noise.outputs['Fac'], ramp.inputs['Fac'])
+    link_diffuse_color(nt, ramp.outputs['Color'])
+    return m
+
+
+def hex_rgb(hex_color):
+    h = hex_color.lstrip('#')
+    return [int(h[i:i + 2], 16) / 255 for i in (0, 2, 4)]
+
+
+def screen_ui_image(name, layout):
+    """A small desktop UI drawn with numpy: title bar, sidebar, and either
+    code lines or a dashboard. Byte images are sRGB, so colours go in as-is."""
+    w, h = 384, 216
+    img = np.zeros((h, w, 3), np.float32)
+    img[:] = hex_rgb('#111a33')
+    rng = np.random.default_rng(244 if layout == 'code' else 245)
+
+    def rect(x0, y0, x1, y1, color):
+        img[y0:y1, x0:x1] = hex_rgb(color)
+
+    rect(0, 0, w, 14, '#1d2a4d')
+    for i, color in enumerate(('#ee6b5f', '#f4c552', '#62c48a')):
+        rect(8 + i * 10, 4, 14 + i * 10, 10, color)
+    rect(0, 14, 74, h, '#16213f')
+    for i in range(9):
+        rect(10, 26 + i * 18, 10 + rng.integers(30, 56), 32 + i * 18, '#3b4f7e' if i != 2 else '#4f86d6')
+    if layout == 'code':
+        palette = ('#7fb0ff', '#9ad9c8', '#f0b673', '#c7cfe0', '#c7cfe0', '#e88fb0')
+        for row in range(15):
+            y = 24 + row * 12
+            x = 88 + 14 * int(rng.integers(0, 4))
+            for _ in range(int(rng.integers(1, 4))):
+                length = int(rng.integers(14, 70))
+                if x + length > w - 12:
+                    break
+                rect(x, y, x + length, y + 5, palette[int(rng.integers(0, len(palette)))])
+                x += length + 6
+    else:
+        for i, color in enumerate(('#4f86d6', '#4fb3a8', '#f0b673')):
+            rect(88 + i * 98, 24, 176 + i * 98, 58, '#1d2a4d')
+            rect(96 + i * 98, 32, 96 + i * 98 + int(rng.integers(30, 70)), 40, color)
+            rect(96 + i * 98, 46, 140 + i * 98, 50, '#5b6b92')
+        rect(88, 70, w - 12, h - 12, '#16213f')
+        bars = rng.integers(20, 110, size=12)
+        for i, bar in enumerate(bars):
+            x = 100 + i * 22
+            rect(x, h - 22 - int(bar), x + 12, h - 22, '#4fb3a8' if i % 3 else '#4f86d6')
+    rgba = np.concatenate([img[::-1], np.ones((h, w, 1), np.float32)], axis=2)
+    image = bpy.data.images.new(name, w, h)
+    image.pixels.foreach_set(rgba.ravel())
+    return image
+
+
+def screen_ui_material(name, layout):
+    """Emissive screen showing a drawn UI; use on a plane (UV 0–1)."""
+    m = bpy.data.materials.new(name)
+    m.use_nodes = True
+    nt = m.node_tree
+    for n in list(nt.nodes):
+        if n.type != 'OUTPUT_MATERIAL':
+            nt.nodes.remove(n)
+    tex = nt.nodes.new('ShaderNodeTexImage')
+    tex.image = screen_ui_image(name, layout)
+    em = nt.nodes.new('ShaderNodeEmission')
+    em.inputs['Strength'].default_value = 1.25
+    nt.links.new(tex.outputs['Color'], em.inputs['Color'])
+    nt.links.new(em.outputs['Emission'], nt.nodes['Material Output'].inputs['Surface'])
     return m
 
 
@@ -164,9 +275,25 @@ def build_materials():
         'fabric_mesh': toon_material('fabric_mesh', srgb('#46526f'), 0.9),
         'plastic': toon_material('plastic', srgb('#1d2028'), 0.45),
         'bezel': toon_material('bezel', srgb('#15171d'), 0.35, gloss=0.15),
-        'screen_a': screen_material('screen_a', '#3f7fd6'),
-        'screen_b': screen_material('screen_b', '#4fb3a8'),
-        'cork': toon_material('cork', srgb('#d7b98c'), 0.95),
+        'screen_a': screen_ui_material('screen_a', 'code'),
+        'screen_b': screen_ui_material('screen_b', 'dashboard'),
+        'cork': cork_material(),
+        'felt': toon_material('felt', srgb('#2c3346'), 0.95),
+        'rubber': toon_material('rubber', srgb('#17191f'), 0.8),
+        'keycap': toon_material('keycap', srgb('#e9e5dc'), 0.45),
+        'kb_base': toon_material('kb_base', srgb('#2a2e38'), 0.45),
+        'mug': toon_material('mug', srgb('#e2875f'), 0.35, gloss=0.2),
+        'coffee': toon_material('coffee', srgb('#3b2416'), 0.25, gloss=0.3),
+        'notebook': toon_material('notebook', srgb('#2f5694'), 0.7),
+        'yarn': toon_material('yarn', srgb('#d1453b'), 0.8),
+        'rug_field': toon_material('rug_field', srgb('#2f4f63'), 0.95),
+        'rug_border': toon_material('rug_border', srgb('#d9c49a'), 0.95),
+        'clock_face': toon_material('clock_face', srgb('#f3ecdc'), 0.6),
+        'blind': toon_material('blind', srgb('#ddd5c4'), 0.85),
+        'curtain': toon_material('curtain', srgb('#41618a'), 0.9),
+        'outlet': toon_material('outlet', srgb('#e6e2d8'), 0.5),
+        'fixture': toon_material('fixture', srgb('#1a1d24'), 0.35, metal=0.7, gloss=0.2),
+        'saucer': toon_material('saucer', srgb('#cfc6b4'), 0.45),
         'paper': toon_material('paper', srgb('#f4ecdb'), 0.9),
         'ink': toon_material('ink', srgb('#4a5572'), 0.9),
         'note_y': toon_material('note_y', srgb('#f4c552'), 0.9),
@@ -259,6 +386,48 @@ class Builder:
         bpy.ops.object.shade_smooth()
         return self._finish(o, material, group)
 
+    def tube(self, group, points, radius, material):
+        """A round cable through `points` (smooth Bezier with auto handles)."""
+        curve = bpy.data.curves.new('tube', 'CURVE')
+        curve.dimensions = '3D'
+        curve.bevel_depth = radius
+        curve.bevel_resolution = 3
+        curve.use_fill_caps = True
+        spline = curve.splines.new('BEZIER')
+        spline.bezier_points.add(len(points) - 1)
+        for point, co in zip(spline.bezier_points, points):
+            point.co = co
+            point.handle_left_type = point.handle_right_type = 'AUTO'
+        obj = bpy.data.objects.new('tube', curve)
+        bpy.context.scene.collection.objects.link(obj)
+        return self._finish(obj, material, group)
+
+    def panel(self, group, width, height, thickness, loc, material, rot=(0, 0, 0),
+              bend=0.0, wave=(0.0, 0.0), cuts=16):
+        """A vertical sheet in the XZ plane, curved toward +y by `bend` at its
+        edges and rippled by `wave` = (amplitude, folds), then solidified."""
+        bpy.ops.mesh.primitive_grid_add(x_subdivisions=cuts, y_subdivisions=4, size=1, location=(0, 0, 0))
+        o = bpy.context.object
+        amp, folds = wave
+        for v in o.data.vertices:
+            u, t = v.co.x, v.co.y
+            depth = bend * (2 * u) ** 2 + amp * math.sin(u * folds * 2 * math.pi)
+            v.co = (u * width, depth, t * height)
+        o.location = loc
+        o.rotation_euler = rot
+        mod = o.modifiers.new('thick', 'SOLIDIFY')
+        mod.thickness = thickness
+        mod.offset = 0
+        bpy.ops.object.shade_smooth()
+        return self._finish(o, material, group)
+
+    def screen(self, group, width, height, loc, yaw, material):
+        """A UV 0–1 plane facing −y (toward the camera) after `yaw`."""
+        bpy.ops.mesh.primitive_plane_add(size=1, location=loc, rotation=(math.pi / 2, 0, yaw))
+        o = bpy.context.object
+        o.scale = (width, height, 1)
+        return self._finish(o, material, group)
+
 
 # ── room ─────────────────────────────────────────────────────────────────────
 def build_room(b):
@@ -272,9 +441,13 @@ def build_room(b):
     b.box(g, (W, 0.1, H), (0, BACK_Y + 0.05, H / 2), m['wall'])
     b.box(g, (W, 0.03, 0.95), (0, BACK_Y - 0.015, 0.475), m['wall_low'])
     b.box(g, (W, 0.05, 0.04), (0, BACK_Y - 0.03, 0.97), m['trim'], bevel=0.008)
+    # Wainscot panels as raised moulding frames rather than flat plates.
     for i in range(10):
         x = LEFT_X + 0.47 + i * 0.83
-        b.box(g, (0.62, 0.012, 0.6), (x, BACK_Y - 0.035, 0.5), m['wall'], bevel=0.006)
+        for dz in (-0.29, 0.29):
+            b.box(g, (0.62, 0.016, 0.03), (x, BACK_Y - 0.038, 0.5 + dz), m['wall'], bevel=0.006)
+        for dx in (-0.295, 0.295):
+            b.box(g, (0.03, 0.016, 0.55), (x + dx, BACK_Y - 0.038, 0.5), m['wall'], bevel=0.006)
     # left wall
     b.box(g, (0.1, D, H), (LEFT_X - 0.05, 0, H / 2), m['wall_side'])
     b.box(g, (0.03, D, 0.95), (LEFT_X + 0.015, 0, 0.475), m['wall_low'])
@@ -307,6 +480,8 @@ def build_room(b):
     b.box(g, (0.07, span, 0.06), (RIGHT_X - 0.01, 0, head_h - 0.03), m['window_frame'])
     b.box(g, (0.07, span, 0.04), (RIGHT_X - 0.01, 0, 1.75), m['window_frame'])
     b.box(g, (0.03, D, 0.12), (RIGHT_X - 0.02, 0, 0.06), m['trim'])
+
+    build_room_details(b)
 
     # skyline outside the window (no outlines)
     sky = bpy.data.materials.new('sky')
@@ -373,50 +548,138 @@ def build_room(b):
     ground.is_holdout = True
 
 
+def build_room_details(b):
+    m, g = b.m, 'room'
+    # Rug under the characters' standing area, in front of the workstation.
+    rx, ry, rw, rd = 1.0, -1.85, 2.8, 2.0
+    b.box(g, (rw, rd, 0.01), (rx, ry, 0.005), m['rug_border'], bevel=0.004)
+    b.box(g, (rw - 0.16, rd - 0.16, 0.012), (rx, ry, 0.006), m['rug_field'], bevel=0.003)
+    inset = 0.28
+    for dy in (-1, 1):
+        b.box(g, (rw - 2 * inset, 0.035, 0.013), (rx, ry + dy * (rd / 2 - inset), 0.0065), m['rug_border'])
+    for dx in (-1, 1):
+        b.box(g, (0.035, rd - 2 * inset, 0.013), (rx + dx * (rw / 2 - inset), ry, 0.0065), m['rug_border'])
+
+    # Wall sconces under the crown, one above each warm light pool.
+    for x in (-2.4, -0.8, 0.8, 2.4):
+        b.box(g, (0.07, 0.02, 0.12), (x, BACK_Y - 0.01, H - 0.28), m['fixture'], bevel=0.006)
+        b.cyl(g, 0.008, 0.2, (x, BACK_Y - 0.11, H - 0.26), m['fixture'], rot=(math.pi / 2, 0, 0), verts=10)
+        b.cyl(g, 0.045, 0.1, (x, BACK_Y - 0.23, H - 0.29), m['fixture'], rot=(math.radians(-35), 0, 0), r2=0.03)
+
+    # Wall clock above the shelf.
+    ccx, ccy, ccz = RIGHT_X - 1.75, BACK_Y - 0.03, 2.45
+    b.cyl(g, 0.19, 0.04, (ccx, ccy, ccz), m['walnut'], rot=(math.pi / 2, 0, 0))
+    b.cyl(g, 0.165, 0.006, (ccx, ccy - 0.022, ccz), m['clock_face'], rot=(math.pi / 2, 0, 0))
+    for k in range(12):
+        a = k * math.pi / 6
+        length = 0.03 if k % 3 == 0 else 0.016
+        b.box(g, (0.008, 0.003, length), (ccx + 0.14 * math.sin(a), ccy - 0.026, ccz + 0.14 * math.cos(a)),
+              m['ink'], rot=(0, a, 0))
+    b.box(g, (0.012, 0.003, 0.09), (ccx + 0.03, ccy - 0.028, ccz + 0.03), m['ink'], rot=(0, math.radians(45), 0))
+    b.box(g, (0.008, 0.003, 0.13), (ccx - 0.045, ccy - 0.03, ccz + 0.045), m['ink'], rot=(0, math.radians(-45), 0))
+    b.cyl(g, 0.012, 0.01, (ccx, ccy - 0.031, ccz), m['brass'], rot=(math.pi / 2, 0, 0), verts=12)
+
+    # Power outlets on the wainscot.
+    for x in (DESK_X + 1.3, RIGHT_X - 2.55):
+        b.box(g, (0.08, 0.012, 0.12), (x, BACK_Y - 0.05, 0.3), m['outlet'], bevel=0.004)
+        for dz in (-0.025, 0.025):
+            b.box(g, (0.03, 0.004, 0.012), (x, BACK_Y - 0.057, 0.3 + dz), m['plastic'])
+
+    # Roller blinds on the two back window bays, and a curtain at the corner.
+    head = H - 0.35
+    for (y0, y1), drop in (((1.2, 2.4), 0.95), ((0.0, 1.2), 0.45)):
+        cy, width = (y0 + y1) / 2, y1 - y0 - 0.08
+        b.cyl(g, 0.035, width + 0.04, (RIGHT_X - 0.09, cy, head - 0.05), m['blind'], rot=(math.pi / 2, 0, 0))
+        b.box(g, (0.01, width, drop), (RIGHT_X - 0.08, cy, head - 0.05 - drop / 2), m['blind'])
+        b.box(g, (0.02, width, 0.025), (RIGHT_X - 0.08, cy, head - 0.05 - drop), m['walnut'], bevel=0.004)
+    b.cyl(g, 0.015, 1.1, (RIGHT_X - 0.16, BACK_Y - 0.55, H - 0.2), m['brass'], rot=(math.pi / 2, 0, 0), verts=12)
+    b.panel(g, 0.5, H - 0.32, 0.02, (RIGHT_X - 0.16, BACK_Y - 0.5, (H - 0.32) / 2 + 0.06), m['curtain'],
+            rot=(0, 0, math.pi / 2), wave=(0.035, 3.5), cuts=48)
+
+
 # ── props ────────────────────────────────────────────────────────────────────
 def build_desk(b):
     m, g = b.m, 'corner-desk'
     x0, y0, top = DESK_X, DESK_Y, DESK_TOP
-    b.box(g, (2.0, 0.78, 0.045), (x0, y0, top - 0.0225), m['oak'], bevel=0.012)
-    # return wing toward the camera on the right
-    b.box(g, (0.68, 1.15, 0.045), (x0 + 0.66, y0 - 0.95, top - 0.0225), m['oak'], bevel=0.012)
-    # left drawer pedestal
-    b.box(g, (0.46, 0.7, top - 0.06), (x0 - 0.74, y0, (top - 0.06) / 2), m['oak_dark'], bevel=0.008)
+    # Main top and the return wing: oak slab over a walnut edge band.
+    for cx, cy, sx, sy in ((x0, y0, 2.0, 0.78), (x0 + 0.66, y0 - 0.95, 0.68, 1.15)):
+        b.box(g, (sx, sy, 0.032), (cx, cy, top - 0.016), m['oak'], bevel=0.01)
+        b.box(g, (sx - 0.03, sy - 0.03, 0.016), (cx, cy, top - 0.04), m['walnut'], bevel=0.004)
+
+    # Left drawer pedestal on a recessed plinth.
+    px, body_h = x0 - 0.74, top - 0.12
+    b.box(g, (0.46, 0.7, body_h), (px, y0, 0.06 + body_h / 2), m['oak_dark'], bevel=0.008)
+    b.box(g, (0.42, 0.64, 0.06), (px, y0 + 0.02, 0.03), m['walnut'])
     for i in range(3):
-        z = 0.12 + i * 0.22
-        b.box(g, (0.42, 0.015, 0.19), (x0 - 0.74, y0 - 0.355, z), m['oak'], bevel=0.005)
-        b.box(g, (0.14, 0.02, 0.018), (x0 - 0.74, y0 - 0.37, z + 0.05), m['brass'], bevel=0.004)
-    # return cabinet with a door
-    b.box(g, (0.62, 0.55, top - 0.06), (x0 + 0.66, y0 - 1.22, (top - 0.06) / 2), m['oak_dark'], bevel=0.008)
-    b.box(g, (0.015, 0.5, 0.6), (x0 + 0.97, y0 - 1.22, 0.36), m['oak'], bevel=0.005)
-    b.box(g, (0.02, 0.02, 0.18), (x0 + 0.985, y0 - 1.05, 0.42), m['brass'], bevel=0.004)
-    # modesty panel and steel legs
+        z = 0.17 + i * 0.2
+        b.box(g, (0.42, 0.02, 0.18), (px, y0 - 0.355, z), m['oak'], bevel=0.006)
+        b.cyl(g, 0.008, 0.16, (px, y0 - 0.39, z + 0.045), m['brass'], rot=(0, math.pi / 2, 0), verts=12)
+        for side in (-1, 1):
+            b.cyl(g, 0.005, 0.03, (px + side * 0.07, y0 - 0.375, z + 0.045), m['brass'], rot=(math.pi / 2, 0, 0), verts=8)
+
+    # Return cabinet: door on the end that faces the room.
+    cx, cy = x0 + 0.66, y0 - 1.22
+    b.box(g, (0.62, 0.55, body_h), (cx, cy, 0.06 + body_h / 2), m['oak_dark'], bevel=0.008)
+    b.box(g, (0.58, 0.5, 0.06), (cx, cy + 0.02, 0.03), m['walnut'])
+    b.box(g, (0.56, 0.02, 0.56), (cx, cy - 0.285, 0.38), m['oak'], bevel=0.006)
+    b.cyl(g, 0.008, 0.2, (cx + 0.2, cy - 0.31, 0.44), m['brass'], verts=12)
+
+    # Modesty panel, steel legs with rubber feet, and a cable tray.
     b.box(g, (1.5, 0.02, 0.45), (x0 + 0.2, y0 + 0.33, top - 0.3), m['walnut'], bevel=0.004)
-    for lx in (x0 + 0.28, x0 + 0.95):
-        b.box(g, (0.05, 0.05, top - 0.05), (lx, y0 + 0.3, (top - 0.05) / 2), m['steel'], bevel=0.006)
-    b.box(g, (0.05, 0.05, top - 0.05), (x0 + 0.95, y0 - 0.25, (top - 0.05) / 2), m['steel'], bevel=0.006)
-    # cable grommet
+    for lx, ly in ((x0 + 0.28, y0 + 0.3), (x0 + 0.95, y0 + 0.3), (x0 + 0.95, y0 - 0.25)):
+        b.box(g, (0.05, 0.05, top - 0.07), (lx, ly, (top - 0.07) / 2 + 0.02), m['steel'], bevel=0.006)
+        b.box(g, (0.075, 0.075, 0.02), (lx, ly, 0.01), m['rubber'], bevel=0.005)
+    tray_z = top - 0.2
+    b.box(g, (1.0, 0.12, 0.008), (x0 + 0.3, y0 + 0.24, tray_z), m['steel'])
+    for dy in (-0.06, 0.06):
+        b.box(g, (1.0, 0.006, 0.05), (x0 + 0.3, y0 + 0.24 + dy, tray_z + 0.025), m['steel'])
+    b.tube(g, [(x0 - 0.15, y0 + 0.24, tray_z + 0.015), (x0 + 0.3, y0 + 0.25, tray_z + 0.02),
+               (x0 + 0.78, y0 + 0.26, tray_z + 0.015), (x0 + 0.86, y0 + 0.3, 0.3), (x0 + 0.9, y0 + 0.36, 0.01)],
+           0.01, m['rubber'])
     b.cyl(g, 0.03, 0.05, (x0 + 0.55, y0 + 0.25, top - 0.02), m['plastic'])
+
+    # Desk dressing: felt mat, notebook and pen, a mug on the return.
+    b.box(g, (0.9, 0.42, 0.004), (x0 + 0.2, y0 - 0.13, top + 0.002), m['felt'], bevel=0.008)
+    b.box(g, (0.21, 0.29, 0.014), (x0 - 0.42, y0 - 0.1, top + 0.007), m['notebook'], rot=(0, 0, 0.25), bevel=0.004)
+    b.box(g, (0.19, 0.27, 0.004), (x0 - 0.415, y0 - 0.1, top + 0.016), m['paper'], rot=(0, 0, 0.25))
+    b.cyl(g, 0.005, 0.14, (x0 - 0.36, y0 - 0.12, top + 0.022), m['steel'], rot=(math.pi / 2, 0, 0.6), verts=8)
+    mx, my = x0 + 0.74, y0 - 1.2
+    b.cyl(g, 0.042, 0.095, (mx, my, top + 0.0475), m['mug'])
+    b.cyl(g, 0.036, 0.004, (mx, my, top + 0.088), m['coffee'])
+    b.torus(g, 0.028, 0.008, (mx + 0.045, my, top + 0.05), m['mug'], rot=(math.pi / 2, 0, 0))
 
 
 def build_chair(b):
     m, g = b.m, 'office-chair'
     cx, cy = DESK_X + 0.1, DESK_Y - 0.82
+    back_tilt = math.radians(-10)
+    # Seat cushion on a plastic shell.
     b.box(g, (0.5, 0.48, 0.08), (cx, cy, 0.48), m['fabric'], bevel=0.035)
-    b.box(g, (0.46, 0.07, 0.56), (cx, cy - 0.27, 0.86), m['fabric_mesh'], rot=(math.radians(-10), 0, 0), bevel=0.04)
-    b.box(g, (0.5, 0.04, 0.6), (cx, cy - 0.3, 0.86), m['plastic'], rot=(math.radians(-10), 0, 0), bevel=0.02)
-    b.box(g, (0.3, 0.06, 0.12), (cx, cy - 0.34, 1.25), m['fabric'], rot=(math.radians(-14), 0, 0), bevel=0.03)
+    b.box(g, (0.46, 0.44, 0.03), (cx, cy, 0.425), m['plastic'], bevel=0.01)
+    # Curved mesh back on a plastic frame, lumbar pad and headrest.
+    b.panel(g, 0.46, 0.56, 0.03, (cx, cy - 0.27, 0.86), m['fabric_mesh'], rot=(back_tilt, 0, 0), bend=0.05)
+    b.panel(g, 0.5, 0.6, 0.02, (cx, cy - 0.3, 0.86), m['plastic'], rot=(back_tilt, 0, 0), bend=0.05)
+    b.box(g, (0.34, 0.05, 0.1), (cx, cy - 0.235, 0.72), m['fabric'], rot=(back_tilt, 0, 0), bevel=0.02)
+    for side in (-1, 1):
+        b.cyl(g, 0.008, 0.08, (cx + side * 0.08, cy - 0.33, 1.18), m['steel'], verts=10)
+    b.box(g, (0.3, 0.06, 0.12), (cx, cy - 0.34, 1.26), m['fabric'], rot=(math.radians(-14), 0, 0), bevel=0.03)
+    # Armrests: post, support arm, pad.
     for side in (-1, 1):
         ax = cx + side * 0.28
-        b.box(g, (0.04, 0.04, 0.2), (ax, cy - 0.05, 0.6), m['plastic'], bevel=0.01)
-        b.box(g, (0.07, 0.3, 0.035), (ax, cy + 0.0, 0.71), m['fabric'], bevel=0.012)
-    b.cyl(g, 0.028, 0.3, (cx, cy, 0.29), m['steel'])
-    b.cyl(g, 0.045, 0.08, (cx, cy, 0.18), m['plastic'])
+        b.box(g, (0.035, 0.05, 0.22), (ax, cy - 0.06, 0.58), m['plastic'], bevel=0.01)
+        b.box(g, (0.03, 0.2, 0.03), (ax, cy - 0.02, 0.68), m['plastic'], bevel=0.008)
+        b.box(g, (0.075, 0.28, 0.035), (ax, cy + 0.0, 0.71), m['fabric'], bevel=0.015)
+    # Gas lift with a shroud, five-star base and casters.
+    b.cyl(g, 0.025, 0.3, (cx, cy, 0.29), m['steel'])
+    b.cyl(g, 0.045, 0.14, (cx, cy, 0.19), m['plastic'], r2=0.034)
     for i in range(5):
         a = i * 2 * math.pi / 5 + 0.3
-        b.box(g, (0.3, 0.045, 0.035), (cx + 0.15 * math.cos(a), cy + 0.15 * math.sin(a), 0.08), m['plastic'],
-              rot=(0, 0, a), bevel=0.01)
-        b.sphere(g, 0.032, (cx + 0.3 * math.cos(a), cy + 0.3 * math.sin(a), 0.032), m['plastic'])
+        ca, sa = math.cos(a), math.sin(a)
+        b.box(g, (0.3, 0.045, 0.035), (cx + 0.15 * ca, cy + 0.15 * sa, 0.085), m['plastic'], rot=(0, 0, a), bevel=0.01)
+        wx, wy = cx + 0.3 * ca, cy + 0.3 * sa
+        b.box(g, (0.03, 0.03, 0.03), (wx, wy, 0.065), m['plastic'], bevel=0.006)
+        for off in (-0.012, 0.012):
+            b.cyl(g, 0.026, 0.016, (wx - off * sa, wy + off * ca, 0.027), m['rubber'], rot=(math.pi / 2, 0, a), verts=16)
 
 
 def build_shelf(b):
@@ -425,30 +688,51 @@ def build_shelf(b):
     for side in (-1, 1):
         b.box(g, (0.04, sd, sh), (sx + side * (sw / 2), sy, sh / 2), m['walnut'], bevel=0.006)
     b.box(g, (sw + 0.04, 0.02, sh), (sx, sy + sd / 2 - 0.01, sh / 2), m['oak_dark'])
-    b.box(g, (sw + 0.08, sd + 0.02, 0.04), (sx, sy, sh + 0.02), m['walnut'], bevel=0.006)
+    for i in range(1, 9):
+        b.box(g, (0.006, 0.004, sh - 0.1), (sx - sw / 2 + i * sw / 9, sy + sd / 2 - 0.022, sh / 2), m['walnut'])
+    b.box(g, (sw + 0.08, sd + 0.04, 0.04), (sx, sy - 0.01, sh + 0.02), m['walnut'], bevel=0.008)
+    b.box(g, (sw - 0.04, sd - 0.04, 0.06), (sx, sy + 0.01, 0.03), m['oak_dark'])
     rng = random.Random(7)
     for row in range(5):
-        z0 = 0.06 + row * 0.38
+        z0 = 0.08 + row * 0.38
         b.box(g, (sw, sd, 0.03), (sx, sy, z0 - 0.015), m['walnut'], bevel=0.004)
         if row == 4:
-            # decor on the top shelf: a framed photo and a small plant
-            b.box(g, (0.18, 0.03, 0.22), (sx - 0.3, sy + 0.05, z0 + 0.11), m['steel'], rot=(math.radians(-8), 0, 0), bevel=0.006)
-            b.box(g, (0.14, 0.01, 0.17), (sx - 0.3, sy + 0.03, z0 + 0.115), m['note_b'], rot=(math.radians(-8), 0, 0))
-            b.cyl(g, 0.07, 0.12, (sx + 0.3, sy, z0 + 0.06), m['ceramic'])
-            for k in range(6):
-                b.leaf(g, (sx + 0.3, sy, z0 + 0.11), 0.16, 0.07, k * 1.05, math.radians(-35), m['leaf'])
+            # Top shelf decor: framed photo, a small trophy and a plant.
+            b.box(g, (0.18, 0.03, 0.22), (sx - 0.36, sy + 0.05, z0 + 0.11), m['steel'], rot=(math.radians(-8), 0, 0), bevel=0.006)
+            b.box(g, (0.14, 0.01, 0.17), (sx - 0.36, sy + 0.03, z0 + 0.115), m['note_b'], rot=(math.radians(-8), 0, 0))
+            b.box(g, (0.09, 0.07, 0.03), (sx - 0.06, sy, z0 + 0.015), m['walnut'], bevel=0.004)
+            b.cyl(g, 0.01, 0.07, (sx - 0.06, sy, z0 + 0.065), m['brass'], verts=12)
+            b.cyl(g, 0.05, 0.08, (sx - 0.06, sy, z0 + 0.135), m['brass'], r2=0.025)
+            b.cyl(g, 0.07, 0.12, (sx + 0.32, sy, z0 + 0.06), m['ceramic'])
+            for k in range(7):
+                b.leaf(g, (sx + 0.32, sy, z0 + 0.11), 0.17, 0.07, k * 0.9, math.radians(-35), m['leaf'])
             continue
-        x = sx - sw / 2 + 0.05
-        limit = sx + sw / 2 - (0.25 if row % 2 else 0.05)
+        x = sx - sw / 2 + 0.04
+        end = sx + sw / 2 - 0.04
+        decor = row % 2
+        limit = end - (0.26 if decor else 0.16)
         while x < limit:
             w = rng.uniform(0.028, 0.055)
-            hgt = rng.uniform(0.22, 0.32)
-            lean = rng.choice([0, 0, 0, 0.12]) if x < limit - 0.1 else 0
-            b.box(g, (w, 0.24, hgt), (x + w / 2, sy - 0.03, z0 + hgt / 2), rng.choice(m['books']),
-                  rot=(0, lean, 0), bevel=0.004)
-            x += w + 0.006
-        if row % 2:
-            b.box(g, (0.16, 0.22, 0.12), (sx + sw / 2 - 0.13, sy - 0.03, z0 + 0.06), m['oak'], bevel=0.008)
+            hgt = rng.uniform(0.2, 0.33)
+            depth = rng.uniform(0.19, 0.25)
+            lean = rng.choice([0, 0, 0, 0, 0.12]) if x < limit - 0.12 else 0
+            book = rng.choice(m['books'])
+            yb = sy - sd / 2 + depth / 2 + 0.03
+            b.box(g, (w, depth, hgt), (x + w / 2, yb, z0 + hgt / 2), book, rot=(0, lean, 0), bevel=0.004)
+            if not lean and rng.random() < 0.7:
+                band = m['brass'] if rng.random() < 0.5 else m['paper']
+                b.box(g, (w * 0.9, 0.003, 0.02), (x + w / 2, yb - depth / 2 - 0.001, z0 + hgt * 0.72), band, bevel=0.0)
+            x += w + 0.005
+        # bookend, then a lying stack or a storage box
+        b.box(g, (0.006, 0.12, 0.14), (x + 0.01, sy - 0.05, z0 + 0.07), m['steel'])
+        b.box(g, (0.1, 0.12, 0.006), (x + 0.06, sy - 0.05, z0 + 0.003), m['steel'])
+        if decor:
+            b.box(g, (0.2, 0.24, 0.13), (end - 0.11, sy - 0.03, z0 + 0.065), m['oak'], bevel=0.008)
+            b.box(g, (0.09, 0.004, 0.04), (end - 0.11, sy - 0.152, z0 + 0.07), m['paper'])
+        else:
+            for k in range(3):
+                b.box(g, (0.24 - k * 0.02, 0.17, 0.035), (end - 0.1, sy - 0.04, z0 + 0.018 + k * 0.036),
+                      rng.choice(m['books']), rot=(0, 0, rng.uniform(-0.12, 0.12)), bevel=0.004)
 
 
 def build_lamp(b):
@@ -456,65 +740,105 @@ def build_lamp(b):
     lx, ly = DESK_X - 0.75, DESK_Y + 0.18
     base_z = DESK_TOP
     b.cyl(g, 0.08, 0.025, (lx, ly, base_z + 0.0125), m['steel'])
+    b.torus(g, 0.068, 0.006, (lx, ly, base_z + 0.026), m['brass'])
     p1 = Vector((lx, ly, base_z + 0.03))
     p2 = Vector((lx + 0.02, ly - 0.08, base_z + 0.42))
     p3 = Vector((lx + 0.2, ly - 0.24, base_z + 0.52))
     for a, c in ((p1, p2), (p2, p3)):
-        mid = (a + c) / 2
         d = c - a
         rot = d.to_track_quat('Z', 'Y').to_euler()
-        b.cyl(g, 0.012, d.length, mid, m['steel'], rot=rot, verts=16)
-    b.sphere(g, 0.022, p2, m['brass'])
+        for off in (-0.013, 0.013):
+            mid = (a + c) / 2 + Vector((off, 0, 0))
+            b.cyl(g, 0.007, d.length, mid, m['steel'], rot=rot, verts=12)
+    for joint in (p1 + Vector((0, 0, 0.01)), p2, p3):
+        b.cyl(g, 0.02, 0.04, joint, m['brass'], rot=(0, math.pi / 2, 0), verts=16)
     shade_dir = Vector((0.15, -0.3, -0.75)).normalized()
     shade_rot = (-shade_dir).to_track_quat('Z', 'Y').to_euler()
     b.cyl(g, 0.085, 0.13, p3 + shade_dir * 0.05, m['steel'], rot=shade_rot, r2=0.03)
+    b.torus(g, 0.085, 0.006, p3 + shade_dir * 0.115, m['brass'], rot=shade_rot)
     b.sphere(g, 0.03, p3 + shade_dir * 0.1, m['bulb'])
+    b.tube(g, [(lx, ly + 0.07, base_z + 0.008), (lx + 0.08, ly + 0.16, base_z + 0.006),
+               (lx + 0.14, DESK_Y + 0.39, base_z - 0.01), (lx + 0.16, DESK_Y + 0.42, 0.35)], 0.005, m['rubber'])
 
 
 def build_board(b):
     m, g = b.m, 'planning-board'
     bx, bz, bw, bh = DESK_X + 0.05, 1.78, 1.25, 0.82
     y = BACK_Y - 0.03
-    b.box(g, (bw + 0.08, 0.035, bh + 0.08), (bx, y - 0.005, bz), m['oak'], bevel=0.01)
-    b.box(g, (bw, 0.03, bh), (bx, y - 0.02, bz), m['cork'], bevel=0.004)
-    notes = [(-0.45, 0.2, 'paper', 0.24, 0.3), (-0.12, 0.24, 'note_y', 0.14, 0.14), (0.16, 0.2, 'note_b', 0.14, 0.14),
-             (0.42, 0.22, 'paper', 0.2, 0.26), (-0.42, -0.18, 'note_g', 0.14, 0.14), (-0.1, -0.16, 'paper', 0.24, 0.18),
-             (0.2, -0.2, 'note_r', 0.14, 0.14), (0.45, -0.17, 'note_y', 0.13, 0.13)]
+    b.box(g, (bw, 0.025, bh), (bx, y - 0.01, bz), m['cork'], bevel=0.002)
+    for dz in (-1, 1):
+        b.box(g, (bw + 0.1, 0.045, 0.05), (bx, y - 0.015, bz + dz * (bh / 2 + 0.025)), m['oak'], bevel=0.008)
+    for dx in (-1, 1):
+        b.box(g, (0.05, 0.045, bh), (bx + dx * (bw / 2 + 0.025), y - 0.015, bz), m['oak'], bevel=0.008)
+    notes = [(-0.46, 0.2, 'paper', 0.24, 0.28), (-0.16, 0.24, 'note_y', 0.14, 0.14), (0.06, 0.18, 'note_b', 0.14, 0.14),
+             (-0.44, -0.19, 'note_g', 0.14, 0.14), (-0.14, -0.17, 'paper', 0.24, 0.18), (0.12, -0.21, 'note_r', 0.14, 0.14)]
     rng = random.Random(3)
+    pins = []
     for nx, nz, mat, w, h in notes:
         tilt = math.radians(rng.uniform(-6, 6))
-        b.box(g, (w, 0.004, h), (bx + nx, y - 0.04, bz + nz), m[mat], rot=(0, tilt, 0))
+        b.box(g, (w, 0.004, h), (bx + nx, y - 0.025, bz + nz), m[mat], rot=(0, tilt, 0))
         if mat == 'paper':
             for k in range(3):
-                b.box(g, (w * 0.7, 0.002, 0.012), (bx + nx, y - 0.043, bz + nz + h * 0.25 - k * 0.05), m['ink'], rot=(0, tilt, 0))
-        b.sphere(g, 0.014, (bx + nx, y - 0.048, bz + nz + h / 2 - 0.02), m['pin'])
+                b.box(g, (w * 0.7, 0.002, 0.012), (bx + nx, y - 0.028, bz + nz + h * 0.25 - k * 0.05), m['ink'], rot=(0, tilt, 0))
+        pin = Vector((bx + nx, y - 0.033, bz + nz + h / 2 - 0.02))
+        b.sphere(g, 0.014, pin, m['pin'])
+        pins.append(pin)
+    for chain in ((0, 1, 2), (3, 4, 5)):
+        b.tube(g, [tuple(pins[i] + Vector((0, -0.006, 0))) for i in chain], 0.0025, m['yarn'])
+    # Month calendar and a pinned photo.
+    cxp, czp = bx + 0.42, bz + 0.16
+    b.box(g, (0.3, 0.004, 0.3), (cxp, y - 0.025, czp), m['paper'])
+    b.box(g, (0.3, 0.005, 0.05), (cxp, y - 0.027, czp + 0.125), m['note_r'])
+    for r in range(4):
+        for c in range(5):
+            mat = m['note_r'] if (r, c) == (2, 3) else m['ink']
+            b.box(g, (0.035, 0.002, 0.03), (cxp - 0.11 + c * 0.055, y - 0.028, czp + 0.06 - r * 0.055), mat)
+    b.sphere(g, 0.014, (cxp, y - 0.033, czp + 0.13), m['pin'])
+    tilt = math.radians(5)
+    b.box(g, (0.15, 0.004, 0.17), (bx + 0.42, y - 0.025, bz - 0.21), m['paper'], rot=(0, tilt, 0))
+    b.box(g, (0.12, 0.002, 0.11), (bx + 0.42, y - 0.028, bz - 0.195), m['note_b'], rot=(0, tilt, 0))
+    b.sphere(g, 0.014, (bx + 0.42, y - 0.033, bz - 0.135), m['pin'])
 
 
 def build_monitor(b, g, x, y, yaw, screen_mat):
     m = b.m
     top = DESK_TOP
-    b.box(g, (0.64, 0.025, 0.39), (x, y, top + 0.46), m['bezel'], rot=(0, 0, yaw), bevel=0.008)
-    off = Vector((0, -0.0135, 0))
-    off.rotate(Euler((0, 0, yaw)))
-    b.box(g, (0.6, 0.004, 0.345), (x + off.x, y + off.y, top + 0.465), screen_mat, rot=(0, 0, yaw))
-    return off
+    rot = (0, 0, yaw)
+
+    def at(dx, dy):
+        v = Vector((dx, dy, 0))
+        v.rotate(Euler(rot))
+        return x + v.x, y + v.y
+
+    b.box(g, (0.64, 0.022, 0.4), (x, y, top + 0.465), m['bezel'], rot=rot, bevel=0.006)
+    hx, hy = at(0, 0.03)
+    b.box(g, (0.5, 0.04, 0.28), (hx, hy, top + 0.47), m['plastic'], rot=rot, bevel=0.03)
+    sx, sy = at(0, -0.0115)
+    b.screen(g, 0.615, 0.345, (sx, sy, top + 0.477), yaw, screen_mat)
+    lx, ly = at(0, -0.0112)
+    b.box(g, (0.03, 0.002, 0.006), (lx, ly, top + 0.282), m['steel'], rot=rot)
 
 
 def build_keyboard(b, g, x, y):
     m = b.m
     top = DESK_TOP
-    b.box(g, (0.44, 0.14, 0.02), (x, y, top + 0.01), m['plastic'], rot=(math.radians(3), 0, 0), bevel=0.006)
+    b.box(g, (0.44, 0.14, 0.016), (x, y, top + 0.008), m['kb_base'], bevel=0.006)
+    pitch = 0.0265
     for r in range(4):
-        b.box(g, (0.4, 0.025, 0.006), (x, y - 0.045 + r * 0.03, top + 0.022), m['bezel'])
-    b.sphere(g, 0.03, (x + 0.33, y, top + 0.012), m['plastic'], scale=(0.7, 1.1, 0.4))
+        cols = 15 if r < 3 else 12
+        for c in range(cols):
+            kx = x - 0.185 + c * pitch + (0.008 if r == 2 else 0) + (0.014 if r == 3 else 0)
+            b.box(g, (0.022, 0.022, 0.009), (kx, y + 0.042 - r * pitch, top + 0.02), m['keycap'], bevel=0.003, segments=2)
+    b.box(g, (0.14, 0.022, 0.009), (x + 0.02, y + 0.042 - 4 * pitch, top + 0.02), m['keycap'], bevel=0.003, segments=2)
+    b.sphere(g, 0.03, (x + 0.33, y, top + 0.014), m['keycap'], scale=(0.7, 1.1, 0.45))
 
 
 def build_single_monitor(b):
     g = 'single-monitor'
     x, y = DESK_X + 0.15, DESK_Y + 0.12
     build_monitor(b, g, x, y, 0.0, b.m['screen_a'])
-    b.box(g, (0.05, 0.05, 0.26), (x, y + 0.05, DESK_TOP + 0.14), b.m['steel'], bevel=0.008)
-    b.box(g, (0.24, 0.18, 0.015), (x, y + 0.03, DESK_TOP + 0.0075), b.m['steel'], bevel=0.006)
+    b.box(g, (0.06, 0.04, 0.26), (x, y + 0.06, DESK_TOP + 0.14), b.m['steel'], rot=(math.radians(6), 0, 0), bevel=0.01)
+    b.box(g, (0.25, 0.19, 0.012), (x, y + 0.04, DESK_TOP + 0.006), b.m['steel'], bevel=0.006)
     build_keyboard(b, g, x, DESK_Y - 0.17)
 
 
@@ -524,8 +848,10 @@ def build_dual_monitor(b):
     for side, mat in ((-1, b.m['screen_a']), (1, b.m['screen_b'])):
         yaw = math.radians(-12 * side)
         build_monitor(b, g, x + side * 0.33, y - 0.03, yaw, mat)
-    b.cyl(g, 0.022, 0.42, (x, y + 0.08, DESK_TOP + 0.21), b.m['steel'], verts=16)
-    b.box(g, (0.62, 0.03, 0.03), (x, y + 0.06, DESK_TOP + 0.46), b.m['steel'], bevel=0.006)
+        b.box(g, (0.1, 0.02, 0.1), (x + side * 0.31, y + 0.035, DESK_TOP + 0.47), b.m['steel'], rot=(0, 0, yaw), bevel=0.004)
+    b.cyl(g, 0.022, 0.46, (x, y + 0.08, DESK_TOP + 0.23), b.m['steel'], verts=16)
+    b.box(g, (0.62, 0.03, 0.03), (x, y + 0.06, DESK_TOP + 0.47), b.m['steel'], bevel=0.006)
+    b.box(g, (0.08, 0.06, 0.06), (x, y + 0.08, DESK_TOP + 0.47), b.m['plastic'], bevel=0.01)
     b.box(g, (0.1, 0.1, 0.02), (x, y + 0.08, DESK_TOP + 0.01), b.m['steel'], bevel=0.006)
     build_keyboard(b, g, x, DESK_Y - 0.17)
 
@@ -533,18 +859,21 @@ def build_dual_monitor(b):
 def build_plant(b):
     m, g = b.m, 'office-plant'
     px, py = RIGHT_X - 0.75, 0.75
-    b.cyl(g, 0.2, 0.42, (px, py, 0.21), m['ceramic'], r2=0.16)
-    b.torus(g, 0.2, 0.018, (px, py, 0.42), m['ceramic'])
-    b.cyl(g, 0.185, 0.02, (px, py, 0.4), m['soil'])
+    b.cyl(g, 0.23, 0.025, (px, py, 0.0125), m['saucer'])
+    b.cyl(g, 0.2, 0.42, (px, py, 0.235), m['ceramic'], r2=0.16)
+    b.torus(g, 0.2, 0.018, (px, py, 0.445), m['ceramic'])
+    b.cyl(g, 0.185, 0.02, (px, py, 0.425), m['soil'])
     rng = random.Random(5)
-    stems = [(0.0, 0.0, 1.35), (0.06, 0.04, 1.1), (-0.05, 0.03, 0.95)]
+    stems = [(0.0, 0.0, 1.4), (0.06, 0.04, 1.15), (-0.05, 0.03, 1.0), (0.03, -0.05, 0.85)]
     for sx, sy, sh in stems:
-        b.cyl(g, 0.012, sh - 0.4, (px + sx, py + sy, 0.4 + (sh - 0.4) / 2), m['stem'], verts=10)
-        for k in range(9):
-            z = 0.62 + (sh - 0.62) * k / 8
+        b.cyl(g, 0.012, sh - 0.42, (px + sx, py + sy, 0.42 + (sh - 0.42) / 2), m['stem'], verts=10)
+        count = 11
+        for k in range(count):
+            z = 0.62 + (sh - 0.62) * k / (count - 1)
             yaw = rng.uniform(0, 2 * math.pi)
             mat = m['leaf'] if k % 3 else m['leaf_dark']
-            b.leaf(g, (px + sx, py + sy, z), rng.uniform(0.2, 0.28), rng.uniform(0.11, 0.15), yaw,
+            size = 1.15 - 0.35 * k / (count - 1)
+            b.leaf(g, (px + sx, py + sy, z), rng.uniform(0.2, 0.27) * size, rng.uniform(0.11, 0.15) * size, yaw,
                    math.radians(rng.uniform(-55, -25)), mat)
 
 
