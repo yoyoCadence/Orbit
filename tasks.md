@@ -194,7 +194,7 @@
   - 仍待處理：`x`／`y` 本身是舊相機座標，家具會離開房間中對應的位置。
   - 方向：覆寫記錄所屬的 `canonicalCameraId`，V2 只套用同相機的覆寫；舊覆寫保留但不套用（不刪使用者資料）。V2 Edit Mode 目前只能調整既有覆寫，也需一併決定新建覆寫的流程。屬使用者資料語意變更，實作前先提案。
   - In progress（2026-10-18）：提案 [`docs/ps-246-v2-placement-overrides.md`](docs/ps-246-v2-placement-overrides.md) 已完成，**等待使用者核准**。核准前不改程式碼。
-    - 建議方案 A：V2 不套用 legacy 覆寫，一律使用 Blender 校準的位置；legacy 資料保留。依據是 technical design §3.2 與 product spec §9。
+    - 建議方案 A：V2 不套用 legacy 覆寫，一律使用 Blender 校準的位置；legacy 資料保留。依據是 technical design §7.2、§3.2 與 product spec §9。
     - 上面「方向」中的依相機標記覆寫已併入方案 A：現有覆寫都屬於 legacy 相機，標記後等於全部不套用；標記留給 V2 自己建立覆寫時（PS-246B）。
     - 待使用者決定：是否核准方案 A；Edit Mode 入口要保留並顯示說明（A1），還是隱藏（A2）；新建覆寫或槽位（PS-246B）要不要建立任務；technical design §7.2 的 `migration.unmappedPlacements` 摘要要修改規格（S1）還是實作（S2）。
     - 核准後把提案 §8 寫成本任務的驗收條件，再實作。

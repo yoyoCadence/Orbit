@@ -41,7 +41,7 @@ legacy idle window 的 `readPlacementFromElement()` 每次儲存都會寫入 `x`
 
 因此只要在 legacy 中**切換過相機角度**或用過上述任一功能，V2 的同 ID 家具就會被移到 legacy 座標。
 
-以 legacy 預設位置為例（只切換相機、沒有移動時，存下的就是這個值）：
+以 legacy 預設位置為例（沒有移動過、只觸發了儲存時，存下的就是這個值）。只切換相機時，只有 `corner-desk` 這類有各相機款式的家具會被存下；其他家具要經過全部顯示／隱藏、旋轉、隱藏或換款才會被存下：
 
 | 家具 | legacy x／y | V2 x／y（PS-245） | V2 中的位移 |
 |---|---|---|---|
@@ -139,7 +139,7 @@ product spec §7 本來就寫明「大型家具使用 canonical perspective 與�
    - 建議：暫不建立任務；
    - 若想要自訂功能，先決定 §6 的三種中要哪一種，再寫規格。
 4. **technical design §7.2 的 `migration.unmappedPlacements` 摘要**：
-   - S1（建議）：修改規格文字。原始資料已完整保留在 legacy state 與 V2 的 `world.idleWindowLayouts` 副本中，隨時可以從那裡推導；摘要目前沒有任何讀取者。
+   - S1（建議）：修改規格文字。原始資料完整保留在 legacy 的 `personal-space-state`，隨時可以從那裡推導；V2 的 `world.idleWindowLayouts` 副本則可能已被 V2 Edit Mode 的微調或「重設全部調整」改過。摘要目前沒有任何讀取者。
    - S2：方案 A 一併實作摘要。遷移時寫入；已遷移的 state 在 normalize 時補上。這是本機 V2 state 的新增欄位，不涉及 Supabase。
 
 ## 8. 驗收條件草稿（核准後寫入 tasks.md）
