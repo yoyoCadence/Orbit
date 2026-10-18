@@ -14,12 +14,6 @@
 
 ## Backlog
 
-- [ ] **PS-246** V2 家具不應套用舊 16:9 相機的位置覆寫
-  - 問題（PS-244 審查時發現）：V2 的 `resolvePlacements()` 直接採用遷移自 legacy idle-window 的 `idleWindowLayouts[*].placements` 與 `placedItems`。它們的 id（`corner-desk`、`office-chair` 等）與 V2 家具相同，但座標屬於舊的 16:9 left／center／right 相機。
-  - PS-244 已處理：舊覆寫的 `width`／`anchor`／`z`／`scale` 會讓含陰影邊界的新 PNG 縮小或偏移，現在 V2 家具只套用 `x`／`y`。
-  - 仍待處理：`x`／`y` 本身是舊相機座標，家具會離開房間中對應的位置。
-  - 方向：覆寫記錄所屬的 `canonicalCameraId`，V2 只套用同相機的覆寫；舊覆寫保留但不套用（不刪使用者資料）。V2 Edit Mode 目前只能調整既有覆寫，也需一併決定新建覆寫的流程。屬使用者資料語意變更，實作前先提案。
-
 - [ ] **HW-112** 佐證圖片雲端同步（Supabase Storage）
   - Goal: upload proof photos to Supabase Storage so they persist across devices and app reinstalls.
   - Scope: `platform/badge.js` → new `pwa/js/platform/proofStorage.js` adapter; bucket `orbit-proof`, path `{user_id}/{sessionId}.jpg`; RLS: SELECT/INSERT/DELETE scoped to `auth.uid()`; use existing `compressImage()` output; graceful fallback to localStorage-only for guests.
@@ -182,6 +176,8 @@
 
 > 2026-10-17 核准：使用者明確核准 `BUG-110`（auth flow 表單 UI）、`PRO-014O`（entitlement 啟動流程）、`BUG-109`（只撰寫 migration 與測試，production 套用由使用者執行），並排定 `HW-110`、`HW-106`、`HW-107`。
 
+> 2026-10-18 排程：Next 只剩需專案擁有者執行的 BUG-109A。PS-246 的第一步是提案（只寫文件、不改程式碼），從 Backlog 移入 Next；核准前不實作。
+
 - [ ] **BUG-109A** 在 production 套用 013 signup trigger migration
   - 目標：讓 production 的 `handle_new_user()` 截斷超過 30 字元的名稱來源，長 email local-part 與長 Google 顯示名稱都能註冊。
   - 步驟：依 [`docs/bug-109-signup-name-truncation.md`](docs/bug-109-signup-name-truncation.md) 的 runbook：先以 `pg_get_functiondef` 比對 production 函式與 004、記錄回滾來源，在非 production 環境跑 `tests/database/bug109.test.sql`，再套用並驗證。
@@ -191,6 +187,17 @@
 ---
 
 ## In Progress
+
+- [ ] **PS-246** V2 家具不應套用舊 16:9 相機的位置覆寫
+  - 問題（PS-244 審查時發現）：V2 的 `resolvePlacements()` 直接採用遷移自 legacy idle-window 的 `idleWindowLayouts[*].placements` 與 `placedItems`。它們的 id（`corner-desk`、`office-chair` 等）與 V2 家具相同，但座標屬於舊的 16:9 left／center／right 相機。
+  - PS-244 已處理：舊覆寫的 `width`／`anchor`／`z`／`scale` 會讓含陰影邊界的新 PNG 縮小或偏移，現在 V2 家具只套用 `x`／`y`。
+  - 仍待處理：`x`／`y` 本身是舊相機座標，家具會離開房間中對應的位置。
+  - 方向：覆寫記錄所屬的 `canonicalCameraId`，V2 只套用同相機的覆寫；舊覆寫保留但不套用（不刪使用者資料）。V2 Edit Mode 目前只能調整既有覆寫，也需一併決定新建覆寫的流程。屬使用者資料語意變更，實作前先提案。
+  - In progress（2026-10-18）：提案 [`docs/ps-246-v2-placement-overrides.md`](docs/ps-246-v2-placement-overrides.md) 已完成，**等待使用者核准**。核准前不改程式碼。
+    - 建議方案 A：V2 不套用 legacy 覆寫，一律使用 Blender 校準的位置；legacy 資料保留。依據是 technical design §7.2、§3.2 與 product spec §9。
+    - 上面「方向」中的依相機標記覆寫已併入方案 A：現有覆寫都屬於 legacy 相機，標記後等於全部不套用；標記留給 V2 自己建立覆寫時（PS-246B）。
+    - 待使用者決定：是否核准方案 A；Edit Mode 入口要保留並顯示說明（A1），還是隱藏（A2）；新建覆寫或槽位（PS-246B）要不要建立任務；technical design §7.2 的 `migration.unmappedPlacements` 摘要要修改規格（S1）還是實作（S2）。
+    - 核准後把提案 §8 寫成本任務的驗收條件，再實作。
 
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.

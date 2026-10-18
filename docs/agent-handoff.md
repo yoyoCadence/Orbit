@@ -4,7 +4,7 @@
 
 任務本身的定義與驗收條件以 [`tasks.md`](../tasks.md) 為準；本檔只記錄進行中的狀態、與使用者約定的工作規則，以及接手需要的操作細節。
 
-> 最後更新：2026-10-18（UTC 07:25 左右）。main = `e2c68f4`（v1.30.0，#169 已合併）。
+> 最後更新：2026-10-18（UTC 07:50 左右）。main = `98c50b8`（v1.30.0，#170 已合併）。
 
 ## 1. 接手前先讀
 
@@ -29,7 +29,7 @@
 
 ## 3. 進行中的工作
 
-- 無進行中的實作。PS-245 已由 #169 合併。
+- **PS-246（提案）**：分支 `docs/ps-246-proposal`。只寫提案 [`docs/ps-246-v2-placement-overrides.md`](ps-246-v2-placement-overrides.md)，不改程式碼。tasks.md 中 PS-246 已依 AGENTS §15 經 Next 移入 In Progress。合併後 PS-246 留在 In Progress，等使用者核准方案 A，以及 Edit Mode 入口（A1／A2）、PS-246B 與 `unmappedPlacements` 摘要（S1／S2）的決定；核准後把提案 §8 寫成驗收條件再實作。
 - 草稿 PR [#154](https://github.com/yoyoCadence/Orbit/pull/154)（`feat/pro-014l-streak-unlock-rpc`，PRO-014L）不是本工作階段開的；它改的 SUB-16 路徑與 `PRO-014P` 相同。
 - Codex review 額度在 2026-10-18 用完；之後的 PR 依 §2 改用獨立 Claude review（只讀 agent，對照程式碼回報 P1／P2／P3，修完再請它複查）。
 
@@ -52,6 +52,7 @@
 | #167 | — | 依 review 修正 state-flow／platform-adapters 文件；AI-203 改為提案；新增 PRO-014P／Q；本交接紀錄 |
 | #168 | v1.29.0 | PS-244 Blender 渲染的工作站房間與 8 件家具（含獨立 review 的椅子 z 與覆寫修正） |
 | #169 | v1.30.0 | PS-245 Blender 精細化：家具真實構造、螢幕 UI、地板木紋、地毯、護牆框線板、壁燈、時鐘、插座、捲簾與窗簾（含獨立 review 的壁燈陰影與時鐘位置修正） |
+| #170 | — | 交接紀錄：記錄 #169；寫提案前須依 AGENTS §15 移動任務；渲染時間統一 |
 
 教訓：#155–#164 在 Codex review 出現前就合併，造成 #165、#166、#167 的回頭修正。這就是 §2 合併條件的由來。獨立 review 在 #167、#168、#169 都找到真正的問題（例如椅子畫在螢幕後面、壁燈在相框下投出暗影），所以複查不能省。
 
@@ -62,14 +63,14 @@
 - **BUG-109A**：在 production 套用 `pwa/db/013_signup_profile_name.sql`，需專案擁有者執行，步驟見 `docs/bug-109-signup-name-truncation.md`。
 - **角色 3D 化**：主角與 Companion 仍是 PS-242 的像素 sprite。改成 3D 會推翻已核准素材（主角 12 個姿勢、Companion 6 個狀態），範圍很大，等使用者決定。
 - **PRO-014P、PRO-014Q**：entitlement 流程，實作前需提案與核准。PRO-014P 擋 `PRO-014H` cutover。
-- **PS-246**：舊 16:9 相機的位置覆寫（`x`／`y`）仍會套用到 V2 家具，屬使用者資料語意變更，需先提案。`width`／`anchor` 已在 #168 改為不套用。
+- **PS-246**：舊 16:9 相機的位置覆寫（`x`／`y`）仍會套用到 V2 家具（`width`／`anchor` 已在 #168 改為不套用）。提案見 `docs/ps-246-v2-placement-overrides.md`，等使用者決定四件事：方案 A、Edit Mode 入口（A1／A2）、是否建立 PS-246B、`migration.unmappedPlacements` 摘要（S1 改規格／S2 實作）。
 - **AI-203**：Companion `remind` 的資料來源與頻率，產出規格給使用者核准。
 - **PS-243**：真機、installed PWA、雙帳號、螢幕閱讀器等 human gate。
 
 ### 可直接做（低風險）
 
 - `tasks.md` 的 Next 只有需要使用者執行的 BUG-109A。
-- 上面需要核准的項目，可以先寫成提案文件交給使用者決定；寫提案不是實作，不違反 AGENTS §3 的「先說明再核准」。但依 AGENTS §15，任務要先在 `tasks.md` 從 Backlog 明確移到 Next，再移到 In Progress（附日期與理由，不可靜默調整順序），才能開始寫。PS-246、AI-203、PRO-014P、PRO-014Q 目前都在 Backlog。
+- 上面需要核准的項目，可以先寫成提案文件交給使用者決定；寫提案不是實作，不違反 AGENTS §3 的「先說明再核准」。但依 AGENTS §15，任務要先在 `tasks.md` 從 Backlog 明確移到 Next，再移到 In Progress（附日期與理由，不可靜默調整順序），才能開始寫。AI-203、PRO-014P、PRO-014Q 目前都在 Backlog；PS-246 已移入 In Progress。
 - 椅子右扶手與一個腳輪畫在書桌之上（PS-244 起既有，約 10 px，記錄在 `tasks.md` 的 PS-245）。修正要拆分椅子的渲染層，再用 `render_pack.py --only office-chair` 重渲椅子。`tasks.md` 目前沒有對應任務，要做需先建立任務。
 
 ## 6. PS-245 精細化：實作計畫
@@ -114,7 +115,7 @@
   3. 跑 `process_pack.py --write-runtime`、`ps242:manifest`、`ps243:assets`。
   4. 更新 `ps243AssetBudget.test.js` 的位元組數。
   5. 用 `npm run bump -- minor`，並寫 CHANGELOG。
-- **不含**：角色 3D 化（需使用者另行決定）、PS-246（舊相機位置覆寫，需先提案）。
+- **不含**：角色 3D 化（需使用者另行決定）、PS-246（舊相機位置覆寫，另有提案）。
 
 ## 7. PS-244／PS-245 的 Blender 管線操作
 
