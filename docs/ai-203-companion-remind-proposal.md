@@ -50,8 +50,9 @@
 在 `buildPersonalSpaceV2Snapshot()` 中推導，取代 `coreState.missedPatterns`：
 
 ```js
-// effectiveDate：快照的 effective date；calendarDate：裝置的日曆日（utils.today()）
-// coreState.dailyPlan：與首頁今日計畫清單相同的資料（storage.getDailyPlan()）
+// now：resolveEffectiveDate() 使用的同一個時間（options.now，未提供時為 Date.now()）
+// effectiveDate：快照的 effective date；calendarDate = localDateString(now)
+// coreState.dailyPlan：與首頁今日計畫清單相同的資料（記憶體中的 state.dailyPlan）
 const planIds = calendarDate === effectiveDate ? coreState.dailyPlan : [];
 // 不可重用 recentSessions：它只保留 7 筆
 const todaySessions = sessions.filter(s => s?.date === effectiveDate);
@@ -78,10 +79,13 @@ missedPatterns = (workedOnGoalToday || momentum.observedDays < 3) ? [] : planIds
 
 所以本任務不嘗試修正日期，只做兩件事：
 
-1. **只用首頁顯示的計畫**：`coreState.dailyPlan`（`storage.getDailyPlan()` 的結果），提醒內容永遠與使用者看到的清單一致。
+1. **只用首頁顯示的計畫**：`coreState.dailyPlan`，也就是記憶體中的 `state.dailyPlan`。首頁新增、移除、拖曳任務後會更新它並重新 render，所以提醒內容與使用者看到的清單一致。
+   - 在 00:00 到 `newDayHour` 之間，記憶體中的計畫仍是昨天的，直到 `dayCycle.js` 換日重設。下一點的限制剛好涵蓋這段時間。
 2. **00:00 到 `newDayHour` 之間不提醒**：日曆日不等於 effective date 時，`planIds` 為空。
+   - 兩個日期必須用**同一個 `now`** 計算：`calendarDate = localDateString(now)`，`now` 與 `resolveEffectiveDate()` 相同（`options.now`）。不可呼叫讀取真實時鐘的 `utils.today()`，否則快照不再是純函式，測試結果會依機器時間而變。
+   - 若呼叫端直接傳入 `effectiveDate`，也要傳入 `now`；沒有傳入時以 `Date.now()` 計算 `calendarDate`。
 
-另一項要求：計畫必須在**每次建立快照時**讀取，不能只在 app 載入時讀一次，否則從清單移除任務不會結束提醒。V2 controller 目前每次 refresh 都會呼叫 `storageApi.getDailyPlan()`，實作時要用測試固定這個行為。
+另一項要求：從清單移除任務後，下一次建立快照時提醒就要結束。測試應直接固定快照的輸入（`coreState.dailyPlan`），而不是依賴 controller 何時重新讀取 storage。
 
 今日計畫的日期模型本身（午夜後儲存會把舊計畫改成新日期、與 effective date 不一致）影響 Main Quest 與首頁，vertical slice §7.1 已要求對齊。建議另立任務，不放在 AI-203B。
 
@@ -143,7 +147,8 @@ art bible 要求 Companion 的表情與肢體不暗示憤怒、被拋棄，或�
   - 今天已有「已推進」的 Session，即使之後又記了別的 Session；
   - 有 Session 的日期少於 3 天（選 G1 時）；
   - Momentum 不是 `low`。
-- 從首頁清單移除最後一個合格任務後，下一次 refresh 不再是 `remind`。
+- 從 `coreState.dailyPlan` 移除最後一個合格任務後，重新建立的快照不再是 `remind`。
+- 注入的 `now` 在 00:00 到 `newDayHour` 之間時不出現 `remind`，與執行測試的機器時間無關。
 - 首頁小卡與完整頁面的 Companion **狀態與台詞 key** 一致（台詞文字的統一另立任務，見 §9 第 6 點）；選 D2 時，靜態 fallback 的 `remind` 動畫不循環。
 - 不新增 state 欄位、不寫入 state；`companionEngine.js` 的優先順序不變。
 - 只在選 F2 時：本地 12:00 前不出現，用 `options.now` 測試。
