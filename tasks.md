@@ -46,12 +46,6 @@
   - 目標：讓 companion 關係變化可由真實行為驅動，而不是聊天次數
   - 對應 roadmap：Phase 2 / Phase 4
 
-- [ ] **AI-203** Companion `remind` 的資料來源與頻率提案（Mode A，只產出規格）
-  - 現況（AI-201 盤點時發現）：`companionEngine.js` 只有在 Low Momentum 且 `missedPatterns` 含使用者選定目標時才回傳 `remind`，但 `viewModels.js` 讀取的 `coreState.missedPatterns` 沒有任何寫入點，所以這個狀態在 production 永遠不會出現。
-  - 交付物：一份提案，決定「使用者選定目標」的資料來源（Goals 頁的目標或 V2 state 的新欄位）、`missedPatterns` 的計算方式，以及 bounded remind 的頻率上限與冷卻規則
-  - 完成條件：提案經使用者核准；核准後才建立實作任務 `AI-203B`，並把核准的規則寫成它的驗收條件
-  - 對應 roadmap：Phase 2
-
 - [ ] **PRO-014** SUB-14／Pro entitlement 工作串
   - 目標：先建立可信任的 server-owned Pro entitlement，再交付排行榜與 Personal Space 的 Pro 呈現
   - 拆分：PR #132 只完成 `PRO-014A`；`PRO-014B`～`PRO-014F` 各自以後續 PR 處理，避免 schema foundation、client cutover、環境套用與呈現功能混在同一審查範圍
@@ -178,6 +172,8 @@
 
 > 2026-10-18 排程：Next 只剩需專案擁有者執行的 BUG-109A。PS-246 的第一步是提案（只寫文件、不改程式碼），從 Backlog 移入 Next；核准前不實作。
 
+> 2026-10-18 排程：Next 只剩需專案擁有者執行的 BUG-109A。AI-203 是 Mode A（只產出規格），從 Backlog 移入 Next；核准前不建立 AI-203B、不改程式碼。
+
 - [ ] **BUG-109A** 在 production 套用 013 signup trigger migration
   - 目標：讓 production 的 `handle_new_user()` 截斷超過 30 字元的名稱來源，長 email local-part 與長 Google 顯示名稱都能註冊。
   - 步驟：依 [`docs/bug-109-signup-name-truncation.md`](docs/bug-109-signup-name-truncation.md) 的 runbook：先以 `pg_get_functiondef` 比對 production 函式與 004、記錄回滾來源，在非 production 環境跑 `tests/database/bug109.test.sql`，再套用並驗證。
@@ -198,6 +194,17 @@
     - 上面「方向」中的依相機標記覆寫已併入方案 A：現有覆寫都屬於 legacy 相機，標記後等於全部不套用；標記留給 V2 自己建立覆寫時（PS-246B）。
     - 待使用者決定：是否核准方案 A；Edit Mode 入口要保留並顯示說明（A1），還是隱藏（A2）；新建覆寫或槽位（PS-246B）要不要建立任務；technical design §7.2 的 `migration.unmappedPlacements` 摘要要修改規格（S1）還是實作（S2）。
     - 核准後把提案 §8 寫成本任務的驗收條件，再實作。
+
+- [ ] **AI-203** Companion `remind` 的資料來源與頻率提案（Mode A，只產出規格）
+  - 現況（AI-201 盤點時發現）：`companionEngine.js` 只有在 Low Momentum 且 `missedPatterns` 含使用者選定目標時才回傳 `remind`，但 `viewModels.js` 讀取的 `coreState.missedPatterns` 沒有任何寫入點，所以這個狀態在 production 永遠不會出現。
+  - 交付物：一份提案，決定「使用者選定目標」的資料來源（Goals 頁的目標或 V2 state 的新欄位）、`missedPatterns` 的計算方式，以及 bounded remind 的頻率上限與冷卻規則
+  - 完成條件：提案經使用者核准；核准後才建立實作任務 `AI-203B`，並把核准的規則寫成它的驗收條件
+  - 對應 roadmap：Phase 2
+  - In progress（2026-10-18）：提案 [`docs/ai-203-companion-remind-proposal.md`](docs/ai-203-companion-remind-proposal.md) 已完成（依獨立 review 改寫），**等待使用者核准**。
+    - 盤點結果：沒有「目標」資料模型（`goals` 已由 `tasks` 取代，Goals 頁是完成紀錄）。建議以今日計畫中符合 Main Quest 資格的任務作為使用者選定的目標。
+    - review 修正：沒有 Session 的新使用者 Momentum 是 `low`，所以需要「歷史不足不提醒」；今日計畫用日曆日、Sessions 用 `newDayHour`，且午夜後儲存會把舊計畫改成新日期，所以只用首頁顯示的計畫，並在 00:00 到 `newDayHour` 之間不提醒。
+    - 待另立：今日計畫的日期模型與 effective date 對齊（影響 Main Quest 與首頁）；8 個 Companion 台詞在兩個檔案的文字統一。
+    - 待使用者決定：目標來源（A／B）、歷史不足（G1／G0）、Momentum（M1／M2）、頻率（F4 每日固定時段，建議／F3／F1／F2）、靜態 fallback 動畫（D2／D1）、台詞，以及是否另立上面兩個任務。
 
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
