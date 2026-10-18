@@ -89,7 +89,13 @@ V2 遷移在 finalize 時，用 `totalXP` 換算等級來計算 `openingGold`（
 
 為什麼是「所有」pending，而不只目前帳號的：backup 可能是別的帳號先前模擬時留下的。只刪目前帳號的 pending，其他帳號的模擬 pending 會在 guard 消失後外流。
 
-S0 堵住「模擬 → 還原 → 外流」。有一個限制：清理後若離線，沒有本機快取，會回到登入畫面，等連線後再載入。登出、換帳號時的處理交給 Q6。
+S0 堵住「模擬 → 還原 → 外流」。限制：
+
+- 清理後若離線，沒有本機快取，會回到登入畫面，等連線後再載入。
+- 刪除本機 user 會略過快取 Sessions 的合併。尚未同步的 Sessions 仍保存在 owner-scoped 的 pending sidecar 中，不會遺失；只有還沒完成 session-sync cutover 的舊裝置例外。
+- S0 單獨上線也是安全的：模擬仍會寫入本機 user，但在按下「還原」之前，所有上雲都被擋住，而「還原」會刪除所有 pending 與本機 user。原本「其他帳號被擋住」的問題仍在，要等 Q6。
+
+登出、換帳號時的處理交給 Q6。
 
 ### Q6：移除模擬，改用測試帳號（建議的結構修正）
 
@@ -97,7 +103,7 @@ S0 堵住「模擬 → 還原 → 外流」。有一個限制：清理後若離�
    - 刪除開發者面板的「模擬等級」與「模擬 Pro」：`_devApplyLevel()`、`_devApplyPro()`、`_devProSnapshot()`、`_devBackupOnce()`。
    - 理由：模擬等級見 §2.4；模擬 Pro 見 §3 的 Q5 列。
    - 開發者面板保留其他不改資料的功能。
-   - 這會移除 PRO-014M（v1.25.3）為 `server` source 加入的 Pro 模擬。
+   - 這會移除 PRO-014M（v1.25.3）為 `server` source 加入的 Pro 模擬。Q6 上線時，`tasks.md` 中「PRO-014H 的實機驗證需要 PRO-014M」的說明要改成使用測試帳號。
 2. **改用測試帳號**
    - 在 preview Supabase 專案建立固定的測試帳號（免費、試用中、付費、終身、不同等級），由 SQL 直接設定 `profiles` 與 `pro_entitlements`。
    - 寫一份 `docs/` 開發者說明：帳號清單與設定用的 SQL。
@@ -105,6 +111,7 @@ S0 堵住「模擬 → 還原 → 外流」。有一個限制：清理後若離�
 3. **舊 backup 的一次性清理**
    - Q6 不再寫入 `orbit_dev_backup`。
    - 已存在的 backup 一律視為「可能有帳號正在模擬」：`upsertProfile()` 與 `refreshProEntitlement()` 的 guard 照舊擋住所有帳號（fail closed，與現況相同）。
+   - 模擬的 projection 一定與 backup 一起出現：`_devApplyPro()` 先寫 backup 再寫 projection，「還原」與 `clearAll()` 都會清除 projection。projection 本身也從不上傳。
    - 開發者面板只在 backup 存在時顯示「清除殘留的模擬資料」，按下後做 S0 的完整清理。
    - 清除所有 pending 會丟掉這台開發裝置上尚未同步的真實 profile 變動。只發生在開發者裝置上，而且只在開發者主動按下時。
 4. **登出後回不來**：Q6 之後不會再產生新的 backup。既有 backup 造成的卡住，從任一能登入的帳號（或訪客）按「清除殘留」即可解除。
