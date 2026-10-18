@@ -566,14 +566,20 @@ def build_room_details(b):
     for dx in (-1, 1):
         b.box(g, (0.035, rd - 2 * inset, 0.013), (rx + dx * (rw / 2 - inset), ry, 0.0065), m['rug_border'])
 
-    # Wall sconces under the crown, one above each warm light pool.
+    # Wall sconces under the crown, one above each warm light pool. The spot
+    # lights sit in front of and above them, so the fixtures cast no shadow;
+    # otherwise each would print a dark wedge into its own pool.
     for x in (-2.4, -0.8, 0.8, 2.4):
-        b.box(g, (0.07, 0.02, 0.12), (x, BACK_Y - 0.01, H - 0.28), m['fixture'], bevel=0.006)
-        b.cyl(g, 0.008, 0.2, (x, BACK_Y - 0.11, H - 0.26), m['fixture'], rot=(math.pi / 2, 0, 0), verts=10)
-        b.cyl(g, 0.045, 0.1, (x, BACK_Y - 0.23, H - 0.29), m['fixture'], rot=(math.radians(-35), 0, 0), r2=0.03)
+        parts = (
+            b.box(g, (0.07, 0.02, 0.12), (x, BACK_Y - 0.01, H - 0.28), m['fixture'], bevel=0.006),
+            b.cyl(g, 0.008, 0.2, (x, BACK_Y - 0.11, H - 0.26), m['fixture'], rot=(math.pi / 2, 0, 0), verts=10),
+            b.cyl(g, 0.045, 0.1, (x, BACK_Y - 0.23, H - 0.29), m['fixture'], rot=(math.radians(-35), 0, 0), r2=0.03),
+        )
+        for part in parts:
+            part.visible_shadow = False
 
-    # Wall clock above the shelf.
-    ccx, ccy, ccz = RIGHT_X - 1.75, BACK_Y - 0.03, 2.45
+    # Wall clock above the shelf, below the fourth sconce.
+    ccx, ccy, ccz = RIGHT_X - 1.75, BACK_Y - 0.03, 2.28
     b.cyl(g, 0.19, 0.04, (ccx, ccy, ccz), m['walnut'], rot=(math.pi / 2, 0, 0))
     b.cyl(g, 0.165, 0.006, (ccx, ccy - 0.022, ccz), m['clock_face'], rot=(math.pi / 2, 0, 0))
     for k in range(12):

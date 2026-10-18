@@ -29,7 +29,7 @@
 
 ## 3. 進行中的工作
 
-- **PS-245（精細化）**：分支 `feat/ps-245-blender-detail`，全解析度渲染、runtime 素材、manifest、版本（v1.30.0）與文件都已完成，PR 開啟後依 §2 做獨立 review。合併後本節改為「無進行中的工作」。
+- **PS-245（精細化）**：分支 `feat/ps-245-blender-detail`，PR [#169](https://github.com/yoyoCadence/Orbit/pull/169)。獨立 review 回報 2 個 P2：壁燈在光暈裡投出暗影且有一塊落在相框下、任務的完成紀錄與範圍不符；另有 P3，包括時鐘與壁燈重疊。修正後需要重渲房間。合併後本節改為「無進行中的工作」。
 - 草稿 PR [#154](https://github.com/yoyoCadence/Orbit/pull/154)（`feat/pro-014l-streak-unlock-rpc`，PRO-014L）不是本工作階段開的；它改的 SUB-16 路徑與 `PRO-014P` 相同。
 - Codex review 額度在 2026-10-18 用完；之後的 PR 依 §2 改用獨立 Claude review（只讀 agent，對照程式碼回報 P1／P2／P3，修完再請它複查）。
 
@@ -59,7 +59,6 @@
 ### 需要使用者決定或執行
 
 - **BUG-109A**：在 production 套用 `pwa/db/013_signup_profile_name.sql`，需專案擁有者執行，步驟見 `docs/bug-109-signup-name-truncation.md`。
-- **PS-245（精細化）**：使用者原本就要求「精細模型」，PS-244 只解決一致性。實作計畫見 §6。
 - **角色 3D 化**：主角與 Companion 仍是 PS-242 的像素 sprite。改成 3D 會推翻已核准素材（主角 12 個姿勢、Companion 6 個狀態），範圍很大，等使用者決定。
 - **PRO-014P、PRO-014Q**：entitlement 流程，實作前需提案與核准。PRO-014P 擋 `PRO-014H` cutover。
 - **PS-246**：舊 16:9 相機的位置覆寫（`x`／`y`）仍會套用到 V2 家具，屬使用者資料語意變更，需先提案。`width`／`anchor` 已在 #168 改為不套用。
@@ -72,7 +71,7 @@
 
 ## 6. PS-245 精細化：實作計畫
 
-使用者原始需求是「用 blender 的精細模型去完善『空間』分頁」。PS-244 只處理一致性。PS-245 尚無任何程式碼；分支 `feat/ps-245-blender-detail` 已從 main 開出並推送；先看分支上的 commit 判斷進度。
+使用者原始需求是「用 blender 的精細模型去完善『空間』分頁」。PS-244 只處理一致性，PS-245 依下列計畫實作（PR #169）。門、牆面掛畫與重新取景刻意不做，理由見 `tasks.md` 的 PS-245。下列內容保留作為設計紀錄。
 
 程式碼只改 `art-pipeline/ps244-blender/scene.py`；素材、manifest、測試數字、CHANGELOG 與版本由下面的完成流程更新。相機 `CAMERA` 不動，角色寬度 24／13 不必重新校準。實作計畫：
 
