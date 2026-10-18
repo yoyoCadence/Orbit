@@ -81,7 +81,8 @@
 - [ ] **PRO-014P** `server` source 下，換日的 Pro 判定要等 entitlement refresh 完成
   - 問題（PR #160 Codex review 指出，2026-10-18 確認）：cached-user 啟動先執行 `bootWithLocalState()`，其中 `processYesterdayStreak()` 依當下的 `isProUser()` 決定是否提供連勝保護；`db.refreshProEntitlement()` 在背景同步之後才跑。projection 超過 `SNAPSHOT_TTL_MS` 的付費使用者會先被當成非 Pro：連勝可能被重設、沒有保護 offer，且當天已標記處理，之後的 refresh 無法補救。
   - 影響：`legacy` source（目前 production）下不會發生；只影響已 opt-in `server` 的裝置。cutover 後會直接傷害付費使用者。
-  - 方向（實作前需提案與核准，屬 entitlement 啟動流程）：在 `server` source 下，把依賴 Pro 的換日處理延後到 refresh 完成或確定失敗之後；或讓換日處理對「projection 過期」採保守路徑，不做不可逆的重設。
+  - 方向（實作前需提案與核准，屬 entitlement 啟動流程）：在 `server` source 下，只有取得**權威的**結果才能做不可逆的換日處理，也就是 refresh 成功且 `my_pro_status()` 明確回非 Pro 的時候。refresh 失敗（網路或 RPC 錯誤）時，`refreshProEntitlement()` 會保留過期 snapshot，`isProFromSnapshot()` 仍把它當成非 Pro，因此「等 refresh 結束」本身不夠：失敗或未知時必須延後連勝重設（保留待處理狀態，下次 refresh 成功再處理），不能以非 Pro 執行。
+  - 完成條件：projection 過期且 refresh 失敗時連勝不被重設、當天不被標記為已處理；refresh 成功且為 Pro 時提供保護 offer；明確非 Pro 時照常重設。三種情況都有測試。
   - **擋 `PRO-014H`**
   - 依賴：`PRO-014O`
 
