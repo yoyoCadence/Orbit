@@ -192,18 +192,21 @@
 
 ## In Progress
 
-- [ ] **PS-245** Blender 工作站精細化（使用者要求「精細模型」）
-  - 目標：在 PS-244 的同一管線上提高模型與房間細節，讓小卡尺寸也看得出材質與結構。
-  - 範圍：家具真實結構（倒角、桌腳與走線槽、五爪腳與扶手、螢幕外殼與支架、鍵帽、滑鼠、桌面小物）；房間細節（吸頂燈或燈具、門、百葉窗、踢腳板、地毯、插座、牆面掛畫、程序化木紋）；檢討相機取景讓家具在 Orbit Window 小卡上更大。
-  - 不含：主角與 Companion 的 3D 化（範圍大、會推翻 PS-242 已核准的像素角色，需使用者另行決定）。
-  - 完成條件：五階段預覽在 100% 與小卡尺寸都通過目視 QA；`ps242`／`ps243` gate 與預算通過；placement 測試通過。
-
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
 
 ---
 
 ## Done
+
+- [x] **PS-245** Blender 工作站精細化（使用者要求「精細模型」）
+  - 目標：在 PS-244 的同一管線上提高模型與房間細節，讓小卡尺寸也看得出材質與結構。
+  - 範圍：家具真實結構（倒角、桌腳與走線槽、五爪腳與扶手、螢幕外殼與支架、鍵帽、滑鼠、桌面小物）；房間細節（吸頂燈或燈具、門、百葉窗、踢腳板、地毯、插座、牆面掛畫、程序化木紋）；檢討相機取景讓家具在 Orbit Window 小卡上更大。
+  - 不含：主角與 Companion 的 3D 化（範圍大、會推翻 PS-242 已核准的像素角色，需使用者另行決定）。
+  - 完成條件：五階段預覽在 100% 與小卡尺寸都通過目視 QA；`ps242`／`ps243` gate 與預算通過；placement 測試通過。
+  - 完成（2026-10-18，v1.30.0）：`scene.py` 新增 `Builder.tube`／`panel`／`screen` 與 numpy 繪製的螢幕 UI、木紋與軟木材質；8 件家具與房間細節依上述範圍完成；相機與角色寬度不變。
+  - 驗證：`ps242:manifest -- --check`、`ps243:assets -- --check`；首屏 182,493 B、完整場景 1,298,860 B；五階段預覽目視 QA。
+  - 誠實評估：地板留白仍偏多；角色仍是像素 sprite，是畫面中最粗糙的部分，是否 3D 化需使用者決定。
 
 - [x] **PS-244** 以 Blender 預渲染 Formal Workstation 環境素材（房間＋8 件家具×5 階段）
   - 目標：用同一個 Blender 場景與固定相機重做「空間」分頁的房間背景與 8 件 Workspace Upgrade 家具，修正目前繪製房間＋舊像素家具混用造成的風格、透視、比例與接觸陰影不一致。

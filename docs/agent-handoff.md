@@ -4,7 +4,7 @@
 
 任務本身的定義與驗收條件以 [`tasks.md`](../tasks.md) 為準；本檔只記錄進行中的狀態、與使用者約定的工作規則，以及接手需要的操作細節。
 
-> 最後更新：2026-10-18（UTC 06:25 左右）。main = `aa98bdb`（v1.29.0，#167、#168 已合併）。
+> 最後更新：2026-10-18（UTC 07:05 左右）。main = `aa98bdb`（v1.29.0，#167、#168 已合併）。
 
 ## 1. 接手前先讀
 
@@ -29,7 +29,7 @@
 
 ## 3. 進行中的工作
 
-- **PS-245（精細化）**：分支 `feat/ps-245-blender-detail`（從 `aa98bdb` 開），計畫見 §6。`scene.py` 的家具與房間細節已寫入（WIP commit），正在跑 768px 草稿檢查構圖；尚未全解析度渲染、尚未更新 runtime 素材與測試數字、PR 尚未開。若 session 中斷，從「草稿渲染 → 目視 → 全解析度」繼續。
+- **PS-245（精細化）**：分支 `feat/ps-245-blender-detail`，全解析度渲染、runtime 素材、manifest、版本（v1.30.0）與文件都已完成，PR 開啟後依 §2 做獨立 review。合併後本節改為「無進行中的工作」。
 - 草稿 PR [#154](https://github.com/yoyoCadence/Orbit/pull/154)（`feat/pro-014l-streak-unlock-rpc`，PRO-014L）不是本工作階段開的；它改的 SUB-16 路徑與 `PRO-014P` 相同。
 - Codex review 額度在 2026-10-18 用完；之後的 PR 依 §2 改用獨立 Claude review（只讀 agent，對照程式碼回報 P1／P2／P3，修完再請它複查）。
 
@@ -68,7 +68,7 @@
 
 ### 可直接做（低風險）
 
-- PS-245（進行中）。完成後依 `tasks.md` 的 Next 繼續；目前 Next 只有需要使用者執行的 BUG-109A。
+- PS-245 合併後，依 `tasks.md` 的 Next 繼續；目前 Next 只有需要使用者執行的 BUG-109A，其餘待辦都需要使用者決定或核准（見上）。
 
 ## 6. PS-245 精細化：實作計畫
 

@@ -7,78 +7,78 @@
   "props": {
     "corner-desk": {
       "path": "assets/personal-space/v2/workspace/props/corner-desk.png",
-      "x": 38.997,
-      "y": 66.113,
-      "width": 23.568,
+      "x": 38.965,
+      "y": 66.309,
+      "width": 23.633,
       "z": 24,
       "bbox": [
-        418,
+        417,
         412,
         780,
-        677
+        679
       ]
     },
     "office-chair": {
       "path": "assets/personal-space/v2/workspace/props/office-chair.png",
-      "x": 39.974,
-      "y": 66.211,
-      "width": 8.073,
+      "x": 39.714,
+      "y": 69.434,
+      "width": 8.854,
       "z": 30,
       "bbox": [
-        552,
-        447,
-        676,
-        678
+        542,
+        445,
+        678,
+        711
       ]
     },
     "office-shelf": {
       "path": "assets/personal-space/v2/workspace/props/office-shelf.png",
-      "x": 72.331,
+      "x": 69.466,
       "y": 54.395,
-      "width": 39.453,
+      "width": 34.766,
       "z": 22,
       "bbox": [
-        808,
+        800,
         265,
-        1414,
+        1334,
         557
       ]
     },
     "desk-lamp": {
       "path": "assets/personal-space/v2/workspace/props/desk-lamp.png",
-      "x": 32.91,
+      "x": 32.943,
       "y": 47.754,
-      "width": 3.711,
+      "width": 3.776,
       "z": 29,
       "bbox": [
         477,
         410,
-        534,
+        535,
         489
       ]
     },
     "planning-board": {
       "path": "assets/personal-space/v2/workspace/props/planning-board.png",
-      "x": 39.128,
-      "y": 38.281,
-      "width": 13.542,
+      "x": 39.193,
+      "y": 39.062,
+      "width": 14.193,
       "z": 10,
       "bbox": [
-        497,
-        238,
-        705,
-        392
+        493,
+        236,
+        711,
+        400
       ]
     },
     "single-monitor": {
       "path": "assets/personal-space/v2/workspace/props/single-monitor.png",
-      "x": 40.723,
+      "x": 40.755,
       "y": 48.438,
-      "width": 7.096,
+      "width": 7.031,
       "z": 28,
       "bbox": [
-        571,
-        383,
+        572,
+        382,
         680,
         496
       ]
@@ -86,27 +86,27 @@
     "dual-monitor": {
       "path": "assets/personal-space/v2/workspace/props/dual-monitor.png",
       "x": 40.495,
-      "y": 48.535,
+      "y": 48.438,
       "width": 12.891,
       "z": 28,
       "bbox": [
         523,
-        383,
+        381,
         721,
-        497
+        496
       ]
     },
     "office-plant": {
       "path": "assets/personal-space/v2/workspace/props/office-plant.png",
-      "x": 72.461,
-      "y": 64.844,
-      "width": 23.047,
+      "x": 72.135,
+      "y": 64.746,
+      "width": 23.307,
       "z": 23,
       "bbox": [
-        936,
-        416,
-        1290,
-        664
+        929,
+        408,
+        1287,
+        663
       ]
     }
   }
