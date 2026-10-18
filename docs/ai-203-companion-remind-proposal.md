@@ -124,7 +124,12 @@ art bible 要求 Companion 的表情與肢體不暗示憤怒、被拋棄，或�
 F4 的細節：
 
 - 時段用與 `calendarDate` 相同的 `now` 計算。00:00 到 `newDayHour` 的限制（§4.2）照舊。
-- **到期時重新 render**：快照只在 render 時重建，`dayCycle.js` 的換日監看也不會每分鐘重繪 Companion。所以首頁小卡與完整頁面在顯示 `remind` 時，要排一個計時器，在當天時段結束時 refresh，並在 unmount 時取消。
+- **時段邊界的重新 render**：快照只在 render 時重建，`dayCycle.js` 的換日監看也不會每分鐘重繪 Companion。所以首頁小卡與完整頁面要：
+  - 在時段開始前掛載時，排一個計時器在時段開始時 refresh；
+  - 顯示 `remind` 時，排一個計時器在時段結束時 refresh；
+  - 監聽 `visibilitychange`，頁面重新可見時重新判斷，因為裝置休眠會讓計時器延後；
+  - unmount 時取消計時器與監聽。首頁可沿用 `mountOrbitWindow()` 回傳的 cleanup。
+- `newDayHour` 在 12 以後時（資料庫允許 0–23，設定頁只提供 0–8），時段落在 00:00 到 `newDayHour` 的限制內，當天不會提醒。
 - 兩頁用同一個時段，所以會一起結束；重新掛載不會延長。
 
 F3 為什麼不建議：獨立 review 確認，要讓「第一次顯示後 30 分鐘」安全成立，還需要：
@@ -171,7 +176,8 @@ F3 為什麼不建議：獨立 review 確認，要讓「第一次顯示後 30 �
 - 選 F4 時：
   - 時段開始前與結束後都不是 `remind`，用注入的 `now` 測試，與機器時間無關；
   - 頁面開著不動時，時段結束後會自動 refresh 並離開 `remind`（用假計時器測試）；unmount 時取消計時器；
-  - 不寫入任何 state。
+  - 不新增任何 state 寫入；首頁每次 render 既有的 `reconcileAndSavePersonalSpaceV2()` 儲存不受影響；
+  - 時段開始前掛載、頁面一直開著時，時段開始後會自動 refresh 並出現 `remind`；頁面從背景回到前景時會重新判斷。
 - 從 `coreState.dailyPlan` 移除最後一個合格任務後，重新建立的快照不再是 `remind`。
 - 注入的 `now` 在 00:00 到 `newDayHour` 之間時不出現 `remind`，與執行測試的機器時間無關。
 - 首頁小卡與完整頁面的 Companion **狀態與台詞 key** 一致（台詞文字的統一另立任務，見 §9 第 6 點）；選 D2 時，靜態 fallback 的 `remind` 動畫不循環。
