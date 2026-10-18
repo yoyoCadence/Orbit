@@ -55,6 +55,10 @@ CHARACTERS = {
                   'x': lambda p: 69 if p >= 75 else 73, 'y': 73, 'width': 13, 'anchor': 'center'},
 }
 PHASES = (0, 25, 50, 75, 100)
+# Mirrors .orbit-window-achievement-frame in pwa/assets/style.css (HW-105). The
+# DOM frame is drawn over every phase, so previews show it to catch overlaps.
+# Size is its 86px cap on the 960px logical frame; 4:3 plus 3px padding.
+PHOTO_FRAME = {'left': 47, 'top': 20, 'width': 86 / 960 * 100}
 
 
 def backdrop(size):
@@ -123,6 +127,15 @@ def place(canvas, sprite, x, y, width, anchor='center-bottom'):
     canvas.alpha_composite(sprite, (round(cx - w / 2), round(top)))
 
 
+def draw_photo_frame(canvas):
+    w = canvas.width * PHOTO_FRAME['width'] / 100
+    left, top = canvas.width * PHOTO_FRAME['left'] / 100, canvas.height * PHOTO_FRAME['top'] / 100
+    pad = w * 3 / 86
+    draw = ImageDraw.Draw(canvas)
+    draw.rectangle((left, top, left + w, top + w * 3 / 4 + 2 * pad), fill=(214, 165, 92))
+    draw.rectangle((left + pad, top + pad, left + w - pad, top + w * 3 / 4 + pad), fill=(233, 223, 198))
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('render_dir')
@@ -168,6 +181,7 @@ def main():
         for spec in CHARACTERS.values():
             sprite = Image.open(os.path.join(PWA, *spec['path'].split('/'))).convert('RGBA')
             place(canvas, sprite, spec['x'](progress), spec['y'], spec['width'], spec['anchor'])
+        draw_photo_frame(canvas)
         canvas.convert('RGB').resize((768, 512), Image.LANCZOS).save(
             os.path.join(args.preview_dir, f'phase-{progress:03d}.jpg'), quality=86)
     print(json.dumps({pid: {k: v for k, v in pl.items() if k != 'bbox'} for pid, pl in placements.items()}, indent=1))
