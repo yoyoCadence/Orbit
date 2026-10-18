@@ -29,7 +29,7 @@
 
 ## 3. 進行中的工作
 
-- **PS-246（提案）**：分支 `docs/ps-246-proposal`。只寫提案 [`docs/ps-246-v2-placement-overrides.md`](ps-246-v2-placement-overrides.md)，不改程式碼。tasks.md 中 PS-246 已依 AGENTS §15 經 Next 移入 In Progress。合併後 PS-246 留在 In Progress，等使用者核准方案 A，以及 Edit Mode 入口（A1／A2）與 PS-246B 的決定；核准後把提案 §8 寫成驗收條件再實作。
+- **PS-246（提案）**：分支 `docs/ps-246-proposal`。只寫提案 [`docs/ps-246-v2-placement-overrides.md`](ps-246-v2-placement-overrides.md)，不改程式碼。tasks.md 中 PS-246 已依 AGENTS §15 經 Next 移入 In Progress。合併後 PS-246 留在 In Progress，等使用者核准方案 A，以及 Edit Mode 入口（A1／A2）、PS-246B 與 `unmappedPlacements` 摘要（S1／S2）的決定；核准後把提案 §8 寫成驗收條件再實作。
 - 草稿 PR [#154](https://github.com/yoyoCadence/Orbit/pull/154)（`feat/pro-014l-streak-unlock-rpc`，PRO-014L）不是本工作階段開的；它改的 SUB-16 路徑與 `PRO-014P` 相同。
 - Codex review 額度在 2026-10-18 用完；之後的 PR 依 §2 改用獨立 Claude review（只讀 agent，對照程式碼回報 P1／P2／P3，修完再請它複查）。
 
@@ -63,7 +63,7 @@
 - **BUG-109A**：在 production 套用 `pwa/db/013_signup_profile_name.sql`，需專案擁有者執行，步驟見 `docs/bug-109-signup-name-truncation.md`。
 - **角色 3D 化**：主角與 Companion 仍是 PS-242 的像素 sprite。改成 3D 會推翻已核准素材（主角 12 個姿勢、Companion 6 個狀態），範圍很大，等使用者決定。
 - **PRO-014P、PRO-014Q**：entitlement 流程，實作前需提案與核准。PRO-014P 擋 `PRO-014H` cutover。
-- **PS-246**：舊 16:9 相機的位置覆寫（`x`／`y`）仍會套用到 V2 家具（`width`／`anchor` 已在 #168 改為不套用）。提案見 `docs/ps-246-v2-placement-overrides.md`，等使用者決定三件事：方案 A、Edit Mode 入口（A1／A2）、是否建立 PS-246B。
+- **PS-246**：舊 16:9 相機的位置覆寫（`x`／`y`）仍會套用到 V2 家具（`width`／`anchor` 已在 #168 改為不套用）。提案見 `docs/ps-246-v2-placement-overrides.md`，等使用者決定四件事：方案 A、Edit Mode 入口（A1／A2）、是否建立 PS-246B、`migration.unmappedPlacements` 摘要（S1 改規格／S2 實作）。
 - **AI-203**：Companion `remind` 的資料來源與頻率，產出規格給使用者核准。
 - **PS-243**：真機、installed PWA、雙帳號、螢幕閱讀器等 human gate。
 
