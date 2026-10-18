@@ -45,9 +45,10 @@
   - 目標：讓 companion 關係變化可由真實行為驅動，而不是聊天次數
   - 對應 roadmap：Phase 2 / Phase 4
 
-- [ ] **AI-203** 為 Companion `remind` 接上 `missedPatterns` 資料來源
+- [ ] **AI-203** Companion `remind` 的資料來源與頻率提案（Mode A，只產出規格）
   - 現況（AI-201 盤點時發現）：`companionEngine.js` 只有在 Low Momentum 且 `missedPatterns` 含使用者選定目標時才回傳 `remind`，但 `viewModels.js` 讀取的 `coreState.missedPatterns` 沒有任何寫入點，所以這個狀態在 production 永遠不會出現。
-  - 待決：「使用者選定目標」的資料來源（Goals 頁的目標或 V2 state 的新欄位）與規格所說 bounded remind 的頻率上限；屬產品決策，需先 Mode A 提案
+  - 交付物：一份提案，決定「使用者選定目標」的資料來源（Goals 頁的目標或 V2 state 的新欄位）、`missedPatterns` 的計算方式，以及 bounded remind 的頻率上限與冷卻規則
+  - 完成條件：提案經使用者核准；核准後才建立實作任務 `AI-203B`，並把核准的規則寫成它的驗收條件
   - 對應 roadmap：Phase 2
 
 - [ ] **PRO-014** SUB-14／Pro entitlement 工作串
@@ -75,7 +76,20 @@
   - **前置：`PRO-014J` 完成（因此 C／D／I 皆已完成且 client 已上線），以及 `PRO-014L` 完成。** 依 AGENTS.md §3 高風險規則，production rollout 需另行取得明確核准
   - **為什麼 `PRO-014L` 是前置**：SUB-16 連勝解鎖目前在 client 端寫 `state.user.isPro`。切到 `server` source 後那個寫入不再有任何效果，連勝解鎖會靜默失效 —— cutover 不該挾帶一個功能迴歸。
   - 一併移除 `PRO-014C` 建立的 legacy 相容層（client 寫回 `trial_started_at`）—— cutover 後 legacy gate 不再被使用。**移除與旗標切換應在同一次變更內**，rollback 時也一起還原。
-  - 依賴：`PRO-014J`、`PRO-014L`、`PRO-014O`（已於 v1.25.5 完成：cached-user 啟動也會 refresh projection）
+  - 依賴：`PRO-014J`、`PRO-014L`、`PRO-014O`（已於 v1.25.5 完成：cached-user 啟動也會 refresh projection）、`PRO-014P`（**擋 cutover**）；實機驗證前也需完成 `PRO-014Q`
+
+- [ ] **PRO-014P** `server` source 下，換日的 Pro 判定要等 entitlement refresh 完成
+  - 問題（PR #160 Codex review 指出，2026-10-18 確認）：cached-user 啟動先執行 `bootWithLocalState()`，其中 `processYesterdayStreak()` 依當下的 `isProUser()` 決定是否提供連勝保護；`db.refreshProEntitlement()` 在背景同步之後才跑。projection 超過 `SNAPSHOT_TTL_MS` 的付費使用者會先被當成非 Pro：連勝可能被重設、沒有保護 offer，且當天已標記處理，之後的 refresh 無法補救。
+  - 影響：`legacy` source（目前 production）下不會發生；只影響已 opt-in `server` 的裝置。cutover 後會直接傷害付費使用者。
+  - 方向（實作前需提案與核准，屬 entitlement 啟動流程）：在 `server` source 下，把依賴 Pro 的換日處理延後到 refresh 完成或確定失敗之後；或讓換日處理對「projection 過期」採保守路徑，不做不可逆的重設。
+  - **擋 `PRO-014H`**
+  - 依賴：`PRO-014O`
+
+- [ ] **PRO-014Q** 開發者面板的 backup 不應擋住其他帳號或非 Pro 模擬的 entitlement refresh
+  - 問題（PR #158 Codex review 指出，2026-10-18 確認）：`storage.refreshProEntitlement()` 只要 `FLAG_DEV_BACKUP` 存在就直接 return。這個 backup 也由等級模擬器建立，且 `storage.clearAll()` 登出時不會清除。開發者登出後換另一個帳號，該帳號的 refresh 會一直被跳過，在 `server` source 下 fail closed，直到手動重設。
+  - 影響：只影響使用過開發者面板的裝置。
+  - 方向：改用 owner-scoped、專屬 Pro 模擬的標記；或在 owner 改變時清除或驗證 backup。屬 entitlement 路徑，實作前附變更說明。
+  - 依賴：`PRO-014M`
 
 - [ ] **PRO-014L** SUB-16 連勝解鎖改由 server 授權
   - 目標：45 天連勝換 30 天 Pro 的授權由 server 發放，而不是 client 自行寫入
