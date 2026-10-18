@@ -35,6 +35,8 @@
 
 兩個 PR 都改 `tasks.md`（不同段落），後合併的那個可能需要先 merge main。
 
+> **阻塞（2026-10-18 02:20 UTC）**：Codex 回覆「You have reached your Codex usage limits for code reviews」，#167（`d7a283d`）與 #168（`4f5a781`）的重審都顯示 Failed。依 §2 合併條件，這兩個 PR 在 Codex 能重審、或使用者另定規則前不合併。所有已出現的 finding 都已修正並 resolve，CI 在跑。
+
 ## 4. 本次工作階段已完成（2026-10-17～18）
 
 | PR | 版本 | 內容 |
