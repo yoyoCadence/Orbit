@@ -119,7 +119,7 @@ V2 失敗被刻意隔離：`refreshCanonicalStateAndReconcilePersonalSpaceV2()` 
 |---|---|---|
 | 每日 Main Quest 勝出者 | `isDailyMainQuestCandidate()`：`complete`、`impactType = task`、價值 A／S、時長 ≥ 25 分鐘；每日只取一筆（`questEngine.js`） | Gold 100、depth 3、quest progress 1、Workspace Upgrade project progress 25 |
 | 其他有效 Session | `isValidRewardSession()`，且 `mapSessionToHiddenStat()` 有回傳值 | 只給一個 hidden stat，**不給 Gold** |
-| 有效但不給獎勵的 Session | `isValidRewardSession()` 為真，但 `mapSessionToHiddenStat()` 回 `null`：非 productive 的 Session（例如娛樂），以及未滿 30 分鐘的 recovery | 不產生任何 ledger entry |
+| 有效但不給獎勵的 Session | `isValidRewardSession()` 為真，但 `mapSessionToHiddenStat()` 回 `null`：非 productive 的 Session，例如娛樂，以及 `impactType`／`taskNature` 為 recovery 且未滿 30 分鐘的 Session | 不產生任何 ledger entry |
 | Workspace Upgrade 完成 | `projectEngine.js`：4 個不同日期的 Main Quest 貢獻 = 100% | `world_unlock: formal-workstation`、`relationship: companion +1` |
 
 Session 刪除或 Undo 會為該 source 建立 tombstone 並撤銷其 entry（`rewardLedger.js` → `reverseRewardsForSource()`）；`platform/sessionDeletionLog.js` 保存尚未被遠端確認的刪除，避免同步把已撤銷的 Session 帶回來。
@@ -175,7 +175,7 @@ Session 刪除或 Undo 會為該 source 建立 tombstone 並撤銷其 entry（`r
 | `totalXP`、Sessions | 是（profile／sessions 表） | 遠端資料 |
 | `level`、legacy Gold | 不儲存 | 由 `totalXP` 即時推導 |
 | V2 reward ledger、hiddenStats、companion、activeProject | 否（本機 owner-scoped） | 由已同步的 Sessions 重新 reconcile，因此在相同 Session 集合下結果一致 |
-| V2 wallet | 否 | ledger 的 Gold 加上該裝置的 `openingGold`，因此可能因 `openingGold` 而不同 |
+| V2 wallet | 否 | 該裝置的 `openingGold` ＋ ledger 的 Gold − `spentGold`（V2 目前不寫入 `spentGold`），因此可能因 `openingGold` 而不同 |
 | V2 `openingGold` | 否 | 每台裝置在自己 finalize 遷移時各算一次：`totalXP` 扣掉 reward epoch 之後的 Session XP，換成 level 後扣掉**該裝置**的 legacy 已花費 Gold。finalize 後不再重算。兩台裝置的值**不保證相同**：finalize 時間之間若有不經 Session 的 XP（例如 `dayCycle.js` 的每週獎勵 +60），或兩台的 legacy 花費不同，結果就會不同 |
 | `ownedItems`、`placedItems`、`selectedSceneId`、layout、memory log | 否 | **只存在該裝置**；換裝置或清除本機資料即遺失 |
 
