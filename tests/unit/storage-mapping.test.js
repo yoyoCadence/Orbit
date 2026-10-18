@@ -166,6 +166,20 @@ describe('loadFromRemote — tasks / sessions / energy rows', () => {
     }]);
   });
 
+  it('回傳的 backfilled 等本機待補傳的 Session 寫入後才完成，並清掉待同步標記（HW-110）', async () => {
+    localStorage.setItem('yoyo_user', JSON.stringify({ id: 'uid-1' }));
+    localStorage.setItem('yoyo_sessions', JSON.stringify([{
+      id: 's-local', taskId: 't-1', date: '2026-07-06',
+      completedAt: '2026-07-06T02:00:00Z', _syncPending: true,
+    }]));
+
+    const result = await db.loadFromRemote('uid-1');
+    await result.backfilled;
+
+    expect(captured.inserts.sessions).toHaveLength(1);
+    expect(storage.getSessions().find(s => s.id === 's-local')._syncPending).toBeUndefined();
+  });
+
   it('energy row：last_reset_date null → \'\'', async () => {
     tableData.energy = { user_id: 'uid-1', current_energy: 80, max_energy: 100, last_reset_date: null };
     await db.loadFromRemote('uid-1');
