@@ -204,7 +204,7 @@
     - 盤點結果：沒有「目標」資料模型（`goals` 已由 `tasks` 取代，Goals 頁是完成紀錄）。建議以今日計畫中符合 Main Quest 資格的任務作為使用者選定的目標。
     - review 修正：沒有 Session 的新使用者 Momentum 是 `low`，所以需要「歷史不足不提醒」；今日計畫用日曆日、Sessions 用 `newDayHour`，且午夜後儲存會把舊計畫改成新日期，所以只用首頁顯示的計畫，並在 00:00 到 `newDayHour` 之間不提醒。
     - 待另立：今日計畫的日期模型與 effective date 對齊（影響 Main Quest 與首頁）；8 個 Companion 台詞在兩個檔案的文字統一。
-    - 待使用者決定：目標來源（A／B）、歷史不足（G1／G0）、Momentum（M1／M2）、頻率（F3 每日一段，建議／F1／F2）、靜態 fallback 動畫（D2／D1）、台詞，以及是否另立上面兩個任務。
+    - 待使用者決定：目標來源（A／B）、歷史不足（G1／G0）、Momentum（M1／M2）、頻率（F4 每日固定時段，建議／F3／F1／F2）、靜態 fallback 動畫（D2／D1）、台詞，以及是否另立上面兩個任務。
 
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
