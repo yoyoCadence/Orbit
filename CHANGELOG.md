@@ -43,7 +43,7 @@
   - `personalSpacePixiRuntime.test.js`：新的家具路徑。
 - `npm run ps242:manifest -- --check` 與 `npm run ps243:assets -- --check` 通過。
 - 五個專案階段的合成預覽（`art-pipeline/ps244-blender/previews/`）目視 QA，含成就相框：家具透視與房間一致、接觸陰影正確、相框不重疊、天花板輪廓線已移除。
-- `npm run lint` 通過；`npm test`（64 files／1070 tests）通過。
+- `npm run lint` 通過；`npm test`（64 files／1070 tests）通過；`tests/e2e` 41/41 通過（本機以容器內建 Chromium 執行）。
 
 ---
 
