@@ -18,11 +18,14 @@ Everything is generated from code. There are no external models, textures or HDR
 ## Reproduce
 
 ```bash
-# Blender as a Python module (Cycles CPU + OpenImageDenoise); needs Python 3.13
-python3 -m venv /tmp/bpyenv && /tmp/bpyenv/bin/pip install bpy==5.2.2
+# One environment for both steps. Python 3.13; bpy is Blender as a Python
+# module (Cycles CPU + OpenImageDenoise). Pillow and NumPy are pinned to the
+# versions that produced the committed assets.
+python3 -m venv /tmp/bpyenv
+/tmp/bpyenv/bin/pip install bpy==5.2.2 pillow==12.3.0 numpy==2.5.3
 
 /tmp/bpyenv/bin/python art-pipeline/ps244-blender/render_pack.py /tmp/ps244-renders --width 1536 --samples 96
-python3 art-pipeline/ps244-blender/process_pack.py /tmp/ps244-renders --write-runtime
+/tmp/bpyenv/bin/python art-pipeline/ps244-blender/process_pack.py /tmp/ps244-renders --write-runtime
 npm run ps242:manifest && npm run ps243:assets
 ```
 

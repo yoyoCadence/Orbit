@@ -58,6 +58,16 @@ describe('PS-244 Blender workstation placements', () => {
     }
   });
 
+  it('does not add a CSS shadow on top of the baked contact shadow', () => {
+    // The poster fallback draws props as <img class="orbit-window-prop">; the
+    // Blender shadow is already in each PNG, as in the Pixi runtime.
+    const css = readFileSync(pwaFile('assets/style.css'), 'utf8');
+    const propRules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+      .filter(([, selectors]) => selectors.split(',').some(s => s.trim() === '.orbit-window-prop'));
+    expect(propRules.length).toBeGreaterThan(0);
+    for (const [, , body] of propRules) expect(body).not.toMatch(/filter\s*:/);
+  });
+
   it('keeps the protagonist and Companion at the calibrated Blender scale', () => {
     expect(fullScene.protagonistPlacement.width).toBe(24);
     expect(fullScene.companionPlacement.width).toBe(13);

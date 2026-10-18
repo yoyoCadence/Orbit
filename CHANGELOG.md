@@ -13,6 +13,7 @@
 - 接觸陰影跟著家具一起渲染（shadow catcher），所以家具位置改變時陰影跟著走。每件家具的位置由 3D 投影後的裁切框計算，執行時與房間逐像素對齊。
 - 主角與 Companion 依 1.7 m 比例假人校準：sprite 寬度由 17%／9% 調整為 24%／13%，在新房間中比例一致。這是像素角色配 3D 立體場景的 HD-2D 慣例。
 - HW-105 成就相框（固定位置的 DOM 疊層）原本在 `top:17% left:31%`，會蓋到新的計畫板。已移到計畫板與書櫃之間的空牆（`top:20% left:47%`）。
+- 靜態 poster fallback 的家具不再套 CSS `drop-shadow`：陰影已烘進 PNG，原本會疊出第二層陰影。角色的陰影與 Companion 的光暈不變。
 
 ### Performance
 - 素材變小：
@@ -37,13 +38,14 @@
   - 背景、相機 ID，以及每件家具的 path／placement 必須等於 `placements.json`。
   - placement 必須能由裁切框推得。
   - 角色寬度 24／13。
+  - 家具不得再有 CSS `filter`。
 - 更新既有測試：
   - `ps242AssetManifest.test.js`：相機 ID。
   - `ps243AssetBudget.test.js`：位元組基準變小。
   - `personalSpacePixiRuntime.test.js`：新的家具路徑。
 - `npm run ps242:manifest -- --check` 與 `npm run ps243:assets -- --check` 通過。
 - 五個專案階段的合成預覽（`art-pipeline/ps244-blender/previews/`）目視 QA，含成就相框：家具透視與房間一致、接觸陰影正確、相框不重疊、天花板輪廓線已移除。
-- `npm run lint` 通過；`npm test`（64 files／1070 tests）通過；`tests/e2e` 41/41 通過（本機以容器內建 Chromium 執行）。
+- `npm run lint` 通過；`npm test`（64 files／1071 tests）通過；`tests/e2e` 41/41 通過（本機以容器內建 Chromium 執行）。
 
 ---
 

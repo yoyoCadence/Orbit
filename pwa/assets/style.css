@@ -146,6 +146,11 @@
 .orbit-window-protagonist,
 .orbit-window-companion {
   height: auto;
+}
+
+/* PS-244: props carry their Blender contact shadow in the PNG, so only the
+   hand-drawn characters get a synthetic one. */
+.orbit-window-protagonist {
   filter: drop-shadow(0 7px 8px rgba(2, 6, 23, .25));
 }
 
