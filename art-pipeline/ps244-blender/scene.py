@@ -177,22 +177,28 @@ def hex_rgb(hex_color):
 def screen_ui_image(name, layout):
     """A small desktop UI drawn with numpy: title bar, sidebar, and either
     code lines or a dashboard. Byte images are sRGB, so colours go in as-is."""
+    # The editor is a bright navy and the dashboard a light theme, so the two
+    # screens stay distinct and luminous at Orbit Window card size.
+    theme = {
+        'code': {'bg': '#1e3566', 'bar': '#2b4a86', 'side': '#19305c', 'item': '#4b67a3'},
+        'dashboard': {'bg': '#e9eef6', 'bar': '#c9d6ea', 'side': '#d6e0ef', 'item': '#9fb3d4'},
+    }[layout]
     w, h = 384, 216
     img = np.zeros((h, w, 3), np.float32)
-    img[:] = hex_rgb('#111a33')
+    img[:] = hex_rgb(theme['bg'])
     rng = np.random.default_rng(244 if layout == 'code' else 245)
 
     def rect(x0, y0, x1, y1, color):
         img[y0:y1, x0:x1] = hex_rgb(color)
 
-    rect(0, 0, w, 14, '#1d2a4d')
+    rect(0, 0, w, 14, theme['bar'])
     for i, color in enumerate(('#ee6b5f', '#f4c552', '#62c48a')):
         rect(8 + i * 10, 4, 14 + i * 10, 10, color)
-    rect(0, 14, 74, h, '#16213f')
+    rect(0, 14, 74, h, theme['side'])
     for i in range(9):
-        rect(10, 26 + i * 18, 10 + rng.integers(30, 56), 32 + i * 18, '#3b4f7e' if i != 2 else '#4f86d6')
+        rect(10, 26 + i * 18, 10 + rng.integers(30, 56), 32 + i * 18, theme['item'] if i != 2 else '#4f86d6')
     if layout == 'code':
-        palette = ('#7fb0ff', '#9ad9c8', '#f0b673', '#c7cfe0', '#c7cfe0', '#e88fb0')
+        palette = ('#8fbcff', '#a6e3d2', '#f5c07f', '#dfe5f2', '#dfe5f2', '#f09cbd')
         for row in range(15):
             y = 24 + row * 12
             x = 88 + 14 * int(rng.integers(0, 4))
@@ -203,15 +209,15 @@ def screen_ui_image(name, layout):
                 rect(x, y, x + length, y + 5, palette[int(rng.integers(0, len(palette)))])
                 x += length + 6
     else:
-        for i, color in enumerate(('#4f86d6', '#4fb3a8', '#f0b673')):
-            rect(88 + i * 98, 24, 176 + i * 98, 58, '#1d2a4d')
+        for i, color in enumerate(('#4f86d6', '#2fa597', '#e8964a')):
+            rect(88 + i * 98, 24, 176 + i * 98, 58, '#ffffff')
             rect(96 + i * 98, 32, 96 + i * 98 + int(rng.integers(30, 70)), 40, color)
-            rect(96 + i * 98, 46, 140 + i * 98, 50, '#5b6b92')
-        rect(88, 70, w - 12, h - 12, '#16213f')
+            rect(96 + i * 98, 46, 140 + i * 98, 50, '#b4c2da')
+        rect(88, 70, w - 12, h - 12, '#ffffff')
         bars = rng.integers(20, 110, size=12)
         for i, bar in enumerate(bars):
             x = 100 + i * 22
-            rect(x, h - 22 - int(bar), x + 12, h - 22, '#4fb3a8' if i % 3 else '#4f86d6')
+            rect(x, h - 22 - int(bar), x + 12, h - 22, '#2fa597' if i % 3 else '#4f86d6')
     rgba = np.concatenate([img[::-1], np.ones((h, w, 1), np.float32)], axis=2)
     image = bpy.data.images.new(name, w, h)
     image.pixels.foreach_set(rgba.ravel())
@@ -229,7 +235,7 @@ def screen_ui_material(name, layout):
     tex = nt.nodes.new('ShaderNodeTexImage')
     tex.image = screen_ui_image(name, layout)
     em = nt.nodes.new('ShaderNodeEmission')
-    em.inputs['Strength'].default_value = 1.25
+    em.inputs['Strength'].default_value = 1.1
     nt.links.new(tex.outputs['Color'], em.inputs['Color'])
     nt.links.new(em.outputs['Emission'], nt.nodes['Material Output'].inputs['Surface'])
     return m
