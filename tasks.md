@@ -81,8 +81,20 @@
 - [ ] **PRO-014P** `server` source 下，換日的 Pro 判定要等 entitlement refresh 完成
   - 問題（PR #160 Codex review 指出，2026-10-18 確認）：cached-user 啟動先執行 `bootWithLocalState()`，其中 `processYesterdayStreak()` 依當下的 `isProUser()` 決定是否提供連勝保護；`db.refreshProEntitlement()` 在背景同步之後才跑。projection 超過 `SNAPSHOT_TTL_MS` 的付費使用者會先被當成非 Pro：連勝可能被重設、沒有保護 offer，且當天已標記處理，之後的 refresh 無法補救。
   - 影響：`legacy` source（目前 production）下不會發生；只影響已 opt-in `server` 的裝置。cutover 後會直接傷害付費使用者。
-  - 方向（實作前需提案與核准，屬 entitlement 啟動流程）：在 `server` source 下，只有取得**權威的**結果才能做不可逆的換日處理，也就是 refresh 成功且 `my_pro_status()` 明確回非 Pro 的時候。refresh 失敗（網路或 RPC 錯誤）時，`refreshProEntitlement()` 會保留過期 snapshot，`isProFromSnapshot()` 仍把它當成非 Pro，因此「等 refresh 結束」本身不夠：失敗或未知時必須延後連勝重設（保留待處理狀態，下次 refresh 成功再處理），不能以非 Pro 執行。
-  - 完成條件：projection 過期且 refresh 失敗時連勝不被重設、當天不被標記為已處理；refresh 成功且為 Pro 時提供保護 offer；明確非 Pro 時照常重設。三種情況都有測試。
+  - 現況（2026-10-18 對照 `storage.refreshProEntitlement()` 與 `applyProStatusResponse()`）：所有非 Pro 的情況都回 `false`，呼叫端分不出來。各情況的 snapshot 處理不同：
+    - **網路例外**（`supabase.rpc()` throw）：保留舊 snapshot；過期後 `isProFromSnapshot()` 仍判為非 Pro
+    - **RPC 回傳 `error`、資料格式不符、沒有 session 或 owner 不符**：清除 snapshot
+    - **snapshot 寫入失敗**：不更新，維持寫入前的狀態
+    - **明確非 Pro**：寫入非 Pro 的 snapshot；只有這種是權威結果
+  - 方向（實作前需提案與核准，屬 entitlement 啟動流程）：
+    - `refreshProEntitlement()` 改回傳可區分的結果，例如 `{ status: 'pro' | 'not-pro' | 'unknown' }`；只有 RPC 成功、snapshot 寫入成功且判定非 Pro 才是 `not-pro`
+    - 在 `server` source 下，只有 `pro` 或 `not-pro` 才能做不可逆的換日處理
+    - `unknown`（上述任何失敗）時延後連勝重設：保留待處理狀態、當天不標記為已處理，下次 refresh 得到權威結果再處理
+  - 完成條件：
+    - `unknown` 的每種來源（網路例外、RPC error、格式不符、寫入失敗）都不重設連勝
+    - `pro` 時提供保護 offer
+    - `not-pro` 時照常重設
+    - 每個情況各有測試；既有只看布林值的呼叫端（`loadAndStart`、cached-user 背景同步、連線恢復同步）行為不變
   - **擋 `PRO-014H`**
   - 依賴：`PRO-014O`
 
