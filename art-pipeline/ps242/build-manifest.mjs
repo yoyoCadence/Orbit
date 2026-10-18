@@ -13,42 +13,31 @@ export const OUTPUT_PATH = join(REPO_ROOT, 'pwa', 'assets', 'personal-space', 'v
 
 const CAMERA_ID = WORKSPACE_V2_ASSETS.canonicalCameraId;
 const GENERATED_LICENSE = 'art-pipeline/ps242/model-manifest.json#openai-built-in-imagegen';
-const LEGACY_LICENSE = 'pwa/assets/personal-space/idle-window/README.md#current-assets';
 
+// PS-244: the room and every Workspace Upgrade prop are rendered by the
+// procedural Blender pipeline from one camera. Characters and weather remain
+// PS-242 generated art and were re-checked against the new camera.
+const BLENDER_LICENSE = 'art-pipeline/ps244-blender/model-manifest.json#orbit-blender-procedural-workstation';
+const BLENDER_SOURCE = 'art-pipeline/ps244-blender/scene.py';
+const PROP_ROOT = 'assets/personal-space/v2/workspace/props';
 const PROP_METADATA = Object.freeze({
-  'assets/personal-space/idle-window/props/office-corner-desk-v3/front.png': {
-    id: 'corner-desk', label: 'Corner desk', projectPhase: 25,
-  },
-  'assets/personal-space/idle-window/props/office-chair/prop.png': {
-    id: 'office-chair', label: 'Office chair', projectPhase: 25,
-  },
-  'assets/personal-space/idle-window/props/office-shelf/prop.png': {
-    id: 'office-shelf', label: 'Office shelf', projectPhase: 50,
-  },
-  'assets/personal-space/idle-window/props/office-desk-lamp/prop.png': {
-    id: 'desk-lamp', label: 'Desk lamp', projectPhase: 50,
-  },
-  'assets/personal-space/idle-window/props/office-board/prop.png': {
-    id: 'planning-board', label: 'Planning board', projectPhase: 75,
-  },
-  'assets/personal-space/idle-window/props/office-monitor-single/prop.png': {
-    id: 'single-monitor', label: 'Single monitor', projectPhase: 75,
-  },
-  'assets/personal-space/idle-window/props/office-monitor-dual/prop.png': {
-    id: 'dual-monitor', label: 'Dual monitor', projectPhase: 100,
-  },
-  'assets/personal-space/idle-window/props/office-plant/prop.png': {
-    id: 'office-plant', label: 'Office plant', projectPhase: 100,
-  },
+  [`${PROP_ROOT}/corner-desk.png`]: { id: 'corner-desk', label: 'Corner desk', projectPhase: 25 },
+  [`${PROP_ROOT}/office-chair.png`]: { id: 'office-chair', label: 'Office chair', projectPhase: 25 },
+  [`${PROP_ROOT}/office-shelf.png`]: { id: 'office-shelf', label: 'Office shelf', projectPhase: 50 },
+  [`${PROP_ROOT}/desk-lamp.png`]: { id: 'desk-lamp', label: 'Desk lamp', projectPhase: 50 },
+  [`${PROP_ROOT}/planning-board.png`]: { id: 'planning-board', label: 'Planning board', projectPhase: 75 },
+  [`${PROP_ROOT}/single-monitor.png`]: { id: 'single-monitor', label: 'Single monitor', projectPhase: 75 },
+  [`${PROP_ROOT}/dual-monitor.png`]: { id: 'dual-monitor', label: 'Dual monitor', projectPhase: 100 },
+  [`${PROP_ROOT}/office-plant.png`]: { id: 'office-plant', label: 'Office plant', projectPhase: 100 },
 });
 
 export function buildPs242AssetManifest() {
   const outputs = getWorkspaceAssetManifestPaths().map(buildOutputEntry);
   return {
     schemaVersion: 1,
-    taskId: 'PS-242',
+    taskId: 'PS-244',
     status: 'production',
-    reviewedAt: '2026-07-31',
+    reviewedAt: '2026-10-18',
     scene: {
       id: WORKSPACE_V2_ASSETS.id,
       canonicalCameraId: CAMERA_ID,
@@ -57,6 +46,13 @@ export function buildPs242AssetManifest() {
       safeZone: WORKSPACE_V2_ASSETS.safeZone,
     },
     provenance: {
+      environment: {
+        modelManifest: 'art-pipeline/ps244-blender/model-manifest.json',
+        source: BLENDER_SOURCE,
+        placements: 'art-pipeline/ps244-blender/placements.json',
+        previews: 'art-pipeline/ps244-blender/previews/',
+        review: 'Shared-camera renders, shadow-catcher contact shadows, trimmed placements, and per-phase composites with the protagonist and Companion.',
+      },
       modelManifest: 'art-pipeline/ps242/model-manifest.json',
       prompts: 'art-pipeline/ps242/prompts/',
       rawSources: 'art-pipeline/ps242/raw/',
@@ -88,9 +84,9 @@ function buildOutputEntry(path) {
       label: 'Building Formal Workstation room',
       role: 'background',
       projectPhase: 'all',
-      source: 'art-pipeline/ps242/source/building-formal-workstation-room-v1.png',
-      qc: 'passed: authored-3:2, safe-zone, visual, WebP-budget',
-      licenseRef: GENERATED_LICENSE,
+      source: BLENDER_SOURCE,
+      qc: 'passed: authored-3:2, shared-camera, backdrop-composite, visual, WebP-budget',
+      licenseRef: BLENDER_LICENSE,
       ...shared,
     };
   }
@@ -149,9 +145,9 @@ function buildOutputEntry(path) {
   return {
     ...prop,
     role: 'project-prop',
-    source: path,
-    qc: 'passed: existing idle-window registry; reused in canonical V2 camera',
-    licenseRef: LEGACY_LICENSE,
+    source: BLENDER_SOURCE,
+    qc: 'passed: shared-camera, contact-shadow-catcher, trimmed-placement, phase-composite, visual',
+    licenseRef: BLENDER_LICENSE,
     ...shared,
   };
 }

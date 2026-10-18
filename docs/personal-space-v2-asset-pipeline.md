@@ -104,6 +104,17 @@ The template must lock:
 
 Exports must use stable filenames and identical camera transforms across Project stages.
 
+### PS-244: Blender as the final environment renderer
+
+For the Building Formal Workstation, Blender now renders the final room and all eight Workspace Upgrade props, not only the blockout. The source is [`art-pipeline/ps244-blender/`](../art-pipeline/ps244-blender/README.md). It meets this contract as follows:
+
+- one procedural scene (`scene.py`) locks the footprint, wall height, landmarks, lighting and camera `building-workspace-v2`;
+- every prop is rendered full-frame from that camera, with room surfaces and its support as shadow catchers, then trimmed; its runtime placement is derived from the trimmed box, so stage changes never shift a prop's perspective;
+- protagonist and Companion scale come from a 1.7 m reference at the protagonist's floor position (sprites at 24% / 13% width);
+- the controlled-generation steps below are skipped for these assets: there is no raw generated output, and `model-manifest.json` records the Blender version and license.
+
+Characters and weather overlays still follow the PS-242 generation workflow.
+
 ## Controlled ComfyUI Workflows
 
 ### `room-shell-v1`
@@ -189,7 +200,7 @@ Every accepted asset entry must include at least:
   role,
   path,
   dimensions,
-  canonicalCameraId: 'building-workspace-v1',
+  canonicalCameraId: 'building-workspace-v2',
   projectPhase,
   source,
   qc,
