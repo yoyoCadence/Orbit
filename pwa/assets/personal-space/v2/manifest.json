@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "taskId": "PS-242",
+  "taskId": "PS-244",
   "status": "production",
-  "reviewedAt": "2026-07-31",
+  "reviewedAt": "2026-10-18",
   "scene": {
     "id": "building-formal-workstation-v2",
-    "canonicalCameraId": "building-workspace-v1",
+    "canonicalCameraId": "building-workspace-v2",
     "dimensions": {
       "width": 1536,
       "height": 1024
@@ -22,6 +22,13 @@
     }
   },
   "provenance": {
+    "environment": {
+      "modelManifest": "art-pipeline/ps244-blender/model-manifest.json",
+      "source": "art-pipeline/ps244-blender/scene.py",
+      "placements": "art-pipeline/ps244-blender/placements.json",
+      "previews": "art-pipeline/ps244-blender/previews/",
+      "review": "Shared-camera renders, shadow-catcher contact shadows, trimmed placements, and per-phase composites with the protagonist and Companion."
+    },
     "modelManifest": "art-pipeline/ps242/model-manifest.json",
     "prompts": "art-pipeline/ps242/prompts/",
     "rawSources": "art-pipeline/ps242/raw/",
@@ -34,19 +41,19 @@
       "label": "Building Formal Workstation room",
       "role": "background",
       "projectPhase": "all",
-      "source": "art-pipeline/ps242/source/building-formal-workstation-room-v1.png",
-      "qc": "passed: authored-3:2, safe-zone, visual, WebP-budget",
-      "licenseRef": "art-pipeline/ps242/model-manifest.json#openai-built-in-imagegen",
-      "path": "assets/personal-space/v2/workspace/backgrounds/building-formal-workstation-room-v1.webp",
+      "source": "art-pipeline/ps244-blender/scene.py",
+      "qc": "passed: authored-3:2, shared-camera, backdrop-composite, visual, WebP-budget",
+      "licenseRef": "art-pipeline/ps244-blender/model-manifest.json#orbit-blender-procedural-workstation",
+      "path": "assets/personal-space/v2/workspace/backgrounds/building-formal-workstation-room-v2.webp",
       "dimensions": {
         "width": 1536,
         "height": 1024
       },
       "format": "webp",
       "alpha": false,
-      "bytes": 159396,
-      "sha256": "e26e1c91035def25b58f4a76034de1cfb7220f9afa6e45055dcb877066c09e5e",
-      "canonicalCameraId": "building-workspace-v1",
+      "bytes": 70924,
+      "sha256": "00f35f2ddbe197cc685cf629fc2f5a937d3de3d6825c0895f8b81a213fe93ba1",
+      "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     },
     {
@@ -68,7 +75,7 @@
       "alpha": true,
       "bytes": 41916,
       "sha256": "216d3de6ac1153ff0bfa42cd8dd0f6481fd2d0c13abeb6c2816c5796e62ea9e6",
-      "canonicalCameraId": "building-workspace-v1",
+      "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     },
     {
@@ -89,7 +96,7 @@
       "alpha": true,
       "bytes": 43396,
       "sha256": "54f46c4bf8a63e22e1bce24dfe55fc4349b94934a652dd299674ea5032bb5e9a",
-      "canonicalCameraId": "building-workspace-v1",
+      "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     },
     {
@@ -110,7 +117,7 @@
       "alpha": true,
       "bytes": 14425,
       "sha256": "0237d96d4c4984b90c0a4b6b5da950a5b1bb1c74950cffe9e8c946b32824364a",
-      "canonicalCameraId": "building-workspace-v1",
+      "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     },
     {
@@ -132,7 +139,7 @@
       "alpha": true,
       "bytes": 41163,
       "sha256": "725c254374c748445bbbc8c2c27a4cbd035ce0eb97d188b92e6f8ea7dce012eb",
-      "canonicalCameraId": "building-workspace-v1",
+      "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     },
     {
@@ -154,7 +161,7 @@
       "alpha": true,
       "bytes": 43277,
       "sha256": "92317e6454ce0c41307d5d5a925867dd93874a0a5c827c6f335bdaae760b0206",
-      "canonicalCameraId": "building-workspace-v1",
+      "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     },
     {
@@ -176,7 +183,7 @@
       "alpha": true,
       "bytes": 42851,
       "sha256": "4d4cd1aa8315fc1308b14c7580129d7baa31d15ffc36973ef9c64b249bd8f495",
-      "canonicalCameraId": "building-workspace-v1",
+      "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     },
     {
@@ -198,7 +205,7 @@
       "alpha": true,
       "bytes": 47902,
       "sha256": "88310134832be20589dd455829a0eb04832f6194a0ece94384e063c88b3b1157",
-      "canonicalCameraId": "building-workspace-v1",
+      "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     },
     {
@@ -220,7 +227,7 @@
       "alpha": true,
       "bytes": 46880,
       "sha256": "37db0c7335583b316a2b7044c9398bd3580bea41271e712716770305cd087aa8",
-      "canonicalCameraId": "building-workspace-v1",
+      "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     },
     {
@@ -242,7 +249,7 @@
       "alpha": true,
       "bytes": 43737,
       "sha256": "f268a0e9f4a63034f30f2269c3f1aa0ddab6d94df38f744ceb8d09220a455d2f",
-      "canonicalCameraId": "building-workspace-v1",
+      "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     },
     {
@@ -264,7 +271,7 @@
       "alpha": true,
       "bytes": 42469,
       "sha256": "24a0bc4b24de2cdb18a5b6111ffae5b61771adf70c5ad84509916bd77bd256ca",
-      "canonicalCameraId": "building-workspace-v1",
+      "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     },
     {
@@ -286,7 +293,7 @@
       "alpha": true,
       "bytes": 44793,
       "sha256": "7c637403b62ad6098f5bfae8b4546b8e1a343cf0591c8fc1412b2f9885b9180f",
-      "canonicalCameraId": "building-workspace-v1",
+      "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     },
     {
@@ -308,7 +315,7 @@
       "alpha": true,
       "bytes": 45040,
       "sha256": "11fab1e4327e54936e19c774db22dbaf53c062630f0d61acaa7329809797e5ba",
-      "canonicalCameraId": "building-workspace-v1",
+      "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     },
     {
@@ -330,7 +337,7 @@
       "alpha": true,
       "bytes": 43423,
       "sha256": "f69765902d8e4d9fc88552ec1e4d4241f395472f983d9a07fbc043392b4afbd6",
-      "canonicalCameraId": "building-workspace-v1",
+      "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     },
     {
@@ -352,7 +359,7 @@
       "alpha": true,
       "bytes": 42852,
       "sha256": "5ddc79a12b9c6f10b236e9f00379bd1f7189bbb6bf8cfda524de93309ea5e05f",
-      "canonicalCameraId": "building-workspace-v1",
+      "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     },
     {
@@ -373,7 +380,7 @@
       "alpha": true,
       "bytes": 44227,
       "sha256": "8666357a3f4db790d1d59b682fd192d4665e1f45567f00d5cf42c4ed47aa04ef",
-      "canonicalCameraId": "building-workspace-v1",
+      "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     },
     {
@@ -394,7 +401,7 @@
       "alpha": true,
       "bytes": 44119,
       "sha256": "2d91fb614ac8bb0d17fcbedb10fa908491c191945081cff5437efbd059625a35",
-      "canonicalCameraId": "building-workspace-v1",
+      "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     },
     {
@@ -415,7 +422,7 @@
       "alpha": true,
       "bytes": 41683,
       "sha256": "4023f3b95ef7061dd1c9204faee875bafec605dddef40ca70ef9287901e253c6",
-      "canonicalCameraId": "building-workspace-v1",
+      "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     },
     {
@@ -436,7 +443,7 @@
       "alpha": true,
       "bytes": 43672,
       "sha256": "a1fe8db2c153e5c48706292dde686a33dfbcf8ca631710b3d57703529068d34a",
-      "canonicalCameraId": "building-workspace-v1",
+      "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     },
     {
@@ -457,7 +464,7 @@
       "alpha": true,
       "bytes": 45093,
       "sha256": "1d6332a1fd5f0c57bbfb1326d0e19ec0eee7c11c0db0514641c8a508ebf16bab",
-      "canonicalCameraId": "building-workspace-v1",
+      "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     },
     {
@@ -478,7 +485,7 @@
       "alpha": true,
       "bytes": 31582,
       "sha256": "7aeb44765872971383edebf02bec9acebb6087fc48b5f10e2fcbd7683990e2e5",
-      "canonicalCameraId": "building-workspace-v1",
+      "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     },
     {
@@ -486,19 +493,19 @@
       "label": "Corner desk",
       "projectPhase": 25,
       "role": "project-prop",
-      "source": "assets/personal-space/idle-window/props/office-corner-desk-v3/front.png",
-      "qc": "passed: existing idle-window registry; reused in canonical V2 camera",
-      "licenseRef": "pwa/assets/personal-space/idle-window/README.md#current-assets",
-      "path": "assets/personal-space/idle-window/props/office-corner-desk-v3/front.png",
+      "source": "art-pipeline/ps244-blender/scene.py",
+      "qc": "passed: shared-camera, contact-shadow-catcher, trimmed-placement, phase-composite, visual",
+      "licenseRef": "art-pipeline/ps244-blender/model-manifest.json#orbit-blender-procedural-workstation",
+      "path": "assets/personal-space/v2/workspace/props/corner-desk.png",
       "dimensions": {
-        "width": 524,
-        "height": 302
+        "width": 362,
+        "height": 265
       },
       "format": "png",
       "alpha": true,
-      "bytes": 211827,
-      "sha256": "3298df6d8cf192df451650d6440464d2799c89c0cc45b6ff51990e352041ee41",
-      "canonicalCameraId": "building-workspace-v1",
+      "bytes": 66512,
+      "sha256": "74646b15d82dddf018979ceddb6501ef6710f11f0b6e6710b6ae8de85f980cb6",
+      "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     },
     {
@@ -506,19 +513,19 @@
       "label": "Office chair",
       "projectPhase": 25,
       "role": "project-prop",
-      "source": "assets/personal-space/idle-window/props/office-chair/prop.png",
-      "qc": "passed: existing idle-window registry; reused in canonical V2 camera",
-      "licenseRef": "pwa/assets/personal-space/idle-window/README.md#current-assets",
-      "path": "assets/personal-space/idle-window/props/office-chair/prop.png",
+      "source": "art-pipeline/ps244-blender/scene.py",
+      "qc": "passed: shared-camera, contact-shadow-catcher, trimmed-placement, phase-composite, visual",
+      "licenseRef": "art-pipeline/ps244-blender/model-manifest.json#orbit-blender-procedural-workstation",
+      "path": "assets/personal-space/v2/workspace/props/office-chair.png",
       "dimensions": {
-        "width": 188,
-        "height": 321
+        "width": 124,
+        "height": 231
       },
       "format": "png",
       "alpha": true,
-      "bytes": 69664,
-      "sha256": "e29aa250c1a0126d028afc96d4922f4d93459fdd5f59c94713101357ed7d92de",
-      "canonicalCameraId": "building-workspace-v1",
+      "bytes": 25102,
+      "sha256": "61b0d3e5a86b1938a5d64690d7c9105f0b3c99e2cfccd7c38d4ccf1081749748",
+      "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     },
     {
@@ -526,19 +533,19 @@
       "label": "Office shelf",
       "projectPhase": 50,
       "role": "project-prop",
-      "source": "assets/personal-space/idle-window/props/office-shelf/prop.png",
-      "qc": "passed: existing idle-window registry; reused in canonical V2 camera",
-      "licenseRef": "pwa/assets/personal-space/idle-window/README.md#current-assets",
-      "path": "assets/personal-space/idle-window/props/office-shelf/prop.png",
+      "source": "art-pipeline/ps244-blender/scene.py",
+      "qc": "passed: shared-camera, contact-shadow-catcher, trimmed-placement, phase-composite, visual",
+      "licenseRef": "art-pipeline/ps244-blender/model-manifest.json#orbit-blender-procedural-workstation",
+      "path": "assets/personal-space/v2/workspace/props/office-shelf.png",
       "dimensions": {
-        "width": 265,
-        "height": 350
+        "width": 606,
+        "height": 292
       },
       "format": "png",
       "alpha": true,
-      "bytes": 134782,
-      "sha256": "d32ee18a6f97ab8eae2ea8c0059084ce4d2bae66eaa9d1135db05c3459258d15",
-      "canonicalCameraId": "building-workspace-v1",
+      "bytes": 131923,
+      "sha256": "9ee118e77cfb227a7616f525a75703cb427008fd0d6e8b1ec41381179c1e9bc3",
+      "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     },
     {
@@ -546,19 +553,19 @@
       "label": "Desk lamp",
       "projectPhase": 50,
       "role": "project-prop",
-      "source": "assets/personal-space/idle-window/props/office-desk-lamp/prop.png",
-      "qc": "passed: existing idle-window registry; reused in canonical V2 camera",
-      "licenseRef": "pwa/assets/personal-space/idle-window/README.md#current-assets",
-      "path": "assets/personal-space/idle-window/props/office-desk-lamp/prop.png",
+      "source": "art-pipeline/ps244-blender/scene.py",
+      "qc": "passed: shared-camera, contact-shadow-catcher, trimmed-placement, phase-composite, visual",
+      "licenseRef": "art-pipeline/ps244-blender/model-manifest.json#orbit-blender-procedural-workstation",
+      "path": "assets/personal-space/v2/workspace/props/desk-lamp.png",
       "dimensions": {
-        "width": 197,
-        "height": 280
+        "width": 57,
+        "height": 79
       },
       "format": "png",
       "alpha": true,
-      "bytes": 45450,
-      "sha256": "13fe4e5f028e2057a9d53a9ec38d3587a6be2b8be7cae95a52839ec5285b4a01",
-      "canonicalCameraId": "building-workspace-v1",
+      "bytes": 5149,
+      "sha256": "3c45fb71b0e94efdbcbf61aa4d03886e731f7479d471ff271873e9cc5d7f1e56",
+      "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     },
     {
@@ -566,19 +573,19 @@
       "label": "Planning board",
       "projectPhase": 75,
       "role": "project-prop",
-      "source": "assets/personal-space/idle-window/props/office-board/prop.png",
-      "qc": "passed: existing idle-window registry; reused in canonical V2 camera",
-      "licenseRef": "pwa/assets/personal-space/idle-window/README.md#current-assets",
-      "path": "assets/personal-space/idle-window/props/office-board/prop.png",
+      "source": "art-pipeline/ps244-blender/scene.py",
+      "qc": "passed: shared-camera, contact-shadow-catcher, trimmed-placement, phase-composite, visual",
+      "licenseRef": "art-pipeline/ps244-blender/model-manifest.json#orbit-blender-procedural-workstation",
+      "path": "assets/personal-space/v2/workspace/props/planning-board.png",
       "dimensions": {
-        "width": 311,
-        "height": 248
+        "width": 208,
+        "height": 154
       },
       "format": "png",
       "alpha": true,
-      "bytes": 95500,
-      "sha256": "9b4129f9687fe88413c312e16ad8a1d0b830166ed87bbfc5a69f56dbd3d08676",
-      "canonicalCameraId": "building-workspace-v1",
+      "bytes": 32642,
+      "sha256": "93279e456958743425596b126d1a5dd4327f4c315e0425896b42f9b667441c1e",
+      "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     },
     {
@@ -586,19 +593,19 @@
       "label": "Single monitor",
       "projectPhase": 75,
       "role": "project-prop",
-      "source": "assets/personal-space/idle-window/props/office-monitor-single/prop.png",
-      "qc": "passed: existing idle-window registry; reused in canonical V2 camera",
-      "licenseRef": "pwa/assets/personal-space/idle-window/README.md#current-assets",
-      "path": "assets/personal-space/idle-window/props/office-monitor-single/prop.png",
+      "source": "art-pipeline/ps244-blender/scene.py",
+      "qc": "passed: shared-camera, contact-shadow-catcher, trimmed-placement, phase-composite, visual",
+      "licenseRef": "art-pipeline/ps244-blender/model-manifest.json#orbit-blender-procedural-workstation",
+      "path": "assets/personal-space/v2/workspace/props/single-monitor.png",
       "dimensions": {
-        "width": 222,
-        "height": 259
+        "width": 109,
+        "height": 113
       },
       "format": "png",
       "alpha": true,
-      "bytes": 56552,
-      "sha256": "d01564cab4de36d7356bf6c19061a334783bc27aea5ca7e7a72d1954bc4dba2d",
-      "canonicalCameraId": "building-workspace-v1",
+      "bytes": 12141,
+      "sha256": "1c199ba98b40ed46dea52cf127efb5866eab4883e49a1bcb0b2cc6cd6d429b9c",
+      "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     },
     {
@@ -606,19 +613,19 @@
       "label": "Dual monitor",
       "projectPhase": 100,
       "role": "project-prop",
-      "source": "assets/personal-space/idle-window/props/office-monitor-dual/prop.png",
-      "qc": "passed: existing idle-window registry; reused in canonical V2 camera",
-      "licenseRef": "pwa/assets/personal-space/idle-window/README.md#current-assets",
-      "path": "assets/personal-space/idle-window/props/office-monitor-dual/prop.png",
+      "source": "art-pipeline/ps244-blender/scene.py",
+      "qc": "passed: shared-camera, contact-shadow-catcher, trimmed-placement, phase-composite, visual",
+      "licenseRef": "art-pipeline/ps244-blender/model-manifest.json#orbit-blender-procedural-workstation",
+      "path": "assets/personal-space/v2/workspace/props/dual-monitor.png",
       "dimensions": {
-        "width": 330,
-        "height": 266
+        "width": 198,
+        "height": 114
       },
       "format": "png",
       "alpha": true,
-      "bytes": 76615,
-      "sha256": "14911729eccbde8946ed82f2642257d4b661ec8a18d358aa7f2ccd6f0a7e8e9a",
-      "canonicalCameraId": "building-workspace-v1",
+      "bytes": 20327,
+      "sha256": "087fac118c1ee555a18448cc7af82adf90d892d1207996786db26fb9a82a2f1d",
+      "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     },
     {
@@ -626,19 +633,19 @@
       "label": "Office plant",
       "projectPhase": 100,
       "role": "project-prop",
-      "source": "assets/personal-space/idle-window/props/office-plant/prop.png",
-      "qc": "passed: existing idle-window registry; reused in canonical V2 camera",
-      "licenseRef": "pwa/assets/personal-space/idle-window/README.md#current-assets",
-      "path": "assets/personal-space/idle-window/props/office-plant/prop.png",
+      "source": "art-pipeline/ps244-blender/scene.py",
+      "qc": "passed: shared-camera, contact-shadow-catcher, trimmed-placement, phase-composite, visual",
+      "licenseRef": "art-pipeline/ps244-blender/model-manifest.json#orbit-blender-procedural-workstation",
+      "path": "assets/personal-space/v2/workspace/props/office-plant.png",
       "dimensions": {
-        "width": 233,
-        "height": 300
+        "width": 354,
+        "height": 248
       },
       "format": "png",
       "alpha": true,
-      "bytes": 82649,
-      "sha256": "20e6f629af506c1ad69f43821e9d2da4b3c386afb68478c663677b08b7b6ac65",
-      "canonicalCameraId": "building-workspace-v1",
+      "bytes": 52987,
+      "sha256": "35a7901b28e6a8e5bae0fcb67d50c6cbf9f945d67716b8188cbbf2bbd66ae613",
+      "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     }
   ]

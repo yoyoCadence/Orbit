@@ -144,4 +144,39 @@ describe('HW-107 非同步定位期間離開設定頁', () => {
     expect(container.innerHTML).toBe('<div id="home-page">home</div>');
     expect(loadPlaceContext(OWNER).places.home).toEqual({ lat: 25.033, lng: 121.565 });
   });
+
+  it('定位期間按「清除位置資料」，晚到的位置不會被寫回', async () => {
+    let grant;
+    getCurrentPosition.mockImplementation(resolve => { grant = resolve; });
+    render();
+    const toggle = container.querySelector('#place-context-toggle');
+    toggle.checked = true;
+    toggle.dispatchEvent(new Event('change'));
+    container.querySelector('[data-place-set="home"]').click();
+
+    container.querySelector('#place-context-clear').click();
+    grant({ coords: { latitude: 25.033, longitude: 121.565 } });
+    await flush();
+
+    expect(loadPlaceContext(OWNER)).toEqual({ enabled: false, places: {} });
+    expect(window.showToast).not.toHaveBeenCalledWith('已把目前位置設為「家」');
+  });
+
+  it('定位期間關閉位置情境，晚到的位置不會被寫入', async () => {
+    let grant;
+    getCurrentPosition.mockImplementation(resolve => { grant = resolve; });
+    render();
+    const toggle = container.querySelector('#place-context-toggle');
+    toggle.checked = true;
+    toggle.dispatchEvent(new Event('change'));
+    container.querySelector('[data-place-set="work"]').click();
+
+    const offToggle = container.querySelector('#place-context-toggle');
+    offToggle.checked = false;
+    offToggle.dispatchEvent(new Event('change'));
+    grant({ coords: { latitude: 25.033, longitude: 121.565 } });
+    await flush();
+
+    expect(loadPlaceContext(OWNER).places.work).toBeUndefined();
+  });
 });

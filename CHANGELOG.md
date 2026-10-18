@@ -3,6 +3,75 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.29.0] - 2026-10-18
+
+### Changed
+- **「空間」的房間與 8 件工作站家具改由 Blender 重新渲染（PS-244）**：
+  - 房間背景，以及 Workspace Upgrade 的書桌、椅子、書櫃、檯燈、計畫板、單／雙螢幕與盆栽，全部來自同一個程序化 Blender 場景與固定相機。
+  - 採插畫感 toon 材質加細輪廓線。
+  - 修正先前「繪製房間＋舊像素家具」混用造成的問題：風格不一致、正面書桌對 3/4 房間的透視衝突、缺少接觸陰影，以及紫色去背殘邊。
+- 繪製順序依相機深度：椅子在書桌、螢幕、鍵盤與檯燈前方，z 由 26 改為 30，螢幕支架與鍵盤不再畫在椅背上。
+- 接觸陰影跟著家具一起渲染（shadow catcher），所以家具位置改變時陰影跟著走。每件家具的位置由 3D 投影後的裁切框計算，執行時與房間逐像素對齊。
+- 主角與 Companion 依 1.7 m 比例假人校準：sprite 寬度由 17%／9% 調整為 24%／13%，在新房間中比例一致。這是像素角色配 3D 立體場景的 HD-2D 慣例。
+- HW-105 成就相框（固定位置的 DOM 疊層）原本在 `top:17% left:31%`，會蓋到新的計畫板。已移到計畫板與書櫃之間的空牆（`top:20% left:47%`）。
+- 靜態 poster fallback 的家具不再套 CSS `drop-shadow`：陰影已烘進 PNG，原本會疊出第二層陰影。角色的陰影與 Companion 的光暈不變。
+- **位置覆寫只移動家具、不改大小**：舊版 idle-window 編輯器的覆寫與 V2 家具同 id，且帶有舊美術的 `width`／`anchor`。若照單全收，含陰影邊界的新 PNG 會縮成約三分之一，計畫板也會下移。V2 家具現在只採用覆寫的 `x`／`y`（V2 Edit Mode 本來也只調整這兩個值），存著的使用者資料不變。
+
+### Performance
+- 素材變小：
+  - 首屏素材：259,133 → 170,661 bytes（−34%）
+  - 完整場景：1,766,935 → 1,252,207 bytes（−29%）
+  - 背景 WebP 只有 71 KB。
+
+### Notes
+- runtime 仍是 Pixi 2D：沒有新增 3D runtime，JS 預算不變。主角、Companion 與天氣疊圖沿用 PS-242 素材。
+- 可重現的素材管線在 `art-pipeline/ps244-blender/`：
+  - `scene.py` 建場景，`render_pack.py` 渲染，`process_pack.py` 處理成素材。
+  - 以 PyPI 的 Blender 5.2.2 bpy 模組在 CPU 上用 Cycles 渲染。
+  - `process_pack.py --write-runtime` 同時寫出 `placements.json` 與 `assetManifest.js` 的 `PROP_DEFINITIONS`，測試強制兩者一致。
+- 舊的 PS-242 房間 webp 與 legacy idle-window 家具檔案保留未刪，供回滾與 legacy 模式使用。
+- 相機 ID 由 `building-workspace-v1` 改為 `building-workspace-v2`。角色與天氣素材已在新相機的五個階段合成預覽中重新目視確認。
+- **已知限制（已立案 `PS-246`）**：舊版 idle-window 編輯器存下的家具位置覆寫，其 `x`／`y` 仍是舊 16:9 相機的座標，家具可能不在新房間中對應的位置。
+
+### Validation
+- 新增 `tests/unit/ps244WorkspacePlacements.test.js`：
+  - 背景、相機 ID，以及每件家具的 path／placement 必須等於 `placements.json`。
+  - placement 必須能由裁切框推得。
+  - 角色寬度 24／13。
+  - 家具不得再有 CSS `filter`。
+  - 椅子的 z 高於書桌、螢幕與檯燈；位置覆寫只套用 `x`／`y`。
+- 更新既有測試：
+  - `ps242AssetManifest.test.js`：相機 ID。
+  - `ps243AssetBudget.test.js`：位元組基準變小。
+  - `personalSpacePixiRuntime.test.js`：新的家具路徑。
+- `npm run ps242:manifest -- --check` 與 `npm run ps243:assets -- --check` 通過。
+- 五個專案階段的合成預覽（`art-pipeline/ps244-blender/previews/`）目視 QA，含成就相框：家具透視與房間一致、接觸陰影正確、相框不重疊、天花板輪廓線已移除。
+- `npm run lint` 通過；`npm test`（64 files／1073 tests）通過；`tests/e2e` 41/41 通過（本機以容器內建 Chromium 執行）。
+
+---
+
+## [1.28.2] - 2026-10-18
+
+### Fixed
+- **位置情境：清除後不再被寫回**：按「設為目前位置」後、定位還沒回來前按「清除位置資料」或關閉位置情境，晚到的座標原本仍會被存回本機並顯示成功。現在清除與關閉會作廢進行中的定位請求。
+- **環境音偵測：權限詢問期間可以取消**：按鈕在等待權限時已顯示「關閉環境音偵測」，但再按一次會發出第二個麥克風請求。現在再按即取消；之後才授權的麥克風會立即關閉。
+- **連線恢復同步不再過早顯示「✓ 已更新」**：Session 補傳原本在背景進行，同步就先宣告完成；補傳或刪除失敗時也不會重試。現在等補傳結束，只有待同步佇列清空才顯示已更新，否則顯示待同步數量，並在下次連線時再推送。
+- **連線恢復與啟動同步不再同時執行**：啟動時的遠端載入還沒結束就恢復連線，會同時跑第二次載入，同一批待同步資料可能被重複推送。現在所有遠端載入經同一入口排隊。
+
+### Changed
+- `db.loadFromRemote()` 改為回傳 `{ backfilled }`（Session 補傳全部完成時 resolve）；開機流程不等它，回報同步狀態的地方才等。
+
+### Validation
+- 新增 7 項測試：
+  - `placeContextSettings.test.js`：清除或關閉時作廢定位，2 項。
+  - `focusAmbient.test.js`：權限詢問期間再按即取消，1 項。
+  - `appBootSequence.test.js`：補傳完成前不顯示已更新、佇列未清空顯示待同步並於下次上線重試、啟動同步期間恢復連線不重複載入，共 3 項；另更新既有的連線恢復測試，讓載入後佇列確實清空。
+  - `storage-mapping.test.js`：`backfilled` 等補傳寫入後才完成，1 項。
+- 修正前，新增的行為測試全部失敗（位置 2、麥克風 1、同步 3）。
+- `npm run lint` 通過；`npm test`（63 files／1066 tests）通過；`tests/e2e` 41/41 通過（本機以容器內建 Chromium 執行）。
+
+---
+
 ## [1.28.1] - 2026-10-18
 
 ### Fixed

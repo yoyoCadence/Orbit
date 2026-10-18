@@ -27,7 +27,7 @@ describe('PS-242 production asset manifest', () => {
         role: expect.any(String),
         path: expect.any(String),
         dimensions: expect.objectContaining({ width: expect.any(Number), height: expect.any(Number) }),
-        canonicalCameraId: 'building-workspace-v1',
+        canonicalCameraId: 'building-workspace-v2',
         projectPhase: expect.anything(),
         source: expect.any(String),
         qc: expect.stringContaining('passed:'),

@@ -1,11 +1,13 @@
 export const ORBIT_WINDOW_LOGICAL_SIZE = Object.freeze({ width: 960, height: 640 });
 
 const ASSET_ROOT = 'assets/personal-space/v2';
-const LEGACY_PROP_ROOT = 'assets/personal-space/idle-window/props';
+// PS-244: room and props are rendered by art-pipeline/ps244-blender from one
+// camera; placements below come from its placements.json (test-enforced).
+const PROP_ROOT = `${ASSET_ROOT}/workspace/props`;
 const PROTAGONIST_ROOT = `${ASSET_ROOT}/characters/protagonist`;
 const COMPANION_ROOT = `${ASSET_ROOT}/characters/companion`;
 const EFFECTS_ROOT = `${ASSET_ROOT}/effects`;
-const CANONICAL_CAMERA_ID = 'building-workspace-v1';
+const CANONICAL_CAMERA_ID = 'building-workspace-v2';
 
 const PROTAGONIST_VARIANTS = Object.freeze({
   idle: facingPair('idle'),
@@ -42,7 +44,7 @@ export const WORKSPACE_V2_ASSETS = Object.freeze({
   status: 'production',
   canonicalCameraId: CANONICAL_CAMERA_ID,
   dimensions: Object.freeze({ width: 1536, height: 1024 }),
-  background: `${ASSET_ROOT}/workspace/backgrounds/building-formal-workstation-room-v1.webp`,
+  background: `${ASSET_ROOT}/workspace/backgrounds/building-formal-workstation-room-v2.webp`,
   protagonist: PROTAGONIST_VARIANTS.idle.left,
   protagonistVariants: PROTAGONIST_VARIANTS,
   safeZone: Object.freeze({ minX: 10, maxX: 90, minY: 11, maxY: 89 }),
@@ -61,14 +63,14 @@ export const WORKSPACE_V2_ASSETS = Object.freeze({
 });
 
 const PROP_DEFINITIONS = Object.freeze([
-  prop('corner-desk', 'office-corner-desk-v3/front.png', 25, { x: 42, y: 83, width: 33, z: 24 }),
-  prop('office-chair', 'office-chair/prop.png', 25, { x: 38, y: 84, width: 9, z: 26 }),
-  prop('office-shelf', 'office-shelf/prop.png', 50, { x: 72, y: 78, width: 13, z: 22 }),
-  prop('desk-lamp', 'office-desk-lamp/prop.png', 50, { x: 32, y: 70, width: 7, z: 29 }),
-  prop('planning-board', 'office-board/prop.png', 75, { x: 39, y: 43, width: 17, z: 10, anchor: 'center' }),
-  prop('single-monitor', 'office-monitor-single/prop.png', 75, { x: 43, y: 70, width: 10, z: 28 }, 99),
-  prop('dual-monitor', 'office-monitor-dual/prop.png', 100, { x: 44, y: 70, width: 15, z: 28 }),
-  prop('office-plant', 'office-plant/prop.png', 100, { x: 82, y: 84, width: 10, z: 23 }),
+  prop('corner-desk', 25, { x: 38.997, y: 66.113, width: 23.568, z: 24 }),
+  prop('office-chair', 25, { x: 39.974, y: 66.211, width: 8.073, z: 30 }),
+  prop('office-shelf', 50, { x: 72.331, y: 54.395, width: 39.453, z: 22 }),
+  prop('desk-lamp', 50, { x: 32.91, y: 47.754, width: 3.711, z: 29 }),
+  prop('planning-board', 75, { x: 39.128, y: 38.281, width: 13.542, z: 10 }),
+  prop('single-monitor', 75, { x: 40.723, y: 48.438, width: 7.096, z: 28 }, 99),
+  prop('dual-monitor', 100, { x: 40.495, y: 48.535, width: 12.891, z: 28 }),
+  prop('office-plant', 100, { x: 72.461, y: 64.844, width: 23.047, z: 23 }),
 ]);
 
 export const WORKSPACE_PROJECT_PHASES = Object.freeze([
@@ -164,19 +166,20 @@ export function getWorkspaceSceneAssets(progress = 0, placementOverrides = {}, v
         ...entry,
         placement: {
           ...entry.placement,
-          ...normalizePlacementOverride(placementOverrides[entry.id]),
+          ...normalizePositionOverride(placementOverrides[entry.id]),
         },
       })),
+    // PS-244: sized so the chibi sprite matches a 1.7 m figure in the Blender camera.
     protagonistPlacement: normalizePlacementOverride(placementOverrides.protagonist, {
       x: normalized >= 25 ? 58 : 51,
       y: 87,
-      width: 17,
+      width: 24,
       z: 40,
     }),
     companionPlacement: normalizePlacementOverride(placementOverrides.companion, {
       x: normalized >= 75 ? 69 : 73,
       y: 73,
-      width: 9,
+      width: 13,
       z: 42,
       anchor: 'center',
     }),
@@ -198,10 +201,10 @@ function normalizeFacing(value) {
   return value === 'right' ? 'right' : 'left';
 }
 
-function prop(id, filename, minProgress, placement, maxProgress = 100) {
+function prop(id, minProgress, placement, maxProgress = 100) {
   return Object.freeze({
     id,
-    path: `${LEGACY_PROP_ROOT}/${filename}`,
+    path: `${PROP_ROOT}/${id}.png`,
     minProgress,
     maxProgress,
     placement: Object.freeze({ anchor: 'center-bottom', ...placement }),
@@ -210,6 +213,18 @@ function prop(id, filename, minProgress, placement, maxProgress = 100) {
 
 function phase(progress, label, nextRequirement) {
   return Object.freeze({ progress, label, nextRequirement });
+}
+
+// Prop overrides move a prop; they never resize or re-anchor it. Each PS-244
+// sprite's width and anchor come from its Blender render (shadow margin
+// included), while migrated idle-window overrides carry the width and anchor of
+// the old artwork. V2 Edit Mode itself only adjusts x and y.
+function normalizePositionOverride(value) {
+  const { x, y } = normalizePlacementOverride(value);
+  return {
+    ...(x === undefined ? {} : { x }),
+    ...(y === undefined ? {} : { y }),
+  };
 }
 
 function normalizePlacementOverride(value, fallback = {}) {

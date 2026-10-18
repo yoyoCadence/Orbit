@@ -192,8 +192,8 @@ describe('Personal Space V2 Pixi scene runtime', () => {
     await flushMicrotasks();
 
     const restoredPaths = fake.pixi.Assets.load.mock.calls.at(-1)[0];
-    expect(restoredPaths.some(path => path.includes('office-board'))).toBe(true);
-    expect(restoredPaths.some(path => path.includes('office-monitor-single'))).toBe(true);
+    expect(restoredPaths.some(path => path.includes('workspace/props/planning-board.png'))).toBe(true);
+    expect(restoredPaths.some(path => path.includes('workspace/props/single-monitor.png'))).toBe(true);
     expect(runtime.getStatus()).toBe('ready');
     expect(host.dataset.runtimeStatus).toBe('ready');
     expect(root.classList.contains('is-runtime-fallback')).toBe(false);
