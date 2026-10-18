@@ -29,7 +29,7 @@ python3 -m venv /tmp/bpyenv
 npm run ps242:manifest && npm run ps243:assets
 ```
 
-The full pack (room plus 8 props, 1536×1024, 96 samples) takes roughly 30–45 minutes on a 4-core CPU. `--width 768 --samples 24` gives a 3-minute draft for composition checks. Cycles is seeded (`scene.cycles.seed = 244`), so reruns on the same Blender version reproduce the same frames.
+The full pack (room plus 8 props, 1536×1024, 96 samples) takes roughly 35–50 minutes on a 4-core CPU since PS-245. `--width 768 --samples 24` gives a 3-minute draft for composition checks. Cycles is seeded (`scene.cycles.seed = 244`), so reruns on the same Blender version reproduce the same frames.
 
 ## Design decisions
 
@@ -37,6 +37,13 @@ The full pack (room plus 8 props, 1536×1024, 96 samples) takes roughly 30–45 
 - **Contact shadows travel with the prop.** In prop renders the floor, walls, invisible ceiling and the prop's support (the desk, for monitors and the lamp) are shadow catchers. Shadows are therefore baked into the prop PNG and move with it.
 - **Character scale.** The camera is calibrated so a 1.7 m figure at the protagonist's floor position matches the chibi sprite drawn at 24% width (Companion 13%). Before PS-244 the sprites were 17% / 9%.
 - **Style.** A Toon BSDF blended with a weaker Principled BSDF, plus thin navy Freestyle outlines, gives the Premium Illustrated Diorama read from the art bible. Pixel-art characters on a lit 3D diorama follow the HD-2D convention.
+- **Construction detail (PS-245).** Props are built the way the real objects are put together, so they read as furniture rather than blocks:
+  - **Desk:** an edge-banded top, inset drawers with bar handles, a cabinet door, steel legs on rubber feet, and a cable tray.
+  - **Chair:** a curved mesh back with lumbar pad and headrest, armrests, and casters.
+  - **Keyboard and screens:** individual keycaps; the screens are drawn with numpy as a code editor and a light dashboard.
+  - **Room:** wood grain, a rug under the characters, panel mouldings, sconces under each light pool, a clock, outlets, roller blinds and a curtain.
+
+  Everything stays on the camera from PS-244, so character scale did not change. The fixed wall overlay of the achievement frame (`top:20% left:47%`; on phones up to x 60.5%, y 36%) is kept clear.
 - **Diorama framing.** The front wall and ceiling are cut away. Everything outside the window is confined to the camera's view cone through the window, and holdouts keep anything below the floor line out of frame. The empty area around the room is a designed navy backdrop added in `process_pack.py`.
 
 ## Not in scope
