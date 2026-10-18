@@ -3,6 +3,50 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.29.0] - 2026-10-18
+
+### Changed
+- **「空間」的房間與 8 件工作站家具改由 Blender 重新渲染（PS-244）**：
+  - 房間背景，以及 Workspace Upgrade 的書桌、椅子、書櫃、檯燈、計畫板、單／雙螢幕與盆栽，全部來自同一個程序化 Blender 場景與固定相機。
+  - 採插畫感 toon 材質加細輪廓線。
+  - 修正先前「繪製房間＋舊像素家具」混用造成的問題：風格不一致、正面書桌對 3/4 房間的透視衝突、缺少接觸陰影，以及紫色去背殘邊。
+- 接觸陰影跟著家具一起渲染（shadow catcher），所以家具位置改變時陰影跟著走。每件家具的位置由 3D 投影後的裁切框計算，執行時與房間逐像素對齊。
+- 主角與 Companion 依 1.7 m 比例假人校準：sprite 寬度由 17%／9% 調整為 24%／13%，在新房間中比例一致。這是像素角色配 3D 立體場景的 HD-2D 慣例。
+- HW-105 成就相框（固定位置的 DOM 疊層）原本在 `top:17% left:31%`，會蓋到新的計畫板。已移到計畫板與書櫃之間的空牆（`top:20% left:47%`）。
+
+### Performance
+- 素材變小：
+  - 首屏素材：259,133 → 170,661 bytes（−34%）
+  - 完整場景：1,766,935 → 1,252,207 bytes（−29%）
+  - 背景 WebP 只有 71 KB。
+
+### Notes
+- runtime 仍是 Pixi 2D：沒有新增 3D runtime，JS 預算不變。主角、Companion 與天氣疊圖沿用 PS-242 素材。
+- 可重現的素材管線在 `art-pipeline/ps244-blender/`：
+  - `scene.py` 建場景，`render_pack.py` 渲染，`process_pack.py` 處理成素材。
+  - 以 PyPI 的 Blender 5.2.2 bpy 模組在 CPU 上用 Cycles 渲染。
+  - `process_pack.py --write-runtime` 同時寫出 `placements.json` 與 `assetManifest.js` 的 `PROP_DEFINITIONS`，測試強制兩者一致。
+- 舊的 PS-242 房間 webp 與 legacy idle-window 家具檔案保留未刪，供回滾與 legacy 模式使用。
+- 相機 ID 由 `building-workspace-v1` 改為 `building-workspace-v2`。角色與天氣素材已在新相機的五個階段合成預覽中重新目視確認。
+- **已知問題（既有、非本版造成，已立案 `PS-246`）**：
+  - 舊版 idle-window 編輯器存下的家具位置覆寫與 V2 共用同一組 id，會直接套用到 V2 家具。
+  - 那些座標屬於舊的 16:9 相機；新素材逐像素對齊後，錯位會比以前明顯。
+
+### Validation
+- 新增 `tests/unit/ps244WorkspacePlacements.test.js`：
+  - 背景、相機 ID，以及每件家具的 path／placement 必須等於 `placements.json`。
+  - placement 必須能由裁切框推得。
+  - 角色寬度 24／13。
+- 更新既有測試：
+  - `ps242AssetManifest.test.js`：相機 ID。
+  - `ps243AssetBudget.test.js`：位元組基準變小。
+  - `personalSpacePixiRuntime.test.js`：新的家具路徑。
+- `npm run ps242:manifest -- --check` 與 `npm run ps243:assets -- --check` 通過。
+- 五個專案階段的合成預覽（`art-pipeline/ps244-blender/previews/`）目視 QA，含成就相框：家具透視與房間一致、接觸陰影正確、相框不重疊、天花板輪廓線已移除。
+- `npm run lint` 通過；`npm test`（64 files／1070 tests）通過。
+
+---
+
 ## [1.28.2] - 2026-10-18
 
 ### Fixed

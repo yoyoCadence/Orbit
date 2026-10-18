@@ -13,6 +13,16 @@
 
 ## Backlog
 
+- [ ] **PS-245** Blender 工作站精細化（使用者要求「精細模型」）
+  - 目標：在 PS-244 的同一管線上提高模型與房間細節，讓小卡尺寸也看得出材質與結構。
+  - 範圍：家具真實結構（倒角、桌腳與走線槽、五爪腳與扶手、螢幕外殼與支架、鍵帽、滑鼠、桌面小物）；房間細節（吸頂燈或燈具、門、百葉窗、踢腳板、地毯、插座、牆面掛畫、程序化木紋）；檢討相機取景讓家具在 Orbit Window 小卡上更大。
+  - 不含：主角與 Companion 的 3D 化（範圍大、會推翻 PS-242 已核准的像素角色，需使用者另行決定）。
+  - 完成條件：五階段預覽在 100% 與小卡尺寸都通過目視 QA；`ps242`／`ps243` gate 與預算通過；placement 測試通過。
+
+- [ ] **PS-246** V2 家具不應套用舊 16:9 相機的位置覆寫
+  - 問題（PS-244 審查時發現，既有行為）：V2 的 `resolvePlacements()` 直接採用遷移自 legacy idle-window 的 `idleWindowLayouts[*].placements` 與 `placedItems`，其 id（`corner-desk`、`office-chair` 等）與 V2 家具相同，但座標屬於舊的 16:9 left／center／right 相機。PS-244 之後家具陰影與房間逐像素對齊，這類覆寫造成的錯位更明顯。
+  - 方向：覆寫記錄所屬的 `canonicalCameraId`，V2 只套用同相機的覆寫；舊覆寫保留但不套用（不刪使用者資料）。V2 Edit Mode 目前只能調整既有覆寫，也需一併決定新建覆寫的流程。屬使用者資料語意變更，實作前先提案。
+
 - [ ] **HW-112** 佐證圖片雲端同步（Supabase Storage）
   - Goal: upload proof photos to Supabase Storage so they persist across devices and app reinstalls.
   - Scope: `platform/badge.js` → new `pwa/js/platform/proofStorage.js` adapter; bucket `orbit-proof`, path `{user_id}/{sessionId}.jpg`; RLS: SELECT/INSERT/DELETE scoped to `auth.uid()`; use existing `compressImage()` output; graceful fallback to localStorage-only for guests.
@@ -145,18 +155,21 @@
 
 ## In Progress
 
-- [ ] **PS-244** 以 Blender 預渲染 Formal Workstation 環境素材（房間＋8 件家具×5 階段）
-  - 目標：用同一個 Blender 場景與固定相機重做「空間」分頁的房間背景與 8 件 Workspace Upgrade 家具，修正目前繪製房間＋舊像素家具混用造成的風格、透視、比例與接觸陰影不一致。
-  - 範圍（2026-10-17 使用者核准方向）：Blender 預渲染、插畫感 toon 風格、一次交付完整工作站一套；runtime 仍為 Pixi，不新增 3D runtime、不變更 JS 預算；主角與 Companion 手繪 sprite 不重做，以 1.7 m 比例假人校準相機讓角色比例一致。
-  - 產出：`art-pipeline/ps244-blender/` 可重現的 bpy 腳本、provenance 與 placement 紀錄；`pwa/assets/personal-space/v2/workspace/` 新背景與透明家具；`assetManifest.js` 改用由 3D 投影計算的 placement；legacy idle-window 素材保留不刪。
-  - 完成條件：五個專案階段的合成預覽通過目視 QA；`npm run ps242:manifest -- --check`、`npm run ps243:assets -- --check` 與資產預算測試通過；e2e 通過。
-
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
 
 ---
 
 ## Done
+
+- [x] **PS-244** 以 Blender 預渲染 Formal Workstation 環境素材（房間＋8 件家具×5 階段）
+  - 目標：用同一個 Blender 場景與固定相機重做「空間」分頁的房間背景與 8 件 Workspace Upgrade 家具，修正目前繪製房間＋舊像素家具混用造成的風格、透視、比例與接觸陰影不一致。
+  - 範圍（2026-10-17 使用者核准方向）：Blender 預渲染、插畫感 toon 風格、一次交付完整工作站一套；runtime 仍為 Pixi，不新增 3D runtime、不變更 JS 預算；主角與 Companion 手繪 sprite 不重做，以 1.7 m 比例假人校準相機讓角色比例一致。
+  - 產出：`art-pipeline/ps244-blender/` 可重現的 bpy 腳本、provenance 與 placement 紀錄；`pwa/assets/personal-space/v2/workspace/` 新背景與透明家具；`assetManifest.js` 改用由 3D 投影計算的 placement；legacy idle-window 素材保留不刪。
+  - 完成條件：五個專案階段的合成預覽通過目視 QA；`npm run ps242:manifest -- --check`、`npm run ps243:assets -- --check` 與資產預算測試通過；e2e 通過。
+  - 完成（2026-10-18，v1.29.0）：`art-pipeline/ps244-blender/`（`scene.py`、`render_pack.py`、`process_pack.py`、`model-manifest.json`、`placements.json`、五階段預覽）；新背景 `building-formal-workstation-room-v2.webp` 與 `workspace/props/*.png`；相機 `building-workspace-v2`；角色寬度 24／13；成就相框移到 `top:20% left:47%`。
+  - 驗證：`ps244WorkspacePlacements.test.js`；`ps242:manifest -- --check`、`ps243:assets -- --check` 通過；首屏 −34%、完整場景 −29%；五階段預覽目視 QA 通過。
+  - 誠實評估：這版解決的是一致性（同一相機、同一材質、陰影正確），模型本身仍是低面數的乾淨幾何，房間地板留白偏多。精細化另立 `PS-245`。
 
 - [x] **BUG-112** HW-106／HW-107／HW-110 的 review 後續修正（隱私競態與同步狀態）
   - 問題（PR #162–#164 Codex review）：位置定位進行中按「清除」或關閉，晚到的座標仍被寫回；麥克風權限請求進行中再按按鈕會再要求一次麥克風、無法取消；連線恢復同步在 Session 補傳仍在佇列時就顯示「✓ 已更新」，且可能與啟動同步同時執行而重複補傳。

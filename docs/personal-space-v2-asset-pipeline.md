@@ -200,7 +200,7 @@ Every accepted asset entry must include at least:
   role,
   path,
   dimensions,
-  canonicalCameraId: 'building-workspace-v1',
+  canonicalCameraId: 'building-workspace-v2',
   projectPhase,
   source,
   qc,
