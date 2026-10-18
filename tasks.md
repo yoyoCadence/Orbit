@@ -20,7 +20,9 @@
   - 完成條件：五階段預覽在 100% 與小卡尺寸都通過目視 QA；`ps242`／`ps243` gate 與預算通過；placement 測試通過。
 
 - [ ] **PS-246** V2 家具不應套用舊 16:9 相機的位置覆寫
-  - 問題（PS-244 審查時發現，既有行為）：V2 的 `resolvePlacements()` 直接採用遷移自 legacy idle-window 的 `idleWindowLayouts[*].placements` 與 `placedItems`，其 id（`corner-desk`、`office-chair` 等）與 V2 家具相同，但座標屬於舊的 16:9 left／center／right 相機。PS-244 之後家具陰影與房間逐像素對齊，這類覆寫造成的錯位更明顯。
+  - 問題（PS-244 審查時發現）：V2 的 `resolvePlacements()` 直接採用遷移自 legacy idle-window 的 `idleWindowLayouts[*].placements` 與 `placedItems`。它們的 id（`corner-desk`、`office-chair` 等）與 V2 家具相同，但座標屬於舊的 16:9 left／center／right 相機。
+  - PS-244 已處理：舊覆寫的 `width`／`anchor`／`z`／`scale` 會讓含陰影邊界的新 PNG 縮小或偏移，現在 V2 家具只套用 `x`／`y`。
+  - 仍待處理：`x`／`y` 本身是舊相機座標，家具會離開房間中對應的位置。
   - 方向：覆寫記錄所屬的 `canonicalCameraId`，V2 只套用同相機的覆寫；舊覆寫保留但不套用（不刪使用者資料）。V2 Edit Mode 目前只能調整既有覆寫，也需一併決定新建覆寫的流程。屬使用者資料語意變更，實作前先提案。
 
 - [ ] **HW-112** 佐證圖片雲端同步（Supabase Storage）

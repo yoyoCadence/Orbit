@@ -39,10 +39,12 @@ SHADOW_MARGIN = 0.25      # of frame width; low sun casts long shadows
 SPECK_WINDOW = 7          # px; isolated noise below this density is dropped
 SPECK_DENSITY = 0.35
 
-# Mirrors PROP_DEFINITIONS phases and z order in assetManifest.js.
+# Phases and draw order for PROP_DEFINITIONS in assetManifest.js. z follows
+# depth from the camera: the chair stands in front of the desk, the monitors,
+# the keyboard and the lamp, so it is drawn after all of them.
 PROPS = {
     'corner-desk':    {'min': 25,  'max': 100, 'z': 24},
-    'office-chair':   {'min': 25,  'max': 100, 'z': 26},
+    'office-chair':   {'min': 25,  'max': 100, 'z': 30},
     'office-shelf':   {'min': 50,  'max': 100, 'z': 22},
     'desk-lamp':      {'min': 50,  'max': 100, 'z': 29},
     'planning-board': {'min': 75,  'max': 100, 'z': 10},
@@ -91,7 +93,10 @@ def trim_prop(im):
     x0, x1 = max(0, left - margin), min(FRAME[0] - 1, right + margin)
     window = alpha[y0:y1 + 1, x0:x1 + 1]
     # Real shadows are contiguous; catcher sampling noise is isolated specks.
+    # Solid geometry is always kept, so thin parts (a lamp arm, a monitor pole)
+    # and convex corners survive the density test.
     keep = (window >= ALPHA_FLOOR) & (box_mean(window >= ALPHA_FLOOR, SPECK_WINDOW) >= SPECK_DENSITY)
+    keep |= window >= CORE_ALPHA
     kept = np.argwhere(keep)
     (ty, tx), (by, bx) = kept.min(0), kept.max(0)
     box = tuple(int(v) for v in (x0 + tx, y0 + ty, x0 + bx + 1, y0 + by + 1))

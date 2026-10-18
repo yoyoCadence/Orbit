@@ -68,6 +68,25 @@ describe('PS-244 Blender workstation placements', () => {
     for (const [, , body] of propRules) expect(body).not.toMatch(/filter\s*:/);
   });
 
+  it('draws the chair over the desk, monitors and lamp it stands in front of', () => {
+    const z = id => placements.props[id].z;
+    for (const behind of ['corner-desk', 'single-monitor', 'dual-monitor', 'desk-lamp']) {
+      expect(z('office-chair')).toBeGreaterThan(z(behind));
+    }
+  });
+
+  it('lets placement overrides move a prop but never resize or re-anchor it', () => {
+    // Shape of a migrated idle-window editor override (old artwork's width/anchor).
+    const scene = getWorkspaceSceneAssets(100, {
+      'office-shelf': { x: '70%', y: '80%', width: '13%', z: 5, anchor: 'center', scale: 2 },
+    });
+    const shelf = scene.props.find(entry => entry.id === 'office-shelf');
+    const expected = placements.props['office-shelf'];
+    expect(shelf.placement).toEqual({
+      x: 70, y: 80, width: expected.width, z: expected.z, anchor: 'center-bottom',
+    });
+  });
+
   it('keeps the protagonist and Companion at the calibrated Blender scale', () => {
     expect(fullScene.protagonistPlacement.width).toBe(24);
     expect(fullScene.companionPlacement.width).toBe(13);

@@ -64,7 +64,7 @@ export const WORKSPACE_V2_ASSETS = Object.freeze({
 
 const PROP_DEFINITIONS = Object.freeze([
   prop('corner-desk', 25, { x: 38.997, y: 66.113, width: 23.568, z: 24 }),
-  prop('office-chair', 25, { x: 39.974, y: 66.211, width: 8.073, z: 26 }),
+  prop('office-chair', 25, { x: 39.974, y: 66.211, width: 8.073, z: 30 }),
   prop('office-shelf', 50, { x: 72.331, y: 54.395, width: 39.453, z: 22 }),
   prop('desk-lamp', 50, { x: 32.91, y: 47.754, width: 3.711, z: 29 }),
   prop('planning-board', 75, { x: 39.128, y: 38.281, width: 13.542, z: 10 }),
@@ -166,7 +166,7 @@ export function getWorkspaceSceneAssets(progress = 0, placementOverrides = {}, v
         ...entry,
         placement: {
           ...entry.placement,
-          ...normalizePlacementOverride(placementOverrides[entry.id]),
+          ...normalizePositionOverride(placementOverrides[entry.id]),
         },
       })),
     // PS-244: sized so the chibi sprite matches a 1.7 m figure in the Blender camera.
@@ -213,6 +213,18 @@ function prop(id, minProgress, placement, maxProgress = 100) {
 
 function phase(progress, label, nextRequirement) {
   return Object.freeze({ progress, label, nextRequirement });
+}
+
+// Prop overrides move a prop; they never resize or re-anchor it. Each PS-244
+// sprite's width and anchor come from its Blender render (shadow margin
+// included), while migrated idle-window overrides carry the width and anchor of
+// the old artwork. V2 Edit Mode itself only adjusts x and y.
+function normalizePositionOverride(value) {
+  const { x, y } = normalizePlacementOverride(value);
+  return {
+    ...(x === undefined ? {} : { x }),
+    ...(y === undefined ? {} : { y }),
+  };
 }
 
 function normalizePlacementOverride(value, fallback = {}) {
