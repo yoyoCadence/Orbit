@@ -193,12 +193,11 @@
   - 同一個旗標也讓 `upsertProfile()` 對新帳號直接 return；`settings.js` 的 `_devReset()` 會把 backup 裡**前一個帳號**的 user 還原回去。
   - 方向：改用 owner-scoped、專屬 Pro 模擬的標記；或在 owner 改變時清除或驗證 backup。屬 entitlement 路徑，實作前附變更說明。
   - 依賴：`PRO-014M`
-  - In progress（2026-10-18）：變更說明 [`docs/pro-014q-dev-backup-owner-scope.md`](docs/pro-014q-dev-backup-owner-scope.md) 已完成（依兩輪獨立 review 改寫），**等待使用者核准**。核准前不改程式碼。
-    - review 發現 main 上已存在的兩個問題（只影響開發者模式的裝置）：
-      - 模擬期間 `saveUser()` 排入的 pending profile 不會被清除，按「還原」後下一次啟動會把模擬的 `totalXP`（`legacy` 下還有 `isPro`）推到真實帳號；
-      - 模擬中的帳號登出後，在同一台裝置上無法再登入。
-    - 建議 Q4：模擬只存在於一個帳號的一次登入期間。backup 改為 `{ v: 2, ownerId, user }`，舊格式一律擋住；還原、登出、換帳號時結束模擬並丟棄該 owner 的 pending profile；只放行新格式且屬於其他帳號的 backup；面板提供「清除殘留」。
-    - 待使用者決定：是否核准 Q4；登出或換帳號時是否自動結束模擬；高風險項目的變更說明是否也要先問再排程；並自行檢查自己帳號的 `profiles` 是否被模擬值覆寫。
+  - In progress（2026-10-18）：變更說明 [`docs/pro-014q-dev-backup-owner-scope.md`](docs/pro-014q-dev-backup-owner-scope.md) 已完成（經三輪獨立 review 後重寫），**等待使用者核准**。核准前不改程式碼。
+    - review 發現 main 上已存在的兩個問題（只影響開發者模式的裝置）：模擬的 `totalXP`（`legacy` 下還有 `isPro`）可能被推到真實帳號；模擬中的帳號登出後在同一台裝置上無法再登入。
+    - 結論：只要模擬是把假值寫進真實 user，每條保存或同步 user 的路徑都可能外流；逐條修補（Q2–Q4）每輪都被找到新漏洞。
+    - 建議 S0（立即止血：「還原」改為刪除 backup、所有 pending profile、本機 user 與 projection 後重新載入）＋ Q5（Pro 模擬改為讀取時套用的 overlay、移除「模擬等級」、舊 backup 一次性清理）。
+    - 待使用者決定：S0、Q5、是否移除「模擬等級」、高風險項目的變更說明是否也要先問再排程；並自行檢查自己帳號的 `profiles` 是否被模擬值覆寫。
 
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
