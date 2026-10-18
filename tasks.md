@@ -14,12 +14,6 @@
 
 ## Backlog
 
-- [ ] **PS-246** V2 家具不應套用舊 16:9 相機的位置覆寫
-  - 問題（PS-244 審查時發現）：V2 的 `resolvePlacements()` 直接採用遷移自 legacy idle-window 的 `idleWindowLayouts[*].placements` 與 `placedItems`。它們的 id（`corner-desk`、`office-chair` 等）與 V2 家具相同，但座標屬於舊的 16:9 left／center／right 相機。
-  - PS-244 已處理：舊覆寫的 `width`／`anchor`／`z`／`scale` 會讓含陰影邊界的新 PNG 縮小或偏移，現在 V2 家具只套用 `x`／`y`。
-  - 仍待處理：`x`／`y` 本身是舊相機座標，家具會離開房間中對應的位置。
-  - 方向：覆寫記錄所屬的 `canonicalCameraId`，V2 只套用同相機的覆寫；舊覆寫保留但不套用（不刪使用者資料）。V2 Edit Mode 目前只能調整既有覆寫，也需一併決定新建覆寫的流程。屬使用者資料語意變更，實作前先提案。
-
 - [ ] **HW-112** 佐證圖片雲端同步（Supabase Storage）
   - Goal: upload proof photos to Supabase Storage so they persist across devices and app reinstalls.
   - Scope: `platform/badge.js` → new `pwa/js/platform/proofStorage.js` adapter; bucket `orbit-proof`, path `{user_id}/{sessionId}.jpg`; RLS: SELECT/INSERT/DELETE scoped to `auth.uid()`; use existing `compressImage()` output; graceful fallback to localStorage-only for guests.
@@ -181,6 +175,14 @@
 > 2026-10-17 排程：Next 為空且 PS-243 只剩 human-device gate，依 Backlog 中不涉及 auth／schema／部署的低風險項目排入 Next；高風險項目仍待個別核准。
 
 > 2026-10-17 核准：使用者明確核准 `BUG-110`（auth flow 表單 UI）、`PRO-014O`（entitlement 啟動流程）、`BUG-109`（只撰寫 migration 與測試，production 套用由使用者執行），並排定 `HW-110`、`HW-106`、`HW-107`。
+
+> 2026-10-18 排程：Next 只剩需專案擁有者執行的 BUG-109A。PS-246 的第一步是提案（只寫文件、不改程式碼），從 Backlog 移入 Next；核准前不實作。
+
+- [ ] **PS-246** V2 家具不應套用舊 16:9 相機的位置覆寫
+  - 問題（PS-244 審查時發現）：V2 的 `resolvePlacements()` 直接採用遷移自 legacy idle-window 的 `idleWindowLayouts[*].placements` 與 `placedItems`。它們的 id（`corner-desk`、`office-chair` 等）與 V2 家具相同，但座標屬於舊的 16:9 left／center／right 相機。
+  - PS-244 已處理：舊覆寫的 `width`／`anchor`／`z`／`scale` 會讓含陰影邊界的新 PNG 縮小或偏移，現在 V2 家具只套用 `x`／`y`。
+  - 仍待處理：`x`／`y` 本身是舊相機座標，家具會離開房間中對應的位置。
+  - 方向：覆寫記錄所屬的 `canonicalCameraId`，V2 只套用同相機的覆寫；舊覆寫保留但不套用（不刪使用者資料）。V2 Edit Mode 目前只能調整既有覆寫，也需一併決定新建覆寫的流程。屬使用者資料語意變更，實作前先提案。
 
 - [ ] **BUG-109A** 在 production 套用 013 signup trigger migration
   - 目標：讓 production 的 `handle_new_user()` 截斷超過 30 字元的名稱來源，長 email local-part 與長 Google 顯示名稱都能註冊。
