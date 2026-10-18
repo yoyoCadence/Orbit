@@ -128,6 +128,10 @@ F3 的細節：
   - 由頁面既有的 `persist()` 以 `expectedRevision` 儲存。
   - revision 衝突時照現有流程重新 reconcile，再重新判斷。兩個分頁同時寫入時，後寫入的那一方會衝突，不會覆寫先寫入的紀錄，所以不會讓當天的提醒重新開始。
   - 頁面層不直接改 state 物件。
+  - **寫入失敗時 fail closed**：例如 localStorage 不可用或已滿時，沒有 `firstShownAtMs` 可以讓提醒到期，之後每一次快照都會把它當成新的一段。
+    - 所以第一次寫入無法提交時（非 revision 衝突的儲存錯誤），本次掛載期間不顯示 `remind`，改為 `observe`。
+    - 這個 in-memory 旗標以 effective date 為 key，換日後重新嘗試。
+    - revision 衝突則照上述流程 reconcile 後重新判斷：若另一個分頁已寫入紀錄，就沿用它。
 - **判斷**：`remindWindow.date === effectiveDate`，且 `nowMs - firstShownAtMs ≥ 30 分鐘` 時，view model 傳入空的 `missedPatterns`。
 - **到期時重新 render**：
   - 快照只在 render 時重建，`dayCycle.js` 的換日監看也不會每分鐘重繪 Companion。若使用者開著頁面不動，提醒會一直掛著。
@@ -170,7 +174,8 @@ F3 的細節：
   - 同一天重新載入或重新掛載，不會重設 `firstShownAtMs`；隔一個 effective day 可以再出現一次；
   - `firstShownAtMs` 是數字；格式錯誤（字串、`NaN`）時視為沒有紀錄，並在下一次顯示時由 `recordCompanionRemindWindow()` 以有效的時間覆寫；
   - 兩份 state 帶著相同的 revision 同時寫入時，第二個寫入以 revision 衝突失敗，不會覆寫第一個；
-  - 頁面開著不動時，`firstShownAtMs + 30 分鐘` 之後會自動 refresh 並離開 `remind`（用假計時器測試）；unmount 時取消計時器。
+  - 頁面開著不動時，`firstShownAtMs + 30 分鐘` 之後會自動 refresh 並離開 `remind`（用假計時器測試）；unmount 時取消計時器；
+  - 第一次寫入因儲存錯誤失敗時（模擬 `saveState` 丟出非 revision 衝突的錯誤），本次掛載不顯示 `remind`，之後的 render 也不會再顯示。
 - 從 `coreState.dailyPlan` 移除最後一個合格任務後，重新建立的快照不再是 `remind`。
 - 注入的 `now` 在 00:00 到 `newDayHour` 之間時不出現 `remind`，與執行測試的機器時間無關。
 - 首頁小卡與完整頁面的 Companion **狀態與台詞 key** 一致（台詞文字的統一另立任務，見 §9 第 6 點）；選 D2 時，靜態 fallback 的 `remind` 動畫不循環。
