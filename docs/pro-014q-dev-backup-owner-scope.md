@@ -85,7 +85,17 @@ V2 遷移在 finalize 時，用 `totalXP` 換算等級來計算 `openingGold`（
 - 刪除**所有** `profileSyncPending:*`，以及 v1.21 預發布版可能留下的無 owner 全域 key `profileSyncPending`；
 - 刪除本機 user，不再把 backup 存回本機；
 - 清除 projection snapshot；
+- 刪除這台裝置上所有帳號的 V2 state（`personal-space-state-v2:<ownerId>`），保留 legacy state 與 legacy claim；
 - 重新載入，讓真實資料從 server 取回。
+
+為什麼要刪 V2 state：
+
+- §2.4：若 V2 遷移在模擬等級期間 finalize，`openingGold` 會依模擬的 `totalXP` 永久算定，`loadControllerState()` 之後原樣回傳，不會重算。
+- 刪除後下一次載入會重新遷移，以真實的 `totalXP` 重新 finalize。
+- 代價很小：
+  - V2 目前不寫入 `spentGold`，沒有購買紀錄會遺失；
+  - reward ledger、Project、Companion 由已同步的 Sessions 重新 reconcile；
+  - 會遺失的只有本機的擺放微調（PS-246 也將停用）與已播放過的 reveal 狀態（可能重播一次）。
 
 為什麼是「所有」pending，而不只目前帳號的：backup 可能是別的帳號先前模擬時留下的。只刪目前帳號的 pending，其他帳號的模擬 pending 會在 guard 消失後外流。
 
@@ -139,6 +149,7 @@ Q4 可以再補上 review 找到的兩條路徑，但它仍然依賴「找出所
 ## 6. 測試（核准後實作）
 
 - **S0**：模擬中 `saveUser()` 排入 pending（目前帳號與另一個帳號各一份）→ `_devReset()` → 兩份 pending 都被刪除、本機 user 被刪除，之後兩個帳號的 `loadFromRemote()` 都不會 upsert 模擬值。
+- **V2 回歸**：在模擬等級期間 finalize 的 V2 state（`openingGold` 依模擬 XP 計算）→ 清理 → 重新載入後重新遷移，`openingGold` 依真實 `totalXP` 計算；legacy state 與 legacy claim 保持不變。
 - **Q6 清理**：
   - 既有 backup 擋住所有帳號（既有的 `'{}'` 測試照舊通過：`proEntitlementGate.test.js`、`storage-mapping.test.js`）；
   - 「清除殘留」刪除 backup、所有 `profileSyncPending:*`、本機 user 與 projection；
