@@ -4,7 +4,7 @@
 
 任務本身的定義與驗收條件以 [`tasks.md`](../tasks.md) 為準；本檔只記錄進行中的狀態、與使用者約定的工作規則，以及接手需要的操作細節。
 
-> 最後更新：2026-10-18（UTC 11:30 左右）。main = `db9d29a`（v1.30.0，#171 已合併）。
+> 最後更新：2026-10-18（UTC 11:40 左右）。main = `a1b8475`（v1.30.0，#172 已合併；#173 進行中）。
 
 ## 1. 接手前先讀
 
@@ -31,11 +31,12 @@
 
 - **等待使用者決定的提案**（核准前不改程式碼）：
   - PS-246：[`docs/ps-246-v2-placement-overrides.md`](ps-246-v2-placement-overrides.md)，已由 #171 合併。四個決定：方案 A、Edit Mode 入口（A1／A2）、PS-246B、`unmappedPlacements` 摘要（S1／S2）。
-  - AI-203：[`docs/ai-203-companion-remind-proposal.md`](ai-203-companion-remind-proposal.md)，分支 `docs/ai-203-proposal`。決定項見提案 §9。
-  - PRO-014Q：`docs/pro-014q-dev-backup-owner-scope.md`，只在分支 `docs/pro-014q-proposal` 上（尚未開 PR；PRO-014Q 移入 In Progress 的 commit 也只在該分支，合併前 main 上仍是 Backlog）。review 發現 main 上已存在、只影響開發者模式裝置的問題：模擬資料可能推到真實帳號，模擬中登出後無法再登入。
+  - AI-203：[`docs/ai-203-companion-remind-proposal.md`](ai-203-companion-remind-proposal.md)，已由 #172 合併。決定項見提案 §9（建議 F4 每日固定時段）。
+  - PRO-014Q：[`docs/pro-014q-dev-backup-owner-scope.md`](pro-014q-dev-backup-owner-scope.md)，PR #173（本 PR）。建議 S0 立即止血＋Q6 移除開發者面板的模擬、改用測試帳號。review 發現 main 上已存在、只影響開發者模式裝置的問題：模擬資料可能推到真實帳號，模擬中登出後無法再登入。**請使用者自行檢查**自己帳號 `profiles` 的 `is_pro`、`pro_expires_at`、`total_xp`。
 - 核准後的流程：把提案的驗收條件寫進對應任務，再實作；PS-246 與 PRO-014Q 實作完移到 Done，AI-203 核准後建立 AI-203B。
 - 草稿 PR [#154](https://github.com/yoyoCadence/Orbit/pull/154)（`feat/pro-014l-streak-unlock-rpc`，PRO-014L）不是本工作階段開的；它改的 SUB-16 路徑與 `PRO-014P` 相同。
-- Codex review 額度在 2026-10-18 用完；之後的 PR 依 §2 改用獨立 Claude review（只讀 agent，對照程式碼回報 P1／P2／P3，修完再請它複查）。
+- Codex review 額度在 2026-10-18 兩度用完（中間短暫恢復，對 #172、#173 找到 6 個 P2，都已修正）。額度用完時依 §2 改用獨立 Claude review（只讀 agent，對照程式碼回報 P1／P2／P3，修完再請它複查）。
+- 教訓：三份提案的獨立 review 各找到 P1（PRO-014Q 連續四輪）。提案的事實與設計都要對照程式碼驗證；逐條修補一直被找到新漏洞時，要退一步改結構（PRO-014Q 由修補 backup 改為移除模擬，AI-203 由 F3 改為 F4）。
 
 ## 4. 本次工作階段已完成（2026-10-17～18）
 
@@ -58,6 +59,7 @@
 | #169 | v1.30.0 | PS-245 Blender 精細化：家具真實構造、螢幕 UI、地板木紋、地毯、護牆框線板、壁燈、時鐘、插座、捲簾與窗簾（含獨立 review 的壁燈陰影與時鐘位置修正） |
 | #170 | — | 交接紀錄：記錄 #169；寫提案前須依 AGENTS §15 移動任務；渲染時間統一 |
 | #171 | — | PS-246 提案：V2 不套用 legacy 位置覆寫（等待核准） |
+| #172 | — | AI-203 提案：Companion remind 的資料來源與頻率（等待核准） |
 
 教訓：#155–#164 在 Codex review 出現前就合併，造成 #165、#166、#167 的回頭修正。這就是 §2 合併條件的由來。獨立 review 在 #167、#168、#169 都找到真正的問題（例如椅子畫在螢幕後面、壁燈在相框下投出暗影），所以複查不能省。
 
@@ -70,13 +72,13 @@
 - **PRO-014P**：entitlement 流程，實作前需提案與核准，擋 `PRO-014H` cutover。與草稿 PR #154（PRO-014L）改同一段 SUB-16 路徑。
 - **PRO-014Q**：變更說明見 §3，等使用者決定。
 - **PS-246**：舊 16:9 相機的位置覆寫（`x`／`y`）仍會套用到 V2 家具（`width`／`anchor` 已在 #168 改為不套用）。提案見 `docs/ps-246-v2-placement-overrides.md`，等使用者決定四件事：方案 A、Edit Mode 入口（A1／A2）、是否建立 PS-246B、`migration.unmappedPlacements` 摘要（S1 改規格／S2 實作）。
-- **AI-203**：Companion `remind` 的資料來源與頻率。提案見 `docs/ai-203-companion-remind-proposal.md`，等使用者決定。
+- **AI-203**：Companion `remind` 的資料來源與頻率。提案已合併（#172），等使用者決定。
 - **PS-243**：真機、installed PWA、雙帳號、螢幕閱讀器等 human gate。
 
 ### 可直接做（低風險）
 
 - `tasks.md` 的 Next 只有需要使用者執行的 BUG-109A。
-- 上面需要核准的項目，可以先寫成提案文件交給使用者決定；寫提案不是實作，不違反 AGENTS §3 的「先說明再核准」。但依 AGENTS §15，任務要先在 `tasks.md` 從 Backlog 明確移到 Next，再移到 In Progress（附日期與理由，不可靜默調整順序），才能開始寫。PS-246、AI-203 已移入 In Progress；PRO-014Q 的移動只在分支 `docs/pro-014q-proposal` 上；PRO-014P 仍在 Backlog。高風險項目（如 entitlement）連變更說明都要不要先問使用者再排程，已列為 PRO-014Q 的待決定事項。
+- 上面需要核准的項目，可以先寫成提案文件交給使用者決定；寫提案不是實作，不違反 AGENTS §3 的「先說明再核准」。但依 AGENTS §15，任務要先在 `tasks.md` 從 Backlog 明確移到 Next，再移到 In Progress（附日期與理由，不可靜默調整順序），才能開始寫。PS-246、AI-203、PRO-014Q（#173 合併後）都在 In Progress；PRO-014P 仍在 Backlog。高風險項目（如 entitlement）連變更說明都要不要先問使用者再排程，已列為 PRO-014Q 的待決定事項。
 - 椅子右扶手與一個腳輪畫在書桌之上（PS-244 起既有，約 10 px，記錄在 `tasks.md` 的 PS-245）。修正要拆分椅子的渲染層，再用 `render_pack.py --only office-chair` 重渲椅子。`tasks.md` 目前沒有對應任務，要做需先建立任務。
 
 ## 6. PS-245 精細化：實作計畫
