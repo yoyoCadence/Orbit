@@ -3,6 +3,17 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.28.1] - 2026-10-18
+
+### Fixed
+- **已安裝的 PWA 在更新後第一次離線開啟時無法啟動**：service worker 的預快取清單漏了 5 個啟動時就會載入的模組（`export.js`、v1.26.0 起的 `platform/network.js`、v1.27.0 的 `platform/ambientNoise.js`、v1.28.0 的 `platform/placeContext.js` 與 `ui/placeHint.js`）。更新時舊快取被刪除，這些模組只能從網路取得，離線時整個模組圖無法執行。現已全部預快取。
+- 舊版 Personal Space（地圖與家具）延遲載入的 5 個模組（`furnitureState.js`、`world/floorMap.js`、`world/furnitureLayout.js`、`world/sceneGraph.js`、`ui/floorMapPanel.js`）同樣補進預快取，離線也能開啟。
+
+### Validation
+- 新增 `tests/unit/serviceWorkerShell.test.js`：從 `app.js` 走訪實際的 static 與 dynamic import 圖，要求每個模組都在 `SHELL` 內，且 `SHELL` 每一項都存在（避免 `cache.addAll()` 讓安裝失敗）。修正前此測試列出上述 10 個遺漏。之後新增模組忘記加入預快取會直接讓 CI 失敗。
+
+---
+
 ## [1.28.0] - 2026-10-17
 
 ### Added

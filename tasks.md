@@ -152,6 +152,11 @@
 
 ## Done
 
+- [x] **BUG-111** Service worker 預快取漏列模組，更新後離線無法啟動
+  - 問題：`sw.js` 的 `SHELL` 漏了 5 個啟動必載模組（含 v1.26–v1.28 新增的 `network.js`、`ambientNoise.js`、`placeContext.js`、`placeHint.js`）與 5 個舊版 Personal Space 延遲模組；更新後第一次離線開啟時模組圖無法執行（PR #163、#164 Codex review 指出）。
+  - 修正：補齊 `SHELL`，並新增走訪實際 import 圖的測試，讓日後漏列直接讓 CI 失敗。
+  - 完成（2026-10-18，v1.28.1）：`SHELL` 補上 10 個模組；`serviceWorkerShell.test.js` 從 `app.js` 走訪 static／dynamic import，要求全部預快取且每個 `SHELL` 項目都存在。修正前測試列出 10 個遺漏。
+
 - [x] **HW-107** Location context mode
   - Goal: support optional coarse context labels such as home / work / outside for task suggestions.
   - Scope: privacy-first local-only geolocation prompt, coarse saved labels, no precise coordinate sync.

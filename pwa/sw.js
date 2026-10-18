@@ -1,6 +1,6 @@
 // Service Worker
 // Bump CACHE version on every deploy so users always get fresh code.
-const CACHE = 'orbit-v1.28.0';
+const CACHE = 'orbit-v1.28.1';
 
 const SHELL = [
   './',
@@ -28,6 +28,7 @@ const SHELL = [
   './js/focusTimer.js',
   './js/authFlow.js',
   './js/tour.js',
+  './js/export.js',
   './js/pages/home.js',
   './js/pages/goals.js',
   './js/pages/review.js',
@@ -40,6 +41,7 @@ const SHELL = [
   './js/ui/proNav.js',
   './js/ui/proofSheet.js',
   './js/ui/sessionRow.js',
+  './js/ui/placeHint.js',
   './js/platform/storageBridge.js',
   './js/platform/authOperationGuard.js',
   './js/platform/bootSequenceGuard.js',
@@ -52,11 +54,15 @@ const SHELL = [
   './js/platform/sessionDeletionLog.js',
   './js/platform/share.js',
   './js/platform/purchases.js',
+  './js/platform/network.js',
+  './js/platform/ambientNoise.js',
+  './js/platform/placeContext.js',
   './js/personalSpace/index.js',
   './js/personalSpace/sceneRuntime.js',
   './js/personalSpace/economy.js',
   './js/personalSpace/unlockRules.js',
   './js/personalSpace/gameState.js',
+  './js/personalSpace/furnitureState.js',
   './js/personalSpace/idleWindow/index.js',
   './js/personalSpace/idleWindow/assetRegistry.js',
   './js/personalSpace/idleWindow/layouts.js',
@@ -73,9 +79,13 @@ const SHELL = [
   './js/personalSpace/world/roomScene.js',
   './js/personalSpace/world/officeScene.js',
   './js/personalSpace/world/furnitureAnchors.js',
+  './js/personalSpace/world/floorMap.js',
+  './js/personalSpace/world/furnitureLayout.js',
+  './js/personalSpace/world/sceneGraph.js',
   './js/personalSpace/ui/shopPanel.js',
   './js/personalSpace/ui/dialogBubble.js',
   './js/personalSpace/ui/hudOverlay.js',
+  './js/personalSpace/ui/floorMapPanel.js',
   './js/personalSpace/v2/config.js',
   './js/personalSpace/v2/featureFlag.js',
   './js/personalSpace/v2/stateSchema.js',
