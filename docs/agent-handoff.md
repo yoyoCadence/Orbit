@@ -29,7 +29,7 @@
 
 ## 3. 進行中的工作
 
-- **PS-245（精細化）**：分支 `feat/ps-245-blender-detail`，PR [#169](https://github.com/yoyoCadence/Orbit/pull/169)。獨立 review 回報 2 個 P2：壁燈在光暈裡投出暗影且有一塊落在相框下、任務的完成紀錄與範圍不符；另有 P3，包括時鐘與壁燈重疊。修正後需要重渲房間。合併後本節改為「無進行中的工作」。
+- **PS-245（精細化）**：分支 `feat/ps-245-blender-detail`，PR [#169](https://github.com/yoyoCadence/Orbit/pull/169)。獨立 review 回報 2 個 P2：壁燈在光暈裡投出暗影且有一塊落在相框下、任務的完成紀錄與範圍不符；另有 P3，包括時鐘與壁燈重疊。已修正並重渲房間，等獨立 review 複查後合併。合併後本節改為「無進行中的工作」。
 - 草稿 PR [#154](https://github.com/yoyoCadence/Orbit/pull/154)（`feat/pro-014l-streak-unlock-rpc`，PRO-014L）不是本工作階段開的；它改的 SUB-16 路徑與 `PRO-014P` 相同。
 - Codex review 額度在 2026-10-18 用完；之後的 PR 依 §2 改用獨立 Claude review（只讀 agent，對照程式碼回報 P1／P2／P3，修完再請它複查）。
 

@@ -14,7 +14,7 @@
       "files": [
         {
           "path": "pwa/assets/personal-space/v2/workspace/backgrounds/building-formal-workstation-room-v2.webp",
-          "bytes": 82756
+          "bytes": 82546
         },
         {
           "path": "pwa/assets/personal-space/v2/characters/protagonist/player-default-idle-left.png",
@@ -29,7 +29,7 @@
           "bytes": 14425
         }
       ],
-      "totalBytes": 182493,
+      "totalBytes": 182283,
       "targetBytes": 1572864,
       "hardThresholdBytes": 2621440,
       "result": "PASS"
@@ -38,7 +38,7 @@
       "files": [
         {
           "path": "pwa/assets/personal-space/v2/workspace/backgrounds/building-formal-workstation-room-v2.webp",
-          "bytes": 82756
+          "bytes": 82546
         },
         {
           "path": "pwa/assets/personal-space/v2/characters/protagonist/player-default-idle-left.png",
@@ -153,7 +153,7 @@
           "bytes": 56446
         }
       ],
-      "totalBytes": 1298860,
+      "totalBytes": 1298650,
       "targetBytes": 4194304,
       "hardThresholdBytes": 6291456,
       "result": "PASS"

@@ -51,8 +51,8 @@
       },
       "format": "webp",
       "alpha": false,
-      "bytes": 82756,
-      "sha256": "8131123a1d5ba96ac5e2fddc727d08315b87f398f14d85640652a4ec824ed839",
+      "bytes": 82546,
+      "sha256": "31ccec5e879864b0c647200ec9f09a65807e64d0ba42ea082fd29d14830b340e",
       "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     },
