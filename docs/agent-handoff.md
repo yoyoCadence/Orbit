@@ -37,10 +37,11 @@
      - `pwa/js/personalSpace/v2/viewModels.js`：移除 `resolvePlacements()`，`placements` 固定為 `{}`（附 PS-246 註解）；`world.idleWindowLayouts`、`world.placedItems` 仍照常保存。
      - `pwa/js/pages/personalSpaceV2.js`：移除 `listPersonalSpaceV2EditablePlacements`、`adjust…`、`reset…`、`resetAll…` 與其 helper、`editorMarkup`、`editorTarget`、`persist()`、`saveState` 選項與 import、nudge／reset 的 click 處理。Edit Mode 改為說明文字（「工作站家具的位置由固定視角的場景決定，目前不能移動…」），沒有任何按鈕。
      - `tests/unit/personalSpaceV2Page.test.js`：移除編輯函式的測試；Edit Mode 測試改為確認沒有按鈕、`saveState` 不被呼叫。
-     - lint 通過；相關 4 個測試檔 43 tests 通過（尚未跑全套與 e2e）。
+     - lint 通過；相關 4 個測試檔 43 tests 通過。**全套單元測試在 WIP 上有 1 個失敗**：`tests/unit/ps243AssetBudget.test.js` 的 baseline 比對，因為 `personalSpaceV2.js` 變小，與 `docs/ps243/asset-baseline.json` 不一致（gzip 275,045 vs 277,007 bytes）。main 上會通過。e2e 尚未跑。
    - 剩下的工作：
      - 新增 view model 回歸測試：有 legacy 覆寫（含 `x`／`y`）的 V2 state，每件家具的 placement 等於 `PROP_DEFINITIONS`；`world.idleWindowLayouts`／`placedItems` 不被改動。
      - 移除 `pwa/assets/style.css` 中不再使用的 `.personal-space-v2-editor-list`、`.personal-space-v2-editor-item`、`.personal-space-v2-nudge` 等樣式（先 grep 確認）。
+     - CSS 與 JS 都改完後，執行 `npm run ps243:assets` 重新產生 `docs/ps243/asset-baseline.json` 並一起提交，再確認 `npm run ps243:assets -- --check` 與 `ps243AssetBudget.test.js` 通過。
      - S1：修改 `docs/personal-space-v2-technical-design.md` §7.2（約第 280 行）中 `migration.unmappedPlacements` 的文字，改為「legacy 項目保留在 legacy state 與 V2 的 `world.idleWindowLayouts`，V2 不套用」；約第 248 行 schema 範例中的 `unmappedPlacements: []` 一併處理。
      - `docs/personal-space-state-flow.md` 第 143 行（Edit Mode 調整既有擺放）改為現況。
      - `tasks.md`：PS-246 移到 Done；CHANGELOG；`npm run bump -- patch`（同一個 commit）。
