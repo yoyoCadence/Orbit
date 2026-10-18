@@ -169,7 +169,7 @@ Q4 可以再補上 review 找到的兩條路徑，但它仍然依賴「找出所
   - 另一個帳號在清理後無法認領 legacy state。
 - **Q6 清理**：
   - 既有 backup 擋住所有帳號（既有的 `'{}'` 測試照舊通過：`proEntitlementGate.test.js`、`storage-mapping.test.js`）；
-  - 「清除殘留」刪除 backup、所有 `profileSyncPending:*`、本機 user 與 projection；
+  - 「清除殘留」與 S0 的清理相同：刪除 backup、所有 `yoyo_profileSyncPending:*` 與無 owner 的 `yoyo_profileSyncPending`、本機 user、projection，以及所有帳號的 V2 state（legacy-claim key 與 legacy state 保留）；
   - 清除後的第一次 `loadFromRemote()` 不推送任何模擬值，包含離線快取啟動與換帳號載入失敗的情況。
 - **面板**：沒有「模擬等級」與「模擬 Pro」；只有 backup 存在時顯示「清除殘留」（`proDevPanel.test.js` 需要改寫，或刪除只測模擬的案例）。
 - 版本：S0 `npm run bump -- patch`；Q6 移除開發者功能，也用 patch（不影響一般使用者）。
