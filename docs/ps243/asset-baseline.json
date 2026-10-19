@@ -249,7 +249,7 @@
         },
         {
           "path": "pwa/js/personalSpace/v2/store.js",
-          "bytes": 4905
+          "bytes": 4251
         },
         {
           "path": "pwa/js/personalSpace/v2/telemetry.js",
@@ -261,18 +261,18 @@
         },
         {
           "path": "pwa/js/personalSpace/v2/viewModels.js",
-          "bytes": 26301
+          "bytes": 26368
         }
       ],
-      "rawBytes": 205211,
-      "gzipBytes": 52192
+      "rawBytes": 204624,
+      "gzipBytes": 51962
     },
     "vendoredPixi": {
       "path": "pwa/vendor/pixi.js",
       "rawBytes": 796970,
       "gzipBytes": 225428
     },
-    "combinedGzipBytes": 277620,
+    "combinedGzipBytes": 277390,
     "budgetBytes": 307200,
     "result": "PASS"
   }

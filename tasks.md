@@ -18,10 +18,6 @@
   - 問題（AI-203 盤點時發現）：8 個 Companion 台詞 key 在 `pwa/js/personalSpace/v2/ui/orbitWindow.js` 與 `pwa/js/pages/personalSpaceV2.js` 的文字全部不同。
   - 方向：收斂成一份文案表，兩處共用；文字由使用者選定。`companion.goal.gentle-reminder` 已在 AI-203B 決定。
 
-- [ ] **HW-113** 今日計畫的日期與 effective date 對齊
-  - 問題（AI-203 盤點時發現）：今日計畫存成 `{ date, taskIds }`，`date` 是日曆日；Sessions 與 V2 快照用 `newDayHour` 切日。`saveDailyPlan()` 在午夜後儲存會把整份舊計畫蓋上新日期。vertical slice §7.1 要求兩者對齊。
-  - 影響：Main Quest 的行動目標、首頁今日計畫、AI-203B 的提醒（目前以「00:00 到 `newDayHour` 不提醒」迴避）。
-
 - [ ] **HW-112** 佐證圖片雲端同步（Supabase Storage）
   - Goal: upload proof photos to Supabase Storage so they persist across devices and app reinstalls.
   - Scope: `platform/badge.js` → new `pwa/js/platform/proofStorage.js` adapter; bucket `orbit-proof`, path `{user_id}/{sessionId}.jpg`; RLS: SELECT/INSERT/DELETE scoped to `auth.uid()`; use existing `compressImage()` output; graceful fallback to localStorage-only for guests.
@@ -183,6 +179,8 @@
 > - PRO-014Q：S0＋Q6。
 > - 下一步：依序實作核准的項目，每項一個 PR，從風險最小的 PS-246 開始。
 
+> 2026-10-19 排程：Next 只剩需專案擁有者執行的 BUG-109A，PRO-014Q Q6 等測試帳號。HW-113 不涉及 auth／schema／部署，從 Backlog 移入 Next，並開始實作。
+
 - [ ] **BUG-109A** 在 production 套用 013 signup trigger migration
   - 目標：讓 production 的 `handle_new_user()` 截斷超過 30 字元的名稱來源，長 email local-part 與長 Google 顯示名稱都能註冊。
   - 步驟：依 [`docs/bug-109-signup-name-truncation.md`](docs/bug-109-signup-name-truncation.md) 的 runbook：先以 `pg_get_functiondef` 比對 production 函式與 004、記錄回滾來源，在非 production 環境跑 `tests/database/bug109.test.sql`，再套用並驗證。
@@ -215,6 +213,13 @@
 ---
 
 ## Done
+
+- [x] **HW-113** 今日計畫的日期與 effective date 對齊
+  - 問題（AI-203 盤點時發現）：今日計畫存成 `{ date, taskIds }`，`date` 是日曆日；Sessions 與 V2 快照用 `newDayHour` 切日。`saveDailyPlan()` 在午夜後儲存會把整份舊計畫蓋上新日期。vertical slice §7.1 要求兩者對齊。
+  - 影響：Main Quest 的行動目標、首頁今日計畫、AI-203B 的提醒（目前以「00:00 到 `newDayHour` 不提醒」迴避）。
+  - 完成（2026-10-19，[#180](https://github.com/yoyoCadence/Orbit/pull/180)，v1.31.1）：`getDailyPlan()`／`saveDailyPlan()` 改用 `effectiveToday(newDayHour)`（預設 5 點，與 `dayCycle.eToday()` 相同）；新增 `storage.currentDailyPlan()`，app 開著跨過 `newDayHour`、day watcher 尚未重設時，`addToDailyPlan`／`removeFromDailyPlan` 與首頁拖曳排序從空的計畫開始；`dayCycle` 的換日改為重新讀取計畫，不再寫入空的計畫，避免清掉換日前一分鐘內加入的任務。AI-203B 的「00:00 到 `newDayHour` 不提醒」是已核准的驗收條件，未修改（設定頁只提供 0–8 點，不會與 12:00–14:00 重疊）。
+  - 已知限制：舊版在 00:00 到 `newDayHour` 之間存下的計畫帶的是隔天的日曆日。升級後到 `newDayHour` 之前它不會顯示，這段時間的編輯會從空的計畫開始；若都沒有編輯，`newDayHour` 之後會顯示一次。舊紀錄沒有時間，無法精確轉換。
+  - 另外發現（未處理）：Tour 把教學任務加入計畫後只從記憶體移除，儲存中仍留著 `tour-task`。
 
 - [x] **AI-203B** 實作 Companion `remind`（AI-203 核准的規格）
   - 規格：[`docs/ai-203-companion-remind-proposal.md`](docs/ai-203-companion-remind-proposal.md)。使用者核准的選項：目標來源 A（今日計畫中符合 `isMainQuestTaskEligible()` 的任務）、G1（有 Session 的日期少於 3 天不提醒）、M1（Momentum 不變）、F4（只在本地時間 `[12:00, 14:00)` 提醒）、D2（靜態 fallback 的 `remind` 動畫只播一次）。

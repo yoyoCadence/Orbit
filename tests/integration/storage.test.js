@@ -10,7 +10,7 @@
  *   以及 migrateV1toV2 資料遷移
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ─── Supabase mock（必須在 import storage.js 之前 hoisted）────────────────────
 
@@ -1348,7 +1348,18 @@ describe('db.upsertEnergy()', () => {
 // Daily Plan: getDailyPlan / saveDailyPlan
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// HW-113: the plan is dated by the effective day (newDayHour, default 05:00),
+// not the calendar day. Pin the clock to midday so "today" is unambiguous, and
+// cover the 00:00–05:00 window explicitly.
 describe('storage.getDailyPlan()', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 9, 20, 12, 0));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('returns [] when nothing stored', () => {
     expect(storage.getDailyPlan()).toEqual([]);
   });
@@ -1359,19 +1370,37 @@ describe('storage.getDailyPlan()', () => {
   });
 
   it('returns taskIds when plan date matches today', () => {
-    const today = new Date().toLocaleDateString('sv');
-    lsSet('dailyPlan', { date: today, taskIds: ['a', 'b', 'c'] });
+    lsSet('dailyPlan', { date: '2026-10-20', taskIds: ['a', 'b', 'c'] });
     expect(storage.getDailyPlan()).toEqual(['a', 'b', 'c']);
+  });
+
+  it('before the new-day hour, today is still the previous effective day', () => {
+    vi.setSystemTime(new Date(2026, 9, 21, 0, 30));
+    lsSet('dailyPlan', { date: '2026-10-20', taskIds: ['a'] });
+    expect(storage.getDailyPlan()).toEqual(['a']);
   });
 });
 
 describe('storage.saveDailyPlan()', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 9, 20, 12, 0));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('saves plan with today date', () => {
-    const today = new Date().toLocaleDateString('sv');
     storage.saveDailyPlan(['x', 'y']);
     const raw = lsGet('dailyPlan');
-    expect(raw.date).toBe(today);
+    expect(raw.date).toBe('2026-10-20');
     expect(raw.taskIds).toEqual(['x', 'y']);
+  });
+
+  it('a save before the new-day hour keeps the effective day', () => {
+    vi.setSystemTime(new Date(2026, 9, 21, 0, 30));
+    storage.saveDailyPlan(['x']);
+    expect(lsGet('dailyPlan').date).toBe('2026-10-20');
   });
 
   it('saved plan is retrievable via getDailyPlan()', () => {

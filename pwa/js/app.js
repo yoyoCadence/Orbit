@@ -45,6 +45,7 @@ const bootSequenceGuard  = createBootSequenceGuard();
 // ─── Daily Plan ───────────────────────────────────────────────────────────────
 
 window.addToDailyPlan = function (taskId) {
+  state.dailyPlan = storage.currentDailyPlan(state.dailyPlan);
   if (state.dailyPlan.includes(taskId)) {
     showToast('任務已在計劃中');
     return;
@@ -56,7 +57,7 @@ window.addToDailyPlan = function (taskId) {
 };
 
 window.removeFromDailyPlan = function (taskId) {
-  state.dailyPlan = state.dailyPlan.filter(id => id !== taskId);
+  state.dailyPlan = storage.currentDailyPlan(state.dailyPlan).filter(id => id !== taskId);
   storage.saveDailyPlan(state.dailyPlan);
   renderPage(currentHash());
 };

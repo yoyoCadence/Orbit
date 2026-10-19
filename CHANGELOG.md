@@ -6,29 +6,20 @@
 ## [1.31.1] - 2026-10-19
 
 ### Fixed
-- **開發者面板的「還原」不再讓模擬值外流到真實帳號（PRO-014Q S0）**：只影響開發者模式的裝置（localhost、ngrok 或 `orbit_dev_panel`）。模擬等級或 Pro 時，正常使用（完成 Session、換日）會把含模擬值的 user 排成 pending profile；備份存在時上雲被擋住。舊的「還原」只把備份寫回本機並刪除備份，pending 留著，下次啟動就被推上 `profiles`。`legacy` source 下這會授予真的 Pro。
-  - 「還原」改為先顯示確認對話框，確認後清除：
-    - 備份；
-    - 這台裝置上**所有帳號**的 pending profile，包括無 owner 的舊 key；
-    - 本機 user；
-    - Pro projection；
-    - 所有帳號的 V2 state。
-  - 清除後重新載入，從雲端取回真實資料。
-  - 保留 legacy 個人空間與 legacy claim，其他帳號仍無法認領 legacy state。
-  - 對話框寫明代價：模擬期間獲得的 XP 與連勝變動會被捨棄，已記錄的 Session 會保留；個人空間依雲端資料重新建立，開場 Gold 可能偏低，尚未播放的世界變化會遺失；清除後若離線，要等連線後重新登入。
-- **另一個視窗按「還原」後，這個視窗會重新載入**（review 找到的 P1，main 上原本就有）：同時開兩個視窗（兩個分頁，或分頁加已安裝的 App）時，一個視窗的「還原」刪掉擋住上雲的備份，另一個視窗記憶體中仍是模擬的 user，下一次完成 Session 就會把模擬值推上 `profiles`。現在備份被其他視窗移除、或 localStorage 被整個清空時，這個視窗會重新載入。
-- **遊客按「還原」不再失去 profile**（review 找到的 P2）：遊客的 profile 只存在這台裝置。讀取登入 session 成功且沒有 session、備份就是目前本機 user 的備份時，「還原」把備份寫回本機 user，其餘照樣清除；對話框改寫為遊客版本，不再說「從雲端重新載入」。已登入的帳號、session 因離線等原因無法讀取、或備份屬於別的帳號時，照舊刪除本機 user，避免舊的備份蓋掉雲端較新的資料。重新載入完成前再按一次「還原」不會有作用。
+- **今日計畫改用與 Sessions 相同的「一天」（HW-113）**：今日計畫原本以日曆日存取，Sessions 與個人空間則以「起始時間」（`newDayHour`，預設 05:00）切日。
+  - 修正前：
+    - 00:00 到起始時間之間，今天還沒結束，首頁的今日計畫卻已經消失；
+    - 這段時間內新增、移除或排序任何一項，整份昨天的計畫都會被當成隔天的計畫，起始時間過後仍然顯示。
+  - 現在今日計畫跟著起始時間換日：午夜後仍顯示當天的計畫，起始時間過後才清空。
+  - App 開著跨過起始時間、尚未自動重設時，新增、移除或拖曳排序都從空的計畫開始，不會把昨天的計畫帶進新的一天；之後的自動換日也不再清空這時新加入的任務。
+  - 影響 Main Quest 的行動目標、首頁今日計畫與 Companion 的午間提醒。
+  - 從舊版升級時，若在 00:00 到起始時間之間存過計畫：升級後到起始時間之前，那份計畫不會顯示，這段時間的編輯會從空的計畫開始；若都沒有編輯，它在起始時間過後會顯示一次。舊紀錄沒有時間，無法精確轉換。
 
 ### Validation
-- 新增 `tests/unit/pro014qDevReset.test.js`，用真實的 storage、設定頁與 V2 controller 驗證：
-  - 取消時不清除任何東西；
-  - 確認後的完整清理；
-  - 清理後兩個帳號的 `loadFromRemote()` 都不 upsert profile；
-  - 對照組：只刪備份時模擬的 `total_xp` 會被推送；
-  - 刪除 V2 state 後，開場 Gold 與乾淨裝置依真實 XP 算出的相同；
-  - 遊客：備份寫回本機 user、其餘照樣清除、顯示遊客版對話框；別的帳號的備份、已登入、或讀取 session 出錯時，不寫回；重新載入前的第二次點擊、與等待 session 期間的重複點擊都不會再跳出對話框。
-- `tests/unit/appBootSequence.test.js` 新增：其他視窗移除備份或清空 localStorage 時重新載入；建立備份、其他 key 或 sessionStorage 的事件不會。
-- `npm run ps243:assets` 重新產生 `docs/ps243/asset-baseline.json`（V2 延遲載入 gzip 51,924 → 52,192 bytes）。
+- 新增 `tests/unit/hw113DailyPlanDate.test.js`（6 項），使用真實的 storage 與固定時鐘。在修正前的程式碼上全部失敗。
+- `tests/unit/appBootSequence.test.js` 新增 3 項，鎖住新增與移除時的過期判斷。
+- `hw113DailyPlanDate.test.js` 另有一項：自動換日不會清空起始時間後、換日前加入的任務（修正前失敗）。
+- `tests/integration/storage.test.js` 的今日計畫測試改用固定時鐘，並補上 00:30 的情況；原本在本地時間 00:00–05:00 會失敗。
 
 ---
 

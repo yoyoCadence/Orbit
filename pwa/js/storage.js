@@ -3,7 +3,7 @@
 // Async background sync → Supabase (when authenticated + online)
 
 import { supabase }  from './supabase.js';
-import { today, mergeSessionsById } from './utils.js';
+import { effectiveToday, mergeSessionsById } from './utils.js';
 import { FLAG_DEV_BACKUP } from './flags.js';
 import {
   applyProStatusResponse,
@@ -58,6 +58,11 @@ function set(key, val) {
 
 function remove(key) {
   localStorage.removeItem(PREFIX + key);
+}
+
+/** The effective day the Daily Plan belongs to; the default hour matches dayCycle's eToday(). */
+function dailyPlanDate() {
+  return effectiveToday(get('user')?.newDayHour ?? 5);
 }
 
 function createPendingSnapshot(ownerId, value) {
@@ -1115,16 +1120,28 @@ export const storage = {
     set(LEADERBOARD_CACHE_KEY, { rows, refreshedAt, refreshDate });
   },
 
-  // ── Daily Plan (local only, resets each day) ─────────────────────────────────
+  // ── Daily Plan (local only, resets each effective day) ──────────────────────
+  // HW-113: dated by the same effective day as Sessions (`newDayHour`), so the
+  // plan survives midnight until the new-day hour instead of vanishing at
+  // 00:00, and a save after midnight no longer moves yesterday's plan to the
+  // next calendar day.
   getDailyPlan: () => {
-    const data     = get('dailyPlan');
-    const todayStr = today();
-    if (!data || data.date !== todayStr) return [];
+    const data = get('dailyPlan');
+    if (!data || data.date !== dailyPlanDate()) return [];
     return data.taskIds || [];
   },
   saveDailyPlan: (taskIds) => {
-    const todayStr = today();
-    set('dailyPlan', { date: todayStr, taskIds });
+    set('dailyPlan', { date: dailyPlanDate(), taskIds });
+  },
+  /**
+   * HW-113: `state.dailyPlan` is loaded for one effective day. Once the stored
+   * plan belongs to a different day, dayCycle's minute watcher simply has not
+   * reloaded it yet, and an edit must start from an empty plan rather than
+   * save yesterday's plan as today's.
+   */
+  currentDailyPlan: (planInMemory) => {
+    const data = get('dailyPlan');
+    return data && data.date !== dailyPlanDate() ? [] : planInMemory;
   },
 
   /**
