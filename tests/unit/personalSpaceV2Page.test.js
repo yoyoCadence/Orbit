@@ -202,6 +202,7 @@ describe('Personal Space V2 full page', () => {
     expect(container.querySelector('[data-personal-space-v2]').dataset.mode).toBe('full-world');
     expect(reconcile).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(source)).toBe(before);
+    expect(localStorage.length).toBe(0);
 
     cleanup();
     cleanup();
