@@ -39,6 +39,55 @@ def set_visible(objects, visible):
         obj.hide_render = not visible
 
 
+_HOLDOUT_MATERIAL = None
+_ORIGINAL_MATERIALS = {}
+
+
+def holdout_material():
+    global _HOLDOUT_MATERIAL
+    if _HOLDOUT_MATERIAL is None:
+        mat = bpy.data.materials.new('occluder-holdout')
+        mat.use_nodes = True
+        nodes = mat.node_tree.nodes
+        nodes.clear()
+        holdout = nodes.new('ShaderNodeHoldout')
+        output = nodes.new('ShaderNodeOutputMaterial')
+        mat.node_tree.links.new(holdout.outputs['Holdout'], output.inputs['Surface'])
+        _HOLDOUT_MATERIAL = mat
+    return _HOLDOUT_MATERIAL
+
+
+def set_occluder(obj, enabled):
+    """Cut the occluded parts out of this prop without drawing the occluder.
+
+    A Holdout material rather than `is_holdout`: Freestyle leaves holdout
+    objects out of its visibility test, so the hidden edges of this prop were
+    still outlined over the occluder. With only the material swapped, Freestyle
+    still sees the geometry and hides those lines. No shadows, bounces or
+    reflections, so the occluder's own shadows are not baked in twice.
+    """
+    slots = getattr(obj, 'material_slots', ())
+    if enabled and obj.name not in _ORIGINAL_MATERIALS:
+        _ORIGINAL_MATERIALS[obj.name] = [slot.material for slot in slots]
+        if slots:
+            for slot in slots:
+                slot.material = holdout_material()
+        elif obj.data is not None and hasattr(obj.data, 'materials'):
+            obj.data.materials.append(holdout_material())
+    elif not enabled and obj.name in _ORIGINAL_MATERIALS:
+        originals = _ORIGINAL_MATERIALS.pop(obj.name)
+        if originals:
+            for slot, material in zip(slots, originals):
+                slot.material = material
+        else:
+            obj.data.materials.clear()
+    obj.visible_shadow = not enabled
+    obj.visible_diffuse = not enabled
+    obj.visible_glossy = not enabled
+    obj.visible_transmission = not enabled
+    obj.visible_volume_scatter = not enabled
+
+
 def render(path):
     scene = bpy.context.scene
     scene.render.filepath = path
@@ -82,15 +131,19 @@ def main():
         if only and prop_id not in only:
             continue
         supports = S.PROP_SUPPORTS.get(prop_id, ())
+        occluders = S.PROP_OCCLUDERS.get(prop_id, ())
         for other_id, other in props.items():
-            set_visible(other, other_id == prop_id or other_id in supports)
+            is_support = other_id in supports
+            is_occluder = other_id in occluders
+            set_visible(other, other_id == prop_id or is_support or is_occluder)
             for obj in other:
-                is_support = other_id in supports
                 obj.is_shadow_catcher = is_support
+                set_occluder(obj, is_occluder)
                 linked = obj.name in no_lines.objects
-                if is_support and not linked:
+                hide_lines = is_support or is_occluder
+                if hide_lines and not linked:
                     no_lines.objects.link(obj)
-                elif not is_support and linked:
+                elif not hide_lines and linked:
                     no_lines.objects.unlink(obj)
         render(os.path.join(args.out_dir, f'{prop_id}.png'))
 

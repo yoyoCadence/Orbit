@@ -22,7 +22,7 @@ describe('PS-243 asset baseline', () => {
 
   it('keeps the complete production state pack plus eight props within budget', () => {
     const { completeProofScene } = baseline.runtimeSceneAssets;
-    expect(completeProofScene.totalBytes).toBe(1_298_650);
+    expect(completeProofScene.totalBytes).toBe(1_293_693);
     // Legacy evidence key retained for artifact compatibility: 1 background,
     // 12 protagonist poses, 6 Companion states, 2 weather overlays, and 8 props.
     expect(completeProofScene.files).toHaveLength(29);

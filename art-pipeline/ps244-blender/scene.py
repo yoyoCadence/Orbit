@@ -35,6 +35,14 @@ PROP_SUPPORTS = {
     'single-monitor': ('corner-desk',),
     'dual-monitor': ('corner-desk',),
 }
+# Props that partly sit behind another prop drawn under them at runtime. The
+# occluder is a holdout in that render: it cuts out the hidden parts without
+# appearing, casting shadows or getting outlines. Only valid while the
+# occluder is on screen whenever this prop is (both enter at phase 25, and
+# V2 placements are fixed since PS-246).
+PROP_OCCLUDERS = {
+    'office-chair': ('corner-desk',),
+}
 
 
 # ── colour helpers ───────────────────────────────────────────────────────────

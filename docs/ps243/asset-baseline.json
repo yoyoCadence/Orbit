@@ -1,6 +1,6 @@
 {
   "artifact": "ps243-asset-baseline",
-  "appVersion": "1.31.2",
+  "appVersion": "1.31.3",
   "note": "Reproducible: a pure function of committed files with CRLF normalized to LF. No timestamps; regenerate with `npm run ps243:assets` and diff to verify.",
   "method": {
     "assetSizes": "raw binary file bytes on disk (fs.statSync.size)",
@@ -126,7 +126,7 @@
         },
         {
           "path": "pwa/assets/personal-space/v2/workspace/props/office-chair.png",
-          "bytes": 29891
+          "bytes": 24934
         },
         {
           "path": "pwa/assets/personal-space/v2/workspace/props/office-shelf.png",
@@ -153,7 +153,7 @@
           "bytes": 56446
         }
       ],
-      "totalBytes": 1298650,
+      "totalBytes": 1293693,
       "targetBytes": 4194304,
       "hardThresholdBytes": 6291456,
       "result": "PASS"
@@ -189,7 +189,7 @@
         },
         {
           "path": "pwa/js/personalSpace/v2/content/assetManifest.js",
-          "bytes": 9357
+          "bytes": 9356
         },
         {
           "path": "pwa/js/personalSpace/v2/controller.js",
@@ -264,15 +264,15 @@
           "bytes": 26368
         }
       ],
-      "rawBytes": 205278,
-      "gzipBytes": 52232
+      "rawBytes": 205277,
+      "gzipBytes": 52233
     },
     "vendoredPixi": {
       "path": "pwa/vendor/pixi.js",
       "rawBytes": 796970,
       "gzipBytes": 225428
     },
-    "combinedGzipBytes": 277660,
+    "combinedGzipBytes": 277661,
     "budgetBytes": 307200,
     "result": "PASS"
   }

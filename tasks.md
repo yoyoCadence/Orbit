@@ -191,18 +191,6 @@
 
 ## In Progress
 
-- [ ] **PS-247** 椅子右扶手與一個腳輪畫在書桌邊櫃之上
-  - 問題（PS-245 誠實評估記錄）：3D 中椅子的右扶手與一個腳輪位於書桌邊櫃後方，但椅子的 PNG（z 30）疊在書桌（z 24）之上，所以這兩部分畫在邊櫃前面，約 10 px。PS-244 起既有。
-  - 方向：渲染椅子時把書桌設為 holdout（只擋住相機、不投影、不出現、不描邊），讓被擋住的部分在椅子 PNG 中透明；書桌與椅子都在 25% 階段出現且位置固定（PS-246），所以兩者總是同時存在。
-  - 範圍：`art-pipeline/ps244-blender/scene.py`（`PROP_OCCLUDERS`）、`render_pack.py`、重新渲染並處理素材（`process_pack.py --write-runtime`）、`ps242`／`ps243` gate、`ps243AssetBudget.test.js` 的位元組數。
-  - 完成條件：五階段預覽中椅子的右扶手與腳輪不再畫在邊櫃之上；被擋住的部分沒有殘留的描邊；其他家具不變；`ps242:manifest -- --check`、`ps243:assets -- --check`、placement 與預算測試通過。
-  - In progress（2026-10-19）：全解析度渲染中。
-
-- [ ] **AI-204** 統一 Companion 台詞文案
-  - 問題（AI-203 盤點時發現）：8 個 Companion 台詞 key 在 `pwa/js/personalSpace/v2/ui/orbitWindow.js` 與 `pwa/js/pages/personalSpaceV2.js` 各有一份文字，其中 7 個不同（`companion.goal.gentle-reminder` 已在 AI-203B 統一）。
-  - 方向：收斂成一份文案表，兩處共用；文字由使用者選定。`companion.goal.gentle-reminder` 已在 AI-203B 決定。
-  - In progress（2026-10-19）：提案 [`docs/ai-204-companion-dialogue-proposal.md`](docs/ai-204-companion-dialogue-proposal.md)（Mode A，只寫文件，經 Codex 與獨立 review 後改寫）。建議新增共用文案模組，文字採首頁小卡版（W-A），COMPANION 小卡改為最多兩行（L2）：目前小卡是單行截斷，常見寬度下兩版文字幾乎都只顯示半句，點擊後的 toast 在窄手機上也會超出畫面。**等待使用者決定**（提案 §6）；核准前不改程式碼。順帶發現夥伴名稱也不一致（首頁一律 `Orbit Guide`，完整頁面「Orbit 夥伴」）。
-
 - [ ] **PRO-014Q** 開發者面板的 backup 不應擋住其他帳號或非 Pro 模擬的 entitlement refresh
   - 問題（PR #158 Codex review 指出，2026-10-18 確認）：`storage.refreshProEntitlement()` 只要 `FLAG_DEV_BACKUP` 存在就直接 return。這個 backup 也由等級模擬器建立，且 `storage.clearAll()` 登出時不會清除。開發者登出後換另一個帳號，該帳號的 refresh 會一直被跳過，在 `server` source 下 fail closed，直到手動重設。
   - 影響：只影響使用過開發者面板的裝置。
@@ -225,6 +213,18 @@
 ---
 
 ## Done
+
+- [x] **PS-247** 椅子右扶手與一個腳輪畫在書桌邊櫃之上
+  - 問題（PS-245 誠實評估記錄）：3D 中椅子的右扶手與一個腳輪位於書桌邊櫃後方，但椅子的 PNG（z 30）疊在書桌（z 24）之上，所以這兩部分畫在邊櫃前面，約 10 px。PS-244 起既有。
+  - 方向：渲染椅子時把書桌設為 holdout（只擋住相機、不投影、不出現、不描邊），讓被擋住的部分在椅子 PNG 中透明；書桌與椅子都在 25% 階段出現且位置固定（PS-246），所以兩者總是同時存在。
+  - 範圍：`art-pipeline/ps244-blender/scene.py`（`PROP_OCCLUDERS`）、`render_pack.py`、重新渲染並處理素材（`process_pack.py --write-runtime`）、`ps242`／`ps243` gate、`ps243AssetBudget.test.js` 的位元組數。
+  - 完成條件：五階段預覽中椅子的右扶手與腳輪不再畫在邊櫃之上；被擋住的部分沒有殘留的描邊；其他家具不變；`ps242:manifest -- --check`、`ps243:assets -- --check`、placement 與預算測試通過。
+  - 完成（2026-10-19，v1.31.3）：`scene.py` 新增 `PROP_OCCLUDERS`（`office-chair` ← `corner-desk`）；`render_pack.py` 在椅子的渲染中把書桌換成 Holdout 材質並關掉陰影、彈射與描邊。用材質而不是物件層級的 `is_holdout`，是因為 Freestyle 不把 holdout 物件納入可見性判斷，被擋住的邊仍會被描線（第一版實測出現殘影）。只重新渲染椅子；其他家具的重新渲染只有取樣雜訊差異，保留原本的素材。椅子寬度 8.854% → 6.25%。
+
+- [ ] **AI-204** 統一 Companion 台詞文案
+  - 問題（AI-203 盤點時發現）：8 個 Companion 台詞 key 在 `pwa/js/personalSpace/v2/ui/orbitWindow.js` 與 `pwa/js/pages/personalSpaceV2.js` 各有一份文字，其中 7 個不同（`companion.goal.gentle-reminder` 已在 AI-203B 統一）。
+  - 方向：收斂成一份文案表，兩處共用；文字由使用者選定。`companion.goal.gentle-reminder` 已在 AI-203B 決定。
+  - In progress（2026-10-19）：提案 [`docs/ai-204-companion-dialogue-proposal.md`](docs/ai-204-companion-dialogue-proposal.md)（Mode A，只寫文件，經 Codex 與獨立 review 後改寫）。建議新增共用文案模組，文字採首頁小卡版（W-A），COMPANION 小卡改為最多兩行（L2）：目前小卡是單行截斷，常見寬度下兩版文字幾乎都只顯示半句，點擊後的 toast 在窄手機上也會超出畫面。**等待使用者決定**（提案 §6）；核准前不改程式碼。順帶發現夥伴名稱也不一致（首頁一律 `Orbit Guide`，完整頁面「Orbit 夥伴」）。
 
 - [x] **HW-113** 今日計畫的日期與 effective date 對齊
   - 問題（AI-203 盤點時發現）：今日計畫存成 `{ date, taskIds }`，`date` 是日曆日；Sessions 與 V2 快照用 `newDayHour` 切日。`saveDailyPlan()` 在午夜後儲存會把整份舊計畫蓋上新日期。vertical slice §7.1 要求兩者對齊。
@@ -288,7 +288,7 @@
   - 誠實評估：
     - 地板留白仍偏多。
     - 角色仍是像素 sprite，是畫面中最粗糙的部分；是否 3D 化需使用者決定。
-    - 椅子右扶手與一個腳輪在 3D 中位於邊櫃後方，卻畫在書桌之上。這是 PS-244 起既有的深度誤差，面積約 10 px，未處理。
+    - 椅子右扶手與一個腳輪在 3D 中位於邊櫃後方，卻畫在書桌之上。這是 PS-244 起既有的深度誤差，面積約 10 px；已由 PS-247（v1.31.3）修正。
 
 - [x] **PS-244** 以 Blender 預渲染 Formal Workstation 環境素材（房間＋8 件家具×5 階段）
   - 目標：用同一個 Blender 場景與固定相機重做「空間」分頁的房間背景與 8 件 Workspace Upgrade 家具，修正目前繪製房間＋舊像素家具混用造成的風格、透視、比例與接觸陰影不一致。
