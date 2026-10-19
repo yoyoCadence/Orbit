@@ -20,14 +20,14 @@
     },
     "office-chair": {
       "path": "assets/personal-space/v2/workspace/props/office-chair.png",
-      "x": 39.714,
+      "x": 40.299,
       "y": 69.434,
-      "width": 8.854,
+      "width": 6.25,
       "z": 30,
       "bbox": [
-        542,
+        571,
         445,
-        678,
+        667,
         711
       ]
     },

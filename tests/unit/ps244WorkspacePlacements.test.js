@@ -92,3 +92,34 @@ describe('PS-244 Blender workstation placements', () => {
     expect(fullScene.companionPlacement.width).toBe(13);
   });
 });
+
+// PS-247: a prop rendered with PROP_OCCLUDERS has the occluded parts cut out
+// of its PNG, and only looks right with the occluder drawn under it in the
+// same place. Every progress value that shows the prop must also show each
+// occluder, at a lower z. (Fixed placements are covered by PS-246.)
+describe('PS-247 baked occlusion', () => {
+  const sceneSource = readFileSync(
+    new URL('../../art-pipeline/ps244-blender/scene.py', import.meta.url),
+    'utf8',
+  );
+  const block = sceneSource.match(/PROP_OCCLUDERS = \{([\s\S]*?)\n\}/);
+  const occluders = [...(block?.[1] ?? '').matchAll(/'([\w-]+)':\s*\(([^)]*)\)/g)]
+    .map(([, propId, list]) => [propId, [...list.matchAll(/'([\w-]+)'/g)].map(match => match[1])]);
+
+  it('declares the chair as occluded by the desk', () => {
+    expect(occluders).toEqual([['office-chair', ['corner-desk']]]);
+  });
+
+  it('shows every occluder, drawn underneath, whenever the occluded prop is on screen', () => {
+    for (let progress = 0; progress <= 100; progress += 1) {
+      const props = new Map(getWorkspaceSceneAssets(progress).props.map(entry => [entry.id, entry]));
+      for (const [propId, occluderIds] of occluders) {
+        if (!props.has(propId)) continue;
+        for (const occluderId of occluderIds) {
+          expect(props.has(occluderId), `${occluderId} at ${progress}%`).toBe(true);
+          expect(props.get(occluderId).placement.z).toBeLessThan(props.get(propId).placement.z);
+        }
+      }
+    }
+  });
+});

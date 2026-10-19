@@ -518,13 +518,13 @@
       "licenseRef": "art-pipeline/ps244-blender/model-manifest.json#orbit-blender-procedural-workstation",
       "path": "assets/personal-space/v2/workspace/props/office-chair.png",
       "dimensions": {
-        "width": 136,
+        "width": 96,
         "height": 266
       },
       "format": "png",
       "alpha": true,
-      "bytes": 29891,
-      "sha256": "9df268246debc9926d4b9a07c9d11b72d16a722997065f8cc351c809b53a4569",
+      "bytes": 24934,
+      "sha256": "3cda9e19d5409c80b3c0bb9cfe4cc53838b9006edfb18b4a6a6cbbd97d4e6835",
       "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     },

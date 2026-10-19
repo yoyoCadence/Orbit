@@ -9,7 +9,7 @@ Everything is generated from code. There are no external models, textures or HDR
 | File | Role |
 |---|---|
 | `scene.py` | Builds the room, props, toon materials, Freestyle outlines, lights and the canonical camera (`building-workspace-v2`) |
-| `render_pack.py` | Renders `room.png` (transparent film) and each prop alone, with room surfaces and its support surface as shadow catchers |
+| `render_pack.py` | Renders `room.png` (transparent film) and each prop, with room surfaces and its support surface as shadow catchers and any occluding prop as a holdout (PS-247) |
 | `process_pack.py` | Composites the room over the backdrop → WebP. Trims props (noise floor plus speck filter) → PNG. Writes `placements.json`, rewrites `PROP_DEFINITIONS` in `assetManifest.js`, and renders per-phase QA previews (with the HW-105 photo frame) |
 | `placements.json` | Placement of every prop as measured from its trimmed render; `assetManifest.js` must match it (`tests/unit/ps244WorkspacePlacements.test.js`) |
 | `model-manifest.json` | Generator, version, license and processing provenance |
@@ -29,12 +29,22 @@ python3 -m venv /tmp/bpyenv
 npm run ps242:manifest && npm run ps243:assets
 ```
 
-The full pack (room plus 8 props, 1536×1024, 96 samples) takes roughly 30–50 minutes on a 4-core CPU (PS-245 measured about 31 minutes). `--width 768 --samples 24` gives a 3-minute draft for composition checks. Cycles is seeded (`scene.cycles.seed = 244`), so reruns on the same Blender version reproduce the same frames.
+The full pack (room plus 8 props, 1536×1024, 96 samples) takes roughly 30–50 minutes on a 4-core CPU (PS-245 measured about 31 minutes). `--width 768 --samples 24` gives a 3-minute draft for composition checks. Cycles is seeded (`scene.cycles.seed = 244`), but reruns are not byte-identical, even with the same command on the same machine. Props differ by sampling noise, and a trim box can move by 1 px; PS-247 saw the desk and shelf shift by 1 px. To change one prop:
+
+1. Render the full pack once into a directory. `process_pack.py` always reads `room.png` and all eight prop renders.
+2. Re-render the changed prop into that same directory with `--only <id>`, using the same `--width` and `--samples` as the full render.
+3. Run `process_pack.py --write-runtime`.
+4. Restore from git everything that should not change:
+   - the other props' PNGs;
+   - their `placements.json` entries and `PROP_DEFINITIONS`;
+   - the background WebP, which `--write-runtime` re-encodes.
+5. Redraw the previews from the lossless room composite, so that unchanged phases stay byte-identical.
 
 ## Design decisions
 
-- **One camera for everything.** Props are rendered full-frame from the canonical camera, then trimmed. Their placement (centre x, bottom y, width; % of frame) comes from the trimmed box, so the runtime draws each prop exactly where it sat in 3D. Edit Mode can still move them.
+- **One camera for everything.** Props are rendered full-frame from the canonical camera, then trimmed. Their placement (centre x, bottom y, width; % of frame) comes from the trimmed box, so the runtime draws each prop exactly where it sat in 3D. Since PS-246 V2 does not apply placement overrides and Edit Mode cannot move them, which the occluders below rely on.
 - **Contact shadows travel with the prop.** In prop renders the floor, walls, invisible ceiling and the prop's support (the desk, for monitors and the lamp) are shadow catchers. Shadows are therefore baked into the prop PNG and move with it.
+- **Occluders (PS-247).** A prop that sits partly behind a prop drawn under it at runtime is rendered with that prop present as an occluder (`PROP_OCCLUDERS` in `scene.py`). The occluder gets a Holdout material, so the hidden parts become transparent in the PNG and the runtime shows the occluder through them. Its shadows, bounces and outlines are turned off so nothing is baked in twice. It is a material rather than the object-level `is_holdout`, because Freestyle leaves holdout objects out of its visibility test and would still outline the hidden edges. Today only the office chair uses it: its right armrest and one caster are behind the desk's side cabinet. This relies on the two props always being on screen together at fixed positions; both enter at 25% and V2 placements are fixed since PS-246.
 - **Character scale.** The camera is calibrated so a 1.7 m figure at the protagonist's floor position matches the chibi sprite drawn at 24% width (Companion 13%). Before PS-244 the sprites were 17% / 9%.
 - **Style.** A Toon BSDF blended with a weaker Principled BSDF, plus thin navy Freestyle outlines, gives the Premium Illustrated Diorama read from the art bible. Pixel-art characters on a lit 3D diorama follow the HD-2D convention.
 - **Construction detail (PS-245).** Props are built the way the real objects are put together, so they read as furniture rather than blocks:
