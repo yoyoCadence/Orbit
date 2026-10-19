@@ -193,18 +193,6 @@
 
 ## In Progress
 
-- [ ] **AI-204B** 實作共用的 Companion 文案表（AI-204 核准的規格）
-  - 規格：[`docs/ai-204-companion-dialogue-proposal.md`](docs/ai-204-companion-dialogue-proposal.md) §5。使用者 2026-10-19 核准：文字 W-A（首頁小卡目前的 8 句），COMPANION 小卡最多兩行（L2，只套用在 `[data-orbit-companion]`），夥伴名稱統一為「Orbit 夥伴」。
-  - 驗收條件（提案 §7）：
-    - 程式碼中只有一份 Companion 文案表；首頁小卡、toast、完整頁面的小卡、dock 與詳細資訊面板都從它取字；
-    - 8 個 key 的文字與 W-A 完全相同；
-    - 同一份 snapshot，各位置顯示相同的台詞，夥伴名稱都是「Orbit 夥伴」；
-    - 320、360、390、414、1024 px 寬度與 200% 縮放下，8 句在小卡上完整顯示，不被截斷；專案小卡的階段文字維持單行；PS-243 的 e2e 通過；
-    - lint、test、e2e、`ps242:manifest -- --check`、`ps243:assets -- --check` 通過。
-  - 版本：`npm run bump -- patch`。
-  - 依賴：`AI-204`
-  - In progress（2026-10-19）。
-
 - [ ] **PRO-014Q** 開發者面板的 backup 不應擋住其他帳號或非 Pro 模擬的 entitlement refresh
   - 問題（PR #158 Codex review 指出，2026-10-18 確認）：`storage.refreshProEntitlement()` 只要 `FLAG_DEV_BACKUP` 存在就直接 return。這個 backup 也由等級模擬器建立，且 `storage.clearAll()` 登出時不會清除。開發者登出後換另一個帳號，該帳號的 refresh 會一直被跳過，在 `server` source 下 fail closed，直到手動重設。
   - 影響：只影響使用過開發者面板的裝置。
@@ -227,6 +215,20 @@
 ---
 
 ## Done
+
+- [x] **AI-204B** 實作共用的 Companion 文案表（AI-204 核准的規格）
+  - 規格：[`docs/ai-204-companion-dialogue-proposal.md`](docs/ai-204-companion-dialogue-proposal.md) §5。使用者 2026-10-19 核准：文字 W-A（首頁小卡目前的 8 句），COMPANION 小卡最多兩行（L2，只套用在 `[data-orbit-companion]`），夥伴名稱統一為「Orbit 夥伴」。
+  - 驗收條件（提案 §7）：
+    - 程式碼中只有一份 Companion 文案表；首頁小卡、toast、完整頁面的小卡、dock 與詳細資訊面板都從它取字；
+    - 8 個 key 的文字與 W-A 完全相同；
+    - 同一份 snapshot，各位置顯示相同的台詞，夥伴名稱都是「Orbit 夥伴」；
+    - 320、360、390、414、1024 px 寬度與 200% 縮放下，8 句在小卡上完整顯示，不被截斷；專案小卡的階段文字維持單行；PS-243 的 e2e 通過；
+    - lint、test、e2e、`ps242:manifest -- --check`、`ps243:assets -- --check` 通過。
+  - 版本：`npm run bump -- patch`。
+  - 依賴：`AI-204`
+  - In progress（2026-10-19）。
+  - 完成（2026-10-19，v1.31.4）：新增 `pwa/js/personalSpace/v2/content/companionDialogue.js`（`COMPANION_NAME`、凍結的 `COMPANION_DIALOGUE`、`getCompanionDialogue()`，未知 key 回到 `companion.observe`）；`ui/orbitWindow.js` 與 `pages/personalSpaceV2.js` 刪除各自的文案表與名稱，改從共用模組取字；telemetry 的 `interactionKey` 允許清單改用 `COMPANION_DIALOGUE_INTERACTION_KEYS`；L2 只套用在 `[data-orbit-companion]` 的台詞；`sw.js` 的 `SHELL` 加入新模組。
+    - 測試：`tests/unit/ai204CompanionDialogue.test.js`（7 項，其中 4 項在 main 上會失敗）；`tests/e2e/companion-dialogue.test.js`（6 種寬度／縮放；拿掉 L2 規則時會失敗）。
 
 - [x] **AI-204** 統一 Companion 台詞文案（提案）
   - 問題（AI-203 盤點時發現）：8 個 Companion 台詞 key 在 `pwa/js/personalSpace/v2/ui/orbitWindow.js` 與 `pwa/js/pages/personalSpaceV2.js` 各有一份文字，其中 7 個不同（`companion.goal.gentle-reminder` 已在 AI-203B 統一）。

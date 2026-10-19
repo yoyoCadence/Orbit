@@ -323,6 +323,16 @@
   white-space: nowrap;
 }
 
+/* AI-204 (L2): the Companion line wraps to two lines instead of truncating to
+   half a sentence. The project card's phase line keeps the single-line rule. */
+.orbit-window-state-card[data-orbit-companion] > span:last-child {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  white-space: normal;
+}
+
 .orbit-window-progress {
   display: block;
   height: 4px;
