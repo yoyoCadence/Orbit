@@ -1,20 +1,10 @@
 import { getWorkspaceSceneAssets } from '../content/assetManifest.js';
+import { COMPANION_NAME, getCompanionDialogue } from '../content/companionDialogue.js';
 import {
   orbitWindowRuntime,
   orbitWindowRuntimeDestroyer,
 } from '../runtime/pixiSceneRuntime.js';
 import { emitPersonalSpaceTelemetry } from '../telemetry.js';
-
-const COMPANION_DIALOGUE_MESSAGES = Object.freeze({
-  'companion.project.workspace-upgrade.complete': '工作站完成了。這個房間記得你一路累積的努力。',
-  'companion.project.workspace-upgrade.progress': '工作空間改變了，下一個有用的步驟已經看得見。',
-  'companion.recovery.completed': '休息也算數。穩定的節奏需要恢復。',
-  'companion.session.productive-complete': '這次行動在空間裡留下了痕跡。',
-  'companion.momentum.strong': '你最近的節奏很穩，我會繼續陪你前進。',
-  'companion.goal.gentle-reminder': '你選擇的目標還在這裡，準備好時再開始。',
-  'companion.momentum.low': '不用急，我們可以從一個清楚的小行動重新開始。',
-  'companion.observe': '我會在這裡看著你的空間慢慢成形。',
-});
 
 const REVEAL_DURATIONS_MS = Object.freeze({
   small: Object.freeze({ standard: 2200, reduced: 500 }),
@@ -381,14 +371,12 @@ export function normalizeOrbitWindowModel(input = {}, renderMode) {
     },
     companion: {
       id: companion.id || 'orbit-guide',
-      label: companion.label || 'Orbit Guide',
+      label: companion.label || COMPANION_NAME,
       state: companion.state || companion.activity || 'observe',
       interactionKey: companion.interactionKey || companion.dialogueKey || companion.state || 'observe',
       message: companion.message
         || companion.dialogue
-        || COMPANION_DIALOGUE_MESSAGES[companion.dialogueKey]
-        || companion.dialogueKey
-        || COMPANION_DIALOGUE_MESSAGES['companion.observe'],
+        || getCompanionDialogue(companion.dialogueKey),
     },
     protagonist: {
       state: protagonist.state || input.playerState || 'idle',

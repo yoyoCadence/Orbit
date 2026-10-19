@@ -15,6 +15,7 @@ import {
   renderOrbitWindow,
 } from '../personalSpace/v2/ui/orbitWindow.js';
 import { orbitWindowRuntimeDestroyer } from '../personalSpace/v2/runtime/pixiSceneRuntime.js';
+import { COMPANION_NAME, getCompanionDialogue } from '../personalSpace/v2/content/companionDialogue.js';
 import { emitPersonalSpaceTelemetry } from '../personalSpace/v2/telemetry.js';
 import { describeControl, findControl, watchRemindWindow } from '../personalSpace/v2/remindWindow.js';
 import { resolveAchievementPhoto } from '../platform/proofStore.js';
@@ -39,17 +40,6 @@ const RELATIONSHIP_LABELS = Object.freeze({
   familiar: '熟悉夥伴',
   partner: '合作夥伴',
   'trusted-companion': '信賴夥伴',
-});
-
-const COMPANION_MESSAGES = Object.freeze({
-  'companion.project.workspace-upgrade.complete': '正式工作站完成了。這個空間會記得你為它付出的每一次努力。',
-  'companion.project.workspace-upgrade.progress': '工作空間有了變化，下一個有意義的步驟也已經清楚可見。',
-  'companion.recovery.completed': '恢復也算數。適當休息，是能長久前進的一部分。',
-  'companion.session.productive-complete': '剛才完成的工作，已經在這個世界留下痕跡。',
-  'companion.momentum.strong': '你最近的節奏很穩定，我會繼續在旁邊陪你一起工作。',
-  'companion.goal.gentle-reminder': '你選擇的目標還在這裡，準備好時再開始。',
-  'companion.momentum.low': '不用勉強自己，我們可以從一個清楚的小行動重新開始。',
-  'companion.observe': '我正在看著這個空間，隨著你的真實努力慢慢改變。',
 });
 
 function describeNextRequirement(requirement) {
@@ -111,17 +101,15 @@ function localizePageModel(model) {
     },
     companion: {
       ...model.companion,
-      label: 'Orbit 夥伴',
-      message: COMPANION_MESSAGES[model.companion.dialogueKey]
-        || COMPANION_MESSAGES['companion.observe'],
+      label: COMPANION_NAME,
+      message: getCompanionDialogue(model.companion.dialogueKey),
     },
     pendingReveal,
   };
 }
 
 function detailPanelMarkup(model) {
-  const companionMessage = COMPANION_MESSAGES[model.companion.dialogueKey]
-    || COMPANION_MESSAGES['companion.observe'];
+  const companionMessage = getCompanionDialogue(model.companion.dialogueKey);
   return `
     <aside class="personal-space-v2-detail" data-v2-detail-panel hidden aria-live="polite">
       <button class="personal-space-v2-detail-close" type="button" data-v2-close-detail aria-label="關閉詳細資訊">×</button>
@@ -133,7 +121,7 @@ function detailPanelMarkup(model) {
       </section>
       <section data-v2-detail="companion" hidden>
         <small>夥伴關係 · ${escapeHtml(RELATIONSHIP_LABELS[model.companion.relationshipStage] || model.companion.relationshipStage)}</small>
-        <h2 tabindex="-1">Orbit 夥伴</h2>
+        <h2 tabindex="-1">${escapeHtml(COMPANION_NAME)}</h2>
         <p>${escapeHtml(companionMessage)}</p>
       </section>
       <section data-v2-detail="quest" hidden>

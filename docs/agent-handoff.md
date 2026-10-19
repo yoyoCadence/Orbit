@@ -4,7 +4,7 @@
 
 任務本身的定義與驗收條件以 [`tasks.md`](../tasks.md) 為準；本檔只記錄進行中的狀態、與使用者約定的工作規則，以及接手需要的操作細節。
 
-> 最後更新：2026-10-19。PS-246（#176，v1.30.1）、AI-203B（#177，v1.31.0）、HW-113（#180，v1.31.1）、PRO-014Q S0（#178，v1.31.2，含使用者核准的 A1＋B1）、AI-204 提案（#181）、PS-247（#182，v1.31.3）已合併；INFRA-102（CI 上傳 e2e artifact）完成。使用者已核准 AI-204 的 W-A＋L2＋夥伴名稱，下一步實作（§3 第 6 點）。
+> 最後更新：2026-10-19。PS-246（#176，v1.30.1）、AI-203B（#177，v1.31.0）、HW-113（#180，v1.31.1）、PRO-014Q S0（#178，v1.31.2，含使用者核准的 A1＋B1）、AI-204 提案（#181）、PS-247（#182，v1.31.3）、INFRA-102（#183，CI 上傳 e2e artifact）已合併；AI-204B（#184，v1.31.4，Companion 共用文案表）開 PR。
 
 ## 1. 接手前先讀
 
@@ -49,7 +49,11 @@
 
 5. **HW-113：完成**（#180，v1.31.1）。今日計畫改用 `effectiveToday(newDayHour)`；新增 `storage.currentDailyPlan()`，app 開著跨過 `newDayHour`、day watcher 尚未重設時，新增、移除與拖曳排序從空的計畫開始。AI-203B 的「00:00 到 `newDayHour` 不提醒」未修改（已核准的驗收條件）。另外發現：Tour 的教學任務只從記憶體的計畫移除，儲存中仍留著 `tour-task`（未建立任務）。
 
-6. **AI-204：提案已核准**（#181；使用者 2026-10-19 選 W-A＋L2，夥伴名稱統一為「Orbit 夥伴」）。下一步依提案 §5、§7 實作（建議另立 AI-204B，比照 AI-203B）。review 的教訓：第一版以「小卡放得下」為理由，實際小卡是單行截斷，兩版都放不下；也漏了既有測試釘住的文字。提案的事實要在真實 app 量測、grep 時用短字串。
+6. **AI-204／AI-204B：完成**（提案 #181；實作 #184，v1.31.4）。使用者 2026-10-19 選 W-A＋L2，夥伴名稱統一為「Orbit 夥伴」。
+   - 唯一的文案表：`pwa/js/personalSpace/v2/content/companionDialogue.js`（`COMPANION_NAME`、`COMPANION_DIALOGUE`、`getCompanionDialogue()`）。首頁小卡、toast、完整頁面、dock、詳細資訊面板都從它取字；之後改台詞只改這個檔案，`tests/unit/ai204CompanionDialogue.test.js` 釘住文字，要一起改。
+   - 新增 key 時：同時改文案表、`telemetry.js` 的 `COMPANION_DIALOGUE_INTERACTION_KEYS` 與 `companionEngine.js`。測試檢查表與 telemetry 清單相同、engine 的 key 都在表內；反方向（engine 不再使用的 key）不檢查。
+   - L2 只套用在 `[data-orbit-companion]` 的台詞（CSS line-clamp 2，首頁與「空間」頁共用）；`tests/e2e/companion-dialogue.test.js` 在 6 種寬度／縮放下量兩處，句子變長超過兩行時會失敗。
+   - review 的教訓：提案的事實要在真實 app 量測、grep 時用短字串。
 
 7. **PS-247：完成**（v1.31.3）。椅子渲染時把書桌設為遮擋物（Holdout 材質，`PROP_OCCLUDERS`），右扶手與腳輪不再畫在邊櫃前面。注意：物件層級的 `is_holdout` 會讓 Freestyle 留下被擋住的邊的殘影，所以用材質。Blender 重新渲染在不同機器上不是逐位元組相同（家具有取樣雜訊差異、trim 框可能差 1 px），只更新真正改變的素材，其餘從 git 還原；預覽要從 lossless 的 room 合成重畫（`phase-000` 應與原檔相同）。
 
@@ -95,6 +99,7 @@
 | #181 | — | AI-204 提案：Companion 台詞統一（使用者已核准 W-A＋L2＋夥伴名稱） |
 | #182 | v1.31.3 | PS-247：椅子的右扶手與腳輪不再畫在書桌邊櫃前面 |
 | #183 | — | INFRA-102：e2e 失敗時上傳 Playwright 的 test-results；記錄 AI-204 的核准 |
+| #184 | v1.31.4 | AI-204B：Companion 共用文案表（W-A）、COMPANION 小卡最多兩行、夥伴名稱統一為「Orbit 夥伴」 |
 
 教訓：#155–#164 在 Codex review 出現前就合併，造成 #165、#166、#167 的回頭修正。這就是 §2 合併條件的由來。獨立 review 在 #167、#168、#169 都找到真正的問題（例如椅子畫在螢幕後面、壁燈在相框下投出暗影），所以複查不能省。
 
@@ -107,6 +112,7 @@
 - **角色 3D 化**：主角與 Companion 仍是 PS-242 的像素 sprite。改成 3D 會推翻已核准素材（主角 12 個姿勢、Companion 6 個狀態），範圍很大，等使用者決定。
 - **PRO-014P**：entitlement 流程，實作前需提案與核准，擋 `PRO-014H` cutover。與草稿 PR #154（PRO-014L）改同一段 SUB-16 路徑，寫提案前先問使用者先後順序。
 - **PS-243**：真機、installed PWA、雙帳號、螢幕閱讀器等 human gate。
+- **INFRA-103**：`lint` script 的 glob 沒有加引號，CI 只 lint 一部分檔案（見 `tasks.md`）。修正是改既有設定，需使用者核准。
 - 尚未回答：高風險項目（如 entitlement）連變更說明都要不要先問再排程（PRO-014Q 變更說明 §7）。在得到答案前，維持「寫變更說明可以，實作前一定要核准」。
 
 ### 可直接做（已核准）

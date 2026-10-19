@@ -1,7 +1,7 @@
 // Shared E2E fixtures and storage/CDN seeding helpers.
 //
-// Used by flows.test.js and ps243-acceptance.test.js so the offline Supabase
-// stub and guest-mode localStorage seed live in one place.
+// Used by flows.test.js, ps243-acceptance.test.js and companion-dialogue.test.js
+// so the offline Supabase stub and guest-mode localStorage seed live in one place.
 
 export const TODAY = new Date().toLocaleDateString('sv'); // YYYY-MM-DD, local tz — matches app today()
 

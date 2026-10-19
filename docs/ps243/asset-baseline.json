@@ -1,6 +1,6 @@
 {
   "artifact": "ps243-asset-baseline",
-  "appVersion": "1.31.3",
+  "appVersion": "1.31.4",
   "note": "Reproducible: a pure function of committed files with CRLF normalized to LF. No timestamps; regenerate with `npm run ps243:assets` and diff to verify.",
   "method": {
     "assetSizes": "raw binary file bytes on disk (fs.statSync.size)",
@@ -161,11 +161,11 @@
   },
   "deferredJsBundles": {
     "personalSpaceV2AppJs": {
-      "fileCount": 25,
+      "fileCount": 26,
       "files": [
         {
           "path": "pwa/js/pages/personalSpaceV2.js",
-          "bytes": 18132
+          "bytes": 17224
         },
         {
           "path": "pwa/js/personalSpace/economy.js",
@@ -190,6 +190,10 @@
         {
           "path": "pwa/js/personalSpace/v2/content/assetManifest.js",
           "bytes": 9356
+        },
+        {
+          "path": "pwa/js/personalSpace/v2/content/companionDialogue.js",
+          "bytes": 1499
         },
         {
           "path": "pwa/js/personalSpace/v2/controller.js",
@@ -253,26 +257,26 @@
         },
         {
           "path": "pwa/js/personalSpace/v2/telemetry.js",
-          "bytes": 7320
+          "bytes": 7567
         },
         {
           "path": "pwa/js/personalSpace/v2/ui/orbitWindow.js",
-          "bytes": 22505
+          "bytes": 21663
         },
         {
           "path": "pwa/js/personalSpace/v2/viewModels.js",
           "bytes": 26368
         }
       ],
-      "rawBytes": 205277,
-      "gzipBytes": 52233
+      "rawBytes": 205273,
+      "gzipBytes": 52066
     },
     "vendoredPixi": {
       "path": "pwa/vendor/pixi.js",
       "rawBytes": 796970,
       "gzipBytes": 225428
     },
-    "combinedGzipBytes": 277661,
+    "combinedGzipBytes": 277494,
     "budgetBytes": 307200,
     "result": "PASS"
   }

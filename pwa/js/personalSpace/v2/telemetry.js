@@ -14,6 +14,19 @@ const sourceCategory = oneOf(
   'task', 'recovery', 'growth', 'maintenance', 'necessary', 'entertainment', 'main-quest', 'system',
 );
 
+// AI-204: the Companion dialogue keys that `interactionKey` accepts besides the
+// six state fallbacks. Exported so a test can pin it to the shared copy table.
+export const COMPANION_DIALOGUE_INTERACTION_KEYS = Object.freeze([
+  'companion.project.workspace-upgrade.complete',
+  'companion.project.workspace-upgrade.progress',
+  'companion.recovery.completed',
+  'companion.session.productive-complete',
+  'companion.momentum.strong',
+  'companion.goal.gentle-reminder',
+  'companion.momentum.low',
+  'companion.observe',
+]);
+
 const EVENT_SCHEMAS = Object.freeze({
   orbit_window_viewed: schema({
     renderPath: oneOf('pixi', 'poster-fallback'),
@@ -52,14 +65,7 @@ const EVENT_SCHEMAS = Object.freeze({
     companionState: oneOf('observe', 'approach', 'remind', 'congratulate', 'rest', 'work'),
     interactionKey: oneOf(
       'observe', 'approach', 'remind', 'congratulate', 'rest', 'work',
-      'companion.project.workspace-upgrade.complete',
-      'companion.project.workspace-upgrade.progress',
-      'companion.recovery.completed',
-      'companion.session.productive-complete',
-      'companion.momentum.strong',
-      'companion.goal.gentle-reminder',
-      'companion.momentum.low',
-      'companion.observe',
+      ...COMPANION_DIALOGUE_INTERACTION_KEYS,
     ),
     renderMode,
   }),
