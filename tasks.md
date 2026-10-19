@@ -183,14 +183,6 @@
 > - PRO-014Q：S0＋Q6。
 > - 下一步：依序實作核准的項目，每項一個 PR，從風險最小的 PS-246 開始。
 
-- [ ] **AI-203B** 實作 Companion `remind`（AI-203 核准的規格）
-  - 規格：[`docs/ai-203-companion-remind-proposal.md`](docs/ai-203-companion-remind-proposal.md)。使用者核准的選項：目標來源 A（今日計畫中符合 `isMainQuestTaskEligible()` 的任務）、G1（有 Session 的日期少於 3 天不提醒）、M1（Momentum 不變）、F4（只在本地時間 `[12:00, 14:00)` 提醒）、D2（靜態 fallback 的 `remind` 動畫只播一次）。
-  - 台詞：`companion.goal.gentle-reminder` 在 `ui/orbitWindow.js` 與 `pages/personalSpaceV2.js` 都改為「你選擇的目標還在這裡，準備好時再開始。」
-  - 驗收條件：提案 §8 中適用於 A、G1、F4、D2 的各條（不含「選 F3 時」）。
-  - 範圍：`pwa/js/personalSpace/v2/viewModels.js`（推導 `missedPatterns`，取代 `coreState.missedPatterns`）、首頁小卡與完整頁面的時段計時器與 `visibilitychange`、`pwa/assets/style.css`（D2）、相關測試；`companionEngine.js` 不改。
-  - 版本：`npm run bump -- minor`（新行為）。
-  - 依賴：`AI-203`
-
 - [ ] **BUG-109A** 在 production 套用 013 signup trigger migration
   - 目標：讓 production 的 `handle_new_user()` 截斷超過 30 字元的名稱來源，長 email local-part 與長 Google 顯示名稱都能註冊。
   - 步驟：依 [`docs/bug-109-signup-name-truncation.md`](docs/bug-109-signup-name-truncation.md) 的 runbook：先以 `pg_get_functiondef` 比對 production 函式與 004、記錄回滾來源，在非 production 環境跑 `tests/database/bug109.test.sql`，再套用並驗證。
@@ -200,6 +192,15 @@
 ---
 
 ## In Progress
+
+- [ ] **AI-203B** 實作 Companion `remind`（AI-203 核准的規格）
+  - 規格：[`docs/ai-203-companion-remind-proposal.md`](docs/ai-203-companion-remind-proposal.md)。使用者核准的選項：目標來源 A（今日計畫中符合 `isMainQuestTaskEligible()` 的任務）、G1（有 Session 的日期少於 3 天不提醒）、M1（Momentum 不變）、F4（只在本地時間 `[12:00, 14:00)` 提醒）、D2（靜態 fallback 的 `remind` 動畫只播一次）。
+  - 台詞：`companion.goal.gentle-reminder` 在 `ui/orbitWindow.js` 與 `pages/personalSpaceV2.js` 都改為「你選擇的目標還在這裡，準備好時再開始。」
+  - 驗收條件：提案 §8 中適用於 A、G1、F4、D2 的各條（不含「選 F3 時」）。
+  - 範圍：`pwa/js/personalSpace/v2/viewModels.js`（推導 `missedPatterns`，取代 `coreState.missedPatterns`）、首頁小卡與完整頁面的時段計時器與 `visibilitychange`、`pwa/assets/style.css`（D2）、相關測試；`companionEngine.js` 不改。
+  - 版本：`npm run bump -- minor`（新行為）。
+  - 依賴：`AI-203`
+  - In progress（2026-10-19）：實作中。
 
 - [ ] **PRO-014Q** 開發者面板的 backup 不應擋住其他帳號或非 Pro 模擬的 entitlement refresh
   - 問題（PR #158 Codex review 指出，2026-10-18 確認）：`storage.refreshProEntitlement()` 只要 `FLAG_DEV_BACKUP` 存在就直接 return。這個 backup 也由等級模擬器建立，且 `storage.clearAll()` 登出時不會清除。開發者登出後換另一個帳號，該帳號的 refresh 會一直被跳過，在 `server` source 下 fail closed，直到手動重設。
