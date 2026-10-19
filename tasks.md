@@ -193,12 +193,6 @@
 
 ## In Progress
 
-- [ ] **INFRA-102** e2e 失敗時上傳 Playwright 的 test-results
-  - 問題：2026-10-19 CI 上 `tests/e2e/flows.test.js` 的 Focus 提前結束測試（:175、:189）偶發 `Test timeout of 15000ms exceeded`，與 PR 內容無關，本機無法重現；CI 沒有上傳 artifact，看不到卡在哪一步。
-  - 範圍（使用者 2026-10-19 核准）：`.github/workflows/ci.yml` 的 e2e job 在失敗時以 `actions/upload-artifact` 上傳 `test-results/`（截圖與 error-context），保留 7 天；不改測試、Playwright 設定與部署流程。
-  - 完成條件：e2e 失敗時，該次 workflow run 有可下載的 artifact；成功時不上傳；其他 job 不變。
-  - In progress（2026-10-19）。
-
 - [ ] **AI-204** 統一 Companion 台詞文案
   - 問題（AI-203 盤點時發現）：8 個 Companion 台詞 key 在 `pwa/js/personalSpace/v2/ui/orbitWindow.js` 與 `pwa/js/pages/personalSpaceV2.js` 各有一份文字，其中 7 個不同（`companion.goal.gentle-reminder` 已在 AI-203B 統一）。
   - 方向：收斂成一份文案表，兩處共用；文字由使用者選定。`companion.goal.gentle-reminder` 已在 AI-203B 決定。
@@ -226,6 +220,12 @@
 ---
 
 ## Done
+
+- [x] **INFRA-102** e2e 失敗時上傳 Playwright 的 test-results
+  - 問題：2026-10-19 CI 上 `tests/e2e/flows.test.js` 的 Focus 提前結束測試（:175、:189）偶發 `Test timeout of 15000ms exceeded`，與 PR 內容無關，本機無法重現；CI 沒有上傳 artifact，看不到卡在哪一步。
+  - 範圍（使用者 2026-10-19 核准）：`.github/workflows/ci.yml` 的 e2e job 在失敗時以 `actions/upload-artifact` 上傳 `test-results/`（截圖與 error-context），保留 7 天；不改測試、Playwright 設定與部署流程。
+  - 完成條件：e2e 失敗時，該次 workflow run 有可下載的 artifact；成功時不上傳；其他 job 不變。
+  - 完成（2026-10-19）：e2e job 新增 `if: failure()` 的 `actions/upload-artifact@v4` 步驟（`playwright-test-results`，`test-results/`，保留 7 天，沒有檔案時略過）。未改 Playwright 設定（`screenshot: 'only-on-failure'` 與 error-context 是既有輸出）。
 
 - [x] **PS-247** 椅子右扶手與一個腳輪畫在書桌邊櫃之上
   - 問題（PS-245 誠實評估記錄）：3D 中椅子的右扶手與一個腳輪位於書桌邊櫃後方，但椅子的 PNG（z 30）疊在書桌（z 24）之上，所以這兩部分畫在邊櫃前面，約 10 px。PS-244 起既有。

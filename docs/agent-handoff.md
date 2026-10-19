@@ -4,7 +4,7 @@
 
 任務本身的定義與驗收條件以 [`tasks.md`](../tasks.md) 為準；本檔只記錄進行中的狀態、與使用者約定的工作規則，以及接手需要的操作細節。
 
-> 最後更新：2026-10-19。PS-246（#176，v1.30.1）、AI-203B（#177，v1.31.0）、HW-113（#180，v1.31.1）、PRO-014Q S0（#178，v1.31.2，含使用者核准的 A1＋B1）已合併；PS-247（v1.31.3）完成。AI-204 提案（#181）等使用者決定。下一步見 §3 與 §5。
+> 最後更新：2026-10-19。PS-246（#176，v1.30.1）、AI-203B（#177，v1.31.0）、HW-113（#180，v1.31.1）、PRO-014Q S0（#178，v1.31.2，含使用者核准的 A1＋B1）、AI-204 提案（#181）、PS-247（#182，v1.31.3）已合併；INFRA-102（CI 上傳 e2e artifact）完成。使用者已核准 AI-204 的 W-A＋L2＋夥伴名稱，下一步實作（§3 第 6 點）。
 
 ## 1. 接手前先讀
 
@@ -49,13 +49,13 @@
 
 5. **HW-113：完成**（#180，v1.31.1）。今日計畫改用 `effectiveToday(newDayHour)`；新增 `storage.currentDailyPlan()`，app 開著跨過 `newDayHour`、day watcher 尚未重設時，新增、移除與拖曳排序從空的計畫開始。AI-203B 的「00:00 到 `newDayHour` 不提醒」未修改（已核准的驗收條件）。另外發現：Tour 的教學任務只從記憶體的計畫移除，儲存中仍留著 `tour-task`（未建立任務）。
 
-6. **AI-204：提案，等使用者決定**（#181）。`docs/ai-204-companion-dialogue-proposal.md`：共用文案模組；文字與小卡顯示方式需使用者選定（§6）。review 的教訓：第一版以「小卡放得下」為理由，實際小卡是單行截斷，兩版都放不下；也漏了既有測試釘住的文字。提案的事實要在真實 app 量測、grep 時用短字串。
+6. **AI-204：提案已核准**（#181；使用者 2026-10-19 選 W-A＋L2，夥伴名稱統一為「Orbit 夥伴」）。下一步依提案 §5、§7 實作（建議另立 AI-204B，比照 AI-203B）。review 的教訓：第一版以「小卡放得下」為理由，實際小卡是單行截斷，兩版都放不下；也漏了既有測試釘住的文字。提案的事實要在真實 app 量測、grep 時用短字串。
 
 7. **PS-247：完成**（v1.31.3）。椅子渲染時把書桌設為遮擋物（Holdout 材質，`PROP_OCCLUDERS`），右扶手與腳輪不再畫在邊櫃前面。注意：物件層級的 `is_holdout` 會讓 Freestyle 留下被擋住的邊的殘影，所以用材質。Blender 重新渲染在不同機器上不是逐位元組相同（家具有取樣雜訊差異、trim 框可能差 1 px），只更新真正改變的素材，其餘從 git 還原；預覽要從 lossless 的 room 合成重畫（`phase-000` 應與原檔相同）。
 
 其他：
 
-- **CI e2e 間歇性逾時（2026-10-19）**：`tests/e2e/flows.test.js` 的「Focus 計時流程」提前結束兩個測試（:175、:189）在 CI 上偶發 `Test timeout of 15000ms exceeded`，與 PR 內容無關（只改版本號的 commit 也失敗、重跑通過）；本機（完整 Chromium、headless shell、`CI=1`、2 workers、CPU 滿載）都無法重現。CI 沒有上傳 Playwright artifact，看不到卡在哪一步。建議（屬 CI 設定，需使用者核准）：e2e 失敗時上傳 `test-results/`。遇到時依規則只重跑一次，第二次失敗要查。
+- **CI e2e 間歇性逾時（2026-10-19）**：`tests/e2e/flows.test.js` 的「Focus 計時流程」提前結束兩個測試（:175、:189）在 CI 上偶發 `Test timeout of 15000ms exceeded`，與 PR 內容無關（只改版本號的 commit 也失敗、重跑通過）；本機（完整 Chromium、headless shell、`CI=1`、2 workers、CPU 滿載）都無法重現。當時 CI 沒有上傳 Playwright artifact，看不到卡在哪一步。INFRA-102（使用者核准）之後 e2e 失敗時會上傳 `playwright-test-results` artifact（`test-results/`，保留 7 天），下次遇到先下載看 error-context。遇到時依規則只重跑一次，第二次失敗要查。
 - **請專案擁有者自行檢查**：若曾在自己的帳號用過開發者面板的「模擬 Pro」或「模擬等級」後按「還原」，確認 Supabase 中該帳號 `profiles` 的 `is_pro`、`pro_expires_at`、`total_xp` 是否正確（PRO-014Q 發現的既有問題）。
 - 草稿 PR [#154](https://github.com/yoyoCadence/Orbit/pull/154)（`feat/pro-014l-streak-unlock-rpc`，PRO-014L）不是本工作階段開的；它改的 SUB-16 路徑與 `PRO-014P` 相同。
 - Codex review 額度在 2026-10-18 兩度用完（中間短暫恢復，對 #172、#173 找到 6 個 P2，都已修正）。額度用完時依 §2 改用獨立 Claude review（只讀 agent，對照程式碼回報 P1／P2／P3，修完再請它複查）。
@@ -92,8 +92,9 @@
 | #177 | v1.31.0 | AI-203B：Companion 在 12:00–14:00 溫和提醒今日計畫中尚未開始的目標 |
 | #180 | v1.31.1 | HW-113：今日計畫改用與 Sessions 相同的 effective date |
 | #178 | v1.31.2 | PRO-014Q S0：開發者面板的「還原」改為確認後完整清理；A1 其他視窗重新載入、B1 遊客寫回自己的備份 |
-| #181 | — | AI-204 提案：Companion 台詞統一（等使用者決定） |
+| #181 | — | AI-204 提案：Companion 台詞統一（使用者已核准 W-A＋L2＋夥伴名稱） |
 | #182 | v1.31.3 | PS-247：椅子的右扶手與腳輪不再畫在書桌邊櫃前面 |
+| #183 | — | INFRA-102：e2e 失敗時上傳 Playwright 的 test-results；記錄 AI-204 的核准 |
 
 教訓：#155–#164 在 Codex review 出現前就合併，造成 #165、#166、#167 的回頭修正。這就是 §2 合併條件的由來。獨立 review 在 #167、#168、#169 都找到真正的問題（例如椅子畫在螢幕後面、壁燈在相框下投出暗影），所以複查不能省。
 
@@ -101,8 +102,6 @@
 
 ### 需要使用者決定或執行
 
-- **AI-204**：文字（W-A 建議／W-A′／W-B／W-C）、小卡顯示（L2 兩行建議／L1／L3）、是否一併統一夥伴名稱，見 `docs/ai-204-companion-dialogue-proposal.md` §6。決定後依提案 §5、§7 實作。
-- **CI 上傳 Playwright artifact**：e2e 的 Focus 提前結束測試在 CI 偶發逾時（見 §3「其他」），要查出卡在哪一步，需要在 `.github/workflows/ci.yml` 的 e2e 失敗時上傳 `test-results/`。屬 CI 設定，需核准。
 - **BUG-109A**：在 production 套用 `pwa/db/013_signup_profile_name.sql`，需專案擁有者執行，步驟見 `docs/bug-109-signup-name-truncation.md`。
 - **PRO-014Q Q6 的測試帳號**：在 preview Supabase 專案建立（見 §3 第 4 點）。
 - **角色 3D 化**：主角與 Companion 仍是 PS-242 的像素 sprite。改成 3D 會推翻已核准素材（主角 12 個姿勢、Companion 6 個狀態），範圍很大，等使用者決定。
