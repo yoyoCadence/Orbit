@@ -190,9 +190,9 @@
 ## In Progress
 
 - [ ] **AI-204** 統一 Companion 台詞文案
-  - 問題（AI-203 盤點時發現）：8 個 Companion 台詞 key 在 `pwa/js/personalSpace/v2/ui/orbitWindow.js` 與 `pwa/js/pages/personalSpaceV2.js` 的文字全部不同。
+  - 問題（AI-203 盤點時發現）：8 個 Companion 台詞 key 在 `pwa/js/personalSpace/v2/ui/orbitWindow.js` 與 `pwa/js/pages/personalSpaceV2.js` 各有一份文字，其中 7 個不同（`companion.goal.gentle-reminder` 已在 AI-203B 統一）。
   - 方向：收斂成一份文案表，兩處共用；文字由使用者選定。`companion.goal.gentle-reminder` 已在 AI-203B 決定。
-  - In progress（2026-10-19）：提案 [`docs/ai-204-companion-dialogue-proposal.md`](docs/ai-204-companion-dialogue-proposal.md)（Mode A，只寫文件）。建議新增共用文案模組，文字採首頁小卡版（方案 A）。**等待使用者選定文字**；核准前不改程式碼。順帶發現夥伴名稱也不一致（`Orbit Guide`／「Orbit 夥伴」）。
+  - In progress（2026-10-19）：提案 [`docs/ai-204-companion-dialogue-proposal.md`](docs/ai-204-companion-dialogue-proposal.md)（Mode A，只寫文件，經 Codex 與獨立 review 後改寫）。建議新增共用文案模組，文字採首頁小卡版（W-A），小卡改為最多兩行（D2）：目前小卡是單行截斷，常見寬度下兩版文字幾乎都只顯示半句。**等待使用者決定**（提案 §6）；核准前不改程式碼。順帶發現夥伴名稱也不一致（首頁一律 `Orbit Guide`，完整頁面「Orbit 夥伴」）。
 
 - [ ] **PRO-014Q** 開發者面板的 backup 不應擋住其他帳號或非 Pro 模擬的 entitlement refresh
   - 問題（PR #158 Codex review 指出，2026-10-18 確認）：`storage.refreshProEntitlement()` 只要 `FLAG_DEV_BACKUP` 存在就直接 return。這個 backup 也由等級模擬器建立，且 `storage.clearAll()` 登出時不會清除。開發者登出後換另一個帳號，該帳號的 refresh 會一直被跳過，在 `server` source 下 fail closed，直到手動重設。
