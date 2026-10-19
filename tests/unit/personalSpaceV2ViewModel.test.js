@@ -15,6 +15,7 @@ import {
   selectProtagonistState,
   selectCanonicalMainQuestSession,
   selectMainQuestActionTarget,
+  selectRemindGoals,
 } from '../../pwa/js/personalSpace/v2/viewModels.js';
 import { getWorkspaceSceneAssets } from '../../pwa/js/personalSpace/v2/content/assetManifest.js';
 
@@ -436,5 +437,113 @@ describe('PS-246 legacy idle-window placement overrides', () => {
     expect(getWorkspaceSceneAssets(100, snapshot.placements).props).toEqual(blender);
     expect(buildEditViewModel(snapshot).placements).toEqual({});
     expect(JSON.stringify(v2State)).toBe(before);
+  });
+});
+
+describe('AI-203B Companion remind', () => {
+  const tasks = [
+    { id: 'deep', name: 'Deep Work', category: 'focus', impactType: 'task', value: 'A' },
+    { id: 'chore', name: 'Chore', category: 'instant', impactType: 'task', value: 'B' },
+    { id: 'tour-task', name: '完成你的第一個任務', category: 'instant', impactType: 'task', value: 'B' },
+    { id: 'archived', name: 'Old', category: 'focus', impactType: 'task', value: 'S', archived: true },
+  ];
+  // Three earlier days with Sessions that do not make the day effective:
+  // enough history for G1, and Momentum stays low.
+  const quietDay = date => ({
+    id: `quiet-${date}`,
+    date,
+    taskId: 'chore',
+    completedAt: `${date}T09:00:00.000Z`,
+    result: 'complete',
+    impactType: 'task',
+    value: 'B',
+    finalXP: 5,
+  });
+  const history = ['2026-07-14', '2026-07-15', '2026-07-16'].map(quietDay);
+  const at = (hour, minute = 0, day = 17) => new Date(2026, 6, day, hour, minute);
+  const snapshotAt = (now, overrides = {}) => buildPersonalSpaceV2Snapshot({
+    coreState: {
+      user: { newDayHour: 5 },
+      tasks,
+      dailyPlan: ['deep'],
+      sessions: history,
+      ...overrides,
+    },
+    v2State: { world: {}, inventory: {} },
+    ledgerSnapshot: {},
+    now,
+  });
+
+  it('reminds about a planned focus goal inside the daily window', () => {
+    const snapshot = snapshotAt(at(12, 30));
+    expect(snapshot.momentum.state).toBe('low');
+    expect(snapshot.companion).toMatchObject({
+      state: 'remind',
+      dialogueKey: 'companion.goal.gentle-reminder',
+    });
+    expect(buildHomeWindowViewModel(snapshot).companion.dialogueKey)
+      .toBe(buildFullWorldViewModel(snapshot).companion.dialogueKey);
+  });
+
+  it.each([
+    ['before 12:00', at(11, 59)],
+    ['from 14:00', at(14, 0)],
+  ])('stays quiet %s', (_label, now) => {
+    expect(snapshotAt(now).companion.state).toBe('observe');
+  });
+
+  it('stays quiet while the calendar day differs from the effective day', () => {
+    // newDayHour 13 makes 12:30 still belong to the previous effective day.
+    // History stays before that day so no Session of "today" takes priority.
+    const sessions = ['2026-07-13', '2026-07-14', '2026-07-15'].map(quietDay);
+    const snapshot = snapshotAt(at(12, 30), { user: { newDayHour: 13 }, sessions });
+    expect(selectRemindGoals({
+      tasks,
+      dailyPlan: ['deep'],
+      sessions,
+      effectiveDate: snapshot.effectiveDate,
+      now: at(12, 30),
+      momentum: snapshot.momentum,
+    })).toEqual([]);
+    expect(snapshot.effectiveDate).toBe('2026-07-16');
+    expect(snapshot.companion.state).toBe('observe');
+  });
+
+  it('does not remind with fewer than three Session dates (G1)', () => {
+    expect(snapshotAt(at(12, 30), { sessions: history.slice(1) }).companion.state).toBe('observe');
+  });
+
+  it.each([
+    ['an empty plan', []],
+    ['only the tour task', ['tour-task']],
+    ['only instant or archived tasks', ['chore', 'archived']],
+    ['a deleted task', ['missing']],
+  ])('does not remind for %s', (_label, dailyPlan) => {
+    expect(snapshotAt(at(12, 30), { dailyPlan }).companion.state).toBe('observe');
+  });
+
+  it('ends once the goal was worked on today, even if another Session came later', () => {
+    const sessions = [
+      ...history,
+      { ...quietDay('2026-07-17'), id: 'deep-today', taskId: 'deep', value: 'A', result: 'partial', completedAt: '2026-07-17T03:00:00.000Z' },
+      { id: 'game', date: '2026-07-17', taskId: 'game', result: 'complete', impactType: 'entertainment', completedAt: '2026-07-17T04:00:00.000Z' },
+    ];
+    expect(snapshotAt(at(12, 30), { sessions }).companion.state).toBe('observe');
+  });
+
+  it('lets a higher-priority reaction win, such as approach after an ordinary task today', () => {
+    const sessions = [...history, { ...quietDay('2026-07-17'), id: 'chore-today', completedAt: '2026-07-17T03:00:00.000Z' }];
+    expect(snapshotAt(at(12, 30), { sessions }).companion.state).toBe('approach');
+  });
+
+  it('accepts plan entries given as task objects', () => {
+    expect(selectRemindGoals({
+      tasks: [],
+      dailyPlan: [tasks[0]],
+      sessions: [],
+      effectiveDate: '2026-07-17',
+      now: at(12, 30),
+      momentum: { observedDays: 3 },
+    })).toEqual([{ goalId: 'deep', selectedByUser: true, source: 'daily-plan' }]);
   });
 });
