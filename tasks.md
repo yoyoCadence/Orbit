@@ -183,14 +183,6 @@
 > - PRO-014Q：S0＋Q6。
 > - 下一步：依序實作核准的項目，每項一個 PR，從風險最小的 PS-246 開始。
 
-- [ ] **AI-203B** 實作 Companion `remind`（AI-203 核准的規格）
-  - 規格：[`docs/ai-203-companion-remind-proposal.md`](docs/ai-203-companion-remind-proposal.md)。使用者核准的選項：目標來源 A（今日計畫中符合 `isMainQuestTaskEligible()` 的任務）、G1（有 Session 的日期少於 3 天不提醒）、M1（Momentum 不變）、F4（只在本地時間 `[12:00, 14:00)` 提醒）、D2（靜態 fallback 的 `remind` 動畫只播一次）。
-  - 台詞：`companion.goal.gentle-reminder` 在 `ui/orbitWindow.js` 與 `pages/personalSpaceV2.js` 都改為「你選擇的目標還在這裡，準備好時再開始。」
-  - 驗收條件：提案 §8 中適用於 A、G1、F4、D2 的各條（不含「選 F3 時」）。
-  - 範圍：`pwa/js/personalSpace/v2/viewModels.js`（推導 `missedPatterns`，取代 `coreState.missedPatterns`）、首頁小卡與完整頁面的時段計時器與 `visibilitychange`、`pwa/assets/style.css`（D2）、相關測試；`companionEngine.js` 不改。
-  - 版本：`npm run bump -- minor`（新行為）。
-  - 依賴：`AI-203`
-
 - [ ] **BUG-109A** 在 production 套用 013 signup trigger migration
   - 目標：讓 production 的 `handle_new_user()` 截斷超過 30 字元的名稱來源，長 email local-part 與長 Google 顯示名稱都能註冊。
   - 步驟：依 [`docs/bug-109-signup-name-truncation.md`](docs/bug-109-signup-name-truncation.md) 的 runbook：先以 `pg_get_functiondef` 比對 production 函式與 004、記錄回滾來源，在非 production 環境跑 `tests/database/bug109.test.sql`，再套用並驗證。
@@ -221,6 +213,15 @@
 ---
 
 ## Done
+
+- [x] **AI-203B** 實作 Companion `remind`（AI-203 核准的規格）
+  - 規格：[`docs/ai-203-companion-remind-proposal.md`](docs/ai-203-companion-remind-proposal.md)。使用者核准的選項：目標來源 A（今日計畫中符合 `isMainQuestTaskEligible()` 的任務）、G1（有 Session 的日期少於 3 天不提醒）、M1（Momentum 不變）、F4（只在本地時間 `[12:00, 14:00)` 提醒）、D2（靜態 fallback 的 `remind` 動畫只播一次）。
+  - 台詞：`companion.goal.gentle-reminder` 在 `ui/orbitWindow.js` 與 `pages/personalSpaceV2.js` 都改為「你選擇的目標還在這裡，準備好時再開始。」
+  - 驗收條件：提案 §8 中適用於 A、G1、F4、D2 的各條（不含「選 F3 時」）。
+  - 範圍：`pwa/js/personalSpace/v2/viewModels.js`（推導 `missedPatterns`，取代 `coreState.missedPatterns`）、首頁小卡與完整頁面的時段計時器與 `visibilitychange`、`pwa/assets/style.css`（D2）、相關測試；`companionEngine.js` 不改。
+  - 版本：`npm run bump -- minor`（新行為）。
+  - 依賴：`AI-203`
+  - 完成（2026-10-19，#177，v1.31.0）：`viewModels.selectRemindGoals()` 從今日計畫推導 `missedPatterns`（A、G1、F4、日曆日等於 effective date、今天尚未推進）；新增 `remindWindow.js`，首頁小卡與完整頁面在 12:00／14:00（過夜則隔天 12:00）與回到前景時重新判斷，unmount 時取消；重新判斷時保留打開的詳細資訊面板與鍵盤焦點（不捲動頁面）；D2 的 CSS；`companionEngine.js` 與 Momentum 不變，不寫入 state。
 
 - [x] **PS-246** V2 家具不應套用舊 16:9 相機的位置覆寫
   - 問題（PS-244 審查時發現）：V2 直接採用遷移自 legacy idle window 的 `idleWindowLayouts[*].placements` 與 `placedItems`。它們的 id 與 V2 家具相同，但座標屬於舊的 16:9 left／center／right 相機，家具因此離開房間中對應的位置。

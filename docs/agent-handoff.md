@@ -4,7 +4,7 @@
 
 任務本身的定義與驗收條件以 [`tasks.md`](../tasks.md) 為準；本檔只記錄進行中的狀態、與使用者約定的工作規則，以及接手需要的操作細節。
 
-> 最後更新：2026-10-19。PS-246 由 #176 完成（v1.30.1）；下一項是 AI-203B。
+> 最後更新：2026-10-19。PS-246 由 #176 完成（v1.30.1），AI-203B 由 #177 完成（v1.31.0）；PRO-014Q S0 已實作於 #178，等待合併。
 
 ## 1. 接手前先讀
 
@@ -31,9 +31,9 @@
 
 使用者在 2026-10-18 核准了三份提案（細節記在 `tasks.md` Next 的「2026-10-18 核准」註記），並要求**依序實作，每項一個 PR，從 PS-246 開始**。順序與狀態：
 
-1. **PS-246：完成**（分支 `feat/ps-246-ignore-legacy-placements`，v1.30.1）。V2 的 `placements` 固定為 `{}`；Edit Mode 只顯示說明；移除舊擺放的編輯程式碼與樣式；technical design §7.2 改為 S1；state-flow 更新；新增回歸測試（在修正前的程式碼上會失敗）；重新產生 asset baseline。lint、`npm test`（64 files／1073 tests）、e2e 41/41、`ps242:manifest`／`ps243:assets --check` 通過。
-2. **AI-203B**（Next，**下一項**）：依 `tasks.md` 的 AI-203B 與提案 §8 實作 A／G1／F4／D2 與台詞。`npm run bump -- minor`。
-3. **PRO-014Q S0**（In Progress）：「↩ 還原原始資料並重啟」改為完整清理＋確認對話框，見 [`docs/pro-014q-dev-backup-owner-scope.md`](pro-014q-dev-backup-owner-scope.md) §4 S0（實際 key 與必須排除的 legacy-claim key 都寫在那裡）。`npm run bump -- patch`。
+1. **PS-246：完成**（#176，v1.30.1）。V2 的 `placements` 固定為 `{}`；Edit Mode 只顯示說明；移除舊擺放的編輯程式碼與樣式；technical design §7.2 改為 S1；state-flow 更新；新增回歸測試（在修正前的程式碼上會失敗）；重新產生 asset baseline。lint、`npm test`（64 files／1073 tests）、e2e 41/41、`ps242:manifest`／`ps243:assets --check` 通過。
+2. **AI-203B：完成**（#177，分支 `feat/ai-203b-companion-remind`，v1.31.0）。`viewModels.selectRemindGoals()` 從 `coreState.dailyPlan` 推導 `missedPatterns`；新增 `pwa/js/personalSpace/v2/remindWindow.js`（`isWithinRemindWindow`、`watchRemindWindow`：在 12:00／14:00 與隔天 12:00 設計時器，回到前景時重新判斷；`describeControl`／`findControl` 讓重新 render 保留焦點），首頁小卡與完整頁面 mount 時啟動、cleanup 時取消，完整頁面重新 render 時保留打開的詳細資訊面板（Codex P2 修正）；D2 的 CSS；`companionEngine.js` 不改。lint、`npm test`（65 files／1105 tests）、e2e 41/41、`ps242:manifest`／`ps243:assets --check` 通過。
+3. **PRO-014Q S0**（In Progress）：「↩ 還原原始資料並重啟」改為完整清理＋確認對話框，見 [`docs/pro-014q-dev-backup-owner-scope.md`](pro-014q-dev-backup-owner-scope.md) §4 S0。**已實作於 [#178](https://github.com/yoyoCadence/Orbit/pull/178)**（分支 `feat/pro-014q-s0-dev-reset-cleanup`，v1.31.1）。若 main 上的本檔仍是這一行，代表 #178 尚未合併：接手時先看 #178 的 CI、review 與交接段落，依 §2 的合併條件處理，不要重新實作。
 4. **PRO-014Q Q6**：移除開發者面板的等級與 Pro 模擬、舊 backup 的一次性清理、測試帳號說明文件。**preview 專案的測試帳號要由專案擁有者建立**（agent 沒有 Supabase 權限）；實作前先確認。Q6 上線時更新 `tasks.md` 中「PRO-014H 的實機驗證需要 PRO-014M」的說明。
 
 其他：
@@ -43,7 +43,7 @@
 - Codex review 額度在 2026-10-18 兩度用完（中間短暫恢復，對 #172、#173 找到 6 個 P2，都已修正）。額度用完時依 §2 改用獨立 Claude review（只讀 agent，對照程式碼回報 P1／P2／P3，修完再請它複查）。
 - 教訓：三份提案的獨立 review 各找到 P1（PRO-014Q 連續四輪）。提案的事實與設計都要對照程式碼驗證；逐條修補一直被找到新漏洞時，要退一步改結構（PRO-014Q 由修補 backup 改為移除模擬，AI-203 由 F3 改為 F4）。
 
-## 4. 本次工作階段已完成（2026-10-17～18）
+## 4. 本次工作階段已完成（2026-10-17～19）
 
 | PR | 版本 | 內容 |
 |---|---|---|
@@ -69,6 +69,7 @@
 | #174 | — | 交接紀錄：記錄 #173 |
 | #175 | — | 交接紀錄：記錄使用者核准、AI-203B／AI-204／HW-113、PS-246 WIP |
 | #176 | v1.30.1 | PS-246：V2 不再套用舊相機的位置覆寫，Edit Mode 改為說明 |
+| #177 | v1.31.0 | AI-203B：Companion 在 12:00–14:00 溫和提醒今日計畫中尚未開始的目標 |
 
 教訓：#155–#164 在 Codex review 出現前就合併，造成 #165、#166、#167 的回頭修正。這就是 §2 合併條件的由來。獨立 review 在 #167、#168、#169 都找到真正的問題（例如椅子畫在螢幕後面、壁燈在相框下投出暗影），所以複查不能省。
 
@@ -85,7 +86,7 @@
 
 ### 可直接做（已核准）
 
-- 依 §3 的順序：AI-203B → PRO-014Q S0 → PRO-014Q Q6（Q6 需先有測試帳號）。PS-246 已完成。
+- 依 §3 的順序：PRO-014Q S0 → PRO-014Q Q6（Q6 需先有測試帳號）。PS-246、AI-203B 已完成。
 - Backlog 新增的 AI-204（Companion 台詞文案統一）與 HW-113（今日計畫日期對齊）尚未排程；要做時依 AGENTS §15 先移入 Next。
 - 椅子右扶手與一個腳輪畫在書桌之上（PS-244 起既有，約 10 px，記錄在 `tasks.md` 的 PS-245）。修正要拆分椅子的渲染層，再用 `render_pack.py --only office-chair` 重渲椅子。`tasks.md` 目前沒有對應任務，要做需先建立任務。
 

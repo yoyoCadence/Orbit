@@ -1,7 +1,8 @@
 import { getLevelInfo } from '../../engine.js';
 import { getTimeBand as getSharedTimeBand } from '../../timeBand.js';
-import { getCompanionReaction } from './companionEngine.js';
+import { getCompanionReaction, PRODUCTIVE_RESULTS } from './companionEngine.js';
 import { deriveMomentum } from './momentum.js';
+import { isWithinRemindWindow } from './remindWindow.js';
 import { isWorldProgressReveal } from './revealSelectors.js';
 
 export const PERSONAL_SPACE_V2_RENDER_MODES = Object.freeze({
@@ -75,7 +76,12 @@ function localDateString(date) {
   return `${year}-${month}-${day}`;
 }
 
-function resolveEffectiveDate(coreState, options) {
+function resolveNow(options) {
+  const supplied = options.now instanceof Date ? options.now : new Date(options.now ?? Date.now());
+  return Number.isNaN(supplied.getTime()) ? new Date() : supplied;
+}
+
+function resolveEffectiveDate(coreState, options, now) {
   if (typeof options.effectiveDate === 'string' && options.effectiveDate.trim()) {
     return options.effectiveDate.trim();
   }
@@ -83,11 +89,10 @@ function resolveEffectiveDate(coreState, options) {
     return coreState.effectiveDate.trim();
   }
 
-  const supplied = options.now instanceof Date ? options.now : new Date(options.now ?? Date.now());
-  const now = Number.isNaN(supplied.getTime()) ? new Date() : new Date(supplied.getTime());
+  const day = new Date(now.getTime());
   const newDayHour = finite(coreState.user?.newDayHour, 5);
-  if (now.getHours() < newDayHour) now.setDate(now.getDate() - 1);
-  return localDateString(now);
+  if (day.getHours() < newDayHour) day.setDate(day.getDate() - 1);
+  return localDateString(day);
 }
 
 /** Accept either the shared numeric hour contract or a Date-like value. */
@@ -112,6 +117,42 @@ export function isMainQuestTaskEligible(task) {
     && task.available !== false
     && task.isActive !== false
   );
+}
+
+// A user needs this many Session dates before low Momentum means anything, so
+// a new user is never nudged right after planning their first day (AI-203 G1).
+const REMIND_MIN_OBSERVED_DAYS = 3;
+
+/**
+ * AI-203B: the user-selected goals behind the Companion's bounded `remind` —
+ * eligible focus tasks in today's plan, while nothing eligible has been worked
+ * on today. Empty outside the daily window, between midnight and the user's
+ * new-day hour (the plan uses calendar days), or with too little history.
+ */
+export function selectRemindGoals({
+  tasks = [],
+  dailyPlan = [],
+  sessions = [],
+  effectiveDate,
+  now,
+  momentum,
+} = {}) {
+  if (!(now instanceof Date) || localDateString(now) !== effectiveDate) return [];
+  if (!isWithinRemindWindow(now)) return [];
+  if (!(finite(momentum?.observedDays, 0) >= REMIND_MIN_OBSERVED_DAYS)) return [];
+
+  const taskById = new Map((Array.isArray(tasks) ? tasks : []).map(task => [task?.id, task]));
+  const workedOnGoalToday = (Array.isArray(sessions) ? sessions : []).some(session => (
+    session?.date === effectiveDate
+    && PRODUCTIVE_RESULTS.has(session.result)
+    && isMainQuestTaskEligible(taskById.get(session.taskId))
+  ));
+  if (workedOnGoalToday) return [];
+
+  return (Array.isArray(dailyPlan) ? dailyPlan : [])
+    .map(entry => (entry && typeof entry === 'object' ? entry : taskById.get(entry)))
+    .filter(isMainQuestTaskEligible)
+    .map(task => ({ goalId: task.id, selectedByUser: true, source: 'daily-plan' }));
 }
 
 export function isMainQuestSessionEligible(session, effectiveDate = null) {
@@ -491,7 +532,9 @@ export function buildPersonalSpaceV2Snapshot(coreOrInput = {}, v2Arg = {}, ledge
     ledgerArg,
     optionsArg
   );
-  const effectiveDate = resolveEffectiveDate(coreState, options);
+  // One clock read: the reminder compares the calendar day with the effective day.
+  const now = resolveNow(options);
+  const effectiveDate = resolveEffectiveDate(coreState, options, now);
   const sessions = Array.isArray(coreState.sessions) ? coreState.sessions : [];
   const recentSessions = sortRecentSessions(
     sessions.filter(session => session?.date === effectiveDate)
@@ -519,7 +562,14 @@ export function buildPersonalSpaceV2Snapshot(coreOrInput = {}, v2Arg = {}, ledge
       hiddenStats: v2State.hiddenStats,
       currentStreak: coreState.user?.streakDays || 0,
       momentum,
-      missedPatterns: coreState.missedPatterns,
+      missedPatterns: selectRemindGoals({
+        tasks: coreState.tasks,
+        dailyPlan: coreState.dailyPlan,
+        sessions,
+        effectiveDate,
+        now,
+        momentum,
+      }),
       activeProject,
       relationshipStage,
       pendingReveal,
@@ -529,7 +579,6 @@ export function buildPersonalSpaceV2Snapshot(coreOrInput = {}, v2Arg = {}, ledge
   const world = v2State.world || {};
   const user = coreState.user || {};
   const level = getLevelInfo(user.totalXP || 0);
-  const suppliedNow = options.now instanceof Date ? options.now : new Date(options.now ?? Date.now());
 
   return immutable({
     snapshotVersion: 1,
@@ -550,7 +599,7 @@ export function buildPersonalSpaceV2Snapshot(coreOrInput = {}, v2Arg = {}, ledge
     companion,
     companionState: companion.state,
     relationshipStage,
-    timeBand: getTimeBand(suppliedNow),
+    timeBand: getTimeBand(now),
     weather: getWeather(v2State.weather || world.weather),
     player: {
       id: user.id || null,

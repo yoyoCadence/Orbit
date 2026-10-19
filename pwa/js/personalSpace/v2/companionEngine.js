@@ -3,7 +3,7 @@ import {
   isQuestOrProjectProgressReveal,
 } from './revealSelectors.js';
 
-const PRODUCTIVE_RESULTS = new Set(['complete', 'partial', 'instant']);
+export const PRODUCTIVE_RESULTS = new Set(['complete', 'partial', 'instant']);
 
 function freezeReaction(reaction) {
   return Object.freeze({
