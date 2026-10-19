@@ -16,11 +16,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../pwa/js/supabase.js', () => ({ supabase: {} }));
+// dayCycle's UI side effects; the watcher's plan handling is what is tested.
+vi.mock('../../pwa/js/router.js', () => ({ renderPage: vi.fn(), currentHash: () => 'home' }));
+vi.mock('../../pwa/js/ui/feedback.js', () => ({ showToast: vi.fn(), showXPFloat: vi.fn() }));
+vi.mock('../../pwa/js/ui/header.js', () => ({ updateHeader: vi.fn() }));
+vi.mock('../../pwa/js/theme.js', () => ({ applyRandomThemeForToday: vi.fn() }));
 
 import { storage } from '../../pwa/js/storage.js';
+import { state } from '../../pwa/js/state.js';
+import { startDayWatcher } from '../../pwa/js/dayCycle.js';
 
 /** Local wall-clock time on 2026-10-{day}. */
-const at = (day, hour, minute = 0) => new Date(2026, 9, day, hour, minute);
+const at = (day, hour, minute = 0, second = 0) => new Date(2026, 9, day, hour, minute, second);
 
 function seedUser(newDayHour) {
   const user = { id: 'owner-a', name: 'Tester', totalXP: 0 };
@@ -108,5 +115,31 @@ describe('HW-113 edits never carry a stale plan into the new day', () => {
     vi.setSystemTime(at(20, 9));
     const inMemory = [];
     expect(storage.currentDailyPlan(inMemory)).toBe(inMemory);
+  });
+});
+
+describe('HW-113 the day watcher keeps what was added after the new-day hour', () => {
+  it('an item added before the minute tick survives the tick', () => {
+    seedUser(5);
+    state.user = JSON.parse(localStorage.getItem('yoyo_user'));
+    state.energy = { currentEnergy: 100, maxEnergy: 100, lastResetDate: '2026-10-20' };
+    vi.setSystemTime(at(19, 22));
+    storage.saveDailyPlan(['yesterday']);
+    state.dailyPlan = ['yesterday'];
+
+    vi.setSystemTime(at(20, 4, 59, 30));
+    startDayWatcher();
+
+    // 05:00:10 — the watcher has not ticked yet; the user adds a task the way
+    // app.js does.
+    vi.setSystemTime(at(20, 5, 0, 10));
+    state.dailyPlan = storage.currentDailyPlan(state.dailyPlan);
+    state.dailyPlan.push('today');
+    storage.saveDailyPlan(state.dailyPlan);
+
+    vi.advanceTimersByTime(60_000);
+
+    expect(state.dailyPlan).toEqual(['today']);
+    expect(storage.getDailyPlan()).toEqual(['today']);
   });
 });

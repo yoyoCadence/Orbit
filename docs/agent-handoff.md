@@ -33,13 +33,13 @@
 
 1. **PS-246：完成**（#176，v1.30.1）。V2 的 `placements` 固定為 `{}`；Edit Mode 只顯示說明；移除舊擺放的編輯程式碼與樣式；technical design §7.2 改為 S1；state-flow 更新；新增回歸測試（在修正前的程式碼上會失敗）；重新產生 asset baseline。lint、`npm test`（64 files／1073 tests）、e2e 41/41、`ps242:manifest`／`ps243:assets --check` 通過。
 2. **AI-203B：完成**（#177，v1.31.0）。`viewModels.selectRemindGoals()` 從 `coreState.dailyPlan` 推導 `missedPatterns`；新增 `pwa/js/personalSpace/v2/remindWindow.js`（`isWithinRemindWindow`、`watchRemindWindow`：在 12:00／14:00 與隔天 12:00 設計時器，回到前景時重新判斷；`describeControl`／`findControl` 讓重新 render 保留焦點），首頁小卡與完整頁面 mount 時啟動、cleanup 時取消，完整頁面重新 render 時保留打開的詳細資訊面板（Codex P2 修正）；D2 的 CSS；`companionEngine.js` 不改。lint、`npm test`（65 files／1105 tests）、e2e 41/41、`ps242:manifest`／`ps243:assets --check` 通過。
-3. **PRO-014Q S0：已實作，未合併**（[#178](https://github.com/yoyoCadence/Orbit/pull/178)，分支 `feat/pro-014q-s0-dev-reset-cleanup`，v1.31.1，CI 全綠）。
+3. **PRO-014Q S0：已實作，未合併**（[#178](https://github.com/yoyoCadence/Orbit/pull/178)，分支 `feat/pro-014q-s0-dev-reset-cleanup`；v1.31.1 已由 #180 使用，#178 合併 main 時改為 v1.31.2）。以下第一輪 review 的記錄保留；使用者的決定與之後的狀態見本點最後的「2026-10-19 更新」。
    - 內容：「↩ 還原原始資料並重啟」先 `confirm(DEV_RESET_CONFIRM)`，再呼叫：
      - `storage.discardDevSimulation()`：刪除所有 `yoyo_profileSyncPending*`、本機 user、projection，最後刪除備份；
      - `v2/store.removeAllPersonalSpaceV2States()`：刪除所有帳號的 V2 state，保留 legacy claim 與 legacy state；
      - 然後重新載入。
    - 測試：`tests/unit/pro014qDevReset.test.js`，含「只刪備份會外流」的對照組。
-   - 獨立 review（Codex 額度用完）找到兩個規格沒涵蓋的問題。依 §2，**停下來等使用者決定，不可自行合併**：
+   - 獨立 review（Codex 額度用完）找到兩個規格沒涵蓋的問題（當時依 §2 停下來等使用者決定；2026-10-19 已核准 A1＋B1）：
    - **P1 多視窗外流**（main 上原本就有，不是 S0 造成的）。
      - 同一 origin 開兩個視窗（兩個分頁，或分頁加已安裝的 PWA）時，在一個視窗按「還原」會刪掉擋住上雲的備份。
      - 另一個視窗記憶體中的模擬 user，下一次 `saveUser()`（例如完成 Session）就會被 upsert 到 `profiles`。`legacy` source 下這會授予真的 Pro；reviewer 已重現。
@@ -52,7 +52,7 @@
      - **B1（建議）**：沒有 Supabase session、且 `backup.id === 本機 user.id` 時，把備份寫回本機 user（遊客保留舊行為），其餘照樣清除；對話框文字依登入狀態調整。偏離已核准的規格，需核准。
      - **B2**：`continueAsGuest` 在沒有 user 時導向 setup。資料仍遺失，但 app 可用。
    - P3（可順手修）：
-     - CHANGELOG [1.31.1] 的 V2 gzip 數字要對齊 `docs/ps243/asset-baseline.json`；
+     - #178 CHANGELOG 的 V2 gzip 數字要對齊 `docs/ps243/asset-baseline.json`；
      - V2 測試可改為斷言「等於乾淨 store 依真實 XP 算出的 Gold」；
      - 另一個帳號的 pending 改由 `saveUser()` 產生。
    - **接手步驟**：
@@ -109,7 +109,6 @@
 
 ### 需要使用者決定或執行
 
-- **PRO-014Q S0（#178）的兩個決定**：多視窗外流 A1／A2、遊客資料 B1／B2，見 §3 第 3 點。決定前不要合併 #178。
 - **BUG-109A**：在 production 套用 `pwa/db/013_signup_profile_name.sql`，需專案擁有者執行，步驟見 `docs/bug-109-signup-name-truncation.md`。
 - **PRO-014Q Q6 的測試帳號**：在 preview Supabase 專案建立（見 §3 第 4 點）。
 - **角色 3D 化**：主角與 Companion 仍是 PS-242 的像素 sprite。改成 3D 會推翻已核准素材（主角 12 個姿勢、Companion 6 個狀態），範圍很大，等使用者決定。
@@ -119,7 +118,7 @@
 
 ### 可直接做（已核准）
 
-- 依 §3 的順序：PRO-014Q S0（#178，等使用者的 A／B 決定）→ PRO-014Q Q6（需先有測試帳號）。PS-246、AI-203B 已完成。
+- 依 §3 的順序：PRO-014Q S0（#178，A1＋B1 已核准並實作，等 CI）→ PRO-014Q Q6（需先有測試帳號）。PS-246、AI-203B、HW-113 已完成。
 - Backlog 的 AI-204（Companion 台詞文案統一）尚未排程；要做時依 AGENTS §15 先移入 Next。文字需使用者選定，先寫提案。HW-113 已完成（#180）。
 - 椅子右扶手與一個腳輪畫在書桌之上（PS-244 起既有，約 10 px，記錄在 `tasks.md` 的 PS-245）。修正要拆分椅子的渲染層，再用 `render_pack.py --only office-chair` 重渲椅子。`tasks.md` 目前沒有對應任務，要做需先建立任務。
 

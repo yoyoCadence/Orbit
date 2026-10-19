@@ -1111,9 +1111,9 @@ export const storage = {
   },
   /**
    * HW-113: `state.dailyPlan` is loaded for one effective day. Once the stored
-   * plan belongs to an earlier day, dayCycle's minute watcher simply has not
-   * reset it yet, and an edit must start from an empty plan rather than save
-   * yesterday's plan as today's.
+   * plan belongs to a different day, dayCycle's minute watcher simply has not
+   * reloaded it yet, and an edit must start from an empty plan rather than
+   * save yesterday's plan as today's.
    */
   currentDailyPlan: (planInMemory) => {
     const data = get('dailyPlan');
