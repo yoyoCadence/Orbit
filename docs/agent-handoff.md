@@ -95,6 +95,8 @@
 
 ### 需要使用者決定或執行
 
+- **AI-204 的文字**：方案 A（小卡版，建議）／A′／B／C，以及是否一併統一夥伴名稱，見 `docs/ai-204-companion-dialogue-proposal.md` §6。
+- **CI 上傳 Playwright artifact**：e2e 的 Focus 提前結束測試在 CI 偶發逾時（見 §3「其他」），要查出卡在哪一步，需要在 `.github/workflows/ci.yml` 的 e2e 失敗時上傳 `test-results/`。屬 CI 設定，需核准。
 - **BUG-109A**：在 production 套用 `pwa/db/013_signup_profile_name.sql`，需專案擁有者執行，步驟見 `docs/bug-109-signup-name-truncation.md`。
 - **PRO-014Q Q6 的測試帳號**：在 preview Supabase 專案建立（見 §3 第 4 點）。
 - **角色 3D 化**：主角與 Companion 仍是 PS-242 的像素 sprite。改成 3D 會推翻已核准素材（主角 12 個姿勢、Companion 6 個狀態），範圍很大，等使用者決定。
@@ -105,7 +107,7 @@
 ### 可直接做（已核准）
 
 - 依 §3 的順序：PRO-014Q Q6（需先有測試帳號）。PS-246、AI-203B、HW-113、PRO-014Q S0 已完成。
-- Backlog 的 AI-204（Companion 台詞文案統一）尚未排程；要做時依 AGENTS §15 先移入 Next。文字需使用者選定，先寫提案。
+- AI-204（Companion 台詞文案統一）：提案 `docs/ai-204-companion-dialogue-proposal.md` 已寫好，**等使用者選定文字**（§6 的三個決定）後才實作。
 - 椅子右扶手與一個腳輪畫在書桌之上（PS-244 起既有，約 10 px，記錄在 `tasks.md` 的 PS-245）。修正要拆分椅子的渲染層，再用 `render_pack.py --only office-chair` 重渲椅子。`tasks.md` 目前沒有對應任務，要做需先建立任務。
 
 ## 6. PS-245 精細化：實作計畫
