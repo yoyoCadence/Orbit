@@ -127,10 +127,15 @@ S0 實作後的獨立 review 找到兩個本節原本沒涵蓋的情況：
   - 處理：`app.js` 監聽 `storage` 事件。localStorage 的 `orbit_dev_backup` 被其他視窗移除，或 localStorage 被整個清空（`key === null`）時，重新載入這個視窗。建立 backup、其他 key 與 sessionStorage 的事件不處理。
 - **B1：遊客**（P2）。
   - 問題：遊客的 profile 只存在本機 `yoyo_user`，雲端沒有可取回的資料。刪除本機 user 會毀掉唯一一份，重啟後進入有任務、沒有 user 的狀態，無法記錄 Session。
-  - 處理：`db.readGuestDevBackup()` 在**沒有 Supabase session、且 backup 的 `id` 等於本機 user 的 `id`** 時回傳 backup。`storage.discardDevSimulation({ restoreUser })` 把它寫回本機 user（遊客保留舊的還原行為），其餘（pending、projection、V2 state、backup）照樣清除。對話框改用遊客版本 `DEV_RESET_CONFIRM_GUEST`，不再說「從雲端重新載入」。
+  - 處理：`db.readGuestDevBackup()` 在**讀取 Supabase session 成功且沒有 session、backup 的 `id` 等於本機 user 的 `id`** 時回傳 backup。`storage.discardDevSimulation({ restoreUser })` 把它寫回本機 user（遊客保留舊的還原行為），其餘（pending、projection、V2 state、backup）照樣清除。對話框改用遊客版本 `DEV_RESET_CONFIRM_GUEST`，不再說「從雲端重新載入」。
   - 已登入、或 backup 屬於別的帳號時，照舊刪除本機 user。
-  - 寫回 backup 不會外流：遊客沒有 session，`upsertProfile()` 不會上傳。已登入但 session 暫時取不到（例如離線且 token 過期）的帳號也會被當成遊客；寫回的是模擬前的真實值，不是模擬值。
-  - **仍未涵蓋**：遊客是在別的帳號模擬之後才建立的（backup 屬於那個帳號，`id` 不同）。這時無法分辨本機 user 是遊客，還是 session 暫時取不到、可能含模擬值的已登入帳號，所以照舊刪除本機 user，遊客仍會失去 profile。Q6 的「清除殘留」會遇到同一個情況，實作 Q6 前要決定處理方式。
+  - **讀取 session 出錯時視為已登入**（複查找到的 P2）：supabase-js 在 token 過期又無法 refresh（例如離線）時回傳 `{ session: null, error }`。若當成遊客，寫回的雖是模擬前的真實值，但它和模擬開始時一樣舊；之後啟動時的 `saveUser()` 會把它排成 pending、先於拉取推上 `profiles`，蓋掉其他裝置在這段期間的進度。遊客從未存過 session，讀取會成功並回傳空值。等待 session 期間帳號若被登出（本機 user 被清除），也不寫回。
+  - 寫回 backup 不會外流：遊客沒有 session，`upsertProfile()` 不會上傳。
+  - 「還原」按下後到頁面真正重新載入前，舊畫面仍可點擊。第二次點擊時 backup 已不存在，會走已登入的清理、刪掉剛寫回的遊客 profile；因此 backup 不存在時直接返回，等待 session 期間也不接受第二次點擊。
+  - **仍未涵蓋**：遊客是在別的帳號模擬之後才建立的（backup 屬於那個帳號，`id` 不同）。這時無法分辨本機 user 是遊客，還是 session 暫時取不到、可能含模擬值的已登入帳號，所以照舊刪除本機 user，遊客仍會失去 profile。Q6 的「清除殘留」會遇到同一個情況，實作 Q6 前要決定處理方式。複查建議的低成本做法：`continueAsGuest` 在有任務但沒有 user 時也進入 setup（即 B2 的範圍）。
+- **複查記錄、刻意不處理的已知限制**（都只在開發者裝置上，Q6 移除模擬後不再發生）：
+  - A1 依賴 `storage` 事件送達。另一個視窗清理完到事件執行之間、`location.reload()` 到頁面卸載之間，以及跨行程寫入的競態，都是毫秒級的空窗；back/forward cache 中的頁面行為依瀏覽器而定，未驗證。複查建議的加固（記憶體旗標讓 `upsertProfile()`／`refreshProEntitlement()` 在重新載入前也回傳 false）會改動上雲與 entitlement 的 guard，超出核准的 A1，未實作。
+  - 模擬期間的 Session 復原若在 settle 寫入時失敗（`sessionFlow.js` 的 undo journal），journal 中的 `recovery.targetTotalXP` 是以模擬 XP 算的；若在下次啟動前按「還原」，`recoverPendingSessionDeletions()` 可能把它寫回拉取的 user 與 pending profile。需要本機寫入失敗才會發生。
 
 登出、換帳號時的處理交給 Q6。
 

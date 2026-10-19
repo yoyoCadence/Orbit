@@ -17,7 +17,7 @@
   - 保留 legacy 個人空間與 legacy claim，其他帳號仍無法認領 legacy state。
   - 對話框寫明代價：模擬期間獲得的 XP 與連勝變動會被捨棄，已記錄的 Session 會保留；個人空間依雲端資料重新建立，開場 Gold 可能偏低，尚未播放的世界變化會遺失；清除後若離線，要等連線後重新登入。
 - **另一個視窗按「還原」後，這個視窗會重新載入**（review 找到的 P1，main 上原本就有）：同時開兩個視窗（兩個分頁，或分頁加已安裝的 App）時，一個視窗的「還原」刪掉擋住上雲的備份，另一個視窗記憶體中仍是模擬的 user，下一次完成 Session 就會把模擬值推上 `profiles`。現在備份被其他視窗移除、或 localStorage 被整個清空時，這個視窗會重新載入。
-- **遊客按「還原」不再失去 profile**（review 找到的 P2）：遊客的 profile 只存在這台裝置。沒有登入 session、且備份就是目前本機 user 的備份時，「還原」把備份寫回本機 user，其餘照樣清除；對話框改寫為遊客版本，不再說「從雲端重新載入」。已登入的帳號、或備份屬於別的帳號時，照舊刪除本機 user。
+- **遊客按「還原」不再失去 profile**（review 找到的 P2）：遊客的 profile 只存在這台裝置。讀取登入 session 成功且沒有 session、備份就是目前本機 user 的備份時，「還原」把備份寫回本機 user，其餘照樣清除；對話框改寫為遊客版本，不再說「從雲端重新載入」。已登入的帳號、session 因離線等原因無法讀取、或備份屬於別的帳號時，照舊刪除本機 user，避免舊的備份蓋掉雲端較新的資料。重新載入完成前再按一次「還原」不會有作用。
 
 ### Validation
 - 新增 `tests/unit/pro014qDevReset.test.js`，用真實的 storage、設定頁與 V2 controller 驗證：
@@ -26,7 +26,7 @@
   - 清理後兩個帳號的 `loadFromRemote()` 都不 upsert profile；
   - 對照組：只刪備份時模擬的 `total_xp` 會被推送；
   - 刪除 V2 state 後，開場 Gold 與乾淨裝置依真實 XP 算出的相同；
-  - 遊客：備份寫回本機 user、其餘照樣清除、顯示遊客版對話框；別的帳號的備份、或已登入時，不寫回。
+  - 遊客：備份寫回本機 user、其餘照樣清除、顯示遊客版對話框；別的帳號的備份、已登入、或讀取 session 出錯時，不寫回；重新載入前的第二次點擊、與等待 session 期間的重複點擊都不會再跳出對話框。
 - `tests/unit/appBootSequence.test.js` 新增：其他視窗移除備份或清空 localStorage 時重新載入；建立備份、其他 key 或 sessionStorage 的事件不會。
 - `npm run ps243:assets` 重新產生 `docs/ps243/asset-baseline.json`（V2 延遲載入 gzip 51,924 → 52,192 bytes）。
 

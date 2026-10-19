@@ -4,7 +4,7 @@
 
 任務本身的定義與驗收條件以 [`tasks.md`](../tasks.md) 為準；本檔只記錄進行中的狀態、與使用者約定的工作規則，以及接手需要的操作細節。
 
-> 最後更新：2026-10-19。PS-246（#176，v1.30.1）、AI-203B（#177，v1.31.0）已合併。PRO-014Q S0 已實作於 #178（v1.31.1），**獨立 review 找到 P1／P2，等待使用者決定，尚未合併**（見 §3 第 3 點）。
+> 最後更新：2026-10-19。PS-246（#176，v1.30.1）、AI-203B（#177，v1.31.0）、PRO-014Q S0（#178，v1.31.1，含使用者核准的 A1＋B1）已合併。下一步見 §3 第 4 點與 §5。
 
 ## 1. 接手前先讀
 
@@ -33,35 +33,18 @@
 
 1. **PS-246：完成**（#176，v1.30.1）。V2 的 `placements` 固定為 `{}`；Edit Mode 只顯示說明；移除舊擺放的編輯程式碼與樣式；technical design §7.2 改為 S1；state-flow 更新；新增回歸測試（在修正前的程式碼上會失敗）；重新產生 asset baseline。lint、`npm test`（64 files／1073 tests）、e2e 41/41、`ps242:manifest`／`ps243:assets --check` 通過。
 2. **AI-203B：完成**（#177，v1.31.0）。`viewModels.selectRemindGoals()` 從 `coreState.dailyPlan` 推導 `missedPatterns`；新增 `pwa/js/personalSpace/v2/remindWindow.js`（`isWithinRemindWindow`、`watchRemindWindow`：在 12:00／14:00 與隔天 12:00 設計時器，回到前景時重新判斷；`describeControl`／`findControl` 讓重新 render 保留焦點），首頁小卡與完整頁面 mount 時啟動、cleanup 時取消，完整頁面重新 render 時保留打開的詳細資訊面板（Codex P2 修正）；D2 的 CSS；`companionEngine.js` 不改。lint、`npm test`（65 files／1105 tests）、e2e 41/41、`ps242:manifest`／`ps243:assets --check` 通過。
-3. **PRO-014Q S0：已實作，未合併**（[#178](https://github.com/yoyoCadence/Orbit/pull/178)，分支 `feat/pro-014q-s0-dev-reset-cleanup`，v1.31.1，CI 全綠）。
-   - 內容：「↩ 還原原始資料並重啟」先 `confirm(DEV_RESET_CONFIRM)`，再呼叫：
+3. **PRO-014Q S0：完成**（[#178](https://github.com/yoyoCadence/Orbit/pull/178)，v1.31.1）。
+   - 內容：「↩ 還原原始資料並重啟」先確認，再呼叫：
      - `storage.discardDevSimulation()`：刪除所有 `yoyo_profileSyncPending*`、本機 user、projection，最後刪除備份；
      - `v2/store.removeAllPersonalSpaceV2States()`：刪除所有帳號的 V2 state，保留 legacy claim 與 legacy state；
      - 然後重新載入。
-   - 測試：`tests/unit/pro014qDevReset.test.js`，含「只刪備份會外流」的對照組。
-   - 獨立 review（Codex 額度用完）找到兩個規格沒涵蓋的問題。依 §2，**停下來等使用者決定，不可自行合併**：
-   - **P1 多視窗外流**（main 上原本就有，不是 S0 造成的）。
-     - 同一 origin 開兩個視窗（兩個分頁，或分頁加已安裝的 PWA）時，在一個視窗按「還原」會刪掉擋住上雲的備份。
-     - 另一個視窗記憶體中的模擬 user，下一次 `saveUser()`（例如完成 Session）就會被 upsert 到 `profiles`。`legacy` source 下這會授予真的 Pro；reviewer 已重現。
-     - **A1（建議）**：`app.js` 啟動時監聽 `storage` 事件；`orbit_dev_backup` 被移除或 localStorage 被清空時，重新載入該視窗；加 jsdom 測試（dispatch `StorageEvent`，斷言 reload）。屬啟動流程與 entitlement 路徑，需核准。
-     - **A2**：接受為已知限制，直到 Q6。Q6 不再產生新備份。
-   - **P2 遊客模式資料遺失**。
-     - 遊客的 profile 只存在本機 `yoyo_user`（本機 UUID），雲端沒有可取回的資料，S0 刪除本機 user 會毀掉唯一一份。
-     - 重啟後選遊客，會進入有任務、沒有 user 的狀態，`finishSession` 直接 return，無法記錄 Session。
-     - 對話框寫的「從雲端重新載入」對遊客也不成立。
-     - **B1（建議）**：沒有 Supabase session、且 `backup.id === 本機 user.id` 時，把備份寫回本機 user（遊客保留舊行為），其餘照樣清除；對話框文字依登入狀態調整。偏離已核准的規格，需核准。
-     - **B2**：`continueAsGuest` 在沒有 user 時導向 setup。資料仍遺失，但 app 可用。
-   - P3（可順手修）：
-     - CHANGELOG [1.31.1] 的 V2 gzip 數字要對齊 `docs/ps243/asset-baseline.json`；
-     - V2 測試可改為斷言「等於乾淨 store 依真實 XP 算出的 Gold」；
-     - 另一個帳號的 pending 改由 `saveUser()` 產生。
-   - **接手步驟**：
-     1. 向使用者確認 A1／A2 與 B1／B2；
-     2. 在 #178 實作，跑 lint、`npm test`、`npm run ps243:assets`；
-     3. 請獨立 review 複查；
-     4. CI 全綠、無 P1／P2 後合併；
-     5. 更新本檔、`tasks.md`、CHANGELOG。
-4. **PRO-014Q Q6**（被測試帳號擋住）：移除開發者面板的等級與 Pro 模擬、舊 backup 的一次性清理（沿用 S0 的兩個清理函式；遊客的處理依 B 的決定）、測試帳號說明文件。**preview 專案的測試帳號要由專案擁有者建立**（agent 沒有 Supabase 權限）；實作前先向使用者確認帳號已建立。Q6 上線時更新 `tasks.md` 中「PRO-014H 的實機驗證需要 PRO-014M」的說明。
+   - 第一輪獨立 review 找到 P1（多視窗外流，main 上原本就有）與 P2（遊客失去唯一的本機 profile）。**使用者 2026-10-19 核准 A1＋B1**：
+     - A1：`app.js` 監聽 `storage` 事件，其他視窗移除 `orbit_dev_backup` 或清空 localStorage 時重新載入；
+     - B1：`db.readGuestDevBackup()` 在讀取 session 成功且沒有 session、backup 屬於本機 user 時回傳 backup，`discardDevSimulation({ restoreUser })` 把它寫回；遊客使用 `DEV_RESET_CONFIRM_GUEST`。
+   - 複查（Codex 恢復可用，對 6f81638 無 finding；獨立 review 無 P1）找到 P2：讀取 session 出錯（token 過期且離線）時被當成遊客，舊備份會蓋掉雲端較新的資料；改為出錯時走已登入的清理。P3：重新載入前再按一次會刪掉剛寫回的遊客 profile；加上 backup 檢查與防重入。
+   - 刻意不處理、記錄在變更說明 §4 S0「review 後的補充」的已知限制：A1 的毫秒級空窗、undo journal 的模擬 XP、在別的帳號模擬後才建立的遊客（Q6 前要決定）。
+   - 測試：`tests/unit/pro014qDevReset.test.js`（含「只刪備份會外流」的對照組與遊客情境）、`appBootSequence.test.js` 的 A1 測試；另以 Playwright 開兩個分頁實測 A1＋B1。
+4. **PRO-014Q Q6**（被測試帳號擋住）：移除開發者面板的等級與 Pro 模擬、舊 backup 的一次性清理（沿用 S0 的兩個清理函式與 B1 的遊客判斷；在別的帳號模擬後才建立的遊客，處理方式要先問使用者）、測試帳號說明文件。**preview 專案的測試帳號要由專案擁有者建立**（agent 沒有 Supabase 權限）；實作前先向使用者確認帳號已建立。Q6 上線時更新 `tasks.md` 中「PRO-014H 的實機驗證需要 PRO-014M」的說明。
 
 其他：
 
@@ -69,6 +52,7 @@
 - 草稿 PR [#154](https://github.com/yoyoCadence/Orbit/pull/154)（`feat/pro-014l-streak-unlock-rpc`，PRO-014L）不是本工作階段開的；它改的 SUB-16 路徑與 `PRO-014P` 相同。
 - Codex review 額度在 2026-10-18 兩度用完（中間短暫恢復，對 #172、#173 找到 6 個 P2，都已修正）。額度用完時依 §2 改用獨立 Claude review（只讀 agent，對照程式碼回報 P1／P2／P3，修完再請它複查）。
 - 2026-10-19：Codex 在 #176 與 #177 開 PR 時可用（#177 找到 2 個 P2，已修），之後額度再度用完；#177 的複查與 #178 改用獨立 Claude review。獨立 review 在 #177 另找到「還原焦點會捲動頁面」的 P2，在 #178 找到上述 P1／P2，所以複查不能省。
+- 2026-10-19 12:24：留言 `@codex review` 後 Codex 又可用了（#178 的 6f81638 無 finding）。每個 PR 仍同時跑獨立 Claude review：#178 的複查在 Codex 沒找到問題的 commit 上仍找到 P2。
 - 教訓：三份提案的獨立 review 各找到 P1（PRO-014Q 連續四輪）。提案的事實與設計都要對照程式碼驗證；逐條修補一直被找到新漏洞時，要退一步改結構（PRO-014Q 由修補 backup 改為移除模擬，AI-203 由 F3 改為 F4）。
 
 ## 4. 本次工作階段已完成（2026-10-17～19）
@@ -98,7 +82,7 @@
 | #175 | — | 交接紀錄：記錄使用者核准、AI-203B／AI-204／HW-113、PS-246 WIP |
 | #176 | v1.30.1 | PS-246：V2 不再套用舊相機的位置覆寫，Edit Mode 改為說明 |
 | #177 | v1.31.0 | AI-203B：Companion 在 12:00–14:00 溫和提醒今日計畫中尚未開始的目標 |
-| #178 | v1.31.1 | PRO-014Q S0：開發者面板的「還原」改為確認後完整清理（**未合併**，待使用者決定 A／B） |
+| #178 | v1.31.1 | PRO-014Q S0：開發者面板的「還原」改為確認後完整清理；A1 其他視窗重新載入、B1 遊客寫回自己的備份 |
 
 教訓：#155–#164 在 Codex review 出現前就合併，造成 #165、#166、#167 的回頭修正。這就是 §2 合併條件的由來。獨立 review 在 #167、#168、#169 都找到真正的問題（例如椅子畫在螢幕後面、壁燈在相框下投出暗影），所以複查不能省。
 
@@ -106,7 +90,6 @@
 
 ### 需要使用者決定或執行
 
-- **PRO-014Q S0（#178）的兩個決定**：多視窗外流 A1／A2、遊客資料 B1／B2，見 §3 第 3 點。決定前不要合併 #178。
 - **BUG-109A**：在 production 套用 `pwa/db/013_signup_profile_name.sql`，需專案擁有者執行，步驟見 `docs/bug-109-signup-name-truncation.md`。
 - **PRO-014Q Q6 的測試帳號**：在 preview Supabase 專案建立（見 §3 第 4 點）。
 - **角色 3D 化**：主角與 Companion 仍是 PS-242 的像素 sprite。改成 3D 會推翻已核准素材（主角 12 個姿勢、Companion 6 個狀態），範圍很大，等使用者決定。
@@ -116,7 +99,7 @@
 
 ### 可直接做（已核准）
 
-- 依 §3 的順序：PRO-014Q S0（#178，等使用者的 A／B 決定）→ PRO-014Q Q6（需先有測試帳號）。PS-246、AI-203B 已完成。
+- 依 §3 的順序：PRO-014Q Q6（需先有測試帳號）。PS-246、AI-203B、PRO-014Q S0 已完成。
 - Backlog 新增的 AI-204（Companion 台詞文案統一）與 HW-113（今日計畫日期對齊）尚未排程；要做時依 AGENTS §15 先移入 Next。
 - 椅子右扶手與一個腳輪畫在書桌之上（PS-244 起既有，約 10 px，記錄在 `tasks.md` 的 PS-245）。修正要拆分椅子的渲染層，再用 `render_pack.py --only office-chair` 重渲椅子。`tasks.md` 目前沒有對應任務，要做需先建立任務。
 

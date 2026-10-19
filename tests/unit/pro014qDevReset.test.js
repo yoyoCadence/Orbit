@@ -16,7 +16,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const captured = vi.hoisted(() => ({ upserts: [], sessionUserId: null }));
+const captured = vi.hoisted(() => ({ upserts: [], sessionUserId: null, sessionError: null }));
 
 vi.mock('../../pwa/js/supabase.js', () => {
   const chain = table => {
@@ -47,6 +47,7 @@ vi.mock('../../pwa/js/supabase.js', () => {
       auth: {
         getSession: () => Promise.resolve({
           data: { session: captured.sessionUserId ? { user: { id: captured.sessionUserId } } : null },
+          error: captured.sessionError,
         }),
         onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
         signOut: () => Promise.resolve({}),
@@ -150,6 +151,7 @@ beforeEach(() => {
   clearLocalProEntitlementOverride();
   captured.upserts = [];
   captured.sessionUserId = null;
+  captured.sessionError = null;
   reload = vi.fn();
   vi.stubGlobal('location', { ...window.location, hostname: 'localhost', reload });
   window.showToast = vi.fn();
@@ -283,6 +285,54 @@ describe('PRO-014Q S0 dev reset for guests (B1)', () => {
     await reset({ confirmed: true });
 
     expect(localStorage.getItem('yoyo_user')).toBeNull();
+  });
+
+  it('treats a stored session that cannot be refreshed as signed in, not as a guest', async () => {
+    simulateAndQueuePending();
+    // supabase-js returns { session: null, error } when an expired token cannot
+    // be refreshed (offline). Writing the stale backup back would later
+    // overwrite newer server data, so this must take the signed-in path.
+    captured.sessionError = { name: 'AuthRetryableFetchError', message: 'Failed to fetch' };
+
+    const confirm = await reset({ confirmed: true });
+
+    expect(confirm).toHaveBeenCalledWith(DEV_RESET_CONFIRM);
+    expect(localStorage.getItem('yoyo_user')).toBeNull();
+  });
+
+  it('a second click while the page is still reloading does nothing', async () => {
+    simulateAndQueuePending();
+    const confirm = vi.fn(() => true);
+    vi.stubGlobal('confirm', confirm);
+    reload.mockClear();
+    const container = clickDev('dev-reset');
+    await vi.waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
+    const restored = localStorage.getItem('yoyo_user');
+    expect(JSON.parse(restored).id).toBe(OWNER_A);
+
+    // The old DOM is still clickable until the navigation commits.
+    container.querySelector('#dev-reset').click();
+    await new Promise(resolve => { setTimeout(resolve, 0); });
+
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(localStorage.getItem('yoyo_user')).toBe(restored);
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('clicks during the session check do not stack a second dialog', async () => {
+    simulateAndQueuePending();
+    const confirm = vi.fn(() => false);
+    vi.stubGlobal('confirm', confirm);
+    const container = clickDev('dev-reset');
+    container.querySelector('#dev-reset').click();
+
+    await vi.waitFor(() => expect(confirm).toHaveBeenCalledTimes(1));
+    await new Promise(resolve => { setTimeout(resolve, 0); });
+
+    expect(confirm).toHaveBeenCalledTimes(1);
+    // Once the dialog is answered, the button works again.
+    container.querySelector('#dev-reset').click();
+    await vi.waitFor(() => expect(confirm).toHaveBeenCalledTimes(2));
   });
 });
 

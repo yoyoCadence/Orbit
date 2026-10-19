@@ -376,12 +376,24 @@ export const DEV_RESET_CONFIRM_GUEST = [
  * A guest has nothing on the server to reload, so its own backup is put back
  * as the local user (B1); every other case deletes the local user.
  */
+let _devResetInFlight = false;
+
 async function _devReset() {
-  const guestBackup = await db.readGuestDevBackup();
-  if (!confirm(guestBackup ? DEV_RESET_CONFIRM_GUEST : DEV_RESET_CONFIRM)) return;
-  storage.discardDevSimulation({ restoreUser: guestBackup });
-  removeAllPersonalSpaceV2States();
-  location.reload();
+  // The old page stays clickable until the reload commits. A second click
+  // there no longer finds the backup and would run the signed-in cleanup,
+  // deleting the guest profile that was just restored.
+  if (_devResetInFlight || !localStorage.getItem(FLAG_DEV_BACKUP)) return;
+  _devResetInFlight = true;
+  try {
+    const guestBackup = await db.readGuestDevBackup();
+    if (!localStorage.getItem(FLAG_DEV_BACKUP)) return;
+    if (!confirm(guestBackup ? DEV_RESET_CONFIRM_GUEST : DEV_RESET_CONFIRM)) return;
+    storage.discardDevSimulation({ restoreUser: guestBackup });
+    removeAllPersonalSpaceV2States();
+    location.reload();
+  } finally {
+    _devResetInFlight = false;
+  }
 }
 
 function _devPanelHtml() {

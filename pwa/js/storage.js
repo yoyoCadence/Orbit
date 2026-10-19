@@ -443,7 +443,15 @@ export const db = {
     try { backup = JSON.parse(localStorage.getItem(FLAG_DEV_BACKUP)); } catch { return null; }
     const localUserId = get('user')?.id;
     if (!localUserId || backup?.id !== localUserId) return null;
-    if (await this._session()) return null;
+    let result = null;
+    try { result = await supabase.auth.getSession(); } catch { return null; }
+    // A guest never stored a session, so the read succeeds empty. An error
+    // means a stored session could not be refreshed (offline, expired token):
+    // that is a signed-in account, whose stale backup must not be written back
+    // over newer server data.
+    if (result?.error || result?.data?.session) return null;
+    // The refresh attempt can sign the account out, which clears the user.
+    if (get('user')?.id !== backup.id) return null;
     return backup;
   },
 
