@@ -436,6 +436,30 @@ export const db = {
     return session;
   },
 
+  /**
+   * PRO-014Q S0 (B1): a guest's profile exists only on this device, so the dev
+   * reset must not delete it. Returns the backup when it was taken from the
+   * current local user and there is no Supabase session — that local user is
+   * a guest and the backup is its pre-simulation profile. A backup from
+   * another account, or any signed-in user, returns null and is discarded.
+   */
+  async readGuestDevBackup() {
+    let backup = null;
+    try { backup = JSON.parse(localStorage.getItem(FLAG_DEV_BACKUP)); } catch { return null; }
+    const localUserId = get('user')?.id;
+    if (!localUserId || backup?.id !== localUserId) return null;
+    let result = null;
+    try { result = await supabase.auth.getSession(); } catch { return null; }
+    // A guest never stored a session, so the read succeeds empty. An error
+    // means a stored session could not be refreshed (offline, expired token):
+    // that is a signed-in account, whose stale backup must not be written back
+    // over newer server data.
+    if (result?.error || result?.data?.session) return null;
+    // The refresh attempt can sign the account out, which clears the user.
+    if (get('user')?.id !== backup.id) return null;
+    return backup;
+  },
+
   async _assertOwner(expectedOwnerId) {
     const session = await this._session();
     const actualOwnerId = session?.user?.id || null;
@@ -1118,6 +1142,31 @@ export const storage = {
   currentDailyPlan: (planInMemory) => {
     const data = get('dailyPlan');
     return data && data.date !== dailyPlanDate() ? [] : planInMemory;
+  },
+
+  /**
+   * PRO-014Q S0: the developer panel's simulations write fake values into the
+   * real user, and any pending profile on this device may carry them — the
+   * backup may even belong to another account. Drop the backup, every pending
+   * profile, the local user and the projection, so the next launch loads real
+   * data from the server. Unsynced Sessions keep their own pending sidecar.
+   *
+   * `restoreUser` is the guest's own backup (see `db.readGuestDevBackup()`):
+   * a guest has nothing on the server to reload, so the backup replaces the
+   * local user instead of the user being deleted.
+   */
+  discardDevSimulation: ({ restoreUser = null } = {}) => {
+    const pendingProfileKey = PREFIX + PROFILE_SYNC_PENDING_KEY;
+    const pendingProfileKeys = [];
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const key = localStorage.key(index);
+      if (key === pendingProfileKey || key?.startsWith(`${pendingProfileKey}:`)) pendingProfileKeys.push(key);
+    }
+    pendingProfileKeys.forEach(key => localStorage.removeItem(key));
+    if (restoreUser) set('user', restoreUser);
+    else remove('user');
+    clearProEntitlementSnapshot();
+    localStorage.removeItem(FLAG_DEV_BACKUP);
   },
 
   // ── Clear all local data (on sign-out) ────────────────────────────────────────

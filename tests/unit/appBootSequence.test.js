@@ -678,3 +678,49 @@ describe('HW-113：day watcher 尚未重設時編輯今日計畫', () => {
     expect(storage.saveDailyPlan).toHaveBeenLastCalledWith(['a', 'b']);
   });
 });
+
+describe('PRO-014Q S0（A1）：另一個視窗按「還原」', () => {
+  // 開發者面板的「還原」刪掉 backup 後，其他視窗記憶體裡仍可能是模擬的 user，
+  // 下一次 saveUser() 就會被 upsert 到 profiles。storage 事件只會送到其他視窗，
+  // 所以在這裡模擬「別的視窗」送來的事件。app.js 在每個測試都重新 import，
+  // 之前的 listener 也會收到事件，因此只斷言有沒有重新載入，不斷言次數。
+  let reload;
+
+  beforeEach(async () => {
+    reload = vi.fn();
+    vi.stubGlobal('location', { ...window.location, reload });
+    seedCachedUser('owner-a');
+    auth.getSession.mockResolvedValue(null);
+    await import('../../pwa/js/app.js');
+    await flush();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const fire = init => window.dispatchEvent(new window.StorageEvent('storage', { storageArea: localStorage, ...init }));
+
+  it('backup 被移除時重新載入，避免把記憶體中的模擬值推上雲', () => {
+    fire({ key: 'orbit_dev_backup', oldValue: '{"id":"owner-a"}', newValue: null });
+    expect(reload).toHaveBeenCalled();
+  });
+
+  it('localStorage 被整個清空時也重新載入', () => {
+    fire({ key: null, oldValue: null, newValue: null });
+    expect(reload).toHaveBeenCalled();
+  });
+
+  it('建立 backup（開始模擬）或其他 key 變動時不重新載入', () => {
+    fire({ key: 'orbit_dev_backup', oldValue: null, newValue: '{"id":"owner-a"}' });
+    fire({ key: 'yoyo_user', oldValue: '{"id":"owner-a"}', newValue: null });
+    fire({ key: 'yoyo_profileSyncPending:owner-a', oldValue: '{}', newValue: null });
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it('sessionStorage 的事件不算', () => {
+    fire({ storageArea: sessionStorage, key: null });
+    fire({ storageArea: sessionStorage, key: 'orbit_dev_backup', oldValue: '{}', newValue: null });
+    expect(reload).not.toHaveBeenCalled();
+  });
+});

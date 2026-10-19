@@ -1,8 +1,9 @@
-import { readJSON, writeJSON } from '../../platform/storageBridge.js';
+import { listKeys, readJSON, removeValue, writeJSON } from '../../platform/storageBridge.js';
 import { loadPersonalSpaceState } from '../gameState.js';
 import {
   PERSONAL_SPACE_V2_LEGACY_CLAIM_KEY,
   PERSONAL_SPACE_V2_REWARD_EPOCH,
+  PERSONAL_SPACE_V2_STORAGE_KEY_PREFIX,
   getPersonalSpaceV2StorageKey,
   normalizePersonalSpaceV2OwnerId,
 } from './config.js';
@@ -52,6 +53,19 @@ function persistPersonalSpaceV2State(ownerId, state) {
     throw new Error(`Failed to persist Personal Space V2 state for owner "${ownerId}"`);
   }
   return state;
+}
+
+/**
+ * PRO-014Q S0: remove every account's V2 state on this device so the next load
+ * migrates again from server data (an opening Gold finalized during a level
+ * simulation is never recalculated otherwise). The legacy claim shares the
+ * key prefix but must stay, or another account could claim the legacy state;
+ * the legacy state itself lives under a different key and is untouched.
+ */
+export function removeAllPersonalSpaceV2States() {
+  listKeys(`${PERSONAL_SPACE_V2_STORAGE_KEY_PREFIX}:`)
+    .filter(key => key !== PERSONAL_SPACE_V2_LEGACY_CLAIM_KEY)
+    .forEach(removeValue);
 }
 
 export function hasPersonalSpaceV2State(ownerId) {

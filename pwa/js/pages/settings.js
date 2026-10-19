@@ -1,5 +1,5 @@
 import { state }                      from '../state.js';
-import { storage }                     from '../storage.js';
+import { db, storage }                 from '../storage.js';
 import { applyTheme, applyUiSkin, applyBgImage, removeBgImage, applyRandomThemeForToday } from '../theme.js';
 import { APP_VERSION } from '../version.js';
 import { uid, today, escHtml }         from '../utils.js';
@@ -11,12 +11,12 @@ import { proofStats, clearAllProofs }          from '../platform/proofStore.js';
 import { FLAG_PRO_HIGHLIGHT, FLAG_DEV_BACKUP, FLAG_DEV_PANEL } from '../flags.js';
 import {
   buildProEntitlementSnapshot,
-  clearProEntitlementSnapshot,
   getProEntitlementSource,
   isServerProEntitlementEnabled,
   writeProEntitlementSnapshot,
 } from '../platform/proEntitlement.js';
 import { refreshCanonicalStateAndReconcilePersonalSpaceV2 } from '../personalSpace/v2/controller.js';
+import { removeAllPersonalSpaceV2States } from '../personalSpace/v2/store.js';
 import {
   clearPlaceContext,
   getCoarsePosition,
@@ -354,14 +354,46 @@ function _devApplyPro(status) {
   location.reload();
 }
 
-function _devReset() {
-  const backup = localStorage.getItem(FLAG_DEV_BACKUP);
-  if (backup) storage.saveUserLocal(JSON.parse(backup));
-  localStorage.removeItem(FLAG_DEV_BACKUP);
-  // A simulated projection must not outlive the override. Dropping it fails
-  // closed until the next launch refetches the real one from the server.
-  clearProEntitlementSnapshot();
-  location.reload();
+export const DEV_RESET_CONFIRM = [
+  '還原會清除這台裝置上的模擬資料，並從雲端重新載入：',
+  '・模擬期間獲得的 XP 與連勝變動會被捨棄，已記錄的 Session 會保留。',
+  '・個人空間會依雲端資料重新建立，開場 Gold 可能因此偏低；尚未播放的世界變化會遺失。',
+  '・清除後若離線，需要等連線後重新登入。',
+  '確定還原？',
+].join('\n');
+
+export const DEV_RESET_CONFIRM_GUEST = [
+  '遊客資料只存在這台裝置，還原會把模擬前的備份寫回：',
+  '・模擬期間獲得的 XP 與連勝變動會被捨棄，已記錄的 Session 會保留。',
+  '・個人空間會依本機資料重新建立，開場 Gold 可能因此偏低；尚未播放的世界變化會遺失。',
+  '確定還原？',
+].join('\n');
+
+/**
+ * PRO-014Q S0: restoring the backup into the user used to leave the simulated
+ * values in pending profiles, which the next launch pushed to `profiles`.
+ * Discard everything the simulation could have touched and reload instead.
+ * A guest has nothing on the server to reload, so its own backup is put back
+ * as the local user (B1); every other case deletes the local user.
+ */
+let _devResetInFlight = false;
+
+async function _devReset() {
+  // The old page stays clickable until the reload commits. A second click
+  // there no longer finds the backup and would run the signed-in cleanup,
+  // deleting the guest profile that was just restored.
+  if (_devResetInFlight || !localStorage.getItem(FLAG_DEV_BACKUP)) return;
+  _devResetInFlight = true;
+  try {
+    const guestBackup = await db.readGuestDevBackup();
+    if (!localStorage.getItem(FLAG_DEV_BACKUP)) return;
+    if (!confirm(guestBackup ? DEV_RESET_CONFIRM_GUEST : DEV_RESET_CONFIRM)) return;
+    storage.discardDevSimulation({ restoreUser: guestBackup });
+    removeAllPersonalSpaceV2States();
+    location.reload();
+  } finally {
+    _devResetInFlight = false;
+  }
 }
 
 function _devPanelHtml() {
