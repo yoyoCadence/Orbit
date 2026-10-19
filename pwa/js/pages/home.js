@@ -790,7 +790,7 @@ function _endPlanDrag(planList) {
     const before     = _planDrag.lastY < mid.top + mid.height / 2;
     const dragId     = _planDrag.taskId;
     const targetId   = target.dataset.taskId;
-    const plan       = state.dailyPlan.filter(id => id !== dragId);
+    const plan       = storage.currentDailyPlan(state.dailyPlan).filter(id => id !== dragId);
     const idx        = plan.indexOf(targetId);
     if (idx !== -1) plan.splice(before ? idx : idx + 1, 0, dragId);
     state.dailyPlan  = plan;
