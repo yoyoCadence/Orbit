@@ -140,7 +140,7 @@ Session 刪除或 Undo 會為該 source 建立 tombstone 並撤銷其 entry（`r
 | 動作 | 位置 | 寫入欄位 |
 |---|---|---|
 | Reconcile（§4.1） | `controller.js` → `reconcileAndSavePersonalSpaceV2()` | `economy`、`hiddenStats`、`companion`、`activeProject`、`rewardLedger`、`rewardTombstones`、`pendingRewardReveals`、`worldRevision` |
-| Edit Mode 調整既有擺放 | `pages/personalSpaceV2.js` → `adjustPersonalSpaceV2Placement()` 後以 `expectedRevision` 儲存 | `world.placedItems`、`world.idleWindowLayouts` 中既有項目的位置；revision 衝突時放棄寫入並重新 reconcile |
+| Edit Mode | `pages/personalSpaceV2.js` | **無**。PS-246 起 Edit Mode 只顯示「位置由固定視角的場景決定」的說明，不列出、不調整、也不清除 legacy 擺放；V2 也不套用 `world.placedItems`、`world.idleWindowLayouts` 中的座標 |
 | Reveal 確認 | `controller.js` → `consumePersonalSpaceV2Reveal()` | `pendingRewardReveals` |
 | 購買、新增物件、切換場景 | — | **無**（見 §7） |
 
