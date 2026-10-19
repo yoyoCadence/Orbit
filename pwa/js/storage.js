@@ -1103,6 +1103,26 @@ export const storage = {
     set('dailyPlan', { date: todayStr, taskIds });
   },
 
+  /**
+   * PRO-014Q S0: the developer panel's simulations write fake values into the
+   * real user, and any pending profile on this device may carry them — the
+   * backup may even belong to another account. Drop the backup, every pending
+   * profile, the local user and the projection, so the next launch loads real
+   * data from the server. Unsynced Sessions keep their own pending sidecar.
+   */
+  discardDevSimulation: () => {
+    const pendingProfileKey = PREFIX + PROFILE_SYNC_PENDING_KEY;
+    const pendingProfileKeys = [];
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const key = localStorage.key(index);
+      if (key === pendingProfileKey || key?.startsWith(`${pendingProfileKey}:`)) pendingProfileKeys.push(key);
+    }
+    pendingProfileKeys.forEach(key => localStorage.removeItem(key));
+    remove('user');
+    clearProEntitlementSnapshot();
+    localStorage.removeItem(FLAG_DEV_BACKUP);
+  },
+
   // ── Clear all local data (on sign-out) ────────────────────────────────────────
   clearAll: () => {
     // Owner-scoped pending profile/Energy snapshots deliberately survive

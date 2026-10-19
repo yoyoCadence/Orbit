@@ -3,6 +3,31 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.31.1] - 2026-10-19
+
+### Fixed
+- **開發者面板的「還原」不再讓模擬值外流到真實帳號（PRO-014Q S0）**：只影響開發者模式的裝置（localhost、ngrok 或 `orbit_dev_panel`）。模擬等級或 Pro 時，正常使用（完成 Session、換日）會把含模擬值的 user 排成 pending profile；備份存在時上雲被擋住。舊的「還原」只把備份寫回本機並刪除備份，pending 留著，下次啟動就被推上 `profiles`。`legacy` source 下這會授予真的 Pro。
+  - 「還原」改為先顯示確認對話框，確認後清除：
+    - 備份；
+    - 這台裝置上**所有帳號**的 pending profile，包括無 owner 的舊 key；
+    - 本機 user；
+    - Pro projection；
+    - 所有帳號的 V2 state。
+  - 清除後重新載入，從雲端取回真實資料。
+  - 保留 legacy 個人空間與 legacy claim，其他帳號仍無法認領 legacy state。
+  - 對話框寫明代價：模擬期間獲得的 XP 與連勝變動會被捨棄，已記錄的 Session 會保留；個人空間依雲端資料重新建立，開場 Gold 可能偏低，尚未播放的世界變化會遺失；清除後若離線，要等連線後重新登入。
+
+### Validation
+- 新增 `tests/unit/pro014qDevReset.test.js`，用真實的 storage、設定頁與 V2 controller 驗證：
+  - 取消時不清除任何東西；
+  - 確認後的完整清理；
+  - 清理後兩個帳號的 `loadFromRemote()` 都不 upsert profile；
+  - 對照組：只刪備份時模擬的 `total_xp` 會被推送；
+  - 刪除 V2 state 後，開場 Gold 依真實 XP 重新計算。
+- `npm run ps243:assets` 重新產生 `docs/ps243/asset-baseline.json`（V2 延遲載入 gzip 51,842 → 52,111 bytes）。
+
+---
+
 ## [1.31.0] - 2026-10-19
 
 ### Added

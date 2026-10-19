@@ -167,6 +167,7 @@ describe('server source', () => {
     seedUser();
     clickDev('dev-pro-paid');
     expect(localStorage.getItem(FLAG_PRO_ENTITLEMENT)).not.toBeNull();
+    vi.stubGlobal('confirm', vi.fn(() => true));
     clickDev('dev-reset');
 
     expect(localStorage.getItem(FLAG_DEV_BACKUP)).toBeNull();

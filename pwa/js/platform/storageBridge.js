@@ -27,6 +27,21 @@ export function removeValue(key) {
   }
 }
 
+/** Keys (without the namespace) that start with `prefix`. */
+export function listKeys(prefix = '') {
+  const namespace = `${PREFIX}:`;
+  const keys = [];
+  try {
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const key = localStorage.key(index);
+      if (key?.startsWith(namespace + prefix)) keys.push(key.slice(namespace.length));
+    }
+  } catch {
+    return [];
+  }
+  return keys;
+}
+
 export function getStorageBridgeInfo() {
   return {
     platform: 'web',

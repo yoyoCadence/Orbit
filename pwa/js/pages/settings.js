@@ -11,12 +11,12 @@ import { proofStats, clearAllProofs }          from '../platform/proofStore.js';
 import { FLAG_PRO_HIGHLIGHT, FLAG_DEV_BACKUP, FLAG_DEV_PANEL } from '../flags.js';
 import {
   buildProEntitlementSnapshot,
-  clearProEntitlementSnapshot,
   getProEntitlementSource,
   isServerProEntitlementEnabled,
   writeProEntitlementSnapshot,
 } from '../platform/proEntitlement.js';
 import { refreshCanonicalStateAndReconcilePersonalSpaceV2 } from '../personalSpace/v2/controller.js';
+import { removeAllPersonalSpaceV2States } from '../personalSpace/v2/store.js';
 import {
   clearPlaceContext,
   getCoarsePosition,
@@ -354,13 +354,23 @@ function _devApplyPro(status) {
   location.reload();
 }
 
+export const DEV_RESET_CONFIRM = [
+  '還原會清除這台裝置上的模擬資料，並從雲端重新載入：',
+  '・模擬期間獲得的 XP 與連勝變動會被捨棄，已記錄的 Session 會保留。',
+  '・個人空間會依雲端資料重新建立，開場 Gold 可能因此偏低；尚未播放的世界變化會遺失。',
+  '・清除後若離線，需要等連線後重新登入。',
+  '確定還原？',
+].join('\n');
+
+/**
+ * PRO-014Q S0: restoring the backup into the user used to leave the simulated
+ * values in pending profiles, which the next launch pushed to `profiles`.
+ * Discard everything the simulation could have touched and reload instead.
+ */
 function _devReset() {
-  const backup = localStorage.getItem(FLAG_DEV_BACKUP);
-  if (backup) storage.saveUserLocal(JSON.parse(backup));
-  localStorage.removeItem(FLAG_DEV_BACKUP);
-  // A simulated projection must not outlive the override. Dropping it fails
-  // closed until the next launch refetches the real one from the server.
-  clearProEntitlementSnapshot();
+  if (!confirm(DEV_RESET_CONFIRM)) return;
+  storage.discardDevSimulation();
+  removeAllPersonalSpaceV2States();
   location.reload();
 }
 
