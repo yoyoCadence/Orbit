@@ -550,6 +550,23 @@ describe('AI-203B Companion remind', () => {
     expect(snapshotAt(at(12, 30), { sessions }).companion.state).toBe('approach');
   });
 
+  it('lets a recovery Session today win with rest', () => {
+    const sessions = [...history, {
+      id: 'walk-today', date: '2026-07-17', taskId: 'walk', result: 'complete',
+      impactType: 'recovery', completedAt: '2026-07-17T03:00:00.000Z',
+    }];
+    expect(snapshotAt(at(12, 30), { sessions }).companion.state).toBe('rest');
+  });
+
+  it('keeps reminding after an invalid Session of the goal or one with no task', () => {
+    const sessions = [
+      ...history,
+      { ...quietDay('2026-07-17'), id: 'deep-invalid', taskId: 'deep', value: 'A', result: 'invalid', completedAt: '2026-07-17T03:00:00.000Z' },
+      { id: 'no-task', date: '2026-07-17', result: 'complete', impactType: 'entertainment', completedAt: '2026-07-17T04:00:00.000Z' },
+    ];
+    expect(snapshotAt(at(12, 30), { sessions }).companion.state).toBe('remind');
+  });
+
   it('accepts plan entries given as task objects', () => {
     expect(selectRemindGoals({
       tasks: [],

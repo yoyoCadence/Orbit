@@ -285,6 +285,7 @@ describe('Personal Space V2 full page', () => {
       const editButtons = container.querySelectorAll('[data-v2-mode="edit"]');
       editButtons[1].focus();
       vi.advanceTimersByTime(2 * 60 * 60 * 1000);
+      expect(container.textContent).not.toContain('你選擇的目標還在這裡，準備好時再開始。');
       expect(container.querySelector('[data-v2-detail-panel]').hidden).toBe(true);
       expect(document.activeElement).toBe(container.querySelectorAll('[data-v2-mode="edit"]')[1]);
       cleanup();

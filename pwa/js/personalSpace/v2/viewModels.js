@@ -81,7 +81,7 @@ function resolveNow(options) {
   return Number.isNaN(supplied.getTime()) ? new Date() : supplied;
 }
 
-function resolveEffectiveDate(coreState, options) {
+function resolveEffectiveDate(coreState, options, now) {
   if (typeof options.effectiveDate === 'string' && options.effectiveDate.trim()) {
     return options.effectiveDate.trim();
   }
@@ -89,11 +89,10 @@ function resolveEffectiveDate(coreState, options) {
     return coreState.effectiveDate.trim();
   }
 
-  const supplied = options.now instanceof Date ? options.now : new Date(options.now ?? Date.now());
-  const now = Number.isNaN(supplied.getTime()) ? new Date() : new Date(supplied.getTime());
+  const day = new Date(now.getTime());
   const newDayHour = finite(coreState.user?.newDayHour, 5);
-  if (now.getHours() < newDayHour) now.setDate(now.getDate() - 1);
-  return localDateString(now);
+  if (day.getHours() < newDayHour) day.setDate(day.getDate() - 1);
+  return localDateString(day);
 }
 
 /** Accept either the shared numeric hour contract or a Date-like value. */
@@ -533,8 +532,9 @@ export function buildPersonalSpaceV2Snapshot(coreOrInput = {}, v2Arg = {}, ledge
     ledgerArg,
     optionsArg
   );
-  const effectiveDate = resolveEffectiveDate(coreState, options);
+  // One clock read: the reminder compares the calendar day with the effective day.
   const now = resolveNow(options);
+  const effectiveDate = resolveEffectiveDate(coreState, options, now);
   const sessions = Array.isArray(coreState.sessions) ? coreState.sessions : [];
   const recentSessions = sortRecentSessions(
     sessions.filter(session => session?.date === effectiveDate)
