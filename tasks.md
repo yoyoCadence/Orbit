@@ -14,6 +14,14 @@
 
 ## Backlog
 
+- [ ] **AI-204** 統一 Companion 台詞文案
+  - 問題（AI-203 盤點時發現）：8 個 Companion 台詞 key 在 `pwa/js/personalSpace/v2/ui/orbitWindow.js` 與 `pwa/js/pages/personalSpaceV2.js` 的文字全部不同。
+  - 方向：收斂成一份文案表，兩處共用；文字由使用者選定。`companion.goal.gentle-reminder` 已在 AI-203B 決定。
+
+- [ ] **HW-113** 今日計畫的日期與 effective date 對齊
+  - 問題（AI-203 盤點時發現）：今日計畫存成 `{ date, taskIds }`，`date` 是日曆日；Sessions 與 V2 快照用 `newDayHour` 切日。`saveDailyPlan()` 在午夜後儲存會把整份舊計畫蓋上新日期。vertical slice §7.1 要求兩者對齊。
+  - 影響：Main Quest 的行動目標、首頁今日計畫、AI-203B 的提醒（目前以「00:00 到 `newDayHour` 不提醒」迴避）。
+
 - [ ] **HW-112** 佐證圖片雲端同步（Supabase Storage）
   - Goal: upload proof photos to Supabase Storage so they persist across devices and app reinstalls.
   - Scope: `platform/badge.js` → new `pwa/js/platform/proofStorage.js` adapter; bucket `orbit-proof`, path `{user_id}/{sessionId}.jpg`; RLS: SELECT/INSERT/DELETE scoped to `auth.uid()`; use existing `compressImage()` output; graceful fallback to localStorage-only for guests.
@@ -169,6 +177,20 @@
 
 > 2026-10-18 排程：Next 只剩需專案擁有者執行的 BUG-109A。PRO-014Q 屬 entitlement 路徑，第一步是變更說明（只寫文件、不改程式碼），從 Backlog 移入 Next；核准前不實作。
 
+> 2026-10-18 核准（使用者以 AskUserQuestion 回覆）：
+> - PS-246：採用全部建議（方案 A、Edit Mode 保留入口並顯示說明 A1、不建立 PS-246B、規格文字改為 S1）。
+> - AI-203：採用全部建議（目標來源 A、G1、M1、F4、D2，台詞「你選擇的目標還在這裡，準備好時再開始。」），建立 AI-203B 與兩個後續任務（AI-204、HW-113）。
+> - PRO-014Q：S0＋Q6。
+> - 下一步：依序實作核准的項目，每項一個 PR，從風險最小的 PS-246 開始。
+
+- [ ] **AI-203B** 實作 Companion `remind`（AI-203 核准的規格）
+  - 規格：[`docs/ai-203-companion-remind-proposal.md`](docs/ai-203-companion-remind-proposal.md)。使用者核准的選項：目標來源 A（今日計畫中符合 `isMainQuestTaskEligible()` 的任務）、G1（有 Session 的日期少於 3 天不提醒）、M1（Momentum 不變）、F4（只在本地時間 `[12:00, 14:00)` 提醒）、D2（靜態 fallback 的 `remind` 動畫只播一次）。
+  - 台詞：`companion.goal.gentle-reminder` 在 `ui/orbitWindow.js` 與 `pages/personalSpaceV2.js` 都改為「你選擇的目標還在這裡，準備好時再開始。」
+  - 驗收條件：提案 §8 中適用於 A、G1、F4、D2 的各條（不含「選 F3 時」）。
+  - 範圍：`pwa/js/personalSpace/v2/viewModels.js`（推導 `missedPatterns`，取代 `coreState.missedPatterns`）、首頁小卡與完整頁面的時段計時器與 `visibilitychange`、`pwa/assets/style.css`（D2）、相關測試；`companionEngine.js` 不改。
+  - 版本：`npm run bump -- minor`（新行為）。
+  - 依賴：`AI-203`
+
 - [ ] **BUG-109A** 在 production 套用 013 signup trigger migration
   - 目標：讓 production 的 `handle_new_user()` 截斷超過 30 字元的名稱來源，長 email local-part 與長 Google 顯示名稱都能註冊。
   - 步驟：依 [`docs/bug-109-signup-name-truncation.md`](docs/bug-109-signup-name-truncation.md) 的 runbook：先以 `pg_get_functiondef` 比對 production 函式與 004、記錄回滾來源，在非 production 環境跑 `tests/database/bug109.test.sql`，再套用並驗證。
@@ -189,17 +211,8 @@
     - 上面「方向」中的依相機標記覆寫已併入方案 A：現有覆寫都屬於 legacy 相機，標記後等於全部不套用；標記留給 V2 自己建立覆寫時（PS-246B）。
     - 待使用者決定：是否核准方案 A；Edit Mode 入口要保留並顯示說明（A1），還是隱藏（A2）；新建覆寫或槽位（PS-246B）要不要建立任務；technical design §7.2 的 `migration.unmappedPlacements` 摘要要修改規格（S1）還是實作（S2）。
     - 核准後把提案 §8 寫成本任務的驗收條件，再實作。
-
-- [ ] **AI-203** Companion `remind` 的資料來源與頻率提案（Mode A，只產出規格）
-  - 現況（AI-201 盤點時發現）：`companionEngine.js` 只有在 Low Momentum 且 `missedPatterns` 含使用者選定目標時才回傳 `remind`，但 `viewModels.js` 讀取的 `coreState.missedPatterns` 沒有任何寫入點，所以這個狀態在 production 永遠不會出現。
-  - 交付物：一份提案，決定「使用者選定目標」的資料來源（Goals 頁的目標或 V2 state 的新欄位）、`missedPatterns` 的計算方式，以及 bounded remind 的頻率上限與冷卻規則
-  - 完成條件：提案經使用者核准；核准後才建立實作任務 `AI-203B`，並把核准的規則寫成它的驗收條件
-  - 對應 roadmap：Phase 2
-  - In progress（2026-10-18）：提案 [`docs/ai-203-companion-remind-proposal.md`](docs/ai-203-companion-remind-proposal.md) 已完成（依獨立 review 改寫），**等待使用者核准**。
-    - 盤點結果：沒有「目標」資料模型（`goals` 已由 `tasks` 取代，Goals 頁是完成紀錄）。建議以今日計畫中符合 Main Quest 資格的任務作為使用者選定的目標。
-    - review 修正：沒有 Session 的新使用者 Momentum 是 `low`，所以需要「歷史不足不提醒」；今日計畫用日曆日、Sessions 用 `newDayHour`，且午夜後儲存會把舊計畫改成新日期，所以只用首頁顯示的計畫，並在 00:00 到 `newDayHour` 之間不提醒。
-    - 待另立：今日計畫的日期模型與 effective date 對齊（影響 Main Quest 與首頁）；8 個 Companion 台詞在兩個檔案的文字統一。
-    - 待使用者決定：目標來源（A／B）、歷史不足（G1／G0）、Momentum（M1／M2）、頻率（F4 每日固定時段，建議／F3／F1／F2）、靜態 fallback 動畫（D2／D1）、台詞，以及是否另立上面兩個任務。
+  - **2026-10-18 使用者核准**：方案 A、A1、不建立 PS-246B、S1（修改 technical design §7.2 的 `migration.unmappedPlacements` 文字）。驗收條件＝提案 §8。版本 `npm run bump -- patch`。
+  - 實作中（WIP）：分支 `feat/ps-246-ignore-legacy-placements`（`7b7d31f`，尚未開 PR）。已完成與剩餘工作見 `docs/agent-handoff.md` §3。
 
 - [ ] **PRO-014Q** 開發者面板的 backup 不應擋住其他帳號或非 Pro 模擬的 entitlement refresh
   - 問題（PR #158 Codex review 指出，2026-10-18 確認）：`storage.refreshProEntitlement()` 只要 `FLAG_DEV_BACKUP` 存在就直接 return。這個 backup 也由等級模擬器建立，且 `storage.clearAll()` 登出時不會清除。開發者登出後換另一個帳號，該帳號的 refresh 會一直被跳過，在 `server` source 下 fail closed，直到手動重設。
@@ -213,6 +226,7 @@
     - 建議：S0（「還原」改為完整清理：刪除 backup、所有 pending profile、本機 user、projection，以及這台裝置所有帳號的 V2 state〔保留 legacy-claim key〕後重新載入）＋ Q6（移除開發者面板的等級與 Pro 模擬，改用 preview 專案的測試帳號；舊 backup 照舊 fail closed，並提供同一套一次性清理）。
     - S0／Q6 清理的代價（只在開發者裝置、按下前有確認對話框）：模擬期間記錄真實 Session 所得的 XP 與連勝變動會被捨棄（Session 本身保留），因此重新遷移的個人空間開場 Gold 可能偏低；本機擺放微調與未播放的 reveal 會遺失。詳見變更說明 §4 S0。
     - 待使用者決定：S0、Q6（或 Q5 改良）、測試帳號由誰建立、高風險項目的變更說明是否也要先問再排程；並自行檢查自己帳號的 `profiles` 是否被模擬值覆寫。
+  - **2026-10-18 使用者核准**：S0＋Q6。先做 S0（patch），再做 Q6（移除開發者面板的等級與 Pro 模擬；舊 backup fail closed 與一次性清理；`docs/` 寫測試帳號說明）。preview 專案的測試帳號需由專案擁有者建立，或授權給 agent。另提醒擁有者自行檢查自己帳號的 `profiles`。
 
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
@@ -220,6 +234,18 @@
 ---
 
 ## Done
+
+- [x] **AI-203** Companion `remind` 的資料來源與頻率提案（Mode A，只產出規格）
+  - 現況（AI-201 盤點時發現）：`companionEngine.js` 只有在 Low Momentum 且 `missedPatterns` 含使用者選定目標時才回傳 `remind`，但 `viewModels.js` 讀取的 `coreState.missedPatterns` 沒有任何寫入點，所以這個狀態在 production 永遠不會出現。
+  - 交付物：一份提案，決定「使用者選定目標」的資料來源（Goals 頁的目標或 V2 state 的新欄位）、`missedPatterns` 的計算方式，以及 bounded remind 的頻率上限與冷卻規則
+  - 完成條件：提案經使用者核准；核准後才建立實作任務 `AI-203B`，並把核准的規則寫成它的驗收條件
+  - 對應 roadmap：Phase 2
+  - In progress（2026-10-18）：提案 [`docs/ai-203-companion-remind-proposal.md`](docs/ai-203-companion-remind-proposal.md) 已完成（依獨立 review 改寫），**等待使用者核准**。
+    - 盤點結果：沒有「目標」資料模型（`goals` 已由 `tasks` 取代，Goals 頁是完成紀錄）。建議以今日計畫中符合 Main Quest 資格的任務作為使用者選定的目標。
+    - review 修正：沒有 Session 的新使用者 Momentum 是 `low`，所以需要「歷史不足不提醒」；今日計畫用日曆日、Sessions 用 `newDayHour`，且午夜後儲存會把舊計畫改成新日期，所以只用首頁顯示的計畫，並在 00:00 到 `newDayHour` 之間不提醒。
+    - 待另立：今日計畫的日期模型與 effective date 對齊（影響 Main Quest 與首頁）；8 個 Companion 台詞在兩個檔案的文字統一。
+    - 待使用者決定：目標來源（A／B）、歷史不足（G1／G0）、Momentum（M1／M2）、頻率（F4 每日固定時段，建議／F3／F1／F2）、靜態 fallback 動畫（D2／D1）、台詞，以及是否另立上面兩個任務。
+  - 完成（2026-10-18）：提案 #172 合併，使用者核准全部建議；實作移到 `AI-203B`。
 
 - [x] **PS-245** Blender 工作站精細化（使用者要求「精細模型」）
   - 目標：在 PS-244 的同一管線上提高模型與房間細節，讓小卡尺寸也看得出材質與結構。
