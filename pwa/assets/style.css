@@ -165,8 +165,9 @@
 
 .orbit-window-companion[data-companion-state="work"] { animation: orbit-companion-work 2.2s ease-in-out infinite; }
 .orbit-window-companion[data-companion-state="rest"] { opacity: .78; filter: drop-shadow(0 0 8px rgba(139, 213, 255, .38)); }
-.orbit-window-companion[data-companion-state="approach"],
-.orbit-window-companion[data-companion-state="remind"] { animation: orbit-companion-approach 1.8s ease-in-out infinite alternate; }
+.orbit-window-companion[data-companion-state="approach"] { animation: orbit-companion-approach 1.8s ease-in-out infinite alternate; }
+/* AI-203B (D2): a reminder approaches once and holds still, matching the Pixi runtime. */
+.orbit-window-companion[data-companion-state="remind"] { animation: orbit-companion-approach 1.8s ease-in-out 1 both; }
 .orbit-window-companion[data-companion-state="congratulate"] { animation: orbit-character-celebrate .68s ease-in-out infinite; }
 
 .orbit-window-weather {

@@ -161,11 +161,11 @@
   },
   "deferredJsBundles": {
     "personalSpaceV2AppJs": {
-      "fileCount": 24,
+      "fileCount": 25,
       "files": [
         {
           "path": "pwa/js/pages/personalSpaceV2.js",
-          "bytes": 16574
+          "bytes": 16879
         },
         {
           "path": "pwa/js/personalSpace/economy.js",
@@ -181,7 +181,7 @@
         },
         {
           "path": "pwa/js/personalSpace/v2/companionEngine.js",
-          "bytes": 3506
+          "bytes": 3513
         },
         {
           "path": "pwa/js/personalSpace/v2/config.js",
@@ -218,6 +218,10 @@
         {
           "path": "pwa/js/personalSpace/v2/reconciler.js",
           "bytes": 10047
+        },
+        {
+          "path": "pwa/js/personalSpace/v2/remindWindow.js",
+          "bytes": 2178
         },
         {
           "path": "pwa/js/personalSpace/v2/revealSelectors.js",
@@ -257,18 +261,18 @@
         },
         {
           "path": "pwa/js/personalSpace/v2/viewModels.js",
-          "bytes": 24517
+          "bytes": 26360
         }
       ],
-      "rawBytes": 197341,
-      "gzipBytes": 49617
+      "rawBytes": 201674,
+      "gzipBytes": 51030
     },
     "vendoredPixi": {
       "path": "pwa/vendor/pixi.js",
       "rawBytes": 796970,
       "gzipBytes": 225428
     },
-    "combinedGzipBytes": 275045,
+    "combinedGzipBytes": 276458,
     "budgetBytes": 307200,
     "result": "PASS"
   }

@@ -16,6 +16,7 @@ import {
 } from '../personalSpace/v2/ui/orbitWindow.js';
 import { orbitWindowRuntimeDestroyer } from '../personalSpace/v2/runtime/pixiSceneRuntime.js';
 import { emitPersonalSpaceTelemetry } from '../personalSpace/v2/telemetry.js';
+import { watchRemindWindow } from '../personalSpace/v2/remindWindow.js';
 import { resolveAchievementPhoto } from '../platform/proofStore.js';
 
 const MOMENTUM_LABELS = Object.freeze({
@@ -46,7 +47,7 @@ const COMPANION_MESSAGES = Object.freeze({
   'companion.recovery.completed': '恢復也算數。適當休息，是能長久前進的一部分。',
   'companion.session.productive-complete': '剛才完成的工作，已經在這個世界留下痕跡。',
   'companion.momentum.strong': '你最近的節奏很穩定，我會繼續在旁邊陪你一起工作。',
-  'companion.goal.gentle-reminder': '你選擇的目標仍在這裡，準備好時再回來就好。',
+  'companion.goal.gentle-reminder': '你選擇的目標還在這裡，準備好時再開始。',
   'companion.momentum.low': '不用勉強自己，我們可以從一個清楚的小行動重新開始。',
   'companion.observe': '我正在看著這個空間，隨著你的真實努力慢慢改變。',
 });
@@ -319,7 +320,7 @@ export function renderPersonalSpaceV2(container, options = {}) {
     if (!orbitWindow) return;
 
     const mountedModel = mode === 'edit' ? { ...model, pendingReveal: null } : model;
-    sceneCleanup = mountWindow(orbitWindow, {
+    const releaseWindow = mountWindow(orbitWindow, {
       model: mountedModel,
       renderMode: mode,
       onOpenWorld: mode === 'edit' ? undefined : () => showDetail('project'),
@@ -328,6 +329,12 @@ export function renderPersonalSpaceV2(container, options = {}) {
       onMainQuest: mode === 'edit' ? undefined : () => runMainQuest(model.mainQuest),
       onRevealConsumed: acknowledgeReveal,
     });
+    // AI-203B: re-render when the Companion's reminder window opens or closes.
+    const stopRemindWatch = watchRemindWindow(() => render(mode));
+    sceneCleanup = () => {
+      stopRemindWatch();
+      releaseWindow?.();
+    };
     if (!loadTelemetryEmitted) {
       loadTelemetryEmitted = true;
       const loadEndedAt = globalThis.performance?.now?.() || Date.now();

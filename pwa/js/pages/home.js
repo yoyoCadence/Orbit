@@ -23,6 +23,7 @@ import {
   updateOrbitWindowAchievementPhoto,
 } from '../personalSpace/v2/ui/orbitWindow.js';
 import { orbitWindowRuntimeDestroyer } from '../personalSpace/v2/runtime/pixiSceneRuntime.js';
+import { watchRemindWindow } from '../personalSpace/v2/remindWindow.js';
 import { mountPlaceHint } from '../ui/placeHint.js';
 
 // ─── Value / impactType labels ────────────────────────────────────────────────
@@ -91,9 +92,22 @@ function buildHomeOrbitWindow(persistedState = null) {
   }
 }
 
+function replaceHomeOrbitWindow(orbitRoot, nextWindow) {
+  if (!nextWindow) return;
+  const shell = document.createElement('div');
+  shell.innerHTML = nextWindow.html;
+  const nextRoot = shell.querySelector('[data-orbit-window]');
+  if (!nextRoot) return;
+
+  _orbitWindowCleanup?.();
+  _orbitWindowCleanup = null;
+  orbitRoot.replaceWith(nextRoot);
+  mountHomeOrbitWindow(nextRoot, nextWindow);
+}
+
 function mountHomeOrbitWindow(orbitRoot, homeOrbitWindow) {
   if (!orbitRoot || !homeOrbitWindow) return;
-  _orbitWindowCleanup = mountOrbitWindow(orbitRoot, {
+  const releaseWindow = mountOrbitWindow(orbitRoot, {
     model: homeOrbitWindow.model,
     onOpenWorld: () => window.navigate('personalSpace'),
     onProject: () => window.navigate('personalSpace'),
@@ -108,20 +122,17 @@ function mountHomeOrbitWindow(orbitRoot, homeOrbitWindow) {
         return;
       }
       if (!consumed.persisted) return;
-
-      const nextWindow = buildHomeOrbitWindow(consumed.state);
-      if (!nextWindow) return;
-      const shell = document.createElement('div');
-      shell.innerHTML = nextWindow.html;
-      const nextRoot = shell.querySelector('[data-orbit-window]');
-      if (!nextRoot) return;
-
-      _orbitWindowCleanup?.();
-      _orbitWindowCleanup = null;
-      orbitRoot.replaceWith(nextRoot);
-      mountHomeOrbitWindow(nextRoot, nextWindow);
+      replaceHomeOrbitWindow(orbitRoot, buildHomeOrbitWindow(consumed.state));
     },
   });
+  // AI-203B: rebuild the card when the Companion's reminder window opens or closes.
+  const stopRemindWatch = watchRemindWindow(() => {
+    replaceHomeOrbitWindow(orbitRoot, buildHomeOrbitWindow());
+  });
+  _orbitWindowCleanup = () => {
+    stopRemindWatch();
+    releaseWindow?.();
+  };
 }
 
 function handleMainQuestAction(mainQuest) {

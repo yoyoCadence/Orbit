@@ -101,6 +101,7 @@ const SHELL = [
   './js/personalSpace/v2/momentum.js',
   './js/personalSpace/v2/revealSelectors.js',
   './js/personalSpace/v2/companionEngine.js',
+  './js/personalSpace/v2/remindWindow.js',
   './js/personalSpace/v2/viewModels.js',
   './js/personalSpace/v2/telemetry.js',
   './js/personalSpace/v2/content/assetManifest.js',
