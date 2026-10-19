@@ -193,11 +193,17 @@
 
 ## In Progress
 
-- [ ] **AI-204** 統一 Companion 台詞文案
-  - 問題（AI-203 盤點時發現）：8 個 Companion 台詞 key 在 `pwa/js/personalSpace/v2/ui/orbitWindow.js` 與 `pwa/js/pages/personalSpaceV2.js` 各有一份文字，其中 7 個不同（`companion.goal.gentle-reminder` 已在 AI-203B 統一）。
-  - 方向：收斂成一份文案表，兩處共用；文字由使用者選定。`companion.goal.gentle-reminder` 已在 AI-203B 決定。
-  - In progress（2026-10-19）：提案 [`docs/ai-204-companion-dialogue-proposal.md`](docs/ai-204-companion-dialogue-proposal.md)（Mode A，只寫文件，經 Codex 與獨立 review 後改寫）。建議新增共用文案模組，文字採首頁小卡版（W-A），COMPANION 小卡改為最多兩行（L2）：目前小卡是單行截斷，常見寬度下兩版文字幾乎都只顯示半句，點擊後的 toast 在窄手機上也會超出畫面。順帶發現夥伴名稱也不一致（首頁一律 `Orbit Guide`，完整頁面「Orbit 夥伴」）。
-  - **2026-10-19 使用者核准**：W-A（首頁小卡版文字）＋L2（COMPANION 小卡最多兩行），夥伴名稱一併統一為「Orbit 夥伴」。提案 §5 的共用模組就是本任務原本的方向（一份文案表、兩處共用）。下一步：比照 AI-203，AI-204（提案）移到 Done，另立 AI-204B 依提案 §5、§7 實作。
+- [ ] **AI-204B** 實作共用的 Companion 文案表（AI-204 核准的規格）
+  - 規格：[`docs/ai-204-companion-dialogue-proposal.md`](docs/ai-204-companion-dialogue-proposal.md) §5。使用者 2026-10-19 核准：文字 W-A（首頁小卡目前的 8 句），COMPANION 小卡最多兩行（L2，只套用在 `[data-orbit-companion]`），夥伴名稱統一為「Orbit 夥伴」。
+  - 驗收條件（提案 §7）：
+    - 程式碼中只有一份 Companion 文案表；首頁小卡、toast、完整頁面的小卡、dock 與詳細資訊面板都從它取字；
+    - 8 個 key 的文字與 W-A 完全相同；
+    - 同一份 snapshot，各位置顯示相同的台詞，夥伴名稱都是「Orbit 夥伴」；
+    - 320、360、390、414、1024 px 寬度與 200% 縮放下，8 句在小卡上完整顯示，不被截斷；專案小卡的階段文字維持單行；PS-243 的 e2e 通過；
+    - lint、test、e2e、`ps242:manifest -- --check`、`ps243:assets -- --check` 通過。
+  - 版本：`npm run bump -- patch`。
+  - 依賴：`AI-204`
+  - In progress（2026-10-19）。
 
 - [ ] **PRO-014Q** 開發者面板的 backup 不應擋住其他帳號或非 Pro 模擬的 entitlement refresh
   - 問題（PR #158 Codex review 指出，2026-10-18 確認）：`storage.refreshProEntitlement()` 只要 `FLAG_DEV_BACKUP` 存在就直接 return。這個 backup 也由等級模擬器建立，且 `storage.clearAll()` 登出時不會清除。開發者登出後換另一個帳號，該帳號的 refresh 會一直被跳過，在 `server` source 下 fail closed，直到手動重設。
@@ -221,6 +227,13 @@
 ---
 
 ## Done
+
+- [x] **AI-204** 統一 Companion 台詞文案（提案）
+  - 問題（AI-203 盤點時發現）：8 個 Companion 台詞 key 在 `pwa/js/personalSpace/v2/ui/orbitWindow.js` 與 `pwa/js/pages/personalSpaceV2.js` 各有一份文字，其中 7 個不同（`companion.goal.gentle-reminder` 已在 AI-203B 統一）。
+  - 方向：收斂成一份文案表，兩處共用；文字由使用者選定。`companion.goal.gentle-reminder` 已在 AI-203B 決定。
+  - In progress（2026-10-19）：提案 [`docs/ai-204-companion-dialogue-proposal.md`](docs/ai-204-companion-dialogue-proposal.md)（Mode A，只寫文件，經 Codex 與獨立 review 後改寫）。建議新增共用文案模組，文字採首頁小卡版（W-A），COMPANION 小卡改為最多兩行（L2）：目前小卡是單行截斷，常見寬度下兩版文字幾乎都只顯示半句，點擊後的 toast 在窄手機上也會超出畫面。順帶發現夥伴名稱也不一致（首頁一律 `Orbit Guide`，完整頁面「Orbit 夥伴」）。
+  - **2026-10-19 使用者核准**：W-A（首頁小卡版文字）＋L2（COMPANION 小卡最多兩行），夥伴名稱一併統一為「Orbit 夥伴」。提案 §5 的共用模組就是本任務原本的方向（一份文案表、兩處共用）。下一步：比照 AI-203，AI-204（提案）移到 Done，另立 AI-204B 依提案 §5、§7 實作。
+  - 完成（2026-10-19）：提案 #181 合併，使用者核准 W-A＋L2＋夥伴名稱；實作移到 `AI-204B`。
 
 - [x] **INFRA-102** e2e 失敗時上傳 Playwright 的 test-results
   - 問題：2026-10-19 CI 上 `tests/e2e/flows.test.js` 的 Focus 提前結束測試（:175、:189）偶發 `Test timeout of 15000ms exceeded`，與 PR 內容無關，本機無法重現；CI 沒有上傳 artifact，看不到卡在哪一步。
