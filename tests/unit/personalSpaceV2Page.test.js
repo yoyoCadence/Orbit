@@ -167,7 +167,8 @@ describe('Personal Space V2 full page', () => {
     const source = v2State();
     const releases = [];
     const destroyRuntime = vi.fn();
-    const saveState = vi.fn((_ownerId, nextState) => nextState);
+    const reconcile = vi.fn(() => controllerResult(source));
+    const before = JSON.stringify(source);
     const mountWindow = vi.fn(() => {
       const cleanup = vi.fn();
       releases.push(cleanup);
@@ -176,8 +177,7 @@ describe('Personal Space V2 full page', () => {
     const cleanup = renderPersonalSpaceV2(container, {
       user: coreState().user,
       coreState: coreState(),
-      reconcile: () => controllerResult(source),
-      saveState,
+      reconcile,
       mountWindow,
       destroyRuntime,
       effectiveDate: '2026-07-17',
@@ -197,7 +197,11 @@ describe('Personal Space V2 full page', () => {
     expect(editor.textContent).toContain('目前不能移動');
     expect(editor.querySelector('button')).toBeNull();
     expect(container.querySelector('[data-v2-nudge], [data-v2-reset-item], [data-v2-reset-all]')).toBeNull();
-    expect(saveState).not.toHaveBeenCalled();
+    editor.click();
+    container.querySelector('[data-v2-mode="full-world"]').click();
+    expect(container.querySelector('[data-personal-space-v2]').dataset.mode).toBe('full-world');
+    expect(reconcile).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(source)).toBe(before);
 
     cleanup();
     cleanup();
@@ -237,7 +241,6 @@ describe('Personal Space V2 full page', () => {
       user: coreState().user,
       coreState: coreState(),
       reconcile: () => controllerResult(source),
-      saveState: (_ownerId, nextState) => nextState,
       mountWindow: () => () => {},
       effectiveDate: '2026-07-17',
     });

@@ -165,7 +165,7 @@
       "files": [
         {
           "path": "pwa/js/pages/personalSpaceV2.js",
-          "bytes": 16879
+          "bytes": 16964
         },
         {
           "path": "pwa/js/personalSpace/economy.js",
@@ -264,15 +264,15 @@
           "bytes": 26360
         }
       ],
-      "rawBytes": 201674,
-      "gzipBytes": 51030
+      "rawBytes": 201759,
+      "gzipBytes": 51039
     },
     "vendoredPixi": {
       "path": "pwa/vendor/pixi.js",
       "rawBytes": 796970,
       "gzipBytes": 225428
     },
-    "combinedGzipBytes": 276458,
+    "combinedGzipBytes": 276467,
     "budgetBytes": 307200,
     "result": "PASS"
   }
