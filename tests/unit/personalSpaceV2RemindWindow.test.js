@@ -34,7 +34,7 @@ describe('AI-203B watchRemindWindow', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
 
-  it('fires when the window opens and again when it closes, then stops for the day', () => {
+  it('fires when the window opens and again when it closes', () => {
     vi.setSystemTime(at(11, 59));
     const onChange = vi.fn();
     const stop = watchRemindWindow(onChange, { doc: fakeDocument() });
@@ -44,7 +44,23 @@ describe('AI-203B watchRemindWindow', () => {
 
     vi.advanceTimersByTime(2 * 60 * 60 * 1000);
     expect(onChange).toHaveBeenCalledTimes(2);
+    expect(vi.getTimerCount()).toBe(1);
+    stop();
     expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('opens the next day\'s window for a page left open overnight', () => {
+    vi.setSystemTime(at(15, 0));
+    const onChange = vi.fn();
+    const stop = watchRemindWindow(onChange, { doc: fakeDocument() });
+
+    // 15:00 → next day 11:59: still outside, nothing to refresh.
+    vi.advanceTimersByTime((20 * 60 + 59) * 60 * 1000);
+    expect(onChange).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(2 * 60 * 1000);
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(new Date(Date.now()).getDate()).toBe(18);
     stop();
   });
 

@@ -23,7 +23,7 @@ import {
   updateOrbitWindowAchievementPhoto,
 } from '../personalSpace/v2/ui/orbitWindow.js';
 import { orbitWindowRuntimeDestroyer } from '../personalSpace/v2/runtime/pixiSceneRuntime.js';
-import { watchRemindWindow } from '../personalSpace/v2/remindWindow.js';
+import { describeControl, findControl, watchRemindWindow } from '../personalSpace/v2/remindWindow.js';
 import { mountPlaceHint } from '../ui/placeHint.js';
 
 // ─── Value / impactType labels ────────────────────────────────────────────────
@@ -99,10 +99,13 @@ function replaceHomeOrbitWindow(orbitRoot, nextWindow) {
   const nextRoot = shell.querySelector('[data-orbit-window]');
   if (!nextRoot) return;
 
+  // A rebuild the user did not ask for (AI-203B) keeps keyboard focus on the same control.
+  const focusKey = describeControl(orbitRoot, document.activeElement);
   _orbitWindowCleanup?.();
   _orbitWindowCleanup = null;
   orbitRoot.replaceWith(nextRoot);
   mountHomeOrbitWindow(nextRoot, nextWindow);
+  findControl(nextRoot, focusKey)?.focus?.();
 }
 
 function mountHomeOrbitWindow(orbitRoot, homeOrbitWindow) {

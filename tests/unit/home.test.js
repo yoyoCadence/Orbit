@@ -242,6 +242,14 @@ describe('renderHome: mandatory Personal Space V2 Orbit Window', () => {
       expect(c.querySelectorAll('[data-orbit-window]')).toHaveLength(1);
       expect(nextRoot.dataset.companionState).toBe('remind');
       expect(nextRoot.textContent).toContain('你選擇的目標還在這裡，準備好時再開始。');
+
+      // A keyboard user on the card keeps focus on the same control across the rebuild.
+      nextRoot.querySelector('[data-orbit-companion]').focus();
+      vi.advanceTimersByTime(2 * 60 * 60 * 1000);
+      const closedRoot = c.querySelector('[data-orbit-window]');
+      expect(closedRoot).not.toBe(nextRoot);
+      expect(closedRoot.dataset.companionState).not.toBe('remind');
+      expect(document.activeElement).toBe(closedRoot.querySelector('[data-orbit-companion]'));
     } finally {
       cleanup?.();
       vi.clearAllTimers();

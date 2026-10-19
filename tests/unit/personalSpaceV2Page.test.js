@@ -244,6 +244,55 @@ describe('Personal Space V2 full page', () => {
     }
   });
 
+  it('AI-203B: the reminder refresh keeps an open detail panel and the focused control', () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date(2026, 6, 17, 11, 59, 30));
+      const quietDay = date => ({
+        id: `quiet-${date}`, date, taskId: 'chore', result: 'complete',
+        impactType: 'task', value: 'B', finalXP: 5, completedAt: `${date}T09:00:00.000Z`,
+      });
+      const core = {
+        ...coreState(),
+        sessions: ['2026-07-14', '2026-07-15', '2026-07-16'].map(quietDay),
+      };
+      const cleanup = renderPersonalSpaceV2(container, {
+        user: core.user,
+        coreState: core,
+        reconcile: () => controllerResult(v2State()),
+        mountWindow: vi.fn(() => () => {}),
+        effectiveDate: '2026-07-17',
+      });
+      container.querySelector('[data-v2-open-detail="companion"]').click();
+      const firstHeading = document.activeElement;
+      expect(firstHeading.closest('[data-v2-detail="companion"]')).not.toBeNull();
+
+      vi.advanceTimersByTime(60 * 1000);
+
+      const panel = container.querySelector('[data-v2-detail-panel]');
+      const companionDetail = panel.querySelector('[data-v2-detail="companion"]');
+      expect(panel.hidden).toBe(false);
+      expect(companionDetail.hidden).toBe(false);
+      expect(companionDetail.textContent).toContain('你選擇的目標還在這裡，準備好時再開始。');
+      expect(document.activeElement).not.toBe(firstHeading);
+      expect(document.activeElement).toBe(companionDetail.querySelector('h2'));
+
+      // Closing still returns focus to the (re-rendered) control that opened it.
+      container.querySelector('[data-v2-close-detail]').click();
+      expect(document.activeElement).toBe(container.querySelector('[data-v2-open-detail="companion"]'));
+
+      // A focused dock control keeps focus across the closing boundary too.
+      const editButtons = container.querySelectorAll('[data-v2-mode="edit"]');
+      editButtons[1].focus();
+      vi.advanceTimersByTime(2 * 60 * 60 * 1000);
+      expect(container.querySelector('[data-v2-detail-panel]').hidden).toBe(true);
+      expect(document.activeElement).toBe(container.querySelectorAll('[data-v2-mode="edit"]')[1]);
+      cleanup();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('opens Project detail and starts the selected real Focus task', () => {
     window.startFocus = vi.fn();
     renderPersonalSpaceV2(container, {

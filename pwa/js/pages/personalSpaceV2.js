@@ -16,7 +16,7 @@ import {
 } from '../personalSpace/v2/ui/orbitWindow.js';
 import { orbitWindowRuntimeDestroyer } from '../personalSpace/v2/runtime/pixiSceneRuntime.js';
 import { emitPersonalSpaceTelemetry } from '../personalSpace/v2/telemetry.js';
-import { watchRemindWindow } from '../personalSpace/v2/remindWindow.js';
+import { describeControl, findControl, watchRemindWindow } from '../personalSpace/v2/remindWindow.js';
 import { resolveAchievementPhoto } from '../platform/proofStore.js';
 
 const MOMENTUM_LABELS = Object.freeze({
@@ -260,11 +260,35 @@ export function renderPersonalSpaceV2(container, options = {}) {
       || (active && active !== document.body && container.contains(active) ? active : null)
       || dockButton;
     detailInvoker = candidate && typeof candidate.focus === 'function' ? candidate : null;
+    revealDetailSection(panel, detailId);
+    panel.querySelector('[data-v2-detail]:not([hidden]) h2')?.focus?.();
+  }
+
+  function revealDetailSection(panel, detailId) {
     panel.hidden = false;
     panel.querySelectorAll('[data-v2-detail]').forEach(section => {
       section.hidden = section.dataset.v2Detail !== detailId;
     });
-    panel.querySelector('[data-v2-detail]:not([hidden]) h2')?.focus?.();
+  }
+
+  // AI-203B: the reminder window opening or closing re-renders the page, which
+  // must not close the detail the user is reading or drop their focus.
+  function refreshForRemindWindow() {
+    if (disposed) return;
+    const panel = container.querySelector('[data-v2-detail-panel]');
+    const openDetail = panel && !panel.hidden
+      ? panel.querySelector('[data-v2-detail]:not([hidden])')?.dataset.v2Detail
+      : null;
+    const invokerKey = describeControl(container, detailInvoker);
+    const focusKey = describeControl(container, document.activeElement);
+    render(mode);
+    const nextPanel = container.querySelector('[data-v2-detail-panel]');
+    if (openDetail && nextPanel) {
+      revealDetailSection(nextPanel, openDetail);
+      detailInvoker = findControl(container, invokerKey)
+        || container.querySelector(`[data-v2-open-detail="${openDetail}"]`);
+    }
+    findControl(container, focusKey)?.focus?.();
   }
 
   function hideDetail() {
@@ -330,7 +354,7 @@ export function renderPersonalSpaceV2(container, options = {}) {
       onRevealConsumed: acknowledgeReveal,
     });
     // AI-203B: re-render when the Companion's reminder window opens or closes.
-    const stopRemindWatch = watchRemindWindow(() => render(mode));
+    const stopRemindWatch = watchRemindWindow(refreshForRemindWindow);
     sceneCleanup = () => {
       stopRemindWatch();
       releaseWindow?.();
