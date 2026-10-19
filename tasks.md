@@ -181,6 +181,8 @@
 
 > 2026-10-19 排程：Next 只剩需專案擁有者執行的 BUG-109A、等測試帳號的 PRO-014Q Q6、等使用者選定文字的 AI-204。建立 PS-247（PS-244 起既有、記錄在 PS-245 的椅子深度誤差；交接紀錄列為可直接做），不涉及 auth／schema／部署，直接排入並開始實作。
 
+> 2026-10-19 核准（使用者以 AskUserQuestion 回覆）：AI-204 採 W-A（首頁小卡版文字）＋L2（COMPANION 小卡最多兩行），夥伴名稱一併統一為「Orbit 夥伴」；核准 CI 在 e2e 失敗時上傳 Playwright 的 `test-results/`（建立 INFRA-102）。
+
 - [ ] **BUG-109A** 在 production 套用 013 signup trigger migration
   - 目標：讓 production 的 `handle_new_user()` 截斷超過 30 字元的名稱來源，長 email local-part 與長 Google 顯示名稱都能註冊。
   - 步驟：依 [`docs/bug-109-signup-name-truncation.md`](docs/bug-109-signup-name-truncation.md) 的 runbook：先以 `pg_get_functiondef` 比對 production 函式與 004、記錄回滾來源，在非 production 環境跑 `tests/database/bug109.test.sql`，再套用並驗證。
@@ -190,6 +192,12 @@
 ---
 
 ## In Progress
+
+- [ ] **INFRA-102** e2e 失敗時上傳 Playwright 的 test-results
+  - 問題：2026-10-19 CI 上 `tests/e2e/flows.test.js` 的 Focus 提前結束測試（:175、:189）偶發 `Test timeout of 15000ms exceeded`，與 PR 內容無關，本機無法重現；CI 沒有上傳 artifact，看不到卡在哪一步。
+  - 範圍（使用者 2026-10-19 核准）：`.github/workflows/ci.yml` 的 e2e job 在失敗時以 `actions/upload-artifact` 上傳 `test-results/`（截圖與 error-context），保留 7 天；不改測試、Playwright 設定與部署流程。
+  - 完成條件：e2e 失敗時，該次 workflow run 有可下載的 artifact；成功時不上傳；其他 job 不變。
+  - In progress（2026-10-19）。
 
 - [ ] **AI-204** 統一 Companion 台詞文案
   - 問題（AI-203 盤點時發現）：8 個 Companion 台詞 key 在 `pwa/js/personalSpace/v2/ui/orbitWindow.js` 與 `pwa/js/pages/personalSpaceV2.js` 各有一份文字，其中 7 個不同（`companion.goal.gentle-reminder` 已在 AI-203B 統一）。
