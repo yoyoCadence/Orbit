@@ -209,6 +209,41 @@ describe('Personal Space V2 full page', () => {
     expect(destroyRuntime).toHaveBeenCalledTimes(1);
   });
 
+  it('AI-203B: re-renders into the reminder when the daily window opens, and stops after cleanup', () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date(2026, 6, 17, 11, 59, 30));
+      const quietDay = date => ({
+        id: `quiet-${date}`, date, taskId: 'chore', result: 'complete',
+        impactType: 'task', value: 'B', finalXP: 5, completedAt: `${date}T09:00:00.000Z`,
+      });
+      const core = {
+        ...coreState(),
+        sessions: ['2026-07-14', '2026-07-15', '2026-07-16'].map(quietDay),
+      };
+      const mountWindow = vi.fn(() => () => {});
+      const cleanup = renderPersonalSpaceV2(container, {
+        user: core.user,
+        coreState: core,
+        reconcile: () => controllerResult(v2State()),
+        mountWindow,
+        effectiveDate: '2026-07-17',
+      });
+      expect(mountWindow.mock.lastCall[1].model.companion.state).toBe('observe');
+
+      vi.advanceTimersByTime(60 * 1000);
+      expect(mountWindow.mock.lastCall[1].model.companion.state).toBe('remind');
+      expect(container.textContent).toContain('你選擇的目標還在這裡，準備好時再開始。');
+
+      cleanup();
+      const calls = mountWindow.mock.calls.length;
+      vi.advanceTimersByTime(3 * 60 * 60 * 1000);
+      expect(mountWindow.mock.calls.length).toBe(calls);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('opens Project detail and starts the selected real Focus task', () => {
     window.startFocus = vi.fn();
     renderPersonalSpaceV2(container, {

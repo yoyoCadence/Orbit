@@ -211,6 +211,44 @@ describe('renderHome: mandatory Personal Space V2 Orbit Window', () => {
       c.remove();
     }
   });
+
+  it('AI-203B: rebuilds the card into the reminder when the daily window opens', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 6, 17, 11, 59, 30));
+    setPersonalSpaceRuntime('v2');
+    mockState.user = { id: 'owner-remind', name: 'Tester', totalXP: 0, streakDays: 0, newDayHour: 5 };
+    mockState.tasks = [makeTask({ id: 'focus-a', category: 'focus', value: 'A' })];
+    mockState.dailyPlan = ['focus-a'];
+    mockState.sessions = ['2026-07-14', '2026-07-15', '2026-07-16'].map(date => ({
+      id: `rest-${date}`,
+      date,
+      taskId: 'rest',
+      result: 'complete',
+      impactType: 'entertainment',
+      completedAt: `${date}T09:00:00.000Z`,
+    }));
+    const c = makeContainer();
+    let cleanup;
+
+    try {
+      cleanup = renderHome(c);
+      const firstRoot = c.querySelector('[data-orbit-window]');
+      expect(firstRoot.dataset.companionState).not.toBe('remind');
+
+      vi.advanceTimersByTime(60 * 1000);
+
+      const nextRoot = c.querySelector('[data-orbit-window]');
+      expect(nextRoot).not.toBe(firstRoot);
+      expect(c.querySelectorAll('[data-orbit-window]')).toHaveLength(1);
+      expect(nextRoot.dataset.companionState).toBe('remind');
+      expect(nextRoot.textContent).toContain('你選擇的目標還在這裡，準備好時再開始。');
+    } finally {
+      cleanup?.();
+      vi.clearAllTimers();
+      vi.useRealTimers();
+      c.remove();
+    }
+  });
 });
 
 describe('renderHome: stats bar', () => {

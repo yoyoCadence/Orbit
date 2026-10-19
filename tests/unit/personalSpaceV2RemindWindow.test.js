@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   isWithinRemindWindow,
@@ -74,5 +75,19 @@ describe('AI-203B watchRemindWindow', () => {
     expect(onChange).toHaveBeenCalledTimes(1);
     expect(vi.getTimerCount()).toBe(0);
     expect(doc.listenerCount).toBe(0);
+  });
+});
+
+describe('AI-203B static fallback animation (D2)', () => {
+  it('plays the reminder approach once instead of looping', () => {
+    const css = readFileSync(new URL('../../pwa/assets/style.css', import.meta.url), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '');
+    const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+      .filter(([, selectors]) => selectors.split(',')
+        .some(selector => selector.trim() === '.orbit-window-companion[data-companion-state="remind"]'));
+    expect(rules).toHaveLength(1);
+    const [, , body] = rules[0];
+    expect(body).toMatch(/animation\s*:[^;]*orbit-companion-approach/);
+    expect(body).not.toMatch(/infinite/);
   });
 });
