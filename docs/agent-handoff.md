@@ -97,7 +97,7 @@
 
 ### 需要使用者決定或執行
 
-- **AI-204**：文字（W-A 建議／W-A′／W-B／W-C）、小卡顯示（D2 兩行建議／D1／D3）、是否一併統一夥伴名稱，見 `docs/ai-204-companion-dialogue-proposal.md` §6。決定後依提案 §5、§7 實作。
+- **AI-204**：文字（W-A 建議／W-A′／W-B／W-C）、小卡顯示（L2 兩行建議／L1／L3）、是否一併統一夥伴名稱，見 `docs/ai-204-companion-dialogue-proposal.md` §6。決定後依提案 §5、§7 實作。
 - **CI 上傳 Playwright artifact**：e2e 的 Focus 提前結束測試在 CI 偶發逾時（見 §3「其他」），要查出卡在哪一步，需要在 `.github/workflows/ci.yml` 的 e2e 失敗時上傳 `test-results/`。屬 CI 設定，需核准。
 - **BUG-109A**：在 production 套用 `pwa/db/013_signup_profile_name.sql`，需專案擁有者執行，步驟見 `docs/bug-109-signup-name-truncation.md`。
 - **PRO-014Q Q6 的測試帳號**：在 preview Supabase 專案建立（見 §3 第 4 點）。
