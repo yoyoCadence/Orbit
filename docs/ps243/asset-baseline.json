@@ -261,18 +261,18 @@
         },
         {
           "path": "pwa/js/personalSpace/v2/viewModels.js",
-          "bytes": 26360
+          "bytes": 26301
         }
       ],
-      "rawBytes": 204513,
-      "gzipBytes": 51842
+      "rawBytes": 204454,
+      "gzipBytes": 51881
     },
     "vendoredPixi": {
       "path": "pwa/vendor/pixi.js",
       "rawBytes": 796970,
       "gzipBytes": 225428
     },
-    "combinedGzipBytes": 277270,
+    "combinedGzipBytes": 277309,
     "budgetBytes": 307200,
     "result": "PASS"
   }
