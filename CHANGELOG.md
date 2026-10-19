@@ -13,10 +13,10 @@
 - `docs/personal-space-v2-technical-design.md` §7.2：不另存 `migration.unmappedPlacements` 摘要，保留的舊資料本身就是紀錄（使用者核准的 S1）。
 
 ### Performance
-- 移除不再使用的編輯程式碼與樣式：延遲載入的 Personal Space V2 程式碼 gzip 51,579 → 49,617 bytes（`personalSpaceV2.js` 原始大小 25,929 → 16,574 bytes），連同 Pixi 的延遲載入合計 277,007 → 275,045 bytes。
+- 移除不再使用的編輯程式碼與樣式：延遲載入的 Personal Space V2 程式碼 gzip 51,579 → 49,627 bytes（`personalSpaceV2.js` 原始大小 25,929 → 16,659 bytes），連同 Pixi 的延遲載入合計 277,007 → 275,055 bytes。
 
 ### Validation
-- 新增回歸測試：帶有舊相機覆寫的 V2 state，每件家具的位置都等於 Blender placement，舊資料不被改動；此測試在修正前的程式碼上會失敗。
+- 新增回歸測試：帶有舊相機覆寫的 V2 state，每件家具的位置都等於 Blender placement，舊資料不被改動（此測試在修正前的程式碼上會失敗）；store 儲存再載入後舊資料不變；進出 Edit Mode 不寫入任何東西。
 - `npm run ps243:assets` 重新產生 `docs/ps243/asset-baseline.json`。
 
 ---

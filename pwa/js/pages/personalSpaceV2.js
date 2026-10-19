@@ -171,9 +171,9 @@ function pageMarkup(model, mode, renderWindow) {
       </div>
 
       ${mode === 'edit' ? `
-        <section class="personal-space-v2-editor" data-v2-editor>
+        <section class="personal-space-v2-editor" data-v2-editor aria-labelledby="personal-space-v2-editor-title">
           <div class="personal-space-v2-editor-heading">
-            <div><small>固定視角</small><h2>工作站佈置</h2></div>
+            <div><small>固定視角</small><h2 id="personal-space-v2-editor-title">工作站佈置</h2></div>
           </div>
           <p class="personal-space-v2-empty">工作站家具的位置由固定視角的場景決定，目前不能移動。舊版編輯器的擺放仍保留在舊版場景，不會套用到這裡。</p>
           <p>編輯模式不會產生任何獎勵。</p>

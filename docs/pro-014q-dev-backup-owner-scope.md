@@ -100,7 +100,7 @@ V2 遷移在 finalize 時，用 `totalXP` 換算等級來計算 `openingGold`（
   - reward ledger 本身：由已同步的 Sessions 重新 reconcile；
   - `spentGold`、`ownedItems`：V2 從未寫入，沒有東西會遺失。
 - 會遺失的：
-  - 本機的擺放微調（PS-246 也將停用）；
+  - 本機的擺放微調（PS-246 起 V2 已不使用）；
   - **尚未播放**的 reveal（`pendingRewardReveals`）與 `recentWorldChange`：載入時的大量 reconcile 以 `queueReveal: false` 執行，所以這些不會重新排入，已播放過的也不會重播。
 - **開場 Gold 可能偏低**：重新遷移用 `total_xp − 紀元後 Sessions 的 XP` 計算開場等級。S0 已捨棄模擬期間記錄的 Session 所得 XP（見下方），所以 `total_xp` 少了這部分，但那些 Session 仍會被扣除。結果是開場等級與開場 Gold 偏低，最低為 0。這也是確認對話框要寫明的損失之一。若要修正，專案擁有者需要在 Supabase 手動補回該帳號的 `total_xp`。
 

@@ -23,6 +23,7 @@ import {
   PersonalSpaceV2RevisionConflictError,
   savePersonalSpaceV2State,
 } from '../../pwa/js/personalSpace/v2/store.js';
+import { buildPersonalSpaceV2Snapshot } from '../../pwa/js/personalSpace/v2/viewModels.js';
 
 describe('Personal Space V2 migration foundation', () => {
   beforeEach(() => {
@@ -152,6 +153,40 @@ describe('Personal Space V2 migration foundation', () => {
     expect(loadedAgain.economy.openingGold).toBe(440);
     expect(loadedAgain.inventory.ownedItems).toEqual([{ id: 'small-plant' }]);
     expect(localStorage.getItem(legacyStorageKey)).toBe(legacyBefore);
+  });
+
+  it('PS-246: keeps legacy placement overrides through save and load without applying them', () => {
+    const legacyLayouts = {
+      'building-office-prototype': {
+        cameraProfileId: 'center',
+        placements: {
+          'corner-desk': { x: '42%', y: '83%', width: '33%', z: 24, anchor: 'center-bottom' },
+        },
+      },
+    };
+    const legacyPlaced = [{ id: 'office-chair', placement: { x: '38%', y: '84%' } }];
+    const migrated = loadOrMigratePersonalSpaceV2State({
+      ownerId: 'user-1',
+      openingGold: 0,
+      legacyState: { placedItems: legacyPlaced, idleWindowLayouts: legacyLayouts },
+    });
+    expect(migrated.world.idleWindowLayouts).toEqual(legacyLayouts);
+    expect(migrated.world.placedItems).toEqual(legacyPlaced);
+
+    savePersonalSpaceV2State('user-1', {
+      ...migrated,
+      worldRevision: migrated.worldRevision + 1,
+    }, { expectedRevision: migrated.worldRevision });
+    const loaded = loadPersonalSpaceV2State('user-1');
+
+    expect(loaded.world.idleWindowLayouts).toEqual(legacyLayouts);
+    expect(loaded.world.placedItems).toEqual(legacyPlaced);
+    expect(buildPersonalSpaceV2Snapshot({
+      coreState: { user: {}, sessions: [] },
+      v2State: loaded,
+      ledgerSnapshot: {},
+      effectiveDate: '2026-07-31',
+    }).placements).toEqual({});
   });
 
   it('allows only the first owner to claim the unscoped legacy state', () => {

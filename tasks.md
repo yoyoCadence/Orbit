@@ -223,17 +223,15 @@
 ## Done
 
 - [x] **PS-246** V2 家具不應套用舊 16:9 相機的位置覆寫
-  - 問題（PS-244 審查時發現）：V2 的 `resolvePlacements()` 直接採用遷移自 legacy idle-window 的 `idleWindowLayouts[*].placements` 與 `placedItems`。它們的 id（`corner-desk`、`office-chair` 等）與 V2 家具相同，但座標屬於舊的 16:9 left／center／right 相機。
-  - PS-244 已處理：舊覆寫的 `width`／`anchor`／`z`／`scale` 會讓含陰影邊界的新 PNG 縮小或偏移，現在 V2 家具只套用 `x`／`y`。
-  - 仍待處理：`x`／`y` 本身是舊相機座標，家具會離開房間中對應的位置。
-  - 方向：覆寫記錄所屬的 `canonicalCameraId`，V2 只套用同相機的覆寫；舊覆寫保留但不套用（不刪使用者資料）。V2 Edit Mode 目前只能調整既有覆寫，也需一併決定新建覆寫的流程。屬使用者資料語意變更，實作前先提案。
-  - In progress（2026-10-18）：提案 [`docs/ps-246-v2-placement-overrides.md`](docs/ps-246-v2-placement-overrides.md) 已完成，**等待使用者核准**。核准前不改程式碼。
-    - 建議方案 A：V2 不套用 legacy 覆寫，一律使用 Blender 校準的位置；legacy 資料保留。依據是 technical design §7.2、§3.2 與 product spec §9。
-    - 上面「方向」中的依相機標記覆寫已併入方案 A：現有覆寫都屬於 legacy 相機，標記後等於全部不套用；標記留給 V2 自己建立覆寫時（PS-246B）。
-    - 待使用者決定：是否核准方案 A；Edit Mode 入口要保留並顯示說明（A1），還是隱藏（A2）；新建覆寫或槽位（PS-246B）要不要建立任務；technical design §7.2 的 `migration.unmappedPlacements` 摘要要修改規格（S1）還是實作（S2）。
-    - 核准後把提案 §8 寫成本任務的驗收條件，再實作。
-  - **2026-10-18 使用者核准**：方案 A、A1、不建立 PS-246B、S1（修改 technical design §7.2 的 `migration.unmappedPlacements` 文字）。驗收條件＝提案 §8。版本 `npm run bump -- patch`。
-  - 完成（2026-10-19，v1.30.1）：V2 的 `placements` 固定為 `{}`；Edit Mode 只顯示說明、不再編輯或清除舊擺放；移除不再使用的編輯程式碼與樣式；technical design §7.2 改為 S1；新增回歸測試。
+  - 問題（PS-244 審查時發現）：V2 直接採用遷移自 legacy idle window 的 `idleWindowLayouts[*].placements` 與 `placedItems`。它們的 id 與 V2 家具相同，但座標屬於舊的 16:9 left／center／right 相機，家具因此離開房間中對應的位置。
+  - 提案與決定：[`docs/ps-246-v2-placement-overrides.md`](docs/ps-246-v2-placement-overrides.md)（#171）；使用者 2026-10-18 核准方案 A、A1、不建立 PS-246B、S1。
+  - 驗收條件（提案 §8）：
+    - V2 state 中有 legacy 覆寫時，8 件家具的 placement 與 `PROP_DEFINITIONS` 完全相同，小卡與完整頁面都一樣；
+    - `world.idleWindowLayouts`、`world.placedItems` 與 legacy 的 `personal-space-state` 在載入、儲存、Edit Mode 進出之後不變；
+    - Edit Mode 不列出、不調整、也不清除 legacy 項目；空狀態顯示說明文字；
+    - 切回 legacy runtime 時，legacy 場景仍顯示原本的擺放；
+    - lint、test、e2e 通過。
+  - 完成（2026-10-19，#176，v1.30.1）：V2 的 `placements` 固定為 `{}`；Edit Mode 只顯示說明；移除不再使用的編輯程式碼與樣式；technical design §7.2 改為 S1；回歸測試涵蓋 view model、store 儲存與載入、Edit Mode 進出。
 
 - [x] **AI-203** Companion `remind` 的資料來源與頻率提案（Mode A，只產出規格）
   - 現況（AI-201 盤點時發現）：`companionEngine.js` 只有在 Low Momentum 且 `missedPatterns` 含使用者選定目標時才回傳 `remind`，但 `viewModels.js` 讀取的 `coreState.missedPatterns` 沒有任何寫入點，所以這個狀態在 production 永遠不會出現。
