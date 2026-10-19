@@ -4,7 +4,7 @@
 
 任務本身的定義與驗收條件以 [`tasks.md`](../tasks.md) 為準；本檔只記錄進行中的狀態、與使用者約定的工作規則，以及接手需要的操作細節。
 
-> 最後更新：2026-10-19。PS-246 由 #176 完成（v1.30.1），AI-203B 由 #177 完成（v1.31.0）；下一項是 PRO-014Q S0。
+> 最後更新：2026-10-19。PS-246 由 #176 完成（v1.30.1），AI-203B 由 #177 完成（v1.31.0）；PRO-014Q S0 已實作於 #178，等待合併。
 
 ## 1. 接手前先讀
 
@@ -33,7 +33,7 @@
 
 1. **PS-246：完成**（#176，v1.30.1）。V2 的 `placements` 固定為 `{}`；Edit Mode 只顯示說明；移除舊擺放的編輯程式碼與樣式；technical design §7.2 改為 S1；state-flow 更新；新增回歸測試（在修正前的程式碼上會失敗）；重新產生 asset baseline。lint、`npm test`（64 files／1073 tests）、e2e 41/41、`ps242:manifest`／`ps243:assets --check` 通過。
 2. **AI-203B：完成**（#177，分支 `feat/ai-203b-companion-remind`，v1.31.0）。`viewModels.selectRemindGoals()` 從 `coreState.dailyPlan` 推導 `missedPatterns`；新增 `pwa/js/personalSpace/v2/remindWindow.js`（`isWithinRemindWindow`、`watchRemindWindow`：在 12:00／14:00 與隔天 12:00 設計時器，回到前景時重新判斷；`describeControl`／`findControl` 讓重新 render 保留焦點），首頁小卡與完整頁面 mount 時啟動、cleanup 時取消，完整頁面重新 render 時保留打開的詳細資訊面板（Codex P2 修正）；D2 的 CSS；`companionEngine.js` 不改。lint、`npm test`（65 files／1101 tests）、e2e 41/41、`ps242:manifest`／`ps243:assets --check` 通過。
-3. **PRO-014Q S0**（In Progress，**下一項**）：「↩ 還原原始資料並重啟」改為完整清理＋確認對話框，見 [`docs/pro-014q-dev-backup-owner-scope.md`](pro-014q-dev-backup-owner-scope.md) §4 S0（實際 key 與必須排除的 legacy-claim key 都寫在那裡）。`npm run bump -- patch`。
+3. **PRO-014Q S0**（In Progress）：「↩ 還原原始資料並重啟」改為完整清理＋確認對話框，見 [`docs/pro-014q-dev-backup-owner-scope.md`](pro-014q-dev-backup-owner-scope.md) §4 S0。**已實作於 [#178](https://github.com/yoyoCadence/Orbit/pull/178)**（分支 `feat/pro-014q-s0-dev-reset-cleanup`，v1.31.1）。若 main 上的本檔仍是這一行，代表 #178 尚未合併：接手時先看 #178 的 CI、review 與交接段落，依 §2 的合併條件處理，不要重新實作。
 4. **PRO-014Q Q6**：移除開發者面板的等級與 Pro 模擬、舊 backup 的一次性清理、測試帳號說明文件。**preview 專案的測試帳號要由專案擁有者建立**（agent 沒有 Supabase 權限）；實作前先確認。Q6 上線時更新 `tasks.md` 中「PRO-014H 的實機驗證需要 PRO-014M」的說明。
 
 其他：
