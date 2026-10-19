@@ -509,6 +509,20 @@ describe('AI-203B Companion remind', () => {
     expect(snapshot.companion.state).toBe('observe');
   });
 
+  it('does not remind once Momentum is no longer low', () => {
+    // Three effective days (A task, 50+ productive XP) make Momentum stable.
+    const sessions = history.map(session => ({
+      ...session,
+      taskId: 'deep',
+      value: 'A',
+      isProductiveXP: true,
+      finalXP: 60,
+    }));
+    const snapshot = snapshotAt(at(12, 30), { sessions });
+    expect(snapshot.momentum.state).toBe('stable');
+    expect(snapshot.companion.state).toBe('observe');
+  });
+
   it('does not remind with fewer than three Session dates (G1)', () => {
     expect(snapshotAt(at(12, 30), { sessions: history.slice(1) }).companion.state).toBe('observe');
   });
