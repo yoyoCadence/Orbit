@@ -41,7 +41,8 @@ def set_visible(objects, visible):
 
 
 _HOLDOUT_MATERIAL = None
-# Saved state of active occluders: materials per data block (slots are
+# Saved state of active occluders: materials per data block, keyed by the
+# block itself (meshes and curves have separate name spaces; slots are
 # DATA-linked, so objects sharing a mesh are swapped once) and ray visibility
 # per object.
 _ORIGINAL_MATERIALS = {}
@@ -82,18 +83,25 @@ def set_occluder(obj, enabled):
             _ORIGINAL_VISIBILITY[obj.name] = {flag: getattr(obj, flag) for flag in _RAY_FLAGS}
             for flag in _RAY_FLAGS:
                 setattr(obj, flag, False)
-        if materials is not None and len(materials) and data.name not in _ORIGINAL_MATERIALS:
-            _ORIGINAL_MATERIALS[data.name] = list(materials)
-            for index in range(len(materials)):
-                materials[index] = holdout_material()
+        if materials is not None and data not in _ORIGINAL_MATERIALS:
+            _ORIGINAL_MATERIALS[data] = list(materials)
+            if len(materials):
+                for index in range(len(materials)):
+                    materials[index] = holdout_material()
+            else:
+                materials.append(holdout_material())
     else:
         saved = _ORIGINAL_VISIBILITY.pop(obj.name, None)
         if saved:
             for flag, value in saved.items():
                 setattr(obj, flag, value)
-        if materials is not None and data.name in _ORIGINAL_MATERIALS:
-            for index, material in enumerate(_ORIGINAL_MATERIALS.pop(data.name)):
-                materials[index] = material
+        if materials is not None and data in _ORIGINAL_MATERIALS:
+            originals = _ORIGINAL_MATERIALS.pop(data)
+            if originals:
+                for index, material in enumerate(originals):
+                    materials[index] = material
+            else:
+                materials.clear()
 
 
 def render(path):

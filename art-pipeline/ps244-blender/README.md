@@ -29,7 +29,16 @@ python3 -m venv /tmp/bpyenv
 npm run ps242:manifest && npm run ps243:assets
 ```
 
-The full pack (room plus 8 props, 1536×1024, 96 samples) takes roughly 30–50 minutes on a 4-core CPU (PS-245 measured about 31 minutes). `--width 768 --samples 24` gives a 3-minute draft for composition checks. Cycles is seeded (`scene.cycles.seed = 244`), but a rerun on another machine is not byte-identical: props differ by sampling noise, and a trim box can move by 1 px (PS-247 saw the desk and shelf shift by 1 px). When re-rendering to change one prop, use `--only`, run `process_pack.py --write-runtime`, then restore the untouched props' PNGs and their `placements.json` entries (and `PROP_DEFINITIONS`) from git, and redraw the previews from the lossless room composite so that unchanged phases stay byte-identical.
+The full pack (room plus 8 props, 1536×1024, 96 samples) takes roughly 30–50 minutes on a 4-core CPU (PS-245 measured about 31 minutes). `--width 768 --samples 24` gives a 3-minute draft for composition checks. Cycles is seeded (`scene.cycles.seed = 244`), but reruns are not byte-identical, even with the same command on the same machine. Props differ by sampling noise, and a trim box can move by 1 px; PS-247 saw the desk and shelf shift by 1 px. To change one prop:
+
+1. Render the full pack once into a directory. `process_pack.py` always reads `room.png` and all eight prop renders.
+2. Re-render the changed prop into that same directory with `--only <id>`, using the same `--width` and `--samples` as the full render.
+3. Run `process_pack.py --write-runtime`.
+4. Restore from git everything that should not change:
+   - the other props' PNGs;
+   - their `placements.json` entries and `PROP_DEFINITIONS`;
+   - the background WebP, which `--write-runtime` re-encodes.
+5. Redraw the previews from the lossless room composite, so that unchanged phases stay byte-identical.
 
 ## Design decisions
 
