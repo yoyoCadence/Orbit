@@ -127,7 +127,8 @@ const REMIND_MIN_OBSERVED_DAYS = 3;
  * AI-203B: the user-selected goals behind the Companion's bounded `remind` —
  * eligible focus tasks in today's plan, while nothing eligible has been worked
  * on today. Empty outside the daily window, between midnight and the user's
- * new-day hour (the plan uses calendar days), or with too little history.
+ * new-day hour (an approved AI-203 acceptance condition; HW-113 has since put
+ * the plan on the effective day), or with too little history.
  */
 export function selectRemindGoals({
   tasks = [],

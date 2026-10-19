@@ -439,9 +439,10 @@ export function startDayWatcher() {
     if (current !== _lastDate) {
       _lastDate = current;
       if (!state.user) return;
-      // Reset daily plan for new day
-      state.dailyPlan = [];
-      storage.saveDailyPlan([]);
+      // New day: reload the plan instead of writing an empty one. getDailyPlan()
+      // already returns [] for an earlier day, and an item the user added in
+      // the minute before this tick is today's (HW-113) and must survive.
+      state.dailyPlan = storage.getDailyPlan();
       // Apply random theme for new day (if feature enabled)
       applyRandomThemeForToday();
       // Show morning modal if energy not yet reset today

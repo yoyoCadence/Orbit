@@ -447,6 +447,8 @@ It reuses `calcDailyStats()` and the user's effective-day cutoff. It may affect 
 
 Daily Plan and quest dates must use the same effective date as Sessions. The current calendar-day Daily Plan behavior cannot be used for reward eligibility around the user's `newDayHour` boundary until it is aligned and tested.
 
+> HW-113 (2026-10-19): `storage.getDailyPlan()` / `saveDailyPlan()` now date the plan by the same `newDayHour` effective day as Sessions, and an edit made after the effective day ends but before dayCycle's watcher resets the plan starts from an empty plan (`storage.currentDailyPlan()`). Covered by `tests/unit/hw113DailyPlanDate.test.js`.
+
 ### 7.2 Rule-based Companion
 
 The first Companion is fully deterministic. No language model controls rewards, economy, relationship changes, or world state.
@@ -1006,7 +1008,7 @@ Also cover:
 | Retroactive reward flood | all old Sessions could qualify | fixed UTC reward epoch and no pre-epoch rewards | PS-234/235 |
 | Gold changes when undo lowers Level | current Gold is Level-derived | one-time opening balance, then ledger-based V2 Gold | PS-234/235 |
 | Session snapshot lacks task category/difficulty/planned state | remote reconstruction may lose context | first ruleset uses persisted Session fields only; future fields need schema approval | PS-235 |
-| Daily Plan and Session dates diverge before `newDayHour` | plan uses calendar date | align effective-date adapter before plan-based rewards | PS-236 |
+| Daily Plan and Session dates diverge before `newDayHour` | plan uses calendar date | align effective-date adapter before plan-based rewards (aligned in HW-113) | PS-236 |
 | Home rerender leaks/recreates runtime | current Home replaces DOM on settlement | explicit component/runtime cleanup and persistent reveal state | PS-237/239 |
 | Home and full page fork state | separate renderers tempt copies | one store, pure presentation view models, revision assertions | PS-236 |
 | Pixi delays or breaks task use | large runtime/assets on Home | poster-first dynamic import and independent DOM controls | PS-237/239 |

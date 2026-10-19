@@ -80,6 +80,7 @@ const storage = vi.hoisted(() => ({
   saveUser: vi.fn(),
   saveTasks: vi.fn(),
   saveDailyPlan: vi.fn(),
+  currentDailyPlan: vi.fn(plan => plan),
   clearAll: vi.fn(),
 }));
 
@@ -631,5 +632,49 @@ describe('HW-110：離線佇列提示與連線恢復同步', () => {
 
     expect(feedback.showSyncBanner).not.toHaveBeenCalledWith('offline', expect.anything());
     expect(db.loadFromRemote).not.toHaveBeenCalled();
+  });
+});
+
+describe('HW-113：day watcher 尚未重設時編輯今日計畫', () => {
+  beforeEach(async () => {
+    seedCachedUser('owner-a');
+    auth.getSession.mockResolvedValue(null);
+    await import('../../pwa/js/app.js');
+    await flush();
+    storage.saveDailyPlan.mockClear();
+  });
+
+  afterEach(() => {
+    storage.currentDailyPlan.mockImplementation(plan => plan);
+  });
+
+  it('記憶體中的計畫已屬於前一天時，新增只存新的任務', async () => {
+    const { state } = await import('../../pwa/js/state.js');
+    state.dailyPlan = ['yesterday-task'];
+    storage.currentDailyPlan.mockImplementation(() => []);
+
+    window.addToDailyPlan('today-task');
+
+    expect(storage.saveDailyPlan).toHaveBeenLastCalledWith(['today-task']);
+    expect(state.dailyPlan).toEqual(['today-task']);
+  });
+
+  it('移除時同樣不會把前一天的計畫存成今天的', async () => {
+    const { state } = await import('../../pwa/js/state.js');
+    state.dailyPlan = ['yesterday-a', 'yesterday-b'];
+    storage.currentDailyPlan.mockImplementation(() => []);
+
+    window.removeFromDailyPlan('yesterday-a');
+
+    expect(storage.saveDailyPlan).toHaveBeenLastCalledWith([]);
+  });
+
+  it('同一天時照常新增', async () => {
+    const { state } = await import('../../pwa/js/state.js');
+    state.dailyPlan = ['a'];
+
+    window.addToDailyPlan('b');
+
+    expect(storage.saveDailyPlan).toHaveBeenLastCalledWith(['a', 'b']);
   });
 });
