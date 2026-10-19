@@ -245,7 +245,10 @@ describe('renderHome: mandatory Personal Space V2 Orbit Window', () => {
 
       // A keyboard user on the card keeps focus on the same control across the rebuild.
       nextRoot.querySelector('[data-orbit-companion]').focus();
+      const focusSpy = vi.spyOn(HTMLElement.prototype, 'focus');
       vi.advanceTimersByTime(2 * 60 * 60 * 1000);
+      expect(focusSpy).toHaveBeenCalledWith({ preventScroll: true });
+      focusSpy.mockRestore();
       const closedRoot = c.querySelector('[data-orbit-window]');
       expect(closedRoot).not.toBe(nextRoot);
       expect(closedRoot.dataset.companionState).not.toBe('remind');

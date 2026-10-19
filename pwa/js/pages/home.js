@@ -105,7 +105,8 @@ function replaceHomeOrbitWindow(orbitRoot, nextWindow) {
   _orbitWindowCleanup = null;
   orbitRoot.replaceWith(nextRoot);
   mountHomeOrbitWindow(nextRoot, nextWindow);
-  findControl(nextRoot, focusKey)?.focus?.();
+  // preventScroll: the user may have scrolled the home list away from the card.
+  findControl(nextRoot, focusKey)?.focus?.({ preventScroll: true });
 }
 
 function mountHomeOrbitWindow(orbitRoot, homeOrbitWindow) {

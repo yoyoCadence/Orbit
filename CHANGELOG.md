@@ -13,7 +13,7 @@
   - 本地時間在 12:00–14:00 之間，且日曆日等於 effective date（00:00 到換日時刻之間不提醒）；
   - 沒有更高優先的反應（reveal、今天最新的恢復或一般任務 Session）。
 - 頁面開著時，進入或離開 12:00–14:00 會自動重新判斷，過夜開著的頁面隔天中午也會；從背景回到前景時也會。離開頁面時取消計時器。
-- 這個自動重新判斷不是使用者的操作，所以不打斷使用者：完整頁面已打開的詳細資訊面板維持打開，鍵盤焦點留在同一個控制項上（首頁小卡亦同）。
+- 這個自動重新判斷不是使用者的操作，所以不打斷使用者：完整頁面已打開的詳細資訊面板維持打開，鍵盤焦點留在同一個控制項上且不捲動頁面（首頁小卡亦同）。
 
 ### Changed
 - 靜態 fallback 的 `remind` 動畫只靠近一次、不再來回循環，與 Pixi 版的一次性靠近一致（D2）；`approach` 不變。
@@ -21,13 +21,13 @@
 - view model 只讀一次時鐘：effective date、提醒時段與 `timeBand` 使用同一個 `now`。
 
 ### Performance
-- 新增 `pwa/js/personalSpace/v2/remindWindow.js`（3,867 bytes），加入 service worker 預快取。延遲載入的 Personal Space V2 程式碼 gzip 49,627 → 51,881 bytes，連同 Pixi 合計 275,055 → 277,309 bytes，仍在預算內。
+- 新增 `pwa/js/personalSpace/v2/remindWindow.js`（3,867 bytes），加入 service worker 預快取。延遲載入的 Personal Space V2 程式碼 gzip 49,627 → 51,924 bytes，連同 Pixi 合計 275,055 → 277,352 bytes，仍在預算內。
 
 ### Validation
 - 新增測試：
   - view model：提醒的時段邊界（11:59、12:30、14:00）、日曆日與 effective date 不同、G1、Momentum 非 `low`、計畫為空或只有不合格任務、已推進後又記了其他 Session、目標的 Session 無效或沒有任務時仍提醒、更高優先的反應（今天的一般任務與恢復 Session），小卡與完整頁面的台詞 key 一致；
   - 計時器：時段開始與結束時自動 refresh、過夜後隔天 12:00 再開啟、從背景回到前景重新判斷、unmount 後不再觸發；
-  - 完整頁面與首頁小卡：頁面開著跨過 12:00 時切換成 `remind`；跨過時段邊界後，打開的詳細資訊面板、關閉後的焦點返回，以及鍵盤焦點都保留；
+  - 完整頁面與首頁小卡：頁面開著跨過 12:00 時切換成 `remind`；跨過時段邊界後，打開的詳細資訊面板、關閉後的焦點返回，以及鍵盤焦點都保留，且還原焦點時不捲動；`describeControl`／`findControl` 的邊界情況；
   - D2 的 CSS 規則。
 - `npm run ps243:assets` 重新產生 `docs/ps243/asset-baseline.json`。
 

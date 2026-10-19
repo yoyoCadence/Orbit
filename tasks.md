@@ -221,7 +221,7 @@
   - 範圍：`pwa/js/personalSpace/v2/viewModels.js`（推導 `missedPatterns`，取代 `coreState.missedPatterns`）、首頁小卡與完整頁面的時段計時器與 `visibilitychange`、`pwa/assets/style.css`（D2）、相關測試；`companionEngine.js` 不改。
   - 版本：`npm run bump -- minor`（新行為）。
   - 依賴：`AI-203`
-  - 完成（2026-10-19，#177，v1.31.0）：`viewModels.selectRemindGoals()` 從今日計畫推導 `missedPatterns`（A、G1、F4、日曆日等於 effective date、今天尚未推進）；新增 `remindWindow.js`，首頁小卡與完整頁面在 12:00／14:00 與回到前景時重新判斷，unmount 時取消；D2 的 CSS；`companionEngine.js` 與 Momentum 不變，不寫入 state。
+  - 完成（2026-10-19，#177，v1.31.0）：`viewModels.selectRemindGoals()` 從今日計畫推導 `missedPatterns`（A、G1、F4、日曆日等於 effective date、今天尚未推進）；新增 `remindWindow.js`，首頁小卡與完整頁面在 12:00／14:00（過夜則隔天 12:00）與回到前景時重新判斷，unmount 時取消；重新判斷時保留打開的詳細資訊面板與鍵盤焦點（不捲動頁面）；D2 的 CSS；`companionEngine.js` 與 Momentum 不變，不寫入 state。
 
 - [x] **PS-246** V2 家具不應套用舊 16:9 相機的位置覆寫
   - 問題（PS-244 審查時發現）：V2 直接採用遷移自 legacy idle window 的 `idleWindowLayouts[*].placements` 與 `placedItems`。它們的 id 與 V2 家具相同，但座標屬於舊的 16:9 left／center／right 相機，家具因此離開房間中對應的位置。
