@@ -11,14 +11,22 @@
 
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, sep } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   COMPANION_DIALOGUE,
   COMPANION_NAME,
   getCompanionDialogue,
 } from '../../pwa/js/personalSpace/v2/content/companionDialogue.js';
 import { COMPANION_DIALOGUE_INTERACTION_KEYS } from '../../pwa/js/personalSpace/v2/telemetry.js';
-import { normalizeOrbitWindowModel } from '../../pwa/js/personalSpace/v2/ui/orbitWindow.js';
+import {
+  mountOrbitWindow,
+  normalizeOrbitWindowModel,
+  renderOrbitWindow,
+} from '../../pwa/js/personalSpace/v2/ui/orbitWindow.js';
+import {
+  buildHomeWindowViewModel,
+  buildPersonalSpaceV2Snapshot,
+} from '../../pwa/js/personalSpace/v2/viewModels.js';
 import { renderPersonalSpaceV2 } from '../../pwa/js/pages/personalSpaceV2.js';
 
 // jsdom's import.meta.url is not a file: URL; vitest runs from the repo root.
@@ -68,7 +76,7 @@ describe('AI-204B shared Companion copy table', () => {
 
   it('covers every dialogue key the Companion engine can emit', () => {
     const engine = readFileSync(join(PWA_JS, 'personalSpace/v2/companionEngine.js'), 'utf8');
-    const emitted = new Set(engine.match(/'companion\.[a-z.-]+'/g).map(key => key.slice(1, -1)));
+    const emitted = new Set((engine.match(/['"]companion\.[a-z.-]+['"]/g) || []).map(key => key.slice(1, -1)));
     expect(emitted.size).toBeGreaterThan(0);
     for (const key of emitted) expect(COMPANION_DIALOGUE, key).toHaveProperty([key]);
   });
@@ -122,7 +130,11 @@ describe('AI-204B every surface shows the same line', () => {
       document.body.innerHTML = '';
     });
 
-    it('card, dock and detail panel show the same line and the same name', () => {
+    it('Home card, its toast, and the full page card, dock and detail panel agree', () => {
+      const user = { id: 'user-1', name: 'Tester', totalXP: 0, newDayHour: 5 };
+      const coreState = { user, tasks: [], dailyPlan: [], sessions: [] };
+      const now = new Date(2026, 9, 19, 9);
+      const effectiveDate = '2026-10-19';
       const personalSpaceState = {
         version: 2,
         ownerId: 'user-1',
@@ -138,45 +150,74 @@ describe('AI-204B every surface shows the same line', () => {
         rewardTombstones: [],
         pendingRewardReveals: [],
       };
+      const ledgerSnapshot = {
+        ledger: [],
+        summary: {},
+        project: personalSpaceState.activeProject,
+        wallet: personalSpaceState.economy,
+        hiddenStats: personalSpaceState.hiddenStats,
+        companion: personalSpaceState.companion,
+        pendingRewardReveals: [],
+        worldRevision: 1,
+      };
+
+      // Home builds its window the way pages/home.js does, from the same inputs.
+      const homeModel = buildHomeWindowViewModel(buildPersonalSpaceV2Snapshot({
+        coreState,
+        v2State: personalSpaceState,
+        ledgerSnapshot,
+        now,
+        effectiveDate,
+      }));
+      const homeShell = document.createElement('div');
+      homeShell.innerHTML = renderOrbitWindow(homeModel);
+      document.body.appendChild(homeShell);
+      const onCompanion = vi.fn();
+      const releaseHome = mountOrbitWindow(homeShell.querySelector('[data-orbit-window]'), {
+        model: homeModel,
+        runtime: { mount: vi.fn(() => Promise.resolve()), release: vi.fn() },
+        onCompanion,
+      });
       const cleanup = renderPersonalSpaceV2(container, {
-        user: { id: 'user-1', name: 'Tester', totalXP: 0, newDayHour: 5 },
-        coreState: {
-          user: { id: 'user-1', name: 'Tester', totalXP: 0, newDayHour: 5 },
-          tasks: [],
-          dailyPlan: [],
-          sessions: [],
-        },
+        user,
+        coreState,
         reconcile: () => ({
           state: personalSpaceState,
           reconciliation: { ledger: [], summary: {}, project: personalSpaceState.activeProject },
-          ledgerSnapshot: {
-            ledger: [],
-            summary: {},
-            project: personalSpaceState.activeProject,
-            wallet: personalSpaceState.economy,
-            hiddenStats: personalSpaceState.hiddenStats,
-            companion: personalSpaceState.companion,
-            pendingRewardReveals: [],
-            worldRevision: 1,
-          },
+          ledgerSnapshot,
         }),
         mountWindow: () => () => {},
         destroyRuntime: () => {},
-        effectiveDate: '2026-10-19',
-        now: new Date(2026, 9, 19, 9),
+        effectiveDate,
+        now,
       });
 
-      const card = container.querySelector('[data-orbit-companion]');
-      const cardLine = card.querySelector('span:last-child').textContent;
-      const dockLine = container.querySelector('[data-v2-open-detail="companion"] small').textContent;
-      const detail = container.querySelector('[data-v2-detail="companion"]');
+      try {
+        const card = container.querySelector('[data-orbit-companion]');
+        const cardLine = card.querySelector('span:last-child').textContent;
+        const dockLine = container.querySelector('[data-v2-open-detail="companion"] small').textContent;
+        const detail = container.querySelector('[data-v2-detail="companion"]');
+        const homeCard = homeShell.querySelector('[data-orbit-companion]');
+        homeCard.click();
 
-      expect(Object.values(APPROVED)).toContain(cardLine);
-      expect(dockLine).toBe(cardLine);
-      expect(detail.querySelector('p').textContent).toBe(cardLine);
-      expect(card.querySelector('strong').textContent).toBe(COMPANION_NAME);
-      expect(detail.querySelector('h2').textContent).toBe(COMPANION_NAME);
-      cleanup();
+        expect(Object.values(APPROVED)).toContain(cardLine);
+        expect(dockLine).toBe(cardLine);
+        expect(detail.querySelector('p').textContent).toBe(cardLine);
+        expect(homeCard.querySelector('span:last-child').textContent).toBe(cardLine);
+        // pages/home.js shows this message in the toast.
+        expect(onCompanion).toHaveBeenCalledWith(expect.objectContaining({ message: cardLine }));
+        expect(card.querySelector('strong').textContent).toBe(COMPANION_NAME);
+        expect(homeCard.querySelector('strong').textContent).toBe(COMPANION_NAME);
+        expect(detail.querySelector('h2').textContent).toBe(COMPANION_NAME);
+      } finally {
+        cleanup();
+        releaseHome();
+      }
+    });
+
+    it('Home shows the Companion message in its toast', () => {
+      const home = readFileSync(join(PWA_JS, 'pages/home.js'), 'utf8');
+      expect(home).toContain('onCompanion: companion => showToast(companion.message)');
     });
   });
 });

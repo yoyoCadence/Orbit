@@ -5,7 +5,8 @@
  * widths every approved line was cut to half a sentence. L2 lets that card wrap
  * to two lines; the project card keeps its single line. This checks, in a real
  * browser, that all 8 approved lines fit within the two lines at the widths the
- * AI-204 proposal measured and at 200% zoom.
+ * AI-204 proposal measured and at 200% zoom, on Home and on the full page (both
+ * use the same Orbit Window card).
  */
 
 import { test, expect } from '@playwright/test';
@@ -21,6 +22,36 @@ const CASES = [
   { name: '1024 px', width: 1024, height: 768 },
   { name: '200% zoom', width: 1280, height: 720, zoom: 2 },
 ];
+
+// Puts each line into the card and reports whether it is cut off, and how many
+// lines it needs without the clamp (so a sentence that grows past two lines
+// fails even if a browser stops counting clamped lines in scrollHeight).
+async function measureCompanionCard(page, scope) {
+  return page.evaluate(({ scope, lines }) => {
+    const line = document.querySelector(`${scope} [data-orbit-companion] > span:last-child`);
+    const lineHeight = parseFloat(window.getComputedStyle(line).lineHeight);
+    return lines.map(text => {
+      line.textContent = text;
+      const clipped = line.scrollHeight > line.clientHeight + 1
+        || line.scrollWidth > line.clientWidth + 1;
+      // An unclamped copy of the same width and font, out of the layout.
+      const probe = line.cloneNode(true);
+      probe.style.cssText = 'display:block;-webkit-line-clamp:none;line-clamp:none;white-space:normal;'
+        + `position:absolute;visibility:hidden;width:${line.clientWidth}px`;
+      line.parentElement.appendChild(probe);
+      const naturalLines = Math.round(probe.scrollHeight / lineHeight);
+      probe.remove();
+      return { text, clipped, naturalLines };
+    });
+  }, { scope, lines: LINES });
+}
+
+function expectWholeLines(results, where) {
+  for (const result of results) {
+    expect(result.clipped, `${where}: ${result.text} is cut off`).toBe(false);
+    expect(result.naturalLines, `${where}: ${result.text} line count`).toBeLessThanOrEqual(2);
+  }
+}
 
 test.describe('AI-204B Companion card shows the whole line', () => {
   test.beforeEach(async ({ page }) => {
@@ -40,27 +71,13 @@ test.describe('AI-204B Companion card shows the whole line', () => {
         await page.evaluate(zoom => { document.documentElement.style.zoom = String(zoom); }, viewport.zoom);
       }
 
-      const results = await page.evaluate(lines => {
-        const line = document.querySelector('[data-orbit-companion] > span:last-child');
-        const lineHeight = parseFloat(window.getComputedStyle(line).lineHeight);
-        return lines.map(text => {
-          line.textContent = text;
-          return {
-            text,
-            clipped: line.scrollHeight > line.clientHeight + 1
-              || line.scrollWidth > line.clientWidth + 1,
-            lines: Math.round(line.clientHeight / lineHeight),
-          };
-        });
-      }, LINES);
-
-      for (const result of results) {
-        expect(result.clipped, `${result.text} is cut off`).toBe(false);
-        expect(result.lines, `${result.text} line count`).toBeLessThanOrEqual(2);
-      }
-
+      expectWholeLines(await measureCompanionCard(page, '#content'), 'Home');
       const projectPhase = page.locator('[data-orbit-project] > span:nth-of-type(2)');
       await expect(projectPhase).toHaveCSS('white-space', 'nowrap');
+
+      await page.locator('[data-orbit-open-world]').click();
+      await expect(page.locator('[data-personal-space-v2] [data-orbit-companion]')).toBeVisible();
+      expectWholeLines(await measureCompanionCard(page, '[data-personal-space-v2]'), 'Full page');
     });
   }
 });

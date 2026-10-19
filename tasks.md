@@ -31,6 +31,11 @@
     3. Authentication → Notifications → Email → Templates，更新 Reset Password / Confirm Signup 模板（英文品牌版內容已備好，ask Claude）
   - 備註：Resend 免費方案 3,000 封/月；之後有域名可換成 `noreply@yourdomain.com`
 
+- [ ] **INFRA-103** `lint` script 的 glob 加上引號，讓 eslint 檢查所有檔案
+  - 問題（AI-204B 獨立 review 發現，2026-10-19 確認）：`package.json` 的 `"lint": "eslint pwa/js/**/*.js tests/**/*.js"` 沒有引號。npm 用 `sh` 執行，`**` 等同 `*`，所以 `npm run lint`（含 CI）只檢查 `pwa/js` 下剛好兩層的 37 個檔案與 `tests/*/*.js`；`pwa/js` 第一層的 22 個檔案（`app.js`、`storage.js` 等）與更深的 V2 模組都沒有被 lint。
+  - 方向：改成 `eslint 'pwa/js/**/*.js' 'tests/**/*.js'`，由 eslint 自己展開。2026-10-19 以加引號的 glob 執行，目前所有檔案都通過，不需要另外修程式碼。
+  - **修改既有設定（CI 執行的 script），需使用者核准**。
+
 - [ ] **PS-211** 為 personal space 新增常用資產 preload / cache 策略
   - 目標：降低切換頁面或切回 personal space 時重新顯示圖片的等待感
   - 範圍：`pwa/js/personalSpace/`、service worker / asset loading 相關模組、相關測試或文件
@@ -228,7 +233,8 @@
   - 依賴：`AI-204`
   - In progress（2026-10-19）。
   - 完成（2026-10-19，v1.31.4）：新增 `pwa/js/personalSpace/v2/content/companionDialogue.js`（`COMPANION_NAME`、凍結的 `COMPANION_DIALOGUE`、`getCompanionDialogue()`，未知 key 回到 `companion.observe`）；`ui/orbitWindow.js` 與 `pages/personalSpaceV2.js` 刪除各自的文案表與名稱，改從共用模組取字；telemetry 的 `interactionKey` 允許清單改用 `COMPANION_DIALOGUE_INTERACTION_KEYS`；L2 只套用在 `[data-orbit-companion]` 的台詞；`sw.js` 的 `SHELL` 加入新模組。
-    - 測試：`tests/unit/ai204CompanionDialogue.test.js`（7 項，其中 4 項在 main 上會失敗）；`tests/e2e/companion-dialogue.test.js`（6 種寬度／縮放；拿掉 L2 規則時會失敗）。
+    - 測試：`tests/unit/ai204CompanionDialogue.test.js`（8 項；只加入共用模組、不改呼叫端時，telemetry 清單、唯一來源與各畫面一致的測試會失敗）；`tests/e2e/companion-dialogue.test.js`（6 種寬度／縮放，首頁與「空間」頁；拿掉 L2 規則或句子超過兩行時會失敗）。
+    - 獨立 review（Codex 無 finding）：P2 跨畫面測試原本沒有從同一份輸入建立首頁、也沒有檢查提示文字，已補上；P3 e2e 的行數改為量不截斷時的自然行數、`空間` 頁也量、文件用詞修正。另發現 `lint` script 的 glob 沒有加引號，CI 只檢查 `pwa/js` 下剛好兩層的檔案，見 `INFRA-103`。
 
 - [x] **AI-204** 統一 Companion 台詞文案（提案）
   - 問題（AI-203 盤點時發現）：8 個 Companion 台詞 key 在 `pwa/js/personalSpace/v2/ui/orbitWindow.js` 與 `pwa/js/pages/personalSpaceV2.js` 各有一份文字，其中 7 個不同（`companion.goal.gentle-reminder` 已在 AI-203B 統一）。
