@@ -5,8 +5,9 @@ Usage:
 
 Writes full-frame RGBA PNGs to <out_dir>:
     room.png          empty room, transparent outside the diorama
-    <prop-id>.png     one prop alone; floor, walls and its support surface are
-                      shadow catchers, so contact shadows stay in the PNG
+    <prop-id>.png     one prop; floor, walls and its support surface are shadow
+                      catchers, so contact shadows stay in the PNG, and any
+                      PROP_OCCLUDERS are holdouts that cut out its hidden parts
 
 Every file comes from the same scene, camera and lights in scene.py, so a prop
 lands pixel-exact on the room once process_pack.py trims it and derives its
@@ -40,7 +41,13 @@ def set_visible(objects, visible):
 
 
 _HOLDOUT_MATERIAL = None
+# Saved state of active occluders: materials per data block (slots are
+# DATA-linked, so objects sharing a mesh are swapped once) and ray visibility
+# per object.
 _ORIGINAL_MATERIALS = {}
+_ORIGINAL_VISIBILITY = {}
+_RAY_FLAGS = ('visible_shadow', 'visible_diffuse', 'visible_glossy',
+              'visible_transmission', 'visible_volume_scatter')
 
 
 def holdout_material():
@@ -64,28 +71,29 @@ def set_occluder(obj, enabled):
     objects out of its visibility test, so the hidden edges of this prop were
     still outlined over the occluder. With only the material swapped, Freestyle
     still sees the geometry and hides those lines. No shadows, bounces or
-    reflections, so the occluder's own shadows are not baked in twice.
+    reflections, so the occluder's own shadows are not baked in twice. Both
+    the materials and the ray flags are restored exactly when it stops being
+    an occluder (the desk is the support surface in later renders).
     """
-    slots = getattr(obj, 'material_slots', ())
-    if enabled and obj.name not in _ORIGINAL_MATERIALS:
-        _ORIGINAL_MATERIALS[obj.name] = [slot.material for slot in slots]
-        if slots:
-            for slot in slots:
-                slot.material = holdout_material()
-        elif obj.data is not None and hasattr(obj.data, 'materials'):
-            obj.data.materials.append(holdout_material())
-    elif not enabled and obj.name in _ORIGINAL_MATERIALS:
-        originals = _ORIGINAL_MATERIALS.pop(obj.name)
-        if originals:
-            for slot, material in zip(slots, originals):
-                slot.material = material
-        else:
-            obj.data.materials.clear()
-    obj.visible_shadow = not enabled
-    obj.visible_diffuse = not enabled
-    obj.visible_glossy = not enabled
-    obj.visible_transmission = not enabled
-    obj.visible_volume_scatter = not enabled
+    data = getattr(obj, 'data', None)
+    materials = getattr(data, 'materials', None)
+    if enabled:
+        if obj.name not in _ORIGINAL_VISIBILITY:
+            _ORIGINAL_VISIBILITY[obj.name] = {flag: getattr(obj, flag) for flag in _RAY_FLAGS}
+            for flag in _RAY_FLAGS:
+                setattr(obj, flag, False)
+        if materials is not None and len(materials) and data.name not in _ORIGINAL_MATERIALS:
+            _ORIGINAL_MATERIALS[data.name] = list(materials)
+            for index in range(len(materials)):
+                materials[index] = holdout_material()
+    else:
+        saved = _ORIGINAL_VISIBILITY.pop(obj.name, None)
+        if saved:
+            for flag, value in saved.items():
+                setattr(obj, flag, value)
+        if materials is not None and data.name in _ORIGINAL_MATERIALS:
+            for index, material in enumerate(_ORIGINAL_MATERIALS.pop(data.name)):
+                materials[index] = material
 
 
 def render(path):
