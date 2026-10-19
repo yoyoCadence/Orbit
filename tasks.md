@@ -179,6 +179,8 @@
 
 > 2026-10-19 排程：Next 只剩需專案擁有者執行的 BUG-109A，PRO-014Q Q6 等測試帳號。AI-204 的文字需使用者選定，第一步是提案（只寫文件、不改程式碼），從 Backlog 移入 Next。
 
+> 2026-10-19 排程：Next 只剩需專案擁有者執行的 BUG-109A、等測試帳號的 PRO-014Q Q6、等使用者選定文字的 AI-204。建立 PS-247（PS-244 起既有、記錄在 PS-245 的椅子深度誤差；交接紀錄列為可直接做），不涉及 auth／schema／部署，直接排入並開始實作。
+
 - [ ] **BUG-109A** 在 production 套用 013 signup trigger migration
   - 目標：讓 production 的 `handle_new_user()` 截斷超過 30 字元的名稱來源，長 email local-part 與長 Google 顯示名稱都能註冊。
   - 步驟：依 [`docs/bug-109-signup-name-truncation.md`](docs/bug-109-signup-name-truncation.md) 的 runbook：先以 `pg_get_functiondef` 比對 production 函式與 004、記錄回滾來源，在非 production 環境跑 `tests/database/bug109.test.sql`，再套用並驗證。
@@ -188,6 +190,13 @@
 ---
 
 ## In Progress
+
+- [ ] **PS-247** 椅子右扶手與一個腳輪畫在書桌邊櫃之上
+  - 問題（PS-245 誠實評估記錄）：3D 中椅子的右扶手與一個腳輪位於書桌邊櫃後方，但椅子的 PNG（z 30）疊在書桌（z 24）之上，所以這兩部分畫在邊櫃前面，約 10 px。PS-244 起既有。
+  - 方向：渲染椅子時把書桌設為 holdout（只擋住相機、不投影、不出現、不描邊），讓被擋住的部分在椅子 PNG 中透明；書桌與椅子都在 25% 階段出現且位置固定（PS-246），所以兩者總是同時存在。
+  - 範圍：`art-pipeline/ps244-blender/scene.py`（`PROP_OCCLUDERS`）、`render_pack.py`、重新渲染並處理素材（`process_pack.py --write-runtime`）、`ps242`／`ps243` gate、`ps243AssetBudget.test.js` 的位元組數。
+  - 完成條件：五階段預覽中椅子的右扶手與腳輪不再畫在邊櫃之上；被擋住的部分沒有殘留的描邊；其他家具不變；`ps242:manifest -- --check`、`ps243:assets -- --check`、placement 與預算測試通過。
+  - In progress（2026-10-19）：全解析度渲染中。
 
 - [ ] **AI-204** 統一 Companion 台詞文案
   - 問題（AI-203 盤點時發現）：8 個 Companion 台詞 key 在 `pwa/js/personalSpace/v2/ui/orbitWindow.js` 與 `pwa/js/pages/personalSpaceV2.js` 各有一份文字，其中 7 個不同（`companion.goal.gentle-reminder` 已在 AI-203B 統一）。
