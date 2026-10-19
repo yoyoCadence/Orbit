@@ -1,6 +1,13 @@
+/**
+ * @vitest-environment jsdom
+ */
 import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  describeControl,
+  findControl,
   isWithinRemindWindow,
   watchRemindWindow,
 } from '../../pwa/js/personalSpace/v2/remindWindow.js';
@@ -94,9 +101,59 @@ describe('AI-203B watchRemindWindow', () => {
   });
 });
 
+describe('AI-203B describeControl / findControl', () => {
+  const markup = `
+    <button data-v2-mode="edit">header</button>
+    <button data-v2-open-detail="companion">dock</button>
+    <button data-v2-mode="edit">dock edit</button>
+    <section data-v2-detail="companion"><h2 tabindex="-1">Orbit</h2></section>
+    <canvas></canvas>
+    <svg><circle></circle></svg>`;
+  const root = () => {
+    const element = document.createElement('div');
+    element.innerHTML = markup;
+    return element;
+  };
+
+  it('finds the twin control by attribute value and position', () => {
+    const before = root();
+    const after = root();
+    const key = describeControl(before, before.querySelectorAll('[data-v2-mode="edit"]')[1]);
+    expect(findControl(after, key)).toBe(after.querySelectorAll('[data-v2-mode="edit"]')[1]);
+  });
+
+  it('finds the detail heading through its section', () => {
+    const before = root();
+    const after = root();
+    const key = describeControl(before, before.querySelector('h2'));
+    expect(findControl(after, key)).toBe(after.querySelector('[data-v2-detail="companion"] h2'));
+  });
+
+  it('describes nothing it cannot match again', () => {
+    const element = root();
+    const detached = document.createElement('button');
+    detached.setAttribute('data-v2-mode', 'edit');
+    expect(describeControl(element, null)).toBeNull();
+    expect(describeControl(element, element)).toBeNull();
+    expect(describeControl(element, detached)).toBeNull();
+    expect(describeControl(element, element.querySelector('canvas'))).toBeNull();
+    expect(describeControl(element, element.querySelector('circle'))).toBeNull();
+  });
+
+  it('returns null when the control is gone from the new markup', () => {
+    const before = root();
+    const key = describeControl(before, before.querySelectorAll('[data-v2-mode="edit"]')[1]);
+    const after = document.createElement('div');
+    after.innerHTML = '<button data-v2-mode="edit">only one</button>';
+    expect(findControl(after, key)).toBeNull();
+    expect(findControl(after, null)).toBeNull();
+  });
+});
+
 describe('AI-203B static fallback animation (D2)', () => {
   it('plays the reminder approach once instead of looping', () => {
-    const css = readFileSync(new URL('../../pwa/assets/style.css', import.meta.url), 'utf8')
+    // A path, not a URL: jsdom replaces the global URL that readFileSync accepts.
+    const css = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../../pwa/assets/style.css'), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '');
     const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
       .filter(([, selectors]) => selectors.split(',')

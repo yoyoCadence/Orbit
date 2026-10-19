@@ -288,7 +288,8 @@ export function renderPersonalSpaceV2(container, options = {}) {
       detailInvoker = findControl(container, invokerKey)
         || container.querySelector(`[data-v2-open-detail="${openDetail}"]`);
     }
-    findControl(container, focusKey)?.focus?.();
+    // preventScroll: restoring focus must not move the page the user scrolled.
+    findControl(container, focusKey)?.focus?.({ preventScroll: true });
   }
 
   function hideDetail() {
