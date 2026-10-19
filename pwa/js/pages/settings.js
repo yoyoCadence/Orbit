@@ -1,5 +1,5 @@
 import { state }                      from '../state.js';
-import { storage }                     from '../storage.js';
+import { db, storage }                 from '../storage.js';
 import { applyTheme, applyUiSkin, applyBgImage, removeBgImage, applyRandomThemeForToday } from '../theme.js';
 import { APP_VERSION } from '../version.js';
 import { uid, today, escHtml }         from '../utils.js';
@@ -362,14 +362,24 @@ export const DEV_RESET_CONFIRM = [
   '確定還原？',
 ].join('\n');
 
+export const DEV_RESET_CONFIRM_GUEST = [
+  '遊客資料只存在這台裝置，還原會把模擬前的備份寫回：',
+  '・模擬期間獲得的 XP 與連勝變動會被捨棄，已記錄的 Session 會保留。',
+  '・個人空間會依本機資料重新建立，開場 Gold 可能因此偏低；尚未播放的世界變化會遺失。',
+  '確定還原？',
+].join('\n');
+
 /**
  * PRO-014Q S0: restoring the backup into the user used to leave the simulated
  * values in pending profiles, which the next launch pushed to `profiles`.
  * Discard everything the simulation could have touched and reload instead.
+ * A guest has nothing on the server to reload, so its own backup is put back
+ * as the local user (B1); every other case deletes the local user.
  */
-function _devReset() {
-  if (!confirm(DEV_RESET_CONFIRM)) return;
-  storage.discardDevSimulation();
+async function _devReset() {
+  const guestBackup = await db.readGuestDevBackup();
+  if (!confirm(guestBackup ? DEV_RESET_CONFIRM_GUEST : DEV_RESET_CONFIRM)) return;
+  storage.discardDevSimulation({ restoreUser: guestBackup });
   removeAllPersonalSpaceV2States();
   location.reload();
 }

@@ -9,6 +9,9 @@
  * 留著，下次啟動就被 `loadFromRemote()` 推上 `profiles`。這裡用真實的 storage、
  * 設定頁與 V2 controller 驗證：確認後刪除備份、所有 pending profile、本機 user、
  * projection 與所有帳號的 V2 state，之後任何帳號載入都不會 upsert 模擬值。
+ *
+ * B1：遊客的 profile 只存在本機，沒有雲端可以重新載入。沒有 Supabase session、
+ * 且備份就是目前本機 user 的備份時，把備份寫回本機 user，其餘照樣清除。
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -69,7 +72,7 @@ import {
   resetProEntitlementStorageState,
 } from '../../pwa/js/platform/proEntitlement.js';
 import { db, storage } from '../../pwa/js/storage.js';
-import { DEV_RESET_CONFIRM, renderSettings } from '../../pwa/js/pages/settings.js';
+import { DEV_RESET_CONFIRM, DEV_RESET_CONFIRM_GUEST, renderSettings } from '../../pwa/js/pages/settings.js';
 import { reconcileAndSavePersonalSpaceV2 } from '../../pwa/js/personalSpace/v2/controller.js';
 import {
   canOwnerClaimLegacyPersonalSpaceState,
@@ -82,7 +85,6 @@ const BRIDGE = 'orbit_platform_bridge_v1';
 const V2_KEY = owner => `${BRIDGE}:personal-space-state-v2:${encodeURIComponent(owner)}`;
 const LEGACY_CLAIM_KEY = `${BRIDGE}:personal-space-state-v2:legacy-claim`;
 const LEGACY_STATE_KEY = `${BRIDGE}:personal-space-state`;
-const PENDING_KEY = owner => `yoyo_profileSyncPending:${encodeURIComponent(owner)}`;
 const SIMULATED_XP = 999_999;
 
 let reload;
@@ -107,19 +109,16 @@ function clickDev(id) {
   return container;
 }
 
-/** Start a Pro simulation on A, then record a profile change while it runs. */
+/** Start a Pro simulation on A, then record profile changes while it runs. */
 function simulateAndQueuePending() {
   seedUser();
   clickDev('dev-pro-paid');
   expect(localStorage.getItem(FLAG_DEV_BACKUP)).not.toBeNull();
-  const simulated = { ...storage.getUser(), totalXP: SIMULATED_XP };
-  storage.saveUser(simulated);
-  // Another account simulated earlier on this device and left its pending behind,
-  // plus the owner-less key a v1.21 pre-release could leave.
-  localStorage.setItem(PENDING_KEY(OWNER_B), JSON.stringify({
-    ownerId: OWNER_B,
-    value: { id: OWNER_B, totalXP: SIMULATED_XP, isPro: true },
-  }));
+  // Another account simulated on this device and left its pending behind; the
+  // backup blocks the upsert, so saveUser() only queues it.
+  storage.saveUser({ id: OWNER_B, name: 'Other', totalXP: SIMULATED_XP, isPro: true });
+  storage.saveUser({ ...storage.getUser(), id: OWNER_A, totalXP: SIMULATED_XP });
+  // The owner-less key a v1.21 pre-release could leave.
   localStorage.setItem('yoyo_profileSyncPending', JSON.stringify({
     ownerId: OWNER_A,
     value: { id: OWNER_A, totalXP: SIMULATED_XP, isPro: true },
@@ -128,6 +127,17 @@ function simulateAndQueuePending() {
   localStorage.setItem(V2_KEY(OWNER_B), JSON.stringify({ version: 2 }));
   localStorage.setItem(LEGACY_CLAIM_KEY, JSON.stringify({ ownerId: OWNER_A, claimedAt: '2026-07-17T00:00:00.000Z' }));
   localStorage.setItem(LEGACY_STATE_KEY, JSON.stringify({ version: 1, spentGold: 3 }));
+}
+
+/** Click 還原 and wait for the async session check to reach the dialog (and the reload). */
+async function reset({ confirmed }) {
+  const confirm = vi.fn(() => confirmed);
+  vi.stubGlobal('confirm', confirm);
+  reload.mockClear();
+  clickDev('dev-reset');
+  await vi.waitFor(() => expect(confirm).toHaveBeenCalledTimes(1));
+  if (confirmed) await vi.waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
+  return confirm;
 }
 
 function pendingProfileKeys() {
@@ -150,14 +160,12 @@ afterEach(() => {
 });
 
 describe('PRO-014Q S0 dev reset', () => {
-  it('does nothing when the developer cancels the confirmation', () => {
+  it('does nothing when the developer cancels the confirmation', async () => {
     simulateAndQueuePending();
+    captured.sessionUserId = OWNER_A;
     const before = { ...localStorage };
-    const confirm = vi.fn(() => false);
-    vi.stubGlobal('confirm', confirm);
-    reload.mockClear();
 
-    clickDev('dev-reset');
+    const confirm = await reset({ confirmed: false });
 
     expect(confirm).toHaveBeenCalledWith(DEV_RESET_CONFIRM);
     expect({ ...localStorage }).toEqual(before);
@@ -170,16 +178,16 @@ describe('PRO-014Q S0 dev reset', () => {
     expect(DEV_RESET_CONFIRM).toContain('開場 Gold 可能因此偏低');
   });
 
-  it('discards every pending profile, the local user, the projection and all V2 states', () => {
+  it('discards every pending profile, the local user, the projection and all V2 states', async () => {
     enableServerProEntitlementLocally();
     simulateAndQueuePending();
+    captured.sessionUserId = OWNER_A;
     expect(localStorage.getItem(FLAG_PRO_ENTITLEMENT)).not.toBeNull();
     expect(pendingProfileKeys()).toHaveLength(3);
-    vi.stubGlobal('confirm', vi.fn(() => true));
-    reload.mockClear();
 
-    clickDev('dev-reset');
+    const confirm = await reset({ confirmed: true });
 
+    expect(confirm).toHaveBeenCalledWith(DEV_RESET_CONFIRM);
     expect(localStorage.getItem(FLAG_DEV_BACKUP)).toBeNull();
     expect(pendingProfileKeys()).toEqual([]);
     expect(localStorage.getItem('yoyo_user')).toBeNull();
@@ -190,13 +198,12 @@ describe('PRO-014Q S0 dev reset', () => {
     expect(JSON.parse(localStorage.getItem(LEGACY_CLAIM_KEY)).ownerId).toBe(OWNER_A);
     expect(JSON.parse(localStorage.getItem(LEGACY_STATE_KEY)).spentGold).toBe(3);
     expect(canOwnerClaimLegacyPersonalSpaceState(OWNER_B)).toBe(false);
-    expect(reload).toHaveBeenCalledTimes(1);
   });
 
   it('leaves nothing for either account to push on its next remote load', async () => {
     simulateAndQueuePending();
-    vi.stubGlobal('confirm', vi.fn(() => true));
-    clickDev('dev-reset');
+    captured.sessionUserId = OWNER_A;
+    await reset({ confirmed: true });
 
     for (const owner of [OWNER_A, OWNER_B]) {
       captured.sessionUserId = owner;
@@ -220,20 +227,82 @@ describe('PRO-014Q S0 dev reset', () => {
   });
 });
 
+describe('PRO-014Q S0 dev reset for guests (B1)', () => {
+  it('puts the guest\'s own backup back as the local user and still clears the rest', async () => {
+    enableServerProEntitlementLocally();
+    simulateAndQueuePending();
+    // No Supabase session: OWNER_A is a guest whose profile exists only here.
+
+    const confirm = await reset({ confirmed: true });
+
+    expect(confirm).toHaveBeenCalledWith(DEV_RESET_CONFIRM_GUEST);
+    const restored = JSON.parse(localStorage.getItem('yoyo_user'));
+    expect(restored).toEqual({ id: OWNER_A, name: 'Tester', totalXP: 120, newDayHour: 5 });
+    expect(storage.getUser().id).toBe(OWNER_A);
+    expect(localStorage.getItem(FLAG_DEV_BACKUP)).toBeNull();
+    expect(pendingProfileKeys()).toEqual([]);
+    expect(localStorage.getItem(FLAG_PRO_ENTITLEMENT)).toBeNull();
+    expect(localStorage.getItem(V2_KEY(OWNER_A))).toBeNull();
+    expect(localStorage.getItem(V2_KEY(OWNER_B))).toBeNull();
+    expect(JSON.parse(localStorage.getItem(LEGACY_CLAIM_KEY)).ownerId).toBe(OWNER_A);
+  });
+
+  it('tells a guest the backup is written back instead of promising a cloud reload', () => {
+    expect(DEV_RESET_CONFIRM_GUEST).toContain('遊客資料只存在這台裝置');
+    expect(DEV_RESET_CONFIRM_GUEST).toContain('已記錄的 Session 會保留');
+    expect(DEV_RESET_CONFIRM_GUEST).not.toContain('雲端');
+  });
+
+  it('does nothing for a guest who cancels', async () => {
+    simulateAndQueuePending();
+    const before = { ...localStorage };
+
+    await reset({ confirmed: false });
+
+    expect({ ...localStorage }).toEqual(before);
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it('never restores a backup taken from another account', async () => {
+    simulateAndQueuePending();
+    // The local user changed after the backup was taken (for example a guest
+    // set up after another account simulated on this device).
+    storage.saveUserLocal({ id: OWNER_B, name: 'Other', totalXP: SIMULATED_XP });
+
+    const confirm = await reset({ confirmed: true });
+
+    expect(confirm).toHaveBeenCalledWith(DEV_RESET_CONFIRM);
+    expect(localStorage.getItem('yoyo_user')).toBeNull();
+    expect(localStorage.getItem(FLAG_DEV_BACKUP)).toBeNull();
+  });
+
+  it('never restores the backup for a signed-in user, even with matching ids', async () => {
+    simulateAndQueuePending();
+    captured.sessionUserId = OWNER_A;
+
+    await reset({ confirmed: true });
+
+    expect(localStorage.getItem('yoyo_user')).toBeNull();
+  });
+});
+
 describe('PRO-014Q S0 V2 re-migration', () => {
-  it('recomputes the opening Gold from the real XP after the cleanup', () => {
+  it('recomputes the opening Gold a clean device would get from the real XP', () => {
     const simulated = { id: OWNER_A, name: 'Tester', totalXP: SIMULATED_XP };
     const real = { ...simulated, totalXP: 0 };
     const finalize = user => reconcileAndSavePersonalSpaceV2({ user, sessions: [], authoritative: true })
       .state.economy.openingGold;
 
+    const cleanGold = finalize(real);
+    localStorage.clear();
+
     const simulatedGold = finalize(simulated);
+    expect(simulatedGold).not.toBe(cleanGold);
     // Once finalized, the opening Gold is never recalculated.
     expect(finalize(real)).toBe(simulatedGold);
 
     removeAllPersonalSpaceV2States();
 
-    const realGold = finalize(real);
-    expect(realGold).toBeLessThan(simulatedGold);
+    expect(finalize(real)).toBe(cleanGold);
   });
 });

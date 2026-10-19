@@ -23,7 +23,7 @@ import {
 import { applyTimeBand }        from './timeBand.js';
 import { showToast, showSyncBanner } from './ui/feedback.js';
 import { applyRandomThemeForToday, renderBg, initLiquidGlassReflection } from './theme.js';
-import { FLAG_STREAK_UNLOCK_NEW } from './flags.js';
+import { FLAG_DEV_BACKUP, FLAG_STREAK_UNLOCK_NEW } from './flags.js';
 import { refreshCanonicalStateAndReconcilePersonalSpaceV2 } from './personalSpace/v2/controller.js';
 import { createAuthOperationGuard } from './platform/authOperationGuard.js';
 import { createBootSequenceGuard } from './platform/bootSequenceGuard.js';
@@ -463,6 +463,17 @@ onConnectivityChange(online => {
   } else if (_needsResync) {
     _syncAfterReconnect();
   }
+});
+
+// PRO-014Q S0 (A1): the developer panel's reset in another window removes the
+// dev backup, which is what kept this window from syncing its in-memory user.
+// That user may still hold the simulated values, and the next saveUser() would
+// push them to `profiles`, so start over from what the reset left on disk. A
+// null key means localStorage was cleared outright; no app path does that.
+window.addEventListener('storage', event => {
+  if (event.storageArea !== localStorage) return;
+  const backupRemoved = event.key === FLAG_DEV_BACKUP && event.oldValue !== null && event.newValue === null;
+  if (event.key === null || backupRemoved) location.reload();
 });
 
 // sessionFlow calls this after every commit/delete (no-op until badge module

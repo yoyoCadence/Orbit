@@ -1,6 +1,6 @@
 # PRO-014Q 變更說明：開發者面板的模擬不可寫進真實資料
 
-> 狀態：使用者於 2026-10-18 核准 **S0＋Q6**。S0 已實作（#178，v1.31.1）；Q6 待 preview 專案的測試帳號建立後實作。
+> 狀態：使用者於 2026-10-18 核准 **S0＋Q6**。S0 已實作（#178，v1.31.1），2026-10-19 依使用者核准的 A1＋B1 補上 review 找到的兩個情況（見 §4 S0 的「review 後的補充」）；Q6 待 preview 專案的測試帳號建立後實作。
 
 ## 1. 結論
 
@@ -117,6 +117,20 @@ S0 堵住「模擬 → 還原 → 外流」。限制：
   - 這些進度無法可靠地復原：pending 裡的 user 同時混有模擬值與真實變動，舊格式的 backup 也沒有記錄模擬開始的時間。
   - 因此「還原」與「清除殘留」都要先顯示確認對話框，寫明「模擬期間獲得的 XP 與連勝變動會被捨棄，已記錄的 Session 會保留；個人空間的開場 Gold 可能因此偏低」，由開發者決定。
   - 想避免這個損失，就不要在模擬期間記錄真實的 Session。Q6 移除模擬之後，這個問題就不會再發生。
+
+#### review 後的補充（2026-10-19，使用者核准 A1＋B1）
+
+S0 實作後的獨立 review 找到兩個本節原本沒涵蓋的情況：
+
+- **A1：多視窗**（P1，main 上原本就有）。
+  - 問題：同一 origin 開兩個視窗時，在一個視窗按「還原」會刪掉 backup，另一個視窗記憶體中的模擬 user 在下一次 `saveUser()` 就會被 upsert 到 `profiles`（`legacy` source 下會授予真的 Pro）。
+  - 處理：`app.js` 監聽 `storage` 事件。localStorage 的 `orbit_dev_backup` 被其他視窗移除，或 localStorage 被整個清空（`key === null`）時，重新載入這個視窗。建立 backup、其他 key 與 sessionStorage 的事件不處理。
+- **B1：遊客**（P2）。
+  - 問題：遊客的 profile 只存在本機 `yoyo_user`，雲端沒有可取回的資料。刪除本機 user 會毀掉唯一一份，重啟後進入有任務、沒有 user 的狀態，無法記錄 Session。
+  - 處理：`db.readGuestDevBackup()` 在**沒有 Supabase session、且 backup 的 `id` 等於本機 user 的 `id`** 時回傳 backup。`storage.discardDevSimulation({ restoreUser })` 把它寫回本機 user（遊客保留舊的還原行為），其餘（pending、projection、V2 state、backup）照樣清除。對話框改用遊客版本 `DEV_RESET_CONFIRM_GUEST`，不再說「從雲端重新載入」。
+  - 已登入、或 backup 屬於別的帳號時，照舊刪除本機 user。
+  - 寫回 backup 不會外流：遊客沒有 session，`upsertProfile()` 不會上傳。已登入但 session 暫時取不到（例如離線且 token 過期）的帳號也會被當成遊客；寫回的是模擬前的真實值，不是模擬值。
+  - **仍未涵蓋**：遊客是在別的帳號模擬之後才建立的（backup 屬於那個帳號，`id` 不同）。這時無法分辨本機 user 是遊客，還是 session 暫時取不到、可能含模擬值的已登入帳號，所以照舊刪除本機 user，遊客仍會失去 profile。Q6 的「清除殘留」會遇到同一個情況，實作 Q6 前要決定處理方式。
 
 登出、換帳號時的處理交給 Q6。
 

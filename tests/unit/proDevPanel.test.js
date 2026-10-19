@@ -163,12 +163,15 @@ describe('server source', () => {
     expect(reload).not.toHaveBeenCalled();
   });
 
-  it('還原：移除 backup 與模擬的 projection，回到 fail closed', () => {
+  it('還原：移除 backup 與模擬的 projection，回到 fail closed', async () => {
     seedUser();
     clickDev('dev-pro-paid');
     expect(localStorage.getItem(FLAG_PRO_ENTITLEMENT)).not.toBeNull();
     vi.stubGlobal('confirm', vi.fn(() => true));
+    reload.mockClear();
     clickDev('dev-reset');
+    // The reset first checks for a Supabase session (PRO-014Q B1) before confirming.
+    await vi.waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
 
     expect(localStorage.getItem(FLAG_DEV_BACKUP)).toBeNull();
     expect(localStorage.getItem(FLAG_PRO_ENTITLEMENT)).toBeNull();

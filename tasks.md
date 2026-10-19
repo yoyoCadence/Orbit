@@ -206,7 +206,7 @@
     - S0／Q6 清理的代價（只在開發者裝置、按下前有確認對話框）：模擬期間記錄真實 Session 所得的 XP 與連勝變動會被捨棄（Session 本身保留），因此重新遷移的個人空間開場 Gold 可能偏低；本機擺放微調與未播放的 reveal 會遺失。詳見變更說明 §4 S0。
     - 待使用者決定：S0、Q6（或 Q5 改良）、測試帳號由誰建立、高風險項目的變更說明是否也要先問再排程；並自行檢查自己帳號的 `profiles` 是否被模擬值覆寫。
   - **2026-10-18 使用者核准**：S0＋Q6。先做 S0（patch），再做 Q6（移除開發者面板的等級與 Pro 模擬；舊 backup fail closed 與一次性清理；`docs/` 寫測試帳號說明）。preview 專案的測試帳號需由專案擁有者建立，或授權給 agent。另提醒擁有者自行檢查自己帳號的 `profiles`。
-  - S0 已實作（2026-10-19，[#178](https://github.com/yoyoCadence/Orbit/pull/178)，v1.31.1），**未合併**：獨立 review 找到 P1（多視窗外流，main 上原本就有）與 P2（遊客按「還原」會失去唯一的本機 profile），等使用者決定，見 `docs/agent-handoff.md` §3 第 3 點。實作內容：「↩ 還原原始資料並重啟」先確認，再刪除備份、所有帳號的 pending profile（含無 owner 的舊 key）、本機 user、projection 與所有帳號的 V2 state（保留 legacy claim 與 legacy state）後重新載入。清理函式為 `storage.discardDevSimulation()` 與 `v2/store.removeAllPersonalSpaceV2States()`，Q6 的「清除殘留」沿用。
+  - S0 已實作（2026-10-19，[#178](https://github.com/yoyoCadence/Orbit/pull/178)，v1.31.1）。獨立 review 找到 P1（多視窗外流，main 上原本就有）與 P2（遊客按「還原」會失去唯一的本機 profile）；**2026-10-19 使用者核准 A1＋B1**，同一個 PR 補上：其他視窗移除 backup 或清空 localStorage 時重新載入（A1）；沒有 session 且 backup 屬於本機 user 時視為遊客，把 backup 寫回本機 user（B1）。仍未涵蓋：在別的帳號模擬後才建立的遊客，見變更說明 §4 S0「review 後的補充」，Q6 前要決定。實作內容：「↩ 還原原始資料並重啟」先確認，再刪除備份、所有帳號的 pending profile（含無 owner 的舊 key）、本機 user、projection 與所有帳號的 V2 state（保留 legacy claim 與 legacy state）後重新載入。清理函式為 `storage.discardDevSimulation()` 與 `v2/store.removeAllPersonalSpaceV2States()`，Q6 的「清除殘留」沿用。
   - 剩下 Q6：**需先在 preview Supabase 專案建立測試帳號**（免費、試用中、付費、終身、不同等級），由專案擁有者建立或授權給 agent。
 
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
