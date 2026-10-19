@@ -6420,39 +6420,12 @@ html.has-bg[data-ui-skin="modern"] .levelup-box {
   line-height: 1.55;
 }
 
-.personal-space-v2-editor-heading,
-.personal-space-v2-editor-item {
+.personal-space-v2-editor-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
-
-.personal-space-v2-editor-heading button,
-.personal-space-v2-nudge button {
-  min-height: 34px;
-  padding: 6px 9px;
-  color: var(--text);
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  font-size: 10px;
-  font-weight: 700;
-}
-
-.personal-space-v2-editor-list { display: grid; gap: 8px; }
-
-.personal-space-v2-editor-item {
-  padding: 10px;
-  background: color-mix(in srgb, var(--surface-2) 68%, transparent);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-}
-
-.personal-space-v2-editor-item > div:first-child { display: grid; gap: 3px; }
-.personal-space-v2-editor-item strong { font-size: 12px; }
-.personal-space-v2-editor-item small { color: var(--text-muted); font-size: 9px; }
-.personal-space-v2-nudge { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
 
 .personal-space-v2-dock {
   position: sticky;
@@ -6522,7 +6495,5 @@ html.has-bg[data-ui-skin="modern"] .levelup-box {
   .personal-space-v2-hud { padding: 10px; border-radius: 14px; }
   .personal-space-v2-scene { margin-inline: -4px; }
   .personal-space-v2 .orbit-window { padding: 10px; border-radius: 16px; }
-  .personal-space-v2-editor-item { align-items: flex-start; flex-direction: column; }
-  .personal-space-v2-nudge { justify-content: flex-start; }
   .personal-space-v2-dock { bottom: calc(62px + var(--sab)); }
 }

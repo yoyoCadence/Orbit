@@ -3,6 +3,24 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.30.1] - 2026-10-19
+
+### Fixed
+- **「空間」的家具不再被移到舊相機的座標（PS-246）**：舊版 idle window 留下的位置覆寫（`world.idleWindowLayouts`、`world.placedItems`）屬於舊的 16:9 左／中／右相機，與 Blender 相機沒有確定的對應。舊版只要切換過相機角度、全部顯示／隱藏或旋轉，就會存下 `x`／`y`，使書桌、椅子與書櫃在新場景往下掉 15–24% 畫面高度、與主角重疊。V2 現在一律使用 Blender 校準的位置；舊資料原封保留，切回舊版場景時照舊使用。
+
+### Changed
+- Edit Mode 改為說明「工作站家具的位置由固定視角的場景決定，目前不能移動」，移除對舊擺放的列出、微調與「重設全部調整」（後者會清掉 V2 保存的舊資料副本）。
+- `docs/personal-space-v2-technical-design.md` §7.2：不另存 `migration.unmappedPlacements` 摘要，保留的舊資料本身就是紀錄（使用者核准的 S1）。
+
+### Performance
+- 移除不再使用的編輯程式碼與樣式：延遲載入的 Personal Space V2 程式碼 gzip 51,579 → 49,627 bytes（`personalSpaceV2.js` 原始大小 25,929 → 16,659 bytes），連同 Pixi 的延遲載入合計 277,007 → 275,055 bytes。
+
+### Validation
+- 新增回歸測試：帶有舊相機覆寫的 V2 state，每件家具的位置都等於 Blender placement，舊資料不被改動（此測試在修正前的程式碼上會失敗）；store 儲存再載入後舊資料不變；進出 Edit Mode 不寫入任何東西。
+- `npm run ps243:assets` 重新產生 `docs/ps243/asset-baseline.json`。
+
+---
+
 ## [1.30.0] - 2026-10-18
 
 ### Changed

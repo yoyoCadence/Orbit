@@ -4,10 +4,7 @@ import {
   buildStoredPersonalSpaceV2LedgerSnapshot,
   reconcileAndSavePersonalSpaceV2,
 } from '../personalSpace/v2/controller.js';
-import {
-  loadPersonalSpaceV2State,
-  savePersonalSpaceV2State,
-} from '../personalSpace/v2/store.js';
+import { loadPersonalSpaceV2State } from '../personalSpace/v2/store.js';
 import {
   buildEditViewModel,
   buildFullWorldViewModel,
@@ -20,9 +17,6 @@ import {
 import { orbitWindowRuntimeDestroyer } from '../personalSpace/v2/runtime/pixiSceneRuntime.js';
 import { emitPersonalSpaceTelemetry } from '../personalSpace/v2/telemetry.js';
 import { resolveAchievementPhoto } from '../platform/proofStore.js';
-
-const EDIT_BOUNDS = Object.freeze({ minX: 6, maxX: 94, minY: 28, maxY: 92 });
-const EDIT_STEP = 2;
 
 const MOMENTUM_LABELS = Object.freeze({
   low: '低',
@@ -56,192 +50,6 @@ const COMPANION_MESSAGES = Object.freeze({
   'companion.momentum.low': '不用勉強自己，我們可以從一個清楚的小行動重新開始。',
   'companion.observe': '我正在看著這個空間，隨著你的真實努力慢慢改變。',
 });
-
-function itemId(item) {
-  return item?.id || item?.layoutItemId || item?.itemId || null;
-}
-
-function parseCoordinate(value, fallback) {
-  const parsed = Number.parseFloat(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
-}
-
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
-}
-
-function coordinate(value) {
-  return `${Number(value.toFixed(2))}%`;
-}
-
-function copyWorldState(v2State) {
-  return {
-    ...v2State,
-    world: {
-      ...(v2State?.world || {}),
-      placedItems: [...(v2State?.world?.placedItems || [])],
-      idleWindowLayouts: { ...(v2State?.world?.idleWindowLayouts || {}) },
-    },
-  };
-}
-
-function withWorldRevision(v2State) {
-  return {
-    ...v2State,
-    worldRevision: Math.max(0, Number(v2State.worldRevision) || 0) + 1,
-  };
-}
-
-export function listPersonalSpaceV2EditablePlacements(v2State = {}) {
-  const world = v2State.world || {};
-  const placedItems = (Array.isArray(world.placedItems) ? world.placedItems : [])
-    .map((item, index) => {
-      const id = itemId(item);
-      if (!id) return null;
-      const placement = item.placement || {};
-      return {
-        source: 'placed-item',
-        itemIndex: index,
-        itemId: id,
-        layoutId: null,
-        label: item.label || item.name || id,
-        x: parseCoordinate(placement.x ?? item.x, 50),
-        y: parseCoordinate(placement.y ?? item.y, 70),
-      };
-    })
-    .filter(Boolean);
-
-  const layoutItems = Object.entries(world.idleWindowLayouts || {}).flatMap(([layoutId, layout]) => (
-    Object.entries(layout?.placements || {}).map(([id, placement]) => ({
-      source: 'layout-override',
-      itemIndex: null,
-      itemId: id,
-      layoutId,
-      label: id,
-      x: parseCoordinate(placement?.x, 50),
-      y: parseCoordinate(placement?.y, 70),
-    }))
-  ));
-
-  return [...placedItems, ...layoutItems];
-}
-
-function matchesTarget(item, index, target) {
-  if (Number.isInteger(target.itemIndex)) return index === target.itemIndex;
-  return itemId(item) === target.itemId;
-}
-
-/** Adjust one existing override inside the fixed-camera safe area. */
-export function adjustPersonalSpaceV2Placement(v2State, target, delta = {}) {
-  const next = copyWorldState(v2State);
-  let changed = false;
-
-  if (target?.source === 'placed-item') {
-    next.world.placedItems = next.world.placedItems.map((item, index) => {
-      if (!matchesTarget(item, index, target)) return item;
-      const placement = { ...(item.placement || {}) };
-      const x = clamp(
-        parseCoordinate(placement.x ?? item.x, 50) + (Number(delta.x) || 0),
-        EDIT_BOUNDS.minX,
-        EDIT_BOUNDS.maxX
-      );
-      const y = clamp(
-        parseCoordinate(placement.y ?? item.y, 70) + (Number(delta.y) || 0),
-        EDIT_BOUNDS.minY,
-        EDIT_BOUNDS.maxY
-      );
-      changed = true;
-      return { ...item, placement: { ...placement, x: coordinate(x), y: coordinate(y) } };
-    });
-  }
-
-  if (target?.source === 'layout-override') {
-    const layout = next.world.idleWindowLayouts[target.layoutId];
-    const placement = layout?.placements?.[target.itemId];
-    if (placement) {
-      const x = clamp(
-        parseCoordinate(placement.x, 50) + (Number(delta.x) || 0),
-        EDIT_BOUNDS.minX,
-        EDIT_BOUNDS.maxX
-      );
-      const y = clamp(
-        parseCoordinate(placement.y, 70) + (Number(delta.y) || 0),
-        EDIT_BOUNDS.minY,
-        EDIT_BOUNDS.maxY
-      );
-      next.world.idleWindowLayouts[target.layoutId] = {
-        ...layout,
-        placements: {
-          ...layout.placements,
-          [target.itemId]: { ...placement, x: coordinate(x), y: coordinate(y) },
-        },
-      };
-      changed = true;
-    }
-  }
-
-  return changed ? withWorldRevision(next) : v2State;
-}
-
-function withoutCoordinates(placement) {
-  if (!placement || typeof placement !== 'object') return null;
-  const next = { ...placement };
-  delete next.x;
-  delete next.y;
-  return Object.keys(next).length ? next : null;
-}
-
-/** Remove one override while preserving ownership, support, and anchor metadata. */
-export function resetPersonalSpaceV2Placement(v2State, target) {
-  const next = copyWorldState(v2State);
-  let changed = false;
-
-  if (target?.source === 'placed-item') {
-    next.world.placedItems = next.world.placedItems.map((item, index) => {
-      if (!matchesTarget(item, index, target) || !item.placement) return item;
-      const placement = withoutCoordinates(item.placement);
-      changed = true;
-      if (placement) return { ...item, placement };
-      const resetItem = { ...item };
-      delete resetItem.placement;
-      return resetItem;
-    });
-  }
-
-  if (target?.source === 'layout-override') {
-    const layout = next.world.idleWindowLayouts[target.layoutId];
-    if (layout?.placements?.[target.itemId]) {
-      const placements = { ...layout.placements };
-      delete placements[target.itemId];
-      next.world.idleWindowLayouts[target.layoutId] = { ...layout, placements };
-      changed = true;
-    }
-  }
-
-  return changed ? withWorldRevision(next) : v2State;
-}
-
-export function resetAllPersonalSpaceV2Placements(v2State) {
-  const next = copyWorldState(v2State);
-  let changed = false;
-  next.world.placedItems = next.world.placedItems.map(item => {
-    if (!item?.placement || (item.placement.x === undefined && item.placement.y === undefined)) {
-      return item;
-    }
-    const placement = withoutCoordinates(item.placement);
-    changed = true;
-    if (placement) return { ...item, placement };
-    const resetItem = { ...item };
-    delete resetItem.placement;
-    return resetItem;
-  });
-  Object.entries(next.world.idleWindowLayouts).forEach(([layoutId, layout]) => {
-    if (!Object.keys(layout?.placements || {}).length) return;
-    next.world.idleWindowLayouts[layoutId] = { ...layout, placements: {} };
-    changed = true;
-  });
-  return changed ? withWorldRevision(next) : v2State;
-}
 
 function describeNextRequirement(requirement) {
   if (!requirement) return '專案已完成';
@@ -310,35 +118,6 @@ function localizePageModel(model) {
   };
 }
 
-function editorMarkup(items) {
-  if (!items.length) {
-    return '<p class="personal-space-v2-empty">目前沒有可調整的擺放覆寫。</p>';
-  }
-
-  return items.map(item => `
-    <article
-      class="personal-space-v2-editor-item"
-      data-v2-editor-item
-      data-source="${escapeHtml(item.source)}"
-      data-item-id="${escapeHtml(item.itemId)}"
-      data-item-index="${Number.isInteger(item.itemIndex) ? item.itemIndex : ''}"
-      data-layout-id="${escapeHtml(item.layoutId || '')}"
-    >
-      <div>
-        <strong>${escapeHtml(item.label)}</strong>
-        <small>水平 ${item.x.toFixed(0)}% · 垂直 ${item.y.toFixed(0)}%</small>
-      </div>
-      <div class="personal-space-v2-nudge" aria-label="調整 ${escapeHtml(item.label)} 的位置">
-        <button type="button" data-v2-nudge data-dx="-${EDIT_STEP}" data-dy="0" aria-label="向左移動">←</button>
-        <button type="button" data-v2-nudge data-dx="0" data-dy="-${EDIT_STEP}" aria-label="向上移動">↑</button>
-        <button type="button" data-v2-nudge data-dx="0" data-dy="${EDIT_STEP}" aria-label="向下移動">↓</button>
-        <button type="button" data-v2-nudge data-dx="${EDIT_STEP}" data-dy="0" aria-label="向右移動">→</button>
-        <button type="button" data-v2-reset-item>重設</button>
-      </div>
-    </article>
-  `).join('');
-}
-
 function detailPanelMarkup(model) {
   const companionMessage = COMPANION_MESSAGES[model.companion.dialogueKey]
     || COMPANION_MESSAGES['companion.observe'];
@@ -365,7 +144,7 @@ function detailPanelMarkup(model) {
   `;
 }
 
-function pageMarkup(model, mode, editorItems, renderWindow) {
+function pageMarkup(model, mode, renderWindow) {
   const level = model.player?.level?.level || 1;
   const sceneModel = mode === 'edit' ? { ...model, pendingReveal: null } : model;
   return `
@@ -392,13 +171,12 @@ function pageMarkup(model, mode, editorItems, renderWindow) {
       </div>
 
       ${mode === 'edit' ? `
-        <section class="personal-space-v2-editor" data-v2-editor>
+        <section class="personal-space-v2-editor" data-v2-editor aria-labelledby="personal-space-v2-editor-title">
           <div class="personal-space-v2-editor-heading">
-            <div><small>固定視角</small><h2>擺放微調</h2></div>
-            <button type="button" data-v2-reset-all>重設全部調整</button>
+            <div><small>固定視角</small><h2 id="personal-space-v2-editor-title">工作站佈置</h2></div>
           </div>
-          <p>僅能在場景安全區內微調既有物件；編輯模式不會產生任何獎勵。</p>
-          <div class="personal-space-v2-editor-list">${editorMarkup(editorItems)}</div>
+          <p class="personal-space-v2-empty">工作站家具的位置由固定視角的場景決定，目前不能移動。舊版編輯器的擺放仍保留在舊版場景，不會套用到這裡。</p>
+          <p>編輯模式不會產生任何獎勵。</p>
         </section>
       ` : ''}
 
@@ -412,18 +190,6 @@ function pageMarkup(model, mode, editorItems, renderWindow) {
       ${detailPanelMarkup(model)}
     </section>
   `;
-}
-
-function editorTarget(node) {
-  const item = node?.closest('[data-v2-editor-item]');
-  if (!item) return null;
-  const itemIndex = Number.parseInt(item.dataset.itemIndex, 10);
-  return {
-    source: item.dataset.source,
-    itemId: item.dataset.itemId,
-    itemIndex: Number.isInteger(itemIndex) ? itemIndex : null,
-    layoutId: item.dataset.layoutId || null,
-  };
 }
 
 function runMainQuest(mainQuest) {
@@ -451,7 +217,6 @@ export function renderPersonalSpaceV2(container, options = {}) {
   const coreState = options.coreState || appState;
   const reconcile = options.reconcile || reconcileAndSavePersonalSpaceV2;
   const consumeReveal = options.consumeReveal || consumePersonalSpaceV2Reveal;
-  const saveState = options.saveState || savePersonalSpaceV2State;
   const renderWindow = options.renderWindow || renderOrbitWindow;
   const mountWindow = options.mountWindow || mountOrbitWindow;
   const destroyRuntime = options.destroyRuntime || (() => orbitWindowRuntimeDestroyer.schedule());
@@ -512,31 +277,6 @@ export function renderPersonalSpaceV2(container, options = {}) {
     }
   }
 
-  function persist(nextState) {
-    if (nextState === v2State || disposed) return;
-    try {
-      v2State = saveState(user.id, nextState, {
-        expectedRevision: v2State.worldRevision,
-      });
-    } catch (error) {
-      console.warn('Personal Space V2 edit was not saved; refreshing the latest world state.', error);
-      try {
-        const refreshed = reconcile({
-          user,
-          sessions: coreState.sessions || [],
-          reconciledAt: options.reconciledAt,
-        });
-        v2State = refreshed.state;
-        ledgerSnapshot = refreshed.ledgerSnapshot || refreshed.reconciliation || ledgerSnapshot;
-      } catch (refreshError) {
-        console.error('Personal Space V2 could not refresh after a save failure.', refreshError);
-      }
-      render(mode);
-      return;
-    }
-    render(mode);
-  }
-
   function acknowledgeReveal(revealId) {
     if (!revealId || disposed) return;
     const consumed = consumeReveal({ user, revealId });
@@ -574,8 +314,7 @@ export function renderPersonalSpaceV2(container, options = {}) {
       : buildFullWorldViewModel(snapshot);
     const model = localizePageModel(baseModel);
     currentModel = model;
-    const editorItems = listPersonalSpaceV2EditablePlacements(v2State);
-    container.innerHTML = pageMarkup(model, mode, editorItems, renderWindow);
+    container.innerHTML = pageMarkup(model, mode, renderWindow);
     const orbitWindow = container.querySelector('[data-orbit-window]');
     if (!orbitWindow) return;
 
@@ -626,26 +365,8 @@ export function renderPersonalSpaceV2(container, options = {}) {
       hideDetail();
       return;
     }
-    if (event.target.closest('[data-v2-main-quest]')) {
-      if (currentModel) runMainQuest(currentModel.mainQuest);
-      return;
-    }
-
-    const nudge = event.target.closest('[data-v2-nudge]');
-    if (nudge && mode === 'edit') {
-      persist(adjustPersonalSpaceV2Placement(v2State, editorTarget(nudge), {
-        x: Number(nudge.dataset.dx) || 0,
-        y: Number(nudge.dataset.dy) || 0,
-      }));
-      return;
-    }
-    const reset = event.target.closest('[data-v2-reset-item]');
-    if (reset && mode === 'edit') {
-      persist(resetPersonalSpaceV2Placement(v2State, editorTarget(reset)));
-      return;
-    }
-    if (event.target.closest('[data-v2-reset-all]') && mode === 'edit') {
-      persist(resetAllPersonalSpaceV2Placements(v2State));
+    if (event.target.closest('[data-v2-main-quest]') && currentModel) {
+      runMainQuest(currentModel.mainQuest);
     }
   }
 

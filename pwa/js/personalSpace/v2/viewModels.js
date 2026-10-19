@@ -434,25 +434,6 @@ function sortRecentSessions(sessions) {
     .map(({ session }) => session);
 }
 
-function resolvePlacements(world) {
-  const layouts = world.idleWindowLayouts && typeof world.idleWindowLayouts === 'object'
-    ? Object.values(world.idleWindowLayouts)
-    : [];
-  const layoutPlacements = layouts.find(layout => (
-    layout?.placements && typeof layout.placements === 'object'
-  ))?.placements || {};
-  const placedItems = Array.isArray(world.placedItems) ? world.placedItems : [];
-
-  return placedItems.reduce((placements, item) => {
-    const id = item?.id || item?.layoutItemId || item?.itemId;
-    if (!id) return placements;
-    placements[id] = item.placement && typeof item.placement === 'object'
-      ? item.placement
-      : item;
-    return placements;
-  }, { ...layoutPlacements });
-}
-
 function formatRecentWorldChange(change) {
   if (!change) return null;
   if (typeof change === 'string') return change;
@@ -578,7 +559,10 @@ export function buildPersonalSpaceV2Snapshot(coreOrInput = {}, v2Arg = {}, ledge
       level,
       currentStreak: user.streakDays || 0,
     },
-    placements: resolvePlacements(world),
+    // PS-246: overrides migrated from the legacy idle window belong to its
+    // 16:9 left/center/right cameras and have no deterministic mapping into the
+    // Blender camera, so V2 keeps them stored but never applies them.
+    placements: {},
     placedItems: world.placedItems || [],
     layoutOverrides: world.idleWindowLayouts || {},
     ownedItems: v2State.inventory?.ownedItems || [],

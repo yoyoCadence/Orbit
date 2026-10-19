@@ -4,7 +4,7 @@
 
 任務本身的定義與驗收條件以 [`tasks.md`](../tasks.md) 為準；本檔只記錄進行中的狀態、與使用者約定的工作規則，以及接手需要的操作細節。
 
-> 最後更新：2026-10-18（UTC 12:30 左右）。main = `86a5126`（v1.30.0，#174 已合併）。使用者要求在此告一段落，由另一個 agent 接手。
+> 最後更新：2026-10-19。PS-246 由 #176 完成（v1.30.1）；下一項是 AI-203B。
 
 ## 1. 接手前先讀
 
@@ -31,22 +31,8 @@
 
 使用者在 2026-10-18 核准了三份提案（細節記在 `tasks.md` Next 的「2026-10-18 核准」註記），並要求**依序實作，每項一個 PR，從 PS-246 開始**。順序與狀態：
 
-1. **PS-246（實作中，WIP 已推送）**：分支 `feat/ps-246-ignore-legacy-placements`，commit `7b7d31f`，**尚未開 PR**。
-   - 核准：方案 A、A1、不建立 PS-246B、S1。驗收條件＝[`docs/ps-246-v2-placement-overrides.md`](ps-246-v2-placement-overrides.md) §8。
-   - 已完成：
-     - `pwa/js/personalSpace/v2/viewModels.js`：移除 `resolvePlacements()`，`placements` 固定為 `{}`（附 PS-246 註解）；`world.idleWindowLayouts`、`world.placedItems` 仍照常保存。
-     - `pwa/js/pages/personalSpaceV2.js`：移除 `listPersonalSpaceV2EditablePlacements`、`adjust…`、`reset…`、`resetAll…` 與其 helper、`editorMarkup`、`editorTarget`、`persist()`、`saveState` 選項與 import、nudge／reset 的 click 處理。Edit Mode 改為說明文字（「工作站家具的位置由固定視角的場景決定，目前不能移動…」），沒有任何按鈕。
-     - `tests/unit/personalSpaceV2Page.test.js`：移除編輯函式的測試；Edit Mode 測試改為確認沒有按鈕、`saveState` 不被呼叫。
-     - lint 通過；相關 4 個測試檔 43 tests 通過。**全套單元測試在 WIP 上有 1 個失敗**：`tests/unit/ps243AssetBudget.test.js` 的 baseline 比對，因為 `personalSpaceV2.js` 變小，與 `docs/ps243/asset-baseline.json` 不一致（gzip 275,045 vs 277,007 bytes）。main 上會通過。e2e 尚未跑。
-   - 剩下的工作：
-     - 新增 view model 回歸測試：有 legacy 覆寫（含 `x`／`y`）的 V2 state，每件家具的 placement 等於 `PROP_DEFINITIONS`；`world.idleWindowLayouts`／`placedItems` 不被改動。
-     - 移除 `pwa/assets/style.css` 中不再使用的 `.personal-space-v2-editor-list`、`.personal-space-v2-editor-item`、`.personal-space-v2-nudge` 等樣式（先 grep 確認）。
-     - CSS 與 JS 都改完後，執行 `npm run ps243:assets` 重新產生 `docs/ps243/asset-baseline.json` 並一起提交，再確認 `npm run ps243:assets -- --check` 與 `ps243AssetBudget.test.js` 通過。
-     - S1：修改 `docs/personal-space-v2-technical-design.md` §7.2（約第 280 行）中 `migration.unmappedPlacements` 的文字，改為「legacy 項目保留在 legacy state 與 V2 的 `world.idleWindowLayouts`，V2 不套用」；約第 248 行 schema 範例中的 `unmappedPlacements: []` 一併處理。
-     - `docs/personal-space-state-flow.md` 第 143 行（Edit Mode 調整既有擺放）改為現況。
-     - `tasks.md`：PS-246 移到 Done；CHANGELOG；`npm run bump -- patch`（同一個 commit）。
-     - 全套 `npm test`、e2e，開 PR，review（Codex 額度用完時用獨立 Claude review），CI 全綠才合併。
-2. **AI-203B**（Next）：依 `tasks.md` 的 AI-203B 與提案 §8 實作 A／G1／F4／D2 與台詞。`npm run bump -- minor`。
+1. **PS-246：完成**（分支 `feat/ps-246-ignore-legacy-placements`，v1.30.1）。V2 的 `placements` 固定為 `{}`；Edit Mode 只顯示說明；移除舊擺放的編輯程式碼與樣式；technical design §7.2 改為 S1；state-flow 更新；新增回歸測試（在修正前的程式碼上會失敗）；重新產生 asset baseline。lint、`npm test`（64 files／1073 tests）、e2e 41/41、`ps242:manifest`／`ps243:assets --check` 通過。
+2. **AI-203B**（Next，**下一項**）：依 `tasks.md` 的 AI-203B 與提案 §8 實作 A／G1／F4／D2 與台詞。`npm run bump -- minor`。
 3. **PRO-014Q S0**（In Progress）：「↩ 還原原始資料並重啟」改為完整清理＋確認對話框，見 [`docs/pro-014q-dev-backup-owner-scope.md`](pro-014q-dev-backup-owner-scope.md) §4 S0（實際 key 與必須排除的 legacy-claim key 都寫在那裡）。`npm run bump -- patch`。
 4. **PRO-014Q Q6**：移除開發者面板的等級與 Pro 模擬、舊 backup 的一次性清理、測試帳號說明文件。**preview 專案的測試帳號要由專案擁有者建立**（agent 沒有 Supabase 權限）；實作前先確認。Q6 上線時更新 `tasks.md` 中「PRO-014H 的實機驗證需要 PRO-014M」的說明。
 
@@ -81,6 +67,8 @@
 | #172 | — | AI-203 提案：Companion remind 的資料來源與頻率（已核准，實作為 AI-203B） |
 | #173 | — | PRO-014Q 變更說明：開發者面板模擬的外流問題，建議 S0＋Q6（已核准） |
 | #174 | — | 交接紀錄：記錄 #173 |
+| #175 | — | 交接紀錄：記錄使用者核准、AI-203B／AI-204／HW-113、PS-246 WIP |
+| #176 | v1.30.1 | PS-246：V2 不再套用舊相機的位置覆寫，Edit Mode 改為說明 |
 
 教訓：#155–#164 在 Codex review 出現前就合併，造成 #165、#166、#167 的回頭修正。這就是 §2 合併條件的由來。獨立 review 在 #167、#168、#169 都找到真正的問題（例如椅子畫在螢幕後面、壁燈在相框下投出暗影），所以複查不能省。
 
@@ -97,7 +85,7 @@
 
 ### 可直接做（已核准）
 
-- 依 §3 的順序：PS-246 → AI-203B → PRO-014Q S0 → PRO-014Q Q6（Q6 需先有測試帳號）。
+- 依 §3 的順序：AI-203B → PRO-014Q S0 → PRO-014Q Q6（Q6 需先有測試帳號）。PS-246 已完成。
 - Backlog 新增的 AI-204（Companion 台詞文案統一）與 HW-113（今日計畫日期對齊）尚未排程；要做時依 AGENTS §15 先移入 Next。
 - 椅子右扶手與一個腳輪畫在書桌之上（PS-244 起既有，約 10 px，記錄在 `tasks.md` 的 PS-245）。修正要拆分椅子的渲染層，再用 `render_pack.py --only office-chair` 重渲椅子。`tasks.md` 目前沒有對應任務，要做需先建立任務。
 

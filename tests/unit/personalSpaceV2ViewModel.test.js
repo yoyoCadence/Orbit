@@ -16,6 +16,7 @@ import {
   selectCanonicalMainQuestSession,
   selectMainQuestActionTarget,
 } from '../../pwa/js/personalSpace/v2/viewModels.js';
+import { getWorkspaceSceneAssets } from '../../pwa/js/personalSpace/v2/content/assetManifest.js';
 
 function effectiveSession(date, id = date) {
   return {
@@ -395,5 +396,45 @@ describe('Personal Space V2 shared view models', () => {
     expect(buildHomeWindowViewModel(snapshot).achievementPhoto).toEqual(achievementPhoto);
     expect(buildFullWorldViewModel(snapshot).achievementPhoto).toEqual(achievementPhoto);
     expect(buildEditViewModel(snapshot).achievementPhoto).toEqual(achievementPhoto);
+  });
+});
+
+describe('PS-246 legacy idle-window placement overrides', () => {
+  // Every legacy save writes the 16:9 camera's x/y, even when the user only
+  // switched the camera angle, so these are realistic stored values.
+  const legacyWorld = () => ({
+    placedItems: [{ id: 'office-chair', placement: { x: '38%', y: '84%', anchor: 'center-bottom' } }],
+    idleWindowLayouts: {
+      'building-office-prototype': {
+        cameraProfileId: 'center',
+        placements: {
+          'corner-desk': { x: '42%', y: '83%', width: '33%', z: 24, anchor: 'center-bottom' },
+          'office-shelf': { x: '72%', y: '78%', width: '13%', z: 22 },
+        },
+      },
+    },
+  });
+
+  it('keeps every V2 prop at its Blender placement and leaves the legacy data untouched', () => {
+    const v2State = { worldRevision: 2, world: legacyWorld(), inventory: {} };
+    const before = JSON.stringify(v2State);
+    const snapshot = buildPersonalSpaceV2Snapshot({
+      coreState: { user: {}, sessions: [] },
+      v2State,
+      ledgerSnapshot: {},
+      effectiveDate: '2026-07-31',
+    });
+
+    expect(snapshot.placements).toEqual({});
+    const legacyPlacements = {
+      ...legacyWorld().idleWindowLayouts['building-office-prototype'].placements,
+      'office-chair': legacyWorld().placedItems[0].placement,
+    };
+    const blender = getWorkspaceSceneAssets(100).props;
+    // Guard: applying the legacy coordinates would visibly move these props.
+    expect(getWorkspaceSceneAssets(100, legacyPlacements).props).not.toEqual(blender);
+    expect(getWorkspaceSceneAssets(100, snapshot.placements).props).toEqual(blender);
+    expect(buildEditViewModel(snapshot).placements).toEqual({});
+    expect(JSON.stringify(v2State)).toBe(before);
   });
 });

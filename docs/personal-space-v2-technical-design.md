@@ -244,8 +244,7 @@ The first implementation should remain local-first. The proposed shape is intent
 
   migration: {
     fromVersion: 1,
-    migratedAt: null,
-    unmappedPlacements: []
+    migratedAt: null
   }
 }
 ```
@@ -277,7 +276,7 @@ This shape is a contract proposal, not authorization to change Supabase. Before 
 - Legacy Companion relationship stage seeds `v2.companion.relationshipStage` once.
 - Only deterministic, allow-listed prototype placement IDs are mapped into the V2 canonical 3:2 layout.
 - Camera-profile choice and perspective variant are not copied into fixed-camera V2 state.
-- Unmapped placement entries are preserved in legacy state and summarized under `migration.unmappedPlacements`; V2 uses a safe default position.
+- Unmapped placement entries are preserved in legacy state and copied unchanged, camera choice included, into `world.placedItems` / `world.idleWindowLayouts` as an opaque legacy record; V2 never reads camera choice or coordinates from it and never applies them and uses the canonical Blender placement. No `migration.unmappedPlacements` summary is kept, because the preserved entries already are that record (PS-246, approved 2026-10-18). Today no legacy placement ID is mapped: the legacy 16:9 cameras have no deterministic mapping into the Blender camera.
 - Migration never awards XP, Gold, project progress, hidden stats, or relationship progress.
 - Migration does not write storage. The caller validates first, then performs at most one migration write.
 - A failed migration returns the legacy-safe path without overwriting the original record.
@@ -566,7 +565,7 @@ The first Vertical Slice can remain local-first. The following work is not impli
 - Focus Session return to home plays or summarizes the pending reward once.
 - Reload and remote-data refresh do not duplicate rewards.
 - Session reversal restores project/world state in both home and full Personal Space.
-- Edit Mode placement persists and is identical after returning to home/full-world.
+- Edit Mode has no placement editing (PS-246); home, full-world and edit agree on the same canonical Blender placements.
 - V1 user can enable V2 without losing ownership, placements, selected scene, or memory history.
 - Disabling V2 after migration still opens legacy mode.
 
