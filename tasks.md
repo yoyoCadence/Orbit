@@ -202,11 +202,21 @@
 > - 下一個提案是 AI-202；之後擴充 Blender 製作的主題與素材（建立 PS-248）。兩者都從 Backlog／新建移入 Next，第一步是提案。
 > - 獨立 Claude review 恢復使用：除非只有 Codex 能做的事，否則不限制由誰 review。
 
-- [ ] **BUG-113** 專案完成後，每個 Main Quest 日都會讓 Companion 再說一次「工作站完成了」
-  - 問題（AI-202 提案時發現，2026-10-20）：`pwa/js/personalSpace/v2/revealSelectors.js` `isProjectCompletionReveal()` 的第二個條件是「專案進度 ≥ 100，且 reveal 含 `project_progress:workspace-upgrade`」。專案完成後，每個 Main Quest 日的 winner 仍會得到 `project_progress +25`（進度上限 100），所以之後每一天的 reveal 都被判斷成專案完成。Companion 變成 `congratulate`，台詞是 `companion.project.workspace-upgrade.complete`。
-  - 重現：以 `reconcileRewardLedger` ＋ `applyReconciliationToV2State` ＋ `getCompanionReaction` 跑 4 個 Main Quest 日，再加第 5 天（`queueReveal: true`），第 5 天得到 `congratulate`。
-  - 方向：只有含完成 milestone（`world_unlock` 或 `metadata.tier === 'project-completion'`）的 reveal 才算專案完成；先查清第二個條件原本要處理的情況（例如缺少 metadata 的舊 reveal），並加上第 5 天的回歸測試（在修正前會失敗）。
-  - 影響 AI-202B：第 12 天的階段提升 reveal 會先被判斷成專案完成，所以要在 AI-202B 之前修，或併入 AI-202B（提案 §9 第 9 點）。
+- [ ] **BUG-113** 專案完成與撤銷的 reveal 讓 Companion 重複恭喜
+  - 問題（AI-202 提案與其獨立 review 發現，2026-10-20；以 `reconcileRewardLedger` ＋ `applyReconciliationToV2State` ＋ `getCompanionReaction` 重現）：「專案完成」與 `major` 的判斷不看 reward 是加入還是撤銷，也不看專案原本是否已完成。
+    - 專案完成後，每個 Main Quest 日的 reveal 都讓 Companion 再說「工作站完成了」：`revealSelectors.js` `isProjectCompletionReveal()` 的第二個條件是「進度 ≥ 100 且 reveal 含 `project_progress:workspace-upgrade`」，而 winner 每天都會得到 `project_progress +25`。
+    - 專案完成後撤銷任何一個 Main Quest 日，reversal reveal 也讓 Companion 恭喜。
+    - 撤銷完成那一天時，`hasCompletionReward` 不看方向，Companion 在撤銷時說「工作站完成了」。
+    - 撤銷第 4 天、由第 5 天承接時，兩個 reveal 都是 `major` 並恭喜（`revealKind()` 對加入或撤銷的 `relationship`／`world_unlock` 都回傳 `major`）。
+    - `selectProtagonistState()` 在 reversal 時也做慶祝動作。
+  - 來源：第二個條件是 068af89 的文字判斷（`progress >= 100` 且文字含 `workspace-upgrade`），在 4aefa27 改寫時保留；沒有單元測試涵蓋它。`buildRevealEvents()` 產生的 reveal 都帶有型別化的 rewards。
+  - 方向：
+    - 「專案完成」由 `applyReconciliationToV2State()` 比較前後的 `activeProject.completed`（false → true）決定，記在 reveal 上；selector 不再從 reward 內容推測；
+    - `revealKind()` 只把**加入**的、且真的改變狀態的解鎖與關係算成 `major`；
+    - reversal 不恭喜、主角不慶祝；
+    - 只是換一天承接時，不顯示解鎖或關係的行。
+  - 回歸測試（在修正前會失敗）：第 5 天的 reveal；專案完成後撤銷第 6 天；撤銷第 4 天（有與沒有第 5 天）。
+  - 影響 AI-202B：階段變化的 reveal 依賴這個修正（提案 §3.4、§9 第 9 點）。
 
 - [ ] **PS-248** 以 Blender 擴充「空間」的主題與素材（提案）
   - 使用者 2026-10-20 要求：「需要更新更多 blender 做的主題與素材等，讓本工具更豐富」。
@@ -243,9 +253,10 @@
       - 現況：唯一的來源是專案完成，所以階段最多到 `familiar`；`companionEngine` 完全不讀階段。
     - hidden stats 不決定階段：沒有每日上限、instant 也算，容易刷。AI-202B 只把它們的顯示改為中文名稱。
     - 不因缺席降級；只有來源 Session 被撤銷時退回。
-    - 首頁顯示階段，階段提升時有專屬 reveal 與台詞，`observe` 台詞依階段不同。
-    - `rulesetId` 與 ledger 都不變。換 ruleset 在現有程式碼下會讓 hidden stats 與關係重複計算（Gold 不會）。
-  - **等待使用者決定**提案 §9：門檻、輸入、機制與既有歷史（需同意新增本機欄位並修改 vertical slice §7.2）、顯示、hidden stats 名稱、台詞、README、telemetry、BUG-113 的處理。核准後比照 AI-204：AI-202 移到 Done，另立 AI-202B 實作。
+    - 階段變化的 reveal 由前後的階段決定：只有提升是 `major`；退回不恭喜；換一天承接時沒有關係的 reveal。第 4 天沿用已核准的專案完成台詞。
+    - 首頁顯示階段；依階段改變最常看到的兩句預設台詞（`observe`、`momentum.strong`）。
+    - `rulesetId` 與 ledger 都不變。換 ruleset 在現有程式碼下會讓 hidden stats 與關係重複計算（Gold 不會）。另存 `companion.relationshipPolicyId` 替推導的規則標版本；vertical slice §6.1、§13.1「改規則要換 `rulesetId`」需改為只適用於 ledger entry（Codex review 指出，需核准）。
+  - **等待使用者決定**提案 §9：門檻、輸入、機制與既有歷史（需同意新增兩個本機欄位並修改 vertical slice §6.1、§7.2、§13.1）、顯示、hidden stats 名稱、台詞、README、telemetry、BUG-113 的處理。核准後比照 AI-204：AI-202 移到 Done，另立 AI-202B 實作。
 
 - [ ] **PRO-014Q** 開發者面板的 backup 不應擋住其他帳號或非 Pro 模擬的 entitlement refresh
   - 問題（PR #158 Codex review 指出，2026-10-18 確認）：`storage.refreshProEntitlement()` 只要 `FLAG_DEV_BACKUP` 存在就直接 return。這個 backup 也由等級模擬器建立，且 `storage.clearAll()` 登出時不會清除。開發者登出後換另一個帳號，該帳號的 refresh 會一直被跳過，在 `server` source 下 fail closed，直到手動重設。
