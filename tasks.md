@@ -202,6 +202,12 @@
 > - 下一個提案是 AI-202；之後擴充 Blender 製作的主題與素材（建立 PS-248）。兩者都從 Backlog／新建移入 Next，第一步是提案。
 > - 獨立 Claude review 恢復使用：除非只有 Codex 能做的事，否則不限制由誰 review。
 
+- [ ] **BUG-113** 專案完成後，每個 Main Quest 日都會讓 Companion 再說一次「工作站完成了」
+  - 問題（AI-202 提案時發現，2026-10-20）：`pwa/js/personalSpace/v2/revealSelectors.js` `isProjectCompletionReveal()` 的第二個條件是「專案進度 ≥ 100，且 reveal 含 `project_progress:workspace-upgrade`」。專案完成後，每個 Main Quest 日的 winner 仍會得到 `project_progress +25`（進度上限 100），所以之後每一天的 reveal 都被判斷成專案完成。Companion 變成 `congratulate`，台詞是 `companion.project.workspace-upgrade.complete`。
+  - 重現：以 `reconcileRewardLedger` ＋ `applyReconciliationToV2State` ＋ `getCompanionReaction` 跑 4 個 Main Quest 日，再加第 5 天（`queueReveal: true`），第 5 天得到 `congratulate`。
+  - 方向：只有含完成 milestone（`world_unlock` 或 `metadata.tier === 'project-completion'`）的 reveal 才算專案完成；先查清第二個條件原本要處理的情況（例如缺少 metadata 的舊 reveal），並加上第 5 天的回歸測試（在修正前會失敗）。
+  - 影響 AI-202B：第 12 天的階段提升 reveal 會先被判斷成專案完成，所以要在 AI-202B 之前修，或併入 AI-202B（提案 §9 第 9 點）。
+
 - [ ] **PS-248** 以 Blender 擴充「空間」的主題與素材（提案）
   - 使用者 2026-10-20 要求：「需要更新更多 blender 做的主題與素材等，讓本工具更豐富」。
   - 現況：
@@ -232,7 +238,14 @@
   - 目標：讓 companion 關係變化可由真實行為驅動，而不是聊天次數
   - 對應 roadmap：Phase 2 / Phase 4
   - 2026-10-20 排程（使用者指定為下一個）：第一步是提案（Mode A，只寫文件、不改程式碼），核准前不實作。不涉及 auth／schema；若映射需要新的持久化欄位，提案中列為需核准事項。
-  - In progress（2026-10-20）：撰寫提案。
+  - In progress（2026-10-20）：提案 [`docs/ai-202-companion-relationship-proposal.md`](docs/ai-202-companion-relationship-proposal.md)（Mode A，只寫文件）。建議：
+    - 關係階段只由 Main Quest 天數推進：第 4 天 `familiar`（即現有的 Workspace Upgrade 完成，不改）、第 12 天 `partner`、第 30 天 `trusted-companion`。新的 milestone 放進既有 ledger，錨定在第 N 個 Main Quest 日，不新增 state 欄位。
+      - 現況：唯一的來源是專案完成，所以階段最多到 `familiar`；`companionEngine` 完全不讀階段。
+    - hidden stats 不決定階段：沒有每日上限、instant 也算，容易刷。AI-202B 只把它們的顯示改為中文名稱。
+    - 不因缺席降級；只有來源 Session 被撤銷時退回。
+    - 首頁顯示階段，階段提升時有專屬 reveal 與台詞，`observe` 台詞依階段不同。
+    - 沿用 `rulesetId`，只新增 entry。換 ruleset 在現有程式碼下會讓 hidden stats、Gold 與關係重複計算。
+  - **等待使用者決定**提案 §9：門檻、輸入、既有歷史（需同意修改 vertical slice §6.1）、顯示、hidden stats 名稱、台詞、README、telemetry、BUG-113 的處理。核准後比照 AI-204：AI-202 移到 Done，另立 AI-202B 實作。
 
 - [ ] **PRO-014Q** 開發者面板的 backup 不應擋住其他帳號或非 Pro 模擬的 entitlement refresh
   - 問題（PR #158 Codex review 指出，2026-10-18 確認）：`storage.refreshProEntitlement()` 只要 `FLAG_DEV_BACKUP` 存在就直接 return。這個 backup 也由等級模擬器建立，且 `storage.clearAll()` 登出時不會清除。開發者登出後換另一個帳號，該帳號的 refresh 會一直被跳過，在 `server` source 下 fail closed，直到手動重設。

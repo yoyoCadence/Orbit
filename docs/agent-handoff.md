@@ -4,7 +4,7 @@
 
 任務本身的定義與驗收條件以 [`tasks.md`](../tasks.md) 為準；本檔只記錄進行中的狀態、與使用者約定的工作規則，以及接手需要的操作細節。
 
-> 最後更新：2026-10-20。PS-246（#176，v1.30.1）、AI-203B（#177，v1.31.0）、HW-113（#180，v1.31.1）、PRO-014Q S0（#178，v1.31.2，含使用者核准的 A1＋B1）、AI-204 提案（#181）、PS-247（#182，v1.31.3）、INFRA-102（#183，CI 上傳 e2e artifact）、AI-204B（#184，v1.31.4，Companion 共用文案表）已合併。PS-211 提案（#185）已合併並核准（A3 ＋P、PS-211B 含沿用 Pixi app）。INFRA-103（#186）、PS-211B（#187，v1.31.5）、PS-211A（#188，v1.31.6）已合併。INFRA-104（#189）開 PR；接著 AI-202 提案、PS-248（Blender 主題與素材）提案。
+> 最後更新：2026-10-20。PS-246（#176，v1.30.1）、AI-203B（#177，v1.31.0）、HW-113（#180，v1.31.1）、PRO-014Q S0（#178，v1.31.2，含使用者核准的 A1＋B1）、AI-204 提案（#181）、PS-247（#182，v1.31.3）、INFRA-102（#183，CI 上傳 e2e artifact）、AI-204B（#184，v1.31.4，Companion 共用文案表）已合併。PS-211 提案（#185）已合併並核准（A3 ＋P、PS-211B 含沿用 Pixi app）。INFRA-103（#186）、PS-211B（#187，v1.31.5）、PS-211A（#188，v1.31.6）已合併。INFRA-104（#189）已合併。AI-202 提案（#190）開 PR；接著 PS-248（Blender 主題與素材）提案。
 
 ## 1. 接手前先讀
 
@@ -74,7 +74,11 @@
 
 12. **INFRA-104：完成**（#189）。`npm run lint` 改為 `eslint .`，涵蓋 `pwa/sw.js`、`pwa/server.cjs`、Node 腳本、`tests/perf` 與設定檔（共 195 個檔案）；`pwa/vendor`、輸出目錄與 `.gitignore` 中只存在於本機的資料夾由設定忽略。獨立 review 確認每一類新檔案的 negative control 都會失敗；它找到的 P2（PS-248 誤寫主角／Companion／天氣是 Blender 產出）已修正。
 
-13. **下一步**（使用者 2026-10-20 指定）：AI-202 提案（Companion 關係階段與 hidden stats 的映射），之後 PS-248 提案（以 Blender 擴充主題與素材）。兩者都先只寫文件。INFRA-105（SHELL 的 JS／CSS／HTML 安裝時重新驗證）需核准。使用者原則：以「任務確實完成」為準，合併是後話；做不到的先寫進 `tasks.md`。
+13. **AI-202：提案**（#190，[`docs/ai-202-companion-relationship-proposal.md`](ai-202-companion-relationship-proposal.md)，等待使用者決定 §9）。建議只用 Main Quest 天數推進關係階段（4／12／30 天），hidden stats 不決定階段，沿用 `rulesetId` 只新增 ledger entry，首頁顯示階段並依階段換 `observe` 台詞。
+    - 事實：現在階段最多到 `familiar`（唯一的來源是專案完成）；`companionEngine` 不讀階段與 hidden stats；換 `rulesetId` 會讓 hidden stats、Gold 與關係重複計算（`activeCurrentRulesetEntries()` 濾掉舊 entry 後，「遷移基準」包含了舊 ledger）。
+    - 順帶發現 **BUG-113**（Next）：專案完成後，每個 Main Quest 日都會讓 Companion 再說一次「工作站完成了」。已用 reconciler ＋ controller ＋ engine 重現；修正不需要核准新行為。
+
+14. **下一步**（使用者 2026-10-20 指定）：PS-248 提案（以 Blender 擴充主題與素材），只寫文件。INFRA-105（SHELL 的 JS／CSS／HTML 安裝時重新驗證）需核准。使用者原則：以「任務確實完成」為準，合併是後話；做不到的先寫進 `tasks.md`。
 
 其他：
 
@@ -124,6 +128,7 @@
 | #187 | v1.31.5 | PS-211B：新場景畫完前隱藏 canvas；首頁 → 空間沿用 Pixi app |
 | #188 | v1.31.6 | PS-211A：service worker 預先快取 V2 poster 素材與 Pixi（A3 ＋P） |
 | #189 | — | INFRA-104：`eslint .` 涵蓋 `sw.js`、Node 腳本與設定檔 |
+| #190 | — | AI-202 提案：Companion 關係階段由 Main Quest 天數推進、hidden stats 不決定階段；新增 BUG-113 |
 
 教訓：#155–#164 在 Codex review 出現前就合併，造成 #165、#166、#167 的回頭修正。這就是 §2 合併條件的由來。獨立 review 在 #167、#168、#169 都找到真正的問題（例如椅子畫在螢幕後面、壁燈在相框下投出暗影），所以複查不能省。
 
@@ -133,6 +138,7 @@
 
 - **BUG-109A**：在 production 套用 `pwa/db/013_signup_profile_name.sql`，需專案擁有者執行，步驟見 `docs/bug-109-signup-name-truncation.md`。
 - **PRO-014Q Q6 的測試帳號**：在 preview Supabase 專案建立（見 §3 第 4 點）。
+- **AI-202 提案 §9**：關係階段的門檻、輸入、既有歷史（K1 需同意修改 vertical slice §6.1）、顯示、hidden stats 名稱、台詞、README、telemetry、BUG-113 的處理。
 - **角色 3D 化**：主角與 Companion 仍是 PS-242 的像素 sprite。改成 3D 會推翻已核准素材（主角 12 個姿勢、Companion 6 個狀態），範圍很大，等使用者決定。
 - **PRO-014P**：entitlement 流程，實作前需提案與核准，擋 `PRO-014H` cutover。與草稿 PR #154（PRO-014L）改同一段 SUB-16 路徑，寫提案前先問使用者先後順序。
 - **PS-243**：真機、installed PWA、雙帳號、螢幕閱讀器等 human gate。
