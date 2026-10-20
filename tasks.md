@@ -31,6 +31,11 @@
     3. Authentication → Notifications → Email → Templates，更新 Reset Password / Confirm Signup 模板（英文品牌版內容已備好，ask Claude）
   - 備註：Resend 免費方案 3,000 封/月；之後有域名可換成 `noreply@yourdomain.com`
 
+- [ ] **INFRA-104** 讓 `pwa/sw.js` 與 Node 端的腳本也被 lint
+  - 問題（INFRA-103 獨立 review 發現，2026-10-20）：`npm run lint` 只涵蓋 `pwa/js/**/*.js` 與 `tests/**/*.js`。`pwa/sw.js`（PS-211A 要改）、`pwa/server.cjs`、`scripts/*.mjs`、設定檔都沒有被 lint；`eslint.config.js` 中給設定檔的區塊因此從未生效。以目前的設定直接 lint `sw.js` 會因 service worker 的 globals（`self`、`caches` 等）報 17 個 `no-undef`。
+  - 方向：在 `eslint.config.js` 為 `pwa/sw.js` 加上 service worker globals、為 Node 腳本加上 Node globals，並把它們加入 `lint` script。
+  - **修改既有設定（eslint 設定與 CI 執行的 script），需使用者核准**。
+
 - [ ] **PS-211D** 跨版本保存 V2 素材快取（以 `manifest.json` 的 `sha256` 為 key）
   - 背景：PS-211 提案 §5 D。activate 時保留素材快取、依目前 manifest 清理，讓沒改的素材在改版後不必重新下載。
   - 暫緩（使用者 2026-10-20 同意）：素材仍在調整；且要先驗證 GitHub Pages 的 ETag 是否隨部署改變（`curl -I` 比較兩次部署中同一個沒改過的素材）。ETag 不變時，PS-211A 之後的效益很小。
@@ -188,7 +193,8 @@
 > - PS-211A 採 A3 ＋P：SHELL 移除 legacy 圖片，改放 poster 會用到的 22 個 V2 檔案，另加 `vendor/pixi.js`；一併澄清技術設計 §12.1／§12.2。選 A3 即同意改寫 PS-211 範圍、跨版本長期快取暫緩（記為 PS-211D，Backlog）；PS-211C 不需要。
 > - PS-211B 排入，包含「首頁 → 空間沿用 Pixi app」的最佳化。
 > - 核准 INFRA-103（`lint` script 的 glob 加引號）。
-> - 順序：INFRA-103（讓之後的 PR 都有完整 lint）→ PS-211B（不動 service worker）→ PS-211A（部署行為）。
+> - 順序：INFRA-103（讓 `pwa/js` 與 `tests` 下的 `.js` 都被 lint；`pwa/sw.js` 仍不在範圍，見 INFRA-104）→ PS-211B（不動 service worker）→ PS-211A（部署行為）。
+> - INFRA-103 只改一行設定且已核准，比照 INFRA-102 直接移入 In Progress。
 
 - [ ] **PS-211B** 新場景畫完前隱藏 canvas；首頁 → 空間沿用 Pixi app
   - 規格：[`docs/ps-211-asset-preload-cache-proposal.md`](docs/ps-211-asset-preload-cache-proposal.md) §4.2、§4.4、§5 B。使用者 2026-10-20 核准，包含沿用 Pixi app 的最佳化。
@@ -206,8 +212,10 @@
     - SHELL 不含 `assets/personal-space/idle-window/` 下的任何檔案。
     - SHELL 含 A3 的 22 個 V2 檔案（背景、主角 idle／celebrate／inspect／rest／work 朝左、Companion 6 個狀態、晴天與雨天特效、8 件家具）與 `./vendor/pixi.js`。單元測試從 `assetManifest.js` 推導這組路徑，檢查都在 SHELL 字面值中。
     - 這些圖片與 `pixi.js` 在 install 時以 `cache: 'no-cache'` 的 Request 取得；路徑仍寫在 `const SHELL = [...]` 字面值裡。
-    - e2e：service worker 安裝後，快取中有這些檔案；離線重新整理時，首頁 poster 在非預設狀態下也完整顯示。
-    - 首頁初始載入仍不由頁面 import Pixi（技術設計 §12.1 的既有測試通過）；legacy 在線上仍可正常顯示。
+    - e2e：service worker 安裝後，快取中有這些檔案。離線重新整理時：首頁 poster 在程式碼會產生或 state 可能帶有的狀態下都完整顯示（至少一個非預設的主角／Companion 狀態與雨天）；runtime 以快取的 `pixi.js` 進入 ready（＋P 的效果）。
+    - 新增測試，確認頁面本身仍不在初始載入時取得 Pixi（技術設計 §12.1；目前沒有這樣的測試）：`index.html` 與 `app.js` 的靜態 import 圖不引用 `vendor/pixi.js`；e2e 中頁面發出的請求（排除 service worker 自己的請求，`request.serviceWorker()`）在 runtime mount 之前不含 `pixi.js`。
+    - legacy 在線上仍可正常顯示。
+    - 注意：`pwa/sw.js` 不在 `npm run lint` 範圍內（INFRA-104），改 `sw.js` 時要手動檢查。
     - 技術設計 §12.1 與 §12.2 更新：service worker precache 的 poster 素材與 Pixi 不算首頁載入。
     - lint、test、e2e、`ps242:manifest -- --check`、`ps243:assets -- --check` 通過。
   - 版本：`npm run bump -- patch`。
@@ -251,7 +259,7 @@
   - 方向：改成 `eslint 'pwa/js/**/*.js' 'tests/**/*.js'`，由 eslint 自己展開。2026-10-19 以加引號的 glob 執行，目前所有檔案都通過，不需要另外修程式碼。
   - **修改既有設定（CI 執行的 script），需使用者核准**。
   - **2026-10-20 使用者核准。** In progress（2026-10-20）。
-  - 完成（2026-10-20）：`"lint": "eslint \"pwa/js/**/*.js\" \"tests/**/*.js\""`。用雙引號而不是單引號，Windows 的 `cmd` 也能由 eslint 自己展開。`npm run lint` 檢查的檔案由 110 個增加到 176 個，全部通過，不需要修改程式碼。`.mjs`（`tests/perf/`）仍不在範圍內。
+  - 完成（2026-10-20）：`"lint": "eslint \"pwa/js/**/*.js\" \"tests/**/*.js\""`。用雙引號而不是單引號，Windows 的 `cmd` 也能由 eslint 自己展開。`npm run lint` 檢查的檔案由 110 個增加到 176 個，全部通過，不需要修改程式碼。範圍是 `pwa/js` 與 `tests` 下的 `.js`；`pwa/sw.js`、`pwa/server.cjs`、`scripts/*.mjs`、`tests/perf/*.mjs` 與設定檔仍不在範圍內（見 INFRA-104）。
 
 - [x] **PS-211** 為 personal space 新增常用資產 preload / cache 策略
   - 目標：降低切換頁面或切回 personal space 時重新顯示圖片的等待感
@@ -262,7 +270,7 @@
   - 提案（2026-10-20）：[`docs/ps-211-asset-preload-cache-proposal.md`](docs/ps-211-asset-preload-cache-proposal.md)（經 Codex 四輪與獨立 review 後改寫）。量測結果：
     - 同一次使用中切頁已沒有等待（V2 與 legacy 都是 0 網路請求）。
     - 仍會等的：改版後第一次載入時，若 HTTP cache 沒有素材的副本（限速下 poster 晚 2–4 秒；是否發生取決於 GitHub Pages 的 ETag 是否隨部署改變，尚未驗證）；狀態第一次改變時（新圖片 0.4–1.0 秒，期間 canvas 顯示舊房間）；SHELL precache 1.99 MB V2 用不到的 legacy 圖片。
-    - 建議改寫範圍並拆成 PS-211A（SHELL 改放 poster 會用到的 22 個 V2 檔案，建議 A3，屬部署行為需核准）、PS-211B（新場景畫完前隱藏 canvas）、PS-211C（只在選 A2 時需要）；跨版本長期快取暫緩。（提案 §7）。
+    - 建議改寫範圍並拆成 PS-211A（SHELL 改放 poster 會用到的 22 個 V2 檔案，建議 A3，屬部署行為需核准）、PS-211B（新場景畫完前隱藏 canvas）、PS-211C（只在選 A2 時需要）；跨版本長期快取暫緩（提案 §7）。
   - 完成（2026-10-20）：提案 #185 合併；使用者核准 A3 ＋P、PS-211B（含沿用 Pixi app）；實作移到 `PS-211A`、`PS-211B`，長期快取記為 `PS-211D`。
 
 - [x] **AI-204B** 實作共用的 Companion 文案表（AI-204 核准的規格）

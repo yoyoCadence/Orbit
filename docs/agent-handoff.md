@@ -23,7 +23,7 @@
 - **Codex 額度用完時（2026-10-18 使用者核准）**：改用獨立的 Claude review agent 代替。它只讀不改，對照程式碼逐項回報 P1／P2／P3。P1／P2 全部修完、CI 全綠才合併；需要核准的項目仍要先問使用者。
 - Codex 的 finding 先對照程式碼驗證。成立就修，在 thread 回覆修正的 commit 並 resolve，再留言 `@codex review` 要求重審，等重審乾淨才合併。不成立就回覆理由，並交給使用者決定。
 - 高風險（auth、tokens、`.env`、schema／migration、CI/CD、部署、修改既有設定、Pro entitlement 流程）：先寫變更說明，取得使用者核准才實作。
-- 純文件或任務定義的 PR 不 bump 版本（本工作階段的作法，#155–#157、#161 皆如此）；其餘 PR 依 §14 bump。
+- 純文件、任務定義、CI 或開發工具的 PR 不 bump 版本（本工作階段的作法，#155–#157、#161、#183、#186 皆如此；bump 會改變 `sw.js` 的 `CACHE` 名稱，讓使用者無謂地重新下載 SHELL）；其餘 PR 依 §14 bump。
 - 合併 PR 時使用完整 40 字元 SHA 作為 `expectedHeadSha`。
 - Commit 結尾加 `Co-Authored-By` 與 `Claude-Session` 兩行；PR 描述結尾加 Claude Code 標記；不要寫入 model 名稱。
 
@@ -66,7 +66,7 @@
      - 量測的情境與標籤要對照原始數據，結論要對照設計文件。
    - 未驗證：GitHub Pages 的 ETag 是否隨部署改變（`curl -I` 同一個沒改過的素材，比較兩次部署）。
 
-9. **INFRA-103：完成**（#186）。`lint` script 的 glob 改用雙引號（Windows `cmd` 也適用），`npm run lint` 檢查的檔案由 110 個增加到 176 個，全部通過。
+9. **INFRA-103：完成**（#186）。`lint` script 的 glob 改用雙引號（Windows `cmd` 也適用），`npm run lint` 檢查的檔案由 110 個增加到 176 個，全部通過。`pwa/sw.js` 等仍不在範圍內（INFRA-104，需核准）；PS-211A 改 `sw.js` 時要手動檢查。
 
 其他：
 
@@ -78,7 +78,7 @@
 - 2026-10-19 12:24：留言 `@codex review` 後 Codex 又可用了（#178 的 6f81638 無 finding）。每個 PR 仍同時跑獨立 Claude review：#178 的複查在 Codex 沒找到問題的 commit 上仍找到 P2。
 - 教訓：三份提案的獨立 review 各找到 P1（PRO-014Q 連續四輪）。提案的事實與設計都要對照程式碼驗證；逐條修補一直被找到新漏洞時，要退一步改結構（PRO-014Q 由修補 backup 改為移除模擬，AI-203 由 F3 改為 F4）。
 
-## 4. 本次工作階段已完成（2026-10-17～19）
+## 4. 本次工作階段已完成（2026-10-17～20）
 
 | PR | 版本 | 內容 |
 |---|---|---|
@@ -112,7 +112,7 @@
 | #183 | — | INFRA-102：e2e 失敗時上傳 Playwright 的 test-results；記錄 AI-204 的核准 |
 | #184 | v1.31.4 | AI-204B：Companion 共用文案表（W-A）、COMPANION 小卡最多兩行、夥伴名稱統一為「Orbit 夥伴」 |
 | #185 | — | PS-211 提案：改版後的素材連續性與狀態切換（已核准 A3 ＋P、PS-211B） |
-| #186 | — | INFRA-103：`lint` script 的 glob 加引號，lint 全部 176 個檔案 |
+| #186 | — | INFRA-103：`lint` script 的 glob 加引號，lint `pwa/js` 與 `tests` 下全部 176 個 `.js` |
 
 教訓：#155–#164 在 Codex review 出現前就合併，造成 #165、#166、#167 的回頭修正。這就是 §2 合併條件的由來。獨立 review 在 #167、#168、#169 都找到真正的問題（例如椅子畫在螢幕後面、壁燈在相框下投出暗影），所以複查不能省。
 
@@ -125,6 +125,7 @@
 - **角色 3D 化**：主角與 Companion 仍是 PS-242 的像素 sprite。改成 3D 會推翻已核准素材（主角 12 個姿勢、Companion 6 個狀態），範圍很大，等使用者決定。
 - **PRO-014P**：entitlement 流程，實作前需提案與核准，擋 `PRO-014H` cutover。與草稿 PR #154（PRO-014L）改同一段 SUB-16 路徑，寫提案前先問使用者先後順序。
 - **PS-243**：真機、installed PWA、雙帳號、螢幕閱讀器等 human gate。
+- **INFRA-104**：讓 `pwa/sw.js` 與 Node 端的腳本也被 lint（改 `eslint.config.js` 與 lint script，屬修改既有設定，需核准；見 `tasks.md`）。
 - 尚未回答：高風險項目（如 entitlement）連變更說明都要不要先問再排程（PRO-014Q 變更說明 §7）。在得到答案前，維持「寫變更說明可以，實作前一定要核准」。
 
 ### 可直接做（已核准）
