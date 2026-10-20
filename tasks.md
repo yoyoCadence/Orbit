@@ -211,8 +211,8 @@
 - [ ] **PS-248** 以 Blender 擴充「空間」的主題與素材（提案）
   - 使用者 2026-10-20 要求：「需要更新更多 blender 做的主題與素材等，讓本工具更豐富」。
   - 現況：
-    - V2 只有一套素材（`building-formal-workstation-v2`，預設場景 `office-corner`）與一個主題（`selectedThemeId: 'default'`）；`SCENE_IDS` 仍列有 `rough-room`、`upgraded-rental`、`office-corner`。
-    - 由 Blender 渲染的只有房間 1 張與家具 8 件（`art-pipeline/ps244-blender`，PS-244～PS-247，同一個相機）。主角 12 個姿勢、Companion 6 個狀態、天氣 2 種是 PS-242 的手繪 sprite／overlay，不是 Blender 產出。
+    - V2 只有一套素材（`building-formal-workstation-v2`）與一個主題（`selectedThemeId: 'default'`，只儲存、沒有程式讀取）。V2 的 `selectedSceneId` 預設是 `rough-room`（`stateSchema.js`），`office-corner` 只是兩個 UI 的 fallback；兩者都只用於 telemetry，不影響畫面。`rough-room`、`upgraded-rental`、`office-corner` 是 legacy 頁面依等級切換的場景。
+    - 由 Blender 渲染的只有房間 1 張與家具 8 件（`art-pipeline/ps244-blender`，PS-244～PS-247，同一個相機）。主角 12 個姿勢、Companion 6 個狀態、天氣 2 種是 PS-242 以影像生成製作再去背的 sprite／overlay（`art-pipeline/ps242/model-manifest.json`：`openai-built-in-imagegen`），不是 Blender 產出。
     - 角色是否改為 3D（Blender）仍是 handoff 中的開放決策；提案要說明角色與天氣是否在範圍內。
   - 範圍：標題把「本工具」解讀為「空間」分頁（目前只有這裡使用 Blender 素材）；提案要向使用者確認。
   - 第一步是提案（Mode A，只寫文件、不改程式碼），內容包括：
@@ -239,7 +239,7 @@
   - 對應 roadmap：Phase 2 / Phase 4
   - 2026-10-20 排程（使用者指定為下一個）：第一步是提案（Mode A，只寫文件、不改程式碼），核准前不實作。不涉及 auth／schema；若映射需要新的持久化欄位，提案中列為需核准事項。
   - In progress（2026-10-20）：提案 [`docs/ai-202-companion-relationship-proposal.md`](docs/ai-202-companion-relationship-proposal.md)（Mode A，只寫文件）。建議：
-    - 關係階段只由 Main Quest 天數推進：第 4 天 `familiar`（即現有的 Workspace Upgrade 完成，不改）、第 12 天 `partner`、第 30 天 `trusted-companion`。新的 milestone 由 active ledger 推導，**不寫成 ledger entry**：仍在執行舊版程式碼的分頁會撤銷它不認得的同 ruleset entry（Codex review 指出）。另存一個本機欄位 `companion.relationshipBaseline`，讓舊版分頁寫入的過時點數不會汙染計算（需核准）。
+    - 關係階段只由 Main Quest 天數推進：第 4 天 `familiar`（即現有的 Workspace Upgrade 完成，不改）、第 12 天 `partner`、第 30 天 `trusted-companion`。新的 milestone 由 active ledger 推導，**不寫成 ledger entry**：仍在執行舊版程式碼的分頁會撤銷它不認得的同 ruleset entry（Codex review 指出）。另存一個本機欄位 `companion.legacyRelationshipPoints`，讓舊版分頁寫入的過時點數不會汙染計算（需核准）；legacy 點數是下限而不是加分，門檻對所有使用者相同（Codex review 指出）。
       - 現況：唯一的來源是專案完成，所以階段最多到 `familiar`；`companionEngine` 完全不讀階段。
     - hidden stats 不決定階段：沒有每日上限、instant 也算，容易刷。AI-202B 只把它們的顯示改為中文名稱。
     - 不因缺席降級；只有來源 Session 被撤銷時退回。

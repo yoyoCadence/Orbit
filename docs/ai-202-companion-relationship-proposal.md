@@ -16,7 +16,7 @@
   - 首頁 COMPANION 卡顯示階段；
   - 階段提升時顯示「夥伴關係：合作夥伴」，取代現在的 `companion +1`；
   - 平常的 `observe` 台詞依階段不同。
-- **ledger 與 `rulesetId` 都不變**。只新增一個本機欄位 `companion.relationshipBaseline`（V2 state 不同步、不涉及資料庫），讓舊版分頁寫入的過時點數無法汙染計算（§3.2，需核准）。vertical slice §7.2「透過 ledger entry 推進」要改寫為「由 active ledger 推導」（需核准）。
+- **ledger 與 `rulesetId` 都不變**。只新增一個本機欄位 `companion.legacyRelationshipPoints`（V2 state 不同步、不涉及資料庫），讓舊版分頁寫入的過時點數無法汙染計算（§3.2，需核准）。vertical slice §7.2「透過 ledger entry 推進」要改寫為「由 active ledger 推導」（需核准）。
 
 ## 2. 現況
 
@@ -55,12 +55,16 @@ README 的「關係進化草案」列了 5 個不同的階段（陌生觀察／�
 - 「Main Quest 日」＝ active ledger 中 `quest_progress` 且 `rewardKey` 為 `main-focus:<date>` 的 entry，每個日期一筆。這已經是 reconciler 每天只選一個 winner 的結果。非 authoritative 的部分快照會保留被省略的 Session 的 entry（`reconciler.js` 的 `preservedOmittedSourceIds`），所以 reconcile 結果的 `activeRewards` 已經是完整的計數來源。
 - **milestone 不寫進 ledger，而是在 `applyReconciliationToV2State()` 由 active ledger 推導**（理由見 §3.3）：
   - `derivedMilestones` ＝ Main Quest 日數 ≥ 12 時 1，≥ 30 時再加 1；
-  - 點數 ＝ `companion.relationshipBaseline` ＋ ledger 中 `relationship` entry 的總和（現有的專案完成 1 點）＋ `derivedMilestones`；
+  - 點數 ＝ `max(legacy 點數, ledger 中 relationship entry 的總和 ＋ derivedMilestones)`。ledger 中的 relationship 只有現有的專案完成 1 點。
   - 階段仍由 `relationshipStageForPoints()` 決定，不改：4 天 1 點 → `familiar`；12 天 2 點 → `partner`；30 天 3 點 → `trusted-companion`。
-- `companion.relationshipBaseline`：**新的本機欄位**（V2 state 只存在本機、不同步；不涉及資料庫）。
-  - 新版第一次 reconcile、欄位還不存在時寫入一次：`max(0, 已儲存的點數 − ledger 中 relationship 的總和)`。這就是現在程式碼每次推算的「遷移基準」。此時還沒有任何程式寫過推導出的 milestone，所以算出來的就是真正的基準（實際上都是 0：legacy 從未寫過關係階段）。
-  - 之後新版**不再從已儲存的點數反推基準**，每次都從欄位與 ledger 重新計算。
-  - 理由：舊版分頁會把它不認得的點數當成基準保留（§3.3）。如果舊版分頁撤銷了一個 Session，讓 Main Quest 日數跌破門檻，反推的基準會多 1，而且永遠修不回來。存下來的基準不受舊版分頁影響。
+- legacy 點數是**下限，不是加分**：
+  - 遷移時 legacy 的關係階段只「seed 一次」，而且「遷移不給關係進度」（technical design §7.2）。目前程式碼把它當成基準再加上 ledger，所以 legacy 為 `quiet-familiarity`（1 點）的使用者完成專案就到 `partner`。若沿用加法，這類使用者會在第 4 天到 `partner`、第 12 天到 `trusted-companion`，門檻不再固定（Codex review 指出）。
+  - 改為下限後：一開始就是 `familiar`；第 4 天仍是 `familiar`；第 12、30 天才到 `partner`、`trusted-companion`，與其他使用者相同。
+  - 實際上：legacy 程式從未寫過關係階段（`gameState.js` 只有預設值 `stranger-observer`），`quiet-familiarity` 只出現在測試 fixture 中，所以現有使用者的 legacy 點數都是 0。這條規則是為了讓所有情況都有定義。
+- `companion.legacyRelationshipPoints`：**新的本機欄位**（V2 state 只存在本機、不同步；不涉及資料庫）。
+  - 新版第一次 reconcile、欄位還不存在時寫入一次：`max(0, 已儲存的點數 − ledger 中 relationship 的總和)`。這就是現在程式碼每次推算的「遷移基準」，也就是 legacy 點數。此時還沒有任何程式寫過推導出的 milestone，所以算出來的就是真正的 legacy 點數。
+  - 之後新版**不再從已儲存的點數反推**，每次都從欄位與 ledger 重新計算。
+  - 理由：舊版分頁會把它不認得的點數當成基準保留（§3.3）。如果舊版分頁撤銷了一個 Session，讓 Main Quest 日數跌破門檻，反推的值會多 1，而且永遠修不回來。存下來的值不受舊版分頁影響。
   - 舊版的 `normalizePersonalSpaceV2State()` 與 `applyReconciliationToV2State()` 都會保留 `companion` 中不認得的欄位（`...rawCompanion`、`...state.companion`），所以舊版分頁不會刪掉它。
 - **reveal 以「階段前後是否改變」判斷**，不再看新增了哪個 ledger entry：
   - 「之前的階段」用同一個公式從**舊的已儲存 ledger** 計算，不讀已儲存的點數。舊版分頁可能寫入過時的點數，但它寫入的 ledger 反映的是真實的 Session 變化。
@@ -76,13 +80,13 @@ README 的「關係進化草案」列了 5 個不同的階段（陌生觀察／�
 |---|---|---|
 | K1 沿用 `rulesetId`，新增 milestone ledger entry（本提案第一版） | 舊版 reconciler 遇到同一 ruleset、來源 Session 還在、但它不預期的 entry 會**撤銷它**（`reconciler.js` 的比對迴圈）；新版再把它恢復。階段來回跳動，還會重複出現階段提升的 reveal | 拒絕（Codex review 指出） |
 | K2 換新 `rulesetId`，新增 ledger entry | 舊版保留新 ruleset 的 entry、繼續替自己的 ruleset 給獎勵；在舊版分頁記錄的 Session 會兩個 ruleset 各給一次 hidden stats，並被新版當成基準永久保留。而且以現有的程式碼換 `rulesetId`，`activeCurrentRulesetEntries()` 會濾掉舊 entry，「遷移基準」包含了舊 ledger，hidden stats 與關係都會重複計算（Gold 不會：`earnedGold` 只看目前 ruleset 的總和）。要另寫遷移與明確的基準 | 範圍大，不建議 |
-| **K4（建議）不新增 ledger entry，由 active ledger 推導 milestone ＋ 存下基準** | 舊版把新版多出的點數當成「遷移基準」保留（已儲存的點數 − 它的 ledger 總和 ＋ 它的 ledger 總和），所以階段不變。只有舊版分頁撤銷的 Session 跨過門檻時會暫時不準，新版下一次 reconcile 會從存下的基準重新計算 | 舊版不會撤銷或重複任何東西；ledger 規則與 `rulesetId` 都不變 |
+| **K4（建議）不新增 ledger entry，由 active ledger 推導 milestone ＋ 存下 legacy 點數** | 舊版把新版多出的點數當成「遷移基準」保留（已儲存的點數 − 它的 ledger 總和 ＋ 它的 ledger 總和），所以階段不變。只有舊版分頁撤銷的 Session 跨過門檻時會暫時不準，新版下一次 reconcile 會從存下的 legacy 點數與 ledger 重新計算 | 舊版不會撤銷或重複任何東西；ledger 規則與 `rulesetId` 都不變 |
 
 以目前 main 的 `reconcileRewardLedger()` ＋ `applyReconciliationToV2State()` 模擬舊版分頁驗證過（13 個 Main Quest 日）：
 
 - K1：加入一筆錨定在第 12 天的 `relationship:companion:partner` entry 後，舊版把它撤銷（`reversedAt` 被設定），階段由 `partner` 掉回 `familiar`。
-- K4：把點數設為 2（`partner`）、加上 `relationshipBaseline: 0` 後，舊版在 authoritative、部分快照、新增第 14 天三種情況下都維持 `partner`，ledger 不變，欄位被保留。
-- 舊版分頁撤銷第 12、13 天時，它仍顯示 `partner`（過時）；新版下一次 reconcile 由存下的基準重新算回 `familiar`。這就是需要存下基準的原因。
+- K4：把點數設為 2（`partner`）、加上 `legacyRelationshipPoints: 0` 後，舊版在 authoritative、部分快照、新增第 14 天三種情況下都維持 `partner`，ledger 不變，欄位被保留。
+- 舊版分頁撤銷第 12、13 天時，它仍顯示 `partner`（過時）；新版下一次 reconcile 由存下的 legacy 點數與 ledger 重新算回 `familiar`。這就是需要存下 legacy 點數的原因。
 
 K4 的其他影響：
 
@@ -176,11 +180,12 @@ K4 的其他影響：
 與舊版分頁並存、ruleset 與既有資料（K4、R1）：
 
 - `RULESET_ID` 不變；ledger 中沒有新的 `rewardType`、`rewardKey` 或 entry。固定的 fixture 在改版前後 ledger 完全相同。
-- `companion.relationshipBaseline` 只在欄位不存在時寫入一次；之後即使已儲存的點數被改成別的值（模擬舊版分頁寫入），點數仍由基準 ＋ ledger 重新計算。
+- `companion.legacyRelationshipPoints` 只在欄位不存在時寫入一次；之後即使已儲存的點數被改成別的值（模擬舊版分頁寫入），點數仍由欄位與 ledger 重新計算。
+- legacy 階段為 `quiet-familiarity` 的遷移 fixture：一開始是 `familiar`；第 4 天仍是 `familiar`；第 12 天 `partner`；第 30 天 `trusted-companion`。
 - 以**目前 main 的** `applyReconciliationToV2State()` 與 `reconcileRewardLedger()` 處理新版寫入的 state（模擬舊版分頁）：
   - 不撤銷、不新增任何 ledger entry；
   - 階段不變；
-  - `companion.relationshipBaseline` 被保留。
+  - `companion.legacyRelationshipPoints` 被保留。
 - 「之前的階段」由舊的已儲存 ledger 計算：已儲存的點數被改成過時的值時，`queueReveal: true` 的 reconcile 不會因此排入階段變化的 reveal。
 - 已有 30 個 Main Quest 日的 state 在開啟時（`queueReveal: false`）直接到 `trusted-companion`，不排入 reveal。
 - 已儲存的 hidden stats、Gold 不變。
@@ -198,8 +203,8 @@ K4 的其他影響：
 
 文件：
 
-- vertical slice §4.3 的 `relationship:companion-stage=1` 改為程式碼實際使用的 `relationship:companion=1`；§7.2 的階段推進改寫為「由 active ledger 推導」與本提案的門檻（K4）；§5.1 的 state 欄位加上 `companion.relationshipBaseline`。
-- `docs/personal-space-state-flow.md` 的關係公式改為「基準 ＋ ledger 中的 relationship ＋ 推導的 milestone」。
+- vertical slice §4.3 的 `relationship:companion-stage=1` 改為程式碼實際使用的 `relationship:companion=1`；§7.2 的階段推進改寫為「由 active ledger 推導」與本提案的門檻（K4）；§5.1 的 state 欄位加上 `companion.legacyRelationshipPoints`。
+- `docs/personal-space-state-flow.md` 的關係公式改為 `max(legacy 點數, ledger 中的 relationship ＋ 推導的 milestone)`。
 
 ## 9. 需要使用者決定
 
@@ -211,7 +216,7 @@ K4 的其他影響：
    - I1 只算 Main Quest 日（建議）。恢復不會推進關係，但也不會讓關係退步。
    - I2 Main Quest 日 ＋ 至少 30 分鐘的恢復日。符合「恢復是策略」，但只休息也能到信賴夥伴。
 3. **機制與既有歷史**（§3.3）：
-   - K4 由 active ledger 推導 milestone、存下 `companion.relationshipBaseline`（建議）。需同意新增這個本機欄位，並把 vertical slice §7.2「透過 ledger entry 推進」改為「由 active ledger 推導」。
+   - K4 由 active ledger 推導 milestone、存下 `companion.legacyRelationshipPoints`、legacy 點數作為下限（建議）。需同意新增這個本機欄位，並把 vertical slice §7.2「透過 ledger entry 推進」改為「由 active ledger 推導」。
    - 歷史：R1 epoch 以後的 Main Quest 日都算、開啟時不補播（建議）／R2 只算新版上線之後。
 4. **顯示**：S1 名稱 ＋ reveal ＋ 台詞（建議）／S2 只有名稱與 reveal／S3 不改。
 5. **hidden stats**：
