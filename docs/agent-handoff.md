@@ -82,7 +82,7 @@
 
 14. **INFRA-106：完成**（併入 #190，v1.31.7）。#190 的 e2e 連續 4 次（含一次重跑）在 `flows.test.js:189` 逾時，依規則把修正併入。原因與修正見 `tasks.md`：Orbit Window 的 Pixi 場景在 Focus overlay 下與減少動態效果時仍每一幀重畫。教訓：e2e 在 CI 上變慢時，先在本機以軟體 WebGL 量測每幀時間（`requestAnimationFrame` 間隔），常駐的 canvas 動畫會拖慢 Playwright 的每次點擊。
 
-15. **PS-248：提案**（#191，[`docs/ps-248-blender-themes-proposal.md`](ps-248-blender-themes-proposal.md)，等待使用者決定 §9）。建議 PS-248A 夜晚版本的工作站（同場景、同相機重新渲染房間與家具，夜晚家具有自己的 placement）→ PS-248B 一套「房間風格」→ PS-248C 由 AI-202B 推導解鎖的裝飾小物；窗外依時段變化（A2）可選。A、B、A2 都超出 vertical slice 的素材上限（一張房間背景＋日夜疊層），要使用者同意。風格與裝飾不寫入 ledger、不新增 `world_unlock`（避開 AI-202 發現的舊版分頁撤銷與 BUG-113）。教訓：最初的版本建議只拆窗外、房間不變，但房間與家具烘有從窗戶射入的陽光，夜晚的窗外配上陽光照亮的地板會不對；獨立 review 看了渲染圖才發現。改素材的提案要先看實際的圖，不只看程式。第二次獨立 review 又發現：shadow catcher 只記錄陰影，檯燈照在桌面的光暈做不出來；夜晚的影子方向不同，不能硬套白天的裁切框；拿掉夜晚色層會讓角色與天氣沒有夜晚感。查證時也注意：角色與天氣是影像生成，不是 Blender；V2 的 `selectedThemeId` 只存不讀；`ps211aPrecache.test.js` 的推導沒有時段與風格，新增輸入維度時測試要逐一走過。
+15. **PS-248：提案**（#191，[`docs/ps-248-blender-themes-proposal.md`](ps-248-blender-themes-proposal.md)，等待使用者決定 §9）。建議 PS-248A 夜晚版本的工作站（同場景、同相機重新渲染房間與家具，夜晚家具有自己的 placement）→ PS-248B 一套「房間風格」→ PS-248C 由 AI-202B 推導解鎖的裝飾小物；窗外依時段變化（A2）可選。A、B 超出 vertical slice 的「一張房間背景＋日夜疊層」，A2 超出「一張 exterior」，都要使用者同意。風格與裝飾不寫入 ledger、不新增 `world_unlock`（避開 AI-202 發現的舊版分頁撤銷與 BUG-113）。教訓：最初的版本建議只拆窗外、房間不變，但房間與家具烘有從窗戶射入的陽光，夜晚的窗外配上陽光照亮的地板會不對；獨立 review 看了渲染圖才發現。改素材的提案要先看實際的圖，不只看程式。第二次獨立 review 又發現：shadow catcher 只記錄陰影，檯燈照在桌面的光暈做不出來；夜晚的影子方向不同，不能硬套白天的裁切框；拿掉夜晚色層會讓角色與天氣沒有夜晚感。第三次 review：色層強度要依 manifest 實際回傳的版本決定，舊 manifest 才會退回現在的畫面；成就相框不在任何色層之下。查證時也注意：角色與天氣是影像生成，不是 Blender；V2 的 `selectedThemeId` 只存不讀；`ps211aPrecache.test.js` 的推導沒有時段與風格，新增輸入維度時測試要逐一走過。
 16. **下一步**：等待 AI-202 §9 與 PS-248 §9 的決定。INFRA-105（SHELL 的 JS／CSS／HTML 安裝時重新驗證）需核准。使用者原則：以「任務確實完成」為準，合併是後話；做不到的先寫進 `tasks.md`。
 
 其他：

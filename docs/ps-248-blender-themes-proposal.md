@@ -11,8 +11,8 @@
 - **PS-248A 夜晚版本的工作站**（建議先做）：
   - 現況：房間與 8 件家具都在 Blender 中以「從右側落地窗射入的低角度暖色太陽」渲染。地板與地毯上烘有窗格形狀的陽光，家具帶著長影子。夜晚只在上面疊一層深藍色（Pixi alpha 0.2，poster 約 0.22–0.34），所以**夜晚仍看得到陽光**，這是既有的不一致。
   - 做法：同一個場景、同一個相機，關掉太陽，調暗天空、補光與 world 背景；壁燈的光在白天版本就已打開，夜晚再讓燈罩發光；檯燈與螢幕只在自己的輪廓內發光；窗外換成夜景（建築窗燈）。以此重新渲染房間與 8 件家具一套「夜晚版本」。
-  - 夜晚改用夜晚版本；早晨、白天、傍晚沿用現有的白天版本（低角度暖光適合三者）。夜晚的程式色層改為較弱的強度，讓角色、天氣與相框仍有夜晚感，但房間不會變暗兩次。
-  - **這也超出 vertical slice 的素材上限**：art bible §6.1／§7.3 與 asset pipeline 的「Vertical Slice Asset Budget」是「一張房間背景＋日、夜光線疊層」，夜晚版本是第二張房間背景與 8 件家具（manifest 由 29 張變成 38 張）。要與 PS-248B 一樣取得使用者明確同意（§9 第 2 點）。理由是：它是同一個房間殼的另一種光線狀態，而 art bible §8 允許家具有「daytime / emissive」狀態。
+  - 夜晚改用夜晚版本；早晨、白天、傍晚沿用現有的白天版本（低角度暖光適合三者）。夜晚的程式色層改為較弱的強度，讓角色與天氣仍有夜晚感，但房間不會變暗兩次。成就相框在色層之外，另外處理（§4.1）。
+  - **這也超出 vertical slice 的素材上限**：art bible §6.1 與 asset pipeline 的「Vertical Slice Asset Budget」是「一張房間背景＋日、夜光線疊層」（§7.3 也假設日夜是共用幾何的疊層），夜晚版本是第二張房間背景與 8 件家具（manifest 由 29 張變成 38 張）。要與 PS-248B 一樣取得使用者明確同意（§9 第 2 點）。理由是：它是同一個房間殼的另一種光線狀態，而 art bible §8 允許家具有「daytime / emissive」狀態。
   - 代價：一次完整渲染（約 30–50 分鐘）；SHELL 增加約 460 KB，是現在 SHELL 圖片 987,645 B 的約 +47%，每個使用者都要下載。
 - **PS-248A2 窗外景色依時段變化**（可選，不建議現在做）：把窗外天際線拆成獨立圖層，每個時段一張。要另做窗戶遮罩、新的圖層與 DOM，同樣超出上限（§4.2）。
 - **PS-248B 一套新的「房間風格」**：
@@ -72,24 +72,32 @@
   - **檯燈與螢幕照在桌面、牆或地板上的光暈，現有管線做不到**。家具以 shadow catcher 渲染，只記錄陰影，不記錄家具自己的燈照亮周圍的光；書桌也是另外渲染、隱藏檯燈的。房間背景也不能烘入這些光，因為家具依專案階段出現（例如檯燈從 50% 起）。所以 PS-248A 的檯燈與螢幕只在自己的輪廓內發光。若之後想要光暈，要另做「有燈減無燈」的差異圖層，以 screen／add 混合疊上，這是新的 sprite 與 DOM／CSS（受 INFRA-105 影響），另立任務。
   - `render_pack.py`／`process_pack.py` 加上同樣的參數，輸出到新的檔名（例如 `…-night.webp`、`props/…-night.png`、`previews/night-phase-XXX.jpg`），不覆蓋白天的檔案與預覽圖。
 - 家具位置：
-  - 夜晚的影子方向與白天不同：壁燈在後牆、往前打，影子朝畫面下方；太陽的影子主要朝左。所以夜晚家具的裁切框可能超出白天的框（例如書桌的影子），**不能硬套白天的框**，否則影子會被切出硬邊。
+  - 夜晚的影子方向與白天不同：4 盞壁燈在後牆上方、略朝後牆向下照，家具都在燈的前方，所以影子朝畫面下方，而且 4 盞燈的影子會重疊、呈扇形；太陽的影子主要朝左。所以夜晚家具的裁切框可能超出白天的框（例如書桌的影子），**不能硬套白天的框**，否則影子會被切出硬邊。
   - 每個夜晚 entry 有自己的 placement。位置由裁切框換算，runtime 依每個 entry 的 placement 縮放（`pixiSceneRuntime.js`、poster 相同），所以日夜切換時家具不會跳動。
   - `PROP_DEFINITIONS`／`placements.json` 改為每件家具有白天與夜晚兩個 entry；白天的值與檔案不變。
 - 執行時：
   - `getWorkspaceSceneAssets()` 多一個**獨立的時段參數**，預設白天；Pixi（`pixiSceneRuntime.js` 目前自己組 `visualState`，不含時段）與 poster（`orbitWindow.js`）都明確傳入同一個時段值。夜晚回傳夜晚版本的房間與家具，其他時段回傳白天版本。
-  - 夜晚的程式色層改為較弱的強度，不拿掉：光線層是角色、天氣唯一的夜晚處理。強度由 JS 決定（Pixi 的 alpha；poster 以 inline style 調整既有的光線層），不改 CSS。最後以 runtime 截圖（Pixi 與 poster，含角色、天氣、相框）確認，不能只看 `process_pack.py` 的預覽圖（預覽圖沒有程式色層）。
+    - 不要改成從 `visualState.timeBand` 讀取：poster 本來就把整個 model（含 `timeBand`）當成 `visualState` 傳入，舊的 `orbitWindow.js` 配新的 `assetManifest.js` 就會在原本的全強度色層下顯示夜晚版本，變暗兩次。
+  - 夜晚的程式色層改為較弱的強度，不拿掉：光線層是角色、天氣唯一的夜晚處理。
+    - 強度**依 `getWorkspaceSceneAssets()` 實際回傳的版本決定**（例如回傳的 scene 帶有 `lighting: 'night'`），不是依時段。舊的 `assetManifest.js` 沒有這個欄位，呼叫端就維持現在的全強度色層，所以混用時畫面與現在相同，不會出現「陽光照亮的房間配上較弱的夜晚色層」。
+    - 強度由 JS 決定（Pixi 的 alpha；poster 以 inline `opacity` 調整既有的光線層，`mix-blend-mode: soft-light` 不受影響），不改 CSS。
+  - 成就相框（z 94）在 poster 光線層與 Pixi canvas 之外，兩種色層都碰不到它。夜晚房間變暗後，相框（金色漸層、`#e9dfc6` 襯紙）會成為畫面中最亮的東西。做法二選一（§9 第 4 點）：以 JS 在相框上加 inline `filter: brightness(…)`（符合只改 JS 的限制；要決定使用者的照片是否一起變暗），或接受相框維持原亮度。
+  - app 另有一層全域的夜晚色調（`style.css` 的 `body::after`，`--time-tint` 夜晚 0.055，Liquid Glass 主題 0.13），也會蓋在 Orbit Window 上。
+  - 最後以 runtime 截圖確認：在實際 app、兩種 UI 主題下，Pixi 與 poster 各一張，含角色、天氣、相框。不能只看 `process_pack.py` 的預覽圖（預覽圖沒有程式色層）。
   - 時段仍在每次 render 時計算：跨過 21:00 或 05:00 時，下一次 render（開啟頁面或狀態改變）才換版本。不新增計時器（INFRA-106／PS-249 的教訓）。
   - 記憶體：`Pixi.Assets.load` 不會釋放。若同一次使用跨過 21:00 或 05:00，日夜兩套都會留在記憶體（背景解碼後約 6.3 MB）。要釋放不再使用的那一套，或確認仍在 vertical slice §10 首頁 64 MB 預算之內。
   - Pixi 的光線層是否改成與 poster 相同的 4 個時段，列為可選（§9 第 4 點）：現在 Pixi 的早晨、白天、傍晚都是同一層 `0xf6d58b` alpha 0.05，大部分使用者看到的是 Pixi，改了會有感。poster 用的是 CSS soft-light；內建的 `pixi.js` 在 WebGL 下似乎沒有 soft-light 混合（要確認），只能以 alpha 填色近似。
-- 改版時新舊程式混用（INFRA-105）：舊的 JS／CSS 可能在改版後約 10 分鐘內仍被使用。PS-248A 遵守三個限制，讓混用時最多退回「白天版本＋較弱的夜晚色層」，而不是無法啟動或日夜不一致：
-  - 不在既有 SHELL 模組之間新增 import／export（新 export 被舊模組缺少時，ES module 無法 link，app 無法啟動）；
-  - 時段是獨立參數、預設白天，兩個呼叫端都明確傳入；
-  - 色層強度只在 JS 中改，不新增 CSS class 或 DOM 結構。
+- 改版時新舊程式混用（INFRA-105）：舊的 JS／CSS 可能在改版後約 10 分鐘內仍被使用。PS-248A 遵守下列限制，讓混用時退回與現在相同的畫面，而不是無法啟動：
+  - 不在既有 SHELL 模組之間新增 import／export，也不移除或改名既有的 export（`app.js` 靜態 import `pixiSceneRuntime.js`，它與 `orbitWindow.js` 都 import `assetManifest.js`；缺少 export 時 ES module 無法 link，app 無法啟動）。只給腳本或測試用的新 export 不受限。
+  - `getWorkspaceSceneAssets()` 維持現在的回傳形狀（`background` 是字串，`props[]` 每項有 `path` 與 `placement`），由它依時段挑好版本；不回傳日夜兩組讓呼叫端挑，否則舊的 renderer 會壞。
+  - 時段是獨立參數、預設白天，兩個呼叫端都明確傳入。
+  - 色層強度依回傳的版本決定，只在 JS 中改，不新增 CSS class 或 DOM 結構。
+  - 仍有短暫的不一致：`orbitWindow.js` 與 `pixiSceneRuntime.js` 是兩個模組，可能一新一舊。例如新 poster 配舊 Pixi 時，poster 先顯示夜晚版本，Pixi 畫好後淡入白天版本（反之亦然）；WebGL 失敗時只有 poster。這只影響畫面，最多約 10 分鐘。
   - 或者先做 INFRA-105（改部署行為，需核准）。
-- 要一起改的檔案：`scene.py`、`render_pack.py`、`process_pack.py`、`placements.json`、`assetManifest.js`（含 `WORKSPACE_INITIAL_PAINT_ASSETS` 與 `getWorkspaceAssetManifestPaths()`）、`build-manifest.mjs`（夜晚背景要有自己的 id；新的家具路徑要能辨識）、`computeAssetBaseline.mjs`、`pixiSceneRuntime.js`、`orbitWindow.js`、`sw.js` 的 SHELL 與註解，以及 §7 的測試。
+- 要一起改的檔案：`scene.py`、`render_pack.py`、`process_pack.py`（`sync_asset_manifest` 與 `placements.json` 的寫入現在會覆蓋整段，只處理夜晚時要與白天的資料合併）、`placements.json`、`assetManifest.js`（含 `WORKSPACE_INITIAL_PAINT_ASSETS` 與 `getWorkspaceAssetManifestPaths()`；前者只有 `computeAssetBaseline.mjs` 與測試使用）、`build-manifest.mjs`（夜晚背景要有自己的 id；新的家具路徑要能辨識）、`computeAssetBaseline.mjs`、`pixiSceneRuntime.js`、`orbitWindow.js`、`sw.js` 的 SHELL 與註解，以及 §7 的測試。
 - 文件：
   - `pwa/assets/personal-space/v2/README.md`「日夜維持程式產生的光線層」改為「白天與夜晚各有一套 Blender 渲染，早晨與傍晚以程式色層調整」；
-  - art bible §6.1／§7.3 與 asset pipeline 的「Vertical Slice Asset Budget」改為允許夜晚版本；
+  - art bible §6.1（素材清單）、§7.3（日夜疊層）與 asset pipeline 的「Vertical Slice Asset Budget」改為允許夜晚版本；
   - technical design §12.2 的 SHELL 說明。
 - 不改：角色、天氣特效、相框位置、ledger、`rulesetId`、圖層順序、白天版本的檔案。
 
@@ -97,7 +105,7 @@
 
 只有在使用者想要「窗外依時段不同」時才做。技術上要處理：
 
-- 窗戶沒有玻璃，房間渲染的空白處與窗洞一樣是透明的，而 `process_pack.py` 會把背景色填滿所有透明處。要另外輸出窗戶遮罩（例如只渲染 `outside`、房間設為 holdout），才知道哪裡該露出窗外。
+- 窗戶沒有玻璃。現在的房間渲染中，窗洞被天際線填滿；一旦 `outside` 對相機不可見，窗洞就與房間外的空白處一樣透明，而 `process_pack.py` 會把背景色填滿所有透明處。要另外輸出窗戶遮罩（例如只渲染 `outside`、房間設為 holdout），才知道哪裡該露出窗外。
 - `outside` 若以 `hide_render` 隱藏，天空的自發光就不再照亮房間，房間的樣子會改變；要改用「相機看不到、但仍發光」（`visible_camera = False`）。
 - 窗外圖放在房間之下，所以是**房間背景**要有 alpha（有 alpha 的 lossy WebP；lossless WebP 目前會讓 `build-manifest.mjs` 拋錯），窗外圖本身可以不透明。這與 art bible §7 的圖層順序（窗外在房間殼之上）不同，但效果相同，要在文件中說明。
 - 房間的窗洞一旦透明，每個時段都要有窗外圖：有 PS-248A 時是白天與夜晚兩張房間圖都改成透明窗洞，再加上 4 張窗外圖（或 2 張，若只分日夜）。
@@ -120,6 +128,7 @@
   - 完整頁面的 Edit Mode 加上風格選擇，寫入既有的 `world.selectedThemeId`。不新增欄位；V2 state 只存在本機。
   - 不認得的 id（包括 migration 留下的 legacy 值）一律退回預設風格；風格 id 不使用 `night` 等 legacy 值。
   - 舊版分頁不讀 `selectedThemeId`，所以不會改壞它。
+- 改版混用：沿用 §4.1 的限制（風格也是預設值為 `default` 的獨立參數）。Edit Mode 的選單是新的 DOM 與 CSS，舊 CSS 時會沒有樣式，要讓它在沒有樣式時仍可用。
 - 若 PS-248A 已做，每套風格要有白天與夜晚兩套，成本加倍。
 - 快取：選項見 §6。
 
@@ -130,6 +139,7 @@
 - 解鎖條件由現有資料推導，例如 AI-202 的 `partner`／`trusted-companion`，或 Main Quest 天數。只用於顯示，不寫入 ledger。
   - 必須使用 AI-202B 由 active ledger 推導的階段，不可讀儲存的 `companion.relationshipStage`：舊版分頁會留下過時的值（AI-202 提案 §3.3）。
   - 「Main Quest 天數」同樣需要 AI-202B 的推導，所以兩種條件都依賴 AI-202B。
+- 改版混用：沿用 §4.1 的限制。
 - 撤銷：條件由 active ledger 推導，所以撤銷 Main Quest 讓天數或階段下降時，裝飾會跟著消失。這與 AI-202 對階段下降的處理一致。若希望「出現過就保留」，就要新增本機欄位，需另行核准。
 - 通知（product spec §3.2 原則 2 要求來源與意義清楚）：
   - **N1（建議）**：不另做 reveal，裝飾安靜地出現；完整頁面的說明列出「到 `partner` 會出現什麼」。完全不依賴 BUG-113。
@@ -151,7 +161,7 @@
   - PS-248B：走過登錄表中的每個風格 id。
   - PS-248C：走過解鎖條件的每個值（每個關係階段或天數門檻）。
 - 各階段：
-  - PS-248A：9 張夜晚圖片都進 SHELL，約 +460 KB（SHELL 圖片 987,645 B 的約 +47%），每個使用者安裝時都要下載。這是修改 `sw.js` 的 SHELL 清單：規則沿用 PS-211A，但核准 PS-248A 就包括這個變更（§9 第 4 點）。完整素材約 1.75 MB，仍低於 4 MB。首次繪製只載入其中一套；`WORKSPACE_INITIAL_PAINT_ASSETS` 要改為以日夜中較大的背景計算。
+  - PS-248A：9 張夜晚圖片都進 SHELL，約 +460 KB（SHELL 圖片 987,645 B 的約 +47%），每個使用者安裝時都要下載。`cache.addAll()` 全有或全無，安裝越大，在不穩定的網路上越容易失敗，新版本就會延後啟用。這是修改 `sw.js` 的 SHELL 清單：規則沿用 PS-211A，但核准 PS-248A 就包括這個變更（§9 第 4 點）。完整素材約 1.75 MB，仍低於 4 MB。首次繪製只載入其中一套；改為以每個時段的首次繪製清單（或在 `computeAssetBaseline.mjs` 取較大者）計算。
   - PS-248A2：窗外圖都進 SHELL。
   - PS-248B 的選項：
     - **S1（建議）所有風格都進 SHELL**：每套約 +460 KB（有夜晚版本時約 +920 KB）。只有 1–2 套時，換來的是離線與改版後 poster 一定完整；`sw.js` 的規則不變，但測試要如上逐風格推導。
@@ -174,7 +184,8 @@
   - `npm run ps242:manifest`、`npm run ps243:assets` 的基準，與 `ps243AssetBudget.test.js` 的位元組數與「29 個檔案」；
   - `ps211aPrecache.test.js`（22 張）、`tests/e2e/sw-precache.test.js`（23 個）；
   - `personalSpaceOrbitWindow.test.js`（首次繪製 4 張、manifest 29 張）、`ps242AssetManifest.test.js`（29 張）；
-  - `ps244WorkspacePlacements.test.js`（背景必須等於 `placements.background`；每件家具一個路徑）；
+  - `ps244WorkspacePlacements.test.js`（背景必須等於 `placements.background`；每件家具一個路徑；PS-247 的遮擋測試只走過預設時段，要加上夜晚）；
+  - `personalSpacePixiRuntime.test.js`（以 `timeBand: 'night'` render 後檢查 `workspace/props/planning-board.png`，夜晚改用新檔名後會失敗）；
   - technical design §12.2 的「22 of 29」、`pwa/assets/personal-space/v2/README.md` 與 `docs/ps-243-production-acceptance.md` 的「29-file」。
 - 版本：新增視覺功能依 AGENTS.md §14 用 `npm run bump -- minor`（PS-244 為 1.29.0、PS-245 為 1.30.0）。
 - 視覺驗收：
@@ -190,16 +201,17 @@
   - 預覽圖涵蓋日、夜 × 5 個進度階段。
 - 執行時：
   - 首頁小卡（Pixi 與 poster）與完整頁面，在同一個時段顯示同一套版本；時段以明確參數傳入，用注入的時間測試 4 個時段，與機器時間無關。
-  - 夜晚不再看得到陽光；房間沒有變暗兩次，角色、天氣仍有夜晚感（runtime 截圖確認）。
+  - 夜晚不再看得到陽光；房間沒有變暗兩次，角色、天氣仍有夜晚感；相框依 §9 第 4 點的決定處理（在實際 app、兩種 UI 主題下的 runtime 截圖確認）。
+  - 色層強度依回傳的版本決定；以「新呼叫端＋舊 `assetManifest.js`」的組合測試，畫面與現在相同。
   - 日夜切換時家具、角色、相框的位置不變；圖層順序不變。
   - 同一次使用跨過時段時，不再使用的那一套被釋放，或記憶體在預算內。
 - 快取：
-  - 夜晚圖片都在 SHELL，`ps211aPrecache.test.js` 走過時段並通過；
+  - 夜晚圖片都在 SHELL，`ps211aPrecache.test.js` 與 PS-247 的遮擋測試都走過時段並通過；
   - 離線 e2e 以固定的時間（Playwright 的 clock 或注入的時間）分別檢查日、夜的 poster 都完整（`naturalWidth > 0`）。現在的設定沒有固定時間，CI 跑到哪個時段就測哪個。
 - 相容：
   - 上一版 `assetManifest.js` 會要求的檔案仍存在且內容與尺寸不變；
   - 舊版分頁不受影響（它只要白天版本）；
-  - 遵守 §4.1 的三個混用限制（不在既有 SHELL 模組之間新增 import／export、時段參數預設白天、只在 JS 改色層）。
+  - 遵守 §4.1 的混用限制（不新增、移除或改名既有 SHELL 模組之間的 import／export；回傳形狀不變；時段參數預設白天；色層依回傳的版本、只在 JS 改）。
 - 文件：README、art bible、asset pipeline、technical design 依 §4.1 更新。
 - 檢查：
   - `ps242:manifest -- --check`、`ps243:assets -- --check`、lint、test、e2e 通過；
@@ -209,7 +221,7 @@
 ## 9. 需要使用者決定
 
 1. **範圍**：「本工具」是否就是「空間」分頁？角色與天氣特效（非 Blender）不在本提案範圍，可以嗎？B 改稱「房間風格」，避免與 UI 主題混淆，可以嗎？
-2. **素材上限與擴充前提**：art bible §6.1／§7.3 與 asset pipeline 的 vertical slice 上限是「一張房間背景、一張 exterior、日夜光線疊層」，且要先通過驗證再擴充內容；PS-243 的實機檢查仍未完成。
+2. **素材上限與擴充前提**：art bible §6.1 與 asset pipeline 的 vertical slice 上限是「一張房間背景、一張 exterior、日夜光線疊層」（§7.3 也假設日夜是疊層），且要先通過驗證再擴充內容；PS-243 的實機檢查仍未完成。
    - PS-248A（第二張房間背景＋8 件夜晚家具）、PS-248B（第二種房間外觀）、PS-248A2（多張 exterior）都超出這個上限。
    - 建議同意 PS-248A 放寬：它是同一個房間殼的光線狀態，並修正「夜晚仍有陽光」的既有不一致。B 與 A2 是否也放寬，或等 PS-243？
    - 同意的項目要一併更新 art bible 與 asset pipeline 文件。
@@ -218,8 +230,9 @@
 4. **PS-248A 的做法**：
    - **夜晚版本**（建議）。核准即包括：以完整重渲染取代「日夜維持程式光線層」的契約、SHELL 增加約 460 KB（修改 `sw.js` 的 SHELL 清單）、夜晚色層改弱但保留、檯燈與螢幕只在自己的輪廓內發光（不做光暈）。
    - 夜晚版本用於哪些時段：只有夜晚 21:00–05:00（建議）；或傍晚也用（冬天 17:30 後天就黑了，但傍晚的暖色太陽也說得通）。
+   - 成就相框在夜晚：以 JS 調暗（建議；照片是否一起變暗也要決定），或維持原亮度。
    - Pixi 的光線層是否改為與 poster 相同的 4 個時段（可選；大部分使用者看到的是 Pixi，只能以 alpha 填色近似 soft-light）。
-   - 改版混用的處理：遵守 §4.1 的三個限制（建議），或先做 INFRA-105（需核准）。
+   - 改版混用的處理：遵守 §4.1 的限制（建議；最多約 10 分鐘內 poster 與 Pixi 可能一日一夜），或先做 INFRA-105（需核准）。
    - 其他做法：只拆窗外、不重渲染房間（最便宜，但夜晚仍有陽光；做之前先給預覽圖），或維持現狀。
 5. **PS-248B 的風格**：明亮北歐（建議）、夜貓工作室、深木書房（Mastery 色票，不建議），或其他。
 6. **取得方式**：B 免費選擇（建議）；C 由 AI-202B 推導的關係階段或 Main Quest 天數解鎖（建議），撤銷時跟著消失，通知採 N1 安靜出現（建議）或 N2。Gold 購買與 Pro 專屬都需要另立大型任務。
