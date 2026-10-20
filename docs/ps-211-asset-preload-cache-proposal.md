@@ -32,7 +32,7 @@
   - 本機 WebGL 是軟體算圖，Pixi ticker 會造成約 100 ms 的長任務，主執行緒的時間偏悲觀；
   - proxy 用 HTTP/1.1，GitHub Pages 是 HTTP/2；
   - 數字是單次量測，只用來比較量級，不是 production 的網路紀錄。
-- 量測腳本沒有提交（放在當時 session 的暫存目錄，之後的 session 讀不到）。實作時需要重新量測，就依本節的設定重寫。
+- 量測腳本：`tests/perf/ps211-cache-probe.pw.mjs`（CI 不執行）。在 repo 根目錄執行 `npx playwright test -c tests/perf/playwright.ps211.config.mjs`，可用 `-g` 只跑其中一個情境；結果寫到 `test-results/ps211-cache-probe/`（可用 `PS211_PROBE_OUT` 改位置）。2026-10-20 從這個位置重跑「改版後，100%」情境，得到 +2,184／+3,368／+4,351 ms，與 §4.1 的表一致。
 
 ## 3. 現況：已經沒有等待的地方
 
@@ -128,7 +128,8 @@
   - Companion 由 `companionEngine.js` 決定：observe、approach、congratulate、rest、work、remind。
   - 天氣存在 V2 state 中：沒有程式碼寫入 `rain`，但 `stateSchema.js` 接受已儲存的 `rain`，所以 A3 也放入雨天特效（31,582 bytes）。
   - 朝右與 `walk` 既不儲存、也不會由程式碼推導出來，不列入。
-- A1–A3 都比現在的 1,987,696 bytes 小：A2 每次改版少約 1.43 MB，A3 少約 1.00 MB。A3 的效果大致等於「A2 ＋ C」，但它是確定的，不必修改 §12.1。
+- A1–A3 都比現在的 1,987,696 bytes 小：寫進 Cache Storage 的量，A2 少約 1.43 MB，A3 少約 1.00 MB。實際下載的量取決於 §4.1 的 HTTP cache：ETag 不隨部署改變時，沒變的檔案只需 304 重新驗證，兩者都幾乎不下載；ETag 每次都變時，SHELL 的檔案每次改版都整個下載，A2／A3 就比現在少下載這麼多。
+- A3 的效果大致等於「A2 ＋ C」，但它是確定的，不必修改 §12.1。
 - 與技術設計 §12.2 的關係：
   - §12.2 允許 precache「離線 shell 需要的 stateful fallback 素材」，但也說不要把所有全解析度的場景圖放進 SHELL，並要求 service worker 快取策略的變更先取得核准。
   - poster 是 V2 的 fallback，A1／A2 符合。A3 放入的也全是 poster 會用到的素材，但數量是 manifest 29 個檔案中的 22 個。是否算「全部」由使用者判斷；選 A3 時，順便把 §12.2 的文字改清楚。
@@ -149,7 +150,7 @@
 
 ### C 的範圍（只在選 A2 時需要）
 
-- 只在第一次 canvas 就緒、瀏覽器閒置、`navigator.connection.saveData` 不是 true、連線不是 2g 時執行。
+- 只在第一次 canvas 就緒、瀏覽器閒置、`navigator.connection.saveData` 不是 true、`effectiveType` 不是 `2g` 或 `slow-2g` 時執行。
 - 只預熱角色的動作圖片：主角 celebrate、inspect，Companion congratulate、approach，合計 179,671 bytes。家具已由 A2 precache。
 - 實作用 `pixi.Assets.load()`，由閒置時的工作呼叫，runtime 保留它的 promise 作為「預熱完成」的訊號。不用 `Assets.backgroundLoad()`：vendored 版本只把圖片排入背景佇列就 resolve，無法知道何時下載與解碼完成。
 - 預熱的圖片會解碼並留在 Pixi 的記憶體快取，與目前狀態已載入的圖片相同處理，不另外釋放。
@@ -200,7 +201,7 @@
   - 既有的 runtime lifecycle、context lost／restored、e2e 的 canvas 檢查通過。
   - （若包含可選最佳化）首頁 → 空間 → 首頁的過程中，Pixi `Application` 只建立一次（以假的 Pixi 計數）。
 - **PS-211C**（若排入）
-  - 第一次就緒後的閒置時間才開始預熱；`saveData` 或 2g 時不預熱；只載入 §5 C 列出的圖片。
+  - 第一次就緒後的閒置時間才開始預熱；`saveData`、`2g`、`slow-2g` 時不預熱（各有測試）；只載入 §5 C 列出的圖片。
   - 預熱完成後（測試先等 runtime 的預熱完成 promise，也就是 `Assets.load()` 的 promise）才觸發 reveal：新圖片已在快取中，不發出新的圖片請求。
   - 預熱尚未完成時觸發 reveal：行為與現在相同（圖片照常下載、畫面照常更新），不多等、不出錯。
   - 技術設計 §12.1 更新。
