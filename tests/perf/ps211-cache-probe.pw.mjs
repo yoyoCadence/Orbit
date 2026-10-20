@@ -20,8 +20,8 @@
  *   PW_CHROMIUM_PATH   optional Chromium executable for Playwright
  * Ports 3211 (dev server) and 3212 (proxy) must be free.
  */
-/* global window, document, navigator, performance, location, localStorage, caches, fetch, URL,
-   requestAnimationFrame, setTimeout, PerformanceObserver, MutationObserver, Buffer, process */
+/* global window, document, navigator, location, localStorage, caches, requestAnimationFrame,
+   PerformanceObserver, MutationObserver */
 import { test, expect } from '@playwright/test';
 import http from 'node:http';
 import { once } from 'node:events';

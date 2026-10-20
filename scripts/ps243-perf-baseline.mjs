@@ -14,6 +14,7 @@
 // evidence against a stale server another checkout left on a fixed port.
 
 import { spawn } from 'node:child_process';
+/* global window -- used only inside page.evaluate(), which runs in the browser */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { dirname, join, resolve } from 'node:path';

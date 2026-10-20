@@ -231,12 +231,6 @@
 
 ## In Progress
 
-- [ ] **INFRA-104** 讓 `pwa/sw.js` 與 Node 端的腳本也被 lint
-  - 問題（INFRA-103 獨立 review 發現，2026-10-20）：`npm run lint` 只涵蓋 `pwa/js/**/*.js` 與 `tests/**/*.js`。`pwa/sw.js`（PS-211A 要改）、`pwa/server.cjs`、`scripts/*.mjs`、設定檔都沒有被 lint；`eslint.config.js` 中給設定檔的區塊因此從未生效。以目前的設定直接 lint `sw.js` 會因 service worker 的 globals（`self`、`caches` 等）報 17 個 `no-undef`。
-  - 方向：在 `eslint.config.js` 為 `pwa/sw.js` 加上 service worker globals、為 Node 腳本加上 Node globals，並把它們加入 `lint` script。
-  - **修改既有設定（eslint 設定與 CI 執行的 script），需使用者核准**。
-  - **2026-10-20 使用者核准。** In progress（2026-10-20）。
-
 - [ ] **PRO-014Q** 開發者面板的 backup 不應擋住其他帳號或非 Pro 模擬的 entitlement refresh
   - 問題（PR #158 Codex review 指出，2026-10-18 確認）：`storage.refreshProEntitlement()` 只要 `FLAG_DEV_BACKUP` 存在就直接 return。這個 backup 也由等級模擬器建立，且 `storage.clearAll()` 登出時不會清除。開發者登出後換另一個帳號，該帳號的 refresh 會一直被跳過，在 `server` source 下 fail closed，直到手動重設。
   - 影響：只影響使用過開發者面板的裝置。
@@ -259,6 +253,20 @@
 ---
 
 ## Done
+
+- [x] **INFRA-104** 讓 `pwa/sw.js` 與 Node 端的腳本也被 lint
+  - 問題（INFRA-103 獨立 review 發現，2026-10-20）：`npm run lint` 只涵蓋 `pwa/js/**/*.js` 與 `tests/**/*.js`。`pwa/sw.js`（PS-211A 要改）、`pwa/server.cjs`、`scripts/*.mjs`、設定檔都沒有被 lint；`eslint.config.js` 中給設定檔的區塊因此從未生效。以目前的設定直接 lint `sw.js` 會因 service worker 的 globals（`self`、`caches` 等）報 17 個 `no-undef`。
+  - 方向：在 `eslint.config.js` 為 `pwa/sw.js` 加上 service worker globals、為 Node 腳本加上 Node globals，並把它們加入 `lint` script。
+  - **修改既有設定（eslint 設定與 CI 執行的 script），需使用者核准**。
+  - **2026-10-20 使用者核准。** In progress（2026-10-20）。
+  - 完成（2026-10-20）：
+    - `lint` script 改為 `eslint .`（不需要 glob，Windows 也適用）。`eslint.config.js` 加上：
+      - 全域 ignores：`pwa/vendor/**` 與輸出目錄；
+      - `pwa/sw.js`（classic script，service worker globals）；
+      - Node 腳本與設定檔（`scripts/`、`art-pipeline/`、`skills/` 的 `.mjs`、`tests/perf/*.mjs`、三個 config）；
+      - `pwa/server.cjs`（CommonJS）。
+    - 檢查的檔案由 176 個增加到 195 個，全部通過。只需要調整註解：`ps243-perf-baseline.mjs` 加 `/* global window */`，`tests/perf` 兩個檔案移除已由設定提供的 globals。
+    - 在 `sw.js` 加入未定義的呼叫時，`npm run lint` 會失敗。
 
 - [x] **PS-211A** service worker 預先快取 V2 poster 素材與 Pixi（A3 ＋P）
   - 規格：同上提案 §4.1、§4.3、§5 A。使用者 2026-10-20 核准 A3 ＋P（部署行為）。
