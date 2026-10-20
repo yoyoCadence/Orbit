@@ -133,6 +133,7 @@ K4 的其他影響：
 | **階段提升**，沒有完成專案（第 12、30 天） | `major`，標題「夥伴關係：合作夥伴」（首頁不再顯示預設的「世界里程碑已解鎖」）；reveal 行「夥伴關係：合作夥伴」 | `congratulate`，新台詞 `companion.relationship.stage-up` |
 | 專案完成但階段沒變（legacy 下限已是 `familiar`） | 與現在相同 | 專案完成台詞 |
 | **階段退回**（撤銷後跌破門檻） | **不是** `major`，類別由其他 reward 決定；reveal 行「夥伴關係：熟悉夥伴」，不寫「−1」或「降級」 | `observe`＋**目前階段的 `observe` 台詞**（例如 `companion.observe.familiar`），優先於進度與 Session 分支（見下方優先順序）；主角不做慶祝動作 |
+| 其他撤銷（沒有跨過門檻） | 類別由其他 reward 決定 | 同上：`observe`＋目前階段的 `observe` 台詞，不恭喜、不 `approach` |
 | **換一天承接**（撤銷後由下一個 Main Quest 日補上，階段與專案狀態都沒變） | 沒有關係或解鎖的 reveal 行，不是 `major` | 不恭喜 |
 | 第一次以新規則計算（policy id 改變）、`queueReveal: false`、或由舊版分頁寫入 | 不排入階段的 reveal | — |
 
@@ -140,8 +141,10 @@ Companion 的優先順序（有待播放的 reveal 時；取代 `companionEngine
 
 1. 專案由未完成變為完成 → `congratulate`＋專案完成台詞（第 4 天）。
 2. 階段提升 → `congratulate`＋`companion.relationship.stage-up`。
-3. 階段退回 → `observe`＋目前階段的 `observe` 台詞（選 S2 時是 `companion.observe`）。必須排在第 4、5 條之前：現在的 `isQuestOrProjectProgressReveal()` 不看方向，撤銷的 reveal 含被撤銷的 `project_progress`，會變成 `approach`＋「工作空間改變了，下一個有用的步驟已經看得見」（撤銷第 12 天時專案仍是 100%，這句是錯的）；就算 selector 忽略撤銷，當天若還有其他有效 Session，「最新 Session」分支也會先命中。
-4. **加入的**任務或專案進度 → `approach`＋進度台詞。只含被撤銷 reward 的 reveal 不算。
+3. **撤銷的 reveal**（階段退回，或只含被撤銷的 reward）→ `observe`＋目前階段的 `observe` 台詞（選 S2 時是 `companion.observe`），並在此結束，不再往下判斷。必須排在第 4、5 條之前：
+   - 現在的 `isQuestOrProjectProgressReveal()` 不看方向，撤銷的 reveal 含被撤銷的 `project_progress`，會變成 `approach`＋「工作空間改變了，下一個有用的步驟已經看得見」（撤銷第 12 天時專案仍是 100%，這句是錯的）；
+   - 就算 selector 忽略撤銷，當天若還有其他有效 Session，「最新 Session」分支也會先命中，在撤銷的當下說「這次行動在空間裡留下了痕跡」。
+4. **加入的**任務或專案進度 → `approach`＋進度台詞。
 5. 之後沿用現有的分支（最新的恢復或一般 Session、Momentum）。
 
 這改變了 vertical slice §7.2 的 Companion 優先順序，列入 §9 第 3 點的規格修改。主角在 reversal reveal 時不做慶祝動作。
@@ -250,7 +253,8 @@ reveal 與 Companion（§3.4）：
 - 撤銷第 12 天：
   - 有第 13 天時：沒有關係行，不是 `major`，不恭喜；
   - 沒有時：退回 `familiar`，reveal 行「夥伴關係：熟悉夥伴」，不是 `major`；Companion 是 `observe`＋`companion.observe.familiar`，**不是** `congratulate`，也**不是** `approach`／進度台詞；主角不慶祝。
-  - 同上，但當天還有另一筆有效的一般 Session：Companion 仍是 `observe`＋`companion.observe.familiar`（階段退回優先於「最新 Session」分支）。
+  - 同上，但當天還有另一筆有效的一般 Session：Companion 仍是 `observe`＋`companion.observe.familiar`（撤銷的 reveal 優先於「最新 Session」分支）。
+- 專案完成後撤銷第 6 天（沒有跨過門檻），當天另有一筆有效的一般 Session：Companion 是 `observe`＋目前階段的 `observe` 台詞，不是 `congratulate`，也不是 `approach`。
 - 剛好 12 天時撤銷第 2 天：只有第 2 天的 reversal reveal 帶階段退回；第 4、5 天換一天承接的 reveal 沒有行，不排入。
 - 撤銷第 4 天而第 5 天存在（專案完成改由第 5 天承接）：兩個 reveal 都不是 `major`，都不恭喜，沒有關係或解鎖的行。
 - 已排入的第 12 天 reveal 尚未顯示時撤銷較早的一天、階段跌回 `familiar`：該 reveal 不再顯示「合作夥伴」。
@@ -289,7 +293,7 @@ reveal 與 Companion（§3.4）：
   - §4.3 的 key 改為程式碼實際使用的值：`relationship:companion=1`、`gold:daily-main-quest=100`、`hidden_stat:depth.daily-main-quest=3`；
   - §5.1 的 state 欄位加上 `companion.legacyRelationshipPoints` 與 `companion.relationshipPolicyId`；
   - §6.1、§13.1 改為 §3.3 建議的文字；
-  - §7.2 的階段推進改寫為「由 active ledger 推導」與本提案的門檻；Companion 優先順序加上「階段提升 → `congratulate`」，並註明 reversal reveal 跳過專案完成與進度兩條。
+  - §7.2 的階段推進改寫為「由 active ledger 推導」與本提案的門檻；Companion 優先順序改為 §3.4 的 5 條（加上階段提升；撤銷的 reveal 一律 `observe` 並結束判斷）。
 - `docs/personal-space-state-flow.md` 的關係公式改為 `max(legacy 點數, ledger 中的 relationship ＋ 推導的 milestone)`，並記錄 policy id。
 
 ## 9. 需要使用者決定
@@ -304,7 +308,7 @@ reveal 與 Companion（§3.4）：
    - K4（建議）：由 active ledger 推導 milestone，legacy 點數作為下限。需同意：
      - 新增兩個本機欄位 `companion.legacyRelationshipPoints`、`companion.relationshipPolicyId`；
      - 修改 vertical slice §6.1 與 §13.1（`rulesetId` 只標示 ledger entry 的版本，推導的規則另用 policy id）；
-     - 修改 §7.2：「透過 ledger entry 推進」改為「由 active ledger 推導」；Companion 優先順序加上階段提升，並讓 reversal reveal 跳過專案完成與進度兩條（§3.4）。
+     - 修改 §7.2：「透過 ledger entry 推進」改為「由 active ledger 推導」；Companion 優先順序改為 §3.4 的 5 條：加上階段提升；撤銷的 reveal 一律 `observe` 並結束判斷。
    - 歷史：R1 epoch 以後的 Main Quest 日都算、第一次以新規則計算時不補播（建議）／R2 只算新版上線之後。
 4. **顯示**：
    - S1 名稱 ＋ reveal ＋ 依階段的預設台詞（建議）／S2 只有名稱與 reveal（含階段提升的 1 句）／S3 不改。
