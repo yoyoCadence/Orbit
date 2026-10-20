@@ -129,7 +129,7 @@
   - 天氣存在 V2 state 中：沒有程式碼寫入 `rain`，但 `stateSchema.js` 接受已儲存的 `rain`，所以 A3 也放入雨天特效（31,582 bytes）。
   - 朝右與 `walk` 既不儲存、也不會由程式碼推導出來，不列入。
 - A1–A3 都比現在的 1,987,696 bytes 小：寫進 Cache Storage 的量，A2 少約 1.43 MB，A3 少約 1.00 MB。實際下載的量取決於 §4.1 的 HTTP cache：ETag 不隨部署改變時，沒變的檔案只需 304 重新驗證，兩者都幾乎不下載；ETag 每次都變時，SHELL 的檔案每次改版都整個下載，A2／A3 就比現在少下載這麼多。
-- A3 的效果大致等於「A2 ＋ C」，但它是確定的，不必修改 §12.1。
+- A3 涵蓋的比「A2 ＋ C」多，而且是確定的，不必修改 §12.1：C 只預熱 reveal 會用到的 4 張角色圖，A3 則包含所有可能的角色狀態與雨天。
 - 與技術設計 §12.2 的關係：
   - §12.2 允許 precache「離線 shell 需要的 stateful fallback 素材」，但也說不要把所有全解析度的場景圖放進 SHELL，並要求 service worker 快取策略的變更先取得核准。
   - poster 是 V2 的 fallback，A1／A2 符合。A3 放入的也全是 poster 會用到的素材，但數量是 manifest 29 個檔案中的 22 個。是否算「全部」由使用者判斷；選 A3 時，順便把 §12.2 的文字改清楚。
@@ -155,6 +155,7 @@
 - 實作用 `pixi.Assets.load()`，由閒置時的工作呼叫，runtime 保留它的 promise 作為「預熱完成」的訊號。不用 `Assets.backgroundLoad()`：vendored 版本只把圖片排入背景佇列就 resolve，無法知道何時下載與解碼完成。
 - 預熱的圖片會解碼並留在 Pixi 的記憶體快取，與目前狀態已載入的圖片相同處理，不另外釋放。
 - 這是盡力而為的改善，不是保證：預熱完成前就發生的狀態改變，仍要等新圖片下載。
+- C 不涵蓋的角色狀態第一次出現時仍要下載（每張 42–45 KB）：完成恢復 Session 後的主角 rest 與 Companion rest、動量 strong／peak 時的主角 work 與 Companion work、提醒時段的 Companion remind。要涵蓋這些就選 A3；把它們也放進 C（9 張，397,133 bytes）效果接近 A3，但仍是盡力而為。
 - 要修改技術設計 §12.1（「只載入目前的 scene bundle」）；也可能牴觸 §12.2「較大的 scene bundle 依需要快取」的寫法。
 
 ### D 為什麼暫緩
