@@ -213,9 +213,9 @@
   - 方向：
     - 「專案完成」由 `applyReconciliationToV2State()` 比較前後的 `activeProject.completed`（false → true）決定，記在 reveal 上；selector 不再從 reward 內容推測；
     - `revealKind()` 只把**加入**的、且真的改變狀態的解鎖與關係算成 `major`；
-    - reversal 不恭喜、主角不慶祝；
+    - reversal reveal 跳過 Companion 優先順序中的「專案完成」與「進度 → `approach`」兩條（現在 `isQuestOrProjectProgressReveal()` 不看方向，撤銷時會說「工作空間改變了…」），主角不慶祝；
     - 只是換一天承接時，不顯示解鎖或關係的行。
-  - 回歸測試（在修正前會失敗）：第 5 天的 reveal；專案完成後撤銷第 6 天；撤銷第 4 天（有與沒有第 5 天）。
+  - 回歸測試（在修正前會失敗）：第 5 天的 reveal；專案完成後撤銷第 6 天；撤銷第 4 天（有與沒有第 5 天）。撤銷時 Companion 既不是 `congratulate` 也不是 `approach`，主角不慶祝。
   - 影響 AI-202B：階段變化的 reveal 依賴這個修正（提案 §3.4、§9 第 9 點）。
 
 - [ ] **PS-248** 以 Blender 擴充「空間」的主題與素材（提案）
@@ -252,7 +252,7 @@
     - 關係階段只由 Main Quest 天數推進：第 4 天 `familiar`（即現有的 Workspace Upgrade 完成，不改）、第 12 天 `partner`、第 30 天 `trusted-companion`。新的 milestone 由 active ledger 推導，**不寫成 ledger entry**：仍在執行舊版程式碼的分頁會撤銷它不認得的同 ruleset entry（Codex review 指出）。另存一個本機欄位 `companion.legacyRelationshipPoints`，讓舊版分頁寫入的過時點數不會汙染計算（需核准）；legacy 點數是下限而不是加分，門檻對所有使用者相同（Codex review 指出）。
       - 現況：唯一的來源是專案完成，所以階段最多到 `familiar`；`companionEngine` 完全不讀階段。
     - hidden stats 不決定階段：沒有每日上限、instant 也算，容易刷。AI-202B 只把它們的顯示改為中文名稱。
-    - 不因缺席降級；只有來源 Session 被撤銷時退回。
+    - 不因缺席降級；只有 Main Quest 日被撤銷、數量跌破門檻時退回。
     - 階段變化的 reveal 由前後的階段決定：只有提升是 `major`；退回不恭喜；換一天承接時沒有關係的 reveal。第 4 天沿用已核准的專案完成台詞。
     - 首頁顯示階段；依階段改變最常看到的兩句預設台詞（`observe`、`momentum.strong`）。
     - `rulesetId` 與 ledger 都不變。換 ruleset 在現有程式碼下會讓 hidden stats 與關係重複計算（Gold 不會）。另存 `companion.relationshipPolicyId` 替推導的規則標版本；vertical slice §6.1、§13.1「改規則要換 `rulesetId`」需改為只適用於 ledger entry（Codex review 指出，需核准）。
