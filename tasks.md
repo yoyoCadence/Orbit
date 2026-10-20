@@ -45,6 +45,15 @@
   - 暫緩（使用者 2026-10-20 同意）：素材仍在調整；且要先驗證 GitHub Pages 的 ETag 是否隨部署改變（`curl -I` 比較兩次部署中同一個沒改過的素材）。ETag 不變時，PS-211A 之後的效益很小。
   - 改 service worker 與部署語意，實作前需提案與核准。
 
+- [ ] **PS-249** Orbit Window 在其他蓋住畫面的 overlay 下仍重畫、reveal 計時照走
+  - 背景（INFRA-106 獨立 review 發現，2026-10-20）：INFRA-106 只在 Focus overlay 開啟時暫停 Pixi 場景。其他 overlay 也會蓋住首頁：
+    - `#levelup-overlay`：85% 黑，z 100（`feedback.js`），升級後顯示到使用者關閉；
+    - `.modal-overlay`：65% 黑，用於早晨、每日報告、連勝解鎖、Focus 的結果選擇等 modal；
+    - `.shield-confirm-overlay`、`.pro-sheet-overlay`：55% 黑。
+  - 另外：reveal 的計時（`orbitWindow.js` 的 reveal clock）不看 Focus overlay，待播放的 reveal 可能在 overlay 底下播完；`.orbit-window-major-reveal`（fixed、z 1200）會畫在 Focus overlay（z 80）之上。
+  - 方向：決定哪些 overlay 要暫停場景（半透明的 modal 底下仍看得到場景，不一定要暫停）、reveal 是否要等 overlay 關閉再播；可選的最佳化：overlay 開著時延後掛載、`app.init` 傳 `autoStart: false`。
+  - 屬於效能與呈現的調整，先提案再實作。
+
 - [ ] **PS-227** Generate controlled idle furniture variants from approved references
   - Goal: replace one-view-only expanded props with true `front / left-wall-flush / right-wall-flush` variants that preserve material identity.
   - Scope: legacy Idle Growth Window only; pause further volume work while the fixed-camera Personal Space V2 vertical slice is validated.
@@ -202,16 +211,27 @@
 > - 下一個提案是 AI-202；之後擴充 Blender 製作的主題與素材（建立 PS-248）。兩者都從 Backlog／新建移入 Next，第一步是提案。
 > - 獨立 Claude review 恢復使用：除非只有 Codex 能做的事，否則不限制由誰 review。
 
-- [ ] **AI-202** 定義 companion relationship stage 與 hidden stats 的最小映射規則
-  - 目標：讓 companion 關係變化可由真實行為驅動，而不是聊天次數
-  - 對應 roadmap：Phase 2 / Phase 4
-  - 2026-10-20 排程（使用者指定為下一個）：第一步是提案（Mode A，只寫文件、不改程式碼），核准前不實作。不涉及 auth／schema；若映射需要新的持久化欄位，提案中列為需核准事項。
+- [ ] **BUG-113** 專案完成與撤銷的 reveal 讓 Companion 重複恭喜
+  - 問題（AI-202 提案與其獨立 review 發現，2026-10-20；以 `reconcileRewardLedger` ＋ `applyReconciliationToV2State` ＋ `getCompanionReaction` 重現）：「專案完成」與 `major` 的判斷不看 reward 是加入還是撤銷，也不看專案原本是否已完成。
+    - 專案完成後，每個 Main Quest 日的 reveal 都讓 Companion 再說「工作站完成了」：`revealSelectors.js` `isProjectCompletionReveal()` 的第二個條件是「進度 ≥ 100 且 reveal 含 `project_progress:workspace-upgrade`」，而 winner 每天都會得到 `project_progress +25`。
+    - 專案完成後撤銷任何一個 Main Quest 日，reversal reveal 也讓 Companion 恭喜。
+    - 撤銷完成那一天時，`hasCompletionReward` 不看方向，Companion 在撤銷時說「工作站完成了」。
+    - 撤銷第 4 天、由第 5 天承接時，兩個 reveal 都是 `major` 並恭喜（`revealKind()` 對加入或撤銷的 `relationship`／`world_unlock` 都回傳 `major`）。
+    - `selectProtagonistState()` 在 reversal 時也做慶祝動作。
+  - 來源：第二個條件是 068af89 的文字判斷（`progress >= 100` 且文字含 `workspace-upgrade`），在 4aefa27 改寫時保留；沒有單元測試涵蓋它。`buildRevealEvents()` 產生的 reveal 都帶有型別化的 rewards。
+  - 方向：
+    - 「專案完成」由 `applyReconciliationToV2State()` 比較前後的 `activeProject.completed`（false → true）決定，記在 reveal 上；selector 不再從 reward 內容推測；
+    - `revealKind()` 只把**加入**的、且真的改變狀態的解鎖與關係算成 `major`；
+    - 只含被撤銷 reward 的 reveal → Companion 為 `observe`，並在此結束，排在專案完成、進度與「最新 Session」分支之前（現在 `isQuestOrProjectProgressReveal()` 不看方向，撤銷時會說「工作空間改變了…」；就算忽略撤銷，當天另有 Session 時也會變成 `approach`）；主角不慶祝；
+    - 只是換一天承接時，不顯示解鎖或關係的行。
+  - 回歸測試（在修正前會失敗）：第 5 天的 reveal；專案完成後撤銷第 6 天；撤銷第 4 天（有與沒有第 5 天）。撤銷時（包括當天另有有效 Session）Companion 是 `observe`＋`companion.observe`，既不是 `congratulate` 也不是 `approach`；主角不慶祝。
+  - 影響 AI-202B：階段變化的 reveal 依賴這個修正（提案 §3.4、§9 第 9 點）。
 
 - [ ] **PS-248** 以 Blender 擴充「空間」的主題與素材（提案）
   - 使用者 2026-10-20 要求：「需要更新更多 blender 做的主題與素材等，讓本工具更豐富」。
   - 現況：
-    - V2 只有一套素材（`building-formal-workstation-v2`，預設場景 `office-corner`）與一個主題（`selectedThemeId: 'default'`）；`SCENE_IDS` 仍列有 `rough-room`、`upgraded-rental`、`office-corner`。
-    - 由 Blender 渲染的只有房間 1 張與家具 8 件（`art-pipeline/ps244-blender`，PS-244～PS-247，同一個相機）。主角 12 個姿勢、Companion 6 個狀態、天氣 2 種是 PS-242 的手繪 sprite／overlay，不是 Blender 產出。
+    - V2 只有一套素材（`building-formal-workstation-v2`）與一個主題（`selectedThemeId: 'default'`，只儲存、沒有程式讀取）。V2 的 `selectedSceneId` 預設是 `rough-room`（`stateSchema.js`），`office-corner` 只是兩個 UI 的 fallback；兩者都只用於 telemetry，不影響畫面。`rough-room`、`upgraded-rental`、`office-corner` 是 legacy 頁面依等級切換的場景。
+    - 由 Blender 渲染的只有房間 1 張與家具 8 件（`art-pipeline/ps244-blender`，PS-244～PS-247，同一個相機）。主角 12 個姿勢、Companion 6 個狀態、天氣 2 種是 PS-242 以影像生成製作再去背的 sprite／overlay（`art-pipeline/ps242/model-manifest.json`：`openai-built-in-imagegen`），不是 Blender 產出。
     - 角色是否改為 3D（Blender）仍是 handoff 中的開放決策；提案要說明角色與天氣是否在範圍內。
   - 範圍：標題把「本工具」解讀為「空間」分頁（目前只有這裡使用 Blender 素材）；提案要向使用者確認。
   - 第一步是提案（Mode A，只寫文件、不改程式碼），內容包括：
@@ -232,6 +252,20 @@
 ---
 
 ## In Progress
+
+- [ ] **AI-202** 定義 companion relationship stage 與 hidden stats 的最小映射規則
+  - 目標：讓 companion 關係變化可由真實行為驅動，而不是聊天次數
+  - 對應 roadmap：Phase 2 / Phase 4
+  - 2026-10-20 排程（使用者指定為下一個）：第一步是提案（Mode A，只寫文件、不改程式碼），核准前不實作。不涉及 auth／schema；若映射需要新的持久化欄位，提案中列為需核准事項。
+  - In progress（2026-10-20）：提案 [`docs/ai-202-companion-relationship-proposal.md`](docs/ai-202-companion-relationship-proposal.md)（Mode A，只寫文件）。建議：
+    - 關係階段只由 Main Quest 天數推進：第 4 天 `familiar`（即現有的 Workspace Upgrade 完成，不改）、第 12 天 `partner`、第 30 天 `trusted-companion`。新的 milestone 由 active ledger 推導，**不寫成 ledger entry**：仍在執行舊版程式碼的分頁會撤銷它不認得的同 ruleset entry（Codex review 指出）。另存一個本機欄位 `companion.legacyRelationshipPoints`，讓舊版分頁寫入的過時點數不會汙染計算（需核准）；legacy 點數是下限而不是加分，門檻對所有使用者相同（Codex review 指出）。
+      - 現況：唯一的來源是專案完成，所以階段最多到 `familiar`；`companionEngine` 完全不讀階段。
+    - hidden stats 不決定階段：沒有每日上限、instant 也算，容易刷。AI-202B 只把它們的顯示改為中文名稱。
+    - 不因缺席降級；只有 Main Quest 日被撤銷、數量跌破門檻時退回。
+    - 階段變化的 reveal 由前後的階段決定：只有提升是 `major`；退回不恭喜；換一天承接時沒有關係的 reveal。第 4 天沿用已核准的專案完成台詞。
+    - 首頁顯示階段；依階段改變最常看到的兩句預設台詞（`observe`、`momentum.strong`）。
+    - `rulesetId` 與 ledger 都不變。換 ruleset 在現有程式碼下會讓 hidden stats 與關係重複計算（Gold 不會）。另存 `companion.relationshipPolicyId` 替推導的規則標版本；vertical slice §6.1、§13.1「改規則要換 `rulesetId`」需改為只適用於 ledger entry（Codex review 指出，需核准）。
+  - **等待使用者決定**提案 §9：門檻、輸入、機制與既有歷史（需同意新增三個本機欄位並修改 vertical slice §6.1、§7.2、§13.1）、顯示、hidden stats 名稱、台詞、README、telemetry、BUG-113 的處理。核准後比照 AI-204：AI-202 移到 Done，另立 AI-202B 實作。
 
 - [ ] **PRO-014Q** 開發者面板的 backup 不應擋住其他帳號或非 Pro 模擬的 entitlement refresh
   - 問題（PR #158 Codex review 指出，2026-10-18 確認）：`storage.refreshProEntitlement()` 只要 `FLAG_DEV_BACKUP` 存在就直接 return。這個 backup 也由等級模擬器建立，且 `storage.clearAll()` 登出時不會清除。開發者登出後換另一個帳號，該帳號的 refresh 會一直被跳過，在 `server` source 下 fail closed，直到手動重設。
@@ -255,6 +289,24 @@
 ---
 
 ## Done
+
+- [x] **INFRA-106** 查明 Focus 提前結束 e2e 的間歇性逾時
+  - 問題：`tests/e2e/flows.test.js` 的「Focus 計時流程」提前結束兩個測試（:175、:189）在 CI 上偶發 `Test timeout of 15000ms exceeded`，與 PR 內容無關；本機較快，先前沒有重現。
+  - 紀錄：
+    - 2026-10-19：3 次（只改版本號的 commit 也失敗，重跑通過）；
+    - 2026-10-20：#190 的 f62434c（純文件 PR）在 :189 失敗，第一次與 retry 都逾時。這次有 INFRA-102 上傳的 artifact：run 39412397253 的 `playwright-test-results`，保留到 2026-10-27。
+  - 方向：
+    - 先看 artifact 的 `error-context.md` 與截圖，確認卡在哪一步（`#early-end-confirm-btn`、overlay 關閉或 `.log-item`）。目前 agent 的 GitHub 工具不能下載 artifact，需要使用者下載，或改用其他方式取得；
+    - 依原因讓測試穩定，例如等待正確的狀態而不是固定逾時；或修正 app 本身的競態。
+  - 不可跳過、停用或隔離這兩個測試。
+  - In progress（2026-10-20）：#190 的 e2e 連續 4 次失敗（含一次重跑），依規則把修正併入 #190。
+  - 完成（2026-10-20，v1.31.7）：原因是 Orbit Window 的 Pixi 場景一直在重畫。Focus overlay（92% 黑）蓋住整個 app 時沒有暫停；減少動態效果時場景不動，也每一幀重畫。CI 的軟體 WebGL 下每幀約 117–133 ms，Playwright 每次點擊都要等元素穩定，較慢的 runner 上就超過 15 秒（失敗的 run 都是 4.1–4.3 分鐘，通過的約 2.5 分鐘）。
+    - `ui/orbitWindow.js`：以 MutationObserver 觀察 `#focus-overlay` 的 class，overlay 開啟時暫停 runtime、關閉時恢復；卸載時解除。
+    - `runtime/pixiSceneRuntime.js`：減少動態效果時只畫一次、不啟動 ticker；`resume()` 與 context 恢復也遵守。
+    - 結果：overlay 下每幀回到 16.7 ms；這個測試在本機由 7.7 秒降到 4.5 秒。
+    - 依獨立 review 補強：`render()` 在減少動態效果且已 ready 時重畫一次；WebGL context 恢復期間收到的暫停或恢復以最後一次為準（原本就有的競態）。
+    - 測試：單元測試五項、e2e 一項（Focus 開始後 runtime 為 `suspended`，縮小成 PiP 時同一個場景恢復為 `ready`，展開後再次 `suspended`），刪掉修正中的任何一行都有測試會失敗。
+  - 不需要下載 artifact：在本機以軟體 WebGL 量測每幀時間即可找到原因。
 
 - [x] **INFRA-104** 讓 `pwa/sw.js` 與 Node 端的腳本也被 lint
   - 問題（INFRA-103 獨立 review 發現，2026-10-20）：`npm run lint` 只涵蓋 `pwa/js/**/*.js` 與 `tests/**/*.js`。`pwa/sw.js`（PS-211A 要改）、`pwa/server.cjs`、`scripts/*.mjs`、設定檔都沒有被 lint；`eslint.config.js` 中給設定檔的區塊因此從未生效。以目前的設定直接 lint `sw.js` 會因 service worker 的 globals（`self`、`caches` 等）報 17 個 `no-undef`。

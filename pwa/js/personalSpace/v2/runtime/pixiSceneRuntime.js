@@ -15,6 +15,9 @@ export function createPixiSceneRuntime(options = {}) {
   let contextLost = false;
   let resumeAfterContextRestore = false;
   let latestModel = {};
+  // INFRA-106: under reduced motion the stage never moves, so draw it once
+  // instead of re-rendering an identical frame on every tick.
+  let animating = true;
   let status = 'idle';
   let lifecycleRevision = 0;
   let renderRevision = 0;
@@ -82,7 +85,8 @@ export function createPixiSceneRuntime(options = {}) {
       // PS-211B: a retained canvas still holds the previous room until the next
       // tick; draw the new stage now, before is-runtime-ready reveals it.
       app.render();
-      app.start();
+      if (animating) app.start();
+      else app.stop();
       contextLost = false;
       status = 'ready';
       host.dataset.runtimeStatus = status;
@@ -182,6 +186,7 @@ export function createPixiSceneRuntime(options = {}) {
     app.stage.sortChildren();
 
     const reducedMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    animating = !reducedMotion;
     const shouldCelebrate = Boolean(renderModel.pendingReveal || renderModel.world?.pendingReveal);
     if (protagonistState === 'inspect') protagonist.rotation += -0.025;
     if (protagonistState === 'rest') protagonist.alpha = 0.88;
@@ -220,6 +225,8 @@ export function createPixiSceneRuntime(options = {}) {
       };
       app.ticker.add(tickerUpdate);
     }
+    // A still stage has no ticker to pick up the change; draw it now.
+    if (!animating && status === 'ready') app.render();
   }
 
   function suspend() {
@@ -235,7 +242,8 @@ export function createPixiSceneRuntime(options = {}) {
       return;
     }
     if (!app?.ticker || !host || status === 'fallback' || status === 'destroyed') return;
-    app.start();
+    if (animating) app.start();
+    else app.render();
     status = 'ready';
     if (host) host.dataset.runtimeStatus = status;
   }
@@ -324,10 +332,13 @@ export function createPixiSceneRuntime(options = {}) {
           || restoreHost !== host
           || restoreLifecycleRevision !== lifecycleRevision
         ) return;
+        // suspend() or resume() may have run while the stage reloaded; the
+        // latest call wins over the state captured when the context was lost.
+        const resumeNow = status === 'loading' ? shouldResume : status === 'ready';
         restoreApp.render();
-        if (shouldResume) restoreApp.start();
+        if (resumeNow && animating) restoreApp.start();
         else restoreApp.stop();
-        status = shouldResume ? 'ready' : 'suspended';
+        status = resumeNow ? 'ready' : 'suspended';
         restoreHost.dataset.runtimeStatus = status;
         restoreHost.closest('[data-orbit-window]')?.classList.remove('is-runtime-fallback');
         restoreHost.closest('[data-orbit-window]')?.classList.add('is-runtime-ready');

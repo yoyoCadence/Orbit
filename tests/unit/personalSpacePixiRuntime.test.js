@@ -307,6 +307,63 @@ describe('Personal Space V2 Pixi scene runtime', () => {
     runtime.destroy();
   });
 
+  it('draws once instead of ticking every frame under reduced motion (INFRA-106)', async () => {
+    vi.stubGlobal('matchMedia', query => ({ matches: query.includes('prefers-reduced-motion: reduce') }));
+    try {
+      const fake = createFakePixi();
+      const runtime = createPixiSceneRuntime({ loadPixi: () => Promise.resolve(fake.pixi) });
+      const { host } = createRuntimeHost();
+
+      await runtime.mount(host, { activeProject: { progress: 25 } });
+      const app = fake.applications[0];
+      expect(runtime.getStatus()).toBe('ready');
+      expect(app.ticker.add).not.toHaveBeenCalled();
+      expect(app.start).not.toHaveBeenCalled();
+      // Real Pixi starts the ticker during init(); a still stage stops it.
+      expect(app.stop).toHaveBeenCalled();
+      const rendersAfterMount = app.render.mock.calls.length;
+      expect(rendersAfterMount).toBeGreaterThan(0);
+
+      runtime.suspend();
+      runtime.resume();
+      expect(runtime.getStatus()).toBe('ready');
+      expect(app.start).not.toHaveBeenCalled();
+      expect(app.render).toHaveBeenCalledTimes(rendersAfterMount + 1);
+
+      await runtime.render({ activeProject: { progress: 50 } });
+      expect(app.render).toHaveBeenCalledTimes(rendersAfterMount + 2);
+
+      app.canvas.dispatchEvent(new Event('webglcontextlost', { cancelable: true }));
+      app.canvas.dispatchEvent(new Event('webglcontextrestored'));
+      await flushMicrotasks();
+      expect(runtime.getStatus()).toBe('ready');
+      expect(app.start).not.toHaveBeenCalled();
+      expect(app.render).toHaveBeenCalledTimes(rendersAfterMount + 3);
+      runtime.destroy();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('keeps a suspend that arrives while the stage reloads after a context restore (INFRA-106)', async () => {
+    const fake = createFakePixi();
+    const runtime = createPixiSceneRuntime({ loadPixi: () => Promise.resolve(fake.pixi) });
+    const { host } = createRuntimeHost();
+
+    await runtime.mount(host, { activeProject: { progress: 25 } });
+    const app = fake.applications[0];
+    app.canvas.dispatchEvent(new Event('webglcontextlost', { cancelable: true }));
+    app.canvas.dispatchEvent(new Event('webglcontextrestored'));
+    expect(runtime.getStatus()).toBe('loading');
+    runtime.suspend();
+    await flushMicrotasks();
+
+    expect(runtime.getStatus()).toBe('suspended');
+    expect(host.dataset.runtimeStatus).toBe('suspended');
+    expect(app.start).toHaveBeenCalledTimes(1);
+    runtime.destroy();
+  });
+
   it('restores rendering without restarting a runtime suspended while context was lost', async () => {
     const fake = createFakePixi();
     const runtime = createPixiSceneRuntime({ loadPixi: () => Promise.resolve(fake.pixi) });
