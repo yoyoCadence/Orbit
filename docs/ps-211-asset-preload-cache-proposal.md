@@ -91,17 +91,18 @@
 | A1 | 首屏 4 個：背景、主角 idle（朝左）、Companion observe、晴天特效 | 182,283 bytes | 預設角色狀態、專案 0% 時 poster 立刻完整；家具仍要下載 |
 | **A2（建議）** | A1 ＋ 8 件家具 | 558,930 bytes | 任何進度的背景與家具立刻完整。主角或 Companion 不是預設狀態時，該角色圖仍要下載（每張 42–48 KB） |
 | A3 | A2 ＋ 主角其他 4 個動作（celebrate、inspect、rest、work，朝左）＋ Companion 其他 5 個狀態 ＋ 雨天特效 | 987,645 bytes | 程式碼會產生、或已儲存的 state 可能帶有的所有 poster 狀態都立刻完整 |
-| A4 | A2 或 A3 ＋ `vendor/pixi.js` | ＋796,970 bytes（gzip 約 225 KB） | 只省掉 Pixi 的下載時間。canvas 仍要解析 Pixi、建立 WebGL、解碼圖片、建立場景：快取有效時量到 +434 ms，期間由 poster 頂著 |
+| ＋P（附加，可與 A1–A3 任一個並用） | 另外加入 `vendor/pixi.js` | ＋796,970 bytes（gzip 約 225 KB） | 只省掉 Pixi 的下載時間。canvas 仍要解析 Pixi、建立 WebGL、解碼圖片、建立場景：快取有效時量到 +434 ms，期間由 poster 頂著 |
 
 - 角色狀態的來源：主角由 `viewModels.selectProtagonistState()` 決定（idle、celebrate、inspect、rest、work），Companion 由 `companionEngine.js` 決定（observe、approach、congratulate、rest、work、remind）。動量 strong 時主角是 work、今天有恢復 Session 時是 rest，所以非預設狀態並不少見。天氣存在 V2 state 中：沒有程式碼寫入 `rain`，但 `stateSchema.js` 接受已儲存的 `rain`，所以 A3 也放入雨天特效（31,582 bytes）。朝右與 `walk` 既不儲存、也不會由程式碼推導出來，不列入。
 - A1–A3 都比現在的 1,987,696 bytes 小：A2 每次改版少下載約 1.43 MB，A3 約 1.00 MB。
 - 技術設計 §12.2 允許 precache「離線 shell 需要的 stateful fallback 素材」，但也說不要把所有全解析度的場景圖放進 SHELL，並要求 service worker 快取策略的變更先取得核准。poster 是 V2 的 fallback，所以 A1／A2 符合。A3 放入 manifest 29 個檔案中的 22 個，接近「全部」，選 A3 時要一併修改 §12.2 的文字。
-- Pixi 不是 fallback，§12.1 也要求首頁初始 HTML 不下載 Pixi。A4 雖然是在 service worker 安裝時下載，效果又只有省掉下載時間，所以不建議。
+- Pixi 不是 fallback，§12.1 也要求首頁初始 HTML 不下載 Pixi。＋P 雖然是在 service worker 安裝時下載，效果又只有省掉下載時間，所以不建議。
 - PS-243 的首屏預算不受影響（不改首屏載入的檔案）。
 
 ### C 的範圍
 
 - 只在第一次 canvas 就緒、瀏覽器閒置、`navigator.connection.saveData` 不是 true、連線不是 2g 時執行。
+- 這是盡力而為的改善，不是保證：預熱還沒完成時就發生的狀態改變（例如一開 app 就完成 Main Quest），仍和現在一樣要等新圖片下載；預熱完成之後的狀態改變才不必等。
 - 只載入目前狀態「下一步」可能用到的：下一個專案階段新增的家具、主角 celebrate、Companion congratulate／approach。全部可達的狀態約 0.77 MB，不全部載入。
 - 不影響首屏預算；deferred JS 預算還有 29.7 KB 空間，預熱的程式碼不到 1 KB。
 
@@ -121,7 +122,7 @@
 ## 7. 需要使用者決定
 
 1. 是否同意改寫 PS-211 的範圍（§6 第 1 點）。
-2. PS-211A：是否核准修改 service worker precache；選 A1、**A2（建議）**、A3（並修改技術設計 §12.2）、A4，或不做。
+2. PS-211A：是否核准修改 service worker precache；範圍選 A1、**A2（建議）**、A3（並修改技術設計 §12.2），或不做；另外是否加上 ＋P（`pixi.js`，不建議）。
 3. PS-211B：是否排入（建議排入）。
 4. PS-211C：是否排入，並同意修改技術設計 §12.1。
 5. 方案 B 是否同意暫緩。
@@ -138,7 +139,8 @@
   - 既有的 runtime lifecycle、context lost／restored 測試通過。
 - **PS-211C**
   - 第一次就緒後的閒置時間才開始預熱；`saveData` 或 2g 時不預熱；只載入 §5 C 列出的圖片。
-  - Fast 3G 下 75% → 100% 的 reveal，新圖片在 reveal 開始時已在快取中（量測方式同 §2）。
+  - 預熱完成後（測試先等預熱的 promise 完成）才觸發 75% → 100% 的 reveal：Fast 3G 下新圖片在 reveal 開始時已在快取中，不發出新的圖片請求（量測方式同 §2）。
+  - 預熱尚未完成時觸發 reveal：行為與現在相同（圖片照常下載、畫面照常更新），不多等、不出錯。
   - 技術設計 §12.1 更新。
 - 全部：lint、test、e2e、`ps242:manifest -- --check`、`ps243:assets -- --check` 通過。
 
