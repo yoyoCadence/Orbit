@@ -196,16 +196,6 @@
 > - 順序：INFRA-103（讓 `pwa/js` 與 `tests` 下的 `.js` 都被 lint；`pwa/sw.js` 仍不在範圍，見 INFRA-104）→ PS-211B（不動 service worker）→ PS-211A（部署行為）。
 > - INFRA-103 只改一行設定且已核准，比照 INFRA-102 直接移入 In Progress。
 
-- [ ] **PS-211B** 新場景畫完前隱藏 canvas；首頁 → 空間沿用 Pixi app
-  - 規格：[`docs/ps-211-asset-preload-cache-proposal.md`](docs/ps-211-asset-preload-cache-proposal.md) §4.2、§4.4、§5 B。使用者 2026-10-20 核准，包含沿用 Pixi app 的最佳化。
-  - 驗收條件：
-    - `.orbit-window:not(.is-runtime-ready) .orbit-window-canvas` 為 `visibility: hidden`：新場景畫完、`is-runtime-ready` 加上之前，canvas 不可見，畫面顯示新狀態的 DOM poster（技術設計 §9.2）；有測試。
-    - 首頁 → 空間 → 首頁的過程中，Pixi `Application` 只建立一次（以假的 Pixi 計數）；任何時刻最多一個 Application，離開時仍會正確 release／destroy。
-    - 既有的 runtime lifecycle、context lost／restored、e2e 的 canvas 數量與尺寸檢查通過。
-    - lint、test、e2e、`ps242:manifest -- --check`、`ps243:assets -- --check` 通過。
-  - 版本：`npm run bump -- patch`。
-  - 依賴：`PS-211`
-
 - [ ] **PS-211A** service worker 預先快取 V2 poster 素材與 Pixi（A3 ＋P）
   - 規格：同上提案 §4.1、§4.3、§5 A。使用者 2026-10-20 核准 A3 ＋P（部署行為）。
   - 驗收條件：
@@ -253,6 +243,23 @@
 ---
 
 ## Done
+
+- [x] **PS-211B** 新場景畫完前隱藏 canvas；首頁 → 空間沿用 Pixi app
+  - 規格：[`docs/ps-211-asset-preload-cache-proposal.md`](docs/ps-211-asset-preload-cache-proposal.md) §4.2、§4.4、§5 B。使用者 2026-10-20 核准，包含沿用 Pixi app 的最佳化。
+  - 驗收條件：
+    - `.orbit-window:not(.is-runtime-ready) .orbit-window-canvas` 為 `visibility: hidden`：新場景畫完、`is-runtime-ready` 加上之前，canvas 不可見，畫面顯示新狀態的 DOM poster（技術設計 §9.2）；有測試。
+    - 首頁 → 空間 → 首頁的過程中，Pixi `Application` 只建立一次（以假的 Pixi 計數）；任何時刻最多一個 Application，離開時仍會正確 release／destroy。
+    - 既有的 runtime lifecycle、context lost／restored、e2e 的 canvas 數量與尺寸檢查通過。
+    - lint、test、e2e、`ps242:manifest -- --check`、`ps243:assets -- --check` 通過。
+  - 版本：`npm run bump -- patch`。
+  - 依賴：`PS-211`
+  - In progress（2026-10-20）。
+  - 完成（2026-10-20，v1.31.5）：
+    - `style.css`：`.orbit-window:not(.is-runtime-ready) .orbit-window-canvas { visibility: hidden; }`。
+    - `pixiSceneRuntime.js`：`createDeferredRuntimeDestroyer()` 新增 `hold()`。`router.js` 載入 lazy 路由期間持有 hold，排程中的銷毀會等到路由畫完；沒有頁面 `retain()` 時，最後一個 hold 釋放即銷毀。延遲仍是 0 ms，登出仍用 `destroyNow()`。`mount()` 與 context 恢復時，先 `app.render()` 畫出新場景，再加上 `is-runtime-ready`。
+    - Codex review（b9e56fa）的兩個 P2 據此修正：原本的 2 秒交接在 lazy import 超過 2 秒時仍會重建；`is-runtime-ready` 加上時，沿用的 canvas 在下一個 tick 前仍是舊畫面。
+    - 測試：`personalSpacePixiRuntime.test.js` 三項（hold 期間保留、無人接手時銷毀一次；假 Pixi 只建立一個 Application；加上 `is-runtime-ready` 前先畫）；`flows.test.js` 的 runtime 路由 e2e 加上 Application 相同與 canvas `visibility` 的檢查（拿掉 CSS 規則或 router 的 hold 時都會失敗）。
+    - 注意：reduced motion 的樣式讓每個元素都有極短的 transition，`visibility` 的計算值會延後一個 frame 才改變；e2e 讀取時暫時關掉 canvas 的 transition。
 
 - [x] **INFRA-103** `lint` script 的 glob 加上引號，讓 eslint 檢查所有檔案
   - 問題（AI-204B 獨立 review 發現，2026-10-19 確認）：`package.json` 的 `"lint": "eslint pwa/js/**/*.js tests/**/*.js"` 沒有引號。npm 用 `sh` 執行，`**` 等同 `*`，所以 `npm run lint`（含 CI）只檢查 `pwa/js` 下剛好兩層的 37 個檔案與 `tests/*/*.js`；`pwa/js` 第一層的 22 個檔案（`app.js`、`storage.js` 等）與更深的 V2 模組都沒有被 lint。

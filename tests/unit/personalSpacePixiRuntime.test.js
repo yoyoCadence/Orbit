@@ -25,6 +25,37 @@ describe('deferred Orbit runtime destruction', () => {
     expect(runtime.destroy).toHaveBeenCalledTimes(1);
     vi.useRealTimers();
   });
+
+  it('holds a scheduled teardown while a lazy route renders (PS-211B)', () => {
+    vi.useFakeTimers();
+    const runtime = { destroy: vi.fn() };
+    const destroyer = createDeferredRuntimeDestroyer(runtime);
+
+    // Home → 空間 with a slow lazy import: the route mounts and retains in the end.
+    destroyer.schedule();
+    const releaseSlowRoute = destroyer.hold();
+    vi.advanceTimersByTime(10_000);
+    expect(runtime.destroy).not.toHaveBeenCalled();
+    destroyer.retain();
+    releaseSlowRoute();
+    vi.runAllTimers();
+    expect(runtime.destroy).not.toHaveBeenCalled();
+
+    // A lazy route that renders without an Orbit Window: destroyed on release, once.
+    destroyer.schedule();
+    const releaseOtherRoute = destroyer.hold();
+    vi.runAllTimers();
+    expect(runtime.destroy).not.toHaveBeenCalled();
+    releaseOtherRoute();
+    releaseOtherRoute();
+    expect(runtime.destroy).toHaveBeenCalledTimes(1);
+
+    // Without a hold (a page without an Orbit Window), teardown runs on the timer.
+    destroyer.schedule();
+    vi.runAllTimers();
+    expect(runtime.destroy).toHaveBeenCalledTimes(2);
+    vi.useRealTimers();
+  });
 });
 
 function createFakePixi(options = {}) {
@@ -91,6 +122,7 @@ function createFakePixi(options = {}) {
       });
       this.start = vi.fn();
       this.stop = vi.fn();
+      this.render = vi.fn(() => options.onRender?.(this));
       this.destroy = vi.fn();
       applications.push(this);
     }
@@ -134,6 +166,54 @@ describe('Personal Space V2 Pixi scene runtime', () => {
     expect(cover.scale).toBe(0.625);
     expect(1536 * cover.scale).toBe(960);
     expect(1024 * cover.scale).toBe(640);
+  });
+
+  it('reuses one Pixi Application when the next route takes over (PS-211B)', async () => {
+    vi.useFakeTimers();
+    const fake = createFakePixi();
+    const runtime = createPixiSceneRuntime({ loadPixi: () => Promise.resolve(fake.pixi) });
+    const destroyer = createDeferredRuntimeDestroyer(runtime);
+    const home = createRuntimeHost();
+    const world = createRuntimeHost();
+
+    try {
+      await runtime.mount(home.host, { activeProject: { progress: 25 } });
+      runtime.release(home.host);
+      destroyer.schedule();
+      const releaseRoute = destroyer.hold();
+      vi.advanceTimersByTime(10_000); // the router awaits a slow lazy route import
+      destroyer.retain();
+      await runtime.mount(world.host, { activeProject: { progress: 25 } });
+      releaseRoute();
+
+      expect(fake.applications).toHaveLength(1);
+      expect(fake.applications[0].destroy).not.toHaveBeenCalled();
+      expect(world.host.querySelector('canvas')).toBe(fake.applications[0].canvas);
+      expect(home.host.querySelector('canvas')).toBeNull();
+      expect(world.root.classList.contains('is-runtime-ready')).toBe(true);
+    } finally {
+      runtime.destroy();
+      vi.useRealTimers();
+    }
+  });
+
+  it('draws the new stage before revealing a retained canvas (PS-211B)', async () => {
+    const readyAtRender = [];
+    const fake = createFakePixi({
+      onRender: app => readyAtRender.push(app.canvas.closest('[data-orbit-window]')?.classList.contains('is-runtime-ready')),
+    });
+    const runtime = createPixiSceneRuntime({ loadPixi: () => Promise.resolve(fake.pixi) });
+    const home = createRuntimeHost();
+    const world = createRuntimeHost();
+
+    await runtime.mount(home.host, { activeProject: { progress: 25 } });
+    runtime.release(home.host);
+    await runtime.mount(world.host, { activeProject: { progress: 100 } });
+
+    expect(fake.applications).toHaveLength(1);
+    expect(readyAtRender).toEqual([false, false]);
+    expect(world.root.classList.contains('is-runtime-ready')).toBe(true);
+    runtime.destroy();
   });
 
   it('renders weather and drives protagonist and Companion motion from shared state', async () => {

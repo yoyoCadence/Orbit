@@ -8,6 +8,7 @@ import { renderReview }         from './pages/review.js';
 import { renderProfile }        from './pages/profile.js';
 import { renderSettings }       from './pages/settings.js';
 import { showToast }            from './ui/feedback.js';
+import { orbitWindowRuntimeDestroyer } from './personalSpace/v2/runtime/pixiSceneRuntime.js';
 
 // ─── Router ──────────────────────────────────────────────────────────────────
 
@@ -108,6 +109,9 @@ export async function renderPage(hash) {
     if (!routeRenderLifecycle.commit(renderToken, cleanup)) return;
   } else if (LAZY_ROUTES[hash]) {
     let loadTimer;
+    // PS-211B: the route may mount an Orbit Window that takes over the Pixi
+    // runtime the previous page released; keep it until this render settles.
+    const releaseRuntime = orbitWindowRuntimeDestroyer.hold();
     try {
       // Only show loading skeleton if the import takes longer than 200ms
       // (avoids flicker when the module is already in the browser module cache)
@@ -129,6 +133,8 @@ export async function renderPage(hash) {
       const fallbackResult = renderHome(content);
       const fallbackCleanup = isThenable(fallbackResult) ? await fallbackResult : fallbackResult;
       if (!routeRenderLifecycle.commit(renderToken, fallbackCleanup)) return;
+    } finally {
+      releaseRuntime();
     }
   } else {
     const result = renderHome(content);

@@ -4,7 +4,7 @@
 
 > 2026-07-31 HW-105 sync note: v1.23.0 已完成 device-local achievement photo wall；使用者可從本機佐證選一張展示在 Personal Space，共用 poster／Pixi 相框並在圖片不可用時安全 fallback，未新增 auth／schema 依賴。
 
-目前版本：**v1.31.4**
+目前版本：**v1.31.5**
 
 這份文件記錄 Orbit 的公開功能規劃方向。功能依優先順序排列，會隨專案進展持續更新。
 
