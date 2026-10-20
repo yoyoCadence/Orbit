@@ -480,10 +480,10 @@ Several current prototype props retain magenta RGB under zero alpha despite `qc:
 
 ### 12.1 Loading Rules
 
-- Initial home HTML must not download or initialize Pixi.
+- Initial home HTML must not download or initialize Pixi. The page imports Pixi only when the runtime mounts. The service worker's install-time precache (§12.2) is not part of the page's load: it runs in the background and is allowed to fetch Pixi and the poster assets (PS-211A, approved 2026-10-20).
 - Initial Orbit Window renders a compact 3:2 poster/snapshot plus current DOM state.
-- Load only the active scene bundle: canonical background, current project phase, protagonist action, Companion reaction, and required effects.
-- Do not load all stages, all project phases, all camera profiles, or the editor on home.
+- The runtime loads only the active scene bundle: canonical background, current project phase, protagonist action, Companion reaction, and required effects.
+- Do not load all stages, all project phases, all camera profiles, or the editor on home. Service worker precache (§12.2) does not count as loading on home.
 - Keep one active `Application`; never leave a detached canvas ticker running.
 - Measure first interaction, runtime initialization, texture bytes, FPS, and memory on a representative mid-range mobile device.
 
@@ -497,6 +497,8 @@ Use two layers:
 2. Versioned Service Worker Cache Storage for network responses across sessions.
 
 Do not add every full-resolution scene texture to the install-time `SHELL`. Precache only the stateful fallback assets required for a reliable offline shell. Cache larger scene bundles on demand after a successful same-origin response, with a named version tied to the app/asset manifest.
+
+The Orbit Window poster is the stateful fallback. Under PS-211A (approved 2026-10-20) the `SHELL` therefore holds every image the poster can show: the background, the 8 workspace props of every project phase, each protagonist action and Companion reaction the code can produce (default left facing), and the clear and rain overlays. That is 22 of the manifest's 29 files. `vendor/pixi.js` is not a fallback asset; it is precached as an explicit, user-approved exception (option "+P"), which saves only its download time after a release. `tests/unit/ps211aPrecache.test.js` derives the image set from the code: the literal states the selectors return and the default facing, which it also pins. It fails when a new pose, Companion state, weather or prop is not in SHELL. The new worker activates only after `cache.addAll()` succeeds, so after a release the poster is complete in any state and state changes do not wait on the network. These entries are requested with `cache: 'no-cache'`, because art is re-rendered under the same file names. A cache that survives releases, keyed by content hash, is deferred (PS-211D).
 
 Service Worker cache-policy changes affect deployment behavior and require the project-level approval described in `AGENTS.md`. When approved, update cache version through the repository bump workflow, not by manually editing scattered version strings.
 
