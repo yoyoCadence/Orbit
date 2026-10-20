@@ -92,6 +92,66 @@ describe('Orbit Window lifecycle', () => {
     expect(runtime.suspend).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps the scene still while the Focus overlay covers the app (INFRA-106)', async () => {
+    const runtime = {
+      mount: vi.fn(() => Promise.resolve()),
+      suspend: vi.fn(),
+      resume: vi.fn(),
+      release: vi.fn(),
+    };
+    const overlay = document.createElement('div');
+    overlay.id = 'focus-overlay';
+    overlay.className = 'hidden';
+    document.body.appendChild(overlay);
+    const shell = document.createElement('div');
+    shell.innerHTML = renderOrbitWindow({});
+    document.body.appendChild(shell);
+    const cleanup = mountOrbitWindow(shell.querySelector('[data-orbit-window]'), { runtime });
+
+    await vi.runAllTimersAsync();
+    expect(runtime.mount).toHaveBeenCalledTimes(1);
+    expect(runtime.suspend).not.toHaveBeenCalled();
+
+    overlay.classList.remove('hidden');
+    await vi.runAllTimersAsync();
+    expect(runtime.suspend).toHaveBeenCalledTimes(1);
+
+    overlay.classList.add('focus-desk-mode');
+    await vi.runAllTimersAsync();
+    expect(runtime.suspend).toHaveBeenCalledTimes(1);
+
+    overlay.classList.add('hidden');
+    await vi.runAllTimersAsync();
+    expect(runtime.resume).toHaveBeenCalledTimes(1);
+
+    cleanup();
+    overlay.classList.remove('hidden');
+    await vi.runAllTimersAsync();
+    expect(runtime.suspend).toHaveBeenCalledTimes(1);
+  });
+
+  it('suspends right after mounting under an already open Focus overlay (INFRA-106)', async () => {
+    const runtime = {
+      mount: vi.fn(() => Promise.resolve()),
+      suspend: vi.fn(),
+      resume: vi.fn(),
+      release: vi.fn(),
+    };
+    const overlay = document.createElement('div');
+    overlay.id = 'focus-overlay';
+    document.body.appendChild(overlay);
+    const shell = document.createElement('div');
+    shell.innerHTML = renderOrbitWindow({});
+    document.body.appendChild(shell);
+    const cleanup = mountOrbitWindow(shell.querySelector('[data-orbit-window]'), { runtime });
+
+    await vi.runAllTimersAsync();
+    expect(runtime.mount).toHaveBeenCalledTimes(1);
+    expect(runtime.suspend).toHaveBeenCalledTimes(1);
+    expect(runtime.resume).not.toHaveBeenCalled();
+    cleanup();
+  });
+
   it('disconnects a pending observer and cancels reveal work before runtime mount', () => {
     let observerCallback;
     const disconnect = vi.fn();

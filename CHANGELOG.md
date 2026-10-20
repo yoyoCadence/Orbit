@@ -3,6 +3,20 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.31.7] - 2026-10-20
+
+### Fixed
+- **Focus 期間不再在背景重畫「空間」場景（INFRA-106）**：Focus 畫面（92% 黑的 overlay）蓋住整個 app 時，首頁 Orbit Window 的 Pixi 場景仍每一幀重畫。整段 Focus（25 分鐘以上）都在耗用 CPU 與電量畫看不見的畫面。
+  - Focus overlay 開啟時暫停場景，關閉後恢復；在 overlay 開著時掛載的場景也會立刻暫停。
+  - 系統設定為減少動態效果時，場景本來就不動，現在只畫一次，不再每一幀重畫同一個畫面。
+  - 這也是 CI 上 `tests/e2e/flows.test.js` 的 Focus 提前結束測試間歇性逾時的原因：軟體 WebGL 下每幀約 120–130 ms，Playwright 每次點擊都要等畫面穩定。修正後 overlay 下每幀回到約 17 ms。
+
+### Validation
+- 單元測試：overlay 開啟時 runtime 暫停、關閉時恢復，切換其他 class 不會重複暫停，卸載後不再反應；overlay 已開啟時掛載會立即暫停；減少動態效果時不啟動 ticker，恢復時只重畫一次。以修正前的程式碼執行時三項都失敗。
+- e2e：開始 Focus 後，首頁場景的 runtime 狀態變成 `suspended`；結束後回到 `ready`。以修正前的程式碼執行時失敗。
+
+---
+
 ## [1.31.6] - 2026-10-20
 
 ### Changed

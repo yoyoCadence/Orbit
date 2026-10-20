@@ -122,6 +122,10 @@ export function renderOrbitWindow(inputModel = {}, options = {}) {
   `;
 }
 
+function isFocusOverlayOpen(overlay) {
+  return Boolean(overlay) && !overlay.classList.contains('hidden');
+}
+
 export function mountOrbitWindow(root, options = {}) {
   if (!root) return () => {};
   const runtime = options.runtime || orbitWindowRuntime;
@@ -140,6 +144,11 @@ export function mountOrbitWindow(root, options = {}) {
   let runtimeReleased = false;
   let isInViewport = 'IntersectionObserver' in globalThis ? null : true;
   let lastVisibility = document.hidden ? 'hidden' : 'visible';
+  // INFRA-106: the Focus overlay covers the app for a whole session, so keep
+  // the scene still underneath instead of redrawing it every frame.
+  const focusOverlay = document.getElementById('focus-overlay');
+  let coveredByFocus = isFocusOverlayOpen(focusOverlay);
+  let focusObserver = null;
   const revealId = model.pendingReveal?.id || null;
   let revealRemainingMs = revealId
     ? getRevealDurationMs(model.pendingReveal.kind, reducedMotion)
@@ -220,7 +229,7 @@ export function mountOrbitWindow(root, options = {}) {
 
   const syncRuntimeActivity = () => {
     if (!runtimeReady || disposed) return;
-    const shouldBeActive = !document.hidden && isInViewport !== false;
+    const shouldBeActive = !document.hidden && isInViewport !== false && !coveredByFocus;
     if (shouldBeActive === runtimeActive) return;
     runtimeActive = shouldBeActive;
     if (shouldBeActive) runtime.resume?.();
@@ -284,6 +293,16 @@ export function mountOrbitWindow(root, options = {}) {
     idleId = globalThis.setTimeout(startRuntime, 0);
   }
 
+  if (focusOverlay && 'MutationObserver' in globalThis) {
+    focusObserver = new globalThis.MutationObserver(() => {
+      const nextCovered = isFocusOverlayOpen(focusOverlay);
+      if (disposed || nextCovered === coveredByFocus) return;
+      coveredByFocus = nextCovered;
+      syncRuntimeActivity();
+    });
+    focusObserver.observe(focusOverlay, { attributes: true, attributeFilter: ['class'] });
+  }
+
   const actionBindings = [];
   bindAction('[data-orbit-open-world]', () => {
     emitPersonalSpaceTelemetry('orbit_window_opened', {
@@ -316,6 +335,7 @@ export function mountOrbitWindow(root, options = {}) {
     if (disposed) return;
     disposed = true;
     observer?.disconnect();
+    focusObserver?.disconnect();
     if (idleId !== null) {
       if (typeof globalThis.cancelIdleCallback === 'function') globalThis.cancelIdleCallback(idleId);
       else globalThis.clearTimeout(idleId);

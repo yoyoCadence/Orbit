@@ -244,17 +244,6 @@
 
 ## In Progress
 
-- [ ] **INFRA-106** 查明 Focus 提前結束 e2e 的間歇性逾時
-  - 問題：`tests/e2e/flows.test.js` 的「Focus 計時流程」提前結束兩個測試（:175、:189）在 CI 上偶發 `Test timeout of 15000ms exceeded`，與 PR 內容無關，本機無法重現。
-  - 紀錄：
-    - 2026-10-19：3 次（只改版本號的 commit 也失敗，重跑通過）；
-    - 2026-10-20：#190 的 f62434c（純文件 PR）在 :189 失敗，第一次與 retry 都逾時。這次有 INFRA-102 上傳的 artifact：run 39412397253 的 `playwright-test-results`，保留到 2026-10-27。
-  - 方向：
-    - 先看 artifact 的 `error-context.md` 與截圖，確認卡在哪一步（`#early-end-confirm-btn`、overlay 關閉或 `.log-item`）。目前 agent 的 GitHub 工具不能下載 artifact，需要使用者下載，或改用其他方式取得；
-    - 依原因讓測試穩定，例如等待正確的狀態而不是固定逾時；或修正 app 本身的競態。
-  - 不可跳過、停用或隔離這兩個測試。
-  - In progress（2026-10-20）：#190 的 e2e 連續 4 次失敗（含一次重跑），依規則把修正併入 #190。
-
 - [ ] **AI-202** 定義 companion relationship stage 與 hidden stats 的最小映射規則
   - 目標：讓 companion 關係變化可由真實行為驅動，而不是聊天次數
   - 對應 roadmap：Phase 2 / Phase 4
@@ -291,6 +280,23 @@
 ---
 
 ## Done
+
+- [x] **INFRA-106** 查明 Focus 提前結束 e2e 的間歇性逾時
+  - 問題：`tests/e2e/flows.test.js` 的「Focus 計時流程」提前結束兩個測試（:175、:189）在 CI 上偶發 `Test timeout of 15000ms exceeded`，與 PR 內容無關，本機無法重現。
+  - 紀錄：
+    - 2026-10-19：3 次（只改版本號的 commit 也失敗，重跑通過）；
+    - 2026-10-20：#190 的 f62434c（純文件 PR）在 :189 失敗，第一次與 retry 都逾時。這次有 INFRA-102 上傳的 artifact：run 39412397253 的 `playwright-test-results`，保留到 2026-10-27。
+  - 方向：
+    - 先看 artifact 的 `error-context.md` 與截圖，確認卡在哪一步（`#early-end-confirm-btn`、overlay 關閉或 `.log-item`）。目前 agent 的 GitHub 工具不能下載 artifact，需要使用者下載，或改用其他方式取得；
+    - 依原因讓測試穩定，例如等待正確的狀態而不是固定逾時；或修正 app 本身的競態。
+  - 不可跳過、停用或隔離這兩個測試。
+  - In progress（2026-10-20）：#190 的 e2e 連續 4 次失敗（含一次重跑），依規則把修正併入 #190。
+  - 完成（2026-10-20，v1.31.7）：原因是 Orbit Window 的 Pixi 場景一直在重畫。Focus overlay（92% 黑）蓋住整個 app 時沒有暫停；減少動態效果時場景不動，也每一幀重畫。CI 的軟體 WebGL 下每幀約 117–133 ms，Playwright 每次點擊都要等元素穩定，較慢的 runner 上就超過 15 秒（失敗的 run 都是 4.1–4.3 分鐘，通過的約 2.5 分鐘）。
+    - `ui/orbitWindow.js`：以 MutationObserver 觀察 `#focus-overlay` 的 class，overlay 開啟時暫停 runtime、關閉時恢復；卸載時解除。
+    - `runtime/pixiSceneRuntime.js`：減少動態效果時只畫一次、不啟動 ticker；`resume()` 與 context 恢復也遵守。
+    - 結果：overlay 下每幀回到 16.7 ms；這個測試在本機由 7.7 秒降到 4.5 秒。
+    - 測試：單元測試三項、e2e 一項（Focus 開始後 runtime 為 `suspended`，結束後回到 `ready`），以修正前的程式碼執行時都失敗。
+  - 不需要下載 artifact：在本機以軟體 WebGL 量測每幀時間即可找到原因。
 
 - [x] **INFRA-104** 讓 `pwa/sw.js` 與 Node 端的腳本也被 lint
   - 問題（INFRA-103 獨立 review 發現，2026-10-20）：`npm run lint` 只涵蓋 `pwa/js/**/*.js` 與 `tests/**/*.js`。`pwa/sw.js`（PS-211A 要改）、`pwa/server.cjs`、`scripts/*.mjs`、設定檔都沒有被 lint；`eslint.config.js` 中給設定檔的區塊因此從未生效。以目前的設定直接 lint `sw.js` 會因 service worker 的 globals（`self`、`caches` 等）報 17 個 `no-undef`。

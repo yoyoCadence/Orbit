@@ -307,6 +307,32 @@ describe('Personal Space V2 Pixi scene runtime', () => {
     runtime.destroy();
   });
 
+  it('draws once instead of ticking every frame under reduced motion (INFRA-106)', async () => {
+    vi.stubGlobal('matchMedia', query => ({ matches: query.includes('prefers-reduced-motion: reduce') }));
+    try {
+      const fake = createFakePixi();
+      const runtime = createPixiSceneRuntime({ loadPixi: () => Promise.resolve(fake.pixi) });
+      const { host } = createRuntimeHost();
+
+      await runtime.mount(host, { activeProject: { progress: 25 } });
+      const app = fake.applications[0];
+      expect(runtime.getStatus()).toBe('ready');
+      expect(app.ticker.add).not.toHaveBeenCalled();
+      expect(app.start).not.toHaveBeenCalled();
+      const rendersAfterMount = app.render.mock.calls.length;
+      expect(rendersAfterMount).toBeGreaterThan(0);
+
+      runtime.suspend();
+      runtime.resume();
+      expect(runtime.getStatus()).toBe('ready');
+      expect(app.start).not.toHaveBeenCalled();
+      expect(app.render).toHaveBeenCalledTimes(rendersAfterMount + 1);
+      runtime.destroy();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('restores rendering without restarting a runtime suspended while context was lost', async () => {
     const fake = createFakePixi();
     const runtime = createPixiSceneRuntime({ loadPixi: () => Promise.resolve(fake.pixi) });
