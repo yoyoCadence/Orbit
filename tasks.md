@@ -200,6 +200,7 @@
   - 完成條件：目前常用場景素材可預載或快取，window view 與主要家具切頁後不再明顯延遲出現
   - 備註：應在主要場景與資產集合較穩定後再做，避免過早優化 placeholder 階段的載入策略
   - In progress（2026-10-19）：提案（Mode A，只寫文件、不改程式碼）。本任務寫於 Personal Space V2 之前，先在真實瀏覽器量測 V2 目前切頁、首次載入與改版後的等待，再決定範圍；可能涉及 service worker 快取方式（部署行為），核准前不實作。
+  - 提案（2026-10-20）：[`docs/ps-211-asset-preload-cache-proposal.md`](docs/ps-211-asset-preload-cache-proposal.md)。量測結果：同一次使用中切頁已沒有等待（V2 與 legacy 都是 0 網路請求）；仍會等的是改版後（快取隨版本刪除，Fast 3G 下 poster 晚 2–3 秒）、狀態第一次改變時（新圖片約 1 秒，期間 canvas 顯示舊房間），以及每次改版都下載 1.94 MB V2 用不到的 legacy 圖片。建議改寫範圍並拆成 PS-211A（SHELL 改放 V2 poster 素材，需核准）、PS-211B（runtime 小修正）、PS-211C（可選，預熱下一步的圖片）。**等待使用者決定**（提案 §7）。
 
 - [ ] **PRO-014Q** 開發者面板的 backup 不應擋住其他帳號或非 Pro 模擬的 entitlement refresh
   - 問題（PR #158 Codex review 指出，2026-10-18 確認）：`storage.refreshProEntitlement()` 只要 `FLAG_DEV_BACKUP` 存在就直接 return。這個 backup 也由等級模擬器建立，且 `storage.clearAll()` 登出時不會清除。開發者登出後換另一個帳號，該帳號的 refresh 會一直被跳過，在 `server` source 下 fail closed，直到手動重設。
