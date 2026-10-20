@@ -82,7 +82,7 @@
 
 14. **INFRA-106：完成**（併入 #190，v1.31.7）。#190 的 e2e 連續 4 次（含一次重跑）在 `flows.test.js:189` 逾時，依規則把修正併入。原因與修正見 `tasks.md`：Orbit Window 的 Pixi 場景在 Focus overlay 下與減少動態效果時仍每一幀重畫。教訓：e2e 在 CI 上變慢時，先在本機以軟體 WebGL 量測每幀時間（`requestAnimationFrame` 間隔），常駐的 canvas 動畫會拖慢 Playwright 的每次點擊。
 
-15. **PS-248：提案**（#191，[`docs/ps-248-blender-themes-proposal.md`](ps-248-blender-themes-proposal.md)，等待使用者決定 §9）。建議 PS-248A 夜晚版本的工作站（同場景、同相機重新渲染房間與家具，家具沿用白天的裁切框）→ PS-248B 一套「房間風格」→ PS-248C 由 AI-202B 推導解鎖的裝飾小物；窗外依時段變化（A2）可選。風格與裝飾不寫入 ledger、不新增 `world_unlock`（避開 AI-202 發現的舊版分頁撤銷與 BUG-113）。教訓：最初的版本建議只拆窗外、房間不變，但房間與家具烘有從窗戶射入的陽光，夜晚的窗外配上陽光照亮的地板會不對；獨立 review 看了渲染圖才發現。改素材的提案要先看實際的圖，不只看程式。查證時也注意：角色與天氣是影像生成，不是 Blender；V2 的 `selectedThemeId` 只存不讀；`ps211aPrecache.test.js` 的推導沒有時段與風格，新增輸入維度時測試要逐一走過。
+15. **PS-248：提案**（#191，[`docs/ps-248-blender-themes-proposal.md`](ps-248-blender-themes-proposal.md)，等待使用者決定 §9）。建議 PS-248A 夜晚版本的工作站（同場景、同相機重新渲染房間與家具，夜晚家具有自己的 placement）→ PS-248B 一套「房間風格」→ PS-248C 由 AI-202B 推導解鎖的裝飾小物；窗外依時段變化（A2）可選。A、B、A2 都超出 vertical slice 的素材上限（一張房間背景＋日夜疊層），要使用者同意。風格與裝飾不寫入 ledger、不新增 `world_unlock`（避開 AI-202 發現的舊版分頁撤銷與 BUG-113）。教訓：最初的版本建議只拆窗外、房間不變，但房間與家具烘有從窗戶射入的陽光，夜晚的窗外配上陽光照亮的地板會不對；獨立 review 看了渲染圖才發現。改素材的提案要先看實際的圖，不只看程式。第二次獨立 review 又發現：shadow catcher 只記錄陰影，檯燈照在桌面的光暈做不出來；夜晚的影子方向不同，不能硬套白天的裁切框；拿掉夜晚色層會讓角色與天氣沒有夜晚感。查證時也注意：角色與天氣是影像生成，不是 Blender；V2 的 `selectedThemeId` 只存不讀；`ps211aPrecache.test.js` 的推導沒有時段與風格，新增輸入維度時測試要逐一走過。
 16. **下一步**：等待 AI-202 §9 與 PS-248 §9 的決定。INFRA-105（SHELL 的 JS／CSS／HTML 安裝時重新驗證）需核准。使用者原則：以「任務確實完成」為準，合併是後話；做不到的先寫進 `tasks.md`。
 
 其他：
@@ -145,7 +145,7 @@
 - **BUG-109A**：在 production 套用 `pwa/db/013_signup_profile_name.sql`，需專案擁有者執行，步驟見 `docs/bug-109-signup-name-truncation.md`。
 - **PRO-014Q Q6 的測試帳號**：在 preview Supabase 專案建立（見 §3 第 4 點）。
 - **AI-202 提案 §9**：關係階段的門檻、機制與既有歷史（K4 需同意新增三個本機欄位並修改 vertical slice §6.1、§7.2、§13.1）、顯示、hidden stats 名稱、台詞（7 句）、README、telemetry、BUG-113 的處理。
-- **PS-248 提案 §9**：範圍（「本工具」＝「空間」分頁、角色與天氣不在範圍、改稱「房間風格」）、是否放寬 vertical slice 的素材上限或等 PS-243、階段與順序、PS-248A 的做法（夜晚版本取代「日夜維持程式光線層」的契約）、PS-248B 的風格、取得方式與通知、PS-248B 的快取、順帶整理。
+- **PS-248 提案 §9**：範圍（「本工具」＝「空間」分頁、角色與天氣不在範圍、改稱「房間風格」）、是否放寬 vertical slice 的素材上限（A、B、A2 都超出）或等 PS-243、階段與順序、PS-248A 的做法（夜晚版本取代「日夜維持程式光線層」的契約、SHELL +460 KB、用於哪些時段、Pixi 是否改 4 個時段、改版混用的處理）、PS-248B 的風格、取得方式與通知、PS-248B 的快取、順帶整理。
 - **角色 3D 化**：主角與 Companion 仍是 PS-242 的像素 sprite。改成 3D 會推翻已核准素材（主角 12 個姿勢、Companion 6 個狀態），範圍很大，等使用者決定。
 - **PRO-014P**：entitlement 流程，實作前需提案與核准，擋 `PRO-014H` cutover。與草稿 PR #154（PRO-014L）改同一段 SUB-16 路徑，寫提案前先問使用者先後順序。
 - **PS-243**：真機、installed PWA、雙帳號、螢幕閱讀器等 human gate。
