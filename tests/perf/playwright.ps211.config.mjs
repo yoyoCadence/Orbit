@@ -15,6 +15,8 @@ export default {
   workers: 1,
   retries: 0,
   reporter: 'line',
+  // Playwright empties its outputDir on every run; keep it apart from the probe's results.
+  outputDir: path.join(ROOT, 'test-results/ps211-playwright'),
   use: { ...base.use, baseURL: 'http://localhost:3212', screenshot: 'off' },
   webServer: {
     command: 'node pwa/server.cjs',

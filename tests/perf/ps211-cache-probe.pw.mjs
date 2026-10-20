@@ -15,7 +15,8 @@
  *   npx playwright test -c tests/perf/playwright.ps211.config.mjs [-g "<test title>"]
  * Environment:
  *   PS211_PROBE_OUT    where JSON results and screenshots go
- *                      (default test-results/ps211-cache-probe, git-ignored)
+ *                      (default test-results/ps211-cache-probe, git-ignored; `npm run test:e2e`
+ *                      empties test-results/, so point this elsewhere to keep results)
  *   PW_CHROMIUM_PATH   optional Chromium executable for Playwright
  * Ports 3211 (dev server) and 3212 (proxy) must be free.
  */

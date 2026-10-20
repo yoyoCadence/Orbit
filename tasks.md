@@ -199,7 +199,7 @@
   - 範圍：`pwa/js/personalSpace/`、service worker / asset loading 相關模組、相關測試或文件
   - 完成條件：目前常用場景素材可預載或快取，window view 與主要家具切頁後不再明顯延遲出現
   - 備註：應在主要場景與資產集合較穩定後再做，避免過早優化 placeholder 階段的載入策略
-  - In progress（2026-10-19）：提案（Mode A，只寫文件、不改程式碼）。本任務寫於 Personal Space V2 之前，先在真實瀏覽器量測 V2 目前切頁、首次載入與改版後的等待，再決定範圍；可能涉及 service worker 快取方式（部署行為），核准前不實作。
+  - In progress（2026-10-19）：提案（Mode A：文件與手動量測腳本，不改 app 程式碼）。本任務寫於 Personal Space V2 之前，先在真實瀏覽器量測 V2 目前切頁、首次載入與改版後的等待，再決定範圍；可能涉及 service worker 快取方式（部署行為），核准前不實作。
   - 提案（2026-10-20）：[`docs/ps-211-asset-preload-cache-proposal.md`](docs/ps-211-asset-preload-cache-proposal.md)（經 Codex 四輪與獨立 review 後改寫）。量測結果：
     - 同一次使用中切頁已沒有等待（V2 與 legacy 都是 0 網路請求）。
     - 仍會等的：改版後第一次載入時，若 HTTP cache 沒有素材的副本（限速下 poster 晚 2–4 秒；是否發生取決於 GitHub Pages 的 ETag 是否隨部署改變，尚未驗證）；狀態第一次改變時（新圖片 0.4–1.0 秒，期間 canvas 顯示舊房間）；SHELL precache 1.99 MB V2 用不到的 legacy 圖片。

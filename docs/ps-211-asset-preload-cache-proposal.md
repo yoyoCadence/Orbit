@@ -6,7 +6,7 @@
 
 - PS-211 寫於 Personal Space V2 之前，原本的問題是「切頁後再回到 personal space，window view 與家具要等一下才出現」。**這個問題在 V2 與 legacy 都已經不存在**：同一次使用中切頁，不發出任何網路請求，畫面第一個 frame 就有完整的 poster，canvas 在 5–51 ms 內就緒（§3）。
 - 仍然會等的情況有三個（§4）：
-  1. **改版後第一次載入新版本時**（「新版本已就緒」後重新整理，或下次開啟），如果瀏覽器的 HTTP cache 沒有素材的有效副本：service worker 的快取隨版本刪除，房間素材與 `pixi.js` 都要重新下載。限速（§2）、專案 100% 時，poster 背景晚 2.2 秒、完整 poster 晚 3.4 秒、canvas 晚 4.5 秒出現。HTTP cache 仍有有效副本時只晚 28 ms。正式環境屬於哪一種，取決於 GitHub Pages 每次部署是否改變 ETag，推測會，但尚未驗證（§4.1）。
+  1. **改版後第一次載入新版本時**（「新版本已就緒」後重新整理，或下次開啟），如果瀏覽器的 HTTP cache 沒有素材的有效副本：service worker 的快取隨版本刪除，房間素材與 `pixi.js` 都要重新下載。限速（§2）、專案 100% 時，poster 背景晚 2.2 秒、完整 poster 晚 3.4 秒、canvas 晚 4.5 秒出現。如果 GitHub Pages 的 ETag 不隨部署改變，過期的副本只需以 304 重新驗證（每個檔案約一次往返；HTTP/2 下未量測）。正式環境屬於哪一種，取決於這一點：推測 ETag 每次部署都會改變，但尚未驗證（§4.1）。
   2. **狀態第一次改變時**（reveal、下一階段的家具、角色換動作）：新圖片不在 service worker 快取，當下才從網路下載，限速下 0.4–1.0 秒。這段時間 canvas 顯示的是**改變前的房間**，違反技術設計「第一個完整的 Pixi frame 畫好前不隱藏 DOM fallback」的規則。
   3. **SHELL 預先快取了 1.99 MB 的 legacy 圖片**，V2 完全不會用到。
 - 建議（§6）：把 PS-211 改成「改版後的素材連續性與狀態切換」，拆成：
@@ -32,7 +32,7 @@
   - 本機 WebGL 是軟體算圖，Pixi ticker 會造成約 100 ms 的長任務，主執行緒的時間偏悲觀；
   - proxy 用 HTTP/1.1，GitHub Pages 是 HTTP/2；
   - 數字是單次量測，只用來比較量級，不是 production 的網路紀錄。
-- 量測腳本：`tests/perf/ps211-cache-probe.pw.mjs`（CI 不執行）。在 repo 根目錄執行 `npx playwright test -c tests/perf/playwright.ps211.config.mjs`，可用 `-g` 只跑其中一個情境；結果寫到 `test-results/ps211-cache-probe/`（可用 `PS211_PROBE_OUT` 改位置）。2026-10-20 從這個位置重跑「改版後，100%」情境，得到 +2,184／+3,368／+4,351 ms，與 §4.1 的表一致。
+- 量測腳本：`tests/perf/ps211-cache-probe.pw.mjs`（CI 不執行）。在 repo 根目錄執行 `npx playwright test -c tests/perf/playwright.ps211.config.mjs`，可用 `-g` 只跑其中一個情境；結果寫到 `test-results/ps211-cache-probe/`（可用 `PS211_PROBE_OUT` 改位置）。注意 `npm run test:e2e` 會清空整個 `test-results/`，要保留結果就把 `PS211_PROBE_OUT` 指到別處。2026-10-20 從這個位置重跑「改版後，100%」情境，得到 +2,184／+3,368／+4,351 ms，與 §4.1 的表一致。
 
 ## 3. 現況：已經沒有等待的地方
 
@@ -69,7 +69,7 @@
 | 情境（390 px，限速，時間為首頁出現後） | poster 背景 | 完整 poster | canvas 就緒 | 下載 |
 |---|---:|---:|---:|---|
 | 同一版本重新整理，100% | +68 ms | +68 ms | +434 ms | 只有 HTML（304） |
-| 改版，HTTP cache 仍有有效副本，0% | +28 ms | +28 ms | +339 ms | 只有 `sw.js` 與 HTML |
+| 改版，HTTP cache 仍新鮮（素材 10 分鐘內剛從網路取過，實際很少發生），0% | +28 ms | +28 ms | +339 ms | 只有 `sw.js` 與 HTML |
 | **改版，HTTP cache 沒有素材的副本，100%** | **+2,192 ms** | **+3,375 ms** | **+4,505 ms** | 797 KiB（素材 531 KB、Pixi 220 KB） |
 | 改版，HTTP cache 沒有素材的副本，0%（另一次量測） | +3,655 ms | +3,655 ms | +4,716 ms | 674 KB |
 
@@ -129,13 +129,14 @@
   - 天氣存在 V2 state 中：沒有程式碼寫入 `rain`，但 `stateSchema.js` 接受已儲存的 `rain`，所以 A3 也放入雨天特效（31,582 bytes）。
   - 朝右與 `walk` 既不儲存、也不會由程式碼推導出來，不列入。
 - A1–A3 都比現在的 1,987,696 bytes 小：寫進 Cache Storage 的量，A2 少約 1.43 MB，A3 少約 1.00 MB。實際下載的量取決於 §4.1 的 HTTP cache：ETag 不隨部署改變時，沒變的檔案只需 304 重新驗證，兩者都幾乎不下載；ETag 每次都變時，SHELL 的檔案每次改版都整個下載，A2／A3 就比現在少下載這麼多。
-- A3 涵蓋的比「A2 ＋ C」多，而且是確定的，不必修改 §12.1：C 只預熱 reveal 會用到的 4 張角色圖，A3 則包含所有可能的角色狀態與雨天。
+- A3 涵蓋的比「A2 ＋ C」多，而且是確定的：C 只預熱 reveal 會用到的 4 張角色圖，A3 則包含所有可能的角色狀態與雨天。
 - 與技術設計 §12.2 的關係：
   - §12.2 允許 precache「離線 shell 需要的 stateful fallback 素材」，但也說不要把所有全解析度的場景圖放進 SHELL，並要求 service worker 快取策略的變更先取得核准。
   - poster 是 V2 的 fallback，A1／A2 符合。A3 放入的也全是 poster 會用到的素材，但數量是 manifest 29 個檔案中的 22 個。是否算「全部」由使用者判斷；選 A3 時，順便把 §12.2 的文字改清楚。
+- 與技術設計 §12.1 的關係：§12.1 說首頁不要載入所有專案階段。A2／A3 在 service worker 安裝時下載所有階段的家具（A3 還有所有角色狀態）；第一次造訪時，安裝發生在首頁開著的時候。「service worker precache 不等於首頁載入」說得通，但這也是判斷題：選 A2／A3 時，§12.1 與 §12.2 一起改清楚。
 - Pixi 不是 fallback，§12.1 也要求首頁初始 HTML 不下載 Pixi。＋P 的效果只有省掉下載時間，所以不建議。
 - 實作注意：
-  - `addAll()` 會經過瀏覽器的 HTTP cache。如果某張素材以同樣的檔名重新渲染，而舊檔在安裝前 10 分鐘內被取過，舊檔會被 precache 並用到下次改版；目前執行時的 cache-first 也有同樣的風險。SHELL 的圖片改用 `new Request(url, { cache: 'no-cache' })`（強制重新驗證）可以避免。
+  - `addAll()` 會經過瀏覽器的 HTTP cache。如果某張素材以同樣的檔名重新渲染，而舊檔在安裝前 10 分鐘內被取過，舊檔會被 precache 並用到下次改版；目前執行時的 cache-first 也有同樣的風險。SHELL 的圖片改用 `new Request(url, { cache: 'no-cache' })`（強制重新驗證）可以避免。圖片路徑仍要寫在 `const SHELL = [...]` 字面值裡，在 install 時才轉成 Request：`serviceWorkerShell.test.js` 與量測腳本都只解析這個字面值。
   - `tests/unit/serviceWorkerShell.test.js` 已經檢查 SHELL 的檔案存在，`addAll()` 不會因缺檔失敗。新測試只需要從 `assetManifest.js` 推導出選定的素材，檢查都在 SHELL 中。
   - PS-243 的首屏預算不受影響（不改首屏載入的檔案）。
 
@@ -144,7 +145,7 @@
 - 實作：`.orbit-window:not(.is-runtime-ready) .orbit-window-canvas { visibility: hidden; }`。
   - `mount()` 一開始就移除 `is-runtime-ready`，畫完並 `app.start()` 後才加回；首頁重繪時換成新的 DOM，也沒有這個 class。
   - 現有 e2e 檢查 canvas 的數量與尺寸，不受影響。
-  - 同一個 host 上直接呼叫 `render()` 更新狀態時（不重新 mount），class 不會被移除，舊 frame 仍會短暫顯示。實作時要確認這條路徑。
+  - 目前 `render()` 只由 `mount()` 與 WebGL context 恢復時呼叫；context lost 時已經移除 `is-runtime-ready`、恢復並畫完後才加回，所以沒有「舊 frame 在 class 存在時顯示」的路徑。日後若新增直接呼叫 `render()` 的地方，要一併處理這個 class。
 - 取捨：使用者不再看到「舊的完整房間」，改看到新狀態的 poster；poster 的新圖片還沒到時，會逐一出現。選 A3 時這些圖片都從快取取得，幾乎立刻完整；不選 A 時，限速下約 1 秒。
 - 可選：首頁 → 空間時沿用同一個 Pixi app（例如在 lazy import 之前 `retain()`，或延長銷毀的延遲），省下 WebGL 初始化。設計文件允許重建，所以這只是最佳化。
 
@@ -170,7 +171,7 @@
 2. **PS-211A（建議 A3）**：
    - SHELL 移除兩張 legacy 圖片，加入 A3 的 22 個 V2 檔案，圖片以 `cache: 'no-cache'` 的 Request 取得。
    - 路徑由測試從 `assetManifest.js` 推導，避免素材改名時 SHELL 漏改（legacy 圖片在 V2 換掉之後留了近三個月）。
-   - 同時把技術設計 §12.2 改清楚。
+   - 同時把技術設計 §12.1 與 §12.2 改清楚（service worker precache 的 poster 素材不算首頁載入）。
    - patch。不想放入角色動作時選 A2，再視需要加 PS-211C。
 3. **PS-211B（建議）**：一條 CSS 規則讓 canvas 在新場景畫完前隱藏，符合技術設計 §9.2。可選：首頁 → 空間沿用 Pixi app。patch。
 4. **PS-211C**：選 A3 時不需要；選 A2 時可選，並修改技術設計 §12.1。patch。
@@ -183,7 +184,7 @@
 1. 是否同意改寫 PS-211 的範圍（§6 第 1 點）。
 2. PS-211A：
    - 是否核准修改 service worker precache；
-   - 範圍選 A1、A2、**A3（建議，並修改技術設計 §12.2）**，或不做；
+   - 範圍選 A1、A2（並澄清技術設計 §12.1）、**A3（建議，並澄清 §12.1 與 §12.2）**，或不做；
    - 是否加上 ＋P（`pixi.js`，不建議）。
 3. PS-211B：是否排入（建議）；是否包含「首頁 → 空間沿用 Pixi app」的可選最佳化。
 4. PS-211C：只在第 2 題選 A2 時需要決定：是否排入，並修改技術設計 §12.1。
