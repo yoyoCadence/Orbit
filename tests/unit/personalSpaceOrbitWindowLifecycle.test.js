@@ -130,6 +130,32 @@ describe('Orbit Window lifecycle', () => {
     expect(runtime.suspend).toHaveBeenCalledTimes(1);
   });
 
+  it('disconnects the Focus overlay observer on cleanup (INFRA-106)', async () => {
+    const disconnect = vi.fn();
+    vi.stubGlobal('MutationObserver', class MutationObserver {
+      observe() {}
+      disconnect() { disconnect(); }
+    });
+    const runtime = {
+      mount: vi.fn(() => Promise.resolve()),
+      suspend: vi.fn(),
+      resume: vi.fn(),
+      release: vi.fn(),
+    };
+    const overlay = document.createElement('div');
+    overlay.id = 'focus-overlay';
+    overlay.className = 'hidden';
+    document.body.appendChild(overlay);
+    const shell = document.createElement('div');
+    shell.innerHTML = renderOrbitWindow({});
+    document.body.appendChild(shell);
+    const cleanup = mountOrbitWindow(shell.querySelector('[data-orbit-window]'), { runtime });
+
+    await vi.runAllTimersAsync();
+    cleanup();
+    expect(disconnect).toHaveBeenCalledTimes(1);
+  });
+
   it('suspends right after mounting under an already open Focus overlay (INFRA-106)', async () => {
     const runtime = {
       mount: vi.fn(() => Promise.resolve()),

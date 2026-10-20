@@ -161,7 +161,9 @@ Companion 的優先順序（有待播放的 reveal 時；取代 `companionEngine
 
 - `relationship` 與 `world_unlock` entry 不再直接產生 reward 行；關係行只來自前後比較。
 - 階段資訊記在 reveal 上（例如 `reveal.relationshipStage = { from, to }`）。
-  - 已排入但尚未顯示的階段提升 reveal，若較早的一天被撤銷、目前階段已低於 `to`，要移除這段階段資訊。現在的 `revealMatchesActiveLedger()` 只檢查該 Session 自己的 entry，會留下過時的「合作夥伴」。
+  - 待播放的 reveal 中**最多保留一段淨的階段變化**：`from` 是最早一段尚未播放的階段資訊的 `from`，`to` 是目前階段，放在最新一個帶階段資訊的 reveal 上，其餘 reveal 的階段資訊移除；`from` 與 `to` 相同時全部移除。現在的 `revealMatchesActiveLedger()` 只檢查該 Session 自己的 entry，會留下過時的階段資訊，兩個方向都會發生：
+    - 第 12 天的提升尚未播放時撤銷較早的一天，目前已回到 `familiar`，不能再顯示「合作夥伴」；
+    - 退回 `familiar` 尚未播放時又新增一個 Main Quest 日回到 `partner`，不能再顯示「夥伴關係：熟悉夥伴」與退回的反應（Codex review 指出）。
   - 舊版的 `normalizeRevealQueue()` 會保留 reveal 上不認得的欄位，舊版分頁只是不顯示它。
 - 時間軸上沒有被提示的階段變化（舊版分頁、開啟時的 reconcile）只會在卡片標籤上看到。這是可接受的：同一個 Session 不會恭喜兩次。
 
@@ -259,6 +261,8 @@ reveal 與 Companion（§3.4）：
 - 剛好 12 天時撤銷第 2 天：只有第 2 天的 reversal reveal 帶階段退回；第 4、5 天換一天承接的 reveal 沒有行，不排入。
 - 撤銷第 4 天而第 5 天存在（專案完成改由第 5 天承接）：兩個 reveal 都不是 `major`，都不恭喜，沒有關係或解鎖的行。
 - 已排入的第 12 天 reveal 尚未顯示時撤銷較早的一天、階段跌回 `familiar`：該 reveal 不再顯示「合作夥伴」。
+- 退回 `familiar` 的 reveal 尚未顯示時又新增一個 Main Quest 日、回到 `partner`：沒有任何階段的行或反應（淨變化為零）。
+- 連續兩次提升都尚未顯示（例如補記多天）：只顯示一段「夥伴關係：<目前階段>」。
 - 非 authoritative 的部分快照（省略較早的 Session）：Main Quest 日數由保留的 entry 計入，階段不變；重複套用時 state 逐位元相同（與既有的 replay 測試相同）。
 
 與舊版程式碼並存、規則版本與既有資料（K4、R1）：

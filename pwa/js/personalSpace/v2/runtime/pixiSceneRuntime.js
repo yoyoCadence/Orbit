@@ -225,6 +225,8 @@ export function createPixiSceneRuntime(options = {}) {
       };
       app.ticker.add(tickerUpdate);
     }
+    // A still stage has no ticker to pick up the change; draw it now.
+    if (!animating && status === 'ready') app.render();
   }
 
   function suspend() {
@@ -330,10 +332,13 @@ export function createPixiSceneRuntime(options = {}) {
           || restoreHost !== host
           || restoreLifecycleRevision !== lifecycleRevision
         ) return;
+        // suspend() or resume() may have run while the stage reloaded; the
+        // latest call wins over the state captured when the context was lost.
+        const resumeNow = status === 'loading' ? shouldResume : status === 'ready';
         restoreApp.render();
-        if (shouldResume && animating) restoreApp.start();
+        if (resumeNow && animating) restoreApp.start();
         else restoreApp.stop();
-        status = shouldResume ? 'ready' : 'suspended';
+        status = resumeNow ? 'ready' : 'suspended';
         restoreHost.dataset.runtimeStatus = status;
         restoreHost.closest('[data-orbit-window]')?.classList.remove('is-runtime-fallback');
         restoreHost.closest('[data-orbit-window]')?.classList.add('is-runtime-ready');

@@ -12,8 +12,12 @@
   - 這也是 CI 上 `tests/e2e/flows.test.js` 的 Focus 提前結束測試間歇性逾時的原因：軟體 WebGL 下每幀約 120–130 ms，Playwright 每次點擊都要等畫面穩定。修正後 overlay 下每幀回到約 17 ms。
 
 ### Validation
-- 單元測試：overlay 開啟時 runtime 暫停、關閉時恢復，切換其他 class 不會重複暫停，卸載後不再反應；overlay 已開啟時掛載會立即暫停；減少動態效果時不啟動 ticker，恢復時只重畫一次。以修正前的程式碼執行時三項都失敗。
-- e2e：開始 Focus 後，首頁場景的 runtime 狀態變成 `suspended`；結束後回到 `ready`。以修正前的程式碼執行時失敗。
+- 單元測試：
+  - overlay 開啟時 runtime 暫停、關閉時恢復；切換其他 class 不會重複暫停；卸載時解除觀察；overlay 已開啟時掛載會立即暫停；
+  - 減少動態效果時，掛載後停止 Pixi 自動啟動的 ticker，恢復、重新 render 與 WebGL context 恢復時都只重畫一次；
+  - WebGL context 恢復期間收到的暫停不會被恢復流程蓋掉（原本就有的競態，overlay 暫停後影響變大，一併修正）。
+  - 以修正前的程式碼執行時這些測試都會失敗。
+- e2e：開始 Focus 後，首頁場景的 runtime 狀態變成 `suspended`；縮小成 PiP 時同一個場景恢復為 `ready`，展開後再次 `suspended`。以修正前的程式碼執行時失敗。
 
 ---
 

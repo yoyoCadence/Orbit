@@ -45,6 +45,15 @@
   - 暫緩（使用者 2026-10-20 同意）：素材仍在調整；且要先驗證 GitHub Pages 的 ETag 是否隨部署改變（`curl -I` 比較兩次部署中同一個沒改過的素材）。ETag 不變時，PS-211A 之後的效益很小。
   - 改 service worker 與部署語意，實作前需提案與核准。
 
+- [ ] **PS-249** Orbit Window 在其他蓋住畫面的 overlay 下仍重畫、reveal 計時照走
+  - 背景（INFRA-106 獨立 review 發現，2026-10-20）：INFRA-106 只在 Focus overlay 開啟時暫停 Pixi 場景。其他 overlay 也會蓋住首頁：
+    - `#levelup-overlay`：85% 黑，z 100（`feedback.js`），升級後顯示到使用者關閉；
+    - `.modal-overlay`：65% 黑，用於早晨、每日報告、連勝解鎖、Focus 的結果選擇等 modal；
+    - `.shield-confirm-overlay`、`.pro-sheet-overlay`：55% 黑。
+  - 另外：reveal 的計時（`orbitWindow.js` 的 reveal clock）不看 Focus overlay，待播放的 reveal 可能在 overlay 底下播完；`.orbit-window-major-reveal`（fixed、z 1200）會畫在 Focus overlay（z 80）之上。
+  - 方向：決定哪些 overlay 要暫停場景（半透明的 modal 底下仍看得到場景，不一定要暫停）、reveal 是否要等 overlay 關閉再播；可選的最佳化：overlay 開著時延後掛載、`app.init` 傳 `autoStart: false`。
+  - 屬於效能與呈現的調整，先提案再實作。
+
 - [ ] **PS-227** Generate controlled idle furniture variants from approved references
   - Goal: replace one-view-only expanded props with true `front / left-wall-flush / right-wall-flush` variants that preserve material identity.
   - Scope: legacy Idle Growth Window only; pause further volume work while the fixed-camera Personal Space V2 vertical slice is validated.
@@ -282,7 +291,7 @@
 ## Done
 
 - [x] **INFRA-106** 查明 Focus 提前結束 e2e 的間歇性逾時
-  - 問題：`tests/e2e/flows.test.js` 的「Focus 計時流程」提前結束兩個測試（:175、:189）在 CI 上偶發 `Test timeout of 15000ms exceeded`，與 PR 內容無關，本機無法重現。
+  - 問題：`tests/e2e/flows.test.js` 的「Focus 計時流程」提前結束兩個測試（:175、:189）在 CI 上偶發 `Test timeout of 15000ms exceeded`，與 PR 內容無關；本機較快，先前沒有重現。
   - 紀錄：
     - 2026-10-19：3 次（只改版本號的 commit 也失敗，重跑通過）；
     - 2026-10-20：#190 的 f62434c（純文件 PR）在 :189 失敗，第一次與 retry 都逾時。這次有 INFRA-102 上傳的 artifact：run 39412397253 的 `playwright-test-results`，保留到 2026-10-27。
@@ -295,7 +304,8 @@
     - `ui/orbitWindow.js`：以 MutationObserver 觀察 `#focus-overlay` 的 class，overlay 開啟時暫停 runtime、關閉時恢復；卸載時解除。
     - `runtime/pixiSceneRuntime.js`：減少動態效果時只畫一次、不啟動 ticker；`resume()` 與 context 恢復也遵守。
     - 結果：overlay 下每幀回到 16.7 ms；這個測試在本機由 7.7 秒降到 4.5 秒。
-    - 測試：單元測試三項、e2e 一項（Focus 開始後 runtime 為 `suspended`，結束後回到 `ready`），以修正前的程式碼執行時都失敗。
+    - 依獨立 review 補強：`render()` 在減少動態效果且已 ready 時重畫一次；WebGL context 恢復期間收到的暫停或恢復以最後一次為準（原本就有的競態）。
+    - 測試：單元測試五項、e2e 一項（Focus 開始後 runtime 為 `suspended`，縮小成 PiP 時同一個場景恢復為 `ready`，展開後再次 `suspended`），刪掉修正中的任何一行都有測試會失敗。
   - 不需要下載 artifact：在本機以軟體 WebGL 量測每幀時間即可找到原因。
 
 - [x] **INFRA-104** 讓 `pwa/sw.js` 與 Node 端的腳本也被 lint

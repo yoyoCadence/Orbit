@@ -241,7 +241,7 @@
         },
         {
           "path": "pwa/js/personalSpace/v2/runtime/pixiSceneRuntime.js",
-          "bytes": 18635
+          "bytes": 18995
         },
         {
           "path": "pwa/js/personalSpace/v2/sessionAdapter.js",
@@ -268,15 +268,15 @@
           "bytes": 26368
         }
       ],
-      "rawBytes": 207480,
-      "gzipBytes": 52852
+      "rawBytes": 207840,
+      "gzipBytes": 52982
     },
     "vendoredPixi": {
       "path": "pwa/vendor/pixi.js",
       "rawBytes": 796970,
       "gzipBytes": 225428
     },
-    "combinedGzipBytes": 278280,
+    "combinedGzipBytes": 278410,
     "budgetBytes": 307200,
     "result": "PASS"
   }

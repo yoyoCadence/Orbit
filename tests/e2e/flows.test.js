@@ -198,19 +198,19 @@ test.describe('Focus 計時流程', () => {
 
   // INFRA-106: the 92%-black overlay covers the app for the whole session, so
   // the Orbit Window scene must stop redrawing underneath it and resume after.
-  test('Focus overlay 開啟期間暫停 Orbit Window 場景，結束後恢復', async ({ page }) => {
+  // Minimizing to the PiP keeps the same Orbit Window mount, so this checks
+  // the resume path rather than a fresh mount.
+  test('Focus overlay 開啟期間暫停 Orbit Window 場景，縮小時恢復', async ({ page }) => {
     const runtimeHost = page.locator('#content [data-orbit-runtime-host]');
     await expect(runtimeHost).toHaveAttribute('data-runtime-status', 'ready', { timeout: 10000 });
     await addToPlanAndStartFocus(page);
     await page.waitForSelector('#focus-overlay:not(.hidden)', { timeout: 5000 });
     await expect(runtimeHost).toHaveAttribute('data-runtime-status', 'suspended');
 
-    await page.locator('#focus-end-btn').click();
-    await page.locator('#early-end-confirm-btn').click();
-    await expect(page.locator('#focus-overlay')).toBeHidden({ timeout: 3000 });
-    await page.locator('[data-page="home"]').first().click();
-    await expect(page.locator('#content [data-orbit-runtime-host]'))
-      .toHaveAttribute('data-runtime-status', 'ready', { timeout: 10000 });
+    await page.locator('.focus-minimize-btn').click();
+    await expect(runtimeHost).toHaveAttribute('data-runtime-status', 'ready');
+    await page.locator('.focus-pip-expand').click();
+    await expect(runtimeHost).toHaveAttribute('data-runtime-status', 'suspended');
   });
 });
 
