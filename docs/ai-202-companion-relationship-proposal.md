@@ -260,7 +260,7 @@ reveal 與 Companion（§3.4）：
   - 同上，但當天還有另一筆有效的一般 Session：Companion 仍是 `observe`＋`companion.observe.familiar`（撤銷的 reveal 優先於「最新 Session」分支）。
 - 專案完成後撤銷第 6 天（沒有跨過門檻），當天另有一筆有效的一般 Session：Companion 是 `observe`＋目前階段的 `observe` 台詞，不是 `congratulate`，也不是 `approach`。
 - 剛好 12 天時撤銷第 2 天：只有第 2 天的 reversal reveal 帶階段退回；第 4、5 天換一天承接的 reveal 沒有行，不排入。
-- 撤銷第 4 天而第 5 天存在（專案完成改由第 5 天承接）：兩個 reveal 都不是 `major`，都不恭喜，沒有關係或解鎖的行。
+- 撤銷第 4 天而第 5 天存在（專案完成改由第 5 天承接）：佇列中**只有第 4 天的撤銷 reveal**（含它自己被撤銷的金幣、進度等行），不是 `major`，Companion 是 `observe`，沒有關係或解鎖的行；第 5 天的 reveal 只剩搬過去的解鎖與關係 entry，沒有任何行，不排入。
 - 已排入的第 12 天 reveal 尚未顯示時撤銷較早的一天、階段跌回 `familiar`：該 reveal 不再顯示「合作夥伴」，`kind` 不再是 `major`，首頁不顯示「WORLD MILESTONE」或「夥伴關係：合作夥伴」的標題。
 - 退回 `familiar` 的 reveal 尚未顯示時又新增一個 Main Quest 日、回到 `partner`：沒有任何階段的行或反應（淨變化為零）。
 - 連續兩次提升都尚未顯示（例如補記多天）：只顯示一段「夥伴關係：<目前階段>」。
