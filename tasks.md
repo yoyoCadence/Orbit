@@ -206,22 +206,6 @@
 
 ## In Progress
 
-- [ ] **PS-211A** service worker 預先快取 V2 poster 素材與 Pixi（A3 ＋P）
-  - 規格：同上提案 §4.1、§4.3、§5 A。使用者 2026-10-20 核准 A3 ＋P（部署行為）。
-  - 驗收條件：
-    - SHELL 不含 `assets/personal-space/idle-window/` 下的任何檔案。
-    - SHELL 含 A3 的 22 個 V2 檔案（背景、主角 idle／celebrate／inspect／rest／work 朝左、Companion 6 個狀態、晴天與雨天特效、8 件家具）與 `./vendor/pixi.js`。單元測試從 `assetManifest.js` 推導這組路徑，檢查都在 SHELL 字面值中。
-    - 這些圖片與 `pixi.js` 在 install 時以 `cache: 'no-cache'` 的 Request 取得；路徑仍寫在 `const SHELL = [...]` 字面值裡。
-    - e2e：service worker 安裝後，快取中有這些檔案。離線重新整理時：首頁 poster 在程式碼會產生或 state 可能帶有的狀態下都完整顯示（至少一個非預設的主角／Companion 狀態與雨天）；runtime 以快取的 `pixi.js` 進入 ready（＋P 的效果）。
-    - 新增測試，確認頁面本身仍不在初始載入時取得 Pixi（技術設計 §12.1；目前沒有這樣的測試）：`index.html` 與 `app.js` 的靜態 import 圖不引用 `vendor/pixi.js`；e2e 中頁面發出的請求（排除 service worker 自己的請求，`request.serviceWorker()`）在 runtime mount 之前不含 `pixi.js`。
-    - legacy 在線上仍可正常顯示。
-    - 注意：`pwa/sw.js` 不在 `npm run lint` 範圍內（INFRA-104），改 `sw.js` 時要手動檢查。
-    - 技術設計 §12.1 與 §12.2 更新：service worker precache 的 poster 素材與 Pixi 不算首頁載入。
-    - lint、test、e2e、`ps242:manifest -- --check`、`ps243:assets -- --check` 通過。
-  - 版本：`npm run bump -- patch`。
-  - 依賴：`PS-211`、`PS-211B`
-  - In progress（2026-10-20）。
-
 - [ ] **PRO-014Q** 開發者面板的 backup 不應擋住其他帳號或非 Pro 模擬的 entitlement refresh
   - 問題（PR #158 Codex review 指出，2026-10-18 確認）：`storage.refreshProEntitlement()` 只要 `FLAG_DEV_BACKUP` 存在就直接 return。這個 backup 也由等級模擬器建立，且 `storage.clearAll()` 登出時不會清除。開發者登出後換另一個帳號，該帳號的 refresh 會一直被跳過，在 `server` source 下 fail closed，直到手動重設。
   - 影響：只影響使用過開發者面板的裝置。
@@ -244,6 +228,30 @@
 ---
 
 ## Done
+
+- [x] **PS-211A** service worker 預先快取 V2 poster 素材與 Pixi（A3 ＋P）
+  - 規格：同上提案 §4.1、§4.3、§5 A。使用者 2026-10-20 核准 A3 ＋P（部署行為）。
+  - 驗收條件：
+    - SHELL 不含 `assets/personal-space/idle-window/` 下的任何檔案。
+    - SHELL 含 A3 的 22 個 V2 檔案（背景、主角 idle／celebrate／inspect／rest／work 朝左、Companion 6 個狀態、晴天與雨天特效、8 件家具）與 `./vendor/pixi.js`。單元測試從 `assetManifest.js` 推導這組路徑，檢查都在 SHELL 字面值中。
+    - 這些圖片與 `pixi.js` 在 install 時以 `cache: 'no-cache'` 的 Request 取得；路徑仍寫在 `const SHELL = [...]` 字面值裡。
+    - e2e：service worker 安裝後，快取中有這些檔案。離線重新整理時：首頁 poster 在程式碼會產生或 state 可能帶有的狀態下都完整顯示（至少一個非預設的主角／Companion 狀態與雨天）；runtime 以快取的 `pixi.js` 進入 ready（＋P 的效果）。
+    - 新增測試，確認頁面本身仍不在初始載入時取得 Pixi（技術設計 §12.1；目前沒有這樣的測試）：`index.html` 與 `app.js` 的靜態 import 圖不引用 `vendor/pixi.js`；e2e 中頁面發出的請求（排除 service worker 自己的請求，`request.serviceWorker()`）在 runtime mount 之前不含 `pixi.js`。
+    - legacy 在線上仍可正常顯示。
+    - 注意：`pwa/sw.js` 不在 `npm run lint` 範圍內（INFRA-104），改 `sw.js` 時要手動檢查。
+    - 技術設計 §12.1 與 §12.2 更新：service worker precache 的 poster 素材與 Pixi 不算首頁載入。
+    - lint、test、e2e、`ps242:manifest -- --check`、`ps243:assets -- --check` 通過。
+  - 版本：`npm run bump -- patch`。
+  - 依賴：`PS-211`、`PS-211B`
+  - In progress（2026-10-20）。
+  - 完成（2026-10-20，v1.31.6）：
+    - `sw.js`：SHELL 移除 legacy 圖片，加入 22 個 V2 poster 檔案與 `./vendor/pixi.js`。install 時以 `REVALIDATE_ON_INSTALL` 篩出圖片與 Pixi，改用 `new Request(path, { cache: 'no-cache' })`。
+    - 技術設計 §12.1、§12.2 更新。
+    - 測試：
+      - `tests/unit/ps211aPrecache.test.js`（5 項）：從程式碼推導 22 個檔案、排除 legacy、加入 Pixi、install 時重新驗證、§12.1 的靜態 import 圖；以舊的 `sw.js` 執行時其中 3 項失敗。
+      - `tests/e2e/sw-precache.test.js`（2 項）：離線且素材／Pixi 網路請求被擋下時，雨天＋rest 的 poster 完整、runtime ready；沒有 Orbit Window 的頁面不由頁面請求 Pixi。以舊的 `sw.js` 執行時，雨天特效載入失敗。
+    - e2e 注意：`context.setOffline(true)` 擋不到 service worker 自己的請求，要另外以 `context.route` 擋下，才能證明檔案來自預先快取。
+    - `pwa/sw.js` 不在 `npm run lint` 範圍內（INFRA-104），以 `node --check` 與加上 service worker globals 的 eslint 手動檢查過。
 
 - [x] **PS-211B** 新場景畫完前隱藏 canvas；首頁 → 空間沿用 Pixi app
   - 規格：[`docs/ps-211-asset-preload-cache-proposal.md`](docs/ps-211-asset-preload-cache-proposal.md) §4.2、§4.4、§5 B。使用者 2026-10-20 核准，包含沿用 Pixi app 的最佳化。

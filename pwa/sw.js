@@ -1,6 +1,6 @@
 // Service Worker
 // Bump CACHE version on every deploy so users always get fresh code.
-const CACHE = 'orbit-v1.31.5';
+const CACHE = 'orbit-v1.31.6';
 
 const SHELL = [
   './',
@@ -109,13 +109,44 @@ const SHELL = [
   './js/personalSpace/v2/runtime/pixiSceneRuntime.js',
   './js/personalSpace/v2/ui/orbitWindow.js',
   './js/pages/personalSpaceV2.js',
-  './assets/personal-space/idle-window/backgrounds/office-angle-center-v2.png',
-  './assets/personal-space/idle-window/characters/building-protagonist-idle/building-protagonist-idle-1.png',
+  // PS-211A: every image the Orbit Window poster can show (any project phase,
+  // any protagonist / Companion state the code produces, clear and rain), and
+  // Pixi. The new worker activates only after these are cached, so after a
+  // release the poster is complete and state changes do not wait on the network.
+  './assets/personal-space/v2/workspace/backgrounds/building-formal-workstation-room-v2.webp',
+  './assets/personal-space/v2/characters/protagonist/player-default-idle-left.png',
+  './assets/personal-space/v2/characters/protagonist/player-default-work-left.png',
+  './assets/personal-space/v2/characters/protagonist/player-default-celebrate-left.png',
+  './assets/personal-space/v2/characters/protagonist/player-default-rest-left.png',
+  './assets/personal-space/v2/characters/protagonist/player-default-inspect-left.png',
+  './assets/personal-space/v2/characters/companion/orbit-guide-observe.png',
+  './assets/personal-space/v2/characters/companion/orbit-guide-approach.png',
+  './assets/personal-space/v2/characters/companion/orbit-guide-congratulate.png',
+  './assets/personal-space/v2/characters/companion/orbit-guide-rest.png',
+  './assets/personal-space/v2/characters/companion/orbit-guide-work.png',
+  './assets/personal-space/v2/characters/companion/orbit-guide-remind.png',
+  './assets/personal-space/v2/effects/weather-building-clear-motes.png',
+  './assets/personal-space/v2/effects/weather-building-rain.png',
+  './assets/personal-space/v2/workspace/props/corner-desk.png',
+  './assets/personal-space/v2/workspace/props/office-chair.png',
+  './assets/personal-space/v2/workspace/props/office-shelf.png',
+  './assets/personal-space/v2/workspace/props/desk-lamp.png',
+  './assets/personal-space/v2/workspace/props/planning-board.png',
+  './assets/personal-space/v2/workspace/props/single-monitor.png',
+  './assets/personal-space/v2/workspace/props/dual-monitor.png',
+  './assets/personal-space/v2/workspace/props/office-plant.png',
+  './vendor/pixi.js',
 ];
+
+// Art is re-rendered under the same file names, so these entries are revalidated
+// instead of trusting a possibly stale HTTP cache entry for the whole release.
+const REVALIDATE_ON_INSTALL = /\.(png|webp)$|\/vendor\/pixi\.js$/;
 
 // Precache on install
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)));
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL.map(path => (
+    REVALIDATE_ON_INSTALL.test(path) ? new Request(path, { cache: 'no-cache' }) : path
+  )))));
   self.skipWaiting();
 });
 
