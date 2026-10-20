@@ -79,7 +79,8 @@ README 的「關係進化草案」列了 5 個不同的階段（陌生觀察／�
   - 舊版的 `normalizePersonalSpaceV2State()` 與 `applyReconciliationToV2State()` 都會保留 `companion` 中不認得的欄位（`...rawCompanion`、`...state.companion`），所以舊版分頁不會刪掉它。
 - `companion.relationshipPolicyId`：**新的本機欄位**，記錄算出目前點數的規則版本，例如 `RELATIONSHIP_POLICY_ID = 'ai202-main-quest-days-v1'`。
   - 每次 reconcile 寫入目前的 policy id。
-  - 已儲存的值與目前不同（第一次以新規則計算，或之後再改規則）時，階段直接改為新規則的結果，**不排入**階段變化的 reveal。這是規則改變，不是使用者的行為。
+  - 用途是標示規則版本（§3.3），以及讓之後改規則時可以辨認「這份 state 是哪一版算的」。
+  - reveal **不需要**依 policy id 特別處理：「之前的階段」一律以**目前的規則**從舊 ledger 計算（§3.4），所以規則改變造成的補進度（例如歷史上已有 25 天，第一次以新規則計算就到 `partner`）已經包含在「之前」之中，不會被當成本次的變化；本次 ledger 的變化跨過門檻時（例如第一次 reconcile 就是記錄第 12 天），仍照常排入 reveal。
 - 階段的 reveal 規則見 §3.4。
 - `companionEngine` 仍不能改變關係（product spec §8.3、vertical slice §7.2）；它只讀取階段來挑選台詞（§7）。
 
@@ -117,7 +118,7 @@ K4 的其他影響：
 - 沒有 ledger id 衝突、`metadata.tier` 或部分快照保留 milestone entry 的問題。
 - 階段提升的 reveal 行會放在第 N 天那筆 Session 的 reveal 裡，該 reveal 含 `project_progress:workspace-upgrade`，所以仍依賴 BUG-113：不先修，Companion 會被判斷成「專案完成」。
 - 歷史：
-  - **R1（建議）**：epoch（2026-07-17）以後的 Main Quest 日都算。已經有 12 或 30 天的使用者，第一次以新規則計算時直接到對應階段，不排入 reveal（policy id 改變，§3.2），即使第一次 reconcile 是記錄 Session。
+  - **R1（建議）**：epoch（2026-07-17）以後的 Main Quest 日都算。已經有 12 或 30 天的使用者，第一次以新規則計算時直接到對應階段，不補播 reveal（「之前的階段」以新規則計算，§3.2）；只有本次記錄的 Session 跨過門檻時才有 reveal。
   - R2：只算新版上線之後的 Main Quest 日。需要第二個 epoch 常數；已累積的歷史不算，對長期使用者不公平；好處是不會一次跳兩階。
 
 ### 3.4 階段變化的 reveal 與 Companion 反應
@@ -135,7 +136,7 @@ K4 的其他影響：
 | **階段退回**（撤銷後跌破門檻） | **不是** `major`，類別由其他 reward 決定；reveal 行「夥伴關係：熟悉夥伴」，不寫「−1」或「降級」 | `observe`＋**目前階段的 `observe` 台詞**（例如 `companion.observe.familiar`），優先於進度與 Session 分支（見下方優先順序）；主角不做慶祝動作 |
 | 其他撤銷（沒有跨過門檻） | 類別由其他 reward 決定 | 同上：`observe`＋目前階段的 `observe` 台詞，不恭喜、不 `approach` |
 | **換一天承接**（撤銷後由下一個 Main Quest 日補上，階段與專案狀態都沒變） | 沒有關係或解鎖的 reveal 行，不是 `major` | 不恭喜 |
-| 第一次以新規則計算（policy id 改變）、`queueReveal: false`、或由舊版分頁寫入 | 不排入階段的 reveal | — |
+| 歷史上的補進度（第一次以新規則計算時，舊 ledger 依新規則就已是該階段）、`queueReveal: false`、或由舊版分頁寫入 | 不排入階段的 reveal | — |
 
 Companion 的優先順序（有待播放的 reveal 時；取代 `companionEngine.js` 目前的第 1、2 條）：
 
@@ -273,9 +274,11 @@ reveal 與 Companion（§3.4）：
   - 階段不變；
   - `companion.legacyRelationshipPoints` 與 `companion.relationshipPolicyId` 被保留。
 - 「之前的階段」由舊的已儲存 ledger 計算：已儲存的點數被改成過時的值時，`queueReveal: true` 的 reconcile 不會因此排入階段變化的 reveal。
-- 已有 30 個 Main Quest 日、`relationshipPolicyId` 不存在的 state：
-  - 開啟時（`queueReveal: false`）直接到 `trusted-companion`，不排入 reveal；
-  - 第一次 reconcile 就是記錄 Session（`queueReveal: true`）時，也不排入階段的 reveal。
+- `relationshipPolicyId` 不存在的 state（第一次以新規則計算）：
+  - 已有 30 個 Main Quest 日，開啟時（`queueReveal: false`）直接到 `trusted-companion`，不排入 reveal；
+  - 已有 30 個 Main Quest 日，第一次 reconcile 就是記錄第 31 天（`queueReveal: true`）：不排入階段的 reveal（之前依新規則已是 `trusted-companion`）；
+  - 已有 11 個 Main Quest 日，第一次 reconcile 就是記錄第 12 天：排入階段提升的 reveal（`familiar` → `partner`）；
+  - 已有 29 個 Main Quest 日，第一次 reconcile 就是記錄第 30 天：排入階段提升的 reveal（`partner` → `trusted-companion`）。
 - 已儲存的 hidden stats、Gold 不變。
 - `viewModels.js` 的 `resolveRelationshipStage()` 只讀 state 中的階段，移除「基準 ＋ aggregate」的 fallback（它會重複計算並忽略推導的 milestone）。
 
