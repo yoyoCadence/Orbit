@@ -3,8 +3,9 @@ import js from '@eslint/js';
 export default [
   {
     // INFRA-104: `npm run lint` is `eslint .`; vendored builds and outputs are not ours.
+    // Flat config does not read .gitignore, so its local-only folders are listed too.
     ignores: [
-      'pwa/vendor/**',
+      '**/pwa/vendor/**',
       'coverage/**',
       'dist/**',
       'build/**',
@@ -12,6 +13,13 @@ export default [
       'test-results/**',
       'playwright-report/**',
       'blob-report/**',
+      'playwright/.cache/**',
+      '.playwright-cli/**',
+      '**/venv/**',
+      '**/.venv/**',
+      'private/**',
+      '私密/**',
+      '.claude/worktrees/**',
     ],
   },
   js.configs.recommended,
@@ -87,12 +95,9 @@ export default [
       globals: {
         self: 'readonly',
         caches: 'readonly',
-        clients: 'readonly',
         fetch: 'readonly',
         Request: 'readonly',
-        Response: 'readonly',
         URL: 'readonly',
-        console: 'readonly',
       },
     },
   },
@@ -118,19 +123,16 @@ export default [
         fetch: 'readonly',
         performance: 'readonly',
         setTimeout: 'readonly',
-        clearTimeout: 'readonly',
       },
     },
   },
   {
-    // INFRA-104: the local dev server is CommonJS.
+    // INFRA-104: the local dev server is CommonJS (`require` and `module` come with sourceType).
     files: ['pwa/server.cjs'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'commonjs',
       globals: {
-        require: 'readonly',
-        module: 'writable',
         __dirname: 'readonly',
         process: 'readonly',
         console: 'readonly',

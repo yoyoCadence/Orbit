@@ -210,8 +210,10 @@
 - [ ] **PS-248** 以 Blender 擴充「空間」的主題與素材（提案）
   - 使用者 2026-10-20 要求：「需要更新更多 blender 做的主題與素材等，讓本工具更豐富」。
   - 現況：
-    - V2 只有一個場景（`office-corner`）與一個主題（`selectedThemeId: 'default'`）。
-    - 素材由 `art-pipeline/ps244-blender` 從同一個相機渲染（PS-244～PS-247）：房間 1 張、家具 8 件、主角 12 個姿勢、Companion 6 個狀態、天氣 2 種。
+    - V2 只有一套素材（`building-formal-workstation-v2`，預設場景 `office-corner`）與一個主題（`selectedThemeId: 'default'`）；`SCENE_IDS` 仍列有 `rough-room`、`upgraded-rental`、`office-corner`。
+    - 由 Blender 渲染的只有房間 1 張與家具 8 件（`art-pipeline/ps244-blender`，PS-244～PS-247，同一個相機）。主角 12 個姿勢、Companion 6 個狀態、天氣 2 種是 PS-242 的手繪 sprite／overlay，不是 Blender 產出。
+    - 角色是否改為 3D（Blender）仍是 handoff 中的開放決策；提案要說明角色與天氣是否在範圍內。
+  - 範圍：標題把「本工具」解讀為「空間」分頁（目前只有這裡使用 Blender 素材）；提案要向使用者確認。
   - 第一步是提案（Mode A，只寫文件、不改程式碼），內容包括：
     - 新主題或場景的候選（例如不同房間風格、季節、時段）；
     - 每個主題需要的素材清單與渲染方式；
@@ -261,11 +263,12 @@
   - **2026-10-20 使用者核准。** In progress（2026-10-20）。
   - 完成（2026-10-20）：
     - `lint` script 改為 `eslint .`（不需要 glob，Windows 也適用）。`eslint.config.js` 加上：
-      - 全域 ignores：`pwa/vendor/**` 與輸出目錄；
+      - 全域 ignores：`pwa/vendor` 與輸出目錄，以及 `.gitignore` 中只存在於本機的資料夾（venv、`.claude/worktrees` 等；flat config 不讀 `.gitignore`）；
       - `pwa/sw.js`（classic script，service worker globals）；
       - Node 腳本與設定檔（`scripts/`、`art-pipeline/`、`skills/` 的 `.mjs`、`tests/perf/*.mjs`、三個 config）；
       - `pwa/server.cjs`（CommonJS）。
-    - 檢查的檔案由 176 個增加到 195 個，全部通過。只需要調整註解：`ps243-perf-baseline.mjs` 加 `/* global window */`，`tests/perf` 兩個檔案移除已由設定提供的 globals。
+    - 檢查的檔案由 178 個（INFRA-103 的 176 個加上 PS-211A 的兩個測試）增加到 195 個，全部通過。只需要小幅調整：`ps243-perf-baseline.mjs` 在瀏覽器端改用 `globalThis.navigate`，`tests/perf` 兩個檔案移除已由設定提供的 globals。
+    - globals 只列出檔案實際用到的；`pwa/server.cjs` 的 `require`／`module` 由 `sourceType: 'commonjs'` 提供（保持 `module` 唯讀）。
     - 在 `sw.js` 加入未定義的呼叫時，`npm run lint` 會失敗。
 
 - [x] **PS-211A** service worker 預先快取 V2 poster 素材與 Pixi（A3 ＋P）

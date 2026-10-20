@@ -66,13 +66,13 @@
      - 量測的情境與標籤要對照原始數據，結論要對照設計文件。
    - 未驗證：GitHub Pages 的 ETag 是否隨部署改變（`curl -I` 同一個沒改過的素材，比較兩次部署）。
 
-9. **INFRA-103：完成**（#186）。`lint` script 的 glob 改用雙引號（Windows `cmd` 也適用），`npm run lint` 檢查的檔案由 110 個增加到 176 個，全部通過。`pwa/sw.js` 等仍不在範圍內（INFRA-104，需核准）；PS-211A 改 `sw.js` 時要手動檢查。
+9. **INFRA-103：完成**（#186）。`lint` script 的 glob 改用雙引號（Windows `cmd` 也適用），`npm run lint` 檢查的檔案由 110 個增加到 176 個，全部通過。`pwa/sw.js` 等仍不在範圍內（INFRA-104，需核准）；PS-211A 改 `sw.js` 時要手動檢查（INFRA-104 後已涵蓋）。
 
 10. **PS-211B：完成**（#187，v1.31.5）。runtime 未就緒時隱藏 canvas（CSS），顯示前先 `app.render()`；router 載入 lazy 路由期間以 `orbitWindowRuntimeDestroyer.hold()` 保留 runtime，首頁 → 空間不再重建 Pixi app。e2e 注意：reduced motion 下每個元素都有極短的 transition，讀 `visibility` 前要關掉 transition，否則計算值仍是舊的。
 
 11. **PS-211A：完成**（#188，v1.31.6）。SHELL 改放 22 個 V2 poster 檔案與 `pixi.js`，install 時以 `cache: 'no-cache'` 重新驗證；技術設計 §12.1／§12.2 更新。之後新增角色動作、Companion 狀態、天氣或家具時，`tests/unit/ps211aPrecache.test.js` 會要求同步更新 SHELL。e2e 注意：`context.setOffline(true)` 擋不到 service worker 自己的請求，要以 `context.route` 擋下才能證明來自預先快取。未驗證：GitHub Pages 的 ETag 是否隨部署改變（PS-211D 的前提）。
 
-12. **INFRA-104：完成**（#189）。`npm run lint` 改為 `eslint .`，涵蓋 `pwa/sw.js`、`pwa/server.cjs`、Node 腳本、`tests/perf` 與設定檔（共 195 個檔案）；`pwa/vendor` 與輸出目錄由設定忽略。
+12. **INFRA-104：完成**（#189）。`npm run lint` 改為 `eslint .`，涵蓋 `pwa/sw.js`、`pwa/server.cjs`、Node 腳本、`tests/perf` 與設定檔（共 195 個檔案）；`pwa/vendor`、輸出目錄與 `.gitignore` 中只存在於本機的資料夾由設定忽略。獨立 review 確認每一類新檔案的 negative control 都會失敗；它找到的 P2（PS-248 誤寫主角／Companion／天氣是 Blender 產出）已修正。
 
 13. **下一步**（使用者 2026-10-20 指定）：AI-202 提案（Companion 關係階段與 hidden stats 的映射），之後 PS-248 提案（以 Blender 擴充主題與素材）。兩者都先只寫文件。INFRA-105（SHELL 的 JS／CSS／HTML 安裝時重新驗證）需核准。使用者原則：以「任務確實完成」為準，合併是後話；做不到的先寫進 `tasks.md`。
 

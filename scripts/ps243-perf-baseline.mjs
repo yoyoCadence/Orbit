@@ -14,7 +14,6 @@
 // evidence against a stale server another checkout left on a fixed port.
 
 import { spawn } from 'node:child_process';
-/* global window -- used only inside page.evaluate(), which runs in the browser */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { dirname, join, resolve } from 'node:path';
@@ -147,7 +146,7 @@ async function run() {
     };
     const toHome = async () => {
       const start = performance.now();
-      await page.evaluate(() => window.navigate('home'));
+      await page.evaluate(() => globalThis.navigate('home'));
       await waitReady('[data-orbit-window]');
       const elapsed = performance.now() - start;
       await recordCanvas();
