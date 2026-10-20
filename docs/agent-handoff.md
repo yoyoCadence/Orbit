@@ -57,7 +57,13 @@
 
 7. **PS-247：完成**（v1.31.3）。椅子渲染時把書桌設為遮擋物（Holdout 材質，`PROP_OCCLUDERS`），右扶手與腳輪不再畫在邊櫃前面。注意：物件層級的 `is_holdout` 會讓 Freestyle 留下被擋住的邊的殘影，所以用材質。Blender 重新渲染在不同機器上不是逐位元組相同（家具有取樣雜訊差異、trim 框可能差 1 px），只更新真正改變的素材，其餘從 git 還原；預覽要從 lossless 的 room 合成重畫（`phase-000` 應與原檔相同）。
 
-8. **PS-211：提案**（#185，[`docs/ps-211-asset-preload-cache-proposal.md`](ps-211-asset-preload-cache-proposal.md)）。等待使用者回答提案 §7 的 5 個問題；PS-211A 改 service worker precache，屬部署行為，核准前不做。量測方式見提案 §2：現有 e2e 環境（dev server `no-store`、route mock）量不到快取行為，要另外架一個模擬 GitHub Pages 的 proxy；量測腳本留在 session 的 scratchpad，沒有提交。
+8. **PS-211：提案**（#185，[`docs/ps-211-asset-preload-cache-proposal.md`](ps-211-asset-preload-cache-proposal.md)）。等待使用者回答提案 §7 的 5 個問題；PS-211A 改 service worker precache，屬部署行為，核准前不做。量測方式見提案 §2：現有 e2e 環境（dev server `no-store`、route mock）量不到快取行為，要另外架一個模擬 GitHub Pages 的 proxy。量測腳本沒有提交，之後的 session 讀不到，需要時依 §2 重寫。
+   - review 的教訓：
+     - 第一版把「清除 HTTP cache 後」的量測當成一般的改版情境，漏了 ETag 重新驗證（304）；
+     - 漏了 SHELL precache 也能消除狀態改變時的網路等待（A3 ≈ A2 ＋ C，而且是確定的）；
+     - 把設計文件允許的 Pixi app 重建寫成錯誤。
+     - 量測的情境與標籤要對照原始數據，結論要對照設計文件。
+   - 未驗證：GitHub Pages 的 ETag 是否隨部署改變（`curl -I` 同一個沒改過的素材，比較兩次部署）。
 
 其他：
 
