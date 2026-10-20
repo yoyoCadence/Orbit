@@ -146,7 +146,7 @@ async function run() {
     };
     const toHome = async () => {
       const start = performance.now();
-      await page.evaluate(() => window.navigate('home'));
+      await page.evaluate(() => globalThis.navigate('home'));
       await waitReady('[data-orbit-window]');
       const elapsed = performance.now() - start;
       await recordCanvas();

@@ -4,7 +4,7 @@
 
 任務本身的定義與驗收條件以 [`tasks.md`](../tasks.md) 為準；本檔只記錄進行中的狀態、與使用者約定的工作規則，以及接手需要的操作細節。
 
-> 最後更新：2026-10-20。PS-246（#176，v1.30.1）、AI-203B（#177，v1.31.0）、HW-113（#180，v1.31.1）、PRO-014Q S0（#178，v1.31.2，含使用者核准的 A1＋B1）、AI-204 提案（#181）、PS-247（#182，v1.31.3）、INFRA-102（#183，CI 上傳 e2e artifact）、AI-204B（#184，v1.31.4，Companion 共用文案表）已合併。PS-211 提案（#185）已合併並核准（A3 ＋P、PS-211B 含沿用 Pixi app）。INFRA-103（#186）、PS-211B（#187，v1.31.5）已合併。PS-211A（#188，v1.31.6）開 PR（§3 第 8、11 點）。
+> 最後更新：2026-10-20。PS-246（#176，v1.30.1）、AI-203B（#177，v1.31.0）、HW-113（#180，v1.31.1）、PRO-014Q S0（#178，v1.31.2，含使用者核准的 A1＋B1）、AI-204 提案（#181）、PS-247（#182，v1.31.3）、INFRA-102（#183，CI 上傳 e2e artifact）、AI-204B（#184，v1.31.4，Companion 共用文案表）已合併。PS-211 提案（#185）已合併並核准（A3 ＋P、PS-211B 含沿用 Pixi app）。INFRA-103（#186）、PS-211B（#187，v1.31.5）、PS-211A（#188，v1.31.6）已合併。INFRA-104（#189）開 PR；接著 AI-202 提案、PS-248（Blender 主題與素材）提案。
 
 ## 1. 接手前先讀
 
@@ -66,11 +66,15 @@
      - 量測的情境與標籤要對照原始數據，結論要對照設計文件。
    - 未驗證：GitHub Pages 的 ETag 是否隨部署改變（`curl -I` 同一個沒改過的素材，比較兩次部署）。
 
-9. **INFRA-103：完成**（#186）。`lint` script 的 glob 改用雙引號（Windows `cmd` 也適用），`npm run lint` 檢查的檔案由 110 個增加到 176 個，全部通過。`pwa/sw.js` 等仍不在範圍內（INFRA-104，需核准）；PS-211A 改 `sw.js` 時要手動檢查。
+9. **INFRA-103：完成**（#186）。`lint` script 的 glob 改用雙引號（Windows `cmd` 也適用），`npm run lint` 檢查的檔案由 110 個增加到 176 個，全部通過。`pwa/sw.js` 等仍不在範圍內（INFRA-104，需核准）；PS-211A 改 `sw.js` 時要手動檢查（INFRA-104 後已涵蓋）。
 
 10. **PS-211B：完成**（#187，v1.31.5）。runtime 未就緒時隱藏 canvas（CSS），顯示前先 `app.render()`；router 載入 lazy 路由期間以 `orbitWindowRuntimeDestroyer.hold()` 保留 runtime，首頁 → 空間不再重建 Pixi app。e2e 注意：reduced motion 下每個元素都有極短的 transition，讀 `visibility` 前要關掉 transition，否則計算值仍是舊的。
 
 11. **PS-211A：完成**（#188，v1.31.6）。SHELL 改放 22 個 V2 poster 檔案與 `pixi.js`，install 時以 `cache: 'no-cache'` 重新驗證；技術設計 §12.1／§12.2 更新。之後新增角色動作、Companion 狀態、天氣或家具時，`tests/unit/ps211aPrecache.test.js` 會要求同步更新 SHELL。e2e 注意：`context.setOffline(true)` 擋不到 service worker 自己的請求，要以 `context.route` 擋下才能證明來自預先快取。未驗證：GitHub Pages 的 ETag 是否隨部署改變（PS-211D 的前提）。
+
+12. **INFRA-104：完成**（#189）。`npm run lint` 改為 `eslint .`，涵蓋 `pwa/sw.js`、`pwa/server.cjs`、Node 腳本、`tests/perf` 與設定檔（共 195 個檔案）；`pwa/vendor`、輸出目錄與 `.gitignore` 中只存在於本機的資料夾由設定忽略。獨立 review 確認每一類新檔案的 negative control 都會失敗；它找到的 P2（PS-248 誤寫主角／Companion／天氣是 Blender 產出）已修正。
+
+13. **下一步**（使用者 2026-10-20 指定）：AI-202 提案（Companion 關係階段與 hidden stats 的映射），之後 PS-248 提案（以 Blender 擴充主題與素材）。兩者都先只寫文件。INFRA-105（SHELL 的 JS／CSS／HTML 安裝時重新驗證）需核准。使用者原則：以「任務確實完成」為準，合併是後話；做不到的先寫進 `tasks.md`。
 
 其他：
 
@@ -119,6 +123,7 @@
 | #186 | — | INFRA-103：`lint` script 的 glob 加引號，lint `pwa/js` 與 `tests` 下全部 176 個 `.js` |
 | #187 | v1.31.5 | PS-211B：新場景畫完前隱藏 canvas；首頁 → 空間沿用 Pixi app |
 | #188 | v1.31.6 | PS-211A：service worker 預先快取 V2 poster 素材與 Pixi（A3 ＋P） |
+| #189 | — | INFRA-104：`eslint .` 涵蓋 `sw.js`、Node 腳本與設定檔 |
 
 教訓：#155–#164 在 Codex review 出現前就合併，造成 #165、#166、#167 的回頭修正。這就是 §2 合併條件的由來。獨立 review 在 #167、#168、#169 都找到真正的問題（例如椅子畫在螢幕後面、壁燈在相框下投出暗影），所以複查不能省。
 
@@ -131,7 +136,6 @@
 - **角色 3D 化**：主角與 Companion 仍是 PS-242 的像素 sprite。改成 3D 會推翻已核准素材（主角 12 個姿勢、Companion 6 個狀態），範圍很大，等使用者決定。
 - **PRO-014P**：entitlement 流程，實作前需提案與核准，擋 `PRO-014H` cutover。與草稿 PR #154（PRO-014L）改同一段 SUB-16 路徑，寫提案前先問使用者先後順序。
 - **PS-243**：真機、installed PWA、雙帳號、螢幕閱讀器等 human gate。
-- **INFRA-104**：讓 `pwa/sw.js` 與 Node 端的腳本也被 lint（改 `eslint.config.js` 與 lint script，屬修改既有設定，需核准；見 `tasks.md`）。
 - **INFRA-105**：service worker 安裝時 SHELL 的 JS／CSS／HTML 也要重新驗證（既有問題，改版後最多約 10 分鐘先跑舊程式；改部署行為，需核准；見 `tasks.md`）。
 - 尚未回答：高風險項目（如 entitlement）連變更說明都要不要先問再排程（PRO-014Q 變更說明 §7）。在得到答案前，維持「寫變更說明可以，實作前一定要核准」。
 

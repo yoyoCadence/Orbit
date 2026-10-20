@@ -31,11 +31,6 @@
     3. Authentication → Notifications → Email → Templates，更新 Reset Password / Confirm Signup 模板（英文品牌版內容已備好，ask Claude）
   - 備註：Resend 免費方案 3,000 封/月；之後有域名可換成 `noreply@yourdomain.com`
 
-- [ ] **INFRA-104** 讓 `pwa/sw.js` 與 Node 端的腳本也被 lint
-  - 問題（INFRA-103 獨立 review 發現，2026-10-20）：`npm run lint` 只涵蓋 `pwa/js/**/*.js` 與 `tests/**/*.js`。`pwa/sw.js`（PS-211A 要改）、`pwa/server.cjs`、`scripts/*.mjs`、設定檔都沒有被 lint；`eslint.config.js` 中給設定檔的區塊因此從未生效。以目前的設定直接 lint `sw.js` 會因 service worker 的 globals（`self`、`caches` 等）報 17 個 `no-undef`。
-  - 方向：在 `eslint.config.js` 為 `pwa/sw.js` 加上 service worker globals、為 Node 腳本加上 Node globals，並把它們加入 `lint` script。
-  - **修改既有設定（eslint 設定與 CI 執行的 script），需使用者核准**。
-
 - [ ] **INFRA-105** service worker 安裝時，SHELL 的 JS／CSS／HTML 也要重新驗證，避免改版後先跑舊程式
   - 問題（PS-211A 獨立 review 發現，2026-10-20；修改前就存在）：`sw.js` 的 install 只對圖片與 `pixi.js` 使用 `cache: 'no-cache'`。JS、CSS、HTML 仍走瀏覽器的 HTTP cache。GitHub Pages 的 `max-age=600` 內，新版本的快取會存到**舊的** `version.js` 等模組。
   - 影響：
@@ -54,10 +49,6 @@
   - Goal: replace one-view-only expanded props with true `front / left-wall-flush / right-wall-flush` variants that preserve material identity.
   - Scope: legacy Idle Growth Window only; pause further volume work while the fixed-camera Personal Space V2 vertical slice is validated.
   - Acceptance: resume only if a validated runtime interaction still needs multiple authored perspectives; preserve all completed variant assets and provenance in the meantime.
-
-- [ ] **AI-202** 定義 companion relationship stage 與 hidden stats 的最小映射規則
-  - 目標：讓 companion 關係變化可由真實行為驅動，而不是聊天次數
-  - 對應 roadmap：Phase 2 / Phase 4
 
 - [ ] **PRO-014** SUB-14／Pro entitlement 工作串
   - 目標：先建立可信任的 server-owned Pro entitlement，再交付排行榜與 Personal Space 的 Pro 呈現
@@ -205,6 +196,33 @@
 > - 順序：INFRA-103（讓 `pwa/js` 與 `tests` 下的 `.js` 都被 lint；`pwa/sw.js` 仍不在範圍，見 INFRA-104）→ PS-211B（不動 service worker）→ PS-211A（部署行為）。
 > - INFRA-103 只改一行設定且已核准，比照 INFRA-102 直接移入 In Progress。
 
+> 2026-10-20 使用者回覆（AskUserQuestion）：
+> - PS-211A 以「任務確實完成」為準：已依獨立 review 補齊驗收，並把範圍外的既有問題記為 INFRA-105。
+> - 核准 INFRA-104（lint `pwa/sw.js` 與 Node 端腳本），移入 In Progress。
+> - 下一個提案是 AI-202；之後擴充 Blender 製作的主題與素材（建立 PS-248）。兩者都從 Backlog／新建移入 Next，第一步是提案。
+> - 獨立 Claude review 恢復使用：除非只有 Codex 能做的事，否則不限制由誰 review。
+
+- [ ] **AI-202** 定義 companion relationship stage 與 hidden stats 的最小映射規則
+  - 目標：讓 companion 關係變化可由真實行為驅動，而不是聊天次數
+  - 對應 roadmap：Phase 2 / Phase 4
+  - 2026-10-20 排程（使用者指定為下一個）：第一步是提案（Mode A，只寫文件、不改程式碼），核准前不實作。不涉及 auth／schema；若映射需要新的持久化欄位，提案中列為需核准事項。
+
+- [ ] **PS-248** 以 Blender 擴充「空間」的主題與素材（提案）
+  - 使用者 2026-10-20 要求：「需要更新更多 blender 做的主題與素材等，讓本工具更豐富」。
+  - 現況：
+    - V2 只有一套素材（`building-formal-workstation-v2`，預設場景 `office-corner`）與一個主題（`selectedThemeId: 'default'`）；`SCENE_IDS` 仍列有 `rough-room`、`upgraded-rental`、`office-corner`。
+    - 由 Blender 渲染的只有房間 1 張與家具 8 件（`art-pipeline/ps244-blender`，PS-244～PS-247，同一個相機）。主角 12 個姿勢、Companion 6 個狀態、天氣 2 種是 PS-242 的手繪 sprite／overlay，不是 Blender 產出。
+    - 角色是否改為 3D（Blender）仍是 handoff 中的開放決策；提案要說明角色與天氣是否在範圍內。
+  - 範圍：標題把「本工具」解讀為「空間」分頁（目前只有這裡使用 Blender 素材）；提案要向使用者確認。
+  - 第一步是提案（Mode A，只寫文件、不改程式碼），內容包括：
+    - 新主題或場景的候選（例如不同房間風格、季節、時段）；
+    - 每個主題需要的素材清單與渲染方式；
+    - 與 unlock、經濟、專案進度的關係（主題怎麼取得）；
+    - PS-243 預算與 PS-211A 預先快取的影響（新素材要不要進 SHELL）；
+    - Blender 管線的工作量與驗收方式。
+  - 核准前不渲染、不改程式碼。
+  - 依賴：`PS-247`、`PS-211A`
+
 - [ ] **BUG-109A** 在 production 套用 013 signup trigger migration
   - 目標：讓 production 的 `handle_new_user()` 截斷超過 30 字元的名稱來源，長 email local-part 與長 Google 顯示名稱都能註冊。
   - 步驟：依 [`docs/bug-109-signup-name-truncation.md`](docs/bug-109-signup-name-truncation.md) 的 runbook：先以 `pg_get_functiondef` 比對 production 函式與 004、記錄回滾來源，在非 production 環境跑 `tests/database/bug109.test.sql`，再套用並驗證。
@@ -237,6 +255,21 @@
 ---
 
 ## Done
+
+- [x] **INFRA-104** 讓 `pwa/sw.js` 與 Node 端的腳本也被 lint
+  - 問題（INFRA-103 獨立 review 發現，2026-10-20）：`npm run lint` 只涵蓋 `pwa/js/**/*.js` 與 `tests/**/*.js`。`pwa/sw.js`（PS-211A 要改）、`pwa/server.cjs`、`scripts/*.mjs`、設定檔都沒有被 lint；`eslint.config.js` 中給設定檔的區塊因此從未生效。以目前的設定直接 lint `sw.js` 會因 service worker 的 globals（`self`、`caches` 等）報 17 個 `no-undef`。
+  - 方向：在 `eslint.config.js` 為 `pwa/sw.js` 加上 service worker globals、為 Node 腳本加上 Node globals，並把它們加入 `lint` script。
+  - **修改既有設定（eslint 設定與 CI 執行的 script），需使用者核准**。
+  - **2026-10-20 使用者核准。** In progress（2026-10-20）。
+  - 完成（2026-10-20）：
+    - `lint` script 改為 `eslint .`（不需要 glob，Windows 也適用）。`eslint.config.js` 加上：
+      - 全域 ignores：`pwa/vendor` 與輸出目錄，以及 `.gitignore` 中只存在於本機的資料夾（venv、`.claude/worktrees` 等；flat config 不讀 `.gitignore`）；
+      - `pwa/sw.js`（classic script，service worker globals）；
+      - Node 腳本與設定檔（`scripts/`、`art-pipeline/`、`skills/` 的 `.mjs`、`tests/perf/*.mjs`、三個 config）；
+      - `pwa/server.cjs`（CommonJS）。
+    - 檢查的檔案由 178 個（INFRA-103 的 176 個加上 PS-211A 的兩個測試）增加到 195 個，全部通過。只需要小幅調整：`ps243-perf-baseline.mjs` 在瀏覽器端改用 `globalThis.navigate`，`tests/perf` 兩個檔案移除已由設定提供的 globals。
+    - globals 只列出檔案實際用到的；`pwa/server.cjs` 的 `require`／`module` 由 `sourceType: 'commonjs'` 提供（保持 `module` 唯讀）。
+    - 在 `sw.js` 加入未定義的呼叫時，`npm run lint` 會失敗。
 
 - [x] **PS-211A** service worker 預先快取 V2 poster 素材與 Pixi（A3 ＋P）
   - 規格：同上提案 §4.1、§4.3、§5 A。使用者 2026-10-20 核准 A3 ＋P（部署行為）。

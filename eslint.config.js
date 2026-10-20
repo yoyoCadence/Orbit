@@ -1,6 +1,27 @@
 import js from '@eslint/js';
 
 export default [
+  {
+    // INFRA-104: `npm run lint` is `eslint .`; vendored builds and outputs are not ours.
+    // Flat config does not read .gitignore, so its local-only folders are listed too.
+    ignores: [
+      '**/pwa/vendor/**',
+      'coverage/**',
+      'dist/**',
+      'build/**',
+      'output/**',
+      'test-results/**',
+      'playwright-report/**',
+      'blob-report/**',
+      'playwright/.cache/**',
+      '.playwright-cli/**',
+      '**/venv/**',
+      '**/.venv/**',
+      'private/**',
+      '私密/**',
+      '.claude/worktrees/**',
+    ],
+  },
   js.configs.recommended,
   {
     files: ['pwa/js/**/*.js', 'tests/**/*.js'],
@@ -66,10 +87,56 @@ export default [
     },
   },
   {
-    // Config files themselves
-    files: ['eslint.config.js', 'vitest.config.js'],
+    // INFRA-104: the service worker is a classic script with worker globals.
+    files: ['pwa/sw.js'],
     languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'script',
+      globals: {
+        self: 'readonly',
+        caches: 'readonly',
+        fetch: 'readonly',
+        Request: 'readonly',
+        URL: 'readonly',
+      },
+    },
+  },
+  {
+    // INFRA-104: Node scripts, manual perf probes and config files.
+    files: [
+      'scripts/**/*.mjs',
+      'art-pipeline/**/*.mjs',
+      'skills/**/*.mjs',
+      'tests/perf/*.mjs',
+      'eslint.config.js',
+      'vitest.config.js',
+      'playwright.config.js',
+    ],
+    languageOptions: {
+      ecmaVersion: 2022,
       sourceType: 'module',
+      globals: {
+        process: 'readonly',
+        console: 'readonly',
+        URL: 'readonly',
+        Buffer: 'readonly',
+        fetch: 'readonly',
+        performance: 'readonly',
+        setTimeout: 'readonly',
+      },
+    },
+  },
+  {
+    // INFRA-104: the local dev server is CommonJS (`require` and `module` come with sourceType).
+    files: ['pwa/server.cjs'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'commonjs',
+      globals: {
+        __dirname: 'readonly',
+        process: 'readonly',
+        console: 'readonly',
+      },
     },
   },
 ];

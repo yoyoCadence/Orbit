@@ -1,5 +1,4 @@
 // Manual PS-211 cache probe config (not used by CI). See ps211-cache-probe.pw.mjs.
-/* global process */
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import base from '../../playwright.config.js';
