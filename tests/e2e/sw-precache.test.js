@@ -84,6 +84,54 @@ test.describe('PS-211A service worker precache', () => {
     }
   });
 
+  test('on Home the page fetches Pixi only after the Orbit Window runtime starts mounting', async ({ page }) => {
+    // Records when the runtime host first reports "loading" (mount() sets it just
+    // before importing Pixi), to compare with when the page requested pixi.js.
+    await page.addInitScript(() => {
+      window.__runtimeLoadingAt = null;
+      new MutationObserver(() => {
+        const host = document.querySelector('[data-orbit-runtime-host]');
+        if (window.__runtimeLoadingAt === null && host?.dataset.runtimeStatus === 'loading') {
+          window.__runtimeLoadingAt = window.performance.now();
+        }
+      }).observe(document, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-runtime-status'] });
+    });
+    await seedStorage(page, [FOCUS_TASK], [], { ...GUEST_USER, totalXP: 5000 });
+    await page.goto('/');
+    await expect(page.locator('[data-orbit-window] [data-orbit-runtime-host]'))
+      .toHaveAttribute('data-runtime-status', 'ready', { timeout: 15_000 });
+    const timing = await page.evaluate(() => ({
+      loadingAt: window.__runtimeLoadingAt,
+      domContentLoaded: window.performance.getEntriesByType('navigation')[0].domContentLoadedEventEnd,
+      pixiRequests: window.performance.getEntriesByType('resource')
+        .filter(entry => new URL(entry.name).pathname.endsWith('/vendor/pixi.js'))
+        .map(entry => entry.startTime),
+    }));
+    expect(timing.loadingAt).not.toBeNull();
+    expect(timing.pixiRequests.length).toBeGreaterThan(0);
+    // The observer callback runs a microtask after mount() sets "loading" and calls
+    // import(), so allow a few ms; an initial-load fetch would start before
+    // DOMContentLoaded, long before the deferred mount.
+    for (const startTime of timing.pixiRequests) {
+      expect(startTime).toBeGreaterThan(timing.domContentLoaded);
+      expect(startTime).toBeGreaterThanOrEqual(timing.loadingAt - 5);
+    }
+  });
+
+  test('legacy personal space still shows its idle-window art online', async ({ page }) => {
+    await seedStorage(page, [FOCUS_TASK], [], { ...GUEST_USER, totalXP: 5000 });
+    await page.addInitScript(() => localStorage.setItem('orbit_personal_space_runtime', 'legacy'));
+    await page.goto('/');
+    await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
+    await page.evaluate(() => window.navigate('personalSpace'));
+    await expect(page.locator('#content')).toContainText('Orbit Personal Space');
+    const backgrounds = page.locator('img.space-idle-background');
+    await expect(backgrounds.first()).toBeVisible({ timeout: 8000 });
+    await expect.poll(() => backgrounds.evaluateAll(images => images
+      .filter(image => !image.complete || image.naturalWidth === 0)
+      .map(image => image.getAttribute('src'))), { timeout: 15_000 }).toEqual([]);
+  });
+
   test('the page itself does not fetch Pixi when no Orbit Window mounts', async ({ page }) => {
     const pageRequests = [];
     page.on('request', request => {

@@ -19,7 +19,7 @@
   - 有 `pixi.js`；
   - 這些檔案在安裝時重新驗證；
   - `index.html` 與 `app.js` 的靜態 import 圖不引用 Pixi。
-- e2e：service worker 安裝後快取中有這 23 個檔案。離線、且所有素材與 Pixi 的網路請求都被擋下時重新整理，雨天、主角與 Companion 都在 rest 狀態的 poster 完整顯示，runtime 也以快取的 Pixi 進入 ready。沒有 Orbit Window 的頁面不由頁面本身請求 `pixi.js`。
+- e2e：service worker 安裝後快取中有這 23 個檔案。離線、且所有素材與 Pixi 的網路請求都被擋下時重新整理，雨天、主角與 Companion 都在 rest 狀態的 poster 完整顯示，runtime 也以快取的 Pixi 進入 ready。首頁上，頁面請求 `pixi.js` 的時間不早於 runtime 開始掛載；沒有 Orbit Window 的頁面不由頁面本身請求 `pixi.js`；legacy 在線上照常顯示 idle-window 背景。
 - 對照組：以舊的 `sw.js` 執行時，雨天特效離線載入失敗，e2e 會失敗。
 
 ---

@@ -249,7 +249,11 @@
     - 技術設計 §12.1、§12.2 更新。
     - 測試：
       - `tests/unit/ps211aPrecache.test.js`（5 項）：從程式碼推導 22 個檔案、排除 legacy、加入 Pixi、install 時重新驗證、§12.1 的靜態 import 圖；以舊的 `sw.js` 執行時其中 3 項失敗。
-      - `tests/e2e/sw-precache.test.js`（2 項）：離線且素材／Pixi 網路請求被擋下時，雨天＋rest 的 poster 完整、runtime ready；沒有 Orbit Window 的頁面不由頁面請求 Pixi。以舊的 `sw.js` 執行時，雨天特效載入失敗。
+      - `tests/e2e/sw-precache.test.js`（4 項）：
+        - 離線且素材／Pixi 網路請求被擋下時，雨天＋rest 的 poster 完整、runtime ready（以舊的 `sw.js` 執行時，雨天特效載入失敗）；
+        - 首頁上頁面請求 `pixi.js` 的時間晚於 DOMContentLoaded，且不早於 runtime 進入 loading（在 `app.js` 加上提早的 import 時會失敗）；
+        - legacy 在線上照常顯示 idle-window 背景；
+        - 沒有 Orbit Window 的頁面不由頁面請求 Pixi。
     - e2e 注意：`context.setOffline(true)` 擋不到 service worker 自己的請求，要另外以 `context.route` 擋下，才能證明檔案來自預先快取。
     - `pwa/sw.js` 不在 `npm run lint` 範圍內（INFRA-104），以 `node --check` 與加上 service worker globals 的 eslint 手動檢查過。
 
