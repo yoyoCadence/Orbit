@@ -234,16 +234,6 @@
   - 核准前不渲染、不改程式碼。
   - 依賴：`PS-247`、`PS-211A`
 
-- [ ] **INFRA-106** 查明 Focus 提前結束 e2e 的間歇性逾時
-  - 問題：`tests/e2e/flows.test.js` 的「Focus 計時流程」提前結束兩個測試（:175、:189）在 CI 上偶發 `Test timeout of 15000ms exceeded`，與 PR 內容無關，本機無法重現。
-  - 紀錄：
-    - 2026-10-19：3 次（只改版本號的 commit 也失敗，重跑通過）；
-    - 2026-10-20：#190 的 f62434c（純文件 PR）在 :189 失敗，第一次與 retry 都逾時。這次有 INFRA-102 上傳的 artifact：run 39412397253 的 `playwright-test-results`，保留到 2026-10-27。
-  - 方向：
-    - 先看 artifact 的 `error-context.md` 與截圖，確認卡在哪一步（`#early-end-confirm-btn`、overlay 關閉或 `.log-item`）。目前 agent 的 GitHub 工具不能下載 artifact，需要使用者下載，或改用其他方式取得；
-    - 依原因讓測試穩定，例如等待正確的狀態而不是固定逾時；或修正 app 本身的競態。
-  - 不可跳過、停用或隔離這兩個測試。
-
 - [ ] **BUG-109A** 在 production 套用 013 signup trigger migration
   - 目標：讓 production 的 `handle_new_user()` 截斷超過 30 字元的名稱來源，長 email local-part 與長 Google 顯示名稱都能註冊。
   - 步驟：依 [`docs/bug-109-signup-name-truncation.md`](docs/bug-109-signup-name-truncation.md) 的 runbook：先以 `pg_get_functiondef` 比對 production 函式與 004、記錄回滾來源，在非 production 環境跑 `tests/database/bug109.test.sql`，再套用並驗證。
@@ -253,6 +243,17 @@
 ---
 
 ## In Progress
+
+- [ ] **INFRA-106** 查明 Focus 提前結束 e2e 的間歇性逾時
+  - 問題：`tests/e2e/flows.test.js` 的「Focus 計時流程」提前結束兩個測試（:175、:189）在 CI 上偶發 `Test timeout of 15000ms exceeded`，與 PR 內容無關，本機無法重現。
+  - 紀錄：
+    - 2026-10-19：3 次（只改版本號的 commit 也失敗，重跑通過）；
+    - 2026-10-20：#190 的 f62434c（純文件 PR）在 :189 失敗，第一次與 retry 都逾時。這次有 INFRA-102 上傳的 artifact：run 39412397253 的 `playwright-test-results`，保留到 2026-10-27。
+  - 方向：
+    - 先看 artifact 的 `error-context.md` 與截圖，確認卡在哪一步（`#early-end-confirm-btn`、overlay 關閉或 `.log-item`）。目前 agent 的 GitHub 工具不能下載 artifact，需要使用者下載，或改用其他方式取得；
+    - 依原因讓測試穩定，例如等待正確的狀態而不是固定逾時；或修正 app 本身的競態。
+  - 不可跳過、停用或隔離這兩個測試。
+  - In progress（2026-10-20）：#190 的 e2e 連續 4 次失敗（含一次重跑），依規則把修正併入 #190。
 
 - [ ] **AI-202** 定義 companion relationship stage 與 hidden stats 的最小映射規則
   - 目標：讓 companion 關係變化可由真實行為驅動，而不是聊天次數
