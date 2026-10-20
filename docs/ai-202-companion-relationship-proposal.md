@@ -20,9 +20,10 @@
   - 首頁 COMPANION 卡顯示階段；
   - 階段提升時顯示「夥伴關係：合作夥伴」，取代現在的 `companion +1`；
   - 預設台詞依階段不同。
-- **ledger 與 `rulesetId` 都不變**。新增兩個本機欄位（V2 state 不同步、不涉及資料庫），需核准（§3.2）：
+- **ledger 與 `rulesetId` 都不變**。新增三個本機欄位（V2 state 不同步、不涉及資料庫），需核准（§3.2、§3.4）：
   - `companion.legacyRelationshipPoints`，讓舊版分頁寫入的過時點數無法汙染計算；
-  - `companion.relationshipPolicyId`，替「由 ledger 推導的規則」另外標版本。
+  - `companion.relationshipPolicyId`，替「由 ledger 推導的規則」另外標版本；
+  - `presentedMilestones`，記錄使用者最後看到的專案完成與關係階段，讓待播放的里程碑以淨變化呈現。
 - **要修改三處規格**（需核准，§3.3）：
   - vertical slice §6.1「改規則要換 `rulesetId`」與 §13.1 對應的測試要求，改為只適用於 ledger entry；推導出的規則另用 policy id；
   - §7.2「透過 ledger entry 推進」改為「由 active ledger 推導」。
@@ -80,7 +81,7 @@ README 的「關係進化草案」列了 5 個不同的階段（陌生觀察／�
 - `companion.relationshipPolicyId`：**新的本機欄位**，記錄算出目前點數的規則版本，例如 `RELATIONSHIP_POLICY_ID = 'ai202-main-quest-days-v1'`。
   - 每次 reconcile 寫入目前的 policy id。
   - 用途是標示規則版本（§3.3），以及讓之後改規則時可以辨認「這份 state 是哪一版算的」。
-  - reveal **不需要**依 policy id 特別處理：「之前的階段」一律以**目前的規則**從舊 ledger 計算（§3.4），所以規則改變造成的補進度（例如歷史上已有 25 天，第一次以新規則計算就到 `partner`）已經包含在「之前」之中，不會被當成本次的變化；本次 ledger 的變化跨過門檻時（例如第一次 reconcile 就是記錄第 12 天），仍照常排入 reveal。
+  - reveal **不需要**依 policy id 特別處理：`presentedMilestones` 的初始值以**目前的規則**從舊 ledger 計算（§3.4），所以規則改變造成的補進度（例如歷史上已有 25 天，第一次以新規則計算就到 `partner`）已經包含在「之前」之中，不會被當成本次的變化；本次 ledger 的變化跨過門檻時（例如第一次 reconcile 就是記錄第 12 天），仍照常排入 reveal。
 - 階段的 reveal 規則見 §3.4。
 - `companionEngine` 仍不能改變關係（product spec §8.3、vertical slice §7.2）；它只讀取階段來挑選台詞（§7）。
 
@@ -123,10 +124,10 @@ K4 的其他影響：
 
 ### 3.4 階段變化的 reveal 與 Companion 反應
 
-判斷依據是 state 的**前後**，不是 reveal 中哪些 ledger entry 被加入或撤銷：
+判斷依據是里程碑（專案完成與關係階段）的**前後**，不是 reveal 中哪些 ledger entry 被加入或撤銷：
 
-- 「之前的階段」用新規則從**舊的已儲存 ledger** 計算，不讀已儲存的點數。舊版分頁可能寫入過時的點數，但它寫入的 ledger 反映的是真實的 Session 變化。
-- 「專案是否完成」也比較前後（`activeProject.completed`）。這是 BUG-113 的修正方向。
+- 「之前」是使用者最後看到的里程碑 `presentedMilestones`（見下方「其他規則」），不讀已儲存的點數。舊版分頁可能寫入過時的點數，不影響它。
+- 「專案是否完成」也是比較前後（`activeProject.completed`），這是 BUG-113 的修正方向。
 
 | 情況 | reveal | Companion |
 |---|---|---|
@@ -156,17 +157,31 @@ Companion 的優先順序（有待播放的 reveal 時；取代 `companionEngine
   - 解鎖由未解鎖變為解鎖（第 4 天）時，顯示解鎖行（例如「解鎖：正式工作站」，名稱來自共用的名稱表），它仍是 vertical slice §4.3 的 Major reward；
   - 前後都已解鎖（換一天承接）時不顯示；
   - 關係行同理（上表）。
-- 套用以上規則後沒有任何 reward 行、也沒有階段資訊的 reveal，不排入。例如撤銷第 4 天、由第 5 天承接時，第 5 天的 reveal 只剩搬過去的解鎖與關係 entry。
-- 同一次 reconcile 產生多個 reveal 時，階段資訊放在 `main-focus` entry 有變化（加入或撤銷）的那個 Session 的 reveal。例如剛好 12 天時撤銷第 2 天，會產生第 2、4、5 天三個 reveal：階段退回放在第 2 天的 reversal reveal；第 4、5 天只是換一天承接，沒有行而不排入。
-
+- 套用以上規則後沒有任何 reward 行、也沒有里程碑資訊的 reveal，不排入。例如第 4 天的完成已播放後撤銷第 4 天、由第 5 天承接時，第 5 天的 reveal 只剩搬過去的解鎖與關係 entry。
+- 同一次 reconcile 產生多個 reveal 時，里程碑放在哪一個 reveal 依下方「里程碑」的放置順序。例如剛好 12 天時撤銷第 2 天，會產生第 2、4、5 天三個 reveal：階段退回放在第 2 天的撤銷 reveal（`main-focus` 有變化）；第 4、5 天只是換一天承接，專案完成早已播放、沒有淨變化，沒有行而不排入。
 - `relationship` 與 `world_unlock` entry 不再直接產生 reward 行；關係行只來自前後比較。
-- 階段資訊記在 reveal 上（例如 `reveal.relationshipStage = { from, to }`）。
-  - 待播放的 reveal 中**最多保留一段淨的階段變化**：`from` 是最早一段尚未播放的階段資訊的 `from`，`to` 是目前階段，放在最新一個帶階段資訊的 reveal 上，其餘 reveal 的階段資訊移除；`from` 與 `to` 相同時全部移除。現在的 `revealMatchesActiveLedger()` 只檢查該 Session 自己的 entry，會留下過時的階段資訊，兩個方向都會發生：
+- 里程碑資訊記在 reveal 上（例如 `reveal.relationshipStage = { from, to }`、專案是否由未完成變為完成）。
+- **里程碑一律以「尚未呈現的淨變化」呈現，基準只有一個**。里程碑指專案完成（含解鎖）與關係階段：
+  - `state.presentedMilestones = { projectCompleted, relationshipStage }`：使用者**最後看到**的里程碑狀態（**新的本機欄位**，§9 第 3 點）。
+    - 初始值（欄位不存在，也就是第一次以新規則計算時）：以**新規則從舊的已儲存 ledger**（本次 reconcile 之前）算出的里程碑，再扣掉舊格式待播放 reveal 中仍有效的「加入」`world_unlock`／`relationship` entry 所代表、尚未呈現的變化。所以歷史補進度不會補播，第一次 reconcile 就記錄第 12 天時仍有 reveal；
+    - 之後，佇列中沒有帶里程碑的 reveal 時，每次 reconcile 結束時都把它設為目前狀態；
+    - `consumePersonalSpaceV2Reveal()` 消耗帶里程碑的 reveal 時，把它設為該 reveal 的 `to`。這是 AI-202B 要改的程式之一。
+  - 淨變化＝目前狀態 − `presentedMilestones`，在 reconcile、移除失效 reveal 之後計算。所以與 reveal 的排序（`normalizeRevealQueue()` 依 `sourceOccurredAt` 排序，不是加入的順序）、移除、消耗的時機無關，重複套用也相同。
+  - `queueReveal: true` 的 reconcile（記錄或撤銷 Session）有淨變化時，依序放在：
+    1. 該里程碑目前錨點 Session 的 reveal：專案完成與 `familiar` 是第 4 個 Main Quest 日，`partner`／`trusted-companion` 是第 12／30 個（例如撤銷第 4 天、由第 5 天承接時是第 5 天）。同一個 Session 有兩個 reveal 時（原本的與承接時加入的），放在本次加入的那一個。階段退回沒有錨點，跳到下一條；
+    2. 否則，本次 `main-focus` entry 有變化的 Session 的 reveal（例如撤銷第 2 天時是第 2 天的撤銷 reveal）。階段退回可以放在撤銷的 reveal 上；
+    3. 否則，最新一個保留、且不是只含撤銷的 reveal。專案完成與階段提升**不放**在只含撤銷的 reveal 上；
+    4. 都沒有時，併入 `presentedMilestones`，不呈現。
+  - `queueReveal: false` 的 reconcile（開啟 app、首頁 render、同步、remind 計時器）**只能移除或縮小**佇列中已有的里程碑，不新增：佇列中里程碑的 `to` 與目前狀態不同時，移除它並把 `presentedMilestones` 設為目前狀態。所以同步帶入的變化直接併入基準，不會被貼到不相干的 reveal 上（例如待播放的撤銷 reveal 不會因為同步帶入第 12 天而變成恭喜）。
+  - 帶著里程碑的 reveal 即使沒有其他行也保留；其他 reveal 的里程碑資訊移除；沒有淨變化時全部移除。
+  - 現在的 `revealMatchesActiveLedger()` 只檢查該 Session 自己的 entry，會留下過時的里程碑，或把尚未播放的里程碑整個丟掉。各方向都會發生：
     - 第 12 天的提升尚未播放時撤銷較早的一天，目前已回到 `familiar`，不能再顯示「合作夥伴」；
-    - 退回 `familiar` 尚未播放時又新增一個 Main Quest 日回到 `partner`，不能再顯示「夥伴關係：熟悉夥伴」與退回的反應（Codex review 指出）。
-  - 搬移或移除階段資訊後，**重新計算**受影響 reveal 由階段衍生的呈現欄位：`kind`（是否仍為 `major`）、`title`（「夥伴關係：…」）與關係行，依 §3.4 的規則由剩下的內容決定；剩下沒有任何行的 reveal 不排入（或移出佇列）。現在的佇列會把 `kind`／`title` 獨立存下來，`renderOrbitWindow()` 直接使用，只刪掉階段資訊會留下「WORLD MILESTONE」或舊的關係標題（Codex review 指出）。
-  - 舊版的 `normalizeRevealQueue()` 會保留 reveal 上不認得的欄位，舊版分頁只是不顯示它。
-- 時間軸上沒有被提示的階段變化（舊版分頁、開啟時的 reconcile）只會在卡片標籤上看到。這是可接受的：同一個 Session 不會恭喜兩次。
+    - 退回 `familiar` 尚未播放時又新增一個 Main Quest 日回到 `partner`，不能再顯示「夥伴關係：熟悉夥伴」與退回的反應（Codex review 指出）；
+    - 第 4 天的完成 reveal 尚未播放就撤銷第 4 天、由第 5 天承接：原 reveal 因 entry 失效被移除，但專案仍已完成、解鎖仍在、階段仍是 `familiar`，使用者必須在第 5 天的 reveal 看到這些（Codex review 指出）。
+  - 搬移或移除里程碑資訊後，**重新計算**受影響 reveal 由里程碑衍生的呈現欄位：`kind`（是否為 `major`）、`title`、解鎖與關係行、Companion 反應，依 §3.4 的規則由剩下的內容決定；剩下沒有任何行的 reveal 不排入（或移出佇列）。現在的佇列會把 `kind`／`title` 獨立存下來，`renderOrbitWindow()` 直接使用，只刪掉階段資訊會留下「WORLD MILESTONE」或舊的關係標題（Codex review 指出）。
+  - **舊版排入、尚未播放的 reveal**（沒有里程碑欄位，`kind` 已存為 `major`，含加入的 `world_unlock`／`relationship` entry，新版不再直接把它們畫成行）：它們尚未呈現的完成與階段由上述初始值保留在淨變化中；第一次以新規則 reconcile 時，依 §3.4 重新計算所有舊格式 reveal 的 `kind`、`title`、行與 Companion 反應，里程碑依放置順序放到對應的 reveal。
+  - 舊版的 `normalizeRevealQueue()` 會保留 reveal 上不認得的欄位，舊版分頁只是不顯示它。舊版分頁消耗 reveal 時不會更新 `presentedMilestones`；佇列清空後下一次 reconcile 會把基準設為目前狀態，最多是少顯示一次，可接受。
+- 時間軸上沒有被提示的階段變化（舊版分頁、開啟時的 reconcile、同步）只會在卡片標籤上看到。這是可接受的：同一個 Session 不會恭喜兩次。
 
 ## 4. hidden stats 不決定階段
 
@@ -260,10 +275,13 @@ reveal 與 Companion（§3.4）：
   - 同上，但當天還有另一筆有效的一般 Session：Companion 仍是 `observe`＋`companion.observe.familiar`（撤銷的 reveal 優先於「最新 Session」分支）。
 - 專案完成後撤銷第 6 天（沒有跨過門檻），當天另有一筆有效的一般 Session：Companion 是 `observe`＋目前階段的 `observe` 台詞，不是 `congratulate`，也不是 `approach`。
 - 剛好 12 天時撤銷第 2 天：只有第 2 天的 reversal reveal 帶階段退回；第 4、5 天換一天承接的 reveal 沒有行，不排入。
-- 撤銷第 4 天而第 5 天存在（專案完成改由第 5 天承接）：佇列中**只有第 4 天的撤銷 reveal**（含它自己被撤銷的金幣、進度等行），不是 `major`，Companion 是 `observe`，沒有關係或解鎖的行；第 5 天的 reveal 只剩搬過去的解鎖與關係 entry，沒有任何行，不排入。
+- 第 4 天的完成 reveal **已播放**後，撤銷第 4 天而第 5 天存在（專案完成改由第 5 天承接）：佇列中**只有第 4 天的撤銷 reveal**（含它自己被撤銷的金幣、進度等行），不是 `major`，Companion 是 `observe`，沒有關係或解鎖的行；第 5 天的 reveal 只剩搬過去的解鎖與關係 entry，沒有任何行，不排入。
+- 第 4 天的完成 reveal **尚未播放**就撤銷第 4 天、由第 5 天承接：第 5 天的 reveal 保留，顯示解鎖行與「夥伴關係：熟悉夥伴」，`congratulate`＋專案完成台詞；第 4 天的撤銷 reveal 沒有里程碑的行，不是 `major`。
 - 已排入的第 12 天 reveal 尚未顯示時撤銷較早的一天、階段跌回 `familiar`：該 reveal 不再顯示「合作夥伴」，`kind` 不再是 `major`，首頁不顯示「WORLD MILESTONE」或「夥伴關係：合作夥伴」的標題。
 - 退回 `familiar` 的 reveal 尚未顯示時又新增一個 Main Quest 日、回到 `partner`：沒有任何階段的行或反應（淨變化為零）。
-- 連續兩次提升都尚未顯示（例如補記多天）：只顯示一段「夥伴關係：<目前階段>」。
+- 從其他裝置同步帶入第 12 個 Main Quest 日（`queueReveal: false`）：不新增 reveal，`presentedMilestones` 併入 `partner`，卡片顯示 `partner`；之後在本裝置記錄第 13 天，沒有階段的 reveal。同步時佇列中若有待播放的撤銷 reveal，它不會變成恭喜。
+- 舊版排入的第 4 天完成 reveal 尚未播放時升級到新版：第一次 reconcile 後，它顯示解鎖行與「夥伴關係：熟悉夥伴」、`congratulate`＋專案完成台詞，不是「WORLD MILESTONE」加上進度台詞。
+- 先播放一個沒有里程碑的較早 reveal、再處理帶里程碑的 reveal：里程碑不會遺失（基準只在消耗帶里程碑的 reveal 時前進）。
 - 非 authoritative 的部分快照（省略較早的 Session）：Main Quest 日數由保留的 entry 計入，階段不變；重複套用時 state 逐位元相同（與既有的 replay 測試相同）。
 
 與舊版程式碼並存、規則版本與既有資料（K4、R1）：
@@ -278,7 +296,7 @@ reveal 與 Companion（§3.4）：
   - 不撤銷、不新增任何 ledger entry；
   - 階段不變；
   - `companion.legacyRelationshipPoints` 與 `companion.relationshipPolicyId` 被保留。
-- 「之前的階段」由舊的已儲存 ledger 計算：已儲存的點數被改成過時的值時，`queueReveal: true` 的 reconcile 不會因此排入階段變化的 reveal。
+- 「之前」是 `presentedMilestones`：已儲存的點數被改成過時的值時，`queueReveal: true` 的 reconcile 不會因此排入階段變化的 reveal。
 - `relationshipPolicyId` 不存在的 state（第一次以新規則計算）：
   - 已有 30 個 Main Quest 日，開啟時（`queueReveal: false`）直接到 `trusted-companion`，不排入 reveal；
   - 已有 30 個 Main Quest 日，第一次 reconcile 就是記錄第 31 天（`queueReveal: true`）：不排入階段的 reveal（之前依新規則已是 `trusted-companion`）；
@@ -299,7 +317,7 @@ reveal 與 Companion（§3.4）：
 
 - vertical slice：
   - §4.3 的 key 改為程式碼實際使用的值：`relationship:companion=1`、`gold:daily-main-quest=100`、`hidden_stat:depth.daily-main-quest=3`；
-  - §5.1 的 state 欄位加上 `companion.legacyRelationshipPoints` 與 `companion.relationshipPolicyId`；
+  - §5.1 的 state 欄位加上 `companion.legacyRelationshipPoints`、`companion.relationshipPolicyId` 與 `presentedMilestones`；
   - §6.1、§13.1 改為 §3.3 建議的文字；
   - §7.2 的階段推進改寫為「由 active ledger 推導」與本提案的門檻；Companion 優先順序改為 §3.4 的 5 條（加上階段提升；撤銷的 reveal 一律 `observe` 並結束判斷）。
 - `docs/personal-space-state-flow.md` 的關係公式改為 `max(legacy 點數, ledger 中的 relationship ＋ 推導的 milestone)`，並記錄 policy id。
@@ -314,7 +332,7 @@ reveal 與 Companion（§3.4）：
    - 曾考慮「Main Quest 日 ＋ 至少 30 分鐘的恢復日」，但與 K4 的點數算法不相容：`familiar` 仍綁在專案完成（4 個 Main Quest 日），恢復日卻能先湊滿 12 天，造成還沒完成專案就先顯示 `familiar`（推導的 1 點），完成時才到 `partner`。要採用，必須改成關卡式（`partner` 需要先 `familiar`），所以不建議。
 3. **機制、規則版本與既有歷史**（§3.2、§3.3）：
    - K4（建議）：由 active ledger 推導 milestone，legacy 點數作為下限。需同意：
-     - 新增兩個本機欄位 `companion.legacyRelationshipPoints`、`companion.relationshipPolicyId`；
+     - 新增三個本機欄位 `companion.legacyRelationshipPoints`、`companion.relationshipPolicyId`、`presentedMilestones`；
      - 修改 vertical slice §6.1 與 §13.1（`rulesetId` 只標示 ledger entry 的版本，推導的規則另用 policy id）；
      - 修改 §7.2：「透過 ledger entry 推進」改為「由 active ledger 推導」；Companion 優先順序改為 §3.4 的 5 條：加上階段提升；撤銷的 reveal 一律 `observe` 並結束判斷。
    - 歷史：R1 epoch 以後的 Main Quest 日都算、第一次以新規則計算時不補播（建議）／R2 只算新版上線之後。
