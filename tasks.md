@@ -223,12 +223,6 @@
 
 ## In Progress
 
-- [ ] **INFRA-103** `lint` script 的 glob 加上引號，讓 eslint 檢查所有檔案
-  - 問題（AI-204B 獨立 review 發現，2026-10-19 確認）：`package.json` 的 `"lint": "eslint pwa/js/**/*.js tests/**/*.js"` 沒有引號。npm 用 `sh` 執行，`**` 等同 `*`，所以 `npm run lint`（含 CI）只檢查 `pwa/js` 下剛好兩層的 37 個檔案與 `tests/*/*.js`；`pwa/js` 第一層的 22 個檔案（`app.js`、`storage.js` 等）與更深的 V2 模組都沒有被 lint。
-  - 方向：改成 `eslint 'pwa/js/**/*.js' 'tests/**/*.js'`，由 eslint 自己展開。2026-10-19 以加引號的 glob 執行，目前所有檔案都通過，不需要另外修程式碼。
-  - **修改既有設定（CI 執行的 script），需使用者核准**。
-  - **2026-10-20 使用者核准。** In progress（2026-10-20）。
-
 - [ ] **PRO-014Q** 開發者面板的 backup 不應擋住其他帳號或非 Pro 模擬的 entitlement refresh
   - 問題（PR #158 Codex review 指出，2026-10-18 確認）：`storage.refreshProEntitlement()` 只要 `FLAG_DEV_BACKUP` 存在就直接 return。這個 backup 也由等級模擬器建立，且 `storage.clearAll()` 登出時不會清除。開發者登出後換另一個帳號，該帳號的 refresh 會一直被跳過，在 `server` source 下 fail closed，直到手動重設。
   - 影響：只影響使用過開發者面板的裝置。
@@ -251,6 +245,13 @@
 ---
 
 ## Done
+
+- [x] **INFRA-103** `lint` script 的 glob 加上引號，讓 eslint 檢查所有檔案
+  - 問題（AI-204B 獨立 review 發現，2026-10-19 確認）：`package.json` 的 `"lint": "eslint pwa/js/**/*.js tests/**/*.js"` 沒有引號。npm 用 `sh` 執行，`**` 等同 `*`，所以 `npm run lint`（含 CI）只檢查 `pwa/js` 下剛好兩層的 37 個檔案與 `tests/*/*.js`；`pwa/js` 第一層的 22 個檔案（`app.js`、`storage.js` 等）與更深的 V2 模組都沒有被 lint。
+  - 方向：改成 `eslint 'pwa/js/**/*.js' 'tests/**/*.js'`，由 eslint 自己展開。2026-10-19 以加引號的 glob 執行，目前所有檔案都通過，不需要另外修程式碼。
+  - **修改既有設定（CI 執行的 script），需使用者核准**。
+  - **2026-10-20 使用者核准。** In progress（2026-10-20）。
+  - 完成（2026-10-20）：`"lint": "eslint \"pwa/js/**/*.js\" \"tests/**/*.js\""`。用雙引號而不是單引號，Windows 的 `cmd` 也能由 eslint 自己展開。`npm run lint` 檢查的檔案由 110 個增加到 176 個，全部通過，不需要修改程式碼。`.mjs`（`tests/perf/`）仍不在範圍內。
 
 - [x] **PS-211** 為 personal space 新增常用資產 preload / cache 策略
   - 目標：降低切換頁面或切回 personal space 時重新顯示圖片的等待感
