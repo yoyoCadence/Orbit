@@ -74,8 +74,9 @@
 
 12. **INFRA-104：完成**（#189）。`npm run lint` 改為 `eslint .`，涵蓋 `pwa/sw.js`、`pwa/server.cjs`、Node 腳本、`tests/perf` 與設定檔（共 195 個檔案）；`pwa/vendor`、輸出目錄與 `.gitignore` 中只存在於本機的資料夾由設定忽略。獨立 review 確認每一類新檔案的 negative control 都會失敗；它找到的 P2（PS-248 誤寫主角／Companion／天氣是 Blender 產出）已修正。
 
-13. **AI-202：提案**（#190，[`docs/ai-202-companion-relationship-proposal.md`](ai-202-companion-relationship-proposal.md)，等待使用者決定 §9）。建議只用 Main Quest 天數推進關係階段（4／12／30 天），hidden stats 不決定階段，沿用 `rulesetId` 只新增 ledger entry，首頁顯示階段並依階段換 `observe` 台詞。
-    - 事實：現在階段最多到 `familiar`（唯一的來源是專案完成）；`companionEngine` 不讀階段與 hidden stats；換 `rulesetId` 會讓 hidden stats、Gold 與關係重複計算（`activeCurrentRulesetEntries()` 濾掉舊 entry 後，「遷移基準」包含了舊 ledger）。
+13. **AI-202：提案**（#190，[`docs/ai-202-companion-relationship-proposal.md`](ai-202-companion-relationship-proposal.md)，等待使用者決定 §9）。建議只用 Main Quest 天數推進關係階段（4／12／30 天），hidden stats 不決定階段，milestone 由 active ledger 推導（不新增 ledger entry、另存 `companion.relationshipBaseline`），首頁顯示階段並依階段換 `observe` 台詞。
+    - 事實：現在階段最多到 `familiar`（唯一的來源是專案完成）；`companionEngine` 不讀階段與 hidden stats；換 `rulesetId` 會讓 hidden stats 與關係重複計算（`activeCurrentRulesetEntries()` 濾掉舊 entry 後，「遷移基準」包含了舊 ledger；Gold 只看目前 ruleset，不受影響）。
+    - 教訓（Codex review）：同一個瀏覽器的舊版分頁會繼續 reconcile 共用的 V2 state，並撤銷它不認得的同 ruleset ledger entry。改 reward 語意時，要檢查舊版程式碼讀到新 state 的行為。
     - 順帶發現 **BUG-113**（Next）：專案完成後，每個 Main Quest 日都會讓 Companion 再說一次「工作站完成了」。已用 reconciler ＋ controller ＋ engine 重現；修正不需要核准新行為。
 
 14. **下一步**（使用者 2026-10-20 指定）：PS-248 提案（以 Blender 擴充主題與素材），只寫文件。INFRA-105（SHELL 的 JS／CSS／HTML 安裝時重新驗證）需核准。使用者原則：以「任務確實完成」為準，合併是後話；做不到的先寫進 `tasks.md`。
@@ -138,7 +139,7 @@
 
 - **BUG-109A**：在 production 套用 `pwa/db/013_signup_profile_name.sql`，需專案擁有者執行，步驟見 `docs/bug-109-signup-name-truncation.md`。
 - **PRO-014Q Q6 的測試帳號**：在 preview Supabase 專案建立（見 §3 第 4 點）。
-- **AI-202 提案 §9**：關係階段的門檻、輸入、既有歷史（K1 需同意修改 vertical slice §6.1）、顯示、hidden stats 名稱、台詞、README、telemetry、BUG-113 的處理。
+- **AI-202 提案 §9**：關係階段的門檻、輸入、機制與既有歷史（K4 需同意新增本機欄位 `companion.relationshipBaseline` 並修改 vertical slice §7.2）、顯示、hidden stats 名稱、台詞、README、telemetry、BUG-113 的處理。
 - **角色 3D 化**：主角與 Companion 仍是 PS-242 的像素 sprite。改成 3D 會推翻已核准素材（主角 12 個姿勢、Companion 6 個狀態），範圍很大，等使用者決定。
 - **PRO-014P**：entitlement 流程，實作前需提案與核准，擋 `PRO-014H` cutover。與草稿 PR #154（PRO-014L）改同一段 SUB-16 路徑，寫提案前先問使用者先後順序。
 - **PS-243**：真機、installed PWA、雙帳號、螢幕閱讀器等 human gate。

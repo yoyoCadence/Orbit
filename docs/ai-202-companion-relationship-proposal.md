@@ -6,8 +6,9 @@
 
 - **關係階段只由「Main Quest 天數」推進**：完成每日主線任務的不同日期數。這是現有資料中最接近「真實行為品質」、又無法刷的訊號：每天最多一天，需要 A／S 級、完成、至少 25 分鐘。
   - 第 4 天：`familiar`（熟悉夥伴）。這就是現在的 Workspace Upgrade 完成，**不改**。
-  - 第 12 天：`partner`（合作夥伴），新的 ledger milestone。
-  - 第 30 天：`trusted-companion`（信賴夥伴），新的 ledger milestone。
+  - 第 12 天：`partner`（合作夥伴）。
+  - 第 30 天：`trusted-companion`（信賴夥伴）。
+  - 這兩個 milestone 由 active ledger 推導，**不寫成新的 ledger entry**，否則仍在執行舊版程式碼的分頁會把它撤銷（§3.3）。
   - 門檻可調（§9 第 1 點）。
 - **hidden stats 不決定階段**。它們每次 Session 都會加、沒有每日上限，連 instant Session 也算，所以很容易刷（§4）。它們回答的是「做了什麼樣的事」，階段回答的是「一起走了多久、多穩」。AI-202B 只把 hidden stats 的顯示改成中文名稱；「夥伴注意到你哪一面」另立任務（§5）。
 - **不因缺席降級**。階段只在它的來源 Session 被撤銷或刪除時退回，這是現有行為；沒有時間衰減（§6）。
@@ -15,7 +16,7 @@
   - 首頁 COMPANION 卡顯示階段；
   - 階段提升時顯示「夥伴關係：合作夥伴」，取代現在的 `companion +1`；
   - 平常的 `observe` 台詞依階段不同。
-- **不需要新的資料欄位**。新的 milestone 放進既有的 `rewardLedger`，不改 schema。沿用現有的 `rulesetId`，只新增 entry，不改任何既有 entry（§3.3，需核准）。
+- **ledger 與 `rulesetId` 都不變**。只新增一個本機欄位 `companion.relationshipBaseline`（V2 state 不同步、不涉及資料庫），讓舊版分頁寫入的過時點數無法汙染計算（§3.2，需核准）。vertical slice §7.2「透過 ledger entry 推進」要改寫為「由 active ledger 推導」（需核准）。
 
 ## 2. 現況
 
@@ -51,41 +52,47 @@ README 的「關係進化草案」列了 5 個不同的階段（陌生觀察／�
 
 ### 3.2 推導方式
 
-- 「Main Quest 日」＝ active ledger 中 `quest_progress` 且 `rewardKey` 為 `main-focus:<date>` 的 entry，每個日期一筆。這已經是 reconciler 每天只選一個 winner 的結果。
-- 依（`sessionDate`、`createdAt`、`id`）排序，與 `projectEngine.js` 的 `projectEntryOrder` 相同。
-- 第 N 個（N = 12、30）存在時，產生一筆 milestone entry，錨定在第 N 天的 winner Session：
-  - `rewardType: 'relationship'`；
-  - `rewardKey`：`companion:partner`、`companion:trusted-companion`。必須和現有的 `companion` 不同，因為 ledger id 是 `reward:<rulesetId>:<sourceId>:<rewardType>:<rewardKey>`。同一個 Session 在撤銷後可能從第 12 天變成第 4 天，key 相同就會撞 id；
-  - `metadata.tier: 'relationship-milestone'`，**不可**用 `'project-completion'`，否則 `revealSelectors.isProjectCompletionReveal()` 會把它當成專案完成；
-  - `metadata.relationshipMilestone`：`'partner'` 或 `'trusted-companion'`，加上 `mainQuestDay`（12 或 30）。
-- 推導方式與 project completion 相同：從「保留的 entry ＋ 預期的 entry」推導，**不**在非 authoritative 的部分快照中原樣保留（對應 `reconciler.js` 對 `projectMilestone: 'completed'` 的處理）。這樣撤銷第 N 天時會改由新的第 N 天承接，部分快照也不會重複或遺失。
-- 點數仍是所有 `relationship` entry 的總和，不改 `relationshipStageForPoints()`：
-  - 4 天：1 點（現有）→ `familiar`
-  - 12 天：2 點 → `partner`
-  - 30 天：3 點 → `trusted-companion`
+- 「Main Quest 日」＝ active ledger 中 `quest_progress` 且 `rewardKey` 為 `main-focus:<date>` 的 entry，每個日期一筆。這已經是 reconciler 每天只選一個 winner 的結果。非 authoritative 的部分快照會保留被省略的 Session 的 entry（`reconciler.js` 的 `preservedOmittedSourceIds`），所以 reconcile 結果的 `activeRewards` 已經是完整的計數來源。
+- **milestone 不寫進 ledger，而是在 `applyReconciliationToV2State()` 由 active ledger 推導**（理由見 §3.3）：
+  - `derivedMilestones` ＝ Main Quest 日數 ≥ 12 時 1，≥ 30 時再加 1；
+  - 點數 ＝ `companion.relationshipBaseline` ＋ ledger 中 `relationship` entry 的總和（現有的專案完成 1 點）＋ `derivedMilestones`；
+  - 階段仍由 `relationshipStageForPoints()` 決定，不改：4 天 1 點 → `familiar`；12 天 2 點 → `partner`；30 天 3 點 → `trusted-companion`。
+- `companion.relationshipBaseline`：**新的本機欄位**（V2 state 只存在本機、不同步；不涉及資料庫）。
+  - 新版第一次 reconcile、欄位還不存在時寫入一次：`max(0, 已儲存的點數 − ledger 中 relationship 的總和)`。這就是現在程式碼每次推算的「遷移基準」。此時還沒有任何程式寫過推導出的 milestone，所以算出來的就是真正的基準（實際上都是 0：legacy 從未寫過關係階段）。
+  - 之後新版**不再從已儲存的點數反推基準**，每次都從欄位與 ledger 重新計算。
+  - 理由：舊版分頁會把它不認得的點數當成基準保留（§3.3）。如果舊版分頁撤銷了一個 Session，讓 Main Quest 日數跌破門檻，反推的基準會多 1，而且永遠修不回來。存下來的基準不受舊版分頁影響。
+  - 舊版的 `normalizePersonalSpaceV2State()` 與 `applyReconciliationToV2State()` 都會保留 `companion` 中不認得的欄位（`...rawCompanion`、`...state.companion`），所以舊版分頁不會刪掉它。
+- **reveal 以「階段前後是否改變」判斷**，不再看新增了哪個 ledger entry：
+  - 「之前的階段」用同一個公式從**舊的已儲存 ledger** 計算，不讀已儲存的點數。舊版分頁可能寫入過時的點數，但它寫入的 ledger 反映的是真實的 Session 變化。
+  - 只有 `queueReveal: true`（記錄或撤銷 Session）時才排入 reveal，類別為 `major`；開啟 app 與首頁 render 的 reconcile 不排入。
+  - 撤銷後由下一個 Main Quest 日補上、階段沒有改變時，不會有關係的 reveal。
 - `companionEngine` 仍不能改變關係（vertical slice §7.2、§17）；它只讀取階段來挑選台詞（§7）。
 
-### 3.3 Ruleset 與既有資料
+### 3.3 與舊版分頁並存、ruleset 與既有資料
 
-Vertical slice §6.1 規定：「Amount and metadata are immutable for a ruleset. Changing a rule requires a new `rulesetId` plus an explicit migration/reconciliation policy.」
+同一個瀏覽器的多個分頁共用 `localStorage` 中的 V2 state。更新時，`sw.js` 的 `skipWaiting`／`clients.claim` 只讓已開啟的分頁顯示「重新整理」橫幅（`index.html`），使用者按下之前，該分頁仍執行舊版程式碼並繼續 reconcile。所以新規則必須讓**舊版程式碼看到新版寫入的 state 時不會改壞它**。
 
-**不建議換 `rulesetId`**。以目前的程式碼換掉會重複計算：
-- `activeCurrentRulesetEntries()` 會濾掉舊 ruleset 的 entry，於是舊的總和變成 0；
-- 「遷移基準」＝已儲存的總數 − 0，而已儲存的總數已經包含舊 ledger；
-- 新 ruleset 再把 epoch 之後的 Session 全部給一次，所以 hidden stats、Gold 與關係都會變成兩倍。
+| 方式 | 舊版分頁的反應 | 評估 |
+|---|---|---|
+| K1 沿用 `rulesetId`，新增 milestone ledger entry（本提案第一版） | 舊版 reconciler 遇到同一 ruleset、來源 Session 還在、但它不預期的 entry 會**撤銷它**（`reconciler.js` 的比對迴圈）；新版再把它恢復。階段來回跳動，還會重複出現階段提升的 reveal | 拒絕（Codex review 指出） |
+| K2 換新 `rulesetId`，新增 ledger entry | 舊版保留新 ruleset 的 entry、繼續替自己的 ruleset 給獎勵；在舊版分頁記錄的 Session 會兩個 ruleset 各給一次 hidden stats，並被新版當成基準永久保留。而且以現有的程式碼換 `rulesetId`，`activeCurrentRulesetEntries()` 會濾掉舊 entry，「遷移基準」包含了舊 ledger，hidden stats 與關係都會重複計算（Gold 不會：`earnedGold` 只看目前 ruleset 的總和）。要另寫遷移與明確的基準 | 範圍大，不建議 |
+| **K4（建議）不新增 ledger entry，由 active ledger 推導 milestone ＋ 存下基準** | 舊版把新版多出的點數當成「遷移基準」保留（已儲存的點數 − 它的 ledger 總和 ＋ 它的 ledger 總和），所以階段不變。只有舊版分頁撤銷的 Session 跨過門檻時會暫時不準，新版下一次 reconcile 會從存下的基準重新計算 | 舊版不會撤銷或重複任何東西；ledger 規則與 `rulesetId` 都不變 |
 
-選項：
+以目前 main 的 `reconcileRewardLedger()` ＋ `applyReconciliationToV2State()` 模擬舊版分頁驗證過（13 個 Main Quest 日）：
 
-- **K1（建議）沿用 `ps-v2-workspace-v1`，只新增 entry**：
-  - 不改任何既有 entry 的 id、amount、metadata，只多出兩種 milestone；
-  - 對 epoch（2026-07-17）以後的歷史生效：已經有 12 或 30 個 Main Quest 日的使用者，第一次開啟新版時直接到對應階段；
-  - 開啟時的 reconcile 是 `queueReveal: false`，所以**不會**補播 reveal，只是階段改變；
-  - 需要在 vertical slice §6.1 補上：「新增衍生 milestone、且不改變任何既有 entry 的 id、amount、metadata 時，不換 ruleset」。這是修改規格，所以列為需要核准。
-- K3 沿用 ruleset，只計算新版上線之後的 Main Quest 日：
-  - 需要第二個 epoch 常數；
-  - 已累積的歷史不算，對長期使用者不公平；
-  - 好處是不會一次跳兩階。
-- K2 換新 `rulesetId` 並修正基準的計算：範圍與風險都大（Gold、hidden stats 的遷移），不建議。
+- K1：加入一筆錨定在第 12 天的 `relationship:companion:partner` entry 後，舊版把它撤銷（`reversedAt` 被設定），階段由 `partner` 掉回 `familiar`。
+- K4：把點數設為 2（`partner`）、加上 `relationshipBaseline: 0` 後，舊版在 authoritative、部分快照、新增第 14 天三種情況下都維持 `partner`，ledger 不變，欄位被保留。
+- 舊版分頁撤銷第 12、13 天時，它仍顯示 `partner`（過時）；新版下一次 reconcile 由存下的基準重新算回 `familiar`。這就是需要存下基準的原因。
+
+K4 的其他影響：
+
+- 不新增 ledger entry、不改任何 reward 的 amount 與 metadata，所以 vertical slice §6.1「改規則要換 `rulesetId`」不適用。
+- 但 vertical slice §7.2 寫的是「透過 ledger entry 推進」。K4 的 milestone 是「由 active ledger entry 推導」，符合 §14「hidden stats 與關係必須能從 active ledger entry 推導」，但 §7.2 的文字要改寫。這是修改規格，列為需要核准（§9 第 3 點）。
+- 沒有 ledger id 衝突、`metadata.tier` 或部分快照保留 milestone entry 的問題。
+- 階段提升的 reveal 行會放在第 N 天那筆 Session 的 reveal 裡，該 reveal 含 `project_progress:workspace-upgrade`，所以仍依賴 BUG-113：不先修，Companion 會被判斷成「專案完成」。
+- 歷史：
+  - **R1（建議）**：epoch（2026-07-17）以後的 Main Quest 日都算。已經有 12 或 30 天的使用者，第一次開啟新版時直接到對應階段；開啟時不排入 reveal，只是階段改變。
+  - R2：只算新版上線之後的 Main Quest 日。需要第二個 epoch 常數；已累積的歷史不算，對長期使用者不公平；好處是不會一次跳兩階。
 
 ## 4. hidden stats 不決定階段
 
@@ -161,17 +168,22 @@ Vertical slice §6.1 規定：「Amount and metadata are immutable for a ruleset
 撤銷與部分快照：
 
 - 撤銷第 12 天的 Session：
-  - 有第 13 天時，仍是 `partner`，milestone 改錨定在新的第 12 天，不顯示階段行；
+  - 有第 13 天時，仍是 `partner`，沒有關係的 reveal 行；
   - 沒有時，退回 `familiar`，reveal 文字是「夥伴關係：熟悉夥伴」。
-- 非 authoritative 的部分快照（省略較早的 Session）：milestone 由保留的 entry 推導，數量不變；重複套用時 ledger 逐位元相同（與既有的 replay 測試相同）。
-- 一個 Session 先後成為第 12 天與第 4 天的錨點時，ledger id 不衝突（不同的 `rewardKey`）。
-- milestone 的 `metadata.tier` 是 `relationship-milestone`；第 12 天的 reveal 不會被判斷成專案完成，Companion 不說「工作站完成了」（依賴 BUG-113）。
+- 非 authoritative 的部分快照（省略較早的 Session）：Main Quest 日數由保留的 entry 計入，階段不變；重複套用時 state 逐位元相同（與既有的 replay 測試相同）。
+- 第 12 天的 reveal 不會被判斷成專案完成，Companion 不說「工作站完成了」（依賴 BUG-113）。
 
-Ruleset 與既有資料（K1）：
+與舊版分頁並存、ruleset 與既有資料（K4、R1）：
 
-- `RULESET_ID` 不變。固定的 fixture 在改版前後，所有既有 entry 的 id、amount、metadata 都相同，只多出 milestone entry。
+- `RULESET_ID` 不變；ledger 中沒有新的 `rewardType`、`rewardKey` 或 entry。固定的 fixture 在改版前後 ledger 完全相同。
+- `companion.relationshipBaseline` 只在欄位不存在時寫入一次；之後即使已儲存的點數被改成別的值（模擬舊版分頁寫入），點數仍由基準 ＋ ledger 重新計算。
+- 以**目前 main 的** `applyReconciliationToV2State()` 與 `reconcileRewardLedger()` 處理新版寫入的 state（模擬舊版分頁）：
+  - 不撤銷、不新增任何 ledger entry；
+  - 階段不變；
+  - `companion.relationshipBaseline` 被保留。
+- 「之前的階段」由舊的已儲存 ledger 計算：已儲存的點數被改成過時的值時，`queueReveal: true` 的 reconcile 不會因此排入階段變化的 reveal。
 - 已有 30 個 Main Quest 日的 state 在開啟時（`queueReveal: false`）直接到 `trusted-companion`，不排入 reveal。
-- 已儲存的 hidden stats、Gold 不變（不重複計算）。
+- 已儲存的 hidden stats、Gold 不變。
 
 顯示（S1）：
 
@@ -186,8 +198,8 @@ Ruleset 與既有資料（K1）：
 
 文件：
 
-- vertical slice §4.3 的 `relationship:companion-stage=1` 改為程式碼實際使用的 `relationship:companion=1`，並加上兩個新 milestone；§6.1 補上 ruleset 規則（K1）；§7.2 的階段推進改寫為本提案的規則。
-- `docs/personal-space-state-flow.md` 的關係公式補上新 milestone。
+- vertical slice §4.3 的 `relationship:companion-stage=1` 改為程式碼實際使用的 `relationship:companion=1`；§7.2 的階段推進改寫為「由 active ledger 推導」與本提案的門檻（K4）；§5.1 的 state 欄位加上 `companion.relationshipBaseline`。
+- `docs/personal-space-state-flow.md` 的關係公式改為「基準 ＋ ledger 中的 relationship ＋ 推導的 milestone」。
 
 ## 9. 需要使用者決定
 
@@ -198,9 +210,9 @@ Ruleset 與既有資料（K1）：
 2. **輸入**：
    - I1 只算 Main Quest 日（建議）。恢復不會推進關係，但也不會讓關係退步。
    - I2 Main Quest 日 ＋ 至少 30 分鐘的恢復日。符合「恢復是策略」，但只休息也能到信賴夥伴。
-3. **既有歷史**：
-   - K1 沿用 ruleset、epoch 以後的歷史都算、開啟時不補播（建議；需同意修改 vertical slice §6.1 的規則文字）。
-   - K3 只算新版上線之後。
+3. **機制與既有歷史**（§3.3）：
+   - K4 由 active ledger 推導 milestone、存下 `companion.relationshipBaseline`（建議）。需同意新增這個本機欄位，並把 vertical slice §7.2「透過 ledger entry 推進」改為「由 active ledger 推導」。
+   - 歷史：R1 epoch 以後的 Main Quest 日都算、開啟時不補播（建議）／R2 只算新版上線之後。
 4. **顯示**：S1 名稱 ＋ reveal ＋ 台詞（建議）／S2 只有名稱與 reveal／S3 不改。
 5. **hidden stats**：
    - H1 只改中文名稱（建議）／H2 加「最近常見」／H3 另立任務做台詞。
