@@ -253,8 +253,8 @@
   - 核准前不渲染、不改程式碼。
   - 依賴：`PS-247`、`PS-211A`
   - In progress（2026-10-20）：提案見 [`docs/ps-248-blender-themes-proposal.md`](docs/ps-248-blender-themes-proposal.md)，等待使用者決定 §9。
-    - 建議三個階段：PS-248A 窗外景色依 4 個時段變化（拆出 `outside` 群組，房間與家具不變）→ PS-248B 一套室內風格主題（同相機、同造型，換材質與色票）→ PS-248C 2–4 件裝飾小物（由現有資料推導解鎖）。
-    - 主題不寫入 reward ledger、不新增 `world_unlock`。新房間、新相機、3D runtime、角色與天氣不在範圍內。
+    - 建議三個階段：PS-248A 夜晚版本的工作站（房間與家具的陽光是烘在圖裡的，夜晚只疊深藍色層仍看得到陽光；同場景、同相機重新渲染一套夜晚版本，家具沿用白天的裁切框）→ PS-248B 一套「房間風格」（同相機、同造型與燈光，換材質與色票）→ PS-248C 2–4 件裝飾小物（由 AI-202B 推導的資料解鎖）。窗外依時段變化（PS-248A2）可選，超出 vertical slice 的「一張 exterior」上限。
+    - 風格與裝飾不寫入 reward ledger、不新增 `world_unlock`。新房間、新相機、3D runtime、角色與天氣不在範圍內。
     - 使用者決定後，把核准的階段拆成 PS-248A／B／C 任務並寫入驗收條件（PS-248A 的草稿在提案 §8）。
 
 - [ ] **AI-202** 定義 companion relationship stage 與 hidden stats 的最小映射規則
