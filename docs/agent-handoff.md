@@ -4,7 +4,7 @@
 
 任務本身的定義與驗收條件以 [`tasks.md`](../tasks.md) 為準；本檔只記錄進行中的狀態、與使用者約定的工作規則，以及接手需要的操作細節。
 
-> 最後更新：2026-10-20。PS-246（#176，v1.30.1）、AI-203B（#177，v1.31.0）、HW-113（#180，v1.31.1）、PRO-014Q S0（#178，v1.31.2，含使用者核准的 A1＋B1）、AI-204 提案（#181）、PS-247（#182，v1.31.3）、INFRA-102（#183，CI 上傳 e2e artifact）、AI-204B（#184，v1.31.4，Companion 共用文案表）已合併。PS-211 提案（#185）已合併並核准（A3 ＋P、PS-211B 含沿用 Pixi app）。INFRA-103（#186）開 PR；接著 PS-211B、PS-211A（§3 第 8 點）。
+> 最後更新：2026-10-20。PS-246（#176，v1.30.1）、AI-203B（#177，v1.31.0）、HW-113（#180，v1.31.1）、PRO-014Q S0（#178，v1.31.2，含使用者核准的 A1＋B1）、AI-204 提案（#181）、PS-247（#182，v1.31.3）、INFRA-102（#183，CI 上傳 e2e artifact）、AI-204B（#184，v1.31.4，Companion 共用文案表）已合併。PS-211 提案（#185）已合併並核准（A3 ＋P、PS-211B 含沿用 Pixi app）。INFRA-103（#186）已合併。PS-211B（#187，v1.31.5）開 PR；接著 PS-211A（§3 第 8 點）。
 
 ## 1. 接手前先讀
 
@@ -68,6 +68,8 @@
 
 9. **INFRA-103：完成**（#186）。`lint` script 的 glob 改用雙引號（Windows `cmd` 也適用），`npm run lint` 檢查的檔案由 110 個增加到 176 個，全部通過。`pwa/sw.js` 等仍不在範圍內（INFRA-104，需核准）；PS-211A 改 `sw.js` 時要手動檢查。
 
+10. **PS-211B：完成**（#187，v1.31.5）。runtime 未就緒時隱藏 canvas（CSS），路由 cleanup 保留 runtime 2 秒（`RUNTIME_ROUTE_HANDOFF_MS`）讓下一頁接手，首頁 → 空間不再重建 Pixi app。e2e 注意：reduced motion 下每個元素都有極短的 transition，讀 `visibility` 前要關掉 transition，否則計算值仍是舊的。
+
 其他：
 
 - **CI e2e 間歇性逾時（2026-10-19）**：`tests/e2e/flows.test.js` 的「Focus 計時流程」提前結束兩個測試（:175、:189）在 CI 上偶發 `Test timeout of 15000ms exceeded`，與 PR 內容無關（只改版本號的 commit 也失敗、重跑通過）；本機（完整 Chromium、headless shell、`CI=1`、2 workers、CPU 滿載）都無法重現。當時 CI 沒有上傳 Playwright artifact，看不到卡在哪一步。INFRA-102（使用者核准）之後 e2e 失敗時會上傳 `playwright-test-results` artifact（`test-results/`，保留 7 天），下次遇到先下載看 error-context。遇到時依規則只重跑一次，第二次失敗要查。
@@ -113,6 +115,7 @@
 | #184 | v1.31.4 | AI-204B：Companion 共用文案表（W-A）、COMPANION 小卡最多兩行、夥伴名稱統一為「Orbit 夥伴」 |
 | #185 | — | PS-211 提案：改版後的素材連續性與狀態切換（已核准 A3 ＋P、PS-211B） |
 | #186 | — | INFRA-103：`lint` script 的 glob 加引號，lint `pwa/js` 與 `tests` 下全部 176 個 `.js` |
+| #187 | v1.31.5 | PS-211B：新場景畫完前隱藏 canvas；首頁 → 空間沿用 Pixi app |
 
 教訓：#155–#164 在 Codex review 出現前就合併，造成 #165、#166、#167 的回頭修正。這就是 §2 合併條件的由來。獨立 review 在 #167、#168、#169 都找到真正的問題（例如椅子畫在螢幕後面、壁燈在相框下投出暗影），所以複查不能省。
 
@@ -130,7 +133,7 @@
 
 ### 可直接做（已核准）
 
-- PS-211B、PS-211A（使用者 2026-10-20 核准，依序各一個 PR；驗收條件見 `tasks.md`）。
+- PS-211A（使用者 2026-10-20 核准；驗收條件見 `tasks.md`）。PS-211B 已完成。
 - PRO-014Q Q6（需先有測試帳號）。PS-246、AI-203B、HW-113、PRO-014Q S0 已完成。
 
 ## 6. PS-245 精細化：實作計畫

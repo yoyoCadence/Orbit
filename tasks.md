@@ -221,17 +221,6 @@
 
 ## In Progress
 
-- [ ] **PS-211B** 新場景畫完前隱藏 canvas；首頁 → 空間沿用 Pixi app
-  - 規格：[`docs/ps-211-asset-preload-cache-proposal.md`](docs/ps-211-asset-preload-cache-proposal.md) §4.2、§4.4、§5 B。使用者 2026-10-20 核准，包含沿用 Pixi app 的最佳化。
-  - 驗收條件：
-    - `.orbit-window:not(.is-runtime-ready) .orbit-window-canvas` 為 `visibility: hidden`：新場景畫完、`is-runtime-ready` 加上之前，canvas 不可見，畫面顯示新狀態的 DOM poster（技術設計 §9.2）；有測試。
-    - 首頁 → 空間 → 首頁的過程中，Pixi `Application` 只建立一次（以假的 Pixi 計數）；任何時刻最多一個 Application，離開時仍會正確 release／destroy。
-    - 既有的 runtime lifecycle、context lost／restored、e2e 的 canvas 數量與尺寸檢查通過。
-    - lint、test、e2e、`ps242:manifest -- --check`、`ps243:assets -- --check` 通過。
-  - 版本：`npm run bump -- patch`。
-  - 依賴：`PS-211`
-  - In progress（2026-10-20）。
-
 - [ ] **PRO-014Q** 開發者面板的 backup 不應擋住其他帳號或非 Pro 模擬的 entitlement refresh
   - 問題（PR #158 Codex review 指出，2026-10-18 確認）：`storage.refreshProEntitlement()` 只要 `FLAG_DEV_BACKUP` 存在就直接 return。這個 backup 也由等級模擬器建立，且 `storage.clearAll()` 登出時不會清除。開發者登出後換另一個帳號，該帳號的 refresh 會一直被跳過，在 `server` source 下 fail closed，直到手動重設。
   - 影響：只影響使用過開發者面板的裝置。
@@ -254,6 +243,22 @@
 ---
 
 ## Done
+
+- [x] **PS-211B** 新場景畫完前隱藏 canvas；首頁 → 空間沿用 Pixi app
+  - 規格：[`docs/ps-211-asset-preload-cache-proposal.md`](docs/ps-211-asset-preload-cache-proposal.md) §4.2、§4.4、§5 B。使用者 2026-10-20 核准，包含沿用 Pixi app 的最佳化。
+  - 驗收條件：
+    - `.orbit-window:not(.is-runtime-ready) .orbit-window-canvas` 為 `visibility: hidden`：新場景畫完、`is-runtime-ready` 加上之前，canvas 不可見，畫面顯示新狀態的 DOM poster（技術設計 §9.2）；有測試。
+    - 首頁 → 空間 → 首頁的過程中，Pixi `Application` 只建立一次（以假的 Pixi 計數）；任何時刻最多一個 Application，離開時仍會正確 release／destroy。
+    - 既有的 runtime lifecycle、context lost／restored、e2e 的 canvas 數量與尺寸檢查通過。
+    - lint、test、e2e、`ps242:manifest -- --check`、`ps243:assets -- --check` 通過。
+  - 版本：`npm run bump -- patch`。
+  - 依賴：`PS-211`
+  - In progress（2026-10-20）。
+  - 完成（2026-10-20，v1.31.5）：
+    - `style.css`：`.orbit-window:not(.is-runtime-ready) .orbit-window-canvas { visibility: hidden; }`。
+    - `pixiSceneRuntime.js`：`RUNTIME_ROUTE_HANDOFF_MS = 2000`，作為 `createDeferredRuntimeDestroyer().schedule()` 的預設延遲；首頁與「空間」頁的路由 cleanup 都用它，登出仍用 `destroyNow()`。
+    - 測試：`personalSpacePixiRuntime.test.js` 兩項（交接時間內保留、無人接手時銷毀；假 Pixi 只建立一個 Application）；`flows.test.js` 的 runtime 路由 e2e 加上 Application 相同與 canvas `visibility` 的檢查（兩個對照組都會失敗）。
+    - 注意：reduced motion 的樣式讓每個元素都有極短的 transition，`visibility` 的計算值會延後一個 frame 才改變；e2e 讀取時暫時關掉 canvas 的 transition。
 
 - [x] **INFRA-103** `lint` script 的 glob 加上引號，讓 eslint 檢查所有檔案
   - 問題（AI-204B 獨立 review 發現，2026-10-19 確認）：`package.json` 的 `"lint": "eslint pwa/js/**/*.js tests/**/*.js"` 沒有引號。npm 用 `sh` 執行，`**` 等同 `*`，所以 `npm run lint`（含 CI）只檢查 `pwa/js` 下剛好兩層的 37 個檔案與 `tests/*/*.js`；`pwa/js` 第一層的 22 個檔案（`app.js`、`storage.js` 等）與更深的 V2 模組都沒有被 lint。

@@ -255,6 +255,10 @@
 }
 
 .orbit-window.is-runtime-ready .orbit-window-poster { opacity: 0; }
+/* PS-211B: a retained canvas still shows its last frame (the previous room)
+   until the new scene is drawn. Keep the DOM poster visible until then
+   (technical design §9.2). */
+.orbit-window:not(.is-runtime-ready) .orbit-window-canvas { visibility: hidden; }
 .orbit-window.is-runtime-fallback .orbit-window-poster { opacity: 1; }
 
 .orbit-window-reward {

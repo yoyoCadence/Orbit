@@ -380,6 +380,13 @@ function disposeApplication(application, options = {}) {
 
 export const orbitWindowRuntime = createPixiSceneRuntime();
 
+// PS-211B: how long a route cleanup keeps the suspended runtime for the next
+// route. Home's cleanup schedules destruction, then the router awaits the lazy
+// full-World route import before that page mounts and retains the runtime; with
+// a 0 ms timer every Home → 空間 rebuilt the Pixi Application and WebGL context.
+// Leaving for a page without an Orbit Window still destroys it after this delay.
+export const RUNTIME_ROUTE_HANDOFF_MS = 2000;
+
 export function createDeferredRuntimeDestroyer(runtime, timers = globalThis) {
   let timerId = null;
 
@@ -391,7 +398,7 @@ export function createDeferredRuntimeDestroyer(runtime, timers = globalThis) {
 
   return {
     retain,
-    schedule(delayMs = 0) {
+    schedule(delayMs = RUNTIME_ROUTE_HANDOFF_MS) {
       if (timerId !== null) return;
       timerId = timers.setTimeout(() => {
         timerId = null;

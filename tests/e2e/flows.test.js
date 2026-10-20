@@ -350,6 +350,23 @@ test.describe('Personal Space V2 垂直切片', () => {
       );
     })).toBe(true);
 
+    // PS-211B: the canvas stays hidden (DOM poster shows) until the runtime is
+    // ready. One evaluate so a Home re-render cannot interleave; poll until the
+    // window has settled on a ready runtime. The reduced-motion styles give every
+    // element a tiny transition, which delays a computed visibility change, so
+    // the check turns transitions off on the canvas while it reads.
+    await expect.poll(() => orbit.evaluate(root => {
+      const canvas = root.querySelector('canvas.orbit-window-canvas');
+      if (!canvas || !root.classList.contains('is-runtime-ready')) return null;
+      canvas.style.transition = 'none';
+      const ready = window.getComputedStyle(canvas).visibility;
+      root.classList.remove('is-runtime-ready');
+      const notReady = window.getComputedStyle(canvas).visibility;
+      root.classList.add('is-runtime-ready');
+      canvas.style.transition = '';
+      return { ready, notReady };
+    }), { timeout: 8000 }).toEqual({ ready: 'visible', notReady: 'hidden' });
+
     await page.evaluate(async () => {
       const runtimeModule = await import('/js/personalSpace/v2/runtime/pixiSceneRuntime.js');
       const routerModule = await import('/js/router.js');
@@ -373,10 +390,19 @@ test.describe('Personal Space V2 垂直切片', () => {
     });
     await expect(runtimeHost).toHaveAttribute('data-runtime-status', 'ready', { timeout: 5000 });
 
+    // PS-211B: Home → 空間 → Home keeps the same Pixi Application.
+    const sameApplication = () => page.evaluate(async () => {
+      const runtimeModule = await import('/js/personalSpace/v2/runtime/pixiSceneRuntime.js');
+      return runtimeModule.orbitWindowRuntime.getApplication() === window.__orbitApplicationBeforeRedraw;
+    });
+
     for (let index = 0; index < 3; index += 1) {
       await orbit.locator('[data-orbit-open-world]').click();
       await expect(page.locator('[data-personal-space-v2]')).toBeVisible();
       await expect(page.locator('canvas.orbit-window-canvas')).toHaveCount(1);
+      await expect(page.locator('[data-personal-space-v2] [data-orbit-runtime-host]'))
+        .toHaveAttribute('data-runtime-status', 'ready', { timeout: 8000 });
+      expect(await sameApplication()).toBe(true);
 
       await page.evaluate(() => window.navigate('home'));
       orbit = page.locator('[data-orbit-window]');
@@ -384,6 +410,7 @@ test.describe('Personal Space V2 垂直切片', () => {
       await expect(orbit).toBeVisible();
       await expect(runtimeHost).toHaveAttribute('data-runtime-status', 'ready', { timeout: 8000 });
       await expect(page.locator('canvas.orbit-window-canvas')).toHaveCount(1);
+      expect(await sameApplication()).toBe(true);
     }
   });
 });

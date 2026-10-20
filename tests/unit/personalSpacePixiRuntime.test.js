@@ -7,6 +7,7 @@ import {
   createDeferredRuntimeDestroyer,
   createPixiSceneRuntime,
   getCoverTransform,
+  RUNTIME_ROUTE_HANDOFF_MS,
 } from '../../pwa/js/personalSpace/v2/runtime/pixiSceneRuntime.js';
 
 describe('deferred Orbit runtime destruction', () => {
@@ -22,6 +23,25 @@ describe('deferred Orbit runtime destruction', () => {
 
     destroyer.schedule();
     vi.runAllTimers();
+    expect(runtime.destroy).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
+
+  it('keeps the runtime through a route handoff and destroys it when no route takes over (PS-211B)', () => {
+    vi.useFakeTimers();
+    const runtime = { destroy: vi.fn() };
+    const destroyer = createDeferredRuntimeDestroyer(runtime);
+
+    // Home → 空間: the full World page retains the runtime after the lazy route import.
+    destroyer.schedule();
+    vi.advanceTimersByTime(RUNTIME_ROUTE_HANDOFF_MS - 1);
+    destroyer.retain();
+    vi.runAllTimers();
+    expect(runtime.destroy).not.toHaveBeenCalled();
+
+    // Home → a page without an Orbit Window.
+    destroyer.schedule();
+    vi.advanceTimersByTime(RUNTIME_ROUTE_HANDOFF_MS);
     expect(runtime.destroy).toHaveBeenCalledTimes(1);
     vi.useRealTimers();
   });
@@ -134,6 +154,33 @@ describe('Personal Space V2 Pixi scene runtime', () => {
     expect(cover.scale).toBe(0.625);
     expect(1536 * cover.scale).toBe(960);
     expect(1024 * cover.scale).toBe(640);
+  });
+
+  it('reuses one Pixi Application when the next route takes over within the handoff window (PS-211B)', async () => {
+    vi.useFakeTimers();
+    const fake = createFakePixi();
+    const runtime = createPixiSceneRuntime({ loadPixi: () => Promise.resolve(fake.pixi) });
+    const destroyer = createDeferredRuntimeDestroyer(runtime);
+    const home = createRuntimeHost();
+    const world = createRuntimeHost();
+
+    try {
+      await runtime.mount(home.host, { activeProject: { progress: 25 } });
+      runtime.release(home.host);
+      destroyer.schedule();
+      vi.advanceTimersByTime(100); // the router awaits the lazy route import
+      destroyer.retain();
+      await runtime.mount(world.host, { activeProject: { progress: 25 } });
+
+      expect(fake.applications).toHaveLength(1);
+      expect(fake.applications[0].destroy).not.toHaveBeenCalled();
+      expect(world.host.querySelector('canvas')).toBe(fake.applications[0].canvas);
+      expect(home.host.querySelector('canvas')).toBeNull();
+      expect(world.root.classList.contains('is-runtime-ready')).toBe(true);
+    } finally {
+      runtime.destroy();
+      vi.useRealTimers();
+    }
   });
 
   it('renders weather and drives protagonist and Companion motion from shared state', async () => {
