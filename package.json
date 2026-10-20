@@ -6,7 +6,7 @@
     "bump": "node scripts/bump.mjs",
     "vendor:pixi": "node scripts/vendor-pixi.mjs",
     "vendor:supabase": "node scripts/vendor-supabase.mjs",
-    "lint": "eslint pwa/js/**/*.js tests/**/*.js",
+    "lint": "eslint \"pwa/js/**/*.js\" \"tests/**/*.js\"",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

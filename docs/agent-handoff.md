@@ -4,7 +4,7 @@
 
 任務本身的定義與驗收條件以 [`tasks.md`](../tasks.md) 為準；本檔只記錄進行中的狀態、與使用者約定的工作規則，以及接手需要的操作細節。
 
-> 最後更新：2026-10-20。PS-246（#176，v1.30.1）、AI-203B（#177，v1.31.0）、HW-113（#180，v1.31.1）、PRO-014Q S0（#178，v1.31.2，含使用者核准的 A1＋B1）、AI-204 提案（#181）、PS-247（#182，v1.31.3）、INFRA-102（#183，CI 上傳 e2e artifact）、AI-204B（#184，v1.31.4，Companion 共用文案表）已合併。PS-211 提案（#185）等待使用者決定（§3 第 8 點）。
+> 最後更新：2026-10-20。PS-246（#176，v1.30.1）、AI-203B（#177，v1.31.0）、HW-113（#180，v1.31.1）、PRO-014Q S0（#178，v1.31.2，含使用者核准的 A1＋B1）、AI-204 提案（#181）、PS-247（#182，v1.31.3）、INFRA-102（#183，CI 上傳 e2e artifact）、AI-204B（#184，v1.31.4，Companion 共用文案表）已合併。PS-211 提案（#185）已合併並核准（A3 ＋P、PS-211B 含沿用 Pixi app）。INFRA-103（#186）開 PR；接著 PS-211B、PS-211A（§3 第 8 點）。
 
 ## 1. 接手前先讀
 
@@ -23,7 +23,7 @@
 - **Codex 額度用完時（2026-10-18 使用者核准）**：改用獨立的 Claude review agent 代替。它只讀不改，對照程式碼逐項回報 P1／P2／P3。P1／P2 全部修完、CI 全綠才合併；需要核准的項目仍要先問使用者。
 - Codex 的 finding 先對照程式碼驗證。成立就修，在 thread 回覆修正的 commit 並 resolve，再留言 `@codex review` 要求重審，等重審乾淨才合併。不成立就回覆理由，並交給使用者決定。
 - 高風險（auth、tokens、`.env`、schema／migration、CI/CD、部署、修改既有設定、Pro entitlement 流程）：先寫變更說明，取得使用者核准才實作。
-- 純文件或任務定義的 PR 不 bump 版本（本工作階段的作法，#155–#157、#161 皆如此）；其餘 PR 依 §14 bump。
+- 純文件、任務定義、CI 或開發工具的 PR 不 bump 版本（本工作階段的作法，#155–#157、#161、#183、#186 皆如此；bump 會改變 `sw.js` 的 `CACHE` 名稱，讓使用者無謂地重新下載 SHELL）；其餘 PR 依 §14 bump。
 - 合併 PR 時使用完整 40 字元 SHA 作為 `expectedHeadSha`。
 - Commit 結尾加 `Co-Authored-By` 與 `Claude-Session` 兩行；PR 描述結尾加 Claude Code 標記；不要寫入 model 名稱。
 
@@ -57,13 +57,16 @@
 
 7. **PS-247：完成**（v1.31.3）。椅子渲染時把書桌設為遮擋物（Holdout 材質，`PROP_OCCLUDERS`），右扶手與腳輪不再畫在邊櫃前面。注意：物件層級的 `is_holdout` 會讓 Freestyle 留下被擋住的邊的殘影，所以用材質。Blender 重新渲染在不同機器上不是逐位元組相同（家具有取樣雜訊差異、trim 框可能差 1 px），只更新真正改變的素材，其餘從 git 還原；預覽要從 lossless 的 room 合成重畫（`phase-000` 應與原檔相同）。
 
-8. **PS-211：提案**（#185，[`docs/ps-211-asset-preload-cache-proposal.md`](ps-211-asset-preload-cache-proposal.md)）。等待使用者回答提案 §7 的 5 個問題；PS-211A 改 service worker precache，屬部署行為，核准前不做。量測方式見提案 §2：現有 e2e 環境（dev server `no-store`、route mock）量不到快取行為，要另外架一個模擬 GitHub Pages 的 proxy。量測腳本是 `tests/perf/ps211-cache-probe.pw.mjs`（CI 不執行；執行方式見提案 §2）。
+8. **PS-211：提案已核准**（#185，[`docs/ps-211-asset-preload-cache-proposal.md`](ps-211-asset-preload-cache-proposal.md)）。使用者 2026-10-20 選 A3 ＋P（SHELL 改放 poster 會用到的 22 個 V2 檔案與 `vendor/pixi.js`）、PS-211B（含首頁 → 空間沿用 Pixi app）；長期快取記為 PS-211D（Backlog，暫緩）。順序：INFRA-103 → PS-211B → PS-211A，各一個 PR，驗收條件見 `tasks.md`。
+   - 量測方式見提案 §2：現有 e2e 環境（dev server `no-store`、route mock）量不到快取行為，要另外架一個模擬 GitHub Pages 的 proxy。量測腳本是 `tests/perf/ps211-cache-probe.pw.mjs`（CI 不執行；執行方式見提案 §2）。
    - review 的教訓：
      - 第一版把「清除 HTTP cache 後」的量測當成一般的改版情境，漏了 ETag 重新驗證（304）；
      - 漏了 SHELL precache 也能消除狀態改變時的網路等待（A3 涵蓋 A2 ＋ C 的效果並且更多，而且是確定的）；
      - 把設計文件允許的 Pixi app 重建寫成錯誤。
      - 量測的情境與標籤要對照原始數據，結論要對照設計文件。
    - 未驗證：GitHub Pages 的 ETag 是否隨部署改變（`curl -I` 同一個沒改過的素材，比較兩次部署）。
+
+9. **INFRA-103：完成**（#186）。`lint` script 的 glob 改用雙引號（Windows `cmd` 也適用），`npm run lint` 檢查的檔案由 110 個增加到 176 個，全部通過。`pwa/sw.js` 等仍不在範圍內（INFRA-104，需核准）；PS-211A 改 `sw.js` 時要手動檢查。
 
 其他：
 
@@ -75,7 +78,7 @@
 - 2026-10-19 12:24：留言 `@codex review` 後 Codex 又可用了（#178 的 6f81638 無 finding）。每個 PR 仍同時跑獨立 Claude review：#178 的複查在 Codex 沒找到問題的 commit 上仍找到 P2。
 - 教訓：三份提案的獨立 review 各找到 P1（PRO-014Q 連續四輪）。提案的事實與設計都要對照程式碼驗證；逐條修補一直被找到新漏洞時，要退一步改結構（PRO-014Q 由修補 backup 改為移除模擬，AI-203 由 F3 改為 F4）。
 
-## 4. 本次工作階段已完成（2026-10-17～19）
+## 4. 本次工作階段已完成（2026-10-17～20）
 
 | PR | 版本 | 內容 |
 |---|---|---|
@@ -108,7 +111,8 @@
 | #182 | v1.31.3 | PS-247：椅子的右扶手與腳輪不再畫在書桌邊櫃前面 |
 | #183 | — | INFRA-102：e2e 失敗時上傳 Playwright 的 test-results；記錄 AI-204 的核准 |
 | #184 | v1.31.4 | AI-204B：Companion 共用文案表（W-A）、COMPANION 小卡最多兩行、夥伴名稱統一為「Orbit 夥伴」 |
-| #185 | — | PS-211 提案：改版後的素材連續性與狀態切換（等待使用者決定） |
+| #185 | — | PS-211 提案：改版後的素材連續性與狀態切換（已核准 A3 ＋P、PS-211B） |
+| #186 | — | INFRA-103：`lint` script 的 glob 加引號，lint `pwa/js` 與 `tests` 下全部 176 個 `.js` |
 
 教訓：#155–#164 在 Codex review 出現前就合併，造成 #165、#166、#167 的回頭修正。這就是 §2 合併條件的由來。獨立 review 在 #167、#168、#169 都找到真正的問題（例如椅子畫在螢幕後面、壁燈在相框下投出暗影），所以複查不能省。
 
@@ -121,12 +125,13 @@
 - **角色 3D 化**：主角與 Companion 仍是 PS-242 的像素 sprite。改成 3D 會推翻已核准素材（主角 12 個姿勢、Companion 6 個狀態），範圍很大，等使用者決定。
 - **PRO-014P**：entitlement 流程，實作前需提案與核准，擋 `PRO-014H` cutover。與草稿 PR #154（PRO-014L）改同一段 SUB-16 路徑，寫提案前先問使用者先後順序。
 - **PS-243**：真機、installed PWA、雙帳號、螢幕閱讀器等 human gate。
-- **INFRA-103**：`lint` script 的 glob 沒有加引號，CI 只 lint 一部分檔案（見 `tasks.md`）。修正是改既有設定，需使用者核准。
+- **INFRA-104**：讓 `pwa/sw.js` 與 Node 端的腳本也被 lint（改 `eslint.config.js` 與 lint script，屬修改既有設定，需核准；見 `tasks.md`）。
 - 尚未回答：高風險項目（如 entitlement）連變更說明都要不要先問再排程（PRO-014Q 變更說明 §7）。在得到答案前，維持「寫變更說明可以，實作前一定要核准」。
 
 ### 可直接做（已核准）
 
-- 依 §3 的順序：PRO-014Q Q6（需先有測試帳號）。PS-246、AI-203B、HW-113、PRO-014Q S0 已完成。
+- PS-211B、PS-211A（使用者 2026-10-20 核准，依序各一個 PR；驗收條件見 `tasks.md`）。
+- PRO-014Q Q6（需先有測試帳號）。PS-246、AI-203B、HW-113、PRO-014Q S0 已完成。
 
 ## 6. PS-245 精細化：實作計畫
 
