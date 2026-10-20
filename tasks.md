@@ -36,12 +36,6 @@
   - 方向：改成 `eslint 'pwa/js/**/*.js' 'tests/**/*.js'`，由 eslint 自己展開。2026-10-19 以加引號的 glob 執行，目前所有檔案都通過，不需要另外修程式碼。
   - **修改既有設定（CI 執行的 script），需使用者核准**。
 
-- [ ] **PS-211** 為 personal space 新增常用資產 preload / cache 策略
-  - 目標：降低切換頁面或切回 personal space 時重新顯示圖片的等待感
-  - 範圍：`pwa/js/personalSpace/`、service worker / asset loading 相關模組、相關測試或文件
-  - 完成條件：目前常用場景素材可預載或快取，window view 與主要家具切頁後不再明顯延遲出現
-  - 備註：應在主要場景與資產集合較穩定後再做，避免過早優化 placeholder 階段的載入策略
-
 - [ ] **PS-227** Generate controlled idle furniture variants from approved references
   - Goal: replace one-view-only expanded props with true `front / left-wall-flush / right-wall-flush` variants that preserve material identity.
   - Scope: legacy Idle Growth Window only; pause further volume work while the fixed-camera Personal Space V2 vertical slice is validated.
@@ -188,6 +182,8 @@
 
 > 2026-10-19 核准（使用者以 AskUserQuestion 回覆）：AI-204 採 W-A（首頁小卡版文字）＋L2（COMPANION 小卡最多兩行），夥伴名稱一併統一為「Orbit 夥伴」；核准 CI 在 e2e 失敗時上傳 Playwright 的 `test-results/`（建立 INFRA-102）。
 
+> 2026-10-19 排程：AI-204B 完成後，Next 只剩需專案擁有者執行的 BUG-109A、等測試帳號的 PRO-014Q Q6。PS-211（PS-244～PS-247 後場景素材已穩定）從 Backlog 移入 Next，第一步是提案（只寫文件、不改程式碼）；核准前不實作。
+
 - [ ] **BUG-109A** 在 production 套用 013 signup trigger migration
   - 目標：讓 production 的 `handle_new_user()` 截斷超過 30 字元的名稱來源，長 email local-part 與長 Google 顯示名稱都能註冊。
   - 步驟：依 [`docs/bug-109-signup-name-truncation.md`](docs/bug-109-signup-name-truncation.md) 的 runbook：先以 `pg_get_functiondef` 比對 production 函式與 004、記錄回滾來源，在非 production 環境跑 `tests/database/bug109.test.sql`，再套用並驗證。
@@ -197,6 +193,17 @@
 ---
 
 ## In Progress
+
+- [ ] **PS-211** 為 personal space 新增常用資產 preload / cache 策略
+  - 目標：降低切換頁面或切回 personal space 時重新顯示圖片的等待感
+  - 範圍：`pwa/js/personalSpace/`、service worker / asset loading 相關模組、相關測試或文件
+  - 完成條件：目前常用場景素材可預載或快取，window view 與主要家具切頁後不再明顯延遲出現
+  - 備註：應在主要場景與資產集合較穩定後再做，避免過早優化 placeholder 階段的載入策略
+  - In progress（2026-10-19）：提案（Mode A：文件與手動量測腳本，不改 app 程式碼）。本任務寫於 Personal Space V2 之前，先在真實瀏覽器量測 V2 目前切頁、首次載入與改版後的等待，再決定範圍；可能涉及 service worker 快取方式（部署行為），核准前不實作。
+  - 提案（2026-10-20）：[`docs/ps-211-asset-preload-cache-proposal.md`](docs/ps-211-asset-preload-cache-proposal.md)（經 Codex 四輪與獨立 review 後改寫）。量測結果：
+    - 同一次使用中切頁已沒有等待（V2 與 legacy 都是 0 網路請求）。
+    - 仍會等的：改版後第一次載入時，若 HTTP cache 沒有素材的副本（限速下 poster 晚 2–4 秒；是否發生取決於 GitHub Pages 的 ETag 是否隨部署改變，尚未驗證）；狀態第一次改變時（新圖片 0.4–1.0 秒，期間 canvas 顯示舊房間）；SHELL precache 1.99 MB V2 用不到的 legacy 圖片。
+    - 建議改寫範圍並拆成 PS-211A（SHELL 改放 poster 會用到的 22 個 V2 檔案，建議 A3，屬部署行為需核准）、PS-211B（新場景畫完前隱藏 canvas）、PS-211C（只在選 A2 時需要）；跨版本長期快取暫緩。**等待使用者決定**（提案 §7）。
 
 - [ ] **PRO-014Q** 開發者面板的 backup 不應擋住其他帳號或非 Pro 模擬的 entitlement refresh
   - 問題（PR #158 Codex review 指出，2026-10-18 確認）：`storage.refreshProEntitlement()` 只要 `FLAG_DEV_BACKUP` 存在就直接 return。這個 backup 也由等級模擬器建立，且 `storage.clearAll()` 登出時不會清除。開發者登出後換另一個帳號，該帳號的 refresh 會一直被跳過，在 `server` source 下 fail closed，直到手動重設。

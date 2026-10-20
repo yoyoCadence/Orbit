@@ -4,7 +4,7 @@
 
 任務本身的定義與驗收條件以 [`tasks.md`](../tasks.md) 為準；本檔只記錄進行中的狀態、與使用者約定的工作規則，以及接手需要的操作細節。
 
-> 最後更新：2026-10-19。PS-246（#176，v1.30.1）、AI-203B（#177，v1.31.0）、HW-113（#180，v1.31.1）、PRO-014Q S0（#178，v1.31.2，含使用者核准的 A1＋B1）、AI-204 提案（#181）、PS-247（#182，v1.31.3）、INFRA-102（#183，CI 上傳 e2e artifact）已合併；AI-204B（#184，v1.31.4，Companion 共用文案表）開 PR。
+> 最後更新：2026-10-20。PS-246（#176，v1.30.1）、AI-203B（#177，v1.31.0）、HW-113（#180，v1.31.1）、PRO-014Q S0（#178，v1.31.2，含使用者核准的 A1＋B1）、AI-204 提案（#181）、PS-247（#182，v1.31.3）、INFRA-102（#183，CI 上傳 e2e artifact）、AI-204B（#184，v1.31.4，Companion 共用文案表）已合併。PS-211 提案（#185）等待使用者決定（§3 第 8 點）。
 
 ## 1. 接手前先讀
 
@@ -57,6 +57,14 @@
 
 7. **PS-247：完成**（v1.31.3）。椅子渲染時把書桌設為遮擋物（Holdout 材質，`PROP_OCCLUDERS`），右扶手與腳輪不再畫在邊櫃前面。注意：物件層級的 `is_holdout` 會讓 Freestyle 留下被擋住的邊的殘影，所以用材質。Blender 重新渲染在不同機器上不是逐位元組相同（家具有取樣雜訊差異、trim 框可能差 1 px），只更新真正改變的素材，其餘從 git 還原；預覽要從 lossless 的 room 合成重畫（`phase-000` 應與原檔相同）。
 
+8. **PS-211：提案**（#185，[`docs/ps-211-asset-preload-cache-proposal.md`](ps-211-asset-preload-cache-proposal.md)）。等待使用者回答提案 §7 的 5 個問題；PS-211A 改 service worker precache，屬部署行為，核准前不做。量測方式見提案 §2：現有 e2e 環境（dev server `no-store`、route mock）量不到快取行為，要另外架一個模擬 GitHub Pages 的 proxy。量測腳本是 `tests/perf/ps211-cache-probe.pw.mjs`（CI 不執行；執行方式見提案 §2）。
+   - review 的教訓：
+     - 第一版把「清除 HTTP cache 後」的量測當成一般的改版情境，漏了 ETag 重新驗證（304）；
+     - 漏了 SHELL precache 也能消除狀態改變時的網路等待（A3 涵蓋 A2 ＋ C 的效果並且更多，而且是確定的）；
+     - 把設計文件允許的 Pixi app 重建寫成錯誤。
+     - 量測的情境與標籤要對照原始數據，結論要對照設計文件。
+   - 未驗證：GitHub Pages 的 ETag 是否隨部署改變（`curl -I` 同一個沒改過的素材，比較兩次部署）。
+
 其他：
 
 - **CI e2e 間歇性逾時（2026-10-19）**：`tests/e2e/flows.test.js` 的「Focus 計時流程」提前結束兩個測試（:175、:189）在 CI 上偶發 `Test timeout of 15000ms exceeded`，與 PR 內容無關（只改版本號的 commit 也失敗、重跑通過）；本機（完整 Chromium、headless shell、`CI=1`、2 workers、CPU 滿載）都無法重現。當時 CI 沒有上傳 Playwright artifact，看不到卡在哪一步。INFRA-102（使用者核准）之後 e2e 失敗時會上傳 `playwright-test-results` artifact（`test-results/`，保留 7 天），下次遇到先下載看 error-context。遇到時依規則只重跑一次，第二次失敗要查。
@@ -100,6 +108,7 @@
 | #182 | v1.31.3 | PS-247：椅子的右扶手與腳輪不再畫在書桌邊櫃前面 |
 | #183 | — | INFRA-102：e2e 失敗時上傳 Playwright 的 test-results；記錄 AI-204 的核准 |
 | #184 | v1.31.4 | AI-204B：Companion 共用文案表（W-A）、COMPANION 小卡最多兩行、夥伴名稱統一為「Orbit 夥伴」 |
+| #185 | — | PS-211 提案：改版後的素材連續性與狀態切換（等待使用者決定） |
 
 教訓：#155–#164 在 Codex review 出現前就合併，造成 #165、#166、#167 的回頭修正。這就是 §2 合併條件的由來。獨立 review 在 #167、#168、#169 都找到真正的問題（例如椅子畫在螢幕後面、壁燈在相框下投出暗影），所以複查不能省。
 
