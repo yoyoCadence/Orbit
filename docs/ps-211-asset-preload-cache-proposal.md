@@ -10,7 +10,7 @@
   2. **狀態第一次改變時**（reveal、下一階段的家具、Companion 換動作）：新圖片當下才下載，Fast 3G 約 1 秒。這段時間 canvas 顯示的是**改變前的房間**，文字卻已經是新的狀態。
   3. **每次改版，service worker 安裝時都下載 1.94 MB 的 legacy 圖片**，V2 完全不會用到。
 - 建議（§6）：把 PS-211 改成「改版後的素材連續性與狀態切換」，拆成三個小任務：
-  - **PS-211A**（改 service worker 的 precache，**屬部署行為，需核准**）：SHELL 移除兩張 legacy 圖片，改放 V2 poster 需要的 12 個檔案（約 559 KB）。每次改版少下載約 1.43 MB，改版後的 poster 立刻完整。
+  - **PS-211A**（改 service worker 的 precache，**屬部署行為，需核准**）：SHELL 移除兩張 legacy 圖片，改放 V2 poster 的背景、預設角色與 8 件家具（12 個檔案，約 559 KB）。每次改版少下載約 1.43 MB，改版後 poster 的背景與家具立刻完整；角色不是預設狀態時，該角色圖仍要下載。
   - **PS-211B**（只改 runtime，不動 service worker）：新的場景畫完之前不顯示舊的 canvas；修正從首頁進入「空間」時 Pixi app 每次被銷毀重建的時序問題。
   - **PS-211C**（可選，需要調整技術設計 §12.1）：畫面就緒後，在閒置時預先載入「下一步可能用到」的少數圖片（下一階段家具與 reveal 用的角色動作，約 0.2–0.4 MB），讓狀態改變時不必等。
 - 不建議現在做「跨版本長期保存的素材快取」（§5 方案 B）：素材仍在調整（椅子 10/18–19 改了 3 次），等素材穩定再評估。
@@ -88,12 +88,15 @@
 
 | 選項 | SHELL 中的 V2 檔案 | 大小 | 改版後 |
 |---|---|---:|---|
-| A1 | 首屏 4 個：背景、主角 idle-left、Companion observe、晴天特效 | 182,283 bytes | 0% 時 poster 立刻完整；有家具時家具仍要下載 |
-| **A2（建議）** | A1 ＋ 8 件家具 | 558,930 bytes | 任何進度的 poster 都立刻完整；canvas 仍等 Pixi（poster 先頂著） |
-| A3 | A2 ＋ `vendor/pixi.js` | ＋796,970 bytes（gzip 約 225 KB） | canvas 也立刻就緒 |
+| A1 | 首屏 4 個：背景、主角 idle（朝左）、Companion observe、晴天特效 | 182,283 bytes | 預設角色狀態、專案 0% 時 poster 立刻完整；家具仍要下載 |
+| **A2（建議）** | A1 ＋ 8 件家具 | 558,930 bytes | 任何進度的背景與家具立刻完整。主角或 Companion 不是預設狀態時，該角色圖仍要下載（每張 42–48 KB） |
+| A3 | A2 ＋ 主角其他 4 個動作（celebrate、inspect、rest、work，朝左）＋ Companion 其他 5 個狀態 | 956,063 bytes | 目前程式碼可能出現的所有 poster 狀態都立刻完整 |
+| A4 | A2 或 A3 ＋ `vendor/pixi.js` | ＋796,970 bytes（gzip 約 225 KB） | 只省掉 Pixi 的下載時間。canvas 仍要解析 Pixi、建立 WebGL、解碼圖片、建立場景：快取有效時量到 +434 ms，期間由 poster 頂著 |
 
-- 三者都比現在的 1,987,696 bytes 小；A2 每次改版少下載約 1.43 MB。
-- 技術設計 §12.2 允許 precache「離線 shell 需要的 stateful fallback 素材」，並要求 service worker 快取策略的變更先取得核准：poster 就是 V2 的 fallback，所以 A1／A2 符合。Pixi 不是 fallback，而且 §12.1 要求首頁初始 HTML 不下載 Pixi，A3 雖然是在 service worker 安裝時下載，仍不建議。
+- 角色狀態的來源：主角由 `viewModels.selectProtagonistState()` 決定（idle、celebrate、inspect、rest、work），Companion 由 `companionEngine.js` 決定（observe、approach、congratulate、rest、work、remind）。動量 strong 時主角是 work、今天有恢復 Session 時是 rest，所以非預設狀態並不少見。朝右、`walk`、`rain` 目前沒有程式碼會讓它們出現，不列入。
+- A1–A3 都比現在的 1,987,696 bytes 小：A2 每次改版少下載約 1.43 MB，A3 約 1.03 MB。
+- 技術設計 §12.2 允許 precache「離線 shell 需要的 stateful fallback 素材」，但也說不要把所有全解析度的場景圖放進 SHELL，並要求 service worker 快取策略的變更先取得核准。poster 是 V2 的 fallback，所以 A1／A2 符合。A3 放入 manifest 29 個檔案中目前可達的 21 個，接近「全部」，選 A3 時要一併修改 §12.2 的文字。
+- Pixi 不是 fallback，§12.1 也要求首頁初始 HTML 不下載 Pixi。A4 雖然是在 service worker 安裝時下載，效果又只有省掉下載時間，所以不建議。
 - PS-243 的首屏預算不受影響（不改首屏載入的檔案）。
 
 ### C 的範圍
@@ -105,7 +108,7 @@
 ## 6. 建議與拆分
 
 1. **PS-211 改寫範圍**：「同一次使用中切頁的等待」已解決（§3 的量測為證）；剩下的工作改為改版後的素材連續性與狀態切換。
-2. **PS-211A（建議 A2）**：SHELL 移除兩張 legacy 圖片，加入 V2 首屏 4 個檔案與 8 件家具。路徑由測試對照 `assetManifest.js`，避免素材改名時 SHELL 漏改（這次 legacy 圖片在 V2 換掉之後留了近三個月）。patch。
+2. **PS-211A（建議 A2）**：SHELL 移除兩張 legacy 圖片，加入 V2 首屏 4 個檔案與 8 件家具。改版後角色不是預設狀態時，角色圖仍要下載；要連角色都保證完整就選 A3。路徑由測試對照 `assetManifest.js`，避免素材改名時 SHELL 漏改（這次 legacy 圖片在 V2 換掉之後留了近三個月）。patch。
 3. **PS-211B（建議）**：
    - runtime 把 canvas 接到新的 host 後，新場景畫完之前先隱藏 canvas，畫面維持新狀態的 poster；
    - 首頁 → 空間時不再銷毀重建 Pixi app（例如延長銷毀的延遲，或在 lazy import 前保留 runtime）。
@@ -118,7 +121,7 @@
 ## 7. 需要使用者決定
 
 1. 是否同意改寫 PS-211 的範圍（§6 第 1 點）。
-2. PS-211A：是否核准修改 service worker precache；選 A1、**A2（建議）**、A3，或不做。
+2. PS-211A：是否核准修改 service worker precache；選 A1、**A2（建議）**、A3（並修改技術設計 §12.2）、A4，或不做。
 3. PS-211B：是否排入（建議排入）。
 4. PS-211C：是否排入，並同意修改技術設計 §12.1。
 5. 方案 B 是否同意暫緩。
@@ -127,7 +130,7 @@
 
 - **PS-211A**
   - SHELL 不含 `assets/personal-space/idle-window/` 下的任何檔案；含所選的 V2 檔案，路徑由單元測試對照 `assetManifest.js` 與 `docs/ps243/asset-baseline.json`。
-  - e2e：service worker 安裝後，快取中有這些檔案；離線重新整理時首頁 poster 完整顯示。
+  - e2e：service worker 安裝後，快取中有這些檔案；離線重新整理時，所選範圍內的 poster 完整顯示（A2：預設角色狀態、任何進度；A3：任何可能出現的狀態）。
   - legacy 在線上仍可正常顯示（執行時 cache-first）。
 - **PS-211B**
   - 單元測試：新場景的圖片載入完成前，canvas 不可見；完成後才加上 `is-runtime-ready`。
