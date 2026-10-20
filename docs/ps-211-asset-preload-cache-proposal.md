@@ -90,12 +90,12 @@
 |---|---|---:|---|
 | A1 | 首屏 4 個：背景、主角 idle（朝左）、Companion observe、晴天特效 | 182,283 bytes | 預設角色狀態、專案 0% 時 poster 立刻完整；家具仍要下載 |
 | **A2（建議）** | A1 ＋ 8 件家具 | 558,930 bytes | 任何進度的背景與家具立刻完整。主角或 Companion 不是預設狀態時，該角色圖仍要下載（每張 42–48 KB） |
-| A3 | A2 ＋ 主角其他 4 個動作（celebrate、inspect、rest、work，朝左）＋ Companion 其他 5 個狀態 | 956,063 bytes | 目前程式碼可能出現的所有 poster 狀態都立刻完整 |
+| A3 | A2 ＋ 主角其他 4 個動作（celebrate、inspect、rest、work，朝左）＋ Companion 其他 5 個狀態 ＋ 雨天特效 | 987,645 bytes | 程式碼會產生、或已儲存的 state 可能帶有的所有 poster 狀態都立刻完整 |
 | A4 | A2 或 A3 ＋ `vendor/pixi.js` | ＋796,970 bytes（gzip 約 225 KB） | 只省掉 Pixi 的下載時間。canvas 仍要解析 Pixi、建立 WebGL、解碼圖片、建立場景：快取有效時量到 +434 ms，期間由 poster 頂著 |
 
-- 角色狀態的來源：主角由 `viewModels.selectProtagonistState()` 決定（idle、celebrate、inspect、rest、work），Companion 由 `companionEngine.js` 決定（observe、approach、congratulate、rest、work、remind）。動量 strong 時主角是 work、今天有恢復 Session 時是 rest，所以非預設狀態並不少見。朝右、`walk`、`rain` 目前沒有程式碼會讓它們出現，不列入。
-- A1–A3 都比現在的 1,987,696 bytes 小：A2 每次改版少下載約 1.43 MB，A3 約 1.03 MB。
-- 技術設計 §12.2 允許 precache「離線 shell 需要的 stateful fallback 素材」，但也說不要把所有全解析度的場景圖放進 SHELL，並要求 service worker 快取策略的變更先取得核准。poster 是 V2 的 fallback，所以 A1／A2 符合。A3 放入 manifest 29 個檔案中目前可達的 21 個，接近「全部」，選 A3 時要一併修改 §12.2 的文字。
+- 角色狀態的來源：主角由 `viewModels.selectProtagonistState()` 決定（idle、celebrate、inspect、rest、work），Companion 由 `companionEngine.js` 決定（observe、approach、congratulate、rest、work、remind）。動量 strong 時主角是 work、今天有恢復 Session 時是 rest，所以非預設狀態並不少見。天氣存在 V2 state 中：沒有程式碼寫入 `rain`，但 `stateSchema.js` 接受已儲存的 `rain`，所以 A3 也放入雨天特效（31,582 bytes）。朝右與 `walk` 既不儲存、也不會由程式碼推導出來，不列入。
+- A1–A3 都比現在的 1,987,696 bytes 小：A2 每次改版少下載約 1.43 MB，A3 約 1.00 MB。
+- 技術設計 §12.2 允許 precache「離線 shell 需要的 stateful fallback 素材」，但也說不要把所有全解析度的場景圖放進 SHELL，並要求 service worker 快取策略的變更先取得核准。poster 是 V2 的 fallback，所以 A1／A2 符合。A3 放入 manifest 29 個檔案中的 22 個，接近「全部」，選 A3 時要一併修改 §12.2 的文字。
 - Pixi 不是 fallback，§12.1 也要求首頁初始 HTML 不下載 Pixi。A4 雖然是在 service worker 安裝時下載，效果又只有省掉下載時間，所以不建議。
 - PS-243 的首屏預算不受影響（不改首屏載入的檔案）。
 
@@ -130,7 +130,7 @@
 
 - **PS-211A**
   - SHELL 不含 `assets/personal-space/idle-window/` 下的任何檔案；含所選的 V2 檔案，路徑由單元測試對照 `assetManifest.js` 與 `docs/ps243/asset-baseline.json`。
-  - e2e：service worker 安裝後，快取中有這些檔案；離線重新整理時，所選範圍內的 poster 完整顯示（A2：預設角色狀態、任何進度；A3：任何可能出現的狀態）。
+  - e2e：service worker 安裝後，快取中有這些檔案；離線重新整理時，所選範圍內的 poster 完整顯示（A2：預設角色狀態、任何進度；A3：程式碼會產生或 state 可能帶有的任何狀態，含雨天）。
   - legacy 在線上仍可正常顯示（執行時 cache-first）。
 - **PS-211B**
   - 單元測試：新場景的圖片載入完成前，canvas 不可見；完成後才加上 `is-runtime-ready`。
@@ -146,5 +146,5 @@
 
 - `docs/ps-243-production-acceptance.md` 的預算表與 `pwa/assets/personal-space/v2/README.md` 仍是 PS-244 之前量到的數字（首屏 259,133、完整 1,766,935 bytes）；目前 `docs/ps243/asset-baseline.json` 是 182,283 與 1,293,693 bytes。前者是當時的驗收紀錄，是否更新由使用者決定。
 - `pwa/server.cjs`（本機 dev server）沒有 `.webp` 的 MIME，背景以 `text/plain` 回傳；瀏覽器仍能顯示，只影響本機。
-- `manifest.json` 中有 8 個檔案（337,630 bytes）目前沒有程式碼會讓它們出現：主角朝右的姿勢、`walk`、`rain`（只有讀取這些狀態的程式碼，沒有設定它們的）。`building-formal-workstation-room-v1.webp`（159,396 bytes）沒有任何地方引用。
+- `manifest.json` 中有 8 個檔案（337,630 bytes）目前沒有程式碼會產生對應的狀態：主角朝右的姿勢、`walk`、`rain`。其中 `rain` 是 `stateSchema.js` 接受的已儲存狀態，所以列入 A3；其餘 7 個既不儲存也不會被推導出來。`building-formal-workstation-room-v1.webp`（159,396 bytes）沒有任何地方引用。
 - `tests/unit/serviceWorkerShell.test.js` 只檢查字面的動態 import，所以 `pixiSceneRuntime.js` 以變數 import 的 `vendor/pixi.js` 不會被要求列入 SHELL（目前是刻意不列）。
