@@ -68,7 +68,7 @@
 
 9. **INFRA-103：完成**（#186）。`lint` script 的 glob 改用雙引號（Windows `cmd` 也適用），`npm run lint` 檢查的檔案由 110 個增加到 176 個，全部通過。`pwa/sw.js` 等仍不在範圍內（INFRA-104，需核准）；PS-211A 改 `sw.js` 時要手動檢查。
 
-10. **PS-211B：完成**（#187，v1.31.5）。runtime 未就緒時隱藏 canvas（CSS），路由 cleanup 保留 runtime 2 秒（`RUNTIME_ROUTE_HANDOFF_MS`）讓下一頁接手，首頁 → 空間不再重建 Pixi app。e2e 注意：reduced motion 下每個元素都有極短的 transition，讀 `visibility` 前要關掉 transition，否則計算值仍是舊的。
+10. **PS-211B：完成**（#187，v1.31.5）。runtime 未就緒時隱藏 canvas（CSS），顯示前先 `app.render()`；router 載入 lazy 路由期間以 `orbitWindowRuntimeDestroyer.hold()` 保留 runtime，首頁 → 空間不再重建 Pixi app。e2e 注意：reduced motion 下每個元素都有極短的 transition，讀 `visibility` 前要關掉 transition，否則計算值仍是舊的。
 
 其他：
 

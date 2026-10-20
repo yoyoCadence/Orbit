@@ -256,8 +256,9 @@
   - In progress（2026-10-20）。
   - 完成（2026-10-20，v1.31.5）：
     - `style.css`：`.orbit-window:not(.is-runtime-ready) .orbit-window-canvas { visibility: hidden; }`。
-    - `pixiSceneRuntime.js`：`RUNTIME_ROUTE_HANDOFF_MS = 2000`，作為 `createDeferredRuntimeDestroyer().schedule()` 的預設延遲；首頁與「空間」頁的路由 cleanup 都用它，登出仍用 `destroyNow()`。
-    - 測試：`personalSpacePixiRuntime.test.js` 兩項（交接時間內保留、無人接手時銷毀；假 Pixi 只建立一個 Application）；`flows.test.js` 的 runtime 路由 e2e 加上 Application 相同與 canvas `visibility` 的檢查（兩個對照組都會失敗）。
+    - `pixiSceneRuntime.js`：`createDeferredRuntimeDestroyer()` 新增 `hold()`。`router.js` 載入 lazy 路由期間持有 hold，排程中的銷毀會等到路由畫完；沒有頁面 `retain()` 時，最後一個 hold 釋放即銷毀。延遲仍是 0 ms，登出仍用 `destroyNow()`。`mount()` 與 context 恢復時，先 `app.render()` 畫出新場景，再加上 `is-runtime-ready`。
+    - Codex review（b9e56fa）的兩個 P2 據此修正：原本的 2 秒交接在 lazy import 超過 2 秒時仍會重建；`is-runtime-ready` 加上時，沿用的 canvas 在下一個 tick 前仍是舊畫面。
+    - 測試：`personalSpacePixiRuntime.test.js` 三項（hold 期間保留、無人接手時銷毀一次；假 Pixi 只建立一個 Application；加上 `is-runtime-ready` 前先畫）；`flows.test.js` 的 runtime 路由 e2e 加上 Application 相同與 canvas `visibility` 的檢查（拿掉 CSS 規則或 router 的 hold 時都會失敗）。
     - 注意：reduced motion 的樣式讓每個元素都有極短的 transition，`visibility` 的計算值會延後一個 frame 才改變；e2e 讀取時暫時關掉 canvas 的 transition。
 
 - [x] **INFRA-103** `lint` script 的 glob 加上引號，讓 eslint 檢查所有檔案

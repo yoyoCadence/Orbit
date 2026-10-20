@@ -7,7 +7,6 @@ import {
   createDeferredRuntimeDestroyer,
   createPixiSceneRuntime,
   getCoverTransform,
-  RUNTIME_ROUTE_HANDOFF_MS,
 } from '../../pwa/js/personalSpace/v2/runtime/pixiSceneRuntime.js';
 
 describe('deferred Orbit runtime destruction', () => {
@@ -27,22 +26,34 @@ describe('deferred Orbit runtime destruction', () => {
     vi.useRealTimers();
   });
 
-  it('keeps the runtime through a route handoff and destroys it when no route takes over (PS-211B)', () => {
+  it('holds a scheduled teardown while a lazy route renders (PS-211B)', () => {
     vi.useFakeTimers();
     const runtime = { destroy: vi.fn() };
     const destroyer = createDeferredRuntimeDestroyer(runtime);
 
-    // Home → 空間: the full World page retains the runtime after the lazy route import.
+    // Home → 空間 with a slow lazy import: the route mounts and retains in the end.
     destroyer.schedule();
-    vi.advanceTimersByTime(RUNTIME_ROUTE_HANDOFF_MS - 1);
+    const releaseSlowRoute = destroyer.hold();
+    vi.advanceTimersByTime(10_000);
+    expect(runtime.destroy).not.toHaveBeenCalled();
     destroyer.retain();
+    releaseSlowRoute();
     vi.runAllTimers();
     expect(runtime.destroy).not.toHaveBeenCalled();
 
-    // Home → a page without an Orbit Window.
+    // A lazy route that renders without an Orbit Window: destroyed on release, once.
     destroyer.schedule();
-    vi.advanceTimersByTime(RUNTIME_ROUTE_HANDOFF_MS);
+    const releaseOtherRoute = destroyer.hold();
+    vi.runAllTimers();
+    expect(runtime.destroy).not.toHaveBeenCalled();
+    releaseOtherRoute();
+    releaseOtherRoute();
     expect(runtime.destroy).toHaveBeenCalledTimes(1);
+
+    // Without a hold (a page without an Orbit Window), teardown runs on the timer.
+    destroyer.schedule();
+    vi.runAllTimers();
+    expect(runtime.destroy).toHaveBeenCalledTimes(2);
     vi.useRealTimers();
   });
 });
@@ -111,6 +122,7 @@ function createFakePixi(options = {}) {
       });
       this.start = vi.fn();
       this.stop = vi.fn();
+      this.render = vi.fn(() => options.onRender?.(this));
       this.destroy = vi.fn();
       applications.push(this);
     }
@@ -156,7 +168,7 @@ describe('Personal Space V2 Pixi scene runtime', () => {
     expect(1024 * cover.scale).toBe(640);
   });
 
-  it('reuses one Pixi Application when the next route takes over within the handoff window (PS-211B)', async () => {
+  it('reuses one Pixi Application when the next route takes over (PS-211B)', async () => {
     vi.useFakeTimers();
     const fake = createFakePixi();
     const runtime = createPixiSceneRuntime({ loadPixi: () => Promise.resolve(fake.pixi) });
@@ -168,9 +180,11 @@ describe('Personal Space V2 Pixi scene runtime', () => {
       await runtime.mount(home.host, { activeProject: { progress: 25 } });
       runtime.release(home.host);
       destroyer.schedule();
-      vi.advanceTimersByTime(100); // the router awaits the lazy route import
+      const releaseRoute = destroyer.hold();
+      vi.advanceTimersByTime(10_000); // the router awaits a slow lazy route import
       destroyer.retain();
       await runtime.mount(world.host, { activeProject: { progress: 25 } });
+      releaseRoute();
 
       expect(fake.applications).toHaveLength(1);
       expect(fake.applications[0].destroy).not.toHaveBeenCalled();
@@ -181,6 +195,25 @@ describe('Personal Space V2 Pixi scene runtime', () => {
       runtime.destroy();
       vi.useRealTimers();
     }
+  });
+
+  it('draws the new stage before revealing a retained canvas (PS-211B)', async () => {
+    const readyAtRender = [];
+    const fake = createFakePixi({
+      onRender: app => readyAtRender.push(app.canvas.closest('[data-orbit-window]')?.classList.contains('is-runtime-ready')),
+    });
+    const runtime = createPixiSceneRuntime({ loadPixi: () => Promise.resolve(fake.pixi) });
+    const home = createRuntimeHost();
+    const world = createRuntimeHost();
+
+    await runtime.mount(home.host, { activeProject: { progress: 25 } });
+    runtime.release(home.host);
+    await runtime.mount(world.host, { activeProject: { progress: 100 } });
+
+    expect(fake.applications).toHaveLength(1);
+    expect(readyAtRender).toEqual([false, false]);
+    expect(world.root.classList.contains('is-runtime-ready')).toBe(true);
+    runtime.destroy();
   });
 
   it('renders weather and drives protagonist and Companion motion from shared state', async () => {

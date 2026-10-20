@@ -79,6 +79,9 @@ export function createPixiSceneRuntime(options = {}) {
       bindContextLifecycle();
       await render(model, mountRevision);
       if (mountRevision !== lifecycleRevision || host !== nextHost) return api;
+      // PS-211B: a retained canvas still holds the previous room until the next
+      // tick; draw the new stage now, before is-runtime-ready reveals it.
+      app.render();
       app.start();
       contextLost = false;
       status = 'ready';
@@ -321,6 +324,7 @@ export function createPixiSceneRuntime(options = {}) {
           || restoreHost !== host
           || restoreLifecycleRevision !== lifecycleRevision
         ) return;
+        restoreApp.render();
         if (shouldResume) restoreApp.start();
         else restoreApp.stop();
         status = shouldResume ? 'ready' : 'suspended';
@@ -380,17 +384,13 @@ function disposeApplication(application, options = {}) {
 
 export const orbitWindowRuntime = createPixiSceneRuntime();
 
-// PS-211B: how long a route cleanup keeps the suspended runtime for the next
-// route. Home's cleanup schedules destruction, then the router awaits the lazy
-// full-World route import before that page mounts and retains the runtime; with
-// a 0 ms timer every Home → 空間 rebuilt the Pixi Application and WebGL context.
-// Leaving for a page without an Orbit Window still destroys it after this delay.
-export const RUNTIME_ROUTE_HANDOFF_MS = 2000;
-
 export function createDeferredRuntimeDestroyer(runtime, timers = globalThis) {
   let timerId = null;
+  let holds = 0;
+  let destroyWhenReleased = false;
 
   function retain() {
+    destroyWhenReleased = false;
     if (timerId === null) return;
     timers.clearTimeout(timerId);
     timerId = null;
@@ -398,18 +398,37 @@ export function createDeferredRuntimeDestroyer(runtime, timers = globalThis) {
 
   return {
     retain,
-    schedule(delayMs = RUNTIME_ROUTE_HANDOFF_MS) {
-      if (timerId !== null) return;
+    schedule(delayMs = 0) {
+      if (timerId !== null || destroyWhenReleased) return;
       timerId = timers.setTimeout(() => {
         timerId = null;
-        runtime.destroy();
+        if (holds > 0) destroyWhenReleased = true;
+        else runtime.destroy();
       }, delayMs);
+    },
+    // PS-211B: Home's cleanup schedules destruction, then the router awaits the
+    // lazy full-World route before that page mounts and retains the runtime. A
+    // hold keeps a scheduled destruction waiting until the route has rendered,
+    // however long the import takes; if nothing retained the runtime by then,
+    // releasing the last hold destroys it.
+    hold() {
+      holds += 1;
+      let released = false;
+      return () => {
+        if (released) return;
+        released = true;
+        holds -= 1;
+        if (holds === 0 && destroyWhenReleased) {
+          destroyWhenReleased = false;
+          runtime.destroy();
+        }
+      };
     },
     destroyNow() {
       retain();
       runtime.destroy();
     },
-    isScheduled: () => timerId !== null,
+    isScheduled: () => timerId !== null || destroyWhenReleased,
   };
 }
 

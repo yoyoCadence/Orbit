@@ -6,14 +6,14 @@
 ## [1.31.5] - 2026-10-20
 
 ### Fixed
-- **狀態改變時不再短暫顯示改變前的房間（PS-211B）**：完成 Main Quest 等狀態改變後，Orbit Window 換成新的畫面，但沿用的 canvas 還保留上一個狀態的最後一個 frame，疊在新的 poster 上。新圖片下載期間（慢速網路約 1 秒），房間停在改變前的樣子，文字卻已經是新狀態。現在新場景畫完之前隱藏 canvas，顯示新狀態的 poster（技術設計 §9.2）。
+- **狀態改變時不再短暫顯示改變前的房間（PS-211B）**：完成 Main Quest 等狀態改變後，Orbit Window 換成新的畫面，但沿用的 canvas 還保留上一個狀態的最後一個 frame，疊在新的 poster 上。新圖片下載期間（慢速網路約 1 秒），房間停在改變前的樣子，文字卻已經是新狀態。現在新場景畫完之前隱藏 canvas，顯示新狀態的 poster（技術設計 §9.2）；顯示 canvas 之前先同步畫出新場景的第一個 frame，不會閃過舊的畫面。
 
 ### Changed
-- **從首頁進入「空間」時沿用同一個 Pixi app（PS-211B）**：首頁離開時原本以 0 ms 計時器排程銷毀 runtime，router 等待「空間」頁的 lazy import 時計時器先觸發，所以每次進入「空間」都重建 Pixi app 與 WebGL context。現在離開路由後保留 2 秒（`RUNTIME_ROUTE_HANDOFF_MS`），讓下一個有 Orbit Window 的頁面接手；前往沒有 Orbit Window 的頁面時仍會在 2 秒後銷毀，登出時立即銷毀。
+- **從首頁進入「空間」時沿用同一個 Pixi app（PS-211B）**：首頁離開時原本以 0 ms 計時器排程銷毀 runtime，router 等待「空間」頁的 lazy import 時計時器先觸發，所以每次進入「空間」都重建 Pixi app 與 WebGL context。現在 router 載入 lazy 路由期間保留 runtime（`orbitWindowRuntimeDestroyer.hold()`），不論 import 多慢，下一個頁面掛上 Orbit Window 時都能接手；路由畫完仍沒有頁面接手時才銷毀。前往沒有 Orbit Window 的一般頁面時照舊立即排程銷毀，登出時立即銷毀。
 
 ### Validation
-- 單元測試：路由交接期間保留 runtime、沒有頁面接手時銷毀；以假的 Pixi 確認交接後只建立一個 Application、canvas 移到新的 host。
-- e2e（真實瀏覽器）：首頁 → 空間 → 首頁重複 3 次都是同一個 Pixi Application；runtime 未就緒時 canvas 的 `visibility` 是 `hidden`，就緒後是 `visible`。拿掉 CSS 規則或把交接時間設為 0 時，這個 e2e 會失敗。
+- 單元測試：lazy 路由載入期間（即使超過 10 秒）保留 runtime、路由畫完仍沒有頁面接手時銷毀一次；以假的 Pixi 確認交接後只建立一個 Application、canvas 移到新的 host；沿用的 canvas 在加上 `is-runtime-ready` 之前先畫出新場景。
+- e2e（真實瀏覽器）：首頁 → 空間 → 首頁重複 3 次都是同一個 Pixi Application；runtime 未就緒時 canvas 的 `visibility` 是 `hidden`，就緒後是 `visible`。拿掉 CSS 規則或拿掉 router 的 hold 時，這個 e2e 會失敗。
 - 重新產生 `docs/ps243/asset-baseline.json`（runtime 模組大小改變）。
 
 ---
