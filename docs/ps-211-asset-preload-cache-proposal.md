@@ -81,7 +81,7 @@
 |---|---|---|
 | **A. 修正 SHELL** | §4.3；改版後的 poster（§4.1 的一半） | 改 service worker precache，**屬部署行為，需核准**。legacy 失去離線背景（legacy 只用於回退）。 |
 | B. 跨版本的長期素材快取（以 `manifest.json` 的 `sha256` 為 key，activate 時保留、依目前 manifest 清理） | §4.1 全部 | 最複雜；改 service worker 與部署語意，需核准。素材會在同一個檔名下重新渲染，必須以內容為 key。 |
-| C. 就緒後預熱下一步的圖片（`pixi.Assets.backgroundLoad`） | §4.2 | 每個版本多下載 0.2–0.4 MB；與技術設計 §12.1 衝突，需要改文件（產品決定，不是部署）。 |
+| C. 就緒後在閒置時預熱下一步的圖片（`pixi.Assets.load`） | §4.2 | 每個版本多下載 0.2–0.4 MB；與技術設計 §12.1 衝突，需要改文件（產品決定，不是部署）。 |
 | D. runtime 小修正 | §4.2 的「顯示舊房間」、§4.4 | 低風險，不動 service worker。 |
 
 ### A 的範圍選項
@@ -104,6 +104,8 @@
 - 只在第一次 canvas 就緒、瀏覽器閒置、`navigator.connection.saveData` 不是 true、連線不是 2g 時執行。
 - 這是盡力而為的改善，不是保證：預熱還沒完成時就發生的狀態改變（例如一開 app 就完成 Main Quest），仍和現在一樣要等新圖片下載；預熱完成之後的狀態改變才不必等。
 - 只載入目前狀態「下一步」可能用到的：下一個專案階段新增的家具、主角 celebrate、Companion congratulate／approach。全部可達的狀態約 0.77 MB，不全部載入。
+- 實作用 `pixi.Assets.load()`，由閒置時的工作呼叫，runtime 保留它的 promise 作為「預熱完成」的訊號。不用 `Assets.backgroundLoad()`：vendored 版本只把圖片排入背景佇列就 resolve，無法知道何時下載與解碼完成。
+- 預熱的圖片會解碼並留在 Pixi 的記憶體快取（每張 6–130 KB 的 PNG，解碼後依尺寸佔用更多記憶體），與目前狀態已載入的圖片相同處理，不另外釋放。
 - 不影響首屏預算；deferred JS 預算還有 29.7 KB 空間，預熱的程式碼不到 1 KB。
 
 ## 6. 建議與拆分
@@ -139,7 +141,7 @@
   - 既有的 runtime lifecycle、context lost／restored 測試通過。
 - **PS-211C**
   - 第一次就緒後的閒置時間才開始預熱；`saveData` 或 2g 時不預熱；只載入 §5 C 列出的圖片。
-  - 預熱完成後（測試先等預熱的 promise 完成）才觸發 75% → 100% 的 reveal：Fast 3G 下新圖片在 reveal 開始時已在快取中，不發出新的圖片請求（量測方式同 §2）。
+  - 預熱完成後（測試先等 runtime 的預熱完成 promise，也就是 `Assets.load()` 的 promise）才觸發 75% → 100% 的 reveal：Fast 3G 下新圖片在 reveal 開始時已在快取中，不發出新的圖片請求（量測方式同 §2）。
   - 預熱尚未完成時觸發 reveal：行為與現在相同（圖片照常下載、畫面照常更新），不多等、不出錯。
   - 技術設計 §12.1 更新。
 - 全部：lint、test、e2e、`ps242:manifest -- --check`、`ps243:assets -- --check` 通過。
