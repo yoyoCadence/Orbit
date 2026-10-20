@@ -201,6 +201,7 @@
   - SHELL 的圖片以 `cache: 'no-cache'` 取得。
   - e2e：service worker 安裝後，快取中有這些檔案；離線重新整理時，所選範圍內的 poster 完整顯示（A2：預設角色狀態、任何進度；A3：程式碼會產生或 state 可能帶有的任何狀態，含雨天）。
   - legacy 在線上仍可正常顯示（執行時 cache-first）。
+  - 技術設計 §12.1（選 A2／A3）與 §12.2（選 A3）更新，寫明 service worker precache 的 poster 素材不算首頁載入。
 - **PS-211B**
   - 測試：新場景畫完、`is-runtime-ready` 加上之前，canvas 是 `visibility: hidden`；之後才顯示。
   - 既有的 runtime lifecycle、context lost／restored、e2e 的 canvas 檢查通過。
