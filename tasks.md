@@ -252,7 +252,10 @@
     - Blender 管線的工作量與驗收方式。
   - 核准前不渲染、不改程式碼。
   - 依賴：`PS-247`、`PS-211A`
-  - In progress（2026-10-20）：撰寫提案。
+  - In progress（2026-10-20）：提案見 [`docs/ps-248-blender-themes-proposal.md`](docs/ps-248-blender-themes-proposal.md)，等待使用者決定 §9。
+    - 建議三個階段：PS-248A 窗外景色依 4 個時段變化（拆出 `outside` 群組，房間與家具不變）→ PS-248B 一套室內風格主題（同相機、同造型，換材質與色票）→ PS-248C 2–4 件裝飾小物（由現有資料推導解鎖）。
+    - 主題不寫入 reward ledger、不新增 `world_unlock`。新房間、新相機、3D runtime、角色與天氣不在範圍內。
+    - 使用者決定後，把核准的階段拆成 PS-248A／B／C 任務並寫入驗收條件（PS-248A 的草稿在提案 §8）。
 
 - [ ] **AI-202** 定義 companion relationship stage 與 hidden stats 的最小映射規則
   - 目標：讓 companion 關係變化可由真實行為驅動，而不是聊天次數
