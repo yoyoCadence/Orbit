@@ -36,6 +36,15 @@
   - 方向：在 `eslint.config.js` 為 `pwa/sw.js` 加上 service worker globals、為 Node 腳本加上 Node globals，並把它們加入 `lint` script。
   - **修改既有設定（eslint 設定與 CI 執行的 script），需使用者核准**。
 
+- [ ] **INFRA-105** service worker 安裝時，SHELL 的 JS／CSS／HTML 也要重新驗證，避免改版後先跑舊程式
+  - 問題（PS-211A 獨立 review 發現，2026-10-20；修改前就存在）：`sw.js` 的 install 只對圖片與 `pixi.js` 使用 `cache: 'no-cache'`。JS、CSS、HTML 仍走瀏覽器的 HTTP cache。GitHub Pages 的 `max-age=600` 內，新版本的快取會存到**舊的** `version.js` 等模組。
+  - 影響：
+    - 「新版本已就緒」後的第一次載入，最多約 10 分鐘內仍執行舊程式。stale-while-revalidate 的背景更新也會讀到仍然有效的 HTTP cache。
+    - 改版若改了素材檔名，舊的 `assetManifest.js` 會要求不在 SHELL 中的舊檔名：線上 404、離線缺圖。
+    - 新模組使用舊模組沒有的 export 時，可能無法 link。
+  - 方向：SHELL 的所有項目都以 `new Request(path, { cache: 'no-cache' })` 取得（沒變的檔案只需 304），並以 e2e 模擬改版驗證。
+  - **改 service worker 的快取行為（部署行為），需使用者核准**。
+
 - [ ] **PS-211D** 跨版本保存 V2 素材快取（以 `manifest.json` 的 `sha256` 為 key）
   - 背景：PS-211 提案 §5 D。activate 時保留素材快取、依目前 manifest 清理，讓沒改的素材在改版後不必重新下載。
   - 暫緩（使用者 2026-10-20 同意）：素材仍在調整；且要先驗證 GitHub Pages 的 ETag 是否隨部署改變（`curl -I` 比較兩次部署中同一個沒改過的素材）。ETag 不變時，PS-211A 之後的效益很小。
@@ -256,6 +265,8 @@
         - 沒有 Orbit Window 的頁面不由頁面請求 Pixi。
     - e2e 注意：`context.setOffline(true)` 擋不到 service worker 自己的請求，要另外以 `context.route` 擋下，才能證明檔案來自預先快取。
     - `pwa/sw.js` 不在 `npm run lint` 範圍內（INFRA-104），以 `node --check` 與加上 service worker globals 的 eslint 手動檢查過。
+    - 獨立 review（396f9c5）：所有驗收條件達成；模擬改版（v1 → v2，關掉伺服器後重新整理）確認首頁與完整世界在 100%、rest、雨天下都完整、runtime ready。依其 P3 補強：e2e 改為 100% 進度（7 件家具都實際顯示）、legacy 測試改在 service worker 控制下執行、單元測試釘住「狀態都是字面值、沒有程式碼設定 facing」的前提、文件用詞。Safari／iOS 未驗證（環境沒有 WebKit）：若 Safari 忽略 `Request.cache`，只是退回原本的行為。
+    - 範圍外的既有問題記為 INFRA-105（需核准）。
 
 - [x] **PS-211B** 新場景畫完前隱藏 canvas；首頁 → 空間沿用 Pixi app
   - 規格：[`docs/ps-211-asset-preload-cache-proposal.md`](docs/ps-211-asset-preload-cache-proposal.md) §4.2、§4.4、§5 B。使用者 2026-10-20 核准，包含沿用 Pixi app 的最佳化。

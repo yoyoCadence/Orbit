@@ -132,11 +132,12 @@
 - **PRO-014P**：entitlement 流程，實作前需提案與核准，擋 `PRO-014H` cutover。與草稿 PR #154（PRO-014L）改同一段 SUB-16 路徑，寫提案前先問使用者先後順序。
 - **PS-243**：真機、installed PWA、雙帳號、螢幕閱讀器等 human gate。
 - **INFRA-104**：讓 `pwa/sw.js` 與 Node 端的腳本也被 lint（改 `eslint.config.js` 與 lint script，屬修改既有設定，需核准；見 `tasks.md`）。
+- **INFRA-105**：service worker 安裝時 SHELL 的 JS／CSS／HTML 也要重新驗證（既有問題，改版後最多約 10 分鐘先跑舊程式；改部署行為，需核准；見 `tasks.md`）。
 - 尚未回答：高風險項目（如 entitlement）連變更說明都要不要先問再排程（PRO-014Q 變更說明 §7）。在得到答案前，維持「寫變更說明可以，實作前一定要核准」。
 
 ### 可直接做（已核准）
 
-- PS-211A、PS-211B 已完成（#187、#188）。
+- PS-211B（#187）、PS-211A（#188）已完成。
 - PRO-014Q Q6（需先有測試帳號）。PS-246、AI-203B、HW-113、PRO-014Q S0 已完成。
 
 ## 6. PS-245 精細化：實作計畫

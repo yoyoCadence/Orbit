@@ -700,6 +700,11 @@ Budgets are not satisfied by hiding slow work behind a loader. Home task control
 
 The Service Worker install shell caches only approved production assets or an explicitly labeled static fallback poster. Phase textures are cached after successful first use. New code/assets are added to cache strategy deliberately, and the project bump script updates the release version/cache once at final release.
 
+> Superseded by PS-211A (2026-10-20): the install shell no longer holds the
+> legacy fallback images; it holds every V2 image the Orbit Window poster can
+> show plus Pixi. See technical design §12.2. The note below is kept as the
+> vertical-slice record.
+
 Implementation note for the vertical-slice proof: the temporary fallback
 background and protagonist poster are the only V2 visual files in the install
 shell (about 1.99 MB combined). Pixi and phase-specific props stay lazy and are

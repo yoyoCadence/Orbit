@@ -6,7 +6,7 @@
 ## [1.31.6] - 2026-10-20
 
 ### Changed
-- **改版後「空間」的圖片不必重新下載（PS-211A）**：service worker 的預先快取（SHELL）原本只有兩張 V2 用不到的 legacy 圖片（1.99 MB）。房間素材與 Pixi 是使用時才快取的，每次改版快取被刪除後都要重新下載。慢速網路下，改版後 poster 晚 2–4 秒才完整，狀態第一次改變時新圖片也要等約 1 秒。
+- **改版後「空間」的圖片不必重新下載（PS-211A）**：service worker 的預先快取（SHELL）中原本的圖片只有兩張 V2 用不到的 legacy 圖片（1.99 MB）。房間素材與 Pixi 是使用時才快取的，每次改版快取被刪除後，瀏覽器的 HTTP cache 沒有有效副本時就要重新下載。慢速網路下，改版後 poster 晚 2–4 秒才完整，狀態第一次改變時新圖片也要等約 1 秒。
   - SHELL 移除兩張 legacy 圖片，改放 poster 會用到的 22 個 V2 檔案：背景、8 件家具、主角 5 個動作、Companion 6 個狀態、晴天與雨天特效，以及 `pixi.js`。使用者 2026-10-20 核准 A3 ＋P。
   - 新版本的 service worker 在這些檔案都快取完成後才啟用。所以改版後任何狀態的 poster 都立刻完整，狀態改變時也不必等網路，canvas 只省掉 Pixi 的下載時間。
   - 這些圖片與 `pixi.js` 在安裝時重新驗證（`cache: 'no-cache'`），避免素材以同樣檔名重新渲染後仍拿到舊檔。
@@ -19,7 +19,7 @@
   - 有 `pixi.js`；
   - 這些檔案在安裝時重新驗證；
   - `index.html` 與 `app.js` 的靜態 import 圖不引用 Pixi。
-- e2e：service worker 安裝後快取中有這 23 個檔案。離線、且所有素材與 Pixi 的網路請求都被擋下時重新整理，雨天、主角與 Companion 都在 rest 狀態的 poster 完整顯示，runtime 也以快取的 Pixi 進入 ready。首頁上，頁面請求 `pixi.js` 的時間不早於 runtime 開始掛載；沒有 Orbit Window 的頁面不由頁面本身請求 `pixi.js`；legacy 在線上照常顯示 idle-window 背景。
+- e2e：service worker 安裝後快取中有這 23 個檔案。離線、且所有素材與 Pixi 的網路請求都被擋下時重新整理，專案 100%（7 件家具）、雨天、主角與 Companion 都在 rest 狀態的 poster 完整顯示，runtime 也以快取的 Pixi 進入 ready。首頁上，頁面請求 `pixi.js` 的時間不早於 runtime 開始掛載；沒有 Orbit Window 的頁面不由頁面本身請求 `pixi.js`；legacy 在線上照常顯示 idle-window 背景。
 - 對照組：以舊的 `sw.js` 執行時，雨天特效離線載入失敗，e2e 會失敗。
 
 ---

@@ -17,13 +17,29 @@ const PRECACHED = [...SW_SOURCE.match(/const SHELL = \[([\s\S]*?)\];/)[1].matchA
   .filter(path => path.startsWith('assets/personal-space/') || path === 'vendor/pixi.js');
 const V2_STATE_KEY = 'orbit_platform_bridge_v1:personal-space-state-v2:e2e-user';
 
+const RECOVERY_TASK = {
+  ...FOCUS_TASK, id: 'task-recovery', name: '散步', impactType: 'recovery',
+  taskNature: 'recovery', value: 'D', emoji: '🚶',
+};
 // A completed recovery Session today puts the protagonist and Companion in `rest`.
 const RECOVERY_SESSION = {
-  id: 'session-recovery', taskId: 'task-focus', date: TODAY,
+  id: 'session-recovery', taskId: RECOVERY_TASK.id, date: TODAY,
   completedAt: new Date().toISOString(), result: 'complete',
   impactType: 'recovery', taskNature: 'recovery', value: 'D',
   durationMinutes: 30, finalXP: 0,
 };
+// Four earlier days of A-value Focus Sessions finish Workspace Upgrade (100%),
+// so every phase's props render on the poster.
+const FOCUS_SESSIONS = [4, 3, 2, 1].map(daysAgo => {
+  const date = new Date();
+  date.setDate(date.getDate() - daysAgo);
+  return {
+    id: `session-focus-${daysAgo}`, taskId: FOCUS_TASK.id, date: date.toLocaleDateString('sv'),
+    completedAt: new Date(Date.now() - daysAgo * 86_400_000).toISOString(), result: 'complete',
+    impactType: 'task', taskNature: 'growth', category: 'focus', value: 'A',
+    durationMinutes: 30, finalXP: 50,
+  };
+});
 
 async function waitForPrecache(page) {
   await page.evaluate(() => navigator.serviceWorker.ready);
@@ -44,7 +60,7 @@ test.describe('PS-211A service worker precache', () => {
 
   test('precaches the poster art and Pixi, and an offline reload shows a complete poster', async ({ page, context }) => {
     expect(PRECACHED).toHaveLength(23);
-    await seedStorage(page, [FOCUS_TASK], [RECOVERY_SESSION], { ...GUEST_USER, totalXP: 5000 });
+    await seedStorage(page, [FOCUS_TASK, RECOVERY_TASK], [...FOCUS_SESSIONS, RECOVERY_SESSION], { ...GUEST_USER, totalXP: 5000 });
     await page.goto('/');
     await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
     await waitForPrecache(page);
@@ -70,6 +86,8 @@ test.describe('PS-211A service worker precache', () => {
       await page.reload();
       await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
       const orbit = page.locator('[data-orbit-window]');
+      await expect(orbit).toHaveAttribute('data-project-progress', '100');
+      await expect(orbit.locator('.orbit-window-poster img.orbit-window-prop')).toHaveCount(7);
       await expect(orbit.locator('.orbit-window-weather')).toHaveAttribute('data-weather', 'rain');
       await expect(orbit.locator('.orbit-window-protagonist')).toHaveAttribute('data-player-state', 'rest');
       await expect(orbit.locator('.orbit-window-companion')).toHaveAttribute('data-companion-state', 'rest');
@@ -123,6 +141,11 @@ test.describe('PS-211A service worker precache', () => {
     await page.addInitScript(() => localStorage.setItem('orbit_personal_space_runtime', 'legacy'));
     await page.goto('/');
     await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
+    // Reload under the installed worker, so legacy art takes the use-time cache path.
+    await waitForPrecache(page);
+    await page.reload();
+    await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
+    expect(await page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
     await page.evaluate(() => window.navigate('personalSpace'));
     await expect(page.locator('#content')).toContainText('Orbit Personal Space');
     const backgrounds = page.locator('img.space-idle-background');

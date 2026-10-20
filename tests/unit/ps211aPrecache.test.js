@@ -10,7 +10,7 @@
  * almost three months after V2 stopped using them).
  */
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -60,6 +60,37 @@ function posterAssetPaths() {
 }
 
 describe('PS-211A service worker precache', () => {
+  it('relies only on what the code can produce: literal states and the default facing', () => {
+    // The derivation reads `state: '…'` literals; a computed state would escape it.
+    for (const [file, name] of [
+      ['js/personalSpace/v2/viewModels.js', 'selectProtagonistState'],
+      ['js/personalSpace/v2/companionEngine.js', 'getCompanionReaction'],
+    ]) {
+      const source = read(file);
+      const start = source.indexOf(`export function ${name}(`);
+      const body = source.slice(start, source.indexOf('\nexport function ', start + 1));
+      expect(body.match(/state:\s*[^'\s]/g), `${name} only returns literal states`).toBeNull();
+    }
+    // Only the readers mention a facing; nothing that builds the V2 model sets
+    // one, so the poster always uses the default (left) poses SHELL precaches.
+    // (The legacy idle window under personalSpace/idleWindow has its own facings.)
+    const readers = new Set([
+      'js/personalSpace/v2/content/assetManifest.js',
+      'js/personalSpace/v2/runtime/pixiSceneRuntime.js',
+      'js/personalSpace/v2/ui/orbitWindow.js',
+    ]);
+    const files = [];
+    const walk = dir => readdirSync(join(PWA, dir)).forEach(name => {
+      const path = `${dir}/${name}`;
+      if (statSync(join(PWA, path)).isDirectory()) walk(path);
+      else if (path.endsWith('.js')) files.push(path);
+    });
+    walk('js/personalSpace/v2');
+    walk('js/pages');
+    readdirSync(join(PWA, 'js')).filter(name => name.endsWith('.js')).forEach(name => files.push(`js/${name}`));
+    expect(files.filter(file => !readers.has(file) && /facing/i.test(read(file)))).toEqual([]);
+  });
+
   it('derives the reachable states from the code', () => {
     const { protagonistStates, companionStates } = posterAssetPaths();
     expect(protagonistStates).toEqual(['celebrate', 'idle', 'inspect', 'rest', 'work']);
