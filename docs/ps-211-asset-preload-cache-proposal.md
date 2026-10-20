@@ -60,6 +60,9 @@
   1. 改版後第一次開啟時，仍由舊的 service worker 與舊快取提供，畫面不受影響。
   2. 新的 service worker 在背景安裝（下載 SHELL），完成後立刻啟用（`skipWaiting`／`clients.claim`），app 顯示「新版本已就緒」。
   3. 等待發生在那次重新整理，或下次開啟時。
+  4. 已經開著的頁面也會遇到：`clients.claim()` 讓新的 service worker 立刻接管這個頁面，舊快取已被刪除，所以接管後才需要的檔案不必重新整理就要向網路要。例如 runtime 還沒啟動（app 在 Pixi 載入前就切到背景，回來時才 import `pixi.js`）、之後進入「空間」，或狀態改變需要新圖片。
+     - 已經載入記憶體的 JS 與已解碼的圖片不受影響。
+     - 這個情況沒有另外量測；需要的檔案從網路下載，量級與下表「HTTP cache 沒有素材的副本」的情況相同（限速下 Pixi 約 1 秒以上）。A2／A3 讓接管後需要的 poster 素材已在新快取中，Pixi 則只有 ＋P 能涵蓋。
 - 要不要真的重新下載，取決於瀏覽器的 HTTP cache：
   - GitHub Pages 回傳 `max-age=600`。過期後瀏覽器會帶 ETag／Last-Modified 重新驗證；檔案沒變就回 304，只花一次往返。
   - `deploy.yml` 每次從新的 checkout 上傳整個 `pwa/`，檔案的修改時間每次都不同。如果 GitHub Pages 的 ETag／Last-Modified 依修改時間產生（推測如此），每次部署後所有檔案都會整個重新下載。
@@ -134,7 +137,7 @@
   - §12.2 允許 precache「離線 shell 需要的 stateful fallback 素材」，但也說不要把所有全解析度的場景圖放進 SHELL，並要求 service worker 快取策略的變更先取得核准。
   - poster 是 V2 的 fallback，A1／A2 符合。A3 放入的也全是 poster 會用到的素材，但數量是 manifest 29 個檔案中的 22 個。是否算「全部」由使用者判斷；選 A3 時，順便把 §12.2 的文字改清楚。
 - 與技術設計 §12.1 的關係：§12.1 說首頁不要載入所有專案階段。A2／A3 在 service worker 安裝時下載所有階段的家具（A3 還有所有角色狀態）；第一次造訪時，安裝發生在首頁開著的時候。「service worker precache 不等於首頁載入」說得通，但這也是判斷題：選 A2／A3 時，§12.1 與 §12.2 一起改清楚。
-- Pixi 不是 fallback，§12.1 也要求首頁初始 HTML 不下載 Pixi。＋P 的效果只有省掉下載時間，所以不建議。
+- Pixi 不是 fallback，§12.1 也要求首頁初始 HTML 不下載 Pixi。＋P 的效果只有省掉下載時間：改版後重新整理、或已開著的頁面被接管後才載入 Pixi 時，canvas 晚約 1 秒以上出現（poster 先頂著）。所以不建議，但這是 ＋P 唯一的好處，由使用者權衡。
 - 實作注意：
   - `addAll()` 會經過瀏覽器的 HTTP cache。如果某張素材以同樣的檔名重新渲染，而舊檔在安裝前 10 分鐘內被取過，舊檔會被 precache 並用到下次改版；目前執行時的 cache-first 也有同樣的風險。SHELL 的圖片改用 `new Request(url, { cache: 'no-cache' })`（強制重新驗證）可以避免。圖片路徑仍要寫在 `const SHELL = [...]` 字面值裡，在 install 時才轉成 Request：`serviceWorkerShell.test.js` 與量測腳本都只解析這個字面值。
   - `tests/unit/serviceWorkerShell.test.js` 已經檢查 SHELL 的檔案存在，`addAll()` 不會因缺檔失敗。新測試只需要從 `assetManifest.js` 推導出選定的素材，檢查都在 SHELL 中。
