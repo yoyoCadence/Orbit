@@ -25,6 +25,7 @@ import {
   supportsGeolocation,
 } from '../platform/placeContext.js';
 import { resetPlaceHintCache } from '../ui/placeHint.js';
+import { isAssetGalleryEnabled, setAssetGalleryEnabled } from '../personalSpace/v2/ui/assetGallery.js';
 
 // ── Theme definitions ────────────────────────────────────────────────────────
 export const THEMES = [
@@ -442,6 +443,11 @@ function _devPanelHtml() {
             <button class="${proStatus === 'paid'  ? activeCls : inactCls}" id="dev-pro-paid">付費 Pro</button>
           </div>
         </div>
+
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-muted)">
+          <input type="checkbox" id="dev-asset-gallery" ${isAssetGalleryEnabled() ? 'checked' : ''}>
+          在「空間」顯示全部 3D 資產
+        </label>
 
         ${hasBackup ? `
         <button class="btn-text-danger" id="dev-reset" style="text-align:left">↩ 還原原始資料並重啟</button>` : ''}
@@ -1021,6 +1027,9 @@ function _setupListeners(container) {
   container.querySelector('#dev-pro-trial')?.addEventListener('click', () => _devApplyPro('trial'));
   container.querySelector('#dev-pro-paid')?.addEventListener('click',  () => _devApplyPro('paid'));
   container.querySelector('#dev-reset')?.addEventListener('click', _devReset);
+  container.querySelector('#dev-asset-gallery')?.addEventListener('change', event => {
+    setAssetGalleryEnabled(event.target.checked);
+  });
 
   // HW-107 location context
   _bindPlaceContext(container);

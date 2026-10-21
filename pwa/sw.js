@@ -1,6 +1,6 @@
 // Service Worker
 // Bump CACHE version on every deploy so users always get fresh code.
-const CACHE = 'orbit-v1.31.9';
+const CACHE = 'orbit-v1.31.10';
 
 const SHELL = [
   './',
@@ -108,6 +108,7 @@ const SHELL = [
   './js/personalSpace/v2/content/companionDialogue.js',
   './js/personalSpace/v2/runtime/pixiSceneRuntime.js',
   './js/personalSpace/v2/ui/orbitWindow.js',
+  './js/personalSpace/v2/ui/assetGallery.js',
   './js/pages/personalSpaceV2.js',
   // PS-211A: every image the Orbit Window poster can show (any project phase,
   // any protagonist / Companion state the code produces, clear and rain), and

@@ -6416,6 +6416,61 @@ html.has-bg[data-ui-skin="modern"] .levelup-box {
   display: none;
 }
 
+/* PS-250A: developer overview of every asset (Settings → 開發者工具). */
+.personal-space-v2-asset-gallery {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px dashed rgba(245, 158, 11, 0.55);
+  border-radius: 18px;
+}
+
+.personal-space-v2-asset-gallery h3 {
+  margin: 6px 0 0;
+  font-size: 13px;
+}
+
+.personal-space-v2-asset-gallery h3 small,
+.personal-space-v2-asset-gallery .personal-space-v2-editor-heading > span {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.personal-space-v2-asset-gallery ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.personal-space-v2-asset-gallery figure {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+
+.personal-space-v2-asset-gallery img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: contain;
+  border-radius: 10px;
+  /* A checkerboard shows which parts are transparent. */
+  background: repeating-conic-gradient(rgba(148, 163, 184, 0.22) 0% 25%, transparent 0% 50%) 50% / 16px 16px;
+}
+
+.personal-space-v2-asset-gallery figcaption {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .personal-space-v2-editor {
   display: grid;
   gap: 10px;

@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FLAG_PERSONAL_SPACE_RUNTIME } from '../../pwa/js/flags.js';
 import { renderPersonalSpace } from '../../pwa/js/pages/personalSpace.js';
 import { renderPersonalSpaceV2 } from '../../pwa/js/pages/personalSpaceV2.js';
+import { ASSET_GALLERY_FLAG } from '../../pwa/js/personalSpace/v2/ui/assetGallery.js';
 import { state } from '../../pwa/js/state.js';
 import {
   createLocalTelemetryAdapter,
@@ -126,6 +127,29 @@ describe('Personal Space V2 full page', () => {
     cleanup();
     expect(release).toHaveBeenCalledTimes(1);
     expect(destroyRuntime).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the developer asset gallery only when the developer panel turned it on (PS-250A)', () => {
+    const render = () => renderPersonalSpaceV2(container, {
+      user: coreState().user,
+      coreState: coreState(),
+      reconcile: () => controllerResult(),
+      mountWindow: () => () => {},
+      destroyRuntime: () => {},
+      effectiveDate: '2026-07-17',
+      now: new Date(2026, 6, 17, 12),
+    });
+
+    let cleanup = render();
+    expect(container.querySelector('[data-v2-asset-gallery]')).toBeNull();
+    cleanup();
+
+    localStorage.setItem(ASSET_GALLERY_FLAG, '1');
+    cleanup = render();
+    const gallery = container.querySelector('[data-v2-asset-gallery]');
+    expect(gallery).not.toBeNull();
+    expect(gallery.querySelectorAll('img').length).toBeGreaterThan(20);
+    cleanup();
   });
 
   it('still removes page bindings and destroys the runtime when scene release throws', () => {

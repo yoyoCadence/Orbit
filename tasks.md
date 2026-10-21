@@ -238,7 +238,9 @@
     - **PS-250F 小家具**：裝飾小物（PS-248C），兩種風格各一套。
   - 已確認可行（2026-10-21 原型）：Q 版主角 6 個動作、Orbit 3D 版 6 個狀態、像素化流程，都以 `bpy 5.2.2` 在 CPU 上每張約 5–10 秒。
   - 待使用者決定：預設風格（全 Q 版或全像素）；第一批角色與 AI 形象的外觀看過預覽圖再定。
-  - In progress（2026-10-21）：PS-250A。
+  - In progress（2026-10-21）：
+    - PS-250A 完成（v1.31.10）：`pwa/js/personalSpace/v2/ui/assetGallery.js`（新模組，只讀取 asset manifest 既有的 export）；設定頁開發者工具的勾選框寫入 `localStorage` 的 `orbit_dev_asset_gallery`；「空間」頁面在勾選時列出全部素材。
+    - 下一步：PS-250B（風格與選擇的基礎）與 PS-250C（Q 版角色）。
 
 - [ ] **PS-248** 以 Blender 擴充「空間」的主題與素材（提案）
   - 使用者 2026-10-20 要求：「需要更新更多 blender 做的主題與素材等，讓本工具更豐富」。
