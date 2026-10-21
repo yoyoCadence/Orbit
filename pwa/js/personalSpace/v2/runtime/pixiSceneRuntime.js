@@ -187,7 +187,6 @@ export function createPixiSceneRuntime(options = {}) {
 
     const reducedMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     animating = !reducedMotion;
-    const shouldCelebrate = Boolean(renderModel.pendingReveal || renderModel.world?.pendingReveal);
     if (protagonistState === 'inspect') protagonist.rotation += -0.025;
     if (protagonistState === 'rest') protagonist.alpha = 0.88;
     if (companionState === 'rest') companion.alpha = 0.72;
@@ -202,7 +201,9 @@ export function createPixiSceneRuntime(options = {}) {
       const protagonistRotation = protagonist.rotation;
       tickerUpdate = ticker => {
         elapsed += ticker.deltaMS;
-        const celebrate = shouldCelebrate || protagonistState === 'celebrate';
+        // The view model decides when the protagonist celebrates; an undone
+        // Session or a reward that is not progress does not (BUG-113).
+        const celebrate = protagonistState === 'celebrate';
         const stateSpeed = protagonistState === 'rest' ? 1100 : protagonistState === 'work' ? 340 : 600;
         const stateLift = celebrate ? 6 : protagonistState === 'rest' ? 0.6 : protagonistState === 'work' ? 2.2 : 1.5;
         protagonist.y = protagonistY + Math.sin(elapsed / (celebrate ? 110 : stateSpeed)) * stateLift;

@@ -46,6 +46,8 @@
 | 規格 | vertical slice §6.1、§7.2、§8.3、§13.1、§14；product spec §3.2、§8.1、§8.3；art bible §10 | 改規則要換 `rulesetId`（§6.1、§13.1）；關係「透過 ledger entry」推進（§7.2）；全畫面的 `major` 只用於專案完成、房間／章節解鎖與**關係階段提升**（§8.3）；hidden stats 與關係必須能從 active ledger 推導（§14）；不可因錯過而羞辱或懲罰；LLM 不得決定關係 |
 | 既有問題（BUG-113） | `v2/revealSelectors.js`、`controller.js` `revealKind()` | 「專案完成」與 `major` 的判斷不看 reward 是加入還是撤銷，也不看專案原本是否已完成。已重現：<br>– 專案完成後，每個 Main Quest 日的 reveal 都讓 Companion 再說「工作站完成了」（進度 ≥ 100 且含 `project_progress`）；<br>– 撤銷任何一天，甚至撤銷完成那一天，Companion 也恭喜；<br>– 撤銷第 4 天、由第 5 天承接時，兩個 reveal 都是 `major` 並恭喜 |
 
+> 2026-10-21 更新：BUG-113 已在 v1.31.8 修正（#192）。上表「階段提升的 reveal」與「既有問題」兩列是修正前的狀態。現在完成那一天的 reveal 帶 `projectCompleted`；同一次 reconcile 中只是換一個 Session 承接的 reward（當天的 Main Quest、完成的解鎖與關係）不顯示、不算 `major`；只含撤銷的 reveal 讓 Companion 觀察。AI-202B 由 ledger 推導的 milestone 不是 ledger entry，不受這個配對影響。
+
 README 的「關係進化草案」列了 5 個不同的階段（陌生觀察／陪跑提醒／理性教練／理解型夥伴／高階顧問）。程式碼與 vertical slice 用的是上面 4 個。本提案沿用程式碼的 4 個，並建議 README 註明以 vertical slice 為準（§9 第 7 點）。
 
 ## 3. 階段推進規則

@@ -252,6 +252,32 @@ describe('Personal Space V2 Pixi scene runtime', () => {
     runtime.destroy();
   });
 
+  it('celebrates only when the view model says the protagonist celebrates (BUG-113)', async () => {
+    const liftAfter = async (protagonistState, direction) => {
+      const fake = createFakePixi();
+      const runtime = createPixiSceneRuntime({ loadPixi: () => Promise.resolve(fake.pixi) });
+      const { host } = createRuntimeHost();
+      await runtime.mount(host, {
+        activeProject: { progress: 50 },
+        protagonist: { state: protagonistState },
+        pendingReveal: { id: `reveal-${direction}`, direction },
+      });
+      const app = fake.applications[0];
+      const protagonist = app.stage.children.find(child => child.label === 'orbit-protagonist');
+      const restingY = protagonist.y;
+      app.ticker.add.mock.calls[0][0]({ deltaMS: 55 });
+      const lift = Math.abs(protagonist.y - restingY);
+      runtime.destroy();
+      return lift;
+    };
+
+    // Celebrating lifts by up to 6 px on a fast cycle; inspecting barely moves.
+    expect(await liftAfter('celebrate', 'settlement')).toBeGreaterThan(2);
+    // An undone Session, or a reward that is not progress, is shown as inspect.
+    expect(await liftAfter('inspect', 'reversal')).toBeLessThan(1);
+    expect(await liftAfter('inspect', 'settlement')).toBeLessThan(1);
+  });
+
   it('re-renders the latest model after WebGL context restoration and cleans up once', async () => {
     const fake = createFakePixi();
     const runtime = createPixiSceneRuntime({ loadPixi: () => Promise.resolve(fake.pixi) });

@@ -357,7 +357,7 @@ export function normalizeOrbitWindowModel(input = {}, renderMode) {
   const quest = input.mainQuest || input.quest || {};
   const rawPendingReveal = input.pendingReveal || input.world?.pendingReveal || input.world?.revealQueue?.[0] || null;
   const pendingReveal = rawPendingReveal
-    ? { ...rawPendingReveal, kind: normalizeRevealKind(rawPendingReveal.kind) }
+    ? { ...rawPendingReveal, kind: normalizeRevealKind(rawPendingReveal.kind, rawPendingReveal.direction) }
     : null;
   const protagonist = input.protagonist || input.world?.protagonist || {};
   const requestedRenderMode = renderMode ?? input.renderMode ?? 'home-window';
@@ -470,7 +470,10 @@ function renderAchievementPhoto(input = {}) {
   `;
 }
 
-function normalizeRevealKind(value) {
+function normalizeRevealKind(value, direction) {
+  // Older versions queued an undo as `major` (BUG-113); taking rewards back is
+  // never a world milestone.
+  if (value === 'major' && direction === 'reversal') return 'medium';
   return ['small', 'medium', 'major'].includes(value) ? value : 'small';
 }
 

@@ -148,8 +148,10 @@ function stableHash(value) {
 }
 
 function revealKind(rewards) {
-  if (rewards.some(reward =>
-    reward.rewardType === 'world_unlock' || reward.rewardType === 'relationship')) {
+  // Only an unlock or relationship the world actually gained is a milestone;
+  // taking one back is not (BUG-113).
+  if (rewards.some(reward => reward.direction === 'added' && (
+    reward.rewardType === 'world_unlock' || reward.rewardType === 'relationship'))) {
     return 'major';
   }
   if (rewards.some(reward =>
@@ -189,7 +191,68 @@ function createWorldChange(revealId, reward, createdAt) {
   };
 }
 
-function buildRevealEvents(reconciliation, changeIds, reconciledAt) {
+// A queued completion reveal: flagged, or, if an older version queued it,
+// one that adds the completion rewards.
+function isQueuedCompletionReveal(reveal) {
+  if (typeof reveal?.projectCompleted === 'boolean') return reveal.projectCompleted;
+  return Array.isArray(reveal?.rewards) && reveal.rewards.some(reward => (
+    reward?.direction !== 'reversed' && reward?.metadata?.tier === 'project-completion'
+  ));
+}
+
+// The project counts as complete before this reconciliation only if the
+// ledger says so (the stored activeProject can disagree) and the user has seen
+// it: when the completion moves to another Session before its reveal played,
+// the queued reveal no longer holds and that Session's reveal is the completion.
+function getCompletedSourceId(state, reconciliation, activeRewardIds) {
+  const before = deriveActiveProject(activeCurrentRulesetEntries(state), []);
+  const completionUnseen = (state.pendingRewardReveals || []).some(reveal => (
+    isQueuedCompletionReveal(reveal) && !revealMatchesActiveLedger(reveal, activeRewardIds)
+  ));
+  const project = reconciliation.project || {};
+  return !(before.completed && !completionUnseen) && project.completed
+    ? project.completedBySessionId || null
+    : null;
+}
+
+// Rewards that only move between Sessions keep the same type, key and amount:
+// the day's Main Quest bundle when an undo hands it to another Session that
+// day, and the completion unlock and relationship when it moves to another day.
+function handoverKey(reward) {
+  const tier = reward.metadata?.tier;
+  const base = `${reward.rewardType}|${reward.rewardKey}|${reward.amount}`;
+  if (tier === 'daily-main-quest') {
+    return reward.metadata?.sessionDate ? `${base}|${reward.metadata.sessionDate}` : null;
+  }
+  if (tier === 'project-completion') return base;
+  return null;
+}
+
+// An added and a reversed copy of the same reward in one reconciliation change
+// nothing for the user, so neither is shown. A reward whose reveal has not
+// played yet was never seen: the other Session's copy is shown as gained, and
+// its own loss is not.
+function findHandoverIds(rewards, unseenRewardIds) {
+  const byKey = new Map();
+  for (const reward of rewards) {
+    const key = handoverKey(reward);
+    if (!key) continue;
+    if (!byKey.has(key)) byKey.set(key, { added: [], reversed: [], unseen: [] });
+    const group = byKey.get(key);
+    if (reward.direction === 'reversed' && unseenRewardIds.has(reward.id)) group.unseen.push(reward.id);
+    else group[reward.direction].push(reward.id);
+  }
+  const ids = new Set();
+  for (const { added, reversed, unseen } of byKey.values()) {
+    const pairs = Math.min(added.length, reversed.length);
+    [...added.sort().slice(0, pairs), ...reversed.sort().slice(0, pairs)]
+      .forEach(id => ids.add(id));
+    if (added.length) unseen.forEach(id => ids.add(id));
+  }
+  return ids;
+}
+
+function buildRevealEvents(reconciliation, changeIds, reconciledAt, completedSourceId, unseenRewardIds) {
   const entryById = new Map(reconciliation.ledger.map(entry => [entry.id, entry]));
   const grouped = new Map();
   const addToGroup = (id, direction) => {
@@ -213,11 +276,16 @@ function buildRevealEvents(reconciliation, changeIds, reconciledAt) {
 
   changeIds.added.forEach(id => addToGroup(id, 'added'));
   changeIds.reversed.forEach(id => addToGroup(id, 'reversed'));
+  const handoverIds = findHandoverIds([...grouped.values()].flat(), unseenRewardIds);
 
   return [...grouped.entries()].map(([sourceId, rewards]) => {
     const sortedRewards = [...rewards].sort((left, right) =>
       left.direction.localeCompare(right.direction) || left.id.localeCompare(right.id),
     );
+    // A reveal shows, and is kept in step with the ledger by, what changed for
+    // the user; a reveal of handovers only is not queued.
+    const shownRewards = sortedRewards.filter(reward => !handoverIds.has(reward.id));
+    if (!shownRewards.length) return null;
     const signature = sortedRewards
       .map(reward => `${reward.direction}:${reward.id}`)
       .join('|');
@@ -230,29 +298,30 @@ function buildRevealEvents(reconciliation, changeIds, reconciledAt) {
       ? reconciledAt
       : sourceOccurredAt;
     const id = `reveal:${RULESET_ID}:${sourceId}:${stableHash(signature)}`;
-    const importantReward = mostImportantReward(sortedRewards);
-    const addedRewardIds = sortedRewards
+    const importantReward = mostImportantReward(shownRewards);
+    const addedRewardIds = shownRewards
       .filter(reward => reward.direction === 'added')
       .map(reward => reward.id);
-    const reversedRewardIds = sortedRewards
+    const reversedRewardIds = shownRewards
       .filter(reward => reward.direction === 'reversed')
       .map(reward => reward.id);
     return {
       id,
       sourceId,
-      kind: revealKind(sortedRewards),
+      kind: revealKind(shownRewards),
       direction: addedRewardIds.length && reversedRewardIds.length
         ? 'mixed'
         : addedRewardIds.length ? 'settlement' : 'reversal',
-      rewardIds: sortedRewards.map(reward => reward.id),
+      rewardIds: shownRewards.map(reward => reward.id),
       addedRewardIds,
       reversedRewardIds,
-      rewards: sortedRewards,
+      rewards: shownRewards,
+      projectCompleted: sourceId === completedSourceId,
       createdAt,
       sourceOccurredAt,
       worldChange: createWorldChange(id, importantReward, createdAt),
     };
-  }).sort((left, right) =>
+  }).filter(Boolean).sort((left, right) =>
     String(left.sourceOccurredAt).localeCompare(String(right.sourceOccurredAt)) ||
     String(left.createdAt).localeCompare(String(right.createdAt)) ||
     left.id.localeCompare(right.id),
@@ -272,11 +341,15 @@ function normalizeRevealQueue(reveals = []) {
   );
 }
 
+function revealAddedRewardIds(reveal) {
+  if (Array.isArray(reveal?.addedRewardIds)) return reveal.addedRewardIds;
+  if (reveal?.direction === 'reversal') return [];
+  return Array.isArray(reveal?.rewardIds) ? reveal.rewardIds : [];
+}
+
 function revealMatchesActiveLedger(reveal, activeRewardIds) {
   const rewardIds = Array.isArray(reveal.rewardIds) ? reveal.rewardIds : [];
-  const addedRewardIds = Array.isArray(reveal.addedRewardIds)
-    ? reveal.addedRewardIds
-    : reveal.direction === 'reversal' ? [] : rewardIds;
+  const addedRewardIds = revealAddedRewardIds(reveal);
   const reversedRewardIds = Array.isArray(reveal.reversedRewardIds)
     ? reveal.reversedRewardIds
     : reveal.direction === 'reversal' ? rewardIds : [];
@@ -324,13 +397,19 @@ export function applyReconciliationToV2State(state, reconciliation, options = {}
   );
   const relationshipPoints = relationshipBaseline + finiteNonNegative(newSummary.relationship);
   const changeIds = getEffectiveChangeIds(state, reconciliation);
-  const revealEvents = options.queueReveal === true
-    ? buildRevealEvents(reconciliation, changeIds, options.reconciledAt)
-    : [];
   const activeRewardIds = new Set(listActiveRewards(
     reconciliation.ledger,
     reconciliation.tombstones,
   ).map(entry => entry.id));
+  const revealEvents = options.queueReveal === true
+    ? buildRevealEvents(
+      reconciliation,
+      changeIds,
+      options.reconciledAt,
+      getCompletedSourceId(state, reconciliation, activeRewardIds),
+      new Set((state.pendingRewardReveals || []).flatMap(revealAddedRewardIds)),
+    )
+    : [];
   const retainedRevealQueue = (state.pendingRewardReveals || [])
     .filter(reveal => revealMatchesActiveLedger(reveal, activeRewardIds));
   const pendingRewardReveals = normalizeRevealQueue([
