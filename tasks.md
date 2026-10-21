@@ -249,6 +249,7 @@
       - 管線與預覽圖在 `art-pipeline/ps250-characters/`；108 張 WebP（品質 90、alpha 無損）在 `pwa/assets/personal-space/v2/characters/toon/`：主角 6 套 × 6 個動作 × 左右，AI 夥伴 6 種 × 6 個狀態。
       - 主角畫布 512×512，地面點在 241/256，與像素主角相同；AI 夥伴畫布 256×256，置中。所以 placement 不用改。
       - `content/characterCatalog.js`（新模組）列出全部路徑，開發者總覽讀它。場景還不使用，也不預先快取。
+    - PS-250B 進行中（2026-10-21）：風格與角色的選擇，預設改為全 Q 版，SHELL 只預先快取預設。
     - 給 PS-250B 的備註：
       - `sw.js` 的圖片本來就是 cache-first，第一次 fetch 時存入快取，所以「其他選項按需快取」已經成立。PS-250B 要改的是：把 SHELL 的預設角色換成 Q 版；在 JS 端處理離線缺圖時退回預設（Pixi `Assets.load` 失敗、poster 的 `<img>` 載入失敗）。
       - 每次改版 activate 時會刪除舊的快取，所以按需快取的選項在改版後要重新下載；離線時會退回預設。
