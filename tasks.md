@@ -14,12 +14,6 @@
 
 ## Backlog
 
-- [ ] **BUG-114** 專案已到 100% 後，reveal 仍顯示專案進度的增減
-  - 問題（BUG-113 發現，2026-10-21）：工作站完成後，每個 Main Quest 日仍得到 `project_progress +25`，reveal 顯示 `workspace-upgrade +25`，但進度停在 100%（`projectEngine.js` 把總和截在 100）。撤銷完成那一天、由下一天接手時，reveal 顯示 `workspace-upgrade -25`，進度也仍是 100%。
-  - 方向：與 BUG-113 的解鎖與關係相同，只顯示真的改變進度的專案進度行（比較前後的 `activeProject.progress`），或在完成後不再給專案進度。後者會改變 reward 規則與 ledger，要先提案。
-  - 同樣地，完成後撤銷任何一天（仍有至少 4 個 Main Quest 日）都顯示 `-25`，進度仍是 100%。完成後 Companion 的「工作空間改變了…」與主角的慶祝也來自這些 reward。
-  - 只是顯示問題：Gold、Main Quest 與 hidden stats 的增減都正確。
-
 - [ ] **HW-112** 佐證圖片雲端同步（Supabase Storage）
   - Goal: upload proof photos to Supabase Storage so they persist across devices and app reinstalls.
   - Scope: `platform/badge.js` → new `pwa/js/platform/proofStorage.js` adapter; bucket `orbit-proof`, path `{user_id}/{sessionId}.jpg`; RLS: SELECT/INSERT/DELETE scoped to `auth.uid()`; use existing `compressImage()` output; graceful fallback to localStorage-only for guests.
@@ -226,6 +220,13 @@
 ---
 
 ## In Progress
+
+- [ ] **BUG-114** 專案已到 100% 後，reveal 仍顯示專案進度的增減
+  - 問題（BUG-113 發現，2026-10-21）：工作站完成後，每個 Main Quest 日仍得到 `project_progress +25`，reveal 顯示 `workspace-upgrade +25`，但進度停在 100%（`projectEngine.js` 把總和截在 100）。撤銷完成那一天、由下一天接手時，reveal 顯示 `workspace-upgrade -25`，進度也仍是 100%。
+  - 方向：與 BUG-113 的解鎖與關係相同，只顯示真的改變進度的專案進度行（比較前後的 `activeProject.progress`），或在完成後不再給專案進度。後者會改變 reward 規則與 ledger，要先提案。
+  - 同樣地，完成後撤銷任何一天（仍有至少 4 個 Main Quest 日）都顯示 `-25`，進度仍是 100%。完成後 Companion 的「工作空間改變了…」與主角的慶祝也來自這些 reward。
+  - 只是顯示問題：Gold、Main Quest 與 hidden stats 的增減都正確。
+  - In progress（2026-10-21）：採用第一個方向（只顯示真的改變進度的專案進度行，不改 reward 規則）；Companion 的「工作空間改變了…」只在 reveal 顯示專案進度時出現。
 
 - [ ] **PS-248** 以 Blender 擴充「空間」的主題與素材（提案）
   - 使用者 2026-10-20 要求：「需要更新更多 blender 做的主題與素材等，讓本工具更豐富」。
