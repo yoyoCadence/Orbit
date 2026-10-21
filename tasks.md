@@ -303,8 +303,8 @@
   - In progress（2026-10-21）：實作修正與回歸測試。
   - 完成（2026-10-21，v1.31.8）：
     - `controller.js`：
-      - 以 ledger 推導 reconcile 前的專案是否完成（儲存的 `activeProject` 可能不一致），由未完成變成完成時，在完成那一天的 reveal 記上 `projectCompleted: true`。完成的 reveal 還沒播放、完成就改由另一個 Session 接手時，視為使用者還沒看過完成，接手的 reveal 也會標記。
-      - 同一次 reconcile 中，加入與撤銷的同一個 reward（同 type、key、amount；當天的 Main Quest 再加上同一天，沒有日期就不配對）成對視為「換一個 Session 承接」：撤銷當天的 Main Quest 由當天較晚的 Session 接手，或完成由另一天接手。這些 reward 不顯示、不算 `major`，也不用來比對 ledger；只剩這些的 reveal 不排入；`direction` 依顯示的 reward 決定。被撤銷的 reward 若還在未播放的 reveal 中（使用者沒看過），不參與配對，接手的一方照常顯示。
+      - 以 ledger 推導 reconcile 前的專案是否完成（儲存的 `activeProject` 可能不一致），由未完成變成完成時，在完成那一天的 reveal 記上 `projectCompleted: true`。完成的 reveal 還沒播放（包括舊版本排入、沒有這個欄位但加入完成 reward 的 reveal），而完成在這次 reconcile 改由另一個 Session 接手、使原本的 reveal 不再成立時，視為使用者還沒看過完成，接手的 reveal 也會標記。
+      - 同一次 reconcile 中，加入與撤銷的同一個 reward（同 type、key、amount；當天的 Main Quest 再加上同一天，沒有日期就不配對）成對視為「換一個 Session 承接」：撤銷當天的 Main Quest 由當天較晚的 Session 接手，或完成由另一天接手。這些 reward 不顯示、不算 `major`，也不用來比對 ledger；只剩這些的 reveal 不排入；`direction` 依顯示的 reward 決定。被撤銷的 reward 若還在未播放的 reveal 中（使用者沒看過），接手的一方照常顯示為獲得，被撤銷的一方不顯示為失去。
       - `revealKind()` 只把加入的解鎖與關係算成 `major`。
     - `revealSelectors.js`：完成只看 `projectCompleted`；沒有這個欄位的舊 reveal 改用原本的判斷（解鎖、`formal-workstation` 或 `project-completion` tier），但只看加入的 reward。進度與世界進度只看加入的 reward。
     - `companionEngine.js`：只含撤銷的 reveal（`direction: 'reversal'`）→ `observe`＋`companion.observe`，排在所有分支之前。
@@ -312,6 +312,7 @@
     - `ui/orbitWindow.js`：舊版本留下、`kind: 'major'` 的撤銷 reveal 以 `medium` 顯示。
     - 為了 INFRA-105，沒有在既有 SHELL 模組之間新增 import／export：判斷寫在各自的模組內。
     - 測試：`tests/unit/bug113RevealReactions.test.js`（以真實的 reconcile 重現 tasks 列出的情境，加上當天由較晚的 Session 接手、被接手的 reveal 還沒播放、儲存的專案狀態與 ledger 不一致、舊 reveal 相容）與 Pixi 的跳動測試。以修正前的程式碼執行時都會失敗；其中三個只因為缺少 `projectCompleted` 欄位，其他都是因為行為。
+    - 已知限制：完成那一天在另一台裝置被刪除、本機以不排 reveal 的同步（`queueReveal: false`）收到時，未播放的完成 reveal 被移除，接手的那天也不恭喜。
     - 未處理（極少見）：舊版本留下、`direction: 'mixed'` 且唯一的解鎖或關係是撤銷的 reveal，仍以 `major` 顯示。
     - 另外發現：專案已到 100% 後，進度 reward 的行仍顯示 `workspace-upgrade +25`／`-25`，見 BUG-114。
 

@@ -221,6 +221,10 @@ describe('BUG-113 project completion and reversal reveals', () => {
 
     expect(rewardTypes(reveal)).toEqual(expect.arrayContaining(['added:gold', 'added:quest_progress']));
     expect(reactionTo(reveal, state).state).toBe('approach');
+    // The undone Session's Main Quest was never seen, so its loss is not shown.
+    const shown = newReveals(previous, state).flatMap(rewardTypes);
+    expect(shown).not.toContain('reversed:gold');
+    expect(shown).not.toContain('reversed:quest_progress');
   });
 
   it('celebrates the day that takes over a completion whose reveal has not played', () => {
@@ -231,6 +235,29 @@ describe('BUG-113 project completion and reversal reveals', () => {
 
     expect(reveal).toMatchObject({ projectCompleted: true, kind: 'major' });
     expect(reactionTo(reveal, state).state).toBe('congratulate');
+    // Day 4's unlock and relationship were never seen, so their loss is not shown.
+    const shown = newReveals(previous, state).flatMap(rewardTypes);
+    expect(shown).not.toContain('reversed:world_unlock');
+    expect(shown).not.toContain('reversed:relationship');
+    expect(state.recentWorldChange.metadata.rewardType).not.toBe('world_unlock');
+  });
+
+  it('also recognises an unplayed completion reveal queued by an older version', () => {
+    const queued = settle(days(5));
+    const legacy = {
+      ...queued,
+      pendingRewardReveals: queued.pendingRewardReveals
+        .map(({ projectCompleted: _flag, ...reveal }) => reveal),
+    };
+    const remaining = days(5).filter(session => session.id !== 'day-4');
+    const state = applyReconciliationToV2State(legacy, reconcileRewardLedger({
+      sessions: remaining,
+      rewardLedger: legacy.rewardLedger,
+      rewardTombstones: legacy.rewardTombstones,
+      deletedSourceIds: ['day-4'],
+    }), { queueReveal: true });
+
+    expect(revealFor(legacy, state, 'day-5')).toMatchObject({ projectCompleted: true, kind: 'major' });
   });
 
   it('decides the completion from the ledger, not from the stored project', () => {
