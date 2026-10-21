@@ -290,7 +290,8 @@
     - `companionEngine.js`：「工作空間改變了…」只在 reveal 顯示（加入的）專案進度時出現；Main Quest 的 reveal 沒有顯示專案進度時，直接用 AI-204 已核准的「這次行動在空間裡留下了痕跡。」，不依當天的 Session。
     - 測試：`tests/unit/bug114ProjectProgressLines.test.js`；`bug113RevealReactions.test.js` 中完成後的第 5 天改為 Session 的台詞。
     - 未處理（少見）：同一次 reconcile 中多個 Main Quest 日一起讓進度改變時，每一筆都會顯示。例如 75% 時第 4、5 天一起加入，顯示兩筆 `+25`，進度只增加 25；100% 時一起撤銷第 4–6 天，顯示三筆 `-25`，進度只減少 25。目前只有 Session 流程會排 reveal（一次一個 Session），同步都是 `queueReveal: false`。
-    - 升級：舊版本儲存的 reveal 與最近變化中、不計入進度的 Session（不在前 4 個 Main Quest 日）的 `+25` 在 reconcile 時移除（Codex P2）。舊版本留下、未播放的撤銷 `-25` 無法判斷當時進度是否改變，不處理。
+    - 清理已儲存的資料（Codex P2）：每次 reconcile 都把保留的 reveal 與最近變化中、不計入進度的 Session（依日期不在前 4 個 Main Quest 日）的 `+25` 移除，連同 reveal 的 id 清單；主要是清掉舊版本留下的。接手沒看過的進度也只在接手的 Session 計入進度時顯示。舊版本留下、未播放的撤銷 `-25` 無法判斷當時進度是否改變，不處理。
+    - 已知限制：「計入進度」以清理當下的日期順序判斷，不是 reveal 排入時。若另一台裝置之後補上更早日期的 Main Quest，還沒播放的 `+25` 可能被移除（例如 50% 時第 5 天的 `+25` 未播放，之後同步到第 3、4 天）。同一台裝置的 Session 一律記在今天，不會發生。
     - 獨立 review 的 P1：第一版讓「未看過的 Main Quest 由當天較晚的 Session 接手」時的 `+25` 也被隱藏（BUG-113 已修好的情況），已補上例外與測試。
 
 - [x] **BUG-113** 專案完成與撤銷的 reveal 讓 Companion 重複恭喜

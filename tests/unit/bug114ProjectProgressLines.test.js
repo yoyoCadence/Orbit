@@ -124,11 +124,23 @@ describe('BUG-114 project progress lines', () => {
     const entry = saved.rewardLedger
       .find(reward => reward.sourceId === 'day-5' && reward.rewardType === 'project_progress');
     const progress = { ...entry, direction: 'added' };
+    // The shape v1.31.8 saved: the reward in every id list, and as the world change.
+    const progressChange = {
+      id: 'world-change:older-reveal',
+      sourceId: 'day-5',
+      type: 'project_progress',
+      key: 'workspace-upgrade',
+      amount: 25,
+      metadata: { direction: 'added', rewardId: entry.id, rewardType: 'project_progress' },
+    };
     const older = {
       ...saved,
       pendingRewardReveals: saved.pendingRewardReveals.map(reveal => ({
         ...reveal,
         rewards: [...reveal.rewards, progress],
+        rewardIds: [...reveal.rewardIds, entry.id],
+        addedRewardIds: [...reveal.addedRewardIds, entry.id],
+        worldChange: progressChange,
       })),
       recentWorldChange: {
         id: 'world-change:older',
@@ -147,11 +159,42 @@ describe('BUG-114 project progress lines', () => {
       rewardTombstones: older.rewardTombstones,
     }));
 
+    const [reveal] = state.pendingRewardReveals;
     expect(progressLines(state)).toEqual([]);
-    expect(state.pendingRewardReveals[0].worldChange.metadata.rewardType).not.toBe('project_progress');
+    expect(reveal.worldChange.metadata.rewardType).not.toBe('project_progress');
+    expect(reveal.addedRewardIds).not.toContain(entry.id);
+    expect(reveal.rewardIds).not.toContain(entry.id);
     expect(state.recentWorldChange).toBeNull();
     expect(getCompanionReaction({ pendingReveal: state.pendingRewardReveals[0] }).dialogueKey)
       .toBe('companion.session.productive-complete');
+  });
+
+  it('does not bring back a cleaned-up +25 when a later Session takes over that day', () => {
+    const later = mainQuestDay(5, { id: 'day-5-later', hour: 12 });
+    settle(days(1, 2, 3, 4));
+    const saved = settle([...days(1, 2, 3, 4, 5), later], { watch: false });
+    const entry = saved.rewardLedger
+      .find(reward => reward.sourceId === 'day-5' && reward.rewardType === 'project_progress');
+    // An older version queued day 5 with +25; the boot reconcile cleans it up.
+    const older = {
+      ...saved,
+      pendingRewardReveals: saved.pendingRewardReveals.map(reveal => (reveal.sourceId === 'day-5' ? {
+        ...reveal,
+        rewards: [...reveal.rewards, { ...entry, direction: 'added' }],
+        rewardIds: [...reveal.rewardIds, entry.id],
+        addedRewardIds: [...reveal.addedRewardIds, entry.id],
+      } : reveal)),
+    };
+    const sessions = [...days(1, 2, 3, 4), later];
+    const state = applyReconciliationToV2State(older, reconcileRewardLedger({
+      sessions,
+      rewardLedger: older.rewardLedger,
+      rewardTombstones: older.rewardTombstones,
+      deletedSourceIds: ['day-5'],
+    }), { queueReveal: true });
+
+    expect(state.activeProject.progress).toBe(100);
+    expect(progressLines(state)).toEqual([]);
   });
 
   it('shows the project moving back when an undo lowers its progress', () => {

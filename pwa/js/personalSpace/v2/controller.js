@@ -175,13 +175,15 @@ function mostImportantReward(rewards) {
 // Reveals and world changes saved before v1.31.9 still show project progress
 // that a Main Quest day past 100% recorded without moving the project
 // (BUG-114). Only the first days up to 100% count toward it.
+// Null when the project is unknown: nothing is then treated as uncounted.
 function countedProgressSourceIds(project = {}) {
-  return new Set((project.contributingSessionIds || []).slice(0, PROJECT_REQUIRED_DAILY_ENTRIES));
+  if (!Array.isArray(project?.contributingSessionIds)) return null;
+  return new Set(project.contributingSessionIds.slice(0, PROJECT_REQUIRED_DAILY_ENTRIES));
 }
 
 function isUncountedProgress(rewardType, direction, sourceId, countedSourceIds) {
-  return rewardType === 'project_progress' && direction !== 'reversed'
-    && !countedSourceIds.has(sourceId);
+  return Boolean(countedSourceIds) && rewardType === 'project_progress'
+    && direction !== 'reversed' && !countedSourceIds.has(sourceId);
 }
 
 function withoutUncountedProgress(reveal, countedSourceIds) {
@@ -191,9 +193,14 @@ function withoutUncountedProgress(reveal, countedSourceIds) {
   if (!Array.isArray(reveal.rewards) || !reveal.rewards.some(isUncounted)) return reveal;
   const rewards = reveal.rewards.filter(reward => !isUncounted(reward));
   if (!rewards.length) return null;
+  // The stored ids follow what the reveal shows, as for new reveals.
+  const removed = new Set(reveal.rewards.filter(isUncounted).map(reward => reward.id));
+  const keep = ids => (Array.isArray(ids) ? ids.filter(id => !removed.has(id)) : ids);
   return {
     ...reveal,
     rewards,
+    rewardIds: keep(reveal.rewardIds),
+    addedRewardIds: keep(reveal.addedRewardIds),
     worldChange: createWorldChange(reveal.id, mostImportantReward(rewards), reveal.createdAt),
   };
 }
@@ -245,6 +252,7 @@ function getRevealContext(state, reconciliation, activeRewardIds) {
     // Past 100% a Main Quest day still records project progress, but the
     // project does not move, so that progress is not shown (BUG-114).
     progressChanged: before.progress !== project.progress,
+    countedSourceIds: countedProgressSourceIds(project),
     unseenRewardIds: new Set((state.pendingRewardReveals || []).flatMap(revealAddedRewardIds)),
   };
 }
@@ -320,7 +328,8 @@ function buildRevealEvents(reconciliation, changeIds, reconciledAt, context) {
   const handover = findHandoverIds([...grouped.values()].flat(), context.unseenRewardIds);
   const isShown = reward => !handover.hidden.has(reward.id)
     && (context.progressChanged || reward.rewardType !== 'project_progress'
-      || handover.inherited.has(reward.id));
+      || (handover.inherited.has(reward.id)
+        && !isUncountedProgress(reward.rewardType, reward.direction, reward.sourceId, context.countedSourceIds)));
 
   return [...grouped.entries()].map(([sourceId, rewards]) => {
     const sortedRewards = [...rewards].sort((left, right) =>
