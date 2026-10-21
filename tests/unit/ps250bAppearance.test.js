@@ -26,6 +26,7 @@ import {
 import { loadPersonalSpaceV2State, savePersonalSpaceV2State } from '../../pwa/js/personalSpace/v2/store.js';
 import { buildPersonalSpaceV2Snapshot, buildHomeWindowViewModel } from '../../pwa/js/personalSpace/v2/viewModels.js';
 import { mountOrbitWindow, renderOrbitWindow } from '../../pwa/js/personalSpace/v2/ui/orbitWindow.js';
+import { describeControl, findControl } from '../../pwa/js/personalSpace/v2/remindWindow.js';
 import {
   APPEARANCE_STYLES,
   readAppearanceChange,
@@ -100,12 +101,26 @@ describe('PS-250B appearance resolution', () => {
 });
 
 describe('PS-250B appearance state', () => {
-  it('starts every state on the default and normalizes stored values', () => {
+  it('stores no choice until the user makes one, so the state follows the default', () => {
     const fresh = createDefaultPersonalSpaceV2State('user-1');
-    expect(fresh.world.appearance).toEqual(resolveWorkspaceVisualState({}).appearance);
-    // A state saved before PS-250B has no choice: the new default (Q style).
-    expect(normalizePersonalSpaceV2State({ ownerId: 'user-1', world: {} }, { ownerId: 'user-1' }).world.appearance)
+    expect(fresh.world.appearance).toBeNull();
+    // A state saved before PS-250B has no choice either; the scene draws the default.
+    const old = normalizePersonalSpaceV2State({ ownerId: 'user-1', world: {} }, { ownerId: 'user-1' });
+    expect(old.world.appearance).toBeNull();
+    expect(resolveWorkspaceVisualState({ appearance: old.world.appearance }).appearance)
       .toEqual({ style: 'toon', protagonistId: 'office', companionId: 'orbit' });
+    expect(normalizePersonalSpaceV2State({ ownerId: 'user-1', world: { appearance: [] } }, { ownerId: 'user-1' })
+      .world.appearance).toBeNull();
+  });
+
+  it('keeps every style the picker offers through normalization', () => {
+    for (const style of APPEARANCE_STYLES) {
+      expect(normalizePersonalSpaceV2State({ ownerId: 'user-1', world: { appearance: { style: style.id } } }, { ownerId: 'user-1' })
+        .world.appearance.style).toBe(style.id);
+    }
+  });
+
+  it('normalizes a stored choice', () => {
     expect(normalizePersonalSpaceV2State({
       ownerId: 'user-1',
       world: { appearance: { style: 'oil', protagonistId: ' artist ', companionId: null } },
@@ -196,16 +211,30 @@ describe('PS-250B Edit Mode picker', () => {
     expect(readAppearanceChange(button)).toEqual({ companionId: 'jelly' });
     button.dataset.v2Appearance = 'other';
     expect(readAppearanceChange(button)).toBeNull();
+    button.dataset.v2Appearance = 'companion';
+    button.setAttribute('aria-pressed', 'true');
+    expect(readAppearanceChange(button)).toBeNull();
 
     const stored = createDefaultPersonalSpaceV2State('user-1');
     stored.worldRevision = 9;
     savePersonalSpaceV2State('user-1', stored);
+    expect(stored.world.appearance).toBeNull();
     saveAppearanceChange('user-1', { style: 'pixel' });
     const saved = saveAppearanceChange('user-1', { protagonistId: 'artist' });
     expect(saved.world.appearance).toEqual({ style: 'pixel', protagonistId: 'artist', companionId: 'orbit' });
     expect(loadPersonalSpaceV2State('user-1').world.appearance).toEqual(saved.world.appearance);
     // Choosing a look is not a world change.
     expect(saved.worldRevision).toBe(9);
+  });
+
+  it('keeps focus on the same option when the reminder window re-renders the page (AI-203B)', () => {
+    const root = document.createElement('div');
+    root.innerHTML = renderAppearancePicker(null);
+    document.body.appendChild(root);
+    const owl = root.querySelector('[data-v2-appearance="companion"][data-value="owl"]');
+    const key = describeControl(root, owl);
+    root.innerHTML = renderAppearancePicker(null);
+    expect(findControl(root, key)).toBe(root.querySelector('[data-v2-appearance="companion"][data-value="owl"]'));
   });
 
   it('does not create a state that was never migrated', () => {

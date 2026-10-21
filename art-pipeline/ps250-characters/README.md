@@ -70,4 +70,4 @@ Cycles reruns are not byte-identical, so render only what changed. WebP encoding
 ## Not in scope
 
 - The pixel versions of these characters, the room and the furniture are PS-250D.
-- No 3D runtime. The app still draws 2D sprites, and the JS budget is unchanged apart from the small catalog module.
+- No 3D runtime. The app still draws 2D sprites; the JS added is the catalog module and the Edit Mode picker (PS-250B).

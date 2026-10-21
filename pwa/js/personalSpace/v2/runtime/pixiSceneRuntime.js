@@ -128,11 +128,27 @@ export function createPixiSceneRuntime(options = {}) {
       textures = await pixi.Assets.load(sceneAssetPaths(scene));
     } catch (error) {
       // PS-250B: only the default characters are precached. A chosen character
-      // that cannot load (offline, not cached yet) is drawn as the default.
+      // that cannot load (offline, not cached yet) is drawn as the default;
+      // the other one stays as chosen when it loads, as in the poster.
       const fallback = getWorkspaceSceneAssets(project.progress || 0, placements, { ...visualState, appearance: null });
-      if (fallback.protagonist === scene.protagonist && fallback.companion.path === scene.companion.path) throw error;
-      scene = fallback;
-      textures = await pixi.Assets.load(sceneAssetPaths(scene));
+      const candidates = [
+        { ...scene, protagonist: fallback.protagonist, protagonistVariant: fallback.protagonistVariant },
+        { ...scene, companion: fallback.companion },
+        fallback,
+      ].filter(candidate => (
+        candidate.protagonist !== scene.protagonist || candidate.companion.path !== scene.companion.path
+      ));
+      textures = null;
+      for (const candidate of candidates) {
+        try {
+          textures = await pixi.Assets.load(sceneAssetPaths(candidate));
+          scene = candidate;
+          break;
+        } catch {
+          // Try the next candidate; the last one is the full default.
+        }
+      }
+      if (!textures) throw error;
     }
     if (
       activeApp !== app

@@ -267,6 +267,15 @@ describe('Personal Space V2 full page', () => {
     container.querySelector('[data-v2-appearance="companion"][data-value="catbot"]').click();
     expect(loadPersonalSpaceV2State('user-1').world.appearance)
       .toEqual({ style: 'toon', protagonistId: 'scientist', companionId: 'catbot' });
+
+    // Under the pixel style, tapping its only (already shown) characters keeps
+    // the Q-style choice, so switching back restores it.
+    container.querySelector('[data-v2-appearance="style"][data-value="pixel"]').click();
+    container.querySelector('[data-v2-appearance="protagonist"][data-value="default"]').click();
+    container.querySelector('[data-v2-appearance="companion"][data-value="orbit-guide"]').click();
+    container.querySelector('[data-v2-appearance="style"][data-value="toon"]').click();
+    expect(loadPersonalSpaceV2State('user-1').world.appearance)
+      .toEqual({ style: 'toon', protagonistId: 'scientist', companionId: 'catbot' });
     expect(poster()).toContain('/toon/protagonist/scientist-');
     expect(container.querySelector('.orbit-window-companion').getAttribute('src')).toContain('/toon/companion/catbot-');
     // Choosing a look grants nothing and leaves the world revision alone.

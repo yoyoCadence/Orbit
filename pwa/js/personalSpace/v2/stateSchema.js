@@ -16,8 +16,9 @@ const DEFAULT_HIDDEN_STATS = Object.freeze({
 
 const PERSONAL_SPACE_WEATHER = new Set(['clear', 'rain']);
 // PS-250B: the character style and characters the user chose in Edit Mode.
-// Local only. assetManifest.js resolves an id that does not exist in the
-// chosen style to that style's default character.
+// Local only. null until the user chooses, so that state follows the app's
+// default; assetManifest.js resolves null, and an id that does not exist in
+// the chosen style, to the defaults.
 const DEFAULT_APPEARANCE = Object.freeze({ style: 'toon', protagonistId: 'office', companionId: 'orbit' });
 const APPEARANCE_STYLES = new Set(['toon', 'pixel']);
 
@@ -50,7 +51,8 @@ function normalizeObjectArray(value) {
 }
 
 function normalizeAppearance(value) {
-  const raw = normalizeObject(value);
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const raw = value;
   return {
     style: APPEARANCE_STYLES.has(raw.style) ? raw.style : DEFAULT_APPEARANCE.style,
     protagonistId: normalizeNullableString(raw.protagonistId) ?? DEFAULT_APPEARANCE.protagonistId,
@@ -93,7 +95,7 @@ export function createDefaultPersonalSpaceV2State(ownerId, options = {}) {
       selectedSceneId: 'rough-room',
       memoryViewSceneId: null,
       selectedThemeId: 'default',
-      appearance: { ...DEFAULT_APPEARANCE },
+      appearance: null,
       placedItems: [],
       idleWindowLayouts: {},
       memorySceneLog: {},

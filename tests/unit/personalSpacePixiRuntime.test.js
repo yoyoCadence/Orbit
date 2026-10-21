@@ -268,17 +268,33 @@ describe('Personal Space V2 Pixi scene runtime', () => {
     expect(paths).toContain('assets/personal-space/v2/characters/toon/protagonist/hoodie-work-left.webp');
     expect(paths).toContain('assets/personal-space/v2/characters/toon/companion/owl-observe.webp');
 
-    // Offline and not cached yet: Pixi rejects the load, the default is drawn.
-    fake.pixi.Assets.load.mockImplementationOnce(async () => {
-      throw new Error('[Loader.load] Failed to load owl-observe.webp');
+    // Offline, and only the chosen companion is cached: Pixi rejects any load
+    // that includes the artist, so the default protagonist is drawn next to
+    // the chosen owl.
+    const load = fake.pixi.Assets.load.getMockImplementation();
+    fake.pixi.Assets.load.mockImplementation(async requested => {
+      if (requested.some(path => path.includes('/artist-'))) throw new Error('[Loader.load] Failed to load artist-work-left.webp');
+      return load(requested);
     });
     await runtime.render({ ...model, appearance: { style: 'toon', protagonistId: 'artist', companionId: 'owl' } });
     [paths] = fake.pixi.Assets.load.mock.calls.at(-1);
     expect(paths).toContain('assets/personal-space/v2/characters/toon/protagonist/office-work-left.webp');
-    expect(paths).toContain('assets/personal-space/v2/characters/toon/companion/orbit-observe.webp');
+    expect(paths).toContain('assets/personal-space/v2/characters/toon/companion/owl-observe.webp');
     const app = fake.applications[0];
     expect(app.stage.children.find(child => child.label === 'orbit-protagonist').texture.path)
       .toContain('office-work-left.webp');
+    expect(app.stage.children.find(child => child.label === 'orbit-companion').texture.path)
+      .toContain('owl-observe.webp');
+
+    // Nothing but the defaults loads: both are drawn as the default.
+    fake.pixi.Assets.load.mockImplementation(async requested => {
+      if (requested.some(path => /\/(artist|fox)-/.test(path))) throw new Error('[Loader.load] offline');
+      return load(requested);
+    });
+    await runtime.render({ ...model, appearance: { style: 'toon', protagonistId: 'artist', companionId: 'fox' } });
+    [paths] = fake.pixi.Assets.load.mock.calls.at(-1);
+    expect(paths).toContain('assets/personal-space/v2/characters/toon/protagonist/office-work-left.webp');
+    expect(paths).toContain('assets/personal-space/v2/characters/toon/companion/orbit-observe.webp');
     runtime.destroy();
   });
 

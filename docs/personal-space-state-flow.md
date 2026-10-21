@@ -140,7 +140,8 @@ Session 刪除或 Undo 會為該 source 建立 tombstone 並撤銷其 entry（`r
 | 動作 | 位置 | 寫入欄位 |
 |---|---|---|
 | Reconcile（§4.1） | `controller.js` → `reconcileAndSavePersonalSpaceV2()` | `economy`、`hiddenStats`、`companion`、`activeProject`、`rewardLedger`、`rewardTombstones`、`pendingRewardReveals`、`worldRevision` |
-| Edit Mode | `pages/personalSpaceV2.js` | **無**。PS-246 起 Edit Mode 只顯示「位置由固定視角的場景決定」的說明，不列出、不調整、也不清除 legacy 擺放；V2 也不套用 `world.placedItems`、`world.idleWindowLayouts` 中的座標 |
+| Edit Mode：工作站佈置 | `pages/personalSpaceV2.js` | **無**。PS-246 起 Edit Mode 只顯示「位置由固定視角的場景決定」的說明，不列出、不調整、也不清除 legacy 擺放；V2 也不套用 `world.placedItems`、`world.idleWindowLayouts` 中的座標 |
+| Edit Mode：風格與角色（PS-250B） | `ui/appearancePicker.js` → `saveAppearanceChange()` | `world.appearance`（`{ style, protagonistId, companionId }`；使用者選擇前是 `null`，以預設顯示）。疊在已存的 state 上寫入；還沒有 V2 state 時不寫入（避免跳過遷移）。不改變 `worldRevision`、ledger 與任何獎勵 |
 | Reveal 確認 | `controller.js` → `consumePersonalSpaceV2Reveal()` | `pendingRewardReveals` |
 | 購買、新增物件、切換場景 | — | **無**（見 §7） |
 
@@ -178,6 +179,7 @@ Session 刪除或 Undo 會為該 source 建立 tombstone 並撤銷其 entry（`r
 | V2 wallet | 否 | 該裝置的 `openingGold` ＋ ledger 的 Gold − `spentGold`（V2 目前不寫入 `spentGold`），因此可能因 `openingGold` 而不同 |
 | V2 `openingGold` | 否 | 每台裝置在自己 finalize 遷移時各算一次：`totalXP` 扣掉 reward epoch 之後的 Session XP，換成 level 後扣掉**該裝置**的 legacy 已花費 Gold。finalize 後不再重算。兩台裝置的值**不保證相同**：finalize 時間之間若有不經 Session 的 XP（例如 `dayCycle.js` 的每週獎勵 +60），或兩台的 legacy 花費不同，結果就會不同 |
 | `ownedItems`、`placedItems`、`selectedSceneId`、layout、memory log | 否 | **只存在該裝置**；換裝置或清除本機資料即遺失 |
+| `world.appearance`（PS-250B 的風格與角色） | 否 | **只存在該裝置**；其他裝置顯示預設（全 Q 版的上班族與 Orbit） |
 
 因此 Project、Companion 與 ledger 內的 Gold 跨裝置一致，來自確定性的重新計算，而不是同步 V2 state 本身；開場 Gold 是例外，見上表。
 
@@ -191,6 +193,7 @@ Session 刪除或 Undo 會為該 source 建立 tombstone 並撤銷其 entry（`r
 | V2 不依 `level` 解鎖場景 | §4.6 | 符合 V2 slice 的固定場景設計；若要恢復 level gate 需另立任務 |
 | Companion `remind` 無法觸發 | `viewModels.js` 讀取 `coreState.missedPatterns`，但沒有任何寫入點 | 已立 `AI-203` |
 | 場景、擺放與物件不跨裝置 | §6 | 現行行為；跨裝置同步需 schema 變更，屬高風險 |
+| 新舊版本混用時，風格與角色的選擇可能遺失 | v1.33.0 之前的 `stateSchema.js` 以固定欄位重建 `world`，會丟掉 `world.appearance`：仍開著舊版分頁時，它的 reconcile 存檔會清掉選擇；改版後約 10 分鐘內若讀到舊的 `stateSchema.js`（INFRA-105），選擇也存不住 | 舊程式無法修正；重新選擇即可。INFRA-105 核准後可縮短後者 |
 
 ---
 

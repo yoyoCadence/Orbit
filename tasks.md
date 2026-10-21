@@ -256,6 +256,11 @@
       - 離線：poster 的 `<img>` 載入失敗時換成預設（`data-fallback-src`），Pixi 的 `Assets.load` 失敗時改載入預設。
       - 完整頁面的 Edit Mode 新增「風格與角色」（新模組 `ui/appearancePicker.js`，只讀既有 export；還沒有 V2 state 時不寫入，避免跳過遷移）。
       - 開發者總覽改以場景解析列出像素角色。
+      - 使用者選擇前 `world.appearance` 是 `null`，以預設顯示；預設以後若改變，沒選過的人會跟著改。
+      - 已知限制：
+        - 新舊版本混用時選擇可能遺失：舊版 `stateSchema.js` 會丟掉 `world.appearance`。見 `docs/personal-space-state-flow.md` §7。
+        - 離線時，沒下載過的角色縮圖在選擇介面中是空白。
+        - 離線退回預設只有單元測試與 e2e 的「圖片載入失敗」模擬，沒有真正的 service worker 離線測試。
     - 給 PS-250B 的備註（已處理）：
       - `sw.js` 的圖片本來就是 cache-first，第一次 fetch 時存入快取，所以「其他選項按需快取」已經成立。PS-250B 要改的是：把 SHELL 的預設角色換成 Q 版；在 JS 端處理離線缺圖時退回預設（Pixi `Assets.load` 失敗、poster 的 `<img>` 載入失敗）。
       - 每次改版 activate 時會刪除舊的快取，所以按需快取的選項在改版後要重新下載；離線時會退回預設。

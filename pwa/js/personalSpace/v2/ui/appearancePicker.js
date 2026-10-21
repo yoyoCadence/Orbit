@@ -85,17 +85,22 @@ function optionMarkup(kind, option, selected, src) {
   return `
     <li>
       <button type="button" data-v2-appearance="${kind}" data-value="${escapeHtml(option.id)}" aria-pressed="${selected}">
-        <img src="${escapeHtml(src)}" alt="" loading="lazy" decoding="async" draggable="false">
+        <img src="${escapeHtml(src)}" alt="" width="72" height="72" loading="lazy" decoding="async" draggable="false">
         <span>${escapeHtml(option.label)}</span>
       </button>
     </li>
   `;
 }
 
-/** The change a picker button asks for, or null for anything else. */
+/**
+ * The change a picker button asks for, or null for anything else. The option
+ * already in effect is no change: under the pixel style that is the only pixel
+ * character, and storing its id would replace the Q-style choice that
+ * switching back restores.
+ */
 export function readAppearanceChange(button) {
   const value = button?.dataset?.value;
-  if (!value) return null;
+  if (!value || button.getAttribute?.('aria-pressed') === 'true') return null;
   const field = { style: 'style', protagonist: 'protagonistId', companion: 'companionId' }[button.dataset.v2Appearance];
   return field ? { [field]: value } : null;
 }
