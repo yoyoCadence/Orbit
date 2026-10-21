@@ -24,6 +24,13 @@ function getLatestValidSession(recentSessions) {
     })[0]?.session ?? null;
 }
 
+// A reveal that only takes rewards back (an undone Session). Kept local:
+// importing a new export across SHELL modules can fail to link while an older
+// copy of the other module is still cached (INFRA-105).
+function isReversalOnlyReveal(reveal) {
+  return reveal?.direction === 'reversal';
+}
+
 function hasSelectedGoal(missedPatterns) {
   if (!missedPatterns) return false;
   if (Array.isArray(missedPatterns)) {
@@ -42,10 +49,20 @@ export function getCompanionReaction({
   recentSessions = [],
   momentum = 'low',
   missedPatterns = null,
-  activeProject = null,
   pendingReveal = null,
 } = {}) {
-  if (isProjectCompletionReveal(pendingReveal, activeProject)) {
+  // Nothing was earned, so neither congratulate nor approach (BUG-113); this
+  // also wins over a productive Session earlier the same day.
+  if (isReversalOnlyReveal(pendingReveal)) {
+    return freezeReaction({
+      state: 'observe',
+      dialogueKey: 'companion.observe',
+      animationKey: 'observe',
+      worldAction: null,
+    });
+  }
+
+  if (isProjectCompletionReveal(pendingReveal)) {
     return freezeReaction({
       state: 'congratulate',
       dialogueKey: 'companion.project.workspace-upgrade.complete',

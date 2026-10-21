@@ -14,6 +14,11 @@
 
 ## Backlog
 
+- [ ] **BUG-114** 專案已到 100% 後，reveal 仍顯示專案進度的增減
+  - 問題（BUG-113 發現，2026-10-21）：工作站完成後，每個 Main Quest 日仍得到 `project_progress +25`，reveal 顯示 `workspace-upgrade +25`，但進度停在 100%（`projectEngine.js` 把總和截在 100）。撤銷完成那一天、由下一天接手時，reveal 顯示 `workspace-upgrade -25`，進度也仍是 100%。
+  - 方向：與 BUG-113 的解鎖與關係相同，只顯示真的改變進度的專案進度行（比較前後的 `activeProject.progress`），或在完成後不再給專案進度。後者會改變 reward 規則與 ledger，要先提案。
+  - 只是顯示問題：Gold、Main Quest 與 hidden stats 的增減都正確。
+
 - [ ] **HW-112** 佐證圖片雲端同步（Supabase Storage）
   - Goal: upload proof photos to Supabase Storage so they persist across devices and app reinstalls.
   - Scope: `platform/badge.js` → new `pwa/js/platform/proofStorage.js` adapter; bucket `orbit-proof`, path `{user_id}/{sessionId}.jpg`; RLS: SELECT/INSERT/DELETE scoped to `auth.uid()`; use existing `compressImage()` output; graceful fallback to localStorage-only for guests.
@@ -221,23 +226,6 @@
 
 ## In Progress
 
-- [ ] **BUG-113** 專案完成與撤銷的 reveal 讓 Companion 重複恭喜
-  - 問題（AI-202 提案與其獨立 review 發現，2026-10-20；以 `reconcileRewardLedger` ＋ `applyReconciliationToV2State` ＋ `getCompanionReaction` 重現）：「專案完成」與 `major` 的判斷不看 reward 是加入還是撤銷，也不看專案原本是否已完成。
-    - 專案完成後，每個 Main Quest 日的 reveal 都讓 Companion 再說「工作站完成了」：`revealSelectors.js` `isProjectCompletionReveal()` 的第二個條件是「進度 ≥ 100 且 reveal 含 `project_progress:workspace-upgrade`」，而 winner 每天都會得到 `project_progress +25`。
-    - 專案完成後撤銷任何一個 Main Quest 日，reversal reveal 也讓 Companion 恭喜。
-    - 撤銷完成那一天時，`hasCompletionReward` 不看方向，Companion 在撤銷時說「工作站完成了」。
-    - 撤銷第 4 天、由第 5 天承接時，兩個 reveal 都是 `major` 並恭喜（`revealKind()` 對加入或撤銷的 `relationship`／`world_unlock` 都回傳 `major`）。
-    - `selectProtagonistState()` 在 reversal 時也做慶祝動作。
-  - 來源：第二個條件是 068af89 的文字判斷（`progress >= 100` 且文字含 `workspace-upgrade`），在 4aefa27 改寫時保留；沒有單元測試涵蓋它。`buildRevealEvents()` 產生的 reveal 都帶有型別化的 rewards。
-  - 方向：
-    - 「專案完成」由 `applyReconciliationToV2State()` 比較前後的 `activeProject.completed`（false → true）決定，記在 reveal 上；selector 不再從 reward 內容推測；
-    - `revealKind()` 只把**加入**的、且真的改變狀態的解鎖與關係算成 `major`；
-    - 只含被撤銷 reward 的 reveal → Companion 為 `observe`，並在此結束，排在專案完成、進度與「最新 Session」分支之前（現在 `isQuestOrProjectProgressReveal()` 不看方向，撤銷時會說「工作空間改變了…」；就算忽略撤銷，當天另有 Session 時也會變成 `approach`）；主角不慶祝；
-    - 只是換一天承接時，不顯示解鎖或關係的行。
-  - 回歸測試（在修正前會失敗）：第 5 天的 reveal；專案完成後撤銷第 6 天；撤銷第 4 天（有與沒有第 5 天）。撤銷時（包括當天另有有效 Session）Companion 是 `observe`＋`companion.observe`，既不是 `congratulate` 也不是 `approach`；主角不慶祝。
-  - 影響 AI-202B：階段變化的 reveal 依賴這個修正（提案 §3.4、§9 第 9 點）。
-  - In progress（2026-10-21）：實作修正與回歸測試。
-
 - [ ] **PS-248** 以 Blender 擴充「空間」的主題與素材（提案）
   - 使用者 2026-10-20 要求：「需要更新更多 blender 做的主題與素材等，讓本工具更豐富」。
   - 現況：
@@ -295,6 +283,31 @@
 ---
 
 ## Done
+
+- [x] **BUG-113** 專案完成與撤銷的 reveal 讓 Companion 重複恭喜
+  - 問題（AI-202 提案與其獨立 review 發現，2026-10-20；以 `reconcileRewardLedger` ＋ `applyReconciliationToV2State` ＋ `getCompanionReaction` 重現）：「專案完成」與 `major` 的判斷不看 reward 是加入還是撤銷，也不看專案原本是否已完成。
+    - 專案完成後，每個 Main Quest 日的 reveal 都讓 Companion 再說「工作站完成了」：`revealSelectors.js` `isProjectCompletionReveal()` 的第二個條件是「進度 ≥ 100 且 reveal 含 `project_progress:workspace-upgrade`」，而 winner 每天都會得到 `project_progress +25`。
+    - 專案完成後撤銷任何一個 Main Quest 日，reversal reveal 也讓 Companion 恭喜。
+    - 撤銷完成那一天時，`hasCompletionReward` 不看方向，Companion 在撤銷時說「工作站完成了」。
+    - 撤銷第 4 天、由第 5 天承接時，兩個 reveal 都是 `major` 並恭喜（`revealKind()` 對加入或撤銷的 `relationship`／`world_unlock` 都回傳 `major`）。
+    - `selectProtagonistState()` 在 reversal 時也做慶祝動作。
+  - 來源：第二個條件是 068af89 的文字判斷（`progress >= 100` 且文字含 `workspace-upgrade`），在 4aefa27 改寫時保留；沒有單元測試涵蓋它。`buildRevealEvents()` 產生的 reveal 都帶有型別化的 rewards。
+  - 方向：
+    - 「專案完成」由 `applyReconciliationToV2State()` 比較前後的 `activeProject.completed`（false → true）決定，記在 reveal 上；selector 不再從 reward 內容推測；
+    - `revealKind()` 只把**加入**的、且真的改變狀態的解鎖與關係算成 `major`；
+    - 只含被撤銷 reward 的 reveal → Companion 為 `observe`，並在此結束，排在專案完成、進度與「最新 Session」分支之前（現在 `isQuestOrProjectProgressReveal()` 不看方向，撤銷時會說「工作空間改變了…」；就算忽略撤銷，當天另有 Session 時也會變成 `approach`）；主角不慶祝；
+    - 只是換一天承接時，不顯示解鎖或關係的行。
+  - 回歸測試（在修正前會失敗）：第 5 天的 reveal；專案完成後撤銷第 6 天；撤銷第 4 天（有與沒有第 5 天）。撤銷時（包括當天另有有效 Session）Companion 是 `observe`＋`companion.observe`，既不是 `congratulate` 也不是 `approach`；主角不慶祝。
+  - 影響 AI-202B：階段變化的 reveal 依賴這個修正（提案 §3.4、§9 第 9 點）。
+  - In progress（2026-10-21）：實作修正與回歸測試。
+  - 完成（2026-10-21，v1.31.8）：
+    - `controller.js`：`applyReconciliationToV2State()` 比較前後的 `activeProject.completed`，在完成那一天的 reveal 記上 `projectCompleted: true`。比較前後啟用的解鎖與關係點數：沒有改變狀態的解鎖與關係（換一天承接完成）不顯示、不算 `major`；只剩這些的 reveal 不排入。`revealKind()` 只把加入的解鎖與關係算成 `major`。
+    - `revealSelectors.js`：完成只看 `projectCompleted`；沒有這個欄位的舊 reveal 只認加入的解鎖。進度與世界進度只看加入的 reward。
+    - `companionEngine.js`：只含撤銷的 reveal（`direction: 'reversal'`）→ `observe`＋`companion.observe`，排在所有分支之前。
+    - `runtime/pixiSceneRuntime.js`：撤銷的 reveal 不讓主角跳動（原本任何 reveal 都會）。
+    - 為了 INFRA-105，沒有在既有 SHELL 模組之間新增 import／export：判斷寫在各自的模組內。
+    - 測試：`tests/unit/bug113RevealReactions.test.js`（以真實的 reconcile 重現四個情境，加上 selector 的舊 reveal 相容）與 Pixi 的跳動測試；以修正前的程式碼執行時都會失敗。
+    - 另外發現：專案已到 100% 後，進度 reward 的行仍顯示 `workspace-upgrade +25`／`-25`，見 BUG-114。
 
 - [x] **INFRA-106** 查明 Focus 提前結束 e2e 的間歇性逾時
   - 問題：`tests/e2e/flows.test.js` 的「Focus 計時流程」提前結束兩個測試（:175、:189）在 CI 上偶發 `Test timeout of 15000ms exceeded`，與 PR 內容無關；本機較快，先前沒有重現。

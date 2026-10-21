@@ -3,6 +3,20 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.31.8] - 2026-10-21
+
+### Fixed
+- **Companion 不再在工作站完成後一再恭喜，撤銷 Session 時也不再慶祝（BUG-113）**：「專案完成」與「世界里程碑」原本只看 reveal 裡有哪些 reward，不看 reward 是加入還是撤銷，也不看專案原本是否已完成。
+  - 工作站完成後，之後每一天的 Main Quest 都讓 Companion 再說一次「工作站完成了」。現在只有讓專案從未完成變成完成的那一天會恭喜；之後的日子是一般的進度。
+  - 撤銷任何一個 Session 時，Companion 不再恭喜或靠近，而是安靜地觀察，主角也不再慶祝（包括當天另有其他有效 Session 時）。撤銷的 reveal 不再顯示「世界里程碑已解鎖」。
+  - 撤銷完成那一天、由下一天接手完成時，工作站仍然完成，關係也沒有改變，所以不再顯示解鎖與關係的增減，也不再多出一個「世界里程碑」。
+  - 舊版本或其他分頁留下、沒有新標記的 reveal 仍能辨識真正的完成，但被撤銷的完成不算。
+
+### Validation
+- 單元測試以真實的 ledger reconcile 重現：完成那一天恭喜一次；完成後的第 5 天是進度；完成後撤銷第 6 天（當天另有 Session）；撤銷第 4 天（有與沒有第 5 天）。撤銷時 Companion 是 `observe`＋`companion.observe`，主角不慶祝，Pixi 場景的主角也不跳動。以修正前的程式碼執行時這些測試都會失敗。
+
+---
+
 ## [1.31.7] - 2026-10-20
 
 ### Fixed

@@ -148,8 +148,10 @@ function stableHash(value) {
 }
 
 function revealKind(rewards) {
-  if (rewards.some(reward =>
-    reward.rewardType === 'world_unlock' || reward.rewardType === 'relationship')) {
+  // Only an unlock or relationship the world actually gained is a milestone;
+  // taking one back is not (BUG-113).
+  if (rewards.some(reward => reward.direction === 'added' && (
+    reward.rewardType === 'world_unlock' || reward.rewardType === 'relationship'))) {
     return 'major';
   }
   if (rewards.some(reward =>
@@ -189,7 +191,40 @@ function createWorldChange(revealId, reward, createdAt) {
   };
 }
 
-function buildRevealEvents(reconciliation, changeIds, reconciledAt) {
+function activeUnlockKeys(entries) {
+  return new Set(entries
+    .filter(entry => entry.rewardType === 'world_unlock')
+    .map(entry => entry.rewardKey));
+}
+
+// What this reconciliation changed beyond individual ledger entries. When an
+// undo moves the project completion to another day, that day gains the same
+// unlock and relationship the undone day loses: nothing changes for the user.
+function getRevealContext(state, reconciliation, relationshipPoints) {
+  const before = activeUnlockKeys(activeCurrentRulesetEntries(state));
+  const after = activeUnlockKeys(activeCurrentRulesetEntries({
+    ...state,
+    rewardLedger: reconciliation.ledger,
+    rewardTombstones: reconciliation.tombstones,
+  }));
+  const project = reconciliation.project || {};
+  return {
+    changedUnlockKeys: new Set([...before, ...after]
+      .filter(key => before.has(key) !== after.has(key))),
+    relationshipChanged: relationshipPoints !== relationshipPointsForState(state.companion),
+    completedSourceId: !state.activeProject?.completed && project.completed
+      ? project.completedBySessionId || null
+      : null,
+  };
+}
+
+function isHandoverReward(reward, context) {
+  if (reward.rewardType === 'world_unlock') return !context.changedUnlockKeys.has(reward.rewardKey);
+  if (reward.rewardType === 'relationship') return !context.relationshipChanged;
+  return false;
+}
+
+function buildRevealEvents(reconciliation, changeIds, reconciledAt, context) {
   const entryById = new Map(reconciliation.ledger.map(entry => [entry.id, entry]));
   const grouped = new Map();
   const addToGroup = (id, direction) => {
@@ -218,6 +253,10 @@ function buildRevealEvents(reconciliation, changeIds, reconciledAt) {
     const sortedRewards = [...rewards].sort((left, right) =>
       left.direction.localeCompare(right.direction) || left.id.localeCompare(right.id),
     );
+    // Handovers stay in the ids below, so the reveal still tracks the ledger,
+    // but are not shown; a reveal with nothing else is not queued.
+    const shownRewards = sortedRewards.filter(reward => !isHandoverReward(reward, context));
+    if (!shownRewards.length) return null;
     const signature = sortedRewards
       .map(reward => `${reward.direction}:${reward.id}`)
       .join('|');
@@ -230,7 +269,7 @@ function buildRevealEvents(reconciliation, changeIds, reconciledAt) {
       ? reconciledAt
       : sourceOccurredAt;
     const id = `reveal:${RULESET_ID}:${sourceId}:${stableHash(signature)}`;
-    const importantReward = mostImportantReward(sortedRewards);
+    const importantReward = mostImportantReward(shownRewards);
     const addedRewardIds = sortedRewards
       .filter(reward => reward.direction === 'added')
       .map(reward => reward.id);
@@ -240,19 +279,20 @@ function buildRevealEvents(reconciliation, changeIds, reconciledAt) {
     return {
       id,
       sourceId,
-      kind: revealKind(sortedRewards),
+      kind: revealKind(shownRewards),
       direction: addedRewardIds.length && reversedRewardIds.length
         ? 'mixed'
         : addedRewardIds.length ? 'settlement' : 'reversal',
       rewardIds: sortedRewards.map(reward => reward.id),
       addedRewardIds,
       reversedRewardIds,
-      rewards: sortedRewards,
+      rewards: shownRewards,
+      projectCompleted: sourceId === context.completedSourceId,
       createdAt,
       sourceOccurredAt,
       worldChange: createWorldChange(id, importantReward, createdAt),
     };
-  }).sort((left, right) =>
+  }).filter(Boolean).sort((left, right) =>
     String(left.sourceOccurredAt).localeCompare(String(right.sourceOccurredAt)) ||
     String(left.createdAt).localeCompare(String(right.createdAt)) ||
     left.id.localeCompare(right.id),
@@ -325,7 +365,12 @@ export function applyReconciliationToV2State(state, reconciliation, options = {}
   const relationshipPoints = relationshipBaseline + finiteNonNegative(newSummary.relationship);
   const changeIds = getEffectiveChangeIds(state, reconciliation);
   const revealEvents = options.queueReveal === true
-    ? buildRevealEvents(reconciliation, changeIds, options.reconciledAt)
+    ? buildRevealEvents(
+      reconciliation,
+      changeIds,
+      options.reconciledAt,
+      getRevealContext(state, reconciliation, relationshipPoints),
+    )
     : [];
   const activeRewardIds = new Set(listActiveRewards(
     reconciliation.ledger,
