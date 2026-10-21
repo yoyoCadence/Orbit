@@ -118,9 +118,10 @@ describe('BUG-113 project completion and reversal reveals', () => {
     const reveal = revealFor(previous, state, 'day-5');
 
     expect(reveal).toMatchObject({ projectCompleted: false, kind: 'medium' });
-    expect(reactionTo(reveal, state)).toMatchObject({
+    // The workspace no longer changes past 100% (BUG-114): the day's Session line.
+    expect(reactionTo(reveal, state, [mainQuestDay(5)])).toMatchObject({
       state: 'approach',
-      dialogueKey: 'companion.project.workspace-upgrade.progress',
+      dialogueKey: 'companion.session.productive-complete',
     });
   });
 
@@ -220,7 +221,7 @@ describe('BUG-113 project completion and reversal reveals', () => {
     const reveal = revealFor(previous, state, 'day-6-later');
 
     expect(rewardTypes(reveal)).toEqual(expect.arrayContaining(['added:gold', 'added:quest_progress']));
-    expect(reactionTo(reveal, state).state).toBe('approach');
+    expect(reactionTo(reveal, state, [later]).state).toBe('approach');
     // The undone Session's Main Quest was never seen, so its loss is not shown.
     const shown = newReveals(previous, state).flatMap(rewardTypes);
     expect(shown).not.toContain('reversed:gold');

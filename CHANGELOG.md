@@ -3,6 +3,19 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.31.9] - 2026-10-21
+
+### Fixed
+- **工作站完成後，不再顯示不會動的專案進度（BUG-114）**：完成後每個 Main Quest 日仍記錄專案進度 +25，reveal 顯示 `workspace-upgrade +25`，Companion 也說「工作空間改變了…」，但進度一直停在 100%。撤銷完成後的任何一天（仍有至少 4 個 Main Quest 日）也顯示 `-25`。
+  - 現在只有專案進度真的改變時，reveal 才顯示專案進度的增減；Gold、Main Quest 與 hidden stats 照常顯示。
+  - Companion 的「工作空間改變了，下一個有用的步驟已經看得見。」只在 reveal 顯示專案前進時出現；完成後的 Main Quest 日改用當天 Session 的台詞「這次行動在空間裡留下了痕跡。」（AI-204 已核准的台詞，沒有新增文案）。
+  - 主角仍會為 Main Quest 慶祝，因為 Main Quest 本身是進度。
+
+### Validation
+- 單元測試：100% 之前的進度照常顯示；完成後的 Main Quest 日不顯示專案進度，Companion 用當天 Session 的台詞；完成後撤銷第 6 天、撤銷由第 5 天接手的第 4 天，都不顯示專案進度；撤銷使進度下降時照常顯示 `-25`。後兩種 100% 以後的情境以修正前的程式碼執行時會失敗。
+
+---
+
 ## [1.31.8] - 2026-10-21
 
 ### Fixed

@@ -200,19 +200,27 @@ function isQueuedCompletionReveal(reveal) {
   ));
 }
 
-// The project counts as complete before this reconciliation only if the
-// ledger says so (the stored activeProject can disagree) and the user has seen
-// it: when the completion moves to another Session before its reveal played,
-// the queued reveal no longer holds and that Session's reveal is the completion.
-function getCompletedSourceId(state, reconciliation, activeRewardIds) {
+// What this reconciliation changed for the user beyond its ledger entries.
+// The project before it is read from the ledger; the stored activeProject can
+// disagree.
+function getRevealContext(state, reconciliation, activeRewardIds) {
   const before = deriveActiveProject(activeCurrentRulesetEntries(state), []);
+  const project = reconciliation.project || {};
+  // Complete only if the user has also seen it: when the completion moves to
+  // another Session before its reveal played, the queued reveal no longer
+  // holds and that Session's reveal is the completion.
   const completionUnseen = (state.pendingRewardReveals || []).some(reveal => (
     isQueuedCompletionReveal(reveal) && !revealMatchesActiveLedger(reveal, activeRewardIds)
   ));
-  const project = reconciliation.project || {};
-  return !(before.completed && !completionUnseen) && project.completed
-    ? project.completedBySessionId || null
-    : null;
+  return {
+    completedSourceId: !(before.completed && !completionUnseen) && project.completed
+      ? project.completedBySessionId || null
+      : null,
+    // Past 100% a Main Quest day still records project progress, but the
+    // project does not move, so that progress is not shown (BUG-114).
+    progressChanged: before.progress !== project.progress,
+    unseenRewardIds: new Set((state.pendingRewardReveals || []).flatMap(revealAddedRewardIds)),
+  };
 }
 
 // Rewards that only move between Sessions keep the same type, key and amount:
@@ -252,7 +260,7 @@ function findHandoverIds(rewards, unseenRewardIds) {
   return ids;
 }
 
-function buildRevealEvents(reconciliation, changeIds, reconciledAt, completedSourceId, unseenRewardIds) {
+function buildRevealEvents(reconciliation, changeIds, reconciledAt, context) {
   const entryById = new Map(reconciliation.ledger.map(entry => [entry.id, entry]));
   const grouped = new Map();
   const addToGroup = (id, direction) => {
@@ -276,15 +284,17 @@ function buildRevealEvents(reconciliation, changeIds, reconciledAt, completedSou
 
   changeIds.added.forEach(id => addToGroup(id, 'added'));
   changeIds.reversed.forEach(id => addToGroup(id, 'reversed'));
-  const handoverIds = findHandoverIds([...grouped.values()].flat(), unseenRewardIds);
+  const handoverIds = findHandoverIds([...grouped.values()].flat(), context.unseenRewardIds);
+  const isShown = reward => !handoverIds.has(reward.id)
+    && (context.progressChanged || reward.rewardType !== 'project_progress');
 
   return [...grouped.entries()].map(([sourceId, rewards]) => {
     const sortedRewards = [...rewards].sort((left, right) =>
       left.direction.localeCompare(right.direction) || left.id.localeCompare(right.id),
     );
     // A reveal shows, and is kept in step with the ledger by, what changed for
-    // the user; a reveal of handovers only is not queued.
-    const shownRewards = sortedRewards.filter(reward => !handoverIds.has(reward.id));
+    // the user; a reveal of nothing else is not queued.
+    const shownRewards = sortedRewards.filter(isShown);
     if (!shownRewards.length) return null;
     const signature = sortedRewards
       .map(reward => `${reward.direction}:${reward.id}`)
@@ -316,7 +326,7 @@ function buildRevealEvents(reconciliation, changeIds, reconciledAt, completedSou
       addedRewardIds,
       reversedRewardIds,
       rewards: shownRewards,
-      projectCompleted: sourceId === completedSourceId,
+      projectCompleted: sourceId === context.completedSourceId,
       createdAt,
       sourceOccurredAt,
       worldChange: createWorldChange(id, importantReward, createdAt),
@@ -406,8 +416,7 @@ export function applyReconciliationToV2State(state, reconciliation, options = {}
       reconciliation,
       changeIds,
       options.reconciledAt,
-      getCompletedSourceId(state, reconciliation, activeRewardIds),
-      new Set((state.pendingRewardReveals || []).flatMap(revealAddedRewardIds)),
+      getRevealContext(state, reconciliation, activeRewardIds),
     )
     : [];
   const retainedRevealQueue = (state.pendingRewardReveals || [])

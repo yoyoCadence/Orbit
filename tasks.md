@@ -221,13 +221,6 @@
 
 ## In Progress
 
-- [ ] **BUG-114** 專案已到 100% 後，reveal 仍顯示專案進度的增減
-  - 問題（BUG-113 發現，2026-10-21）：工作站完成後，每個 Main Quest 日仍得到 `project_progress +25`，reveal 顯示 `workspace-upgrade +25`，但進度停在 100%（`projectEngine.js` 把總和截在 100）。撤銷完成那一天、由下一天接手時，reveal 顯示 `workspace-upgrade -25`，進度也仍是 100%。
-  - 方向：與 BUG-113 的解鎖與關係相同，只顯示真的改變進度的專案進度行（比較前後的 `activeProject.progress`），或在完成後不再給專案進度。後者會改變 reward 規則與 ledger，要先提案。
-  - 同樣地，完成後撤銷任何一天（仍有至少 4 個 Main Quest 日）都顯示 `-25`，進度仍是 100%。完成後 Companion 的「工作空間改變了…」與主角的慶祝也來自這些 reward。
-  - 只是顯示問題：Gold、Main Quest 與 hidden stats 的增減都正確。
-  - In progress（2026-10-21）：採用第一個方向（只顯示真的改變進度的專案進度行，不改 reward 規則）；Companion 的「工作空間改變了…」只在 reveal 顯示專案進度時出現。
-
 - [ ] **PS-248** 以 Blender 擴充「空間」的主題與素材（提案）
   - 使用者 2026-10-20 要求：「需要更新更多 blender 做的主題與素材等，讓本工具更豐富」。
   - 現況：
@@ -285,6 +278,18 @@
 ---
 
 ## Done
+
+- [x] **BUG-114** 專案已到 100% 後，reveal 仍顯示專案進度的增減
+  - 問題（BUG-113 發現，2026-10-21）：工作站完成後，每個 Main Quest 日仍得到 `project_progress +25`，reveal 顯示 `workspace-upgrade +25`，但進度停在 100%（`projectEngine.js` 把總和截在 100）。撤銷完成那一天、由下一天接手時，reveal 顯示 `workspace-upgrade -25`，進度也仍是 100%。
+  - 方向：與 BUG-113 的解鎖與關係相同，只顯示真的改變進度的專案進度行（比較前後的 `activeProject.progress`），或在完成後不再給專案進度。後者會改變 reward 規則與 ledger，要先提案。
+  - 同樣地，完成後撤銷任何一天（仍有至少 4 個 Main Quest 日）都顯示 `-25`，進度仍是 100%。完成後 Companion 的「工作空間改變了…」與主角的慶祝也來自這些 reward。
+  - 只是顯示問題：Gold、Main Quest 與 hidden stats 的增減都正確。
+  - In progress（2026-10-21）：採用第一個方向（只顯示真的改變進度的專案進度行，不改 reward 規則）；Companion 的「工作空間改變了…」只在 reveal 顯示專案進度時出現。
+  - 完成（2026-10-21，v1.31.9）：
+    - `controller.js`：`getRevealContext()` 以 ledger 比較 reconcile 前後的 `activeProject.progress`；沒有改變時，專案進度的 reward 不顯示、不用來比對 ledger（與 BUG-113 的承接相同）。reward 規則與 ledger 不變。
+    - `companionEngine.js`：「工作空間改變了…」只在 reveal 顯示（加入的）專案進度時出現；否則落到當天 Session 的分支（AI-204 已核准的「這次行動在空間裡留下了痕跡。」）。
+    - 測試：`tests/unit/bug114ProjectProgressLines.test.js`；`bug113RevealReactions.test.js` 中完成後的第 5 天改為 Session 的台詞。
+    - 未處理（少見）：同一次 reconcile 中多個 Main Quest 日一起讓進度改變（例如 75% 時第 4、5 天一起加入），兩筆 `+25` 都會顯示，雖然進度只增加 25。
 
 - [x] **BUG-113** 專案完成與撤銷的 reveal 讓 Companion 重複恭喜
   - 問題（AI-202 提案與其獨立 review 發現，2026-10-20；以 `reconcileRewardLedger` ＋ `applyReconciliationToV2State` ＋ `getCompanionReaction` 重現）：「專案完成」與 `major` 的判斷不看 reward 是加入還是撤銷，也不看專案原本是否已完成。
