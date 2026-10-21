@@ -3,16 +3,18 @@
  *
  * BUG-113: a completed project made every later Main Quest reveal, and every
  * reversal, look like the completion. The reactions now follow what the
- * reconciliation actually changed: the reveal that completed the project is
- * flagged when `activeProject.completed` goes false → true, only added
- * unlocks and relationship that change state are `major`, and a reveal that
- * only takes rewards back leaves the Companion observing.
+ * reconciliation changed for the user: the reveal of the Session that took the
+ * project from incomplete to complete (by the ledger, as last seen) is flagged,
+ * rewards that only move to another Session are not shown, only added unlocks
+ * and relationship are `major`, and a reveal that only takes rewards back
+ * leaves the Companion observing.
  */
 
 import { beforeEach, describe, expect, it } from 'vitest';
 import { REWARD_EPOCH } from '../../pwa/js/personalSpace/v2/config.js';
 import {
   applyReconciliationToV2State,
+  consumePersonalSpaceV2Reveal,
   reconcileAndSavePersonalSpaceV2,
 } from '../../pwa/js/personalSpace/v2/controller.js';
 import { getCompanionReaction } from '../../pwa/js/personalSpace/v2/companionEngine.js';
@@ -61,6 +63,13 @@ function settle(sessions, extra = {}) {
 
 function undo(remaining, day) {
   return settle(remaining, { deletedSourceIds: [typeof day === 'number' ? `day-${day}` : day] });
+}
+
+// The user has watched every queued reveal.
+function seeAll(state) {
+  return state.pendingRewardReveals.reduce((current, reveal) => (
+    consumePersonalSpaceV2Reveal({ user: currentUser, revealId: reveal.id }).state
+  ), state);
 }
 
 // Reveals this reconciliation queued; earlier ones may still be waiting.
@@ -150,7 +159,7 @@ describe('BUG-113 project completion and reversal reveals', () => {
   });
 
   it('hands completion to the next day without an unlock or relationship line', () => {
-    const previous = settle(days(5));
+    const previous = seeAll(settle(days(5)));
     const remaining = days(5).filter(session => session.id !== 'day-4');
     const state = undo(remaining, 4);
     const reversal = revealFor(previous, state, 'day-4');
@@ -172,7 +181,7 @@ describe('BUG-113 project completion and reversal reveals', () => {
     // Undoing the day's winner makes the next Session that day the winner: it
     // gains the same Main Quest bundle the undone one loses.
     const later = mainQuestDay(6, { id: 'day-6-later', hour: 12 });
-    const previous = settle([...days(6), later]);
+    const previous = seeAll(settle([...days(6), later]));
     const state = undo([...days(5), later], 6);
     const reveals = newReveals(previous, state);
 
@@ -189,11 +198,12 @@ describe('BUG-113 project completion and reversal reveals', () => {
 
   it('hands the completing day to a later Session that day without celebrating it', () => {
     const later = mainQuestDay(4, { id: 'day-4-later', hour: 12 });
-    const previous = settle([...days(4), later]);
+    const previous = seeAll(settle([...days(4), later]));
     const state = undo([...days(3), later], 4);
     const reveals = newReveals(previous, state);
 
     expect(state.activeProject).toMatchObject({ completed: true, completedBySessionId: 'day-4-later' });
+    expect(reveals.map(reveal => reveal.sourceId)).toEqual(['day-4-later']);
     expect(reveals.every(reveal => reveal.kind !== 'major' && !reveal.projectCompleted)).toBe(true);
     for (const reveal of reveals) {
       expect(reactionTo(reveal, state, [later]).state).toBe('observe');
@@ -201,17 +211,48 @@ describe('BUG-113 project completion and reversal reveals', () => {
     }
   });
 
-  it('decides the completion from the ledger even when the stored project lags behind', () => {
-    const three = settle(days(3));
-    const stale = { ...three, activeProject: { ...three.activeProject, completed: true } };
-    const reconciliation = reconcileRewardLedger({
-      sessions: days(4),
-      rewardLedger: stale.rewardLedger,
-      rewardTombstones: stale.rewardTombstones,
-    });
-    const state = applyReconciliationToV2State(stale, reconciliation, { queueReveal: true });
+  it('shows the day\'s Main Quest when it moves to a later Session before its reveal played', () => {
+    const later = mainQuestDay(6, { id: 'day-6-later', hour: 12 });
+    seeAll(settle(days(5)));
+    settle(days(6));
+    const previous = settle([...days(6), later]);
+    const state = undo([...days(5), later], 6);
+    const reveal = revealFor(previous, state, 'day-6-later');
 
-    expect(revealFor(stale, state, 'day-4')).toMatchObject({ projectCompleted: true, kind: 'major' });
+    expect(rewardTypes(reveal)).toEqual(expect.arrayContaining(['added:gold', 'added:quest_progress']));
+    expect(reactionTo(reveal, state).state).toBe('approach');
+  });
+
+  it('celebrates the day that takes over a completion whose reveal has not played', () => {
+    const previous = settle(days(5));
+    const remaining = days(5).filter(session => session.id !== 'day-4');
+    const state = undo(remaining, 4);
+    const reveal = revealFor(previous, state, 'day-5');
+
+    expect(reveal).toMatchObject({ projectCompleted: true, kind: 'major' });
+    expect(reactionTo(reveal, state).state).toBe('congratulate');
+  });
+
+  it('decides the completion from the ledger, not from the stored project', () => {
+    const replay = (state, sessions) => applyReconciliationToV2State(
+      state,
+      reconcileRewardLedger({
+        sessions,
+        rewardLedger: state.rewardLedger,
+        rewardTombstones: state.rewardTombstones,
+      }),
+      { queueReveal: true },
+    );
+
+    const three = settle(days(3));
+    const storedAhead = { ...three, activeProject: { ...three.activeProject, completed: true } };
+    expect(revealFor(storedAhead, replay(storedAhead, days(4)), 'day-4'))
+      .toMatchObject({ projectCompleted: true, kind: 'major' });
+
+    const four = seeAll(settle(days(4)));
+    const storedBehind = { ...four, activeProject: { ...four.activeProject, completed: false } };
+    expect(revealFor(storedBehind, replay(storedBehind, days(5)), 'day-5'))
+      .toMatchObject({ projectCompleted: false, kind: 'medium' });
   });
 });
 

@@ -192,11 +192,15 @@ function createWorldChange(revealId, reward, createdAt) {
 }
 
 // The project counts as complete before this reconciliation only if the
-// ledger says so; the stored activeProject can lag behind it.
+// ledger says so (the stored activeProject can disagree) and the user has seen
+// it: when the completion moves to another Session before its reveal played,
+// that Session's reveal is the completion.
 function getCompletedSourceId(state, reconciliation) {
   const before = deriveActiveProject(activeCurrentRulesetEntries(state), []);
+  const completionUnseen = (state.pendingRewardReveals || [])
+    .some(reveal => reveal?.projectCompleted === true);
   const project = reconciliation.project || {};
-  return !before.completed && project.completed
+  return !(before.completed && !completionUnseen) && project.completed
     ? project.completedBySessionId || null
     : null;
 }
@@ -207,18 +211,22 @@ function getCompletedSourceId(state, reconciliation) {
 function handoverKey(reward) {
   const tier = reward.metadata?.tier;
   const base = `${reward.rewardType}|${reward.rewardKey}|${reward.amount}`;
-  if (tier === 'daily-main-quest') return `${base}|${reward.metadata?.sessionDate || ''}`;
+  if (tier === 'daily-main-quest') {
+    return reward.metadata?.sessionDate ? `${base}|${reward.metadata.sessionDate}` : null;
+  }
   if (tier === 'project-completion') return base;
   return null;
 }
 
 // An added and a reversed copy of the same reward in one reconciliation change
-// nothing for the user, so neither is shown.
-function findHandoverIds(rewards) {
+// nothing for the user, so neither is shown. A reward whose reveal has not
+// played yet was never seen, so taking it back does not cancel the other copy.
+function findHandoverIds(rewards, unseenRewardIds) {
   const byKey = new Map();
   for (const reward of rewards) {
     const key = handoverKey(reward);
     if (!key) continue;
+    if (reward.direction === 'reversed' && unseenRewardIds.has(reward.id)) continue;
     if (!byKey.has(key)) byKey.set(key, { added: [], reversed: [] });
     byKey.get(key)[reward.direction].push(reward.id);
   }
@@ -231,7 +239,7 @@ function findHandoverIds(rewards) {
   return ids;
 }
 
-function buildRevealEvents(reconciliation, changeIds, reconciledAt, completedSourceId) {
+function buildRevealEvents(reconciliation, changeIds, reconciledAt, completedSourceId, unseenRewardIds) {
   const entryById = new Map(reconciliation.ledger.map(entry => [entry.id, entry]));
   const grouped = new Map();
   const addToGroup = (id, direction) => {
@@ -255,7 +263,7 @@ function buildRevealEvents(reconciliation, changeIds, reconciledAt, completedSou
 
   changeIds.added.forEach(id => addToGroup(id, 'added'));
   changeIds.reversed.forEach(id => addToGroup(id, 'reversed'));
-  const handoverIds = findHandoverIds([...grouped.values()].flat());
+  const handoverIds = findHandoverIds([...grouped.values()].flat(), unseenRewardIds);
 
   return [...grouped.entries()].map(([sourceId, rewards]) => {
     const sortedRewards = [...rewards].sort((left, right) =>
@@ -320,11 +328,15 @@ function normalizeRevealQueue(reveals = []) {
   );
 }
 
+function revealAddedRewardIds(reveal) {
+  if (Array.isArray(reveal?.addedRewardIds)) return reveal.addedRewardIds;
+  if (reveal?.direction === 'reversal') return [];
+  return Array.isArray(reveal?.rewardIds) ? reveal.rewardIds : [];
+}
+
 function revealMatchesActiveLedger(reveal, activeRewardIds) {
   const rewardIds = Array.isArray(reveal.rewardIds) ? reveal.rewardIds : [];
-  const addedRewardIds = Array.isArray(reveal.addedRewardIds)
-    ? reveal.addedRewardIds
-    : reveal.direction === 'reversal' ? [] : rewardIds;
+  const addedRewardIds = revealAddedRewardIds(reveal);
   const reversedRewardIds = Array.isArray(reveal.reversedRewardIds)
     ? reveal.reversedRewardIds
     : reveal.direction === 'reversal' ? rewardIds : [];
@@ -378,6 +390,7 @@ export function applyReconciliationToV2State(state, reconciliation, options = {}
       changeIds,
       options.reconciledAt,
       getCompletedSourceId(state, reconciliation),
+      new Set((state.pendingRewardReveals || []).flatMap(revealAddedRewardIds)),
     )
     : [];
   const activeRewardIds = new Set(listActiveRewards(
