@@ -31,6 +31,15 @@ function isReversalOnlyReveal(reveal) {
   return reveal?.direction === 'reversal';
 }
 
+// The workspace line only when the reveal shows the project moving: past 100%
+// a Main Quest day is still progress, but the workspace no longer changes
+// (BUG-114).
+function showsProjectProgress(reveal) {
+  return Array.isArray(reveal?.rewards) && reveal.rewards.some(reward => (
+    reward?.direction !== 'reversed' && reward?.rewardType === 'project_progress'
+  ));
+}
+
 function hasSelectedGoal(missedPatterns) {
   if (!missedPatterns) return false;
   if (Array.isArray(missedPatterns)) {
@@ -72,11 +81,21 @@ export function getCompanionReaction({
   }
 
   if (isQuestOrProjectProgressReveal(pendingReveal)) {
+    if (showsProjectProgress(pendingReveal)) {
+      return freezeReaction({
+        state: 'approach',
+        dialogueKey: 'companion.project.workspace-upgrade.progress',
+        animationKey: 'approach',
+        worldAction: 'approach-project',
+      });
+    }
+    // The reveal still shows a productive Main Quest, whichever Sessions the
+    // current day holds.
     return freezeReaction({
       state: 'approach',
-      dialogueKey: 'companion.project.workspace-upgrade.progress',
+      dialogueKey: 'companion.session.productive-complete',
       animationKey: 'approach',
-      worldAction: 'approach-project',
+      worldAction: 'approach-player',
     });
   }
 

@@ -14,12 +14,6 @@
 
 ## Backlog
 
-- [ ] **BUG-114** 專案已到 100% 後，reveal 仍顯示專案進度的增減
-  - 問題（BUG-113 發現，2026-10-21）：工作站完成後，每個 Main Quest 日仍得到 `project_progress +25`，reveal 顯示 `workspace-upgrade +25`，但進度停在 100%（`projectEngine.js` 把總和截在 100）。撤銷完成那一天、由下一天接手時，reveal 顯示 `workspace-upgrade -25`，進度也仍是 100%。
-  - 方向：與 BUG-113 的解鎖與關係相同，只顯示真的改變進度的專案進度行（比較前後的 `activeProject.progress`），或在完成後不再給專案進度。後者會改變 reward 規則與 ledger，要先提案。
-  - 同樣地，完成後撤銷任何一天（仍有至少 4 個 Main Quest 日）都顯示 `-25`，進度仍是 100%。完成後 Companion 的「工作空間改變了…」與主角的慶祝也來自這些 reward。
-  - 只是顯示問題：Gold、Main Quest 與 hidden stats 的增減都正確。
-
 - [ ] **HW-112** 佐證圖片雲端同步（Supabase Storage）
   - Goal: upload proof photos to Supabase Storage so they persist across devices and app reinstalls.
   - Scope: `platform/badge.js` → new `pwa/js/platform/proofStorage.js` adapter; bucket `orbit-proof`, path `{user_id}/{sessionId}.jpg`; RLS: SELECT/INSERT/DELETE scoped to `auth.uid()`; use existing `compressImage()` output; graceful fallback to localStorage-only for guests.
@@ -284,6 +278,21 @@
 ---
 
 ## Done
+
+- [x] **BUG-114** 專案已到 100% 後，reveal 仍顯示專案進度的增減
+  - 問題（BUG-113 發現，2026-10-21）：工作站完成後，每個 Main Quest 日仍得到 `project_progress +25`，reveal 顯示 `workspace-upgrade +25`，但進度停在 100%（`projectEngine.js` 把總和截在 100）。撤銷完成那一天、由下一天接手時，reveal 顯示 `workspace-upgrade -25`，進度也仍是 100%。
+  - 方向：與 BUG-113 的解鎖與關係相同，只顯示真的改變進度的專案進度行（比較前後的 `activeProject.progress`），或在完成後不再給專案進度。後者會改變 reward 規則與 ledger，要先提案。
+  - 同樣地，完成後撤銷任何一天（仍有至少 4 個 Main Quest 日）都顯示 `-25`，進度仍是 100%。完成後 Companion 的「工作空間改變了…」與主角的慶祝也來自這些 reward。
+  - 只是顯示問題：Gold、Main Quest 與 hidden stats 的增減都正確。
+  - In progress（2026-10-21）：採用第一個方向（只顯示真的改變進度的專案進度行，不改 reward 規則）；Companion 的「工作空間改變了…」只在 reveal 顯示專案進度時出現。
+  - 完成（2026-10-21，v1.31.9）：
+    - `controller.js`：`getRevealContext()` 以 ledger 比較 reconcile 前後的 `activeProject.progress`；沒有改變時，專案進度的 reward 不顯示、不用來比對 ledger（與 BUG-113 的承接相同）。例外：接手使用者沒看過的專案進度（BUG-113 的 unseen）仍顯示。reward 規則與 ledger 不變。
+    - `companionEngine.js`：「工作空間改變了…」只在 reveal 顯示（加入的）專案進度時出現；Main Quest 的 reveal 沒有顯示專案進度時，直接用 AI-204 已核准的「這次行動在空間裡留下了痕跡。」，不依當天的 Session。
+    - 測試：`tests/unit/bug114ProjectProgressLines.test.js`；`bug113RevealReactions.test.js` 中完成後的第 5 天改為 Session 的台詞。
+    - 未處理（少見）：同一次 reconcile 中多個 Main Quest 日一起讓進度改變時，每一筆都會顯示。例如 75% 時第 4、5 天一起加入，顯示兩筆 `+25`，進度只增加 25；100% 時一起撤銷第 4–6 天，顯示三筆 `-25`，進度只減少 25。目前只有 Session 流程會排 reveal（一次一個 Session），同步都是 `queueReveal: false`。
+    - 清理已儲存的資料（Codex P2）：每次 reconcile 都把保留的 reveal 與最近變化中、不計入進度的 Session（依日期不在前 4 個 Main Quest 日）的 `+25` 移除，連同 reveal 的 id 清單；主要是清掉舊版本留下的。接手沒看過的進度也只在接手的 Session 計入進度時顯示。舊版本留下、未播放的撤銷 `-25` 無法判斷當時進度是否改變，不處理。
+    - 已知限制：「計入進度」以清理當下的日期順序判斷，不是 reveal 排入時。若另一台裝置之後補上更早日期的 Main Quest，還沒播放的 `+25` 可能被移除（例如 50% 時第 5 天的 `+25` 未播放，之後同步到第 3、4 天）。同一台裝置的 Session 一律記在今天，不會發生。
+    - 獨立 review 的 P1：第一版讓「未看過的 Main Quest 由當天較晚的 Session 接手」時的 `+25` 也被隱藏（BUG-113 已修好的情況），已補上例外與測試。
 
 - [x] **BUG-113** 專案完成與撤銷的 reveal 讓 Companion 重複恭喜
   - 問題（AI-202 提案與其獨立 review 發現，2026-10-20；以 `reconcileRewardLedger` ＋ `applyReconciliationToV2State` ＋ `getCompanionReaction` 重現）：「專案完成」與 `major` 的判斷不看 reward 是加入還是撤銷，也不看專案原本是否已完成。

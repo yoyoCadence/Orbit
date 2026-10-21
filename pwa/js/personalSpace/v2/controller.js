@@ -7,7 +7,7 @@ import { estimateAvailableGold } from '../economy.js';
 import { loadPersonalSpaceState } from '../gameState.js';
 import { REWARD_EPOCH, RULESET_ID } from './config.js';
 import { isPersonalSpaceV2Enabled } from './featureFlag.js';
-import { deriveActiveProject } from './projectEngine.js';
+import { PROJECT_REQUIRED_DAILY_ENTRIES, deriveActiveProject } from './projectEngine.js';
 import {
   listActiveRewards,
   summarizeRewardLedger,
@@ -172,6 +172,39 @@ function mostImportantReward(rewards) {
   )[0] || null;
 }
 
+// Reveals and world changes saved before v1.31.9 still show project progress
+// that a Main Quest day past 100% recorded without moving the project
+// (BUG-114). Only the first days up to 100% count toward it.
+// Null when the project is unknown: nothing is then treated as uncounted.
+function countedProgressSourceIds(project = {}) {
+  if (!Array.isArray(project?.contributingSessionIds)) return null;
+  return new Set(project.contributingSessionIds.slice(0, PROJECT_REQUIRED_DAILY_ENTRIES));
+}
+
+function isUncountedProgress(rewardType, direction, sourceId, countedSourceIds) {
+  return Boolean(countedSourceIds) && rewardType === 'project_progress'
+    && direction !== 'reversed' && !countedSourceIds.has(sourceId);
+}
+
+function withoutUncountedProgress(reveal, countedSourceIds) {
+  const isUncounted = reward => isUncountedProgress(
+    reward?.rewardType, reward?.direction, reward?.sourceId, countedSourceIds,
+  );
+  if (!Array.isArray(reveal.rewards) || !reveal.rewards.some(isUncounted)) return reveal;
+  const rewards = reveal.rewards.filter(reward => !isUncounted(reward));
+  if (!rewards.length) return null;
+  // The stored ids follow what the reveal shows, as for new reveals.
+  const removed = new Set(reveal.rewards.filter(isUncounted).map(reward => reward.id));
+  const keep = ids => (Array.isArray(ids) ? ids.filter(id => !removed.has(id)) : ids);
+  return {
+    ...reveal,
+    rewards,
+    rewardIds: keep(reveal.rewardIds),
+    addedRewardIds: keep(reveal.addedRewardIds),
+    worldChange: createWorldChange(reveal.id, mostImportantReward(rewards), reveal.createdAt),
+  };
+}
+
 function createWorldChange(revealId, reward, createdAt) {
   if (!reward) return null;
   return {
@@ -200,19 +233,28 @@ function isQueuedCompletionReveal(reveal) {
   ));
 }
 
-// The project counts as complete before this reconciliation only if the
-// ledger says so (the stored activeProject can disagree) and the user has seen
-// it: when the completion moves to another Session before its reveal played,
-// the queued reveal no longer holds and that Session's reveal is the completion.
-function getCompletedSourceId(state, reconciliation, activeRewardIds) {
+// What this reconciliation changed for the user beyond its ledger entries.
+// The project before it is read from the ledger; the stored activeProject can
+// disagree.
+function getRevealContext(state, reconciliation, activeRewardIds) {
   const before = deriveActiveProject(activeCurrentRulesetEntries(state), []);
+  const project = reconciliation.project || {};
+  // Complete only if the user has also seen it: when the completion moves to
+  // another Session before its reveal played, the queued reveal no longer
+  // holds and that Session's reveal is the completion.
   const completionUnseen = (state.pendingRewardReveals || []).some(reveal => (
     isQueuedCompletionReveal(reveal) && !revealMatchesActiveLedger(reveal, activeRewardIds)
   ));
-  const project = reconciliation.project || {};
-  return !(before.completed && !completionUnseen) && project.completed
-    ? project.completedBySessionId || null
-    : null;
+  return {
+    completedSourceId: !(before.completed && !completionUnseen) && project.completed
+      ? project.completedBySessionId || null
+      : null,
+    // Past 100% a Main Quest day still records project progress, but the
+    // project does not move, so that progress is not shown (BUG-114).
+    progressChanged: before.progress !== project.progress,
+    countedSourceIds: countedProgressSourceIds(project),
+    unseenRewardIds: new Set((state.pendingRewardReveals || []).flatMap(revealAddedRewardIds)),
+  };
 }
 
 // Rewards that only move between Sessions keep the same type, key and amount:
@@ -242,17 +284,24 @@ function findHandoverIds(rewards, unseenRewardIds) {
     if (reward.direction === 'reversed' && unseenRewardIds.has(reward.id)) group.unseen.push(reward.id);
     else group[reward.direction].push(reward.id);
   }
-  const ids = new Set();
+  const hidden = new Set();
+  // Gains taken over from a reward the user never saw: news to the user even
+  // when the project as a whole did not move.
+  const inherited = new Set();
   for (const { added, reversed, unseen } of byKey.values()) {
     const pairs = Math.min(added.length, reversed.length);
-    [...added.sort().slice(0, pairs), ...reversed.sort().slice(0, pairs)]
-      .forEach(id => ids.add(id));
-    if (added.length) unseen.forEach(id => ids.add(id));
+    added.sort();
+    [...added.slice(0, pairs), ...reversed.sort().slice(0, pairs)]
+      .forEach(id => hidden.add(id));
+    if (added.length && unseen.length) {
+      unseen.forEach(id => hidden.add(id));
+      added.slice(pairs).forEach(id => inherited.add(id));
+    }
   }
-  return ids;
+  return { hidden, inherited };
 }
 
-function buildRevealEvents(reconciliation, changeIds, reconciledAt, completedSourceId, unseenRewardIds) {
+function buildRevealEvents(reconciliation, changeIds, reconciledAt, context) {
   const entryById = new Map(reconciliation.ledger.map(entry => [entry.id, entry]));
   const grouped = new Map();
   const addToGroup = (id, direction) => {
@@ -276,15 +325,19 @@ function buildRevealEvents(reconciliation, changeIds, reconciledAt, completedSou
 
   changeIds.added.forEach(id => addToGroup(id, 'added'));
   changeIds.reversed.forEach(id => addToGroup(id, 'reversed'));
-  const handoverIds = findHandoverIds([...grouped.values()].flat(), unseenRewardIds);
+  const handover = findHandoverIds([...grouped.values()].flat(), context.unseenRewardIds);
+  const isShown = reward => !handover.hidden.has(reward.id)
+    && (context.progressChanged || reward.rewardType !== 'project_progress'
+      || (handover.inherited.has(reward.id)
+        && !isUncountedProgress(reward.rewardType, reward.direction, reward.sourceId, context.countedSourceIds)));
 
   return [...grouped.entries()].map(([sourceId, rewards]) => {
     const sortedRewards = [...rewards].sort((left, right) =>
       left.direction.localeCompare(right.direction) || left.id.localeCompare(right.id),
     );
     // A reveal shows, and is kept in step with the ledger by, what changed for
-    // the user; a reveal of handovers only is not queued.
-    const shownRewards = sortedRewards.filter(reward => !handoverIds.has(reward.id));
+    // the user; a reveal of nothing else is not queued.
+    const shownRewards = sortedRewards.filter(isShown);
     if (!shownRewards.length) return null;
     const signature = sortedRewards
       .map(reward => `${reward.direction}:${reward.id}`)
@@ -316,7 +369,7 @@ function buildRevealEvents(reconciliation, changeIds, reconciledAt, completedSou
       addedRewardIds,
       reversedRewardIds,
       rewards: shownRewards,
-      projectCompleted: sourceId === completedSourceId,
+      projectCompleted: sourceId === context.completedSourceId,
       createdAt,
       sourceOccurredAt,
       worldChange: createWorldChange(id, importantReward, createdAt),
@@ -406,21 +459,29 @@ export function applyReconciliationToV2State(state, reconciliation, options = {}
       reconciliation,
       changeIds,
       options.reconciledAt,
-      getCompletedSourceId(state, reconciliation, activeRewardIds),
-      new Set((state.pendingRewardReveals || []).flatMap(revealAddedRewardIds)),
+      getRevealContext(state, reconciliation, activeRewardIds),
     )
     : [];
+  const countedSourceIds = countedProgressSourceIds(reconciliation.project);
   const retainedRevealQueue = (state.pendingRewardReveals || [])
-    .filter(reveal => revealMatchesActiveLedger(reveal, activeRewardIds));
+    .filter(reveal => revealMatchesActiveLedger(reveal, activeRewardIds))
+    .map(reveal => withoutUncountedProgress(reveal, countedSourceIds))
+    .filter(Boolean);
   const pendingRewardReveals = normalizeRevealQueue([
     ...retainedRevealQueue,
     ...revealEvents,
   ]);
   const recentReveal = revealEvents.at(-1) || null;
-  const retainedWorldChange = worldChangeMatchesActiveLedger(
-    state.recentWorldChange,
-    activeRewardIds,
-  ) ? state.recentWorldChange || null : null;
+  const savedWorldChange = state.recentWorldChange;
+  const retainedWorldChange = worldChangeMatchesActiveLedger(savedWorldChange, activeRewardIds)
+    && !isUncountedProgress(
+      savedWorldChange?.metadata?.rewardType,
+      savedWorldChange?.metadata?.direction,
+      savedWorldChange?.sourceId,
+      countedSourceIds,
+    )
+    ? savedWorldChange || null
+    : null;
   const retainedWorldChangeEventId = retainedWorldChange
     ? state.recentWorldChangeEventId || null
     : null;
