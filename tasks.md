@@ -268,7 +268,7 @@
       - `ps211aPrecache.test.js` 的「只讀取 facing」名單整個放行了 `characterCatalog.js`；若 PS-250B 在那裡加入設定 facing 的邏輯，要重新檢查這個名單。
       - INFRA-105：`app.js`、`router.js` 直接 import `pixiSceneRuntime.js`（它再 import `assetManifest.js`），`home.js` import `controller.js` 與 `viewModels.js`，都在啟動路徑上。這些模組不能新增對其他模組的 import：跳過版本的使用者，舊快取中可能沒有那個模組（連 PS-250C 的 `characterCatalog.js` 也可能沒有），離線時整個 app 無法啟動。角色路徑的解析要寫在 `assetManifest.js` 自己裡面，以測試確保與 `characterCatalog.js` 一致；或由不在啟動路徑上的模組算好，當資料放進 model。
     - PS-250D 完成（2026-10-21，v1.34.0）：
-      - **管線**：`art-pipeline/ps250-pixel/`，共 117 張 PNG，約 636 KB。
+      - **管線**：`art-pipeline/ps250-pixel/`，共 117 張 PNG，約 637 KB。
         - 房間與 8 件家具以 PS-244 的場景在 384×256 渲染（不反鋸齒、1 px 描邊），每張圖各自的色盤，×4 放大。
         - 家具裁成與 Q 版相同的框，所以共用同一個 placement。
         - 角色由 PS-250C 的圖縮成房間的像素大小（主角 92、夥伴 50 像素），加對比、銳利化與 1 px 深色描邊，再 ×4 放大。直接以小尺寸渲染會讓臉糊掉。

@@ -201,6 +201,30 @@ describe('PS-250B offline fallback in the poster', () => {
       expect(prop.getAttribute('src')).toContain('/workspace/pixel/props/');
       expect(prop.dataset.fallbackSrc).toBe(prop.getAttribute('src').replace('/workspace/pixel/props/', '/workspace/props/'));
     });
+
+    // Pixel images keep hard edges; the weather overlay is not pixel art.
+    const marked = [...host.querySelectorAll('.orbit-window-poster img[data-pixel-art]')];
+    expect(marked).toEqual([
+      background, ...props,
+      host.querySelector('.orbit-window-protagonist'),
+      host.querySelector('.orbit-window-companion'),
+    ]);
+    expect(host.querySelector('.orbit-window-weather').hasAttribute('data-pixel-art')).toBe(false);
+
+    // A swapped-in Q-style image is smooth again.
+    document.body.appendChild(host);
+    const cleanup = mountOrbitWindow(host.querySelector('[data-orbit-window]'), {
+      model: { appearance: { style: 'pixel' } },
+      runtime: { mount: vi.fn(() => Promise.resolve()), release: vi.fn() },
+    });
+    background.dispatchEvent(new Event('error'));
+    expect(background.getAttribute('src')).toBe(background.dataset.fallbackSrc);
+    expect(background.hasAttribute('data-pixel-art')).toBe(false);
+    cleanup();
+
+    const toon = document.createElement('div');
+    toon.innerHTML = renderOrbitWindow({});
+    expect(toon.querySelector('[data-pixel-art]')).toBeNull();
   });
 
   it('marks the default characters as their own fallback', () => {
@@ -229,7 +253,19 @@ describe('PS-250B Edit Mode picker', () => {
       .toBe(`${TOON}/companion/fox-observe.webp`);
     expect([...host.querySelectorAll('img')].every(image => image.getAttribute('loading') === 'lazy')).toBe(true);
 
+    // The stored choice is marked, and pixel thumbnails keep hard edges.
+    expect(host.querySelector('[data-value="hoodie"]').hasAttribute('data-stored')).toBe(true);
+    expect(host.querySelector('[data-value="office"]').hasAttribute('data-stored')).toBe(false);
+    expect(host.querySelector('img[data-pixel-art]')).toBeNull();
+    host.innerHTML = renderAppearancePicker({ style: 'toon', protagonistId: 'default' });
+    const office = host.querySelector('[data-v2-appearance="protagonist"][data-value="office"]');
+    expect(office.getAttribute('aria-pressed')).toBe('true');
+    expect(office.hasAttribute('data-stored')).toBe(false);
+    expect(readAppearanceChange(office)).toEqual({ protagonistId: 'office' });
+
     host.innerHTML = renderAppearancePicker({ style: 'pixel', protagonistId: 'hoodie' });
+    expect([...host.querySelectorAll('[data-v2-appearance="protagonist"] img')]
+      .every(image => image.hasAttribute('data-pixel-art'))).toBe(true);
     expect([...host.querySelectorAll('[aria-pressed="true"]')].map(button => button.dataset.value))
       .toEqual(['pixel', 'hoodie', 'orbit']);
     expect(host.querySelector('[data-v2-appearance="protagonist"][data-value="hoodie"] img').getAttribute('src'))
@@ -247,9 +283,19 @@ describe('PS-250B Edit Mode picker', () => {
     expect(readAppearanceChange(button)).toEqual({ companionId: 'jelly' });
     button.dataset.v2Appearance = 'other';
     expect(readAppearanceChange(button)).toBeNull();
+    // Shown and stored: no change.
     button.dataset.v2Appearance = 'companion';
     button.setAttribute('aria-pressed', 'true');
+    button.setAttribute('data-stored', '');
     expect(readAppearanceChange(button)).toBeNull();
+    // Shown in place of a stored id this style lacks: stored explicitly.
+    button.removeAttribute('data-stored');
+    expect(readAppearanceChange(button)).toEqual({ companionId: 'jelly' });
+    const style = document.createElement('button');
+    style.dataset.v2Appearance = 'style';
+    style.dataset.value = 'pixel';
+    style.setAttribute('aria-pressed', 'true');
+    expect(readAppearanceChange(style)).toBeNull();
 
     const stored = createDefaultPersonalSpaceV2State('user-1');
     stored.worldRevision = 9;

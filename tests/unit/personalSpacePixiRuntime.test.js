@@ -128,11 +128,20 @@ function createFakePixi(options = {}) {
     }
   }
 
+  const textures = new Map();
   const Assets = {
-    load: vi.fn(async paths => Object.fromEntries(paths.map(path => [
-      path,
-      { path, width: 1536, height: 1024 },
-    ]))),
+    // Like Pixi, one cached texture per path.
+    load: vi.fn(async paths => Object.fromEntries(paths.map(path => {
+      if (!textures.has(path)) {
+        textures.set(path, {
+          path,
+          width: 1536,
+          height: 1024,
+          source: { scaleMode: 'linear', style: { update: vi.fn() } },
+        });
+      }
+      return [path, textures.get(path)];
+    }))),
   };
 
   return {
@@ -302,6 +311,28 @@ describe('Personal Space V2 Pixi scene runtime', () => {
     paths = loadedSince(fake, calls);
     expect(paths).toContain('assets/personal-space/v2/characters/toon/protagonist/office-work-left.webp');
     expect(paths).toContain('assets/personal-space/v2/characters/toon/companion/orbit-observe.webp');
+    runtime.destroy();
+  });
+
+  it('samples pixel images with nearest neighbour, and nothing else (PS-250D)', async () => {
+    const fake = createFakePixi();
+    const runtime = createPixiSceneRuntime({ loadPixi: () => Promise.resolve(fake.pixi) });
+    const { host } = createRuntimeHost();
+    await runtime.mount(host, { activeProject: { progress: 100 }, weather: 'rain', appearance: { style: 'pixel' } });
+    const app = fake.applications[0];
+    const sprites = app.stage.children.filter(child => child.texture?.path);
+    const pixel = sprites.filter(child => child.texture.path.includes('/pixel/'));
+    expect(pixel.length).toBe(1 + 7 + 2); // room, the seven props shown at 100%, two characters
+    pixel.forEach(sprite => {
+      expect(sprite.texture.source.scaleMode, sprite.texture.path).toBe('nearest');
+      expect(sprite.texture.source.style.update).toHaveBeenCalled();
+    });
+    const rain = app.stage.children.find(child => child.label === 'orbit-weather-rain');
+    expect(rain.texture.source.scaleMode).toBe('linear');
+
+    await runtime.render({ activeProject: { progress: 100 } });
+    const toon = app.stage.children.filter(child => child.texture?.path);
+    expect(toon.every(child => child.texture.source.scaleMode === 'linear')).toBe(true);
     runtime.destroy();
   });
 

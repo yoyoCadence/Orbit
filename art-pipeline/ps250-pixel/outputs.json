@@ -500,36 +500,36 @@
       "sha256": "949bfd997ca82800e4e7791522177d915461bed57467fc47d96160de8da35113"
     },
     "assets/personal-space/v2/workspace/pixel/props/corner-desk.png": {
-      "bytes": 5304,
-      "sha256": "70ddfe1a9dea0832486875d98acc7cd893cd2da00f16033404e8ed0ef3bc8f7c"
+      "bytes": 5638,
+      "sha256": "67c1a78f2e691f9577e575c0979c48525ef1d1b036985f38589c6859d87098c2"
     },
     "assets/personal-space/v2/workspace/pixel/props/desk-lamp.png": {
-      "bytes": 556,
-      "sha256": "e9b96294fc1a38d386adb9e5363e6ad15f99f63c78743f3d4b2c6423d9820f7a"
+      "bytes": 574,
+      "sha256": "f85cfadd7256edc48fdcd120d77b00252f0b21490d435b877059accb2b895503"
     },
     "assets/personal-space/v2/workspace/pixel/props/dual-monitor.png": {
-      "bytes": 1987,
-      "sha256": "d2a4f29ac8e0aa7e948752f039be60c6c8512c5c3fb155f625e2b36db184888e"
+      "bytes": 2175,
+      "sha256": "3c4225efd8aa195145ca42425590dca3b25093a35edd129b2bacfd0e1b965c15"
     },
     "assets/personal-space/v2/workspace/pixel/props/office-chair.png": {
-      "bytes": 2418,
-      "sha256": "f608f140f57edecafd5bcf1037b3ae5f2bd0da49741eb9d5627d0c098fcca5ef"
+      "bytes": 2527,
+      "sha256": "69d9e3ff59c6040110c4d7b6782885d6cd798c8612a2dee598cddf1f5971a086"
     },
     "assets/personal-space/v2/workspace/pixel/props/office-plant.png": {
-      "bytes": 3779,
-      "sha256": "c7ef65ee4894856c259878acf15f0442d4737464c06e963566a06d2619ffa741"
+      "bytes": 3885,
+      "sha256": "a0a67bf07f8272245678d5c16729ad847e5c52e999422072f51b5f0c66dc1862"
     },
     "assets/personal-space/v2/workspace/pixel/props/office-shelf.png": {
-      "bytes": 9160,
-      "sha256": "2c7d5c43d53d73b36c993af3e58c56f8961ea98e0f9f404ecc358aed80f1114e"
+      "bytes": 9530,
+      "sha256": "61e1ed97d7f517a35591a7bab01049821d68a1801986b3dd4459029cfaa4fda6"
     },
     "assets/personal-space/v2/workspace/pixel/props/planning-board.png": {
-      "bytes": 3691,
-      "sha256": "228bc205ce03bc9d868b96a07ecd8d44f4662ea8656a72044e5d486752086987"
+      "bytes": 4099,
+      "sha256": "ec009a40d8acffdab5ab59903b88da01585c6a4e2f7ffd22ba85b5d728b0dd63"
     },
     "assets/personal-space/v2/workspace/pixel/props/single-monitor.png": {
-      "bytes": 1524,
-      "sha256": "17468cb48b0f52956ea490bfddab914778fc1cffe27fcc5370e98d05ea2bbc51"
+      "bytes": 1579,
+      "sha256": "b882e4a656b0fd3e28e173c2d1bb7c8f2dc79628f791aa2a63f55ace106cb277"
     }
   }
 }

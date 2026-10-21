@@ -79,14 +79,18 @@ describe('PS-250D pixel set', () => {
   });
 
   it('keeps each pixel prop the size of its Q-style twin, so they share the placement', () => {
-    const toon = getWorkspaceSceneAssets(100);
-    const pixel = pixelScene({}, {}, 100);
-    expect(pixel.props.map(entry => entry.id)).toEqual(toon.props.map(entry => entry.id));
-    pixel.props.forEach((entry, index) => {
-      expect(entry.placement).toEqual(toon.props[index].placement);
-      expect(pngSize(entry.path), entry.id).toEqual(pngSize(toon.props[index].path));
-    });
-    expect(pngSize(pixel.background)).toEqual({ width: 1536, height: 1024 });
+    const checked = new Set();
+    for (const { progress } of WORKSPACE_PROJECT_PHASES) {
+      const toon = getWorkspaceSceneAssets(progress);
+      const pixel = pixelScene({}, {}, progress);
+      expect(pixel.props.map(entry => entry.id)).toEqual(toon.props.map(entry => entry.id));
+      pixel.props.forEach((entry, index) => {
+        expect(pngSize(entry.path), entry.id).toEqual(pngSize(toon.props[index].path));
+        checked.add(entry.id);
+      });
+    }
+    expect(checked.size).toBe(8);
+    expect(pngSize(pixelScene({}).background)).toEqual({ width: 1536, height: 1024 });
   });
 
   it('draws characters at the room\'s pixel size, on canvases framed like the Q style', () => {

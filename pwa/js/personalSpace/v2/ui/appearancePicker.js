@@ -56,6 +56,8 @@ export function resolveAppearanceChoice(value) {
 export function renderAppearancePicker(value) {
   const choice = resolveAppearanceChoice(value);
   const style = APPEARANCE_STYLES.find(entry => entry.id === choice.style);
+  const stored = value && typeof value === 'object' ? value : {};
+  const pixelArt = style.id === 'pixel';
   const thumbnail = appearance => getWorkspaceSceneAssets(0, {}, { appearance });
   return `
     <section class="personal-space-v2-appearance" data-v2-appearance-picker aria-labelledby="personal-space-v2-appearance-title">
@@ -76,27 +78,35 @@ export function renderAppearancePicker(value) {
       <fieldset>
         <legend>主角</legend>
         <ul class="personal-space-v2-appearance-options">
-          ${style.protagonists.map(option => optionMarkup('protagonist', option, option.id === choice.protagonistId,
-            thumbnail({ ...choice, protagonistId: option.id }).protagonist)).join('')}
+          ${style.protagonists.map(option => optionMarkup('protagonist', option, {
+            selected: option.id === choice.protagonistId,
+            stored: option.id === stored.protagonistId,
+            src: thumbnail({ ...choice, protagonistId: option.id }).protagonist,
+            pixelArt,
+          })).join('')}
         </ul>
       </fieldset>
       <fieldset>
         <legend>AI 夥伴</legend>
         <ul class="personal-space-v2-appearance-options">
-          ${style.companions.map(option => optionMarkup('companion', option, option.id === choice.companionId,
-            thumbnail({ ...choice, companionId: option.id }).companion.path)).join('')}
+          ${style.companions.map(option => optionMarkup('companion', option, {
+            selected: option.id === choice.companionId,
+            stored: option.id === stored.companionId,
+            src: thumbnail({ ...choice, companionId: option.id }).companion.path,
+            pixelArt,
+          })).join('')}
         </ul>
       </fieldset>
-      <p>選擇只存在這台裝置。預設角色可以離線使用；其他角色第一次顯示時下載，離線時暫時以預設角色顯示。</p>
+      <p>選擇只存在這台裝置。預設的全 Q 版可以離線使用；其他角色與全像素的房間、家具第一次顯示時下載，離線時暫時以全 Q 版顯示。</p>
     </section>
   `;
 }
 
-function optionMarkup(kind, option, selected, src) {
+function optionMarkup(kind, option, { selected, stored, src, pixelArt }) {
   return `
     <li>
-      <button type="button" data-v2-appearance="${kind}" data-value="${escapeHtml(option.id)}" aria-pressed="${selected}">
-        <img src="${escapeHtml(src)}" alt="" width="72" height="72" loading="lazy" decoding="async" draggable="false">
+      <button type="button" data-v2-appearance="${kind}" data-value="${escapeHtml(option.id)}" aria-pressed="${selected}"${stored ? ' data-stored' : ''}>
+        <img src="${escapeHtml(src)}" alt="" width="72" height="72" loading="lazy" decoding="async" draggable="false"${pixelArt ? ' data-pixel-art' : ''}>
         <span>${escapeHtml(option.label)}</span>
       </button>
     </li>
@@ -105,14 +115,17 @@ function optionMarkup(kind, option, selected, src) {
 
 /**
  * The change a picker button asks for, or null for anything else. The option
- * already in effect is no change: under the pixel style that is the only pixel
- * character, and storing its id would replace the Q-style choice that
- * switching back restores.
+ * that is both shown and stored is no change. An option shown in place of a
+ * stored id that this style does not have (the classic pixel office worker is
+ * shown as the Q-style one) is stored, so the choice becomes explicit.
  */
 export function readAppearanceChange(button) {
   const value = button?.dataset?.value;
-  if (!value || button.getAttribute?.('aria-pressed') === 'true') return null;
-  const field = { style: 'style', protagonist: 'protagonistId', companion: 'companionId' }[button.dataset.v2Appearance];
+  if (!value) return null;
+  const kind = button.dataset.v2Appearance;
+  const shown = button.getAttribute?.('aria-pressed') === 'true';
+  if (shown && (kind === 'style' || button.hasAttribute?.('data-stored'))) return null;
+  const field = { style: 'style', protagonist: 'protagonistId', companion: 'companionId' }[kind];
   return field ? { [field]: value } : null;
 }
 

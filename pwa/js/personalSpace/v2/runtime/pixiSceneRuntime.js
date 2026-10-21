@@ -126,8 +126,9 @@ export function createPixiSceneRuntime(options = {}) {
     const fallback = getWorkspaceSceneAssets(project.progress || 0, placements, { ...visualState, appearance: null });
     // PS-250B/D: only the default style is precached. The room with its props,
     // the protagonist and the Companion load separately; a part that cannot
-    // load (offline, not cached yet) is drawn from the default style, as in the
-    // poster, and the other parts stay as chosen.
+    // load (offline, not cached yet) is drawn from the default style and the
+    // other parts stay as chosen. (The poster falls back per image, so with a
+    // partly cached pixel room the two can differ until the next render.)
     const [scenery, protagonistPart, companionPart] = await Promise.all([
       loadPart(pixi, sceneryPaths(chosen), sceneryPaths(fallback)),
       loadPart(pixi, [chosen.protagonist], [fallback.protagonist]),
@@ -142,6 +143,15 @@ export function createPixiSceneRuntime(options = {}) {
       ...(companionPart.usedFallback ? { companion: fallback.companion } : {}),
     };
     const textures = { ...scenery.textures, ...protagonistPart.textures, ...companionPart.textures };
+    // PS-250D: pixel images keep hard pixel edges when the stage is scaled.
+    if (chosen.appearance?.style === 'pixel') {
+      const pixelPaths = [
+        ...(scenery.usedFallback ? [] : [chosen.background, ...chosen.props.map(entry => entry.path)]),
+        ...(protagonistPart.usedFallback ? [] : [chosen.protagonist]),
+        ...(companionPart.usedFallback ? [] : [chosen.companion.path]),
+      ];
+      pixelPaths.forEach(path => useNearestSampling(textures[path]));
+    }
     if (
       activeApp !== app
       || activeRenderRevision !== renderRevision
@@ -472,6 +482,13 @@ export function getCoverTransform(
     y: targetHeight / 2,
     scale: Math.max(targetWidth / safeSourceWidth, targetHeight / safeSourceHeight),
   };
+}
+
+function useNearestSampling(texture) {
+  const source = texture?.source;
+  if (!source || source.scaleMode === 'nearest') return;
+  source.scaleMode = 'nearest';
+  source.style?.update?.();
 }
 
 function sceneryPaths(scene) {

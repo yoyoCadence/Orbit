@@ -112,8 +112,10 @@ def process_prop(render_dir, prop_id, bbox):
     shadow &= neighbours(shadow | solid) >= 3
     out = np.zeros_like(rgba)
     if solid.any():
-        colours = np.array(quantize(Image.fromarray(rgba[:, :, :3]), PROP_COLOURS))
-        out[solid, :3] = colours[solid]
+        # The palette comes from the solid pixels only: transparent and shadow
+        # pixels would take palette entries that are never shown.
+        solid_rgb = Image.fromarray(rgba[solid][:, :3].reshape(-1, 1, 3))
+        out[solid, :3] = np.array(quantize(solid_rgb, PROP_COLOURS)).reshape(-1, 3)
         out[solid, 3] = 255
     out[shadow, :3] = SHADOW_COLOUR
     out[shadow, 3] = np.where(alpha[shadow] >= 110, SHADOW_LEVELS[1], SHADOW_LEVELS[0])

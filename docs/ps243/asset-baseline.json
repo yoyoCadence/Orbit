@@ -245,7 +245,7 @@
         },
         {
           "path": "pwa/js/personalSpace/v2/runtime/pixiSceneRuntime.js",
-          "bytes": 20539
+          "bytes": 21316
         },
         {
           "path": "pwa/js/personalSpace/v2/sessionAdapter.js",
@@ -265,30 +265,30 @@
         },
         {
           "path": "pwa/js/personalSpace/v2/ui/appearancePicker.js",
-          "bytes": 6341
+          "bytes": 6980
         },
         {
           "path": "pwa/js/personalSpace/v2/ui/assetGallery.js",
-          "bytes": 6710
+          "bytes": 6700
         },
         {
           "path": "pwa/js/personalSpace/v2/ui/orbitWindow.js",
-          "bytes": 24149
+          "bytes": 24575
         },
         {
           "path": "pwa/js/personalSpace/v2/viewModels.js",
           "bytes": 26575
         }
       ],
-      "rawBytes": 240991,
-      "gzipBytes": 62633
+      "rawBytes": 242823,
+      "gzipBytes": 63186
     },
     "vendoredPixi": {
       "path": "pwa/vendor/pixi.js",
       "rawBytes": 796970,
       "gzipBytes": 225428
     },
-    "combinedGzipBytes": 288061,
+    "combinedGzipBytes": 288614,
     "budgetBytes": 307200,
     "result": "PASS"
   }

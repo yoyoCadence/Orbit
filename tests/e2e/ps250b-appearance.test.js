@@ -61,7 +61,12 @@ test.describe('PS-250B character style and choice', () => {
     const protagonist = page.locator('[data-personal-space-v2] .orbit-window-protagonist');
     await expect(protagonist).toHaveAttribute('src', /characters\/pixel\/protagonist\/sporty-/);
     await expect(page.locator('[data-personal-space-v2] .orbit-window-background')).toHaveAttribute('src', /workspace\/pixel\//);
-    await expect.poll(() => protagonist.evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true);
+    // The pixel images themselves load (a fallback would have swapped the src).
+    const loadedPixel = locator => locator.evaluate(image => (
+      image.complete && image.naturalWidth > 0 && image.getAttribute('src').includes('/pixel/')
+    ));
+    await expect.poll(() => loadedPixel(protagonist)).toBe(true);
+    await expect.poll(() => loadedPixel(page.locator('[data-personal-space-v2] .orbit-window-background'))).toBe(true);
     await expect(page.locator('[data-v2-appearance="protagonist"]')).toHaveCount(7);
 
     // The classic pixel office worker is an option of its own.
