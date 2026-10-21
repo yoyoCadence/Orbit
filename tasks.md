@@ -227,6 +227,16 @@
   - 回歸測試（在修正前會失敗）：第 5 天的 reveal；專案完成後撤銷第 6 天；撤銷第 4 天（有與沒有第 5 天）。撤銷時（包括當天另有有效 Session）Companion 是 `observe`＋`companion.observe`，既不是 `congratulate` 也不是 `approach`；主角不慶祝。
   - 影響 AI-202B：階段變化的 reveal 依賴這個修正（提案 §3.4、§9 第 9 點）。
 
+- [ ] **BUG-109A** 在 production 套用 013 signup trigger migration
+  - 目標：讓 production 的 `handle_new_user()` 截斷超過 30 字元的名稱來源，長 email local-part 與長 Google 顯示名稱都能註冊。
+  - 步驟：依 [`docs/bug-109-signup-name-truncation.md`](docs/bug-109-signup-name-truncation.md) 的 runbook：先以 `pg_get_functiondef` 比對 production 函式與 004、記錄回滾來源，在非 production 環境跑 `tests/database/bug109.test.sql`，再套用並驗證。
+  - **需專案擁有者執行**：production 資料庫操作，Claude 不具權限；依 AGENTS.md §3 屬 schema 變更的套用。
+  - 依賴：`BUG-109`
+
+---
+
+## In Progress
+
 - [ ] **PS-248** 以 Blender 擴充「空間」的主題與素材（提案）
   - 使用者 2026-10-20 要求：「需要更新更多 blender 做的主題與素材等，讓本工具更豐富」。
   - 現況：
@@ -242,16 +252,11 @@
     - Blender 管線的工作量與驗收方式。
   - 核准前不渲染、不改程式碼。
   - 依賴：`PS-247`、`PS-211A`
-
-- [ ] **BUG-109A** 在 production 套用 013 signup trigger migration
-  - 目標：讓 production 的 `handle_new_user()` 截斷超過 30 字元的名稱來源，長 email local-part 與長 Google 顯示名稱都能註冊。
-  - 步驟：依 [`docs/bug-109-signup-name-truncation.md`](docs/bug-109-signup-name-truncation.md) 的 runbook：先以 `pg_get_functiondef` 比對 production 函式與 004、記錄回滾來源，在非 production 環境跑 `tests/database/bug109.test.sql`，再套用並驗證。
-  - **需專案擁有者執行**：production 資料庫操作，Claude 不具權限；依 AGENTS.md §3 屬 schema 變更的套用。
-  - 依賴：`BUG-109`
-
----
-
-## In Progress
+  - In progress（2026-10-20）：提案見 [`docs/ps-248-blender-themes-proposal.md`](docs/ps-248-blender-themes-proposal.md)，等待使用者決定 §9。
+    - 建議三個階段：PS-248A 夜晚版本的工作站（房間與家具的陽光是烘在圖裡的，夜晚只疊深藍色層仍看得到陽光；同場景、同相機重新渲染一套夜晚版本，夜晚家具有自己的 placement，夜晚色層改弱但保留）→ PS-248B 一套「房間風格」（同相機、同造型與燈光，換材質與色票）→ PS-248C 2–4 件裝飾小物（由 AI-202B 推導的資料解鎖）。窗外依時段變化（PS-248A2）可選。
+    - A、B 超出 art bible §6.1 與 asset pipeline 的 vertical slice 上限「一張房間背景＋日夜疊層」，A2 超出「一張 exterior」，要使用者明確同意並更新這兩份文件。
+    - 風格與裝飾不寫入 reward ledger、不新增 `world_unlock`。新房間、新相機、3D runtime、角色與天氣不在範圍內。
+    - 使用者決定後，把核准的階段拆成 PS-248A／B／C 任務並寫入驗收條件（PS-248A 的草稿在提案 §8）。
 
 - [ ] **AI-202** 定義 companion relationship stage 與 hidden stats 的最小映射規則
   - 目標：讓 companion 關係變化可由真實行為驅動，而不是聊天次數
