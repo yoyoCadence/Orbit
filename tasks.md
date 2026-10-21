@@ -245,7 +245,7 @@
   - 原型（Blender 腳本）在 PS-250C 提交到 `art-pipeline/ps250-characters/`；在那之前只存在於做原型的 session，接手時依上述外觀重新建立即可。
   - In progress（2026-10-21）：
     - PS-250A 完成（v1.32.0）：`pwa/js/personalSpace/v2/ui/assetGallery.js`（新模組，只讀取 asset manifest 既有的 export）；設定頁開發者工具的勾選框寫入 `localStorage` 的 `orbit_dev_asset_gallery`；設定頁直接用這個 key，不 import 新模組（設定頁在啟動路徑上，INFRA-105）；「空間」頁面在勾選且為開發者模式時列出全部素材。
-    - 下一步：PS-250B（風格與選擇的基礎）與 PS-250C（Q 版角色）。
+    - PS-250C 進行中（2026-10-21）：先做 Q 版角色，PS-250B 再接。原因是 PS-250B 要把預設改成全 Q 版，需要先有 Q 版角色素材。
 
 - [ ] **PS-248** 以 Blender 擴充「空間」的主題與素材（提案）
   - 使用者 2026-10-20 要求：「需要更新更多 blender 做的主題與素材等，讓本工具更豐富」。
