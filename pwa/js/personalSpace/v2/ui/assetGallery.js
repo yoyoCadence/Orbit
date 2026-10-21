@@ -6,10 +6,12 @@
  *
  * It only reads existing exports of the asset manifest: a new export imported
  * across SHELL modules can fail to link while an older copy is cached
- * (INFRA-105).
+ * (INFRA-105). Assets the scene does not use yet come from their own new
+ * modules (PS-250C: characterCatalog.js).
  */
 import { FLAG_DEV_PANEL } from '../../../flags.js';
 import { getWorkspaceAssetManifestPaths } from '../content/assetManifest.js';
+import { getToonCharacterPaths } from '../content/characterCatalog.js';
 
 export const ASSET_GALLERY_FLAG = 'orbit_dev_asset_gallery';
 
@@ -19,8 +21,10 @@ const ASSET_ROOT = 'assets/personal-space/v2/';
 const ASSET_GROUPS = Object.freeze([
   { folder: 'workspace/backgrounds', label: '場景・房間', source: 'Blender（PS-244～PS-245）' },
   { folder: 'workspace/props', label: '家具', source: 'Blender（PS-244～PS-247）' },
-  { folder: 'characters/protagonist', label: '主角', source: '影像生成（PS-242）' },
-  { folder: 'characters/companion', label: 'AI 夥伴', source: '影像生成（PS-242）' },
+  { folder: 'characters/toon/protagonist', label: 'Q 版主角', source: 'Blender（PS-250C）' },
+  { folder: 'characters/toon/companion', label: 'Q 版 AI 夥伴', source: 'Blender（PS-250C）' },
+  { folder: 'characters/protagonist', label: '像素主角', source: '影像生成（PS-242）' },
+  { folder: 'characters/companion', label: '像素 AI 夥伴', source: '影像生成（PS-242）' },
   { folder: 'effects', label: '天氣特效', source: '影像生成（PS-242）' },
 ]);
 
@@ -57,8 +61,8 @@ function groupFor(path) {
   return ASSET_GROUPS.find(group => relative.startsWith(`${group.folder}/`)) || OTHER_GROUP;
 }
 
-/** Every manifest asset once, grouped for the gallery; empty groups are left out. */
-export function buildAssetCatalog(paths = getWorkspaceAssetManifestPaths()) {
+/** Every asset once, grouped for the gallery; empty groups are left out. */
+export function buildAssetCatalog(paths = [...getWorkspaceAssetManifestPaths(), ...getToonCharacterPaths()]) {
   const groups = new Map([...ASSET_GROUPS, OTHER_GROUP].map(group => [group, []]));
   for (const path of [...new Set(paths)].sort()) {
     groups.get(groupFor(path)).push({

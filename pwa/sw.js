@@ -1,6 +1,6 @@
 // Service Worker
 // Bump CACHE version on every deploy so users always get fresh code.
-const CACHE = 'orbit-v1.32.0';
+const CACHE = 'orbit-v1.32.1';
 
 const SHELL = [
   './',
@@ -106,6 +106,7 @@ const SHELL = [
   './js/personalSpace/v2/telemetry.js',
   './js/personalSpace/v2/content/assetManifest.js',
   './js/personalSpace/v2/content/companionDialogue.js',
+  './js/personalSpace/v2/content/characterCatalog.js',
   './js/personalSpace/v2/runtime/pixiSceneRuntime.js',
   './js/personalSpace/v2/ui/orbitWindow.js',
   './js/personalSpace/v2/ui/assetGallery.js',
