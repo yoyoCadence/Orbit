@@ -149,7 +149,9 @@ Each set has several protagonists and Companion forms. Added so far:
 - PS-250C: six Q-style protagonists, each with six actions in two facings, and six Companion forms, each in six states. Source: `art-pipeline/ps250-characters/`.
 - PS-250B: the Q style is the default (the office worker and Orbit). Edit Mode chooses the style and characters; the choice is stored only on the device.
 
-Later PS-250 tasks add the pixel set (PS-250D), night and room styles (PS-250E) and small furniture (PS-250F). Each one updates this list.
+- PS-250D: the pixel set. It contains a pixel room, eight pixel props, and the pixel version of every PS-250C character. The PS-242 pixel characters are extra options. One art pixel is four room pixels. Source: `art-pipeline/ps250-pixel/`.
+
+Later PS-250 tasks add night and room styles (PS-250E) and small furniture (PS-250F). Each one updates this list.
 
 ### 6.2 Workspace Upgrade Phases
 

@@ -20,9 +20,11 @@ export function getRevealDurationMs(kind, reducedMotion = false) {
 export function renderOrbitWindow(inputModel = {}, options = {}) {
   const model = normalizeOrbitWindowModel(inputModel, options.renderMode);
   const scene = getWorkspaceSceneAssets(model.activeProject.progress, model.placements, model);
-  // PS-250B: only the default characters are precached. A chosen character
-  // that is not cached yet falls back to the default when it cannot load.
+  // PS-250B/D: only the default style is precached. A chosen character, or
+  // the pixel room and props, that is not cached yet falls back to the
+  // default when it cannot load.
   const fallback = getWorkspaceSceneAssets(model.activeProject.progress, model.placements, { ...model, appearance: null });
+  const fallbackProps = new Map(fallback.props.map(entry => [entry.id, entry.path]));
   const rewardLines = buildRewardLines(model.pendingReveal);
   const revealKind = model.pendingReveal?.kind || null;
 
@@ -49,8 +51,8 @@ export function renderOrbitWindow(inputModel = {}, options = {}) {
       <div class="orbit-window-stage-wrap">
         <button class="orbit-window-stage-action" type="button" data-orbit-open-world aria-label="進入完整 Personal Space">
           <span class="orbit-window-poster" aria-hidden="true">
-            <img class="orbit-window-background" src="${escapeHtml(scene.background)}" alt="" draggable="false">
-            ${scene.props.map(renderPosterProp).join('')}
+            <img class="orbit-window-background" src="${escapeHtml(scene.background)}" data-fallback-src="${escapeHtml(fallback.background)}" alt="" draggable="false">
+            ${scene.props.map(entry => renderPosterProp(entry, fallbackProps.get(entry.id))).join('')}
             <img
               class="orbit-window-protagonist"
               data-player-state="${escapeHtml(model.protagonist.state)}"
@@ -495,8 +497,8 @@ function normalizeRevealKind(value, direction) {
   return ['small', 'medium', 'major'].includes(value) ? value : 'small';
 }
 
-function renderPosterProp(entry) {
-  return `<img class="orbit-window-prop" src="${escapeHtml(entry.path)}" alt="" draggable="false" style="${placementStyle(entry.placement)}">`;
+function renderPosterProp(entry, fallbackSrc = entry.path) {
+  return `<img class="orbit-window-prop" src="${escapeHtml(entry.path)}" data-fallback-src="${escapeHtml(fallbackSrc)}" alt="" draggable="false" style="${placementStyle(entry.placement)}">`;
 }
 
 function placementStyle(placement = {}) {

@@ -1,0 +1,535 @@
+{
+  "schemaVersion": 1,
+  "taskId": "PS-250D",
+  "scale": 4,
+  "encoding": {
+    "format": "png",
+    "colours": {
+      "room": 64,
+      "prop": 32,
+      "protagonist": 32,
+      "companion": 24
+    }
+  },
+  "room": "assets/personal-space/v2/workspace/pixel/backgrounds/building-formal-workstation-room-pixel.png",
+  "props": {
+    "corner-desk": "assets/personal-space/v2/workspace/pixel/props/corner-desk.png",
+    "office-chair": "assets/personal-space/v2/workspace/pixel/props/office-chair.png",
+    "office-shelf": "assets/personal-space/v2/workspace/pixel/props/office-shelf.png",
+    "desk-lamp": "assets/personal-space/v2/workspace/pixel/props/desk-lamp.png",
+    "planning-board": "assets/personal-space/v2/workspace/pixel/props/planning-board.png",
+    "single-monitor": "assets/personal-space/v2/workspace/pixel/props/single-monitor.png",
+    "dual-monitor": "assets/personal-space/v2/workspace/pixel/props/dual-monitor.png",
+    "office-plant": "assets/personal-space/v2/workspace/pixel/props/office-plant.png"
+  },
+  "protagonist": {
+    "ids": [
+      "office",
+      "hoodie",
+      "sweater",
+      "sporty",
+      "scientist",
+      "artist"
+    ],
+    "poses": [
+      "idle",
+      "work",
+      "celebrate",
+      "rest",
+      "walk",
+      "inspect"
+    ],
+    "facings": [
+      "left",
+      "right"
+    ]
+  },
+  "companion": {
+    "ids": [
+      "orbit",
+      "catbot",
+      "owl",
+      "cube",
+      "jelly",
+      "fox"
+    ],
+    "states": [
+      "observe",
+      "approach",
+      "congratulate",
+      "rest",
+      "work",
+      "remind"
+    ]
+  },
+  "files": {
+    "assets/personal-space/v2/characters/pixel/companion/catbot-approach.png": {
+      "bytes": 2319,
+      "sha256": "5b819fe8c7f3b26c70fa4fe2f95d8a7c107a292cd9a8f6640a40ccdc889af001"
+    },
+    "assets/personal-space/v2/characters/pixel/companion/catbot-congratulate.png": {
+      "bytes": 2533,
+      "sha256": "de3a4eb4b2892e6312f0c6c203b7902834decd7c2b08451af35040a03b95e065"
+    },
+    "assets/personal-space/v2/characters/pixel/companion/catbot-observe.png": {
+      "bytes": 2405,
+      "sha256": "af63b2d094274b010f824fa52f1d6b084845774edb48f08ee6eedf2566453882"
+    },
+    "assets/personal-space/v2/characters/pixel/companion/catbot-remind.png": {
+      "bytes": 2466,
+      "sha256": "34f255d7daa1d14407b06d274ff22d80665064a8cd92d7f96911c6effd6c4c3d"
+    },
+    "assets/personal-space/v2/characters/pixel/companion/catbot-rest.png": {
+      "bytes": 2427,
+      "sha256": "7d5fd3806a33c0d2607a716367d147d179cbfdc067a3b3e1d6919f9720340a6e"
+    },
+    "assets/personal-space/v2/characters/pixel/companion/catbot-work.png": {
+      "bytes": 2507,
+      "sha256": "7361bb54c99aae4a5e5f34a3b218b085ef80401f7fbc87a960d6d67c981f79ae"
+    },
+    "assets/personal-space/v2/characters/pixel/companion/cube-approach.png": {
+      "bytes": 1671,
+      "sha256": "cc4fe8bb0bcd3b2e99d119c6f1f567d8efdb418706fc38f6d6714d3f1b285dc8"
+    },
+    "assets/personal-space/v2/characters/pixel/companion/cube-congratulate.png": {
+      "bytes": 1808,
+      "sha256": "6c4e72aadf4ab6dd84cb45ff8c3139ab16a917ba2aedf0caeb89c47d646a52fa"
+    },
+    "assets/personal-space/v2/characters/pixel/companion/cube-observe.png": {
+      "bytes": 1826,
+      "sha256": "db348b5126ab66f8fe71eed2236ffbf7cf1629c73e2d3c7247209ecfa692e2c1"
+    },
+    "assets/personal-space/v2/characters/pixel/companion/cube-remind.png": {
+      "bytes": 1872,
+      "sha256": "64f16b734379d9d3a7cc547fd3f30a2ee94ce75a99092059952eef69c2f63a05"
+    },
+    "assets/personal-space/v2/characters/pixel/companion/cube-rest.png": {
+      "bytes": 2086,
+      "sha256": "ac9dc688daae194e01e5b4295dca0138aa20b764adca21fb6bf1b6a82b968222"
+    },
+    "assets/personal-space/v2/characters/pixel/companion/cube-work.png": {
+      "bytes": 2175,
+      "sha256": "599f72a3c62b240e453c1eec1b8f9eee63075d94816c4fe9e611c16bc34b6c7f"
+    },
+    "assets/personal-space/v2/characters/pixel/companion/fox-approach.png": {
+      "bytes": 2942,
+      "sha256": "8bda427d9e4674d4513a6bce648afa8c75dd47e57f6e4fa2108bde42d57a9bcc"
+    },
+    "assets/personal-space/v2/characters/pixel/companion/fox-congratulate.png": {
+      "bytes": 2978,
+      "sha256": "dd3a15f08630d640faad587a74c9a10eb6d581d5652986749a42f572f802d886"
+    },
+    "assets/personal-space/v2/characters/pixel/companion/fox-observe.png": {
+      "bytes": 2876,
+      "sha256": "5c41587d8d7f1a7a96c6d116da6ed983cd994d9a4a8e8f3f90b623822ee93036"
+    },
+    "assets/personal-space/v2/characters/pixel/companion/fox-remind.png": {
+      "bytes": 3003,
+      "sha256": "7c3f835e33110ba1b4bbdbc5bd65055fa06ec42a6914be8de16ed0a5d17913a9"
+    },
+    "assets/personal-space/v2/characters/pixel/companion/fox-rest.png": {
+      "bytes": 2884,
+      "sha256": "fda8cce4a393d408ee561c75aa9b517b3fa0039424f6cc6b95e8f9ddf87bf876"
+    },
+    "assets/personal-space/v2/characters/pixel/companion/fox-work.png": {
+      "bytes": 2836,
+      "sha256": "8461ab9d75f3de68499a29758982d1fb6722ada1eb32ff0a663639ade8d7187d"
+    },
+    "assets/personal-space/v2/characters/pixel/companion/jelly-approach.png": {
+      "bytes": 2143,
+      "sha256": "cb95fc3ad19d2e1afa34ba534559f93e90f220c3958d68f22486c6bae26edf06"
+    },
+    "assets/personal-space/v2/characters/pixel/companion/jelly-congratulate.png": {
+      "bytes": 2334,
+      "sha256": "eac944804c378ec94d8c6c12b1f9784100a06fd69565363598997774672689aa"
+    },
+    "assets/personal-space/v2/characters/pixel/companion/jelly-observe.png": {
+      "bytes": 2190,
+      "sha256": "a438a19c24a7e8e07ac35fb3b70019dc375dc3ec9f944caa5da42bde5456a018"
+    },
+    "assets/personal-space/v2/characters/pixel/companion/jelly-remind.png": {
+      "bytes": 2320,
+      "sha256": "68ad85a3342fa36a0bc8b3726489123e5616eb6155364e8d0b8352681e3e8c63"
+    },
+    "assets/personal-space/v2/characters/pixel/companion/jelly-rest.png": {
+      "bytes": 2283,
+      "sha256": "003db844a116e240689a7526c4cf061aa1f5cd0b19722d71bb0c76a3587f9264"
+    },
+    "assets/personal-space/v2/characters/pixel/companion/jelly-work.png": {
+      "bytes": 2435,
+      "sha256": "238a47e085d36fd68556517eff1b82569c34c1d649dd2a3e67822291a19bcc4e"
+    },
+    "assets/personal-space/v2/characters/pixel/companion/orbit-approach.png": {
+      "bytes": 2334,
+      "sha256": "764dcd5356098d555e8b0d660604e53018dbd9558a296c376b01136bd75b62bd"
+    },
+    "assets/personal-space/v2/characters/pixel/companion/orbit-congratulate.png": {
+      "bytes": 2596,
+      "sha256": "ae729481aa9b11d5dd4512791787559d2e5b42db5321e25d6b538072b5898a1b"
+    },
+    "assets/personal-space/v2/characters/pixel/companion/orbit-observe.png": {
+      "bytes": 2430,
+      "sha256": "b33204928a8de926f62b1019635d7c040c9bf7e2f26d5a082ee81fb3a289c3a8"
+    },
+    "assets/personal-space/v2/characters/pixel/companion/orbit-remind.png": {
+      "bytes": 2539,
+      "sha256": "1b92ef70c4b214fff48c2ec6b334c06448dea8837c7d238ecc74de3981b9f7a8"
+    },
+    "assets/personal-space/v2/characters/pixel/companion/orbit-rest.png": {
+      "bytes": 2699,
+      "sha256": "bd06810f37f65c0766309eab49f64d77b91b6bd3370c102d477c1a7e95310e5e"
+    },
+    "assets/personal-space/v2/characters/pixel/companion/orbit-work.png": {
+      "bytes": 2568,
+      "sha256": "5c800eb43204b7627e81fa81318551e0eef14c619100d0b2ef96b092afdccfaa"
+    },
+    "assets/personal-space/v2/characters/pixel/companion/owl-approach.png": {
+      "bytes": 2276,
+      "sha256": "28da540c3fd1fdc24f07decbb0e553b65df5afc1269d5ecfaf13b099dcc1d6da"
+    },
+    "assets/personal-space/v2/characters/pixel/companion/owl-congratulate.png": {
+      "bytes": 2423,
+      "sha256": "a54850589dfe410160c91fd45fbae03c7da34934cf1f95191e9f2f3590d8e4ed"
+    },
+    "assets/personal-space/v2/characters/pixel/companion/owl-observe.png": {
+      "bytes": 2259,
+      "sha256": "9c576105957a38417a1e25b39ea8803b972559ff037e5ddf8109377fd6044f0f"
+    },
+    "assets/personal-space/v2/characters/pixel/companion/owl-remind.png": {
+      "bytes": 2430,
+      "sha256": "a4008ade974fe52cc97dfd87052023b0c19dc6d78edeb63c63aefd7972aea25e"
+    },
+    "assets/personal-space/v2/characters/pixel/companion/owl-rest.png": {
+      "bytes": 2214,
+      "sha256": "0423a62a121dbbb4cb38a6b69a67f58c0bcb3a6cd1ee55b69d567b90500ab403"
+    },
+    "assets/personal-space/v2/characters/pixel/companion/owl-work.png": {
+      "bytes": 2395,
+      "sha256": "036cc54a2cc12aa43d3dd57a4a1cc79a32d0fa456b8595a4469cb18e97ff537d"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/artist-celebrate-left.png": {
+      "bytes": 6261,
+      "sha256": "97bfc219dda15ee38ae62c8a57d1e5ded1baec923a06ae053b4110a6c25b5c15"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/artist-celebrate-right.png": {
+      "bytes": 6149,
+      "sha256": "afc2570b8739d79b69926c9a6448f7d6e025bbe72f400c40799e1daa81c6fcf2"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/artist-idle-left.png": {
+      "bytes": 6464,
+      "sha256": "a4a22810e891803c550a2666cf62dbb38a81ee18416cf80d4d24678d1f71abeb"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/artist-idle-right.png": {
+      "bytes": 5932,
+      "sha256": "06051e3d9fffc91f4c05f48721c6ea6ec9eb412608d80bea8903e95e5bbe518b"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/artist-inspect-left.png": {
+      "bytes": 5740,
+      "sha256": "eee7d4ea5a9d3499204b6cc689e92a4100628bd6da6decdee39ac91fc3a0b264"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/artist-inspect-right.png": {
+      "bytes": 5743,
+      "sha256": "758e8884981e5ebd1e3ed693654364b68eae75f09d96f3dc53192893bc002121"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/artist-rest-left.png": {
+      "bytes": 6068,
+      "sha256": "63014e1aad6d8145098d1827610993f330f88b6a31ef8d46cd5f873c9b29c6e5"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/artist-rest-right.png": {
+      "bytes": 5865,
+      "sha256": "ffe70b94a03dfec845937f8ed714ee5e68437494ae75267b570f02beba752821"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/artist-walk-left.png": {
+      "bytes": 5944,
+      "sha256": "f223de227dda10ec242ea788bcfdb6833799e8d29997d5faaeb25837b81abee6"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/artist-walk-right.png": {
+      "bytes": 6236,
+      "sha256": "d37dcba682c09f45397662fffa562b4267a2bc1e265c0e8fcf126baf67716aa2"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/artist-work-left.png": {
+      "bytes": 5829,
+      "sha256": "9f92ccdd510cf153b30a897de55360435de14754d838935f858086e88823504e"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/artist-work-right.png": {
+      "bytes": 5835,
+      "sha256": "775e0294e8382dad850629113f00b4f689b96f0b0bbbdfd9910b9cc0dba1dc44"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/hoodie-celebrate-left.png": {
+      "bytes": 6130,
+      "sha256": "27484b9a79e7a1a952facc4b3bc1d6350ff885eba7a7cb8199372e2b8f8dfcbf"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/hoodie-celebrate-right.png": {
+      "bytes": 5874,
+      "sha256": "bbd271201bfb344c650ee321f58dfeaf997694fea0a49a631fca09850dff5609"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/hoodie-idle-left.png": {
+      "bytes": 6153,
+      "sha256": "46d1da763ae56e69ec97bcb0e1a3525c7a6187dc4bb3f11ee81a605ad6c4b777"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/hoodie-idle-right.png": {
+      "bytes": 5903,
+      "sha256": "5f71f4754d8a87b2d601e8cda024387ce7e783c7f7e7ac515671e655afe9a36d"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/hoodie-inspect-left.png": {
+      "bytes": 5691,
+      "sha256": "6b0071079607254f70914da9ac8aa8526286a67f9559481fdbc49eb5ac712ab3"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/hoodie-inspect-right.png": {
+      "bytes": 5691,
+      "sha256": "54734448048706835117b3522771fdb83b9fbd9790fdd45a3e604570d91506ca"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/hoodie-rest-left.png": {
+      "bytes": 5787,
+      "sha256": "8e1d59f8ae484a0bf7be07ec919e43da6ac098dfa1bdae64b099b7f427eedf5d"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/hoodie-rest-right.png": {
+      "bytes": 5498,
+      "sha256": "747520b527d1b88b72e79020980912526d4e3586128a1918d5a52ccc35665ae9"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/hoodie-walk-left.png": {
+      "bytes": 5779,
+      "sha256": "23f95c7bb9a91aa7ec7393e0b6369c1ec6239bec9bd0e3efcd4fbd6d2e2d4d9b"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/hoodie-walk-right.png": {
+      "bytes": 6179,
+      "sha256": "fa9fd221bc075cd217934587551c0d0ecb4086e25cf7e4fa644d33fba0ef8fc5"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/hoodie-work-left.png": {
+      "bytes": 5748,
+      "sha256": "4f99dc194fd7ff748d08e5f4e0770dec0a3de735105adcd1ffe1e956acb187a5"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/hoodie-work-right.png": {
+      "bytes": 5808,
+      "sha256": "d494bfda8d56b698497c4f58d96f36c87b5bf17d917a009dc78c2455092f8e4e"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/office-celebrate-left.png": {
+      "bytes": 6200,
+      "sha256": "9560032c96280c3547bb059262bfbe7ef4dd203419c662f868d32a6eaa4aa3d5"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/office-celebrate-right.png": {
+      "bytes": 6047,
+      "sha256": "b265775a7169b622eb7ed47746c5bbbf4d6169849a270d2de0af0b20efc551a2"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/office-idle-left.png": {
+      "bytes": 6205,
+      "sha256": "6f167e2ef63c8928ed0b1859b16e59f3dc895f35ada112367b58583f391e9717"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/office-idle-right.png": {
+      "bytes": 6121,
+      "sha256": "95b868abfbbd5906c3f3c797131532c8c44e7b8364690f64f282ed35bb66836a"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/office-inspect-left.png": {
+      "bytes": 5887,
+      "sha256": "3a6a8683c3275815372d06dcb6bac254dfee1751d7eda6be06f574c7522ba0a1"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/office-inspect-right.png": {
+      "bytes": 5911,
+      "sha256": "cf3dba2c6a4bd905741fb01f191272de98989b122ef546684a5950ba3cd483b5"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/office-rest-left.png": {
+      "bytes": 6008,
+      "sha256": "e50137920f96da8d14e7cf35aac59d798ffa3555322c125119dd5413388c764d"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/office-rest-right.png": {
+      "bytes": 5960,
+      "sha256": "951224579e1c838adbde2b85ca27c358162edd90b364ebeb57edba045ec31eed"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/office-walk-left.png": {
+      "bytes": 5947,
+      "sha256": "036eaf388518f209d2cec049cb6564340df8942d9f3d620c1700c8e1753383fd"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/office-walk-right.png": {
+      "bytes": 6174,
+      "sha256": "68c998f6c396ea8664f6ffa67ff0352894403e983859844ef5959ddf7db7435b"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/office-work-left.png": {
+      "bytes": 5821,
+      "sha256": "a81d1cbe96ddc09383f4e831a3e5eba17fcd48ad26b432f13c86e00e175cda68"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/office-work-right.png": {
+      "bytes": 6045,
+      "sha256": "baf119251881628e38a31ac0d319fe7ee21289ea3bc2450d4c09b2b0a670c532"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/scientist-celebrate-left.png": {
+      "bytes": 6867,
+      "sha256": "e1d67fcfed463b62bf01151580fbc2ba2bfcdd935494bc092fff227629258efa"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/scientist-celebrate-right.png": {
+      "bytes": 6751,
+      "sha256": "d37a4f9311a2baa9b56b8b0048010552e7133b3d57d26dc66821cc672aa3880a"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/scientist-idle-left.png": {
+      "bytes": 6674,
+      "sha256": "9e419429773578442739d1504c737eee8786968aff123b68329651647c012ab4"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/scientist-idle-right.png": {
+      "bytes": 6512,
+      "sha256": "6d4030adaf9ae382c232ceb3309bd0cf40671c82c78f66b31a000622c4ebed76"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/scientist-inspect-left.png": {
+      "bytes": 6301,
+      "sha256": "0f22d0f25688555ef3a3fbf14034dd54a82fd6886ca0a3ff793799ee076ded3f"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/scientist-inspect-right.png": {
+      "bytes": 6260,
+      "sha256": "da456500b288bd729d8da1d530639f67642420fce316b14b9a259eed55e20c69"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/scientist-rest-left.png": {
+      "bytes": 6566,
+      "sha256": "24727eaa9647d9d56adc17c5b0b33d9ee063948ec92db8db6fea358a891d8abd"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/scientist-rest-right.png": {
+      "bytes": 6608,
+      "sha256": "029d297c8f20b26ed14aa17be4b03ba977a0041c6c7e7eb8b750009b530f5bd4"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/scientist-walk-left.png": {
+      "bytes": 6518,
+      "sha256": "a08cc8b0404eab90336139f0ecd257edf21964e630ad1a5feb8ea3de779250aa"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/scientist-walk-right.png": {
+      "bytes": 6919,
+      "sha256": "706eebf266288b48245dc34aede42829bde85790b36a2a131bbc31196ceca7cd"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/scientist-work-left.png": {
+      "bytes": 6424,
+      "sha256": "f378cd3cd084518fc61a974c5ca70a2be39aacd1f8cc153958d6828105b7b858"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/scientist-work-right.png": {
+      "bytes": 6641,
+      "sha256": "0a506dd65a0d8dbe2e7161c32ddd189586765b0b6eae12ca385c304d54c11e7c"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/sporty-celebrate-left.png": {
+      "bytes": 5395,
+      "sha256": "29c252fefd75073bed5ac9b86332b862f4c930d5136f49cabdad78250077c2ac"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/sporty-celebrate-right.png": {
+      "bytes": 5408,
+      "sha256": "6c6e5b7c8e0498610690d3e78138bc967e49c9fc20bac24f84997359ea6c6903"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/sporty-idle-left.png": {
+      "bytes": 5407,
+      "sha256": "ab00db433594d260d8184043d0e57a5914d1c90d20e9a5c4b21464b8bd2c3876"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/sporty-idle-right.png": {
+      "bytes": 5389,
+      "sha256": "ac800842fdf8778cafb2174e72f2f687c9d33c50f19b61f54a08716381126d85"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/sporty-inspect-left.png": {
+      "bytes": 5179,
+      "sha256": "30a50a0a5ebd9d44146d58c43bc92910c08a616382e2c7854358333b1ded60f9"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/sporty-inspect-right.png": {
+      "bytes": 5332,
+      "sha256": "1d0abe768c3fecd74290945af51eff9e5c82461f48b7390777239fe02c57d269"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/sporty-rest-left.png": {
+      "bytes": 5131,
+      "sha256": "0e2e9d9c5cfb7631f5546825d3f5f26ec1593dac80a67fd89ed69c1496e3edb5"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/sporty-rest-right.png": {
+      "bytes": 5188,
+      "sha256": "341a64225f61bb331dbc026eff73ae20fd1f70d9a055e0951eea9498eec0c113"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/sporty-walk-left.png": {
+      "bytes": 5144,
+      "sha256": "706d0cb347814440103a6e152cae27772b72f413b3ff755fd0daeca488e031d4"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/sporty-walk-right.png": {
+      "bytes": 5400,
+      "sha256": "7a2aa26c7f1a0cbf52ffe247099ab6f6024eba12aa6588b6bbcd3bb6f1294a56"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/sporty-work-left.png": {
+      "bytes": 5027,
+      "sha256": "ce09b9e425751b2888d5dd0e2d761a0117979b2feb7092dbfcc15a796cc85bcb"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/sporty-work-right.png": {
+      "bytes": 5426,
+      "sha256": "de52652d30d402d174743336777fed667c7dab0c2fe1177dd3d7b5f2f23f4bfe"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/sweater-celebrate-left.png": {
+      "bytes": 6065,
+      "sha256": "2932659b9c62a689961dec6c4d3cc2f6198f684bef159ec29e3f9f7918d93562"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/sweater-celebrate-right.png": {
+      "bytes": 6188,
+      "sha256": "6c7c30c1f283f7c597c64e4d7c664e8b2ba1eadd471cf3627a083e2155eae42f"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/sweater-idle-left.png": {
+      "bytes": 6239,
+      "sha256": "803b2f1a844a6e5b195b6cc10f38698803c3a93f2c5287bf8881272814e7e9bc"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/sweater-idle-right.png": {
+      "bytes": 5931,
+      "sha256": "ca238305931d1b44daa6da71892378c58de8e19cd9d3ee4a86ddd815098aaa28"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/sweater-inspect-left.png": {
+      "bytes": 5623,
+      "sha256": "411722776ef3ac28583be4b7267f459292ad31cfdabe381e6e795be335d7d9cd"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/sweater-inspect-right.png": {
+      "bytes": 5736,
+      "sha256": "8e1ab1600a00e1b636e9649a64cb626cd2507cac2d0e5a6c7daa188eece070eb"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/sweater-rest-left.png": {
+      "bytes": 5814,
+      "sha256": "c9566616b0a4fffe2645d39a2df3ab66a8318683bef927f40e24f7997e8853f4"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/sweater-rest-right.png": {
+      "bytes": 5687,
+      "sha256": "0724e0d7e25d714f84fca6fb5053f6237339b8f36940b36ac7e48055177952cb"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/sweater-walk-left.png": {
+      "bytes": 5847,
+      "sha256": "917a163c712e7a1f75ce4deeb338fa482910049a63065f84feb7e65d1a36510e"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/sweater-walk-right.png": {
+      "bytes": 6226,
+      "sha256": "04a3ac69dde8321a37c454fa14e4a6158dbfb8fee67ac05f3a067ea6cfcd28a6"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/sweater-work-left.png": {
+      "bytes": 5681,
+      "sha256": "6c5b0256d82d967a1e4c9aee156c767b4d05e149aace7b2ec7a4702a71fbdbd1"
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/sweater-work-right.png": {
+      "bytes": 5865,
+      "sha256": "48bed2b53ac317ec084b7a1a79105adcb5ad1d48b7b3be34b5951ed860280910"
+    },
+    "assets/personal-space/v2/workspace/pixel/backgrounds/building-formal-workstation-room-pixel.png": {
+      "bytes": 92948,
+      "sha256": "949bfd997ca82800e4e7791522177d915461bed57467fc47d96160de8da35113"
+    },
+    "assets/personal-space/v2/workspace/pixel/props/corner-desk.png": {
+      "bytes": 5304,
+      "sha256": "70ddfe1a9dea0832486875d98acc7cd893cd2da00f16033404e8ed0ef3bc8f7c"
+    },
+    "assets/personal-space/v2/workspace/pixel/props/desk-lamp.png": {
+      "bytes": 556,
+      "sha256": "e9b96294fc1a38d386adb9e5363e6ad15f99f63c78743f3d4b2c6423d9820f7a"
+    },
+    "assets/personal-space/v2/workspace/pixel/props/dual-monitor.png": {
+      "bytes": 1987,
+      "sha256": "d2a4f29ac8e0aa7e948752f039be60c6c8512c5c3fb155f625e2b36db184888e"
+    },
+    "assets/personal-space/v2/workspace/pixel/props/office-chair.png": {
+      "bytes": 2418,
+      "sha256": "f608f140f57edecafd5bcf1037b3ae5f2bd0da49741eb9d5627d0c098fcca5ef"
+    },
+    "assets/personal-space/v2/workspace/pixel/props/office-plant.png": {
+      "bytes": 3779,
+      "sha256": "c7ef65ee4894856c259878acf15f0442d4737464c06e963566a06d2619ffa741"
+    },
+    "assets/personal-space/v2/workspace/pixel/props/office-shelf.png": {
+      "bytes": 9160,
+      "sha256": "2c7d5c43d53d73b36c993af3e58c56f8961ea98e0f9f404ecc358aed80f1114e"
+    },
+    "assets/personal-space/v2/workspace/pixel/props/planning-board.png": {
+      "bytes": 3691,
+      "sha256": "228bc205ce03bc9d868b96a07ecd8d44f4662ea8656a72044e5d486752086987"
+    },
+    "assets/personal-space/v2/workspace/pixel/props/single-monitor.png": {
+      "bytes": 1524,
+      "sha256": "17468cb48b0f52956ea490bfddab914778fc1cffe27fcc5370e98d05ea2bbc51"
+    }
+  }
+}

@@ -4,7 +4,8 @@ This folder contains only reviewed runtime outputs for the Building Formal Works
 
 - `art-pipeline/ps242/`: the pixel characters and the weather.
 - `art-pipeline/ps244-blender/`: the room and the furniture.
-- `art-pipeline/ps250-characters/`: the Q-style characters under `characters/toon/`. These have been the default characters since PS-250B; the pixel characters are the pixel style.
+- `art-pipeline/ps250-characters/`: the Q-style characters under `characters/toon/`. These have been the default characters since PS-250B.
+- `art-pipeline/ps250-pixel/`: the pixel style (PS-250D) under `workspace/pixel/` and `characters/pixel/`. The PS-242 characters under `characters/protagonist/` and `characters/companion/` are extra options in that style.
 
 ## Runtime contract
 

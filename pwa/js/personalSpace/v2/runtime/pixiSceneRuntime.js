@@ -122,34 +122,26 @@ export function createPixiSceneRuntime(options = {}) {
       weather,
       appearance: renderModel.appearance || renderModel.world?.appearance || null,
     };
-    let scene = getWorkspaceSceneAssets(project.progress || 0, placements, visualState);
-    let textures;
-    try {
-      textures = await pixi.Assets.load(sceneAssetPaths(scene));
-    } catch (error) {
-      // PS-250B: only the default characters are precached. A chosen character
-      // that cannot load (offline, not cached yet) is drawn as the default;
-      // the other one stays as chosen when it loads, as in the poster.
-      const fallback = getWorkspaceSceneAssets(project.progress || 0, placements, { ...visualState, appearance: null });
-      const candidates = [
-        { ...scene, protagonist: fallback.protagonist, protagonistVariant: fallback.protagonistVariant },
-        { ...scene, companion: fallback.companion },
-        fallback,
-      ].filter(candidate => (
-        candidate.protagonist !== scene.protagonist || candidate.companion.path !== scene.companion.path
-      ));
-      textures = null;
-      for (const candidate of candidates) {
-        try {
-          textures = await pixi.Assets.load(sceneAssetPaths(candidate));
-          scene = candidate;
-          break;
-        } catch {
-          // Try the next candidate; the last one is the full default.
-        }
-      }
-      if (!textures) throw error;
-    }
+    const chosen = getWorkspaceSceneAssets(project.progress || 0, placements, visualState);
+    const fallback = getWorkspaceSceneAssets(project.progress || 0, placements, { ...visualState, appearance: null });
+    // PS-250B/D: only the default style is precached. The room with its props,
+    // the protagonist and the Companion load separately; a part that cannot
+    // load (offline, not cached yet) is drawn from the default style, as in the
+    // poster, and the other parts stay as chosen.
+    const [scenery, protagonistPart, companionPart] = await Promise.all([
+      loadPart(pixi, sceneryPaths(chosen), sceneryPaths(fallback)),
+      loadPart(pixi, [chosen.protagonist], [fallback.protagonist]),
+      loadPart(pixi, [chosen.companion.path], [fallback.companion.path]),
+    ]);
+    const scene = {
+      ...chosen,
+      ...(scenery.usedFallback ? { background: fallback.background, props: fallback.props } : {}),
+      ...(protagonistPart.usedFallback
+        ? { protagonist: fallback.protagonist, protagonistVariant: fallback.protagonistVariant }
+        : {}),
+      ...(companionPart.usedFallback ? { companion: fallback.companion } : {}),
+    };
+    const textures = { ...scenery.textures, ...protagonistPart.textures, ...companionPart.textures };
     if (
       activeApp !== app
       || activeRenderRevision !== renderRevision
@@ -482,14 +474,17 @@ export function getCoverTransform(
   };
 }
 
-function sceneAssetPaths(scene) {
-  return [
-    scene.background,
-    scene.protagonist,
-    scene.companion.path,
-    scene.weatherOverlay,
-    ...scene.props.map(entry => entry.path),
-  ].filter(Boolean);
+function sceneryPaths(scene) {
+  return [scene.background, scene.weatherOverlay, ...scene.props.map(entry => entry.path)].filter(Boolean);
+}
+
+async function loadPart(pixi, paths, fallbackPaths) {
+  try {
+    return { textures: await pixi.Assets.load(paths), usedFallback: false };
+  } catch (error) {
+    if (fallbackPaths.every((path, index) => path === paths[index])) throw error;
+    return { textures: await pixi.Assets.load(fallbackPaths), usedFallback: true };
+  }
 }
 
 function applyPlacement(sprite, placement = {}) {

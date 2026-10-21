@@ -152,9 +152,14 @@ function createRuntimeHost() {
 }
 
 async function flushMicrotasks() {
-  await Promise.resolve();
-  await Promise.resolve();
-  await Promise.resolve();
+  // PS-250D: a render loads the room, the protagonist and the Companion as
+  // three parts, which takes a few more turns of the microtask queue.
+  for (let turn = 0; turn < 10; turn += 1) await Promise.resolve();
+}
+
+// Every path a render asked Pixi to load, across its separate part loads.
+function loadedSince(fake, callCount = 0) {
+  return fake.pixi.Assets.load.mock.calls.slice(callCount).flatMap(([paths]) => paths);
 }
 
 describe('Personal Space V2 Pixi scene runtime', () => {
@@ -233,7 +238,7 @@ describe('Personal Space V2 Pixi scene runtime', () => {
     const protagonist = app.stage.children.find(child => child.label === 'orbit-protagonist');
     const companion = app.stage.children.find(child => child.label === 'orbit-companion');
     const rain = app.stage.children.find(child => child.label === 'orbit-weather-rain');
-    const loadedPaths = fake.pixi.Assets.load.mock.calls[0][0];
+    const loadedPaths = loadedSince(fake);
     const ticker = app.ticker.add.mock.calls[0][0];
     const initialProtagonistX = protagonist.x;
     const initialCompanionY = companion.y;
@@ -264,7 +269,7 @@ describe('Personal Space V2 Pixi scene runtime', () => {
     };
 
     await runtime.mount(host, model);
-    let [paths] = fake.pixi.Assets.load.mock.calls.at(-1);
+    let paths = loadedSince(fake);
     expect(paths).toContain('assets/personal-space/v2/characters/toon/protagonist/hoodie-work-left.webp');
     expect(paths).toContain('assets/personal-space/v2/characters/toon/companion/owl-observe.webp');
 
@@ -276,8 +281,9 @@ describe('Personal Space V2 Pixi scene runtime', () => {
       if (requested.some(path => path.includes('/artist-'))) throw new Error('[Loader.load] Failed to load artist-work-left.webp');
       return load(requested);
     });
+    let calls = fake.pixi.Assets.load.mock.calls.length;
     await runtime.render({ ...model, appearance: { style: 'toon', protagonistId: 'artist', companionId: 'owl' } });
-    [paths] = fake.pixi.Assets.load.mock.calls.at(-1);
+    paths = loadedSince(fake, calls);
     expect(paths).toContain('assets/personal-space/v2/characters/toon/protagonist/office-work-left.webp');
     expect(paths).toContain('assets/personal-space/v2/characters/toon/companion/owl-observe.webp');
     const app = fake.applications[0];
@@ -291,10 +297,35 @@ describe('Personal Space V2 Pixi scene runtime', () => {
       if (requested.some(path => /\/(artist|fox)-/.test(path))) throw new Error('[Loader.load] offline');
       return load(requested);
     });
+    calls = fake.pixi.Assets.load.mock.calls.length;
     await runtime.render({ ...model, appearance: { style: 'toon', protagonistId: 'artist', companionId: 'fox' } });
-    [paths] = fake.pixi.Assets.load.mock.calls.at(-1);
+    paths = loadedSince(fake, calls);
     expect(paths).toContain('assets/personal-space/v2/characters/toon/protagonist/office-work-left.webp');
     expect(paths).toContain('assets/personal-space/v2/characters/toon/companion/orbit-observe.webp');
+    runtime.destroy();
+  });
+
+  it('draws the Q-style room when the pixel room cannot load, keeping the pixel characters (PS-250D)', async () => {
+    const fake = createFakePixi();
+    const load = fake.pixi.Assets.load.getMockImplementation();
+    fake.pixi.Assets.load.mockImplementation(async requested => {
+      if (requested.some(path => path.includes('/workspace/pixel/'))) throw new Error('[Loader.load] offline');
+      return load(requested);
+    });
+    const runtime = createPixiSceneRuntime({ loadPixi: () => Promise.resolve(fake.pixi) });
+    const { host } = createRuntimeHost();
+    await runtime.mount(host, {
+      activeProject: { progress: 100 },
+      protagonist: { state: 'idle' },
+      companion: { state: 'observe' },
+      appearance: { style: 'pixel', protagonistId: 'artist' },
+    });
+    const app = fake.applications[0];
+    const background = app.stage.children.find(child => child.texture?.path?.includes('/backgrounds/'));
+    expect(background.texture.path).toBe('assets/personal-space/v2/workspace/backgrounds/building-formal-workstation-room-v2.webp');
+    expect(app.stage.children.find(child => child.label === 'orbit-protagonist').texture.path)
+      .toBe('assets/personal-space/v2/characters/pixel/protagonist/artist-idle-left.png');
+    expect(runtime.getStatus()).toBe('ready');
     runtime.destroy();
   });
 
@@ -340,10 +371,11 @@ describe('Personal Space V2 Pixi scene runtime', () => {
     expect(runtime.getStatus()).toBe('fallback');
     expect(root.classList.contains('is-runtime-fallback')).toBe(true);
 
+    const callsBeforeRestore = fake.pixi.Assets.load.mock.calls.length;
     canvas.dispatchEvent(new Event('webglcontextrestored'));
     await flushMicrotasks();
 
-    const restoredPaths = fake.pixi.Assets.load.mock.calls.at(-1)[0];
+    const restoredPaths = loadedSince(fake, callsBeforeRestore);
     expect(restoredPaths.some(path => path.includes('workspace/props/planning-board.png'))).toBe(true);
     expect(restoredPaths.some(path => path.includes('workspace/props/single-monitor.png'))).toBe(true);
     expect(runtime.getStatus()).toBe('ready');

@@ -267,7 +267,18 @@
       - 預設改成 Q 版時，`build-manifest.mjs`、`ps211aPrecache` 與 PS-243 預算都會讀到 Q 版的 WebP：要確認 lossy＋alpha 的 WebP 能被 `build-manifest.mjs` 解析（提案記錄 lossless 會拋錯）。
       - `ps211aPrecache.test.js` 的「只讀取 facing」名單整個放行了 `characterCatalog.js`；若 PS-250B 在那裡加入設定 facing 的邏輯，要重新檢查這個名單。
       - INFRA-105：`app.js`、`router.js` 直接 import `pixiSceneRuntime.js`（它再 import `assetManifest.js`），`home.js` import `controller.js` 與 `viewModels.js`，都在啟動路徑上。這些模組不能新增對其他模組的 import：跳過版本的使用者，舊快取中可能沒有那個模組（連 PS-250C 的 `characterCatalog.js` 也可能沒有），離線時整個 app 無法啟動。角色路徑的解析要寫在 `assetManifest.js` 自己裡面，以測試確保與 `characterCatalog.js` 一致；或由不在啟動路徑上的模組算好，當資料放進 model。
-    - PS-250D 進行中（2026-10-21）：像素版的房間、家具與 Q 版角色（以 1/4 解析度、不反鋸齒的 Blender 渲染，每個圖各自的色盤），補齊「全像素」；選擇介面的像素選項跟著增加。之後 PS-250E（場景）→ PS-250F（小家具）。
+    - PS-250D 完成（2026-10-21，v1.34.0）：
+      - **管線**：`art-pipeline/ps250-pixel/`，共 117 張 PNG，約 636 KB。
+        - 房間與 8 件家具以 PS-244 的場景在 384×256 渲染（不反鋸齒、1 px 描邊），每張圖各自的色盤，×4 放大。
+        - 家具裁成與 Q 版相同的框，所以共用同一個 placement。
+        - 角色由 PS-250C 的圖縮成房間的像素大小（主角 92、夥伴 50 像素），加對比、銳利化與 1 px 深色描邊，再 ×4 放大。直接以小尺寸渲染會讓臉糊掉。
+      - **全像素的範圍**：風格現在也包括房間與家具。像素版的 6 套主角與 6 種夥伴與 Q 版共用 id，切換風格時角色不變。
+      - **經典角色**：PS-242 的像素角色成為「經典像素主角」「經典 Orbit」。在 Q 版中，它們對應上班族與 Orbit。
+      - **離線**：
+        - poster 的房間與家具也帶 `data-fallback-src`。
+        - Pixi 把房間（含家具）、主角、夥伴分成三部分載入，只把載入失敗的部分換成 Q 版。
+      - **預先快取**：全像素都不預先快取。
+    - 下一步：PS-250E（場景：夜晚版本與房間風格，兩種風格各一套）→ PS-250F（小家具）。
 
 - [ ] **PS-248** 以 Blender 擴充「空間」的主題與素材（提案）
   - 使用者 2026-10-20 要求：「需要更新更多 blender 做的主題與素材等，讓本工具更豐富」。

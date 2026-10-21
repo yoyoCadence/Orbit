@@ -69,5 +69,5 @@ Cycles reruns are not byte-identical, so render only what changed. WebP encoding
 
 ## Not in scope
 
-- The pixel versions of these characters, the room and the furniture are PS-250D.
+- The pixel versions of these characters, the room and the furniture are in `../ps250-pixel/` (PS-250D). They are reduced from these sprites, so re-run `ps250-pixel/process_pixel.py` after changing them.
 - No 3D runtime. The app still draws 2D sprites; the JS added is the catalog module and the Edit Mode picker (PS-250B).

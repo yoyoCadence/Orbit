@@ -258,7 +258,9 @@ describe('Personal Space V2 full page', () => {
     container.querySelector('[data-v2-appearance="style"][data-value="pixel"]').click();
     expect(loadPersonalSpaceV2State('user-1').world.appearance.style).toBe('pixel');
     expect(container.querySelector('[data-personal-space-v2]').dataset.mode).toBe('edit');
-    expect(poster()).toContain('characters/protagonist/player-default-');
+    // PS-250D: the pixel style has the pixel version of the same office worker.
+    expect(poster()).toContain('characters/pixel/protagonist/office-');
+    expect(container.querySelector('.orbit-window-background').getAttribute('src')).toContain('/workspace/pixel/');
     expect(document.activeElement).toBe(container.querySelector('[data-v2-appearance="style"][data-value="pixel"]'));
     expect(mountWindow.mock.calls.at(-1)[1].model.appearance.style).toBe('pixel');
 
@@ -267,16 +269,26 @@ describe('Personal Space V2 full page', () => {
     container.querySelector('[data-v2-appearance="companion"][data-value="catbot"]').click();
     expect(loadPersonalSpaceV2State('user-1').world.appearance)
       .toEqual({ style: 'toon', protagonistId: 'scientist', companionId: 'catbot' });
+    expect(poster()).toContain('/toon/protagonist/scientist-');
 
-    // Under the pixel style, tapping its only (already shown) characters keeps
-    // the Q-style choice, so switching back restores it.
+    // The pixel style shows the same characters; tapping the ones already
+    // shown changes nothing, so switching back keeps the choice.
     container.querySelector('[data-v2-appearance="style"][data-value="pixel"]').click();
-    container.querySelector('[data-v2-appearance="protagonist"][data-value="default"]').click();
-    container.querySelector('[data-v2-appearance="companion"][data-value="orbit-guide"]').click();
+    expect(poster()).toContain('characters/pixel/protagonist/scientist-');
+    container.querySelector('[data-v2-appearance="protagonist"][data-value="scientist"]').click();
+    container.querySelector('[data-v2-appearance="companion"][data-value="catbot"]').click();
     container.querySelector('[data-v2-appearance="style"][data-value="toon"]').click();
     expect(loadPersonalSpaceV2State('user-1').world.appearance)
       .toEqual({ style: 'toon', protagonistId: 'scientist', companionId: 'catbot' });
-    expect(poster()).toContain('/toon/protagonist/scientist-');
+
+    // The classic pixel office worker is the office worker in the Q style.
+    container.querySelector('[data-v2-appearance="style"][data-value="pixel"]').click();
+    container.querySelector('[data-v2-appearance="protagonist"][data-value="default"]').click();
+    expect(poster()).toContain('characters/protagonist/player-default-');
+    container.querySelector('[data-v2-appearance="style"][data-value="toon"]').click();
+    expect(poster()).toContain('/toon/protagonist/office-');
+    expect(container.querySelector('[data-v2-appearance="protagonist"][data-value="office"]').getAttribute('aria-pressed'))
+      .toBe('true');
     expect(container.querySelector('.orbit-window-companion').getAttribute('src')).toContain('/toon/companion/catbot-');
     // Choosing a look grants nothing and leaves the world revision alone.
     expect(loadPersonalSpaceV2State('user-1').worldRevision).toBe(source.worldRevision);

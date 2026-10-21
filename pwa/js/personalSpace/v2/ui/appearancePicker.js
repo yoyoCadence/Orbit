@@ -6,8 +6,9 @@
  *
  * A new module that only reads existing exports (INFRA-105): the scene
  * resolution in assetManifest.js, the Q-style character list (PS-250C) and the
- * V2 store. The pixel ids mirror assetManifest.js; ps250bAppearance.test.js
- * keeps them in sync.
+ * V2 store, and since PS-250D the pixel set, which has the same ids plus the
+ * PS-242 characters. The pixel ids and aliases mirror assetManifest.js;
+ * ps250bAppearance.test.js keeps them in sync.
  */
 import { getWorkspaceSceneAssets } from '../content/assetManifest.js';
 import { TOON_COMPANIONS, TOON_PROTAGONISTS } from '../content/characterCatalog.js';
@@ -20,13 +21,18 @@ export const APPEARANCE_STYLES = Object.freeze([
     note: 'Blender 卡通角色（預設）',
     protagonists: TOON_PROTAGONISTS,
     companions: TOON_COMPANIONS,
+    // The classic pixel characters are the office worker and Orbit.
+    aliases: Object.freeze({ default: 'office', 'orbit-guide': 'orbit' }),
   }),
+  // PS-250D: the pixel style has the pixel version of every Q-style character
+  // (same ids, so a choice carries over between styles) plus the PS-242 pixel
+  // characters.
   Object.freeze({
     id: 'pixel',
     label: '全像素',
-    note: '像素角色；像素版的房間與更多角色之後加入',
-    protagonists: Object.freeze([Object.freeze({ id: 'default', label: '像素主角' })]),
-    companions: Object.freeze([Object.freeze({ id: 'orbit-guide', label: 'Orbit' })]),
+    note: '像素版的房間、家具與角色',
+    protagonists: Object.freeze([...TOON_PROTAGONISTS, Object.freeze({ id: 'default', label: '經典像素主角' })]),
+    companions: Object.freeze([...TOON_COMPANIONS, Object.freeze({ id: 'orbit-guide', label: '經典 Orbit' })]),
   }),
 ]);
 
@@ -34,7 +40,12 @@ export const APPEARANCE_STYLES = Object.freeze([
 export function resolveAppearanceChoice(value) {
   const input = value && typeof value === 'object' ? value : {};
   const style = APPEARANCE_STYLES.find(entry => entry.id === input.style) || APPEARANCE_STYLES[0];
-  const pick = (options, id) => (options.some(option => option.id === id) ? id : options[0].id);
+  const aliases = style.aliases || {};
+  const pick = (options, id) => {
+    if (options.some(option => option.id === id)) return id;
+    const alias = typeof id === 'string' && Object.hasOwn(aliases, id) ? aliases[id] : null;
+    return options.some(option => option.id === alias) ? alias : options[0].id;
+  };
   return {
     style: style.id,
     protagonistId: pick(style.protagonists, input.protagonistId),
