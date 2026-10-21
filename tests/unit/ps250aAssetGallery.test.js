@@ -8,6 +8,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FLAG_DEV_PANEL } from '../../pwa/js/flags.js';
 import { getWorkspaceAssetManifestPaths } from '../../pwa/js/personalSpace/v2/content/assetManifest.js';
+import { getToonCharacterPaths } from '../../pwa/js/personalSpace/v2/content/characterCatalog.js';
 import {
   ASSET_GALLERY_FLAG,
   buildAssetCatalog,
@@ -16,18 +17,24 @@ import {
   setAssetGalleryEnabled,
 } from '../../pwa/js/personalSpace/v2/ui/assetGallery.js';
 
+// The scene's assets plus the Q-style characters it does not use yet (PS-250C).
+const ALL_PATHS = [...getWorkspaceAssetManifestPaths(), ...getToonCharacterPaths()].sort();
+
 describe('PS-250A developer asset gallery', () => {
   afterEach(() => {
     localStorage.clear();
     vi.unstubAllGlobals();
   });
 
-  it('lists every manifest asset exactly once, in a named group', () => {
+  it('lists every asset exactly once, in a named group', () => {
     const catalog = buildAssetCatalog();
     const listed = catalog.flatMap(group => group.assets.map(asset => asset.path));
 
-    expect(listed.sort()).toEqual([...getWorkspaceAssetManifestPaths()].sort());
-    expect(catalog.map(group => group.label)).toEqual(['場景・房間', '家具', '主角', 'AI 夥伴', '天氣特效']);
+    expect(listed.sort()).toEqual(ALL_PATHS);
+    expect(new Set(listed).size).toBe(listed.length);
+    expect(catalog.map(group => group.label)).toEqual([
+      '場景・房間', '家具', 'Q 版主角', 'Q 版 AI 夥伴', '像素主角', '像素 AI 夥伴', '天氣特效',
+    ]);
     expect(catalog.every(group => group.source)).toBe(true);
   });
 
@@ -45,8 +52,7 @@ describe('PS-250A developer asset gallery', () => {
     host.innerHTML = renderAssetGallery();
     const images = [...host.querySelectorAll('img')];
 
-    expect(images.map(image => image.getAttribute('src')).sort())
-      .toEqual([...getWorkspaceAssetManifestPaths()].sort());
+    expect(images.map(image => image.getAttribute('src')).sort()).toEqual(ALL_PATHS);
     expect(images.every(image => image.getAttribute('loading') === 'lazy')).toBe(true);
     expect(host.textContent).toContain(`${images.length} 個檔案`);
   });

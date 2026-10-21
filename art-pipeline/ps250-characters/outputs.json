@@ -1,0 +1,532 @@
+{
+  "schemaVersion": 1,
+  "taskId": "PS-250C",
+  "encoding": {
+    "format": "webp",
+    "quality": 90,
+    "alpha_quality": 100,
+    "method": 6
+  },
+  "protagonist": {
+    "canvas": [
+      512,
+      512
+    ],
+    "ground": [
+      0.5,
+      0.941406
+    ],
+    "ids": [
+      {
+        "id": "office",
+        "label": "上班族"
+      },
+      {
+        "id": "hoodie",
+        "label": "帽 T"
+      },
+      {
+        "id": "sweater",
+        "label": "毛衣長髮"
+      },
+      {
+        "id": "sporty",
+        "label": "運動馬尾"
+      },
+      {
+        "id": "scientist",
+        "label": "科學家"
+      },
+      {
+        "id": "artist",
+        "label": "畫家"
+      }
+    ],
+    "poses": [
+      "idle",
+      "work",
+      "celebrate",
+      "rest",
+      "walk",
+      "inspect"
+    ],
+    "facings": [
+      "left",
+      "right"
+    ]
+  },
+  "companion": {
+    "canvas": [
+      256,
+      256
+    ],
+    "ids": [
+      {
+        "id": "orbit",
+        "label": "Orbit"
+      },
+      {
+        "id": "catbot",
+        "label": "貓型機器人"
+      },
+      {
+        "id": "owl",
+        "label": "貓頭鷹"
+      },
+      {
+        "id": "cube",
+        "label": "方塊無人機"
+      },
+      {
+        "id": "jelly",
+        "label": "果凍"
+      },
+      {
+        "id": "fox",
+        "label": "狐狸"
+      }
+    ],
+    "states": [
+      "observe",
+      "approach",
+      "congratulate",
+      "rest",
+      "work",
+      "remind"
+    ]
+  },
+  "files": {
+    "assets/personal-space/v2/characters/toon/companion/catbot-approach.webp": {
+      "bytes": 5910,
+      "sha256": "7e8a04947f27d91a8ac92d72f99c18a421d0c3d6d4bc13604dfc1f00ae2d9bb8"
+    },
+    "assets/personal-space/v2/characters/toon/companion/catbot-congratulate.webp": {
+      "bytes": 7578,
+      "sha256": "5bee8ae886bbaee9b19b61ac945652f9f940c51976cbfeb9a56d07ae1d6e9d4a"
+    },
+    "assets/personal-space/v2/characters/toon/companion/catbot-observe.webp": {
+      "bytes": 6080,
+      "sha256": "7ce4f9c3dd1d681e8f628ba270e0db8a76d249ddac32778bdc53280c4db423a5"
+    },
+    "assets/personal-space/v2/characters/toon/companion/catbot-remind.webp": {
+      "bytes": 6892,
+      "sha256": "741c26f0a6167fdd68776de56dcb79c5ae3ebea7495077cd6691a6d94a4cd455"
+    },
+    "assets/personal-space/v2/characters/toon/companion/catbot-rest.webp": {
+      "bytes": 7326,
+      "sha256": "b256579018f5a604bf10a2d26b881f903c9414d078eecfe1d9faac0ea430c0a4"
+    },
+    "assets/personal-space/v2/characters/toon/companion/catbot-work.webp": {
+      "bytes": 7238,
+      "sha256": "be6b55a0b7383c69d80d0031b02a9a0b1ee4d5abaf9e7b2943ec7e586b6d1e93"
+    },
+    "assets/personal-space/v2/characters/toon/companion/cube-approach.webp": {
+      "bytes": 4754,
+      "sha256": "d7a189a57401ad9988c2307dc00fdd39a2bf138de53cc7217916c90af6159ac5"
+    },
+    "assets/personal-space/v2/characters/toon/companion/cube-congratulate.webp": {
+      "bytes": 6398,
+      "sha256": "0a8ce8eae1872cea37d58ebac131e7ff861ac802917a619e8bacdb947c42ffb6"
+    },
+    "assets/personal-space/v2/characters/toon/companion/cube-observe.webp": {
+      "bytes": 5018,
+      "sha256": "80a3a8dcf1df00c96e8cb1dfec7551c712b4d7c9425101fb3670e31f943bc4e6"
+    },
+    "assets/personal-space/v2/characters/toon/companion/cube-remind.webp": {
+      "bytes": 6000,
+      "sha256": "d2533842b3b32f863ba1e8e6acfe525baa5b5eea41033036900cdac348cebb78"
+    },
+    "assets/personal-space/v2/characters/toon/companion/cube-rest.webp": {
+      "bytes": 6236,
+      "sha256": "5d07c0b51f470cb493ffac6e86229492d422d5fb6befe828aacc0ec8c2348ef0"
+    },
+    "assets/personal-space/v2/characters/toon/companion/cube-work.webp": {
+      "bytes": 6400,
+      "sha256": "cc4f9538332040808e9b8ba3cf99d573fb70f2ff7f01236cd71aaa63f9db52ae"
+    },
+    "assets/personal-space/v2/characters/toon/companion/fox-approach.webp": {
+      "bytes": 8440,
+      "sha256": "1b08b0ad7b70a66c840f6a77e7d62b08ba153079f2e28a7cda5c781b847a73dc"
+    },
+    "assets/personal-space/v2/characters/toon/companion/fox-congratulate.webp": {
+      "bytes": 8950,
+      "sha256": "0b761e0defc4149757ef022b4a3dd305ca27c774615509ffe09cda9e9d9ec1ef"
+    },
+    "assets/personal-space/v2/characters/toon/companion/fox-observe.webp": {
+      "bytes": 7832,
+      "sha256": "e73c7edf9ec1f9ee88d76f6eb898452a70abf6c0cd8850cb606623aa75f0a9d1"
+    },
+    "assets/personal-space/v2/characters/toon/companion/fox-remind.webp": {
+      "bytes": 8364,
+      "sha256": "80c8eda08bd5165487349ac1ac3f29aec5826c5b76e7a727b1faf202474d4da0"
+    },
+    "assets/personal-space/v2/characters/toon/companion/fox-rest.webp": {
+      "bytes": 8972,
+      "sha256": "ff7e328eef3a5fffe29ffd459d9995f81830adc43c4398abc46b0eb94b6fdea6"
+    },
+    "assets/personal-space/v2/characters/toon/companion/fox-work.webp": {
+      "bytes": 7972,
+      "sha256": "28e70aa58ba1c6121e4266b3e64614b4417f1281f4a42ac65724f2179c62bf67"
+    },
+    "assets/personal-space/v2/characters/toon/companion/jelly-approach.webp": {
+      "bytes": 4978,
+      "sha256": "d5049e91950baad986dc534994de7144fe049da1c90d1ffcfebed832a563966e"
+    },
+    "assets/personal-space/v2/characters/toon/companion/jelly-congratulate.webp": {
+      "bytes": 6672,
+      "sha256": "8ff5ee788f493b91b21dbf23ef1b7c24952ea97abc445cf707daa62780384e94"
+    },
+    "assets/personal-space/v2/characters/toon/companion/jelly-observe.webp": {
+      "bytes": 5006,
+      "sha256": "35085a61a1afa4e7e38cbd3140a6f331cff4111295d22cc01c3120ac11abac94"
+    },
+    "assets/personal-space/v2/characters/toon/companion/jelly-remind.webp": {
+      "bytes": 6022,
+      "sha256": "4cdfb778dd66d3b17a03448dd5d572a4e15b4704c0b60dc567b27a1a732ab43a"
+    },
+    "assets/personal-space/v2/characters/toon/companion/jelly-rest.webp": {
+      "bytes": 6312,
+      "sha256": "bebc4d1471212f7553fa78db0334b636986ed4e6b9e8027f66a4f4d0c5cbcb1d"
+    },
+    "assets/personal-space/v2/characters/toon/companion/jelly-work.webp": {
+      "bytes": 5968,
+      "sha256": "63d37fab08c8bcd37beeb0492d781dbd596ea880de0ef17a74320c004d9daff9"
+    },
+    "assets/personal-space/v2/characters/toon/companion/orbit-approach.webp": {
+      "bytes": 7814,
+      "sha256": "a4faf54cac77e506626f9cb26ba0f749eb9b0eb1637374702e6634bbd97b8e7d"
+    },
+    "assets/personal-space/v2/characters/toon/companion/orbit-congratulate.webp": {
+      "bytes": 9956,
+      "sha256": "b57c5324398d7a2e4b2ef533c493ab4564c52b71ecebc407f3242aca7895c961"
+    },
+    "assets/personal-space/v2/characters/toon/companion/orbit-observe.webp": {
+      "bytes": 8932,
+      "sha256": "7918acc6c8319eb1202758e677361c96798d60f9d96f230c50b444b3b85905d2"
+    },
+    "assets/personal-space/v2/characters/toon/companion/orbit-remind.webp": {
+      "bytes": 9856,
+      "sha256": "68654e2604008ecb14371bfdfdec7380a64050a123b32e4663786c70c9413189"
+    },
+    "assets/personal-space/v2/characters/toon/companion/orbit-rest.webp": {
+      "bytes": 10844,
+      "sha256": "3095c1b29d433e01b922ba36a39934afe9615c76e068d0e395192209f898cba0"
+    },
+    "assets/personal-space/v2/characters/toon/companion/orbit-work.webp": {
+      "bytes": 9956,
+      "sha256": "921f106ec33e91d22c2e4bf311e1db1ea960993e2baa1ed8776aaebfa0e571b8"
+    },
+    "assets/personal-space/v2/characters/toon/companion/owl-approach.webp": {
+      "bytes": 5838,
+      "sha256": "8f03e779b14d867156fd99ba06fcb405ecd4801c4ffaa61a622ca90183885026"
+    },
+    "assets/personal-space/v2/characters/toon/companion/owl-congratulate.webp": {
+      "bytes": 7294,
+      "sha256": "8b7cb8668256ad96a9119ebda4d0d3d080a0f518a8818b9a1d2520bf7e8ea443"
+    },
+    "assets/personal-space/v2/characters/toon/companion/owl-observe.webp": {
+      "bytes": 5698,
+      "sha256": "2de32cd662e94e21b77c131d4cab24685eb23a331136d9997c8074c505734320"
+    },
+    "assets/personal-space/v2/characters/toon/companion/owl-remind.webp": {
+      "bytes": 6742,
+      "sha256": "7d17693206f49af76ba45f36cc67c546eb0dd4ce973c1500460e4e273148bd7b"
+    },
+    "assets/personal-space/v2/characters/toon/companion/owl-rest.webp": {
+      "bytes": 6360,
+      "sha256": "6a28c7a038755c85576c02ed50e87e4ffda0a45ce0ced020bbe6a151a9572154"
+    },
+    "assets/personal-space/v2/characters/toon/companion/owl-work.webp": {
+      "bytes": 6728,
+      "sha256": "03562ed605f8d318b6810e1fb9ffbedc27d58dce5bdf23aa9c4743b54d260d95"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/artist-celebrate-left.webp": {
+      "bytes": 18076,
+      "sha256": "e6e6434fe2efdd26a414ef686905876217a6e5cbc0806dff263018c6f7cd9848"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/artist-celebrate-right.webp": {
+      "bytes": 18322,
+      "sha256": "0ecc8de814757e040aec733c8494c37c077f5b777388615bc224a38f7b1de964"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/artist-idle-left.webp": {
+      "bytes": 18018,
+      "sha256": "7130404b22ac385e006840b8d2bbe097037f5ebb9364cac2147abfa4d5c00231"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/artist-idle-right.webp": {
+      "bytes": 17836,
+      "sha256": "27ef1d6ad017dd663b669b1bd4079eece19fb5b7480e5df5cd3b674b37908b9e"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/artist-inspect-left.webp": {
+      "bytes": 17128,
+      "sha256": "01983a2b9a696c604188bb6f7d80ce04fbbd8b9622bd44cd007f7e59ad2bc1dd"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/artist-inspect-right.webp": {
+      "bytes": 17660,
+      "sha256": "c13af6ba1301318ebec4c9abf898999b9a888078c6a659d497ae7c16be9ac2b4"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/artist-rest-left.webp": {
+      "bytes": 17948,
+      "sha256": "e008ce90daafbb5429bf391d76bf546e53659bd21ecf207452095d82b9f619df"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/artist-rest-right.webp": {
+      "bytes": 17788,
+      "sha256": "04702d118bff54abb3fa4be27c23e608646c1ead4b1b7d5a9701a65243076868"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/artist-walk-left.webp": {
+      "bytes": 17170,
+      "sha256": "1bd91bf086f322d41c54f897916713d984eb1298e20384fce52eb63b609a4026"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/artist-walk-right.webp": {
+      "bytes": 19020,
+      "sha256": "d080689a29b21e408ebdf64dae282cbf09be3bc9acecdb4f127eef16ae28999d"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/artist-work-left.webp": {
+      "bytes": 17172,
+      "sha256": "1c78f294bfcafbfba13f3886e27556092cc036cea2827a1e958e2b77310fbea0"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/artist-work-right.webp": {
+      "bytes": 17908,
+      "sha256": "70f38f4ced3a1e2509622bae9f98505a4c550315d9ca0b0d2fa0bfce67e47fb1"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/hoodie-celebrate-left.webp": {
+      "bytes": 18138,
+      "sha256": "daea6909c7e1d4fc0928eb83422368f07dab5cea0b4a3c386cb4fbda2248eac8"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/hoodie-celebrate-right.webp": {
+      "bytes": 18090,
+      "sha256": "0259f6e5035489ce830784f6690c761f28e9ed051cc269fc33daea87d8f4fe9a"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/hoodie-idle-left.webp": {
+      "bytes": 18304,
+      "sha256": "afdc6164d15e2ef10e90580dbf8353b21f0852163beee07ca1522d072f4c9aa1"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/hoodie-idle-right.webp": {
+      "bytes": 17830,
+      "sha256": "ea821908f5dcca4f34981fa99f533759207283e1221d71a2cc2edd3d20769c7e"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/hoodie-inspect-left.webp": {
+      "bytes": 17600,
+      "sha256": "4bc45dc9a48aabe4e84afaa199906f46dd74375f20631c695246a8a8a32c9e2a"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/hoodie-inspect-right.webp": {
+      "bytes": 17754,
+      "sha256": "99ef6bea32cec6315380e1eee73503d0f416b704c56b9449e85af1dc7e58be67"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/hoodie-rest-left.webp": {
+      "bytes": 17340,
+      "sha256": "ff560f100b3cf49f0f19086166aa7435eebc846847b683e143cec0e4b2f5ddf5"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/hoodie-rest-right.webp": {
+      "bytes": 17070,
+      "sha256": "65113adf9f14384caf8767fee5701cd12e60a679f13978c7fb5e86ed32948283"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/hoodie-walk-left.webp": {
+      "bytes": 17722,
+      "sha256": "6cfab01f31a136c67498e0fa7076bada32877fafe035364d5fa550acf582ce8b"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/hoodie-walk-right.webp": {
+      "bytes": 19028,
+      "sha256": "52c13327999a80d2a65bcd985a27476f440cc7e59a3da81088216bc300b66c82"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/hoodie-work-left.webp": {
+      "bytes": 17422,
+      "sha256": "f0fa000220bea8635699feedf6592d401019d30f459e724b0460a4ff5efef413"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/hoodie-work-right.webp": {
+      "bytes": 17794,
+      "sha256": "f01ddbcebde9a552ed0ed93e15b1b3a2279e1994f9abbc02680cd80ee0f68143"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/office-celebrate-left.webp": {
+      "bytes": 15950,
+      "sha256": "ce3977b64497c2a0b350435394168482f8e349ae28f00e984998382c72ce74a0"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/office-celebrate-right.webp": {
+      "bytes": 16136,
+      "sha256": "6a41f0418498cbad226507c964f9a71ccfe02df463c0d84e2ad968c17d53f05c"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/office-idle-left.webp": {
+      "bytes": 16526,
+      "sha256": "aea868ab73455714fe9e51247f2505fc7e60600e01144260c9c9684cb5db4857"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/office-idle-right.webp": {
+      "bytes": 16022,
+      "sha256": "6763727d8142ea46fe9996096010e8204d55ccd206e4621aefeb79a8908492c9"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/office-inspect-left.webp": {
+      "bytes": 15100,
+      "sha256": "13a9688bdecd1ba64b759e2d0d594947f19c94ba5b8f432043fff9deb8d089ef"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/office-inspect-right.webp": {
+      "bytes": 15394,
+      "sha256": "d727f27199a8df4f274adb4f69b1381d7ddd0e0da12ece230ce86c5997354b3e"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/office-rest-left.webp": {
+      "bytes": 15550,
+      "sha256": "5220b660430f9f1045c3d0af00cb0741159db65466a28d261ede0bc1cc8f6dfa"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/office-rest-right.webp": {
+      "bytes": 15006,
+      "sha256": "7e3c16b75c1f8072bd1e8ee0ccc3a46c1f55bd1e50040b75968a0d803f746b69"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/office-walk-left.webp": {
+      "bytes": 15812,
+      "sha256": "6b027a27c5da41b0c30dde7c64439e69e79b1c0766dfdac455513394be716863"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/office-walk-right.webp": {
+      "bytes": 16908,
+      "sha256": "65d156a5c6b5004e8820270866d604e1f971804dbe1fc6109636499183e14e8b"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/office-work-left.webp": {
+      "bytes": 15278,
+      "sha256": "588bf5f7b8f1ee801c63fbaeb513a92470deaae6267f9911f965fddf2690290a"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/office-work-right.webp": {
+      "bytes": 15574,
+      "sha256": "833bb0a72f916d0ec34e794a5da9fe0619ffcdd8b757ec6776d2e834d588b70a"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/scientist-celebrate-left.webp": {
+      "bytes": 17290,
+      "sha256": "7174424d9e6b44f8cf8a39d4c2a9e60740b7329f42f2fe3e76c35f906a0c0030"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/scientist-celebrate-right.webp": {
+      "bytes": 17450,
+      "sha256": "5df5ef015297fc340ba3b6ebb4199747462311521dd2b87e9bd2aed5d7a3a837"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/scientist-idle-left.webp": {
+      "bytes": 17222,
+      "sha256": "22db3a1624bf95493600ab5121e2ef6415843c35f8fd6b5ed55afb57e2e25e79"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/scientist-idle-right.webp": {
+      "bytes": 15952,
+      "sha256": "3d95d6861974733c49ed630de65d468369f48373b10e87f6fe1c96e6ea654c73"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/scientist-inspect-left.webp": {
+      "bytes": 16080,
+      "sha256": "f8860186cd1e771763231b3fe24b5504994283eff8151ae49ec867cb011ab43f"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/scientist-inspect-right.webp": {
+      "bytes": 16418,
+      "sha256": "a8094a2c3d38866a29568fc4cf5f3d1beb635bf750f54cfba235c53a8791faad"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/scientist-rest-left.webp": {
+      "bytes": 16474,
+      "sha256": "281ca7759bc855761b22b8f79d228e39bbb0e6924dcf968f899d1c3c5d70460b"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/scientist-rest-right.webp": {
+      "bytes": 16124,
+      "sha256": "390d2d98ab6f4082b8d1bebe0583117ebe70f495467179059ad0fe0bf2bb7653"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/scientist-walk-left.webp": {
+      "bytes": 16570,
+      "sha256": "c96e534171c30ff5a0aad22939d92cd57cf3d3f169f186f3fd2a1d7dfe8333fc"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/scientist-walk-right.webp": {
+      "bytes": 17838,
+      "sha256": "84de3cf01d124c4d04b97c33c10c72205aa5718ffe037baec72b61d27dc8edc7"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/scientist-work-left.webp": {
+      "bytes": 16046,
+      "sha256": "6e25ed7a09278c0a738cb18d55db2a4170588f0ccae11de47aeb85cc0c196ba5"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/scientist-work-right.webp": {
+      "bytes": 16230,
+      "sha256": "55c943db24cf79c6c916fc88aee0b72688256db8b40015019aac573f2439b78c"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/sporty-celebrate-left.webp": {
+      "bytes": 17176,
+      "sha256": "4a5d6c5d0a58b5cc12efa8a60159b3f8010a366fb5c267773c712eef7546c70e"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/sporty-celebrate-right.webp": {
+      "bytes": 16878,
+      "sha256": "3cf8c9b66970f8bf1b3198c478ced2f8b5272e19d5e1df2ffe672cb45b79de5d"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/sporty-idle-left.webp": {
+      "bytes": 17154,
+      "sha256": "dfa450e99c1d3b5f0d12f30fcb34acb33f0457bc870e65e63792c1b0a04dbb45"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/sporty-idle-right.webp": {
+      "bytes": 16754,
+      "sha256": "c85527f38fcf4391eddf4fc9a5502f270f6e93a91ed735934aec739b3f250671"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/sporty-inspect-left.webp": {
+      "bytes": 16482,
+      "sha256": "ba5e20da1cac301acc93aca26caaf8366a6ed75fa7d2488c64bffb28d067a42e"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/sporty-inspect-right.webp": {
+      "bytes": 16748,
+      "sha256": "39a675df53d4c09d16aeea47663c657a67ad54fafadc410e51bbe686f54f9004"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/sporty-rest-left.webp": {
+      "bytes": 16016,
+      "sha256": "58ef9b805ce2749f6a0c249470299804202a3beaa7cc194ffeff7c6e414ef52a"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/sporty-rest-right.webp": {
+      "bytes": 15632,
+      "sha256": "439265270f07deb8a36f93b83eb24cdd7acac9198af7ebe9e74a30bb9a9c2433"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/sporty-walk-left.webp": {
+      "bytes": 16362,
+      "sha256": "7f291196a1d8de4c0ad61b61dc582000d44424c2e42e8374875247a145cd176f"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/sporty-walk-right.webp": {
+      "bytes": 17726,
+      "sha256": "785cb42340d9d5455d20e9bda24f3b3d9553d0c5cc9781cd091cb37c7383a1a8"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/sporty-work-left.webp": {
+      "bytes": 16110,
+      "sha256": "2faea2147db9420f333bb7873918dde041ba881137816179a2d05e0957957f76"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/sporty-work-right.webp": {
+      "bytes": 16608,
+      "sha256": "b383de31ffe8a76ef4c41254b24cee6d1cfdc3a4cb830695142a0353e1bb7470"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/sweater-celebrate-left.webp": {
+      "bytes": 16370,
+      "sha256": "2da0a057190259966d6416119c9e7204cb06b97f2cb5b0cf1c2bcb4938b253e1"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/sweater-celebrate-right.webp": {
+      "bytes": 16952,
+      "sha256": "817644a9d0efb803872d95ca9ecbc4638d40e8e25695c5974777373a7da9ed66"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/sweater-idle-left.webp": {
+      "bytes": 16448,
+      "sha256": "30f86dcf9920c2e5715f0412dc89ff359264e51a387b5c2c169d42f8cf057422"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/sweater-idle-right.webp": {
+      "bytes": 16006,
+      "sha256": "534f26ad5f19787e0258df58f1e13ad048c085374f3add3d5bcac74fec888f79"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/sweater-inspect-left.webp": {
+      "bytes": 16044,
+      "sha256": "f6dbc22db549af22c616804a7e8b30ed32a3982dad5f3d76204302acceec4e60"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/sweater-inspect-right.webp": {
+      "bytes": 16544,
+      "sha256": "718f38e2055a12e400ea9b12bdbe997c72be3387bbd94f0b73d4f04d05e1870a"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/sweater-rest-left.webp": {
+      "bytes": 15996,
+      "sha256": "c72ace66ef311b600dfa50d4d139e1a832741c8860eaff307108bb25517e47df"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/sweater-rest-right.webp": {
+      "bytes": 16052,
+      "sha256": "c327b19c5084fff91ab80d6ae2570b8e7689f3d5bda7a3073a3861123b2f8095"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/sweater-walk-left.webp": {
+      "bytes": 15868,
+      "sha256": "a0e12bdef0c0ad7813c89c7779cb56d7f3a40d984c0a5753952e16770430764c"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/sweater-walk-right.webp": {
+      "bytes": 17066,
+      "sha256": "70c4c4daae2c7d44ec2dc8e53bf43d5e23d3a3e30ee637b6407d533403b540b6"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/sweater-work-left.webp": {
+      "bytes": 15898,
+      "sha256": "185dd037e25c58959de2e98ada7d73042b820e5fdaa2d8cd754bc8a8e161732f"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/sweater-work-right.webp": {
+      "bytes": 16732,
+      "sha256": "405a49cdabcd1368727cf7418685564aeba387137dc734a12bb201453c999f99"
+    }
+  }
+}

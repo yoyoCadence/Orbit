@@ -139,6 +139,17 @@ Do not communicate stage or unlock state through hue alone. Density, silhouette,
 
 This is a maximum useful slice, not permission to generate a large surrounding asset pack.
 
+**PS-250 expansion (user-approved 2026-10-21).** The user lifted this cap for characters, scenes and small furniture. There will be two switchable style sets:
+
+- **Q style:** Blender toon characters, room and furniture. This is the default.
+- **Pixel:** pixelated Blender renders plus the PS-242 pixel characters.
+
+Each set has several protagonists and Companion forms. Added so far:
+
+- PS-250C: six Q-style protagonists, each with six actions in two facings, and six Companion forms, each in six states. Source: `art-pipeline/ps250-characters/`.
+
+Later PS-250 tasks add the pixel set (PS-250D), night and room styles (PS-250E) and small furniture (PS-250F). Each one updates this list.
+
 ### 6.2 Workspace Upgrade Phases
 
 | Phase | Required visible evidence | Read at home size |
@@ -238,6 +249,7 @@ Do not assume every large asset needs `front`, `left-wall-flush`, and `right-wal
 - Simplified face and costume detail designed for mobile reduction.
 - Character height is approximately 25–32% of the 3:2 scene height.
 - Silhouette remains distinct from the Companion and nearby furniture.
+- The PS-250 Q style is deliberately more chibi than this, about 1:2.5 head-to-body, because the user asked for it. Its height still falls within the range above, about 29% of the scene height.
 
 ### 9.2 First-Slice Actions
 
@@ -286,6 +298,8 @@ Requirements:
 - dialogue area does not cover the Project object or player face;
 - color is not the only distinction between neutral, supportive, and celebratory states;
 - relationship progression changes presence and familiarity gradually, not through sudden costume drift.
+
+PS-250 Companion forms are drawn in all six runtime states: observe, approach, congratulate, rest, work and remind. The user picks the form. The form never changes because of relationship progress.
 
 ## 11. Motion, Effects, and Reward Hierarchy
 
