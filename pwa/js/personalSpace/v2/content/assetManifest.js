@@ -7,30 +7,48 @@ const PROP_ROOT = `${ASSET_ROOT}/workspace/props`;
 const PROTAGONIST_ROOT = `${ASSET_ROOT}/characters/protagonist`;
 const COMPANION_ROOT = `${ASSET_ROOT}/characters/companion`;
 const TOON_ROOT = `${ASSET_ROOT}/characters/toon`;
+const PIXEL_ROOT = `${ASSET_ROOT}/characters/pixel`;
+const PIXEL_SCENE_ROOT = `${ASSET_ROOT}/workspace/pixel`;
+const BACKGROUND = `${ASSET_ROOT}/workspace/backgrounds/building-formal-workstation-room-v2.webp`;
 const EFFECTS_ROOT = `${ASSET_ROOT}/effects`;
 const CANONICAL_CAMERA_ID = 'building-workspace-v2';
 
 const PROTAGONIST_STATES = Object.freeze(['idle', 'work', 'celebrate', 'rest', 'walk', 'inspect']);
 const COMPANION_STATES = Object.freeze(['observe', 'approach', 'congratulate', 'rest', 'work', 'remind']);
 
-// PS-250B: two switchable character styles; the first id of each is that
-// style's default. 'toon' (全 Q 版, the default style) uses the PS-250C Blender
-// characters; 'pixel' (全像素) keeps the PS-242 characters. The toon ids mirror
+// PS-250B: two switchable styles; the first id of each list is that style's
+// default. 'toon' (全 Q 版, the default style) uses the PS-250C Blender
+// characters with the PS-244 room. 'pixel' (全像素, PS-250D) uses the pixel
+// renders of the same room, props and characters (same ids), plus the PS-242
+// pixel characters ('default', 'orbit-guide'). The ids mirror
 // characterCatalog.js, which this module must not import: it is on the boot
 // path (app.js → pixiSceneRuntime.js), and an older cache may not have that
-// module (INFRA-105). tests/unit/ps250bAppearance.test.js keeps them in sync.
+// module (INFRA-105). ps250bAppearance and ps250dPixelSet tests keep them in sync.
+const TOON_PROTAGONISTS = Object.freeze(['office', 'hoodie', 'sweater', 'sporty', 'scientist', 'artist']);
+const TOON_COMPANIONS = Object.freeze(['orbit', 'catbot', 'owl', 'cube', 'jelly', 'fox']);
 const CHARACTER_STYLES = Object.freeze({
   toon: Object.freeze({
-    protagonists: Object.freeze(['office', 'hoodie', 'sweater', 'sporty', 'scientist', 'artist']),
-    companions: Object.freeze(['orbit', 'catbot', 'owl', 'cube', 'jelly', 'fox']),
+    protagonists: TOON_PROTAGONISTS,
+    companions: TOON_COMPANIONS,
     protagonistPath: (id, state, facing) => `${TOON_ROOT}/protagonist/${id}-${state}-${facing}.webp`,
     companionPath: (id, state) => `${TOON_ROOT}/companion/${id}-${state}.webp`,
+    background: BACKGROUND,
+    propPath: id => `${PROP_ROOT}/${id}.png`,
+    // The PS-242 pixel characters are the office worker and Orbit, so a
+    // choice of one of them carries over to the Q style as those two.
+    aliases: Object.freeze({ default: 'office', 'orbit-guide': 'orbit' }),
   }),
   pixel: Object.freeze({
-    protagonists: Object.freeze(['default']),
-    companions: Object.freeze(['orbit-guide']),
-    protagonistPath: (id, state, facing) => `${PROTAGONIST_ROOT}/player-${id}-${state}-${facing}.png`,
-    companionPath: (id, state) => `${COMPANION_ROOT}/${id}-${state}.png`,
+    protagonists: Object.freeze([...TOON_PROTAGONISTS, 'default']),
+    companions: Object.freeze([...TOON_COMPANIONS, 'orbit-guide']),
+    protagonistPath: (id, state, facing) => (id === 'default'
+      ? `${PROTAGONIST_ROOT}/player-default-${state}-${facing}.png`
+      : `${PIXEL_ROOT}/protagonist/${id}-${state}-${facing}.png`),
+    companionPath: (id, state) => (id === 'orbit-guide'
+      ? `${COMPANION_ROOT}/orbit-guide-${state}.png`
+      : `${PIXEL_ROOT}/companion/${id}-${state}.png`),
+    background: `${PIXEL_SCENE_ROOT}/backgrounds/building-formal-workstation-room-pixel.png`,
+    propPath: id => `${PIXEL_SCENE_ROOT}/props/${id}.png`,
   }),
 });
 const DEFAULT_STYLE = 'toon';
@@ -55,7 +73,7 @@ export const WORKSPACE_V2_ASSETS = Object.freeze({
   status: 'production',
   canonicalCameraId: CANONICAL_CAMERA_ID,
   dimensions: Object.freeze({ width: 1536, height: 1024 }),
-  background: `${ASSET_ROOT}/workspace/backgrounds/building-formal-workstation-room-v2.webp`,
+  background: BACKGROUND,
   protagonist: PROTAGONIST_VARIANTS.idle.left,
   protagonistVariants: PROTAGONIST_VARIANTS,
   safeZone: Object.freeze({ minX: 10, maxX: 90, minY: 11, maxY: 89 }),
@@ -164,8 +182,10 @@ export function getWorkspaceProjectPhase(progress = 0) {
 export function getWorkspaceSceneAssets(progress = 0, placementOverrides = {}, visualState = {}) {
   const normalized = clampProgress(progress);
   const resolvedVisuals = resolveWorkspaceVisualState(visualState);
+  const style = CHARACTER_STYLES[resolvedVisuals.appearance.style];
   return {
     ...WORKSPACE_V2_ASSETS,
+    background: style.background,
     appearance: resolvedVisuals.appearance,
     protagonist: resolvedVisuals.protagonist.path,
     protagonistVariant: resolvedVisuals.protagonist,
@@ -180,6 +200,7 @@ export function getWorkspaceSceneAssets(progress = 0, placementOverrides = {}, v
       .filter(entry => normalized >= entry.minProgress && normalized <= entry.maxProgress)
       .map(entry => ({
         ...entry,
+        path: style.propPath(entry.id),
         placement: {
           ...entry.placement,
           ...normalizePositionOverride(placementOverrides[entry.id]),
@@ -210,11 +231,16 @@ function resolveAppearance(value) {
   const style = typeof input.style === 'string' && Object.hasOwn(CHARACTER_STYLES, input.style)
     ? input.style
     : DEFAULT_STYLE;
-  const { protagonists, companions } = CHARACTER_STYLES[style];
+  const { protagonists, companions, aliases = {} } = CHARACTER_STYLES[style];
+  const pick = (options, id) => {
+    if (options.includes(id)) return id;
+    const alias = typeof id === 'string' && Object.hasOwn(aliases, id) ? aliases[id] : null;
+    return options.includes(alias) ? alias : options[0];
+  };
   return {
     style,
-    protagonistId: protagonists.includes(input.protagonistId) ? input.protagonistId : protagonists[0],
-    companionId: companions.includes(input.companionId) ? input.companionId : companions[0],
+    protagonistId: pick(protagonists, input.protagonistId),
+    companionId: pick(companions, input.companionId),
   };
 }
 

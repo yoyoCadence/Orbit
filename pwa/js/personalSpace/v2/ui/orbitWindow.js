@@ -20,9 +20,14 @@ export function getRevealDurationMs(kind, reducedMotion = false) {
 export function renderOrbitWindow(inputModel = {}, options = {}) {
   const model = normalizeOrbitWindowModel(inputModel, options.renderMode);
   const scene = getWorkspaceSceneAssets(model.activeProject.progress, model.placements, model);
-  // PS-250B: only the default characters are precached. A chosen character
-  // that is not cached yet falls back to the default when it cannot load.
+  // PS-250B/D: only the default style is precached. A chosen character, or
+  // the pixel room and props, that is not cached yet falls back to the
+  // default when it cannot load.
   const fallback = getWorkspaceSceneAssets(model.activeProject.progress, model.placements, { ...model, appearance: null });
+  const fallbackProps = new Map(fallback.props.map(entry => [entry.id, entry.path]));
+  // PS-250D: pixel images keep their hard pixel edges when scaled (CSS
+  // image-rendering on [data-pixel-art]); a fallback image drops the marker.
+  const pixelArt = scene.appearance?.style === 'pixel' ? ' data-pixel-art' : '';
   const rewardLines = buildRewardLines(model.pendingReveal);
   const revealKind = model.pendingReveal?.kind || null;
 
@@ -49,13 +54,13 @@ export function renderOrbitWindow(inputModel = {}, options = {}) {
       <div class="orbit-window-stage-wrap">
         <button class="orbit-window-stage-action" type="button" data-orbit-open-world aria-label="進入完整 Personal Space">
           <span class="orbit-window-poster" aria-hidden="true">
-            <img class="orbit-window-background" src="${escapeHtml(scene.background)}" alt="" draggable="false">
-            ${scene.props.map(renderPosterProp).join('')}
+            <img class="orbit-window-background" src="${escapeHtml(scene.background)}" data-fallback-src="${escapeHtml(fallback.background)}"${pixelArt} alt="" draggable="false">
+            ${scene.props.map(entry => renderPosterProp(entry, fallbackProps.get(entry.id), pixelArt)).join('')}
             <img
               class="orbit-window-protagonist"
               data-player-state="${escapeHtml(model.protagonist.state)}"
               src="${escapeHtml(scene.protagonist)}"
-              data-fallback-src="${escapeHtml(fallback.protagonist)}"
+              data-fallback-src="${escapeHtml(fallback.protagonist)}"${pixelArt}
               alt=""
               draggable="false"
               style="${placementStyle(scene.protagonistPlacement)}"
@@ -64,7 +69,7 @@ export function renderOrbitWindow(inputModel = {}, options = {}) {
               class="orbit-window-companion"
               data-companion-state="${escapeHtml(model.companion.state)}"
               src="${escapeHtml(scene.companion.path)}"
-              data-fallback-src="${escapeHtml(fallback.companion.path)}"
+              data-fallback-src="${escapeHtml(fallback.companion.path)}"${pixelArt}
               alt=""
               draggable="false"
               style="${placementStyle(scene.companionPlacement)}"
@@ -427,7 +432,11 @@ function useFallbackWhenImagesFail(root) {
   root.querySelectorAll?.('img[data-fallback-src]').forEach(image => {
     const fallbackSrc = image.dataset.fallbackSrc;
     if (!fallbackSrc || image.getAttribute('src') === fallbackSrc) return;
-    image.addEventListener('error', () => image.setAttribute('src', fallbackSrc), { once: true });
+    image.addEventListener('error', () => {
+      // The fallback is a Q-style image: smooth scaling again.
+      image.removeAttribute('data-pixel-art');
+      image.setAttribute('src', fallbackSrc);
+    }, { once: true });
   });
 }
 
@@ -495,8 +504,8 @@ function normalizeRevealKind(value, direction) {
   return ['small', 'medium', 'major'].includes(value) ? value : 'small';
 }
 
-function renderPosterProp(entry) {
-  return `<img class="orbit-window-prop" src="${escapeHtml(entry.path)}" alt="" draggable="false" style="${placementStyle(entry.placement)}">`;
+function renderPosterProp(entry, fallbackSrc = entry.path, pixelArt = '') {
+  return `<img class="orbit-window-prop" src="${escapeHtml(entry.path)}" data-fallback-src="${escapeHtml(fallbackSrc)}"${pixelArt} alt="" draggable="false" style="${placementStyle(entry.placement)}">`;
 }
 
 function placementStyle(placement = {}) {

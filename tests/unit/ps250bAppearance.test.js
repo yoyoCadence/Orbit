@@ -53,17 +53,29 @@ describe('PS-250B appearance resolution', () => {
     const toon = scene({ style: 'toon', protagonistId: 'artist', companionId: 'fox' }, 'work', 'remind', 'right');
     expect(toon.protagonist).toBe(`${TOON}/protagonist/artist-work-right.webp`);
     expect(toon.companion.path).toBe(`${TOON}/companion/fox-remind.webp`);
+    // PS-250D: the pixel style defaults to the pixel office worker and Orbit;
+    // the PS-242 pixel characters are options of their own.
     const pixel = scene({ style: 'pixel' }, 'rest', 'congratulate');
-    expect(pixel.protagonist).toBe(`${PIXEL}/protagonist/player-default-rest-left.png`);
-    expect(pixel.companion.path).toBe(`${PIXEL}/companion/orbit-guide-congratulate.png`);
+    expect(pixel.protagonist).toBe(`${PIXEL}/pixel/protagonist/office-rest-left.png`);
+    expect(pixel.companion.path).toBe(`${PIXEL}/pixel/companion/orbit-congratulate.png`);
+    const classic = scene({ style: 'pixel', protagonistId: 'default', companionId: 'orbit-guide' }, 'rest', 'congratulate');
+    expect(classic.protagonist).toBe(`${PIXEL}/protagonist/player-default-rest-left.png`);
+    expect(classic.companion.path).toBe(`${PIXEL}/companion/orbit-guide-congratulate.png`);
   });
 
   it('falls back to the default style, or the style\'s first character, for anything unknown', () => {
     expect(scene({ style: 'watercolor', protagonistId: 'artist' }).appearance)
       .toEqual({ style: 'toon', protagonistId: 'artist', companionId: 'orbit' });
-    // A Q-style id under the pixel style keeps working after a style switch.
+    // The same characters exist in both styles (PS-250D), so a choice carries over.
     expect(scene({ style: 'pixel', protagonistId: 'artist', companionId: 'fox' }).appearance)
-      .toEqual({ style: 'pixel', protagonistId: 'default', companionId: 'orbit-guide' });
+      .toEqual({ style: 'pixel', protagonistId: 'artist', companionId: 'fox' });
+    // The classic pixel characters are the office worker and Orbit in the Q style.
+    expect(scene({ style: 'toon', protagonistId: 'default', companionId: 'orbit-guide' }).appearance)
+      .toEqual({ style: 'toon', protagonistId: 'office', companionId: 'orbit' });
+    expect(resolveAppearanceChoice({ style: 'toon', protagonistId: 'default', companionId: 'orbit-guide' }))
+      .toEqual({ style: 'toon', protagonistId: 'office', companionId: 'orbit' });
+    expect(scene({ style: 'pixel', protagonistId: 'nobody' }).appearance)
+      .toEqual({ style: 'pixel', protagonistId: 'office', companionId: 'orbit' });
     expect(scene({ style: 'toon', protagonistId: '../x', companionId: 7 }).appearance)
       .toEqual({ style: 'toon', protagonistId: 'office', companionId: 'orbit' });
   });
@@ -152,7 +164,11 @@ describe('PS-250B offline fallback in the poster', () => {
   });
 
   it('swaps a character that fails to load for the precached default', () => {
-    const model = { appearance: { style: 'pixel' }, protagonist: { state: 'work' }, companion: { state: 'remind' } };
+    const model = {
+      appearance: { style: 'pixel', protagonistId: 'default', companionId: 'orbit-guide' },
+      protagonist: { state: 'work' },
+      companion: { state: 'remind' },
+    };
     const host = document.createElement('div');
     host.innerHTML = renderOrbitWindow(model);
     document.body.appendChild(host);
@@ -171,6 +187,44 @@ describe('PS-250B offline fallback in the poster', () => {
     expect(protagonist.getAttribute('src')).toBe(`${TOON}/protagonist/office-work-left.webp`);
     expect(companion.getAttribute('src')).toBe(`${PIXEL}/companion/orbit-guide-remind.png`);
     cleanup();
+  });
+
+  it('falls back to the Q-style room and props when the pixel ones cannot load (PS-250D)', () => {
+    const host = document.createElement('div');
+    host.innerHTML = renderOrbitWindow({ appearance: { style: 'pixel' }, activeProject: { progress: 100 } });
+    const background = host.querySelector('.orbit-window-background');
+    expect(background.getAttribute('src')).toContain('/workspace/pixel/backgrounds/');
+    expect(background.dataset.fallbackSrc).toBe('assets/personal-space/v2/workspace/backgrounds/building-formal-workstation-room-v2.webp');
+    const props = [...host.querySelectorAll('.orbit-window-prop')];
+    expect(props.length).toBeGreaterThan(0);
+    props.forEach(prop => {
+      expect(prop.getAttribute('src')).toContain('/workspace/pixel/props/');
+      expect(prop.dataset.fallbackSrc).toBe(prop.getAttribute('src').replace('/workspace/pixel/props/', '/workspace/props/'));
+    });
+
+    // Pixel images keep hard edges; the weather overlay is not pixel art.
+    const marked = [...host.querySelectorAll('.orbit-window-poster img[data-pixel-art]')];
+    expect(marked).toEqual([
+      background, ...props,
+      host.querySelector('.orbit-window-protagonist'),
+      host.querySelector('.orbit-window-companion'),
+    ]);
+    expect(host.querySelector('.orbit-window-weather').hasAttribute('data-pixel-art')).toBe(false);
+
+    // A swapped-in Q-style image is smooth again.
+    document.body.appendChild(host);
+    const cleanup = mountOrbitWindow(host.querySelector('[data-orbit-window]'), {
+      model: { appearance: { style: 'pixel' } },
+      runtime: { mount: vi.fn(() => Promise.resolve()), release: vi.fn() },
+    });
+    background.dispatchEvent(new Event('error'));
+    expect(background.getAttribute('src')).toBe(background.dataset.fallbackSrc);
+    expect(background.hasAttribute('data-pixel-art')).toBe(false);
+    cleanup();
+
+    const toon = document.createElement('div');
+    toon.innerHTML = renderOrbitWindow({});
+    expect(toon.querySelector('[data-pixel-art]')).toBeNull();
   });
 
   it('marks the default characters as their own fallback', () => {
@@ -199,9 +253,27 @@ describe('PS-250B Edit Mode picker', () => {
       .toBe(`${TOON}/companion/fox-observe.webp`);
     expect([...host.querySelectorAll('img')].every(image => image.getAttribute('loading') === 'lazy')).toBe(true);
 
+    // The stored choice is marked, and pixel thumbnails keep hard edges.
+    expect(host.querySelector('[data-value="hoodie"]').hasAttribute('data-stored')).toBe(true);
+    expect(host.querySelector('[data-value="office"]').hasAttribute('data-stored')).toBe(false);
+    expect(host.querySelector('img[data-pixel-art]')).toBeNull();
+    host.innerHTML = renderAppearancePicker({ style: 'toon', protagonistId: 'default' });
+    const office = host.querySelector('[data-v2-appearance="protagonist"][data-value="office"]');
+    expect(office.getAttribute('aria-pressed')).toBe('true');
+    expect(office.hasAttribute('data-stored')).toBe(false);
+    expect(readAppearanceChange(office)).toEqual({ protagonistId: 'office' });
+
     host.innerHTML = renderAppearancePicker({ style: 'pixel', protagonistId: 'hoodie' });
+    expect([...host.querySelectorAll('[data-v2-appearance="protagonist"] img')]
+      .every(image => image.hasAttribute('data-pixel-art'))).toBe(true);
     expect([...host.querySelectorAll('[aria-pressed="true"]')].map(button => button.dataset.value))
-      .toEqual(['pixel', 'default', 'orbit-guide']);
+      .toEqual(['pixel', 'hoodie', 'orbit']);
+    expect(host.querySelector('[data-v2-appearance="protagonist"][data-value="hoodie"] img').getAttribute('src'))
+      .toBe(`${PIXEL}/pixel/protagonist/hoodie-idle-left.png`);
+    expect([...host.querySelectorAll('[data-v2-appearance="protagonist"]')].map(button => button.dataset.value))
+      .toEqual([...TOON_PROTAGONISTS.map(entry => entry.id), 'default']);
+    expect([...host.querySelectorAll('[data-v2-appearance="companion"]')].map(button => button.dataset.value))
+      .toEqual([...TOON_COMPANIONS.map(entry => entry.id), 'orbit-guide']);
   });
 
   it('reads a button into a change and saves it on top of the stored state', () => {
@@ -211,9 +283,19 @@ describe('PS-250B Edit Mode picker', () => {
     expect(readAppearanceChange(button)).toEqual({ companionId: 'jelly' });
     button.dataset.v2Appearance = 'other';
     expect(readAppearanceChange(button)).toBeNull();
+    // Shown and stored: no change.
     button.dataset.v2Appearance = 'companion';
     button.setAttribute('aria-pressed', 'true');
+    button.setAttribute('data-stored', '');
     expect(readAppearanceChange(button)).toBeNull();
+    // Shown in place of a stored id this style lacks: stored explicitly.
+    button.removeAttribute('data-stored');
+    expect(readAppearanceChange(button)).toEqual({ companionId: 'jelly' });
+    const style = document.createElement('button');
+    style.dataset.v2Appearance = 'style';
+    style.dataset.value = 'pixel';
+    style.setAttribute('aria-pressed', 'true');
+    expect(readAppearanceChange(style)).toBeNull();
 
     const stored = createDefaultPersonalSpaceV2State('user-1');
     stored.worldRevision = 9;

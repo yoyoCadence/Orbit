@@ -49,7 +49,7 @@ test.describe('PS-250B character style and choice', () => {
     await expect(page.locator('.orbit-window-companion')).toHaveAttribute('src', new RegExp(`${TOON}/companion/orbit-`));
   });
 
-  test('switches to the pixel style and back without losing the Q-style choice', async ({ page }) => {
+  test('switches to the pixel style with the same characters, and back', async ({ page }) => {
     await page.goto('/');
     await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
     await page.locator('[data-orbit-open-world]').click();
@@ -57,13 +57,24 @@ test.describe('PS-250B character style and choice', () => {
     await page.locator('[data-v2-appearance="protagonist"][data-value="sporty"]').click();
     await page.locator('[data-v2-appearance="style"][data-value="pixel"]').click();
 
+    // PS-250D: the pixel room, and the pixel version of the chosen character.
     const protagonist = page.locator('[data-personal-space-v2] .orbit-window-protagonist');
-    await expect(protagonist).toHaveAttribute('src', /characters\/protagonist\/player-default-/);
-    await expect(page.locator('[data-v2-appearance="protagonist"]')).toHaveCount(1);
+    await expect(protagonist).toHaveAttribute('src', /characters\/pixel\/protagonist\/sporty-/);
+    await expect(page.locator('[data-personal-space-v2] .orbit-window-background')).toHaveAttribute('src', /workspace\/pixel\//);
+    // The pixel images themselves load (a fallback would have swapped the src).
+    const loadedPixel = locator => locator.evaluate(image => (
+      image.complete && image.naturalWidth > 0 && image.getAttribute('src').includes('/pixel/')
+    ));
+    await expect.poll(() => loadedPixel(protagonist)).toBe(true);
+    await expect.poll(() => loadedPixel(page.locator('[data-personal-space-v2] .orbit-window-background'))).toBe(true);
+    await expect(page.locator('[data-v2-appearance="protagonist"]')).toHaveCount(7);
+
+    // The classic pixel office worker is an option of its own.
     await page.locator('[data-v2-appearance="protagonist"][data-value="default"]').click();
+    await expect(protagonist).toHaveAttribute('src', /characters\/protagonist\/player-default-/);
 
     await page.locator('[data-v2-appearance="style"][data-value="toon"]').click();
-    await expect(protagonist).toHaveAttribute('src', new RegExp(`${TOON}/protagonist/sporty-`));
-    await expect(page.locator('[data-v2-appearance="protagonist"][data-value="sporty"]')).toHaveAttribute('aria-pressed', 'true');
+    await expect(protagonist).toHaveAttribute('src', new RegExp(`${TOON}/protagonist/office-`));
+    await expect(page.locator('[data-v2-appearance="protagonist"][data-value="office"]')).toHaveAttribute('aria-pressed', 'true');
   });
 });

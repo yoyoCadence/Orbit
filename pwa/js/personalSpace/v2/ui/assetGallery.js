@@ -7,15 +7,18 @@
  * It only reads existing exports of the asset manifest: a new export imported
  * across SHELL modules can fail to link while an older copy is cached
  * (INFRA-105). Characters outside the default come from characterCatalog.js
- * (Q style, PS-250C) and from the scene resolution (pixel style, PS-250B).
+ * (Q style, PS-250C); the pixel style is resolved through the scene for every
+ * option the Edit Mode picker offers (PS-250B, PS-250D).
  */
 import { FLAG_DEV_PANEL } from '../../../flags.js';
 import {
   getWorkspaceAssetManifestPaths,
   getWorkspaceSceneAssets,
+  WORKSPACE_PROJECT_PHASES,
   WORKSPACE_VISUAL_STATES,
 } from '../content/assetManifest.js';
 import { getToonCharacterPaths } from '../content/characterCatalog.js';
+import { APPEARANCE_STYLES } from './appearancePicker.js';
 
 export const ASSET_GALLERY_FLAG = 'orbit_dev_asset_gallery';
 
@@ -27,8 +30,12 @@ const ASSET_GROUPS = Object.freeze([
   { folder: 'workspace/props', label: '家具', source: 'Blender（PS-244～PS-247）' },
   { folder: 'characters/toon/protagonist', label: 'Q 版主角', source: 'Blender（PS-250C）' },
   { folder: 'characters/toon/companion', label: 'Q 版 AI 夥伴', source: 'Blender（PS-250C）' },
-  { folder: 'characters/protagonist', label: '像素主角', source: '影像生成（PS-242）' },
-  { folder: 'characters/companion', label: '像素 AI 夥伴', source: '影像生成（PS-242）' },
+  { folder: 'workspace/pixel/backgrounds', label: '像素場景・房間', source: 'Blender 像素渲染（PS-250D）' },
+  { folder: 'workspace/pixel/props', label: '像素家具', source: 'Blender 像素渲染（PS-250D）' },
+  { folder: 'characters/pixel/protagonist', label: '像素主角', source: '由 Q 版縮小（PS-250D）' },
+  { folder: 'characters/pixel/companion', label: '像素 AI 夥伴', source: '由 Q 版縮小（PS-250D）' },
+  { folder: 'characters/protagonist', label: '經典像素主角', source: '影像生成（PS-242）' },
+  { folder: 'characters/companion', label: '經典像素 AI 夥伴', source: '影像生成（PS-242）' },
   { folder: 'effects', label: '天氣特效', source: '影像生成（PS-242）' },
 ]);
 
@@ -65,21 +72,29 @@ function groupFor(path) {
   return ASSET_GROUPS.find(group => relative.startsWith(`${group.folder}/`)) || OTHER_GROUP;
 }
 
-// PS-250B: the pixel characters are no longer the default, so the manifest list
-// leaves them out; resolve them through the scene the way the runtime does.
-function pixelCharacterPaths() {
+// The pixel style is not the default, so the manifest list leaves it out:
+// resolve every option the picker offers, in every state and project phase,
+// through the scene the way the runtime does (PS-250B, PS-250D).
+function pixelStylePaths() {
   const { protagonist, facings, companion } = WORKSPACE_VISUAL_STATES;
-  const appearance = { style: 'pixel' };
+  const pixel = APPEARANCE_STYLES.find(style => style.id === 'pixel');
+  const resolve = (appearance, visual = {}, progress = 0) => getWorkspaceSceneAssets(progress, {}, { appearance, ...visual });
   return [
-    ...protagonist.flatMap(state => facings.map(facing => (
-      getWorkspaceSceneAssets(0, {}, { appearance, protagonist: { state, facing } }).protagonist
+    ...WORKSPACE_PROJECT_PHASES.flatMap(({ progress }) => {
+      const scene = resolve({ style: 'pixel' }, {}, progress);
+      return [scene.background, ...scene.props.map(entry => entry.path)];
+    }),
+    ...pixel.protagonists.flatMap(({ id }) => protagonist.flatMap(state => facings.map(facing => (
+      resolve({ style: 'pixel', protagonistId: id }, { protagonist: { state, facing } }).protagonist
+    )))),
+    ...pixel.companions.flatMap(({ id }) => companion.map(state => (
+      resolve({ style: 'pixel', companionId: id }, { companion: { state } }).companion.path
     ))),
-    ...companion.map(state => getWorkspaceSceneAssets(0, {}, { appearance, companion: { state } }).companion.path),
   ];
 }
 
 function allAssetPaths() {
-  return [...getWorkspaceAssetManifestPaths(), ...getToonCharacterPaths(), ...pixelCharacterPaths()];
+  return [...getWorkspaceAssetManifestPaths(), ...getToonCharacterPaths(), ...pixelStylePaths()];
 }
 
 /** Every asset once, grouped for the gallery; empty groups are left out. */

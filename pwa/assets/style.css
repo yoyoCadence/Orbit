@@ -6497,6 +6497,12 @@ html.has-bg[data-ui-skin="modern"] .levelup-box {
   gap: 12px;
 }
 
+/* PS-250D: pixel-style images keep hard pixel edges when scaled. */
+.orbit-window-poster img[data-pixel-art],
+.personal-space-v2-appearance img[data-pixel-art] {
+  image-rendering: pixelated;
+}
+
 /* PS-250B: Edit Mode picker for the character style and characters. */
 .personal-space-v2-appearance {
   display: grid;

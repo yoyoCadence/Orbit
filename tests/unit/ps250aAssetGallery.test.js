@@ -20,11 +20,15 @@ import {
   setAssetGalleryEnabled,
 } from '../../pwa/js/personalSpace/v2/ui/assetGallery.js';
 
-// The default scene, every Q-style character (PS-250C) and every pixel
-// character file on disk, which PS-250B made a non-default style.
+// The default scene, every Q-style character (PS-250C) and every file of the
+// pixel style on disk: the PS-242 characters and the PS-250D pixel set.
 const V2 = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'pwa', 'assets', 'personal-space', 'v2');
-const PIXEL_PATHS = ['protagonist', 'companion'].flatMap(kind => readdirSync(join(V2, 'characters', kind))
-  .map(name => `assets/personal-space/v2/characters/${kind}/${name}`));
+const PIXEL_FOLDERS = [
+  'characters/protagonist', 'characters/companion', 'characters/pixel/protagonist', 'characters/pixel/companion',
+  'workspace/pixel/backgrounds', 'workspace/pixel/props',
+];
+const PIXEL_PATHS = PIXEL_FOLDERS.flatMap(folder => readdirSync(join(V2, ...folder.split('/')))
+  .map(name => `assets/personal-space/v2/${folder}/${name}`));
 const ALL_PATHS = [...new Set([
   ...getWorkspaceAssetManifestPaths(),
   ...getToonCharacterPaths(),
@@ -41,11 +45,12 @@ describe('PS-250A developer asset gallery', () => {
     const catalog = buildAssetCatalog();
     const listed = catalog.flatMap(group => group.assets.map(asset => asset.path));
 
-    expect(PIXEL_PATHS).toHaveLength(6 * 2 + 6);
+    expect(PIXEL_PATHS).toHaveLength(6 * 2 + 6 + 6 * 6 * 2 + 6 * 6 + 1 + 8);
     expect(listed.sort()).toEqual(ALL_PATHS);
     expect(new Set(listed).size).toBe(listed.length);
     expect(catalog.map(group => group.label)).toEqual([
-      '場景・房間', '家具', 'Q 版主角', 'Q 版 AI 夥伴', '像素主角', '像素 AI 夥伴', '天氣特效',
+      '場景・房間', '家具', 'Q 版主角', 'Q 版 AI 夥伴', '像素場景・房間', '像素家具', '像素主角', '像素 AI 夥伴',
+      '經典像素主角', '經典像素 AI 夥伴', '天氣特效',
     ]);
     expect(catalog.every(group => group.source)).toBe(true);
   });
