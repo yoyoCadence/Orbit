@@ -20,6 +20,9 @@ export function getRevealDurationMs(kind, reducedMotion = false) {
 export function renderOrbitWindow(inputModel = {}, options = {}) {
   const model = normalizeOrbitWindowModel(inputModel, options.renderMode);
   const scene = getWorkspaceSceneAssets(model.activeProject.progress, model.placements, model);
+  // PS-250B: only the default characters are precached. A chosen character
+  // that is not cached yet falls back to the default when it cannot load.
+  const fallback = getWorkspaceSceneAssets(model.activeProject.progress, model.placements, { ...model, appearance: null });
   const rewardLines = buildRewardLines(model.pendingReveal);
   const revealKind = model.pendingReveal?.kind || null;
 
@@ -52,6 +55,7 @@ export function renderOrbitWindow(inputModel = {}, options = {}) {
               class="orbit-window-protagonist"
               data-player-state="${escapeHtml(model.protagonist.state)}"
               src="${escapeHtml(scene.protagonist)}"
+              data-fallback-src="${escapeHtml(fallback.protagonist)}"
               alt=""
               draggable="false"
               style="${placementStyle(scene.protagonistPlacement)}"
@@ -60,6 +64,7 @@ export function renderOrbitWindow(inputModel = {}, options = {}) {
               class="orbit-window-companion"
               data-companion-state="${escapeHtml(model.companion.state)}"
               src="${escapeHtml(scene.companion.path)}"
+              data-fallback-src="${escapeHtml(fallback.companion.path)}"
               alt=""
               draggable="false"
               style="${placementStyle(scene.companionPlacement)}"
@@ -131,6 +136,7 @@ export function mountOrbitWindow(root, options = {}) {
   const runtime = options.runtime || orbitWindowRuntime;
   if (runtime === orbitWindowRuntime) orbitWindowRuntimeDestroyer.retain();
   const model = normalizeOrbitWindowModel(options.model || {}, options.renderMode);
+  useFallbackWhenImagesFail(root);
   const runtimeHost = root.querySelector('[data-orbit-runtime-host]');
   const reducedMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
   let observer = null;
@@ -409,8 +415,20 @@ export function normalizeOrbitWindowModel(input = {}, renderMode) {
     timeBand: input.timeBand || 'day',
     weather: input.weather === 'rain' ? 'rain' : 'clear',
     placements: input.placements || input.world?.placements || {},
+    appearance: input.appearance || input.world?.appearance || null,
     achievementPhoto: normalizeAchievementPhoto(input.achievementPhoto),
   };
+}
+
+// PS-250B: a chosen character that is neither cached nor reachable (offline)
+// shows the default character, which is precached. The pages mount right after
+// inserting the markup, before a load can fail, so the listener sees the error.
+function useFallbackWhenImagesFail(root) {
+  root.querySelectorAll?.('img[data-fallback-src]').forEach(image => {
+    const fallbackSrc = image.dataset.fallbackSrc;
+    if (!fallbackSrc || image.getAttribute('src') === fallbackSrc) return;
+    image.addEventListener('error', () => image.setAttribute('src', fallbackSrc), { once: true });
+  });
 }
 
 export function updateOrbitWindowAchievementPhoto(root, input = {}) {

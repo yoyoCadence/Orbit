@@ -588,6 +588,9 @@ export function buildPersonalSpaceV2Snapshot(coreOrInput = {}, v2Arg = {}, ledge
     sceneId: world.memoryViewSceneId || world.selectedSceneId || 'rough-room',
     sceneStage: activeProject.currentPhase,
     selectedThemeId: world.selectedThemeId || 'default',
+    // PS-250B: the chosen character style and characters; assetManifest.js
+    // resolves them, falling back to the defaults.
+    appearance: world.appearance || null,
     activeProject,
     mainQuest,
     wallet: resolveWallet(v2State, ledgerSnapshot, worldRevision),
@@ -635,6 +638,7 @@ function commonProjection(snapshot, renderMode) {
     sceneId: snapshot.sceneId,
     sceneStage: snapshot.sceneStage,
     selectedThemeId: snapshot.selectedThemeId,
+    appearance: snapshot.appearance,
     player: snapshot.player,
     playerState: snapshot.playerState,
     protagonist: snapshot.protagonist,

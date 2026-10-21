@@ -249,13 +249,20 @@
       - 管線與預覽圖在 `art-pipeline/ps250-characters/`；108 張 WebP（品質 90、alpha 無損）在 `pwa/assets/personal-space/v2/characters/toon/`：主角 6 套 × 6 個動作 × 左右，AI 夥伴 6 種 × 6 個狀態。
       - 主角畫布 512×512，地面點在 241/256，與像素主角相同；AI 夥伴畫布 256×256，置中。所以 placement 不用改。
       - `content/characterCatalog.js`（新模組）列出全部路徑，開發者總覽讀它。場景還不使用，也不預先快取。
-    - PS-250B 進行中（2026-10-21）：風格與角色的選擇，預設改為全 Q 版，SHELL 只預先快取預設。
-    - 給 PS-250B 的備註：
+    - PS-250B 完成（2026-10-21，v1.33.0）：
+      - `assetManifest.js` 依 `{ style, protagonistId, companionId }` 解析角色路徑（自己寫，不 import `characterCatalog.js`，以測試確保一致）；不認得的風格或角色退回預設。
+      - 預設是全 Q 版的上班族與 Orbit：`getWorkspaceAssetManifestPaths()`、`manifest.json`、SHELL 與 PS-243 都改為 Q 版；像素角色只在選擇時下載。
+      - V2 state 新增 `world.appearance`（只存在本機）；view model 帶到 Orbit Window 與 Pixi。
+      - 離線：poster 的 `<img>` 載入失敗時換成預設（`data-fallback-src`），Pixi 的 `Assets.load` 失敗時改載入預設。
+      - 完整頁面的 Edit Mode 新增「風格與角色」（新模組 `ui/appearancePicker.js`，只讀既有 export；還沒有 V2 state 時不寫入，避免跳過遷移）。
+      - 開發者總覽改以場景解析列出像素角色。
+    - 給 PS-250B 的備註（已處理）：
       - `sw.js` 的圖片本來就是 cache-first，第一次 fetch 時存入快取，所以「其他選項按需快取」已經成立。PS-250B 要改的是：把 SHELL 的預設角色換成 Q 版；在 JS 端處理離線缺圖時退回預設（Pixi `Assets.load` 失敗、poster 的 `<img>` 載入失敗）。
       - 每次改版 activate 時會刪除舊的快取，所以按需快取的選項在改版後要重新下載；離線時會退回預設。
       - 預設改成 Q 版時，`build-manifest.mjs`、`ps211aPrecache` 與 PS-243 預算都會讀到 Q 版的 WebP：要確認 lossy＋alpha 的 WebP 能被 `build-manifest.mjs` 解析（提案記錄 lossless 會拋錯）。
       - `ps211aPrecache.test.js` 的「只讀取 facing」名單整個放行了 `characterCatalog.js`；若 PS-250B 在那裡加入設定 facing 的邏輯，要重新檢查這個名單。
       - INFRA-105：`app.js`、`router.js` 直接 import `pixiSceneRuntime.js`（它再 import `assetManifest.js`），`home.js` import `controller.js` 與 `viewModels.js`，都在啟動路徑上。這些模組不能新增對其他模組的 import：跳過版本的使用者，舊快取中可能沒有那個模組（連 PS-250C 的 `characterCatalog.js` 也可能沒有），離線時整個 app 無法啟動。角色路徑的解析要寫在 `assetManifest.js` 自己裡面，以測試確保與 `characterCatalog.js` 一致；或由不在啟動路徑上的模組算好，當資料放進 model。
+    - 下一步：PS-250D（像素版的房間、家具與 Q 版角色，補齊「全像素」；選擇介面的像素選項跟著增加）→ PS-250E（場景）→ PS-250F（小家具）。
 
 - [ ] **PS-248** 以 Blender 擴充「空間」的主題與素材（提案）
   - 使用者 2026-10-20 要求：「需要更新更多 blender 做的主題與素材等，讓本工具更豐富」。

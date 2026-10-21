@@ -19,6 +19,8 @@ const GENERATED_LICENSE = 'art-pipeline/ps242/model-manifest.json#openai-built-i
 // PS-242 generated art and were re-checked against the new camera.
 const BLENDER_LICENSE = 'art-pipeline/ps244-blender/model-manifest.json#orbit-blender-procedural-workstation';
 const BLENDER_SOURCE = 'art-pipeline/ps244-blender/scene.py';
+// PS-250B: the default characters are the PS-250C Blender Q-style ones.
+const CHARACTER_LICENSE = 'art-pipeline/ps250-characters/model-manifest.json#orbit-blender-procedural-characters';
 const PROP_ROOT = 'assets/personal-space/v2/workspace/props';
 const PROP_METADATA = Object.freeze({
   [`${PROP_ROOT}/corner-desk.png`]: { id: 'corner-desk', label: 'Corner desk', projectPhase: 25 },
@@ -52,6 +54,12 @@ export function buildPs242AssetManifest() {
         placements: 'art-pipeline/ps244-blender/placements.json',
         previews: 'art-pipeline/ps244-blender/previews/',
         review: 'Shared-camera renders, shadow-catcher contact shadows, trimmed placements, and per-phase composites with the protagonist and Companion.',
+      },
+      characters: {
+        modelManifest: 'art-pipeline/ps250-characters/model-manifest.json',
+        outputs: 'art-pipeline/ps250-characters/outputs.json',
+        previews: 'art-pipeline/ps250-characters/previews/',
+        review: 'PS-250B default characters: shared-camera Q-style renders, ground point and canvas matching the PS-242 sprites, edge-clipping check, contact sheets and a room composite. The PS-242 pixel characters stay selectable as the pixel style.',
       },
       modelManifest: 'art-pipeline/ps242/model-manifest.json',
       prompts: 'art-pipeline/ps242/prompts/',
@@ -87,6 +95,39 @@ function buildOutputEntry(path) {
       source: BLENDER_SOURCE,
       qc: 'passed: authored-3:2, shared-camera, backdrop-composite, visual, WebP-budget',
       licenseRef: BLENDER_LICENSE,
+      ...shared,
+    };
+  }
+
+  const toonProtagonist = path.match(/characters\/toon\/protagonist\/([a-z]+)-([a-z]+)-(left|right)\.webp$/);
+  if (toonProtagonist) {
+    const [, character, state, facing] = toonProtagonist;
+    return {
+      id: `toon-${character}-${state}-${facing}`,
+      label: `Q-style ${character} ${state} ${facing}`,
+      role: 'protagonist-action',
+      projectPhase: 'all',
+      state,
+      facing,
+      source: 'art-pipeline/ps250-characters/protagonists.py',
+      qc: 'passed: shared-camera, ground-point, no-edge-touch, contact-shadow, visual',
+      licenseRef: CHARACTER_LICENSE,
+      ...shared,
+    };
+  }
+
+  const toonCompanion = path.match(/characters\/toon\/companion\/([a-z]+)-([a-z]+)\.webp$/);
+  if (toonCompanion) {
+    const [, character, state] = toonCompanion;
+    return {
+      id: `toon-${character}-${state}`,
+      label: `Q-style ${character} ${state}`,
+      role: 'companion-action',
+      projectPhase: 'all',
+      state,
+      source: 'art-pipeline/ps250-characters/companions.py',
+      qc: 'passed: shared-camera, centred, no-edge-touch, supportive-expression, visual',
+      licenseRef: CHARACTER_LICENSE,
       ...shared,
     };
   }

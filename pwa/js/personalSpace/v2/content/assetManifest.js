@@ -6,26 +6,37 @@ const ASSET_ROOT = 'assets/personal-space/v2';
 const PROP_ROOT = `${ASSET_ROOT}/workspace/props`;
 const PROTAGONIST_ROOT = `${ASSET_ROOT}/characters/protagonist`;
 const COMPANION_ROOT = `${ASSET_ROOT}/characters/companion`;
+const TOON_ROOT = `${ASSET_ROOT}/characters/toon`;
 const EFFECTS_ROOT = `${ASSET_ROOT}/effects`;
 const CANONICAL_CAMERA_ID = 'building-workspace-v2';
 
-const PROTAGONIST_VARIANTS = Object.freeze({
-  idle: facingPair('idle'),
-  work: facingPair('work'),
-  celebrate: facingPair('celebrate'),
-  rest: facingPair('rest'),
-  walk: facingPair('walk'),
-  inspect: facingPair('inspect'),
-});
+const PROTAGONIST_STATES = Object.freeze(['idle', 'work', 'celebrate', 'rest', 'walk', 'inspect']);
+const COMPANION_STATES = Object.freeze(['observe', 'approach', 'congratulate', 'rest', 'work', 'remind']);
 
-const COMPANION_VARIANTS = Object.freeze({
-  observe: `${COMPANION_ROOT}/orbit-guide-observe.png`,
-  approach: `${COMPANION_ROOT}/orbit-guide-approach.png`,
-  congratulate: `${COMPANION_ROOT}/orbit-guide-congratulate.png`,
-  rest: `${COMPANION_ROOT}/orbit-guide-rest.png`,
-  work: `${COMPANION_ROOT}/orbit-guide-work.png`,
-  remind: `${COMPANION_ROOT}/orbit-guide-remind.png`,
+// PS-250B: two switchable character styles; the first id of each is that
+// style's default. 'toon' (全 Q 版, the default style) uses the PS-250C Blender
+// characters; 'pixel' (全像素) keeps the PS-242 characters. The toon ids mirror
+// characterCatalog.js, which this module must not import: it is on the boot
+// path (app.js → pixiSceneRuntime.js), and an older cache may not have that
+// module (INFRA-105). tests/unit/ps250bAppearance.test.js keeps them in sync.
+const CHARACTER_STYLES = Object.freeze({
+  toon: Object.freeze({
+    protagonists: Object.freeze(['office', 'hoodie', 'sweater', 'sporty', 'scientist', 'artist']),
+    companions: Object.freeze(['orbit', 'catbot', 'owl', 'cube', 'jelly', 'fox']),
+    protagonistPath: (id, state, facing) => `${TOON_ROOT}/protagonist/${id}-${state}-${facing}.webp`,
+    companionPath: (id, state) => `${TOON_ROOT}/companion/${id}-${state}.webp`,
+  }),
+  pixel: Object.freeze({
+    protagonists: Object.freeze(['default']),
+    companions: Object.freeze(['orbit-guide']),
+    protagonistPath: (id, state, facing) => `${PROTAGONIST_ROOT}/player-${id}-${state}-${facing}.png`,
+    companionPath: (id, state) => `${COMPANION_ROOT}/${id}-${state}.png`,
+  }),
 });
+const DEFAULT_STYLE = 'toon';
+
+const PROTAGONIST_VARIANTS = protagonistVariants(resolveAppearance());
+const COMPANION_VARIANTS = companionVariants(resolveAppearance());
 
 const WEATHER_VARIANTS = Object.freeze({
   clear: `${EFFECTS_ROOT}/weather-building-clear-motes.png`,
@@ -89,9 +100,10 @@ export const WORKSPACE_INITIAL_PAINT_ASSETS = Object.freeze([
   WORKSPACE_V2_ASSETS.weather.path,
 ]);
 
-// Deterministic, de-duplicated list of every authored image the production
-// workspace can resolve. The runtime still loads only the active state bundle;
-// PS-243 derives its complete-scene evidence from this same contract.
+// Deterministic, de-duplicated list of every image the default appearance can
+// resolve (PS-250B: the toon office worker and Orbit). The runtime still loads
+// only the active state bundle; PS-243 derives its complete-scene evidence from
+// this same contract. Other styles and characters are downloaded when chosen.
 export function getWorkspaceAssetManifestPaths() {
   return Object.freeze([...new Set([
     ...WORKSPACE_INITIAL_PAINT_ASSETS,
@@ -103,6 +115,7 @@ export function getWorkspaceAssetManifestPaths() {
 }
 
 export function resolveWorkspaceVisualState(visualState = {}) {
+  const appearance = resolveAppearance(visualState.appearance);
   const protagonistInput = visualState.protagonist && typeof visualState.protagonist === 'object'
     ? visualState.protagonist
     : {};
@@ -122,16 +135,18 @@ export function resolveWorkspaceVisualState(visualState = {}) {
     ? 'observe'
     : normalizeKey(requestedCompanionState, COMPANION_VARIANTS, 'observe');
   const weatherState = normalizeKey(visualState.weather, WEATHER_VARIANTS, 'clear');
+  const style = CHARACTER_STYLES[appearance.style];
 
   return {
+    appearance: Object.freeze(appearance),
     protagonist: Object.freeze({
       state: protagonistState,
       facing: protagonistFacing,
-      path: PROTAGONIST_VARIANTS[protagonistState][protagonistFacing],
+      path: style.protagonistPath(appearance.protagonistId, protagonistState, protagonistFacing),
     }),
     companion: Object.freeze({
       state: companionState,
-      path: COMPANION_VARIANTS[companionState],
+      path: style.companionPath(appearance.companionId, companionState),
     }),
     weather: Object.freeze({
       state: weatherState,
@@ -151,6 +166,7 @@ export function getWorkspaceSceneAssets(progress = 0, placementOverrides = {}, v
   const resolvedVisuals = resolveWorkspaceVisualState(visualState);
   return {
     ...WORKSPACE_V2_ASSETS,
+    appearance: resolvedVisuals.appearance,
     protagonist: resolvedVisuals.protagonist.path,
     protagonistVariant: resolvedVisuals.protagonist,
     companion: {
@@ -186,11 +202,33 @@ export function getWorkspaceSceneAssets(progress = 0, placementOverrides = {}, v
   };
 }
 
-function facingPair(action) {
-  return Object.freeze({
-    left: `${PROTAGONIST_ROOT}/player-default-${action}-left.png`,
-    right: `${PROTAGONIST_ROOT}/player-default-${action}-right.png`,
-  });
+// PS-250B: { style, protagonistId, companionId }. Anything unknown falls back to
+// the default style, or to the chosen style's first character, so a stored
+// choice that no longer exists (or an older state without one) still draws.
+function resolveAppearance(value) {
+  const input = value && typeof value === 'object' ? value : {};
+  const style = typeof input.style === 'string' && Object.hasOwn(CHARACTER_STYLES, input.style)
+    ? input.style
+    : DEFAULT_STYLE;
+  const { protagonists, companions } = CHARACTER_STYLES[style];
+  return {
+    style,
+    protagonistId: protagonists.includes(input.protagonistId) ? input.protagonistId : protagonists[0],
+    companionId: companions.includes(input.companionId) ? input.companionId : companions[0],
+  };
+}
+
+function protagonistVariants({ style, protagonistId }) {
+  const { protagonistPath } = CHARACTER_STYLES[style];
+  return Object.freeze(Object.fromEntries(PROTAGONIST_STATES.map(state => [state, Object.freeze({
+    left: protagonistPath(protagonistId, state, 'left'),
+    right: protagonistPath(protagonistId, state, 'right'),
+  })])));
+}
+
+function companionVariants({ style, companionId }) {
+  const { companionPath } = CHARACTER_STYLES[style];
+  return Object.freeze(Object.fromEntries(COMPANION_STATES.map(state => [state, companionPath(companionId, state)])));
 }
 
 function normalizeKey(value, variants, fallback) {

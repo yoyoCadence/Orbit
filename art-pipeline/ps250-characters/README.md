@@ -9,7 +9,11 @@ The user approved this look from the prototype preview on 2026-10-21.
 
 Everything is generated from code. There are no external models, textures or HDRIs, and no generated images feed in. Materials, outlines and the camera angle come from the PS-244 room (`../ps244-blender/scene.py`), so the characters belong to the same diorama.
 
-The app does not draw these sprites yet. PS-250B adds the style and character choice, and switches the default to the Q style. Until then only the developer asset gallery (PS-250A) lists them, and nothing precaches them.
+Since PS-250B the Q style is the default:
+
+- The office worker and Orbit are the default characters, and only their sprites are precached.
+- The other characters can be chosen in Edit Mode. Each is downloaded the first time it is drawn.
+- Offline, a chosen character that was never downloaded is drawn as the default.
 
 ## Files
 
@@ -65,6 +69,5 @@ Cycles reruns are not byte-identical, so render only what changed. WebP encoding
 
 ## Not in scope
 
-- Choosing a character, the style switch and on-demand caching are PS-250B.
 - The pixel versions of these characters, the room and the furniture are PS-250D.
 - No 3D runtime. The app still draws 2D sprites, and the JS budget is unchanged apart from the small catalog module.

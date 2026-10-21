@@ -241,14 +241,44 @@ describe('Personal Space V2 Pixi scene runtime', () => {
 
     ticker({ deltaMS: 200 });
 
-    expect(loadedPaths.some(path => path.includes('player-default-work-left.png'))).toBe(true);
-    expect(loadedPaths.some(path => path.includes('orbit-guide-congratulate.png'))).toBe(true);
+    expect(loadedPaths.some(path => path.includes('toon/protagonist/office-work-left.webp'))).toBe(true);
+    expect(loadedPaths.some(path => path.includes('toon/companion/orbit-congratulate.webp'))).toBe(true);
     expect(loadedPaths.some(path => path.includes('weather-building-rain.png'))).toBe(true);
-    expect(companion.texture.path).toContain('orbit-guide-congratulate.png');
+    expect(companion.texture.path).toContain('toon/companion/orbit-congratulate.webp');
     expect(rain.texture.path).toContain('weather-building-rain.png');
     expect(protagonist.x).not.toBe(initialProtagonistX);
     expect(companion.y).not.toBe(initialCompanionY);
     expect(rain.y).not.toBe(initialRainY);
+    runtime.destroy();
+  });
+
+  it('draws the chosen characters, and the precached default when they cannot load (PS-250B)', async () => {
+    const fake = createFakePixi();
+    const runtime = createPixiSceneRuntime({ loadPixi: () => Promise.resolve(fake.pixi) });
+    const { host } = createRuntimeHost();
+    const model = {
+      activeProject: { progress: 50 },
+      protagonist: { state: 'work' },
+      companion: { state: 'observe' },
+      appearance: { style: 'toon', protagonistId: 'hoodie', companionId: 'owl' },
+    };
+
+    await runtime.mount(host, model);
+    let [paths] = fake.pixi.Assets.load.mock.calls.at(-1);
+    expect(paths).toContain('assets/personal-space/v2/characters/toon/protagonist/hoodie-work-left.webp');
+    expect(paths).toContain('assets/personal-space/v2/characters/toon/companion/owl-observe.webp');
+
+    // Offline and not cached yet: Pixi rejects the load, the default is drawn.
+    fake.pixi.Assets.load.mockImplementationOnce(async () => {
+      throw new Error('[Loader.load] Failed to load owl-observe.webp');
+    });
+    await runtime.render({ ...model, appearance: { style: 'toon', protagonistId: 'artist', companionId: 'owl' } });
+    [paths] = fake.pixi.Assets.load.mock.calls.at(-1);
+    expect(paths).toContain('assets/personal-space/v2/characters/toon/protagonist/office-work-left.webp');
+    expect(paths).toContain('assets/personal-space/v2/characters/toon/companion/orbit-observe.webp');
+    const app = fake.applications[0];
+    expect(app.stage.children.find(child => child.label === 'orbit-protagonist').texture.path)
+      .toContain('office-work-left.webp');
     runtime.destroy();
   });
 

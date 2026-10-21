@@ -15,6 +15,11 @@ const DEFAULT_HIDDEN_STATS = Object.freeze({
 });
 
 const PERSONAL_SPACE_WEATHER = new Set(['clear', 'rain']);
+// PS-250B: the character style and characters the user chose in Edit Mode.
+// Local only. assetManifest.js resolves an id that does not exist in the
+// chosen style to that style's default character.
+const DEFAULT_APPEARANCE = Object.freeze({ style: 'toon', protagonistId: 'office', companionId: 'orbit' });
+const APPEARANCE_STYLES = new Set(['toon', 'pixel']);
 
 function finiteNonNegative(value, fallback = 0) {
   return Number.isFinite(value) ? Math.max(0, value) : fallback;
@@ -42,6 +47,15 @@ function normalizeObjectArray(value) {
   return Array.isArray(value)
     ? value.filter(entry => entry && typeof entry === 'object' && !Array.isArray(entry)).map(entry => ({ ...entry }))
     : [];
+}
+
+function normalizeAppearance(value) {
+  const raw = normalizeObject(value);
+  return {
+    style: APPEARANCE_STYLES.has(raw.style) ? raw.style : DEFAULT_APPEARANCE.style,
+    protagonistId: normalizeNullableString(raw.protagonistId) ?? DEFAULT_APPEARANCE.protagonistId,
+    companionId: normalizeNullableString(raw.companionId) ?? DEFAULT_APPEARANCE.companionId,
+  };
 }
 
 function normalizeNullableString(value) {
@@ -79,6 +93,7 @@ export function createDefaultPersonalSpaceV2State(ownerId, options = {}) {
       selectedSceneId: 'rough-room',
       memoryViewSceneId: null,
       selectedThemeId: 'default',
+      appearance: { ...DEFAULT_APPEARANCE },
       placedItems: [],
       idleWindowLayouts: {},
       memorySceneLog: {},
@@ -140,6 +155,7 @@ export function normalizePersonalSpaceV2State(value, options = {}) {
       selectedSceneId: normalizeNullableString(rawWorld.selectedSceneId) ?? defaults.world.selectedSceneId,
       memoryViewSceneId: normalizeNullableString(rawWorld.memoryViewSceneId),
       selectedThemeId: normalizeNullableString(rawWorld.selectedThemeId) ?? defaults.world.selectedThemeId,
+      appearance: normalizeAppearance(rawWorld.appearance),
       placedItems: normalizeObjectArray(rawWorld.placedItems),
       idleWindowLayouts: normalizeObject(rawWorld.idleWindowLayouts),
       memorySceneLog: normalizeObject(rawWorld.memorySceneLog),

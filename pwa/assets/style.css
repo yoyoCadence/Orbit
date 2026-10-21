@@ -6497,6 +6497,96 @@ html.has-bg[data-ui-skin="modern"] .levelup-box {
   gap: 12px;
 }
 
+/* PS-250B: Edit Mode picker for the character style and characters. */
+.personal-space-v2-appearance {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+}
+
+.personal-space-v2-appearance fieldset {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.personal-space-v2-appearance legend {
+  margin-bottom: 6px;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.personal-space-v2-appearance > p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.personal-space-v2-appearance-styles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.personal-space-v2-appearance-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.personal-space-v2-appearance button {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+  padding: 8px 6px;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.personal-space-v2-appearance button small {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 400;
+  text-align: center;
+}
+
+.personal-space-v2-appearance button[aria-pressed="true"] {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 45%, transparent);
+}
+
+.personal-space-v2-appearance button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.personal-space-v2-appearance img {
+  width: 100%;
+  max-width: 72px;
+  aspect-ratio: 1;
+  object-fit: contain;
+}
+
 .personal-space-v2-dock {
   position: sticky;
   bottom: calc(66px + var(--sab));

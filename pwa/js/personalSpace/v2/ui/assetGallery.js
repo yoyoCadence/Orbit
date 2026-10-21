@@ -6,11 +6,15 @@
  *
  * It only reads existing exports of the asset manifest: a new export imported
  * across SHELL modules can fail to link while an older copy is cached
- * (INFRA-105). Assets the scene does not use yet come from their own new
- * modules (PS-250C: characterCatalog.js).
+ * (INFRA-105). Characters outside the default come from characterCatalog.js
+ * (Q style, PS-250C) and from the scene resolution (pixel style, PS-250B).
  */
 import { FLAG_DEV_PANEL } from '../../../flags.js';
-import { getWorkspaceAssetManifestPaths } from '../content/assetManifest.js';
+import {
+  getWorkspaceAssetManifestPaths,
+  getWorkspaceSceneAssets,
+  WORKSPACE_VISUAL_STATES,
+} from '../content/assetManifest.js';
 import { getToonCharacterPaths } from '../content/characterCatalog.js';
 
 export const ASSET_GALLERY_FLAG = 'orbit_dev_asset_gallery';
@@ -61,8 +65,25 @@ function groupFor(path) {
   return ASSET_GROUPS.find(group => relative.startsWith(`${group.folder}/`)) || OTHER_GROUP;
 }
 
+// PS-250B: the pixel characters are no longer the default, so the manifest list
+// leaves them out; resolve them through the scene the way the runtime does.
+function pixelCharacterPaths() {
+  const { protagonist, facings, companion } = WORKSPACE_VISUAL_STATES;
+  const appearance = { style: 'pixel' };
+  return [
+    ...protagonist.flatMap(state => facings.map(facing => (
+      getWorkspaceSceneAssets(0, {}, { appearance, protagonist: { state, facing } }).protagonist
+    ))),
+    ...companion.map(state => getWorkspaceSceneAssets(0, {}, { appearance, companion: { state } }).companion.path),
+  ];
+}
+
+function allAssetPaths() {
+  return [...getWorkspaceAssetManifestPaths(), ...getToonCharacterPaths(), ...pixelCharacterPaths()];
+}
+
 /** Every asset once, grouped for the gallery; empty groups are left out. */
-export function buildAssetCatalog(paths = [...getWorkspaceAssetManifestPaths(), ...getToonCharacterPaths()]) {
+export function buildAssetCatalog(paths = allAssetPaths()) {
   const groups = new Map([...ASSET_GROUPS, OTHER_GROUP].map(group => [group, []]));
   for (const path of [...new Set(paths)].sort()) {
     groups.get(groupFor(path)).push({
