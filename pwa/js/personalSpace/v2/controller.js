@@ -247,7 +247,7 @@ function findHandoverIds(rewards, unseenRewardIds) {
     const pairs = Math.min(added.length, reversed.length);
     [...added.sort().slice(0, pairs), ...reversed.sort().slice(0, pairs)]
       .forEach(id => ids.add(id));
-    unseen.sort().slice(0, added.length - pairs).forEach(id => ids.add(id));
+    if (added.length) unseen.forEach(id => ids.add(id));
   }
   return ids;
 }

@@ -15,8 +15,8 @@
   - 舊版本或其他分頁留下、沒有新標記的 reveal 仍能辨識真正的完成，但被撤銷的完成不算。
 
 ### Validation
-- 單元測試以真實的 ledger reconcile 重現：完成那一天恭喜一次；完成後的第 5 天是進度；完成後撤銷第 6 天；撤銷第 4 天（有與沒有第 5 天）；撤銷當天的 Main Quest、由當天較晚的 Session 接手（包括完成那一天）；被接手的 reveal 還沒播放時；儲存的專案狀態與 ledger 不一致。撤銷時 Companion 是 `observe`＋`companion.observe`，主角不慶祝，Pixi 場景的主角也不跳動。
-- 以修正前的程式碼執行時這些測試都會失敗。其中「完成那一天恭喜一次」、「依 ledger 判斷完成」與「相信完成標記」只因為缺少新的 `projectCompleted` 欄位；其他都是因為行為（恭喜、靠近、`major`、少了該顯示的 reward 或主角跳動）。
+- 單元測試以真實的 ledger reconcile 重現：完成那一天恭喜一次；完成後的第 5 天是進度；完成後撤銷第 6 天；撤銷第 4 天（有與沒有第 5 天）；撤銷當天的 Main Quest、由當天較晚的 Session 接手（包括完成那一天）；被接手的 reveal 還沒播放時（包括舊版本排入的完成 reveal）；儲存的專案狀態與 ledger 不一致。撤銷時 Companion 是 `observe`＋`companion.observe`，主角不慶祝，Pixi 場景的主角也不跳動。
+- 以修正前的程式碼執行時這些測試都會失敗。其中「完成那一天恭喜一次」、「依 ledger 判斷完成」、「相信完成標記」與「舊版本排入的完成 reveal」只因為缺少新的 `projectCompleted` 欄位；其他都是因為行為（恭喜、靠近、`major`、少了該顯示的 reward 或主角跳動）。
 
 ---
 

@@ -239,7 +239,10 @@ describe('BUG-113 project completion and reversal reveals', () => {
     const shown = newReveals(previous, state).flatMap(rewardTypes);
     expect(shown).not.toContain('reversed:world_unlock');
     expect(shown).not.toContain('reversed:relationship');
-    expect(state.recentWorldChange.metadata.rewardType).not.toBe('world_unlock');
+    expect(state.recentWorldChange).not.toMatchObject({
+      type: 'reward_reversed',
+      metadata: { rewardType: 'world_unlock' },
+    });
   });
 
   it('also recognises an unplayed completion reveal queued by an older version', () => {
@@ -257,7 +260,9 @@ describe('BUG-113 project completion and reversal reveals', () => {
       deletedSourceIds: ['day-4'],
     }), { queueReveal: true });
 
-    expect(revealFor(legacy, state, 'day-5')).toMatchObject({ projectCompleted: true, kind: 'major' });
+    const reveal = revealFor(legacy, state, 'day-5');
+    expect(reveal).toMatchObject({ projectCompleted: true, kind: 'major' });
+    expect(reactionTo(reveal, state).state).toBe('congratulate');
   });
 
   it('decides the completion from the ledger, not from the stored project', () => {
