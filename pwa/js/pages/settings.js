@@ -25,7 +25,6 @@ import {
   supportsGeolocation,
 } from '../platform/placeContext.js';
 import { resetPlaceHintCache } from '../ui/placeHint.js';
-import { isAssetGalleryEnabled, setAssetGalleryEnabled } from '../personalSpace/v2/ui/assetGallery.js';
 
 // ── Theme definitions ────────────────────────────────────────────────────────
 export const THEMES = [
@@ -294,6 +293,28 @@ function _isDevMode() {
   return isLocal || isNgrok || localStorage.getItem(FLAG_DEV_PANEL) === '1';
 }
 
+// PS-250A: the same key as ASSET_GALLERY_FLAG in personalSpace/v2/ui/assetGallery.js.
+// Not imported: this module is on the boot path, and a module missing from an
+// older cache would stop the whole app from starting (INFRA-105).
+const DEV_ASSET_GALLERY_KEY = 'orbit_dev_asset_gallery';
+
+function _devAssetGalleryEnabled() {
+  try {
+    return localStorage.getItem(DEV_ASSET_GALLERY_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function _devSetAssetGallery(enabled) {
+  try {
+    if (enabled) localStorage.setItem(DEV_ASSET_GALLERY_KEY, '1');
+    else localStorage.removeItem(DEV_ASSET_GALLERY_KEY);
+  } catch {
+    // Blocked storage: the gallery stays off.
+  }
+}
+
 function _devXpForLevel(level) {
   let xp = 0;
   for (let l = 1; l < level; l++) xp += xpRequired(l);
@@ -445,7 +466,7 @@ function _devPanelHtml() {
         </div>
 
         <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-muted)">
-          <input type="checkbox" id="dev-asset-gallery" ${isAssetGalleryEnabled() ? 'checked' : ''}>
+          <input type="checkbox" id="dev-asset-gallery" ${_devAssetGalleryEnabled() ? 'checked' : ''}>
           在「空間」顯示全部 3D 資產
         </label>
 
@@ -1028,7 +1049,7 @@ function _setupListeners(container) {
   container.querySelector('#dev-pro-paid')?.addEventListener('click',  () => _devApplyPro('paid'));
   container.querySelector('#dev-reset')?.addEventListener('click', _devReset);
   container.querySelector('#dev-asset-gallery')?.addEventListener('change', event => {
-    setAssetGalleryEnabled(event.target.checked);
+    _devSetAssetGallery(event.target.checked);
   });
 
   // HW-107 location context

@@ -5,7 +5,8 @@
  * under its group, and is off unless the developer panel turned it on.
  */
 
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { FLAG_DEV_PANEL } from '../../pwa/js/flags.js';
 import { getWorkspaceAssetManifestPaths } from '../../pwa/js/personalSpace/v2/content/assetManifest.js';
 import {
   ASSET_GALLERY_FLAG,
@@ -16,7 +17,10 @@ import {
 } from '../../pwa/js/personalSpace/v2/ui/assetGallery.js';
 
 describe('PS-250A developer asset gallery', () => {
-  afterEach(() => localStorage.clear());
+  afterEach(() => {
+    localStorage.clear();
+    vi.unstubAllGlobals();
+  });
 
   it('lists every manifest asset exactly once, in a named group', () => {
     const catalog = buildAssetCatalog();
@@ -45,6 +49,24 @@ describe('PS-250A developer asset gallery', () => {
       .toEqual([...getWorkspaceAssetManifestPaths()].sort());
     expect(images.every(image => image.getAttribute('loading') === 'lazy')).toBe(true);
     expect(host.textContent).toContain(`${images.length} 個檔案`);
+  });
+
+  it('shows only in developer mode, like the developer panel', () => {
+    setAssetGalleryEnabled(true);
+    vi.stubGlobal('location', { hostname: 'orbit.example.com' });
+    expect(isAssetGalleryEnabled()).toBe(false);
+    localStorage.setItem(FLAG_DEV_PANEL, '1');
+    expect(isAssetGalleryEnabled()).toBe(true);
+    vi.stubGlobal('location', { hostname: 'abc.ngrok-free.app' });
+    localStorage.removeItem(FLAG_DEV_PANEL);
+    expect(isAssetGalleryEnabled()).toBe(true);
+  });
+
+  it('escapes paths and leaves out an empty source', () => {
+    const host = document.createElement('div');
+    host.innerHTML = renderAssetGallery(buildAssetCatalog(['assets/personal-space/v2/x/"><b>x</b>.png']));
+    expect(host.querySelector('b')).toBeNull();
+    expect(host.querySelector('h3 small').textContent).toBe('1');
   });
 
   it('is off until the developer panel turns it on', () => {

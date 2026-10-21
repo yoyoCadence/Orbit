@@ -8,6 +8,7 @@
  * across SHELL modules can fail to link while an older copy is cached
  * (INFRA-105).
  */
+import { FLAG_DEV_PANEL } from '../../../flags.js';
 import { getWorkspaceAssetManifestPaths } from '../content/assetManifest.js';
 
 export const ASSET_GALLERY_FLAG = 'orbit_dev_asset_gallery';
@@ -16,7 +17,7 @@ const ASSET_ROOT = 'assets/personal-space/v2/';
 
 // Folder → group, in the order the gallery shows them.
 const ASSET_GROUPS = Object.freeze([
-  { folder: 'workspace/backgrounds', label: '場景・房間', source: 'Blender（PS-244）' },
+  { folder: 'workspace/backgrounds', label: '場景・房間', source: 'Blender（PS-244～PS-245）' },
   { folder: 'workspace/props', label: '家具', source: 'Blender（PS-244～PS-247）' },
   { folder: 'characters/protagonist', label: '主角', source: '影像生成（PS-242）' },
   { folder: 'characters/companion', label: 'AI 夥伴', source: '影像生成（PS-242）' },
@@ -25,9 +26,18 @@ const ASSET_GROUPS = Object.freeze([
 
 const OTHER_GROUP = Object.freeze({ folder: '', label: '其他', source: '' });
 
+// The same rule as the developer panel in Settings: local hosts, ngrok, or the
+// panel turned on explicitly. Turning the panel off also hides the gallery.
+function isDeveloperMode() {
+  const host = globalThis.location?.hostname || '';
+  if (host === 'localhost' || host === '127.0.0.1') return true;
+  if (['.ngrok-free.dev', '.ngrok-free.app', '.ngrok.app', '.ngrok.io'].some(end => host.endsWith(end))) return true;
+  return globalThis.localStorage?.getItem(FLAG_DEV_PANEL) === '1';
+}
+
 export function isAssetGalleryEnabled() {
   try {
-    return globalThis.localStorage?.getItem(ASSET_GALLERY_FLAG) === '1';
+    return globalThis.localStorage?.getItem(ASSET_GALLERY_FLAG) === '1' && isDeveloperMode();
   } catch {
     return false;
   }
@@ -70,7 +80,7 @@ export function renderAssetGallery(catalog = buildAssetCatalog()) {
         <span>${total} 個檔案</span>
       </div>
       ${catalog.map(group => `
-        <h3>${escapeHtml(group.label)} <small>${escapeHtml(group.source)} · ${group.assets.length}</small></h3>
+        <h3>${escapeHtml(group.label)} <small>${group.source ? `${escapeHtml(group.source)} · ` : ''}${group.assets.length}</small></h3>
         <ul>
           ${group.assets.map(asset => `
             <li>

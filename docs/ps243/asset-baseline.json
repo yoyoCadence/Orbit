@@ -261,7 +261,7 @@
         },
         {
           "path": "pwa/js/personalSpace/v2/ui/assetGallery.js",
-          "bytes": 3792
+          "bytes": 4390
         },
         {
           "path": "pwa/js/personalSpace/v2/ui/orbitWindow.js",
@@ -272,15 +272,15 @@
           "bytes": 26368
         }
       ],
-      "rawBytes": 220356,
-      "gzipBytes": 56838
+      "rawBytes": 220954,
+      "gzipBytes": 57061
     },
     "vendoredPixi": {
       "path": "pwa/vendor/pixi.js",
       "rawBytes": 796970,
       "gzipBytes": 225428
     },
-    "combinedGzipBytes": 282266,
+    "combinedGzipBytes": 282489,
     "budgetBytes": 307200,
     "result": "PASS"
   }
