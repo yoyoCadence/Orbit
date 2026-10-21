@@ -109,5 +109,114 @@
         663
       ]
     }
+  },
+  "night": {
+    "background": "assets/personal-space/v2/workspace/backgrounds/building-formal-workstation-room-v2-night.webp",
+    "props": {
+      "corner-desk": {
+        "path": "assets/personal-space/v2/workspace/props/corner-desk-night.png",
+        "x": 39.03,
+        "y": 72.07,
+        "width": 24.414,
+        "z": 24,
+        "bbox": [
+          412,
+          413,
+          787,
+          738
+        ]
+      },
+      "office-chair": {
+        "path": "assets/personal-space/v2/workspace/props/office-chair-night.png",
+        "x": 41.569,
+        "y": 79.297,
+        "width": 10.352,
+        "z": 30,
+        "bbox": [
+          559,
+          445,
+          718,
+          812
+        ]
+      },
+      "office-shelf": {
+        "path": "assets/personal-space/v2/workspace/props/office-shelf-night.png",
+        "x": 75.26,
+        "y": 71.094,
+        "width": 48.307,
+        "z": 22,
+        "bbox": [
+          785,
+          167,
+          1527,
+          728
+        ]
+      },
+      "desk-lamp": {
+        "path": "assets/personal-space/v2/workspace/props/desk-lamp-night.png",
+        "x": 32.91,
+        "y": 47.754,
+        "width": 3.841,
+        "z": 29,
+        "bbox": [
+          476,
+          410,
+          535,
+          489
+        ]
+      },
+      "planning-board": {
+        "path": "assets/personal-space/v2/workspace/props/planning-board-night.png",
+        "x": 39.16,
+        "y": 39.16,
+        "width": 14.258,
+        "z": 10,
+        "bbox": [
+          492,
+          231,
+          711,
+          401
+        ]
+      },
+      "single-monitor": {
+        "path": "assets/personal-space/v2/workspace/props/single-monitor-night.png",
+        "x": 40.918,
+        "y": 48.438,
+        "width": 7.227,
+        "z": 28,
+        "bbox": [
+          573,
+          381,
+          684,
+          496
+        ]
+      },
+      "dual-monitor": {
+        "path": "assets/personal-space/v2/workspace/props/dual-monitor-night.png",
+        "x": 40.495,
+        "y": 48.438,
+        "width": 12.891,
+        "z": 28,
+        "bbox": [
+          523,
+          381,
+          721,
+          496
+        ]
+      },
+      "office-plant": {
+        "path": "assets/personal-space/v2/workspace/props/office-plant-night.png",
+        "x": 86.556,
+        "y": 68.164,
+        "width": 15.69,
+        "z": 23,
+        "bbox": [
+          1209,
+          408,
+          1450,
+          698
+        ]
+      }
+    }
   }
 }

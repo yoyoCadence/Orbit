@@ -2,6 +2,7 @@
 
 Usage:
     python3 process_pixel.py <render_dir> [--write-runtime] [--preview-dir DIR]
+                             [--lighting day|night]
 
 - Room: composited over the PS-244 backdrop, reduced to its own 64-colour
   palette, scaled x4 with nearest neighbour to the 1536 x 1024 frame.
@@ -21,6 +22,10 @@ Usage:
   the eyes and outlines readable (the approach of the approved prototype).
 - With --write-runtime, writes the PNGs under pwa/ and outputs.json (sizes
   and SHA-256). Previews are always written, by default into previews/.
+- --lighting night (PS-250E1) processes only the night room and props
+  (<render_dir>/scene-night/), cropped to the Q-style night trim boxes
+  ("night" in placements.json), with a -night suffix. outputs.json keeps the
+  day files and characters; the characters have no night version.
 
 Requires Pillow and numpy.
 """
@@ -46,8 +51,13 @@ from process_pack import PROPS, backdrop  # noqa: E402
 SCALE = 4
 FRAME = (1536, 1024)
 V2 = 'assets/personal-space/v2'
-ROOM_PATH = f'{V2}/workspace/pixel/backgrounds/building-formal-workstation-room-pixel.png'
+ROOM_PATHS = {
+    'day': f'{V2}/workspace/pixel/backgrounds/building-formal-workstation-room-pixel.png',
+    'night': f'{V2}/workspace/pixel/backgrounds/building-formal-workstation-room-pixel-night.png',
+}
 PROP_DIR = f'{V2}/workspace/pixel/props'
+SCENE_DIRS = {'day': 'scene', 'night': 'scene-night'}
+OUTPUTS = os.path.join(HERE, 'outputs.json')
 PROTAGONIST_DIR = f'{V2}/characters/pixel/protagonist'
 COMPANION_DIR = f'{V2}/characters/pixel/companion'
 PLACEMENTS = os.path.join(REPO, 'art-pipeline', 'ps244-blender', 'placements.json')
@@ -85,8 +95,12 @@ def encode(im):
     return buffer.getvalue()
 
 
-def process_room(render_dir):
-    room = Image.open(os.path.join(render_dir, 'scene', 'room.png')).convert('RGBA')
+def prop_path(prop_id, lighting):
+    return f"{PROP_DIR}/{prop_id}{'-night' if lighting == 'night' else ''}.png"
+
+
+def process_room(render_dir, lighting='day'):
+    room = Image.open(os.path.join(render_dir, SCENE_DIRS[lighting], 'room.png')).convert('RGBA')
     expected = (FRAME[0] // SCALE, FRAME[1] // SCALE)
     if room.size != expected:
         raise SystemExit(f'room render is {room.size}, expected {expected}')
@@ -101,8 +115,8 @@ def neighbours(mask):
                for dy in (-1, 0, 1) for dx in (-1, 0, 1) if dy or dx)
 
 
-def process_prop(render_dir, prop_id, bbox):
-    render = Image.open(os.path.join(render_dir, 'scene', f'{prop_id}.png')).convert('RGBA')
+def process_prop(render_dir, prop_id, bbox, lighting='day'):
+    render = Image.open(os.path.join(render_dir, SCENE_DIRS[lighting], f'{prop_id}.png')).convert('RGBA')
     left, top, right, bottom = bbox
     small_box = (left // SCALE, top // SCALE, math.ceil(right / SCALE), math.ceil(bottom / SCALE))
     rgba = np.array(render.crop(small_box))
@@ -170,26 +184,33 @@ def main():
     parser.add_argument('render_dir')
     parser.add_argument('--write-runtime', action='store_true')
     parser.add_argument('--preview-dir', default=os.path.join(HERE, 'previews'))
+    parser.add_argument('--lighting', choices=tuple(SCENE_DIRS), default='day')
     args = parser.parse_args()
+    lighting = args.lighting
 
     with open(PLACEMENTS, encoding='utf-8') as fh:
-        placements = json.load(fh)['props']
+        placements = json.load(fh)
+    if lighting != 'day':
+        placements = placements[lighting]
+    placements = placements['props']
 
-    images = {ROOM_PATH: process_room(args.render_dir)}
+    images = {ROOM_PATHS[lighting]: process_room(args.render_dir, lighting)}
     for prop_id in PROPS:
-        images[f'{PROP_DIR}/{prop_id}.png'] = process_prop(args.render_dir, prop_id, placements[prop_id]['bbox'])
-    for spec_id in catalog.PROTAGONISTS:
-        for pose in catalog.POSES:
-            for facing in catalog.FACINGS:
-                name = f'{spec_id}-{pose}-{facing}'
-                images[f'{PROTAGONIST_DIR}/{name}.png'] = process_character(
-                    os.path.join(PWA, catalog.protagonist_path(spec_id, pose, facing)),
-                    PROTAGONIST_GRID, PROTAGONIST_COLOURS, True)
-    for kind in catalog.COMPANIONS:
-        for state in catalog.STATES:
-            name = f'{kind}-{state}'
-            images[f'{COMPANION_DIR}/{name}.png'] = process_character(
-                os.path.join(PWA, catalog.companion_path(kind, state)), COMPANION_GRID, COMPANION_COLOURS, False)
+        images[prop_path(prop_id, lighting)] = process_prop(
+            args.render_dir, prop_id, placements[prop_id]['bbox'], lighting)
+    if lighting == 'day':
+        for spec_id in catalog.PROTAGONISTS:
+            for pose in catalog.POSES:
+                for facing in catalog.FACINGS:
+                    name = f'{spec_id}-{pose}-{facing}'
+                    images[f'{PROTAGONIST_DIR}/{name}.png'] = process_character(
+                        os.path.join(PWA, catalog.protagonist_path(spec_id, pose, facing)),
+                        PROTAGONIST_GRID, PROTAGONIST_COLOURS, True)
+        for kind in catalog.COMPANIONS:
+            for state in catalog.STATES:
+                name = f'{kind}-{state}'
+                images[f'{COMPANION_DIR}/{name}.png'] = process_character(
+                    os.path.join(PWA, catalog.companion_path(kind, state)), COMPANION_GRID, COMPANION_COLOURS, False)
 
     files = {}
     for path, image in images.items():
@@ -202,6 +223,20 @@ def main():
                 fh.write(data)
 
     if args.write_runtime:
+        try:
+            with open(OUTPUTS, encoding='utf-8') as fh:
+                previous = json.load(fh)
+        except FileNotFoundError:
+            previous = {'files': {}}
+        night = {'room': ROOM_PATHS['night'], 'props': {prop_id: prop_path(prop_id, 'night') for prop_id in PROPS}}
+        if lighting == 'day':
+            # Keep the night set that an earlier --lighting night run wrote.
+            kept = previous.get('night')
+            kept_files = {path: entry for path, entry in previous['files'].items()
+                          if kept and (path == kept['room'] or path in kept['props'].values())}
+        else:
+            kept = night
+            kept_files = {path: entry for path, entry in previous['files'].items() if path not in files}
         outputs = {
             'schemaVersion': 1,
             'taskId': 'PS-250D',
@@ -210,38 +245,42 @@ def main():
                 'room': ROOM_COLOURS, 'prop': PROP_COLOURS,
                 'protagonist': PROTAGONIST_COLOURS, 'companion': COMPANION_COLOURS,
             }},
-            'room': ROOM_PATH,
-            'props': {prop_id: f'{PROP_DIR}/{prop_id}.png' for prop_id in PROPS},
+            'room': ROOM_PATHS['day'],
+            'props': {prop_id: prop_path(prop_id, 'day') for prop_id in PROPS},
+            **({'night': {**kept, 'taskId': 'PS-250E1'}} if kept else {}),
             'protagonist': {'ids': list(catalog.PROTAGONISTS), 'poses': catalog.POSES, 'facings': catalog.FACINGS},
             'companion': {'ids': list(catalog.COMPANIONS), 'states': catalog.STATES},
-            'files': dict(sorted(files.items())),
+            'files': dict(sorted({**kept_files, **files}.items())),
         }
-        with open(os.path.join(HERE, 'outputs.json'), 'w', encoding='utf-8') as fh:
+        with open(OUTPUTS, 'w', encoding='utf-8') as fh:
             json.dump(outputs, fh, ensure_ascii=False, indent=2)
             fh.write('\n')
 
     os.makedirs(args.preview_dir, exist_ok=True)
-    columns = [(pose, facing) for pose in catalog.POSES for facing in catalog.FACINGS]
-    sheet({(row, col): images[f'{PROTAGONIST_DIR}/{spec_id}-{pose}-{facing}.png']
-           for row, spec_id in enumerate(catalog.PROTAGONISTS)
-           for col, (pose, facing) in enumerate(columns)},
-          len(catalog.PROTAGONISTS), len(columns), 128).save(
-        os.path.join(args.preview_dir, 'protagonists.png'), optimize=True)
-    sheet({(row, col): images[f'{COMPANION_DIR}/{kind}-{state}.png']
-           for row, kind in enumerate(catalog.COMPANIONS)
-           for col, state in enumerate(catalog.STATES)},
-          len(catalog.COMPANIONS), len(catalog.STATES), 128).save(
-        os.path.join(args.preview_dir, 'companions.png'), optimize=True)
+    character = lambda path: images.get(path) or Image.open(os.path.join(PWA, *path.split('/'))).convert('RGBA')
+    if lighting == 'day':
+        columns = [(pose, facing) for pose in catalog.POSES for facing in catalog.FACINGS]
+        sheet({(row, col): images[f'{PROTAGONIST_DIR}/{spec_id}-{pose}-{facing}.png']
+               for row, spec_id in enumerate(catalog.PROTAGONISTS)
+               for col, (pose, facing) in enumerate(columns)},
+              len(catalog.PROTAGONISTS), len(columns), 128).save(
+            os.path.join(args.preview_dir, 'protagonists.png'), optimize=True)
+        sheet({(row, col): images[f'{COMPANION_DIR}/{kind}-{state}.png']
+               for row, kind in enumerate(catalog.COMPANIONS)
+               for col, state in enumerate(catalog.STATES)},
+              len(catalog.COMPANIONS), len(catalog.STATES), 128).save(
+            os.path.join(args.preview_dir, 'companions.png'), optimize=True)
     for progress in (0, 100):
-        room = images[ROOM_PATH].convert('RGBA')
+        room = images[ROOM_PATHS[lighting]].convert('RGBA')
         shown = [prop_id for prop_id, spec in PROPS.items() if spec['min'] <= progress <= spec['max']]
         for prop_id in sorted(shown, key=lambda prop_id: PROPS[prop_id]['z']):
-            place(room, images[f'{PROP_DIR}/{prop_id}.png'], {**placements[prop_id], 'anchor': 'center-bottom'})
-        place(room, images[f'{PROTAGONIST_DIR}/office-idle-left.png'],
+            place(room, images[prop_path(prop_id, lighting)], {**placements[prop_id], 'anchor': 'center-bottom'})
+        place(room, character(f'{PROTAGONIST_DIR}/office-idle-left.png'),
               {**PROTAGONIST_PLACEMENT, 'x': 58 if progress >= 25 else 51})
-        place(room, images[f'{COMPANION_DIR}/orbit-observe.png'],
+        place(room, character(f'{COMPANION_DIR}/orbit-observe.png'),
               {**COMPANION_PLACEMENT, 'x': 69 if progress >= 75 else 73})
-        room.convert('RGB').save(os.path.join(args.preview_dir, f'room-phase-{progress:03d}.png'), optimize=True)
+        prefix = 'room' if lighting == 'day' else f'room-{lighting}'
+        room.convert('RGB').save(os.path.join(args.preview_dir, f'{prefix}-phase-{progress:03d}.png'), optimize=True)
     total = sum(entry['bytes'] for entry in files.values())
     print(f'{len(files)} files, {total:,} bytes')
 

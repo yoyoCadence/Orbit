@@ -34,8 +34,8 @@ function pngSize(path) {
   return { width: data.readUInt32BE(16), height: data.readUInt32BE(20) };
 }
 
-function pixelScene(appearance, visual = {}, progress = 0) {
-  return getWorkspaceSceneAssets(progress, {}, { appearance: { style: 'pixel', ...appearance }, ...visual });
+function pixelScene(appearance, visual = {}, progress = 0, timeBand = 'day') {
+  return getWorkspaceSceneAssets(progress, {}, { appearance: { style: 'pixel', ...appearance }, ...visual }, { timeBand });
 }
 
 describe('PS-250D pixel set', () => {
@@ -43,7 +43,8 @@ describe('PS-250D pixel set', () => {
     const onDisk = PIXEL_FOLDERS.flatMap(folder => readdirSync(join(PWA, 'assets', 'personal-space', 'v2', ...folder.split('/')))
       .map(name => `assets/personal-space/v2/${folder}/${name}`));
     expect(onDisk.sort()).toEqual(Object.keys(outputs.files).sort());
-    expect(onDisk).toHaveLength(1 + 8 + 6 * 6 * 2 + 6 * 6);
+    // PS-250E1: the room and props also by night.
+    expect(onDisk).toHaveLength((1 + 8) * 2 + 6 * 6 * 2 + 6 * 6);
     for (const [path, entry] of Object.entries(outputs.files)) {
       const data = readFileSync(join(PWA, path));
       expect(data.length, path).toBe(entry.bytes);
@@ -58,10 +59,12 @@ describe('PS-250D pixel set', () => {
 
   it('resolves every pixel room, prop and character to a shipped file', () => {
     const resolved = new Set();
-    for (const { progress } of WORKSPACE_PROJECT_PHASES) {
-      const scene = pixelScene({}, {}, progress);
-      resolved.add(scene.background);
-      scene.props.forEach(entry => resolved.add(entry.path));
+    for (const timeBand of ['day', 'night']) {
+      for (const { progress } of WORKSPACE_PROJECT_PHASES) {
+        const scene = pixelScene({}, {}, progress, timeBand);
+        resolved.add(scene.background);
+        scene.props.forEach(entry => resolved.add(entry.path));
+      }
     }
     for (const { id } of TOON_PROTAGONISTS) {
       for (const state of WORKSPACE_VISUAL_STATES.protagonist) {

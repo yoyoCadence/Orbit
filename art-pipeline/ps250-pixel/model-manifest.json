@@ -15,7 +15,7 @@
       "commercialUse": "Allowed; no third-party asset, reference pack, logo, trademark, or character is used",
       "hash": "Per-file SHA-256 is recorded in art-pipeline/ps250-pixel/outputs.json",
       "workflowVersion": "ps250-pixel-v1",
-      "notes": "Room and props at 384 x 256 with a near-zero pixel filter and one-pixel Freestyle outlines. Characters are not rendered: they are reduced from the committed PS-250C sprites."
+      "notes": "Room and props at 384 x 256 with a near-zero pixel filter and one-pixel Freestyle outlines, by day and (PS-250E1) by night. Characters are not rendered: they are reduced from the committed PS-250C sprites."
     }
   ],
   "processors": [

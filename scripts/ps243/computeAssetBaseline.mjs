@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 import {
   WORKSPACE_INITIAL_PAINT_ASSETS,
+  WORKSPACE_NIGHT_INITIAL_PAINT_ASSETS,
   getWorkspaceAssetManifestPaths,
 } from '../../pwa/js/personalSpace/v2/content/assetManifest.js';
 
@@ -151,8 +152,11 @@ export function computeAssetBaseline() {
   const version = JSON.parse(readFileSync(join(REPO_ROOT, 'package.json'), 'utf8')).version;
 
   const initialPaintFiles = WORKSPACE_INITIAL_PAINT_ASSETS.map(fileEntry);
+  // PS-250E1: in the evening and at night the first paint uses the night room.
+  const nightInitialPaintFiles = WORKSPACE_NIGHT_INITIAL_PAINT_ASSETS.map(fileEntry);
   const completeProofFiles = getWorkspaceAssetManifestPaths().map(fileEntry);
   const initialPaintTotal = sumBytes(initialPaintFiles);
+  const nightInitialPaintTotal = sumBytes(nightInitialPaintFiles);
   const completeProofTotal = sumBytes(completeProofFiles);
 
   const v2JsPaths = collectV2JsFiles();
@@ -186,6 +190,12 @@ export function computeAssetBaseline() {
         totalBytes: initialPaintTotal,
         ...BUDGETS.initialPaint,
         result: classify(initialPaintTotal, BUDGETS.initialPaint),
+      },
+      nightInitialPaint: {
+        files: nightInitialPaintFiles,
+        totalBytes: nightInitialPaintTotal,
+        ...BUDGETS.initialPaint,
+        result: classify(nightInitialPaintTotal, BUDGETS.initialPaint),
       },
       completeProofScene: {
         files: completeProofFiles,

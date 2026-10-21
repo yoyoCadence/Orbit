@@ -122,8 +122,15 @@ export function createPixiSceneRuntime(options = {}) {
       weather,
       appearance: renderModel.appearance || renderModel.world?.appearance || null,
     };
-    const chosen = getWorkspaceSceneAssets(project.progress || 0, placements, visualState);
-    const fallback = getWorkspaceSceneAssets(project.progress || 0, placements, { ...visualState, appearance: null });
+    // PS-250E1: the time band picks the day or night room, as in the poster.
+    const sceneOptions = { timeBand: renderModel.timeBand };
+    const chosen = getWorkspaceSceneAssets(project.progress || 0, placements, visualState, sceneOptions);
+    const fallback = getWorkspaceSceneAssets(
+      project.progress || 0,
+      placements,
+      { ...visualState, appearance: null },
+      sceneOptions,
+    );
     // PS-250B/D: only the default style is precached. The room with its props,
     // the protagonist and the Companion load separately; a part that cannot
     // load (offline, not cached yet) is drawn from the default style and the
@@ -201,9 +208,16 @@ export function createPixiSceneRuntime(options = {}) {
     if (weatherOverlay) app.stage.addChild(weatherOverlay);
 
     const timeBand = renderModel.timeBand || 'day';
+    // PS-250E1: the night room is already dark, so its layer only tints the
+    // characters and weather toward it. A scene without `lighting` (an older
+    // assetManifest.js) is the day room and keeps the full night layer.
+    const nightRoom = chosen.lighting === 'night';
+    const lightingLayer = nightRoom
+      ? { color: 0x172449, alpha: 0.1 }
+      : { color: timeBand === 'night' ? 0x172449 : 0xf6d58b, alpha: timeBand === 'night' ? 0.2 : 0.05 };
     const lighting = new pixi.Graphics()
       .rect(0, 0, ORBIT_WINDOW_LOGICAL_SIZE.width, ORBIT_WINDOW_LOGICAL_SIZE.height)
-      .fill({ color: timeBand === 'night' ? 0x172449 : 0xf6d58b, alpha: timeBand === 'night' ? 0.2 : 0.05 });
+      .fill(lightingLayer);
     lighting.zIndex = 80;
     app.stage.addChild(lighting);
     app.stage.sortChildren();

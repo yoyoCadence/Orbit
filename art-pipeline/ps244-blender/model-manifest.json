@@ -11,7 +11,7 @@
       "commercialUse": "Allowed; no third-party asset, reference pack, logo, trademark, or character is used",
       "hash": "Per-file SHA-256 is recorded in pwa/assets/personal-space/v2/manifest.json",
       "workflowVersion": "ps244-blender-v1",
-      "notes": "Room, eight Workspace Upgrade props, lighting, toon materials, Freestyle outlines, and the canonical camera all come from scene.py. render_pack.py renders the empty room and each prop from the same camera (occluding props as holdouts, PS-247); process_pack.py trims and places them."
+      "notes": "Room, eight Workspace Upgrade props, lighting, toon materials, Freestyle outlines, and the canonical camera all come from scene.py. render_pack.py renders the empty room and each prop from the same camera (occluding props as holdouts, PS-247); process_pack.py trims and places them. PS-250E1 adds a night lighting of the same scene (no sun, glowing sconces, a night sky and lit skyline; --lighting night), rendered to -night files with their own trim boxes."
     }
   ],
   "processors": [

@@ -1,6 +1,6 @@
 # PS-250D pixel set
 
-The "全像素" style (PS-250): a pixel version of the room, the eight Workspace Upgrade props and every PS-250C character (six protagonists in six poses and two facings, six Companion forms in six states). The PS-242 pixel characters stay in the pixel style as extra options ("經典像素主角", "經典 Orbit").
+The "全像素" style (PS-250): a pixel version of the room, the eight Workspace Upgrade props and every PS-250C character (six protagonists in six poses and two facings, six Companion forms in six states). The PS-242 pixel characters stay in the pixel style as extra options ("經典像素主角", "經典 Orbit"). Since PS-250E1 the room and props also have a night version.
 
 Everything comes from the committed sources: the PS-244 scene for the room and props, and the committed PS-250C sprites for the characters. There are no external images or models.
 
@@ -12,7 +12,7 @@ Everything comes from the committed sources: the PS-244 scene for the room and p
 | `process_pixel.py` | Quantizes the renders, builds the pixel characters from the PS-250C sprites, scales everything by 4 with nearest neighbour, writes the PNGs, `outputs.json` and the previews. |
 | `outputs.json` | Paths, palette sizes, and the size and SHA-256 of every runtime file. `tests/unit/ps250dPixelSet.test.js` checks the scene, the files on disk and the hashes against it. |
 | `model-manifest.json` | Generator, version, license and processing provenance. |
-| `previews/` | Contact sheets of every pixel character, and the room at 0% and 100% with the props and the default pair at the runtime placements. |
+| `previews/` | Contact sheets of every pixel character, and the room at 0% and 100% with the props and the default pair at the runtime placements (`room-night-phase-*.png` for the night room). |
 
 ## Reproduce
 
@@ -21,6 +21,11 @@ Everything comes from the committed sources: the PS-244 scene for the room and p
 /tmp/bpyenv/bin/python art-pipeline/ps250-pixel/render_pixel.py /tmp/ps250-pixel --samples 64
 /tmp/bpyenv/bin/python art-pipeline/ps250-pixel/process_pixel.py /tmp/ps250-pixel --write-runtime
 npm run ps243:assets
+
+# PS-250E1 night room and props, after the Q-style night (ps244-blender
+# --lighting night), whose trim boxes the pixel props use.
+/tmp/bpyenv/bin/python art-pipeline/ps250-pixel/render_pixel.py /tmp/ps250-pixel --samples 64 --lighting night
+/tmp/bpyenv/bin/python art-pipeline/ps250-pixel/process_pixel.py /tmp/ps250-pixel --write-runtime --lighting night
 ```
 
 The room and props take about 3 minutes on a 4-core CPU; the characters need no render, so `process_pixel.py` reads `pwa/assets/personal-space/v2/characters/toon/`. Re-run it after the PS-250C sprites change. Previews are always written, by default into `previews/`; pass `--preview-dir` for a check-only run.
@@ -33,9 +38,11 @@ The room and props take about 3 minutes on a 4-core CPU; the characters need no 
 - **One palette per image.** The room has 64 colours, each prop 32 (from its solid pixels only), protagonists 32 and Companions 24, no dithering. A shared palette lost the plant's green.
 - **Hard edges on screen.** The app scales the scene to the screen, so pixel images are drawn with nearest-neighbour sampling. In the poster this is `image-rendering: pixelated` on `[data-pixel-art]`, in Pixi a `nearest` scale mode. Otherwise the 4-pixel blocks would blur.
 - **Props share the Q-style placement.** Each prop is cropped to its Q-style trim box (`ps244-blender/placements.json`, divided by 4 and rounded outward), scaled by 4, and cut to exactly that box. The pixel prop therefore has the same size as its Q-style twin and uses the same `PROP_DEFINITIONS` placement. Solid parts are opaque; shadows are one navy tone at two opacities, with isolated noise pixels dropped. The one-art-pixel outlines sometimes reach a little past the Q-style box. The cut drops those pixels at the box edge: the chair's right edge, the monitors' bottom edge, and the top of the plant. This is the price of sharing the placement.
-- **PNG.** Pixel art with flat colours compresses well losslessly; lossy WebP would blur the pixel edges. The whole set is about 637 KB.
+- **PNG.** Pixel art with flat colours compresses well losslessly; lossy WebP would blur the pixel edges. The day set is about 637 KB.
+- **Night (PS-250E1).** The night room and props are rendered from the night lighting of the PS-244 scene with the same pixel settings, and the props are cut to the Q-style night trim boxes, so they share the night placements. `--lighting night` only processes these nine images and keeps the rest of `outputs.json`.
 
 ## Not in scope
 
 - The pixel style is not precached (PS-250B: only the default style is). Offline, a pixel image that was never downloaded is drawn from the Q style.
-- New scenes and small furniture are PS-250E and PS-250F.
+- The characters have no night version in either style; the runtime's night layer tints them.
+- Room styles and small furniture are PS-250E2/E3 and PS-250F.

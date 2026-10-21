@@ -13,7 +13,7 @@ This folder contains only reviewed runtime outputs for the Building Formal Works
 - Protagonist: `idle`, `work`, `celebrate`, `rest`, `walk`, and `inspect`, each with left/right facings.
 - Companion: `observe`, `approach`, `congratulate`, `rest`, `work`, and `remind`; `idle` safely aliases to `observe`.
 - Weather: `clear` uses sparse warm motes; `rain` uses sparse cool diagonal streaks.
-- Day/night remains the existing code-native lighting overlay so geometry stays identical and the first-paint bundle remains small.
+- Day and night (PS-250E1): the room and props have a day render and a night render of the same scene and camera (`-night` files; the evening and the night use the night render). The code-native lighting overlay stays, weaker over the night room, for the characters and weather; the morning tint still comes from it over the day room.
 - Project phases remain cumulative named prop layers; approved legacy prop paths are preserved.
 
 `manifest.json` is generated from `pwa/js/personalSpace/v2/content/assetManifest.js` and is the production provenance/QC inventory. Do not hand-edit it; run `npm run ps242:manifest`.

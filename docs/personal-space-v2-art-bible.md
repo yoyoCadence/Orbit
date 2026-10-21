@@ -149,8 +149,9 @@ Each set has several protagonists and Companion forms. Added so far:
 - PS-250C: six Q-style protagonists, each with six actions in two facings, and six Companion forms, each in six states. Source: `art-pipeline/ps250-characters/`.
 - PS-250B: the Q style is the default (the office worker and Orbit). Edit Mode chooses the style and characters; the choice is stored only on the device.
 - PS-250D: the pixel set. It contains a pixel room, eight pixel props, and the pixel version of every PS-250C character. The PS-242 pixel characters are extra options. One art pixel is four room pixels. Source: `art-pipeline/ps250-pixel/`.
+- PS-250E1: a night version of the room and the eight props, in both styles, shown in the evening and at night (17:00–05:00). It replaces the "night lighting overlay" above as the night look: the overlay stays, weaker, for the characters and weather. Source: `art-pipeline/ps244-blender/` (`--lighting night`) and `art-pipeline/ps250-pixel/`.
 
-Later PS-250 tasks add night and room styles (PS-250E) and small furniture (PS-250F). Each one updates this list.
+Later PS-250 tasks add room styles (PS-250E2/E3: bright Nordic, Japanese, night-owl studio, dark-wood study, each by day and by night) and small furniture (PS-250F). Each one updates this list.
 
 ### 6.2 Workspace Upgrade Phases
 
@@ -198,6 +199,7 @@ room shell
 
 - Background establishes the base light direction.
 - Day and night overlays share geometry and do not change furniture perspective.
+- Since PS-250E1 the night is a separate render of the same scene and camera (the sun off, the sconces lit). A night prop has its own trim box, because its shadows fall another way, but it stands where its day twin stands. A weaker night overlay still tints the characters and weather, and the achievement frame is dimmed with its photo so it does not become the brightest thing in the room.
 - Movable props use restrained contact shading; runtime shadow or light overlays may unify them.
 - Night scenes retain readable faces, interactables, and Project state.
 - Reward flashes cannot exceed comfortable intensity or erase the scene.

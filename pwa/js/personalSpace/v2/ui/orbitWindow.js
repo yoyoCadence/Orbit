@@ -6,6 +6,9 @@ import {
 } from '../runtime/pixiSceneRuntime.js';
 import { emitPersonalSpaceTelemetry } from '../telemetry.js';
 
+const NIGHT_ROOM_LIGHT_OPACITY = 0.5;
+const NIGHT_ROOM_FRAME_FILTER = 'brightness(0.65)';
+
 const REVEAL_DURATIONS_MS = Object.freeze({
   small: Object.freeze({ standard: 2200, reduced: 500 }),
   medium: Object.freeze({ standard: 4200, reduced: 750 }),
@@ -19,11 +22,23 @@ export function getRevealDurationMs(kind, reducedMotion = false) {
 
 export function renderOrbitWindow(inputModel = {}, options = {}) {
   const model = normalizeOrbitWindowModel(inputModel, options.renderMode);
-  const scene = getWorkspaceSceneAssets(model.activeProject.progress, model.placements, model);
+  // PS-250E1: the time band picks the day or night room. It is passed as its
+  // own option: the model also reaches the manifest as visualState.
+  const sceneOptions = { timeBand: model.timeBand };
+  const scene = getWorkspaceSceneAssets(model.activeProject.progress, model.placements, model, sceneOptions);
   // PS-250B/D: only the default style is precached. A chosen character, or
   // the pixel room and props, that is not cached yet falls back to the
   // default when it cannot load.
-  const fallback = getWorkspaceSceneAssets(model.activeProject.progress, model.placements, { ...model, appearance: null });
+  const fallback = getWorkspaceSceneAssets(
+    model.activeProject.progress,
+    model.placements,
+    { ...model, appearance: null },
+    sceneOptions,
+  );
+  // PS-250E1: the night room is already dark. Its light layer only tints the
+  // characters and weather, and the achievement frame is dimmed to match.
+  const nightRoom = scene.lighting === 'night';
+  const lightClass = nightRoom ? 'night' : model.timeBand;
   const fallbackProps = new Map(fallback.props.map(entry => [entry.id, entry.path]));
   // PS-250D: pixel images keep their hard pixel edges when scaled (CSS
   // image-rendering on [data-pixel-art]); a fallback image drops the marker.
@@ -81,10 +96,10 @@ export function renderOrbitWindow(inputModel = {}, options = {}) {
               alt=""
               draggable="false"
             >
-            <span class="orbit-window-light orbit-window-light--${escapeHtml(model.timeBand)}"></span>
+            <span class="orbit-window-light orbit-window-light--${escapeHtml(lightClass)}"${nightRoom ? ` style="opacity: ${NIGHT_ROOM_LIGHT_OPACITY}"` : ''}></span>
           </span>
           <span class="orbit-window-runtime-host" data-orbit-runtime-host data-runtime-status="poster"></span>
-          ${renderAchievementPhoto(model.achievementPhoto)}
+          ${renderAchievementPhoto(model.achievementPhoto, { dim: nightRoom })}
         </button>
 
         <div class="orbit-window-reward" role="status" aria-live="polite" aria-atomic="true">
@@ -444,7 +459,9 @@ export function updateOrbitWindowAchievementPhoto(root, input = {}) {
   const current = root?.querySelector?.('[data-achievement-photo]');
   if (!current) return false;
   const shell = document.createElement('div');
-  shell.innerHTML = renderAchievementPhoto(normalizeAchievementPhoto(input));
+  shell.innerHTML = renderAchievementPhoto(normalizeAchievementPhoto(input), {
+    dim: current.hasAttribute('data-night-dim'),
+  });
   const next = shell.firstElementChild;
   if (!next) return false;
   current.replaceWith(next);
@@ -472,7 +489,9 @@ function normalizeAchievementPhoto(input = {}) {
   };
 }
 
-function renderAchievementPhoto(input = {}) {
+// The frame and its photo are dimmed together under the night room (user
+// decision, 2026-10-21); otherwise the frame is the brightest thing in it.
+function renderAchievementPhoto(input = {}, { dim = false } = {}) {
   const photo = normalizeAchievementPhoto(input);
   const selected = photo.status === 'selected' && photo.src;
   const title = selected
@@ -486,7 +505,7 @@ function renderAchievementPhoto(input = {}) {
       data-achievement-photo
       data-photo-status="${photo.status}"
       title="${escapeHtml(title)}"
-      aria-hidden="true"
+      aria-hidden="true"${dim ? ` data-night-dim style="filter: ${NIGHT_ROOM_FRAME_FILTER}"` : ''}
     >
       <span class="orbit-window-achievement-mat">
         ${selected

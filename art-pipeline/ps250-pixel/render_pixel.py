@@ -3,10 +3,10 @@ the runtime resolution with no anti-aliasing, so every rendered pixel is one
 art pixel.
 
 Usage:
-    python3 render_pixel.py <render_dir> [--samples N]
+    python3 render_pixel.py <render_dir> [--samples N] [--lighting day|night]
 
 Writes <render_dir>/scene/room.png and <render_dir>/scene/<prop-id>.png at
-384 x 256. They come from ps244-blender (the same scene, camera, lights,
+384 x 256 (<render_dir>/scene-night/ for the PS-250E1 night lighting). They come from ps244-blender (the same scene, camera, lights,
 shadow catchers and occluders as the Q-style room); only the render settings
 change: a quarter of the size, a pixel filter of almost zero, and one-pixel
 outlines. The pixel characters need no render: process_pixel.py makes them
@@ -34,7 +34,7 @@ def pixel_settings(scene):
     scene.render.line_thickness = 1.0
 
 
-def render_scene(out_dir, samples):
+def render_scene(out_dir, samples, lighting='day'):
     # render_pack builds the scene through scene.configure_render, so wrapping
     # it applies the pixel settings to the room and every prop render.
     configure = S.configure_render
@@ -44,7 +44,8 @@ def render_scene(out_dir, samples):
         pixel_settings(scene)
 
     S.configure_render = configure_pixel
-    sys.argv = [sys.argv[0], out_dir, '--width', str(SCENE_WIDTH), '--samples', str(samples)]
+    sys.argv = [sys.argv[0], out_dir, '--width', str(SCENE_WIDTH), '--samples', str(samples),
+                '--lighting', lighting]
     render_pack.main()
 
 
@@ -53,8 +54,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('render_dir')
     parser.add_argument('--samples', type=int, default=64)
+    parser.add_argument('--lighting', choices=S.LIGHTINGS, default='day')
     args = parser.parse_args(argv)
-    render_scene(os.path.join(args.render_dir, 'scene'), args.samples)
+    folder = 'scene' if args.lighting == 'day' else f'scene-{args.lighting}'
+    render_scene(os.path.join(args.render_dir, folder), args.samples, args.lighting)
 
 
 if __name__ == '__main__':
