@@ -212,3 +212,24 @@ describe('legacy source（預設）', () => {
     expect(storage.isProUser()).toBe(false);
   });
 });
+
+describe('全部 3D 資產（PS-250A）', () => {
+  it('勾選框反映並切換「空間」的資產總覽，使用與 assetGallery.js 相同的 key', async () => {
+    const { ASSET_GALLERY_FLAG } = await import('../../pwa/js/personalSpace/v2/ui/assetGallery.js');
+    seedUser();
+    localStorage.setItem(ASSET_GALLERY_FLAG, '1');
+    document.body.innerHTML = '';
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    renderSettings(container);
+    const box = container.querySelector('#dev-asset-gallery');
+    expect(box.checked).toBe(true);
+
+    box.checked = false;
+    box.dispatchEvent(new Event('change'));
+    expect(localStorage.getItem(ASSET_GALLERY_FLAG)).toBeNull();
+    box.checked = true;
+    box.dispatchEvent(new Event('change'));
+    expect(localStorage.getItem(ASSET_GALLERY_FLAG)).toBe('1');
+  });
+});

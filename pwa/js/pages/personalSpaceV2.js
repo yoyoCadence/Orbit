@@ -15,6 +15,7 @@ import {
   renderOrbitWindow,
 } from '../personalSpace/v2/ui/orbitWindow.js';
 import { orbitWindowRuntimeDestroyer } from '../personalSpace/v2/runtime/pixiSceneRuntime.js';
+import { isAssetGalleryEnabled, renderAssetGallery } from '../personalSpace/v2/ui/assetGallery.js';
 import { COMPANION_NAME, getCompanionDialogue } from '../personalSpace/v2/content/companionDialogue.js';
 import { emitPersonalSpaceTelemetry } from '../personalSpace/v2/telemetry.js';
 import { describeControl, findControl, watchRemindWindow } from '../personalSpace/v2/remindWindow.js';
@@ -168,6 +169,8 @@ function pageMarkup(model, mode, renderWindow) {
           <p>編輯模式不會產生任何獎勵。</p>
         </section>
       ` : ''}
+
+      ${isAssetGalleryEnabled() ? renderAssetGallery() : ''}
 
       <nav class="personal-space-v2-dock" aria-label="個人空間操作">
         <button type="button" data-v2-open-detail="project"><span>專案</span><small>${model.activeProject.progress}%</small></button>
