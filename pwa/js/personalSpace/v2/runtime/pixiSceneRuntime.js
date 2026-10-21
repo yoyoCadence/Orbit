@@ -113,22 +113,43 @@ export function createPixiSceneRuntime(options = {}) {
     const protagonistState = renderModel.protagonist?.state || renderModel.playerState || 'idle';
     const companionState = renderModel.companion?.state || renderModel.companionState || 'observe';
     const weather = renderModel.weather || renderModel.world?.weather || 'clear';
-    const scene = getWorkspaceSceneAssets(project.progress || 0, placements, {
+    const visualState = {
       protagonist: {
         state: protagonistState,
         facing: renderModel.protagonist?.facing || renderModel.playerFacing,
       },
       companion: { state: companionState },
       weather,
-    });
-    const assetPaths = [
-      scene.background,
-      scene.protagonist,
-      scene.companion.path,
-      scene.weatherOverlay,
-      ...scene.props.map(entry => entry.path),
-    ].filter(Boolean);
-    const textures = await pixi.Assets.load(assetPaths);
+      appearance: renderModel.appearance || renderModel.world?.appearance || null,
+    };
+    let scene = getWorkspaceSceneAssets(project.progress || 0, placements, visualState);
+    let textures;
+    try {
+      textures = await pixi.Assets.load(sceneAssetPaths(scene));
+    } catch (error) {
+      // PS-250B: only the default characters are precached. A chosen character
+      // that cannot load (offline, not cached yet) is drawn as the default;
+      // the other one stays as chosen when it loads, as in the poster.
+      const fallback = getWorkspaceSceneAssets(project.progress || 0, placements, { ...visualState, appearance: null });
+      const candidates = [
+        { ...scene, protagonist: fallback.protagonist, protagonistVariant: fallback.protagonistVariant },
+        { ...scene, companion: fallback.companion },
+        fallback,
+      ].filter(candidate => (
+        candidate.protagonist !== scene.protagonist || candidate.companion.path !== scene.companion.path
+      ));
+      textures = null;
+      for (const candidate of candidates) {
+        try {
+          textures = await pixi.Assets.load(sceneAssetPaths(candidate));
+          scene = candidate;
+          break;
+        } catch {
+          // Try the next candidate; the last one is the full default.
+        }
+      }
+      if (!textures) throw error;
+    }
     if (
       activeApp !== app
       || activeRenderRevision !== renderRevision
@@ -459,6 +480,16 @@ export function getCoverTransform(
     y: targetHeight / 2,
     scale: Math.max(targetWidth / safeSourceWidth, targetHeight / safeSourceHeight),
   };
+}
+
+function sceneAssetPaths(scene) {
+  return [
+    scene.background,
+    scene.protagonist,
+    scene.companion.path,
+    scene.weatherOverlay,
+    ...scene.props.map(entry => entry.path),
+  ].filter(Boolean);
 }
 
 function applyPlacement(sprite, placement = {}) {

@@ -83,6 +83,7 @@ const CONTROL_ATTRIBUTES = [
   'data-v2-open-detail',
   'data-v2-close-detail',
   'data-v2-main-quest',
+  'data-v2-appearance',
 ];
 
 function controlsMatching(root, { name, value }) {

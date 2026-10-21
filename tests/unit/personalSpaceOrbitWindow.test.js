@@ -77,8 +77,8 @@ describe('Personal Space V2 Orbit Window', () => {
       companion: { state: 'remind' },
       weather: 'rain',
     });
-    expect(resolved.protagonist.path).toContain('player-default-inspect-right.png');
-    expect(resolved.companion.path).toContain('orbit-guide-remind.png');
+    expect(resolved.protagonist.path).toContain('toon/protagonist/office-inspect-right.webp');
+    expect(resolved.companion.path).toContain('toon/companion/orbit-remind.webp');
     expect(resolved.weather.path).toContain('weather-building-rain.png');
 
     const safeFallback = resolveWorkspaceVisualState({
@@ -136,8 +136,8 @@ describe('Personal Space V2 Orbit Window', () => {
     expect(root.dataset.companionState).toBe('remind');
     expect(root.dataset.weather).toBe('rain');
     expect(root.dataset.revealKind).toBe('major');
-    expect(root.querySelector('.orbit-window-protagonist').src).toContain('player-default-work-right.png');
-    expect(root.querySelector('.orbit-window-companion').src).toContain('orbit-guide-remind.png');
+    expect(root.querySelector('.orbit-window-protagonist').src).toContain('toon/protagonist/office-work-right.webp');
+    expect(root.querySelector('.orbit-window-companion').src).toContain('toon/companion/orbit-remind.webp');
     expect(root.querySelector('.orbit-window-weather').src).toContain('weather-building-rain.png');
     expect(root.querySelector('.orbit-window-major-reveal')).not.toBeNull();
     expect(root.querySelector('[data-weather="rain"]')).not.toBeNull();

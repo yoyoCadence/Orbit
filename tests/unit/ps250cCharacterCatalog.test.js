@@ -3,8 +3,8 @@
  * art-pipeline/ps250-characters.
  *
  * characterCatalog.js must list exactly the files the pipeline wrote
- * (outputs.json), each file must be the one the pipeline hashed, and nothing
- * may precache them before PS-250B lets the user choose them.
+ * (outputs.json), and each file must be the one the pipeline hashed. Only the
+ * default characters are precached (PS-250B).
  */
 
 import { createHash } from 'node:crypto';
@@ -91,9 +91,11 @@ describe('PS-250C Q-style character catalog', () => {
     expect(sizes.reduce((sum, [, entry]) => sum + entry.bytes, 0)).toBeLessThanOrEqual(1_600_000);
   });
 
-  it('is not part of the scene or the precache until PS-250B', () => {
+  it('precaches only the default characters: the office worker and Orbit (PS-250B)', () => {
     const toon = path => path.includes('/characters/toon/');
-    expect(getWorkspaceAssetManifestPaths().filter(toon)).toEqual([]);
-    expect(SHELL.filter(toon)).toEqual([]);
+    const defaults = path => /\/(office-[a-z]+-(left|right)|orbit-[a-z]+)\.webp$/.test(path);
+    expect(getWorkspaceAssetManifestPaths().filter(toon).every(defaults)).toBe(true);
+    expect(SHELL.filter(toon).length).toBeGreaterThan(0);
+    expect(SHELL.filter(toon).every(defaults)).toBe(true);
   });
 });

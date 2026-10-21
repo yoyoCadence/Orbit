@@ -2,9 +2,10 @@
  * PS-250C: the Q-style characters rendered by art-pipeline/ps250-characters.
  *
  * Six protagonists in every runtime pose and facing, and six Companion forms
- * in every Companion state. The scene does not use them yet: PS-250B adds the
- * style and character choice. Until then only the developer asset gallery
- * lists them, and nothing precaches them.
+ * in every Companion state. Since PS-250B the scene draws them: the office
+ * worker and Orbit are the default (precached), the rest are chosen in Edit
+ * Mode (appearancePicker.js). assetManifest.js resolves the same paths
+ * without importing this module (it is on the boot path).
  *
  * Mirrors catalog.py in the pipeline; tests/unit/ps250cCharacterCatalog.test.js
  * checks every path and label against its outputs.json.

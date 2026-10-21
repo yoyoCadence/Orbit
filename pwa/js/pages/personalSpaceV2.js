@@ -16,6 +16,11 @@ import {
 } from '../personalSpace/v2/ui/orbitWindow.js';
 import { orbitWindowRuntimeDestroyer } from '../personalSpace/v2/runtime/pixiSceneRuntime.js';
 import { isAssetGalleryEnabled, renderAssetGallery } from '../personalSpace/v2/ui/assetGallery.js';
+import {
+  readAppearanceChange,
+  renderAppearancePicker,
+  saveAppearanceChange,
+} from '../personalSpace/v2/ui/appearancePicker.js';
 import { COMPANION_NAME, getCompanionDialogue } from '../personalSpace/v2/content/companionDialogue.js';
 import { emitPersonalSpaceTelemetry } from '../personalSpace/v2/telemetry.js';
 import { describeControl, findControl, watchRemindWindow } from '../personalSpace/v2/remindWindow.js';
@@ -168,6 +173,7 @@ function pageMarkup(model, mode, renderWindow) {
           <p class="personal-space-v2-empty">工作站家具的位置由固定視角的場景決定，目前不能移動。舊版編輯器的擺放仍保留在舊版場景，不會套用到這裡。</p>
           <p>編輯模式不會產生任何獎勵。</p>
         </section>
+        ${renderAppearancePicker(model.appearance)}
       ` : ''}
 
       ${isAssetGalleryEnabled() ? renderAssetGallery() : ''}
@@ -363,7 +369,30 @@ export function renderPersonalSpaceV2(container, options = {}) {
     }
   }
 
+  // PS-250B: store the chosen style or character and redraw with it; focus
+  // returns to the same option in the new markup.
+  function changeAppearance(button) {
+    const change = readAppearanceChange(button);
+    if (!change) return;
+    let saved = null;
+    try {
+      saved = saveAppearanceChange(user.id, change);
+    } catch (error) {
+      console.warn('Personal Space V2 appearance could not be saved.', error);
+    }
+    if (!saved) return;
+    v2State = saved;
+    const { v2Appearance, value } = button.dataset;
+    render(mode);
+    container.querySelector(`[data-v2-appearance="${v2Appearance}"][data-value="${value}"]`)?.focus?.();
+  }
+
   function handleClick(event) {
+    const appearanceButton = event.target.closest('[data-v2-appearance]');
+    if (appearanceButton) {
+      changeAppearance(appearanceButton);
+      return;
+    }
     const modeButton = event.target.closest('[data-v2-mode]');
     if (modeButton) {
       if (modeButton.dataset.v2Mode === 'edit' && mode !== 'edit') {

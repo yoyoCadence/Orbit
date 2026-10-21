@@ -45,6 +45,8 @@ function posterAssetPaths() {
       for (const companion of companionStates) {
         for (const weather of PERSONAL_SPACE_V2_WEATHER) {
           // No code sets a facing, so the poster always uses the default (left).
+          // PS-250B: only the default appearance is precached (user-approved);
+          // a chosen style or character falls back to it when offline.
           const scene = getWorkspaceSceneAssets(progress, {}, {
             protagonist: { state: protagonist },
             companion: { state: companion },
@@ -74,10 +76,12 @@ describe('PS-211A service worker precache', () => {
     // Only the readers mention a facing; nothing that builds the V2 model sets
     // one, so the poster always uses the default (left) poses SHELL precaches.
     // (The legacy idle window under personalSpace/idleWindow has its own facings.)
-    // characterCatalog.js only builds the file names of both facings (PS-250C).
+    // characterCatalog.js only builds the file names of both facings (PS-250C),
+    // and the developer gallery lists both facings of the pixel style (PS-250B).
     const readers = new Set([
       'js/personalSpace/v2/content/assetManifest.js',
       'js/personalSpace/v2/content/characterCatalog.js',
+      'js/personalSpace/v2/ui/assetGallery.js',
       'js/personalSpace/v2/runtime/pixiSceneRuntime.js',
       'js/personalSpace/v2/ui/orbitWindow.js',
     ]);

@@ -15,14 +15,16 @@ describe('PS-243 asset baseline', () => {
 
   it('keeps the PS-242 production first paint below the authored-art target', () => {
     const { initialPaint } = baseline.runtimeSceneAssets;
-    expect(initialPaint.totalBytes).toBe(182_283);
+    // PS-250B: the default characters are the Q-style WebPs (182,283 B before).
+    expect(initialPaint.totalBytes).toBe(122_433);
     expect(initialPaint.totalBytes).toBeLessThan(BUDGETS.initialPaint.targetBytes);
     expect(initialPaint.result).toBe('PASS');
   });
 
   it('keeps the complete production state pack plus eight props within budget', () => {
     const { completeProofScene } = baseline.runtimeSceneAssets;
-    expect(completeProofScene.totalBytes).toBe(1_293_693);
+    // PS-250B: the default characters are the Q-style WebPs (1,293,693 B before).
+    expect(completeProofScene.totalBytes).toBe(751_670);
     // Legacy evidence key retained for artifact compatibility: 1 background,
     // 12 protagonist poses, 6 Companion states, 2 weather overlays, and 8 props.
     expect(completeProofScene.files).toHaveLength(29);

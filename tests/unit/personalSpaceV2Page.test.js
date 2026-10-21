@@ -8,6 +8,7 @@ import { renderPersonalSpace } from '../../pwa/js/pages/personalSpace.js';
 import { renderPersonalSpaceV2 } from '../../pwa/js/pages/personalSpaceV2.js';
 import { ASSET_GALLERY_FLAG } from '../../pwa/js/personalSpace/v2/ui/assetGallery.js';
 import { state } from '../../pwa/js/state.js';
+import { loadPersonalSpaceV2State, savePersonalSpaceV2State } from '../../pwa/js/personalSpace/v2/store.js';
 import {
   createLocalTelemetryAdapter,
   setPersonalSpaceTelemetryAdapter,
@@ -231,6 +232,56 @@ describe('Personal Space V2 full page', () => {
     cleanup();
     cleanup();
     expect(destroyRuntime).toHaveBeenCalledTimes(1);
+  });
+
+  it('lets Edit Mode choose the style and characters, stored locally and drawn at once (PS-250B)', () => {
+    const source = v2State();
+    savePersonalSpaceV2State('user-1', source);
+    const mountWindow = vi.fn(() => () => {});
+    const cleanup = renderPersonalSpaceV2(container, {
+      user: coreState().user,
+      coreState: coreState(),
+      reconcile: () => controllerResult(loadPersonalSpaceV2State('user-1')),
+      mountWindow,
+      destroyRuntime: vi.fn(),
+      effectiveDate: '2026-07-17',
+    });
+    const poster = () => container.querySelector('.orbit-window-protagonist').getAttribute('src');
+    expect(container.querySelector('[data-v2-appearance-picker]')).toBeNull();
+    expect(poster()).toContain('/toon/protagonist/office-');
+
+    container.querySelector('[data-v2-mode="edit"]').click();
+    const picker = container.querySelector('[data-v2-appearance-picker]');
+    expect(picker).not.toBeNull();
+    expect(picker.querySelector('[data-v2-appearance="style"][aria-pressed="true"]').dataset.value).toBe('toon');
+
+    container.querySelector('[data-v2-appearance="style"][data-value="pixel"]').click();
+    expect(loadPersonalSpaceV2State('user-1').world.appearance.style).toBe('pixel');
+    expect(container.querySelector('[data-personal-space-v2]').dataset.mode).toBe('edit');
+    expect(poster()).toContain('characters/protagonist/player-default-');
+    expect(document.activeElement).toBe(container.querySelector('[data-v2-appearance="style"][data-value="pixel"]'));
+    expect(mountWindow.mock.calls.at(-1)[1].model.appearance.style).toBe('pixel');
+
+    container.querySelector('[data-v2-appearance="style"][data-value="toon"]').click();
+    container.querySelector('[data-v2-appearance="protagonist"][data-value="scientist"]').click();
+    container.querySelector('[data-v2-appearance="companion"][data-value="catbot"]').click();
+    expect(loadPersonalSpaceV2State('user-1').world.appearance)
+      .toEqual({ style: 'toon', protagonistId: 'scientist', companionId: 'catbot' });
+
+    // Under the pixel style, tapping its only (already shown) characters keeps
+    // the Q-style choice, so switching back restores it.
+    container.querySelector('[data-v2-appearance="style"][data-value="pixel"]').click();
+    container.querySelector('[data-v2-appearance="protagonist"][data-value="default"]').click();
+    container.querySelector('[data-v2-appearance="companion"][data-value="orbit-guide"]').click();
+    container.querySelector('[data-v2-appearance="style"][data-value="toon"]').click();
+    expect(loadPersonalSpaceV2State('user-1').world.appearance)
+      .toEqual({ style: 'toon', protagonistId: 'scientist', companionId: 'catbot' });
+    expect(poster()).toContain('/toon/protagonist/scientist-');
+    expect(container.querySelector('.orbit-window-companion').getAttribute('src')).toContain('/toon/companion/catbot-');
+    // Choosing a look grants nothing and leaves the world revision alone.
+    expect(loadPersonalSpaceV2State('user-1').worldRevision).toBe(source.worldRevision);
+    expect(loadPersonalSpaceV2State('user-1').rewardLedger).toEqual(source.rewardLedger);
+    cleanup();
   });
 
   it('AI-203B: re-renders into the reminder when the daily window opens, and stops after cleanup', () => {

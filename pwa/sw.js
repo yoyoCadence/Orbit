@@ -1,6 +1,6 @@
 // Service Worker
 // Bump CACHE version on every deploy so users always get fresh code.
-const CACHE = 'orbit-v1.32.1';
+const CACHE = 'orbit-v1.33.0';
 
 const SHELL = [
   './',
@@ -110,23 +110,27 @@ const SHELL = [
   './js/personalSpace/v2/runtime/pixiSceneRuntime.js',
   './js/personalSpace/v2/ui/orbitWindow.js',
   './js/personalSpace/v2/ui/assetGallery.js',
+  './js/personalSpace/v2/ui/appearancePicker.js',
   './js/pages/personalSpaceV2.js',
   // PS-211A: every image the Orbit Window poster can show (any project phase,
   // any protagonist / Companion state the code produces, clear and rain), and
   // Pixi. The new worker activates only after these are cached, so after a
   // release the poster is complete and state changes do not wait on the network.
+  // PS-250B: only the default characters (Q-style office worker and Orbit).
+  // Other styles and characters are cached the first time they are fetched
+  // (cache-first below); offline, the scene falls back to these defaults.
   './assets/personal-space/v2/workspace/backgrounds/building-formal-workstation-room-v2.webp',
-  './assets/personal-space/v2/characters/protagonist/player-default-idle-left.png',
-  './assets/personal-space/v2/characters/protagonist/player-default-work-left.png',
-  './assets/personal-space/v2/characters/protagonist/player-default-celebrate-left.png',
-  './assets/personal-space/v2/characters/protagonist/player-default-rest-left.png',
-  './assets/personal-space/v2/characters/protagonist/player-default-inspect-left.png',
-  './assets/personal-space/v2/characters/companion/orbit-guide-observe.png',
-  './assets/personal-space/v2/characters/companion/orbit-guide-approach.png',
-  './assets/personal-space/v2/characters/companion/orbit-guide-congratulate.png',
-  './assets/personal-space/v2/characters/companion/orbit-guide-rest.png',
-  './assets/personal-space/v2/characters/companion/orbit-guide-work.png',
-  './assets/personal-space/v2/characters/companion/orbit-guide-remind.png',
+  './assets/personal-space/v2/characters/toon/protagonist/office-idle-left.webp',
+  './assets/personal-space/v2/characters/toon/protagonist/office-work-left.webp',
+  './assets/personal-space/v2/characters/toon/protagonist/office-celebrate-left.webp',
+  './assets/personal-space/v2/characters/toon/protagonist/office-rest-left.webp',
+  './assets/personal-space/v2/characters/toon/protagonist/office-inspect-left.webp',
+  './assets/personal-space/v2/characters/toon/companion/orbit-observe.webp',
+  './assets/personal-space/v2/characters/toon/companion/orbit-approach.webp',
+  './assets/personal-space/v2/characters/toon/companion/orbit-congratulate.webp',
+  './assets/personal-space/v2/characters/toon/companion/orbit-rest.webp',
+  './assets/personal-space/v2/characters/toon/companion/orbit-work.webp',
+  './assets/personal-space/v2/characters/toon/companion/orbit-remind.webp',
   './assets/personal-space/v2/effects/weather-building-clear-motes.png',
   './assets/personal-space/v2/effects/weather-building-rain.png',
   './assets/personal-space/v2/workspace/props/corner-desk.png',

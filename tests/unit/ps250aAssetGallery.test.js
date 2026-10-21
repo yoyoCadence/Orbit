@@ -5,6 +5,9 @@
  * under its group, and is off unless the developer panel turned it on.
  */
 
+import { readdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FLAG_DEV_PANEL } from '../../pwa/js/flags.js';
 import { getWorkspaceAssetManifestPaths } from '../../pwa/js/personalSpace/v2/content/assetManifest.js';
@@ -17,8 +20,16 @@ import {
   setAssetGalleryEnabled,
 } from '../../pwa/js/personalSpace/v2/ui/assetGallery.js';
 
-// The scene's assets plus the Q-style characters it does not use yet (PS-250C).
-const ALL_PATHS = [...getWorkspaceAssetManifestPaths(), ...getToonCharacterPaths()].sort();
+// The default scene, every Q-style character (PS-250C) and every pixel
+// character file on disk, which PS-250B made a non-default style.
+const V2 = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'pwa', 'assets', 'personal-space', 'v2');
+const PIXEL_PATHS = ['protagonist', 'companion'].flatMap(kind => readdirSync(join(V2, 'characters', kind))
+  .map(name => `assets/personal-space/v2/characters/${kind}/${name}`));
+const ALL_PATHS = [...new Set([
+  ...getWorkspaceAssetManifestPaths(),
+  ...getToonCharacterPaths(),
+  ...PIXEL_PATHS,
+])].sort();
 
 describe('PS-250A developer asset gallery', () => {
   afterEach(() => {
@@ -30,6 +41,7 @@ describe('PS-250A developer asset gallery', () => {
     const catalog = buildAssetCatalog();
     const listed = catalog.flatMap(group => group.assets.map(asset => asset.path));
 
+    expect(PIXEL_PATHS).toHaveLength(6 * 2 + 6);
     expect(listed.sort()).toEqual(ALL_PATHS);
     expect(new Set(listed).size).toBe(listed.length);
     expect(catalog.map(group => group.label)).toEqual([

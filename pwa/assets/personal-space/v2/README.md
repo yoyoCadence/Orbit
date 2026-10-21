@@ -1,6 +1,10 @@
 # Personal Space V2 production assets
 
-This folder contains only reviewed runtime outputs for the Building Formal Workstation vertical slice. Source sheets, prompts, and processing intermediates live in `art-pipeline/ps242/`.
+This folder contains only reviewed runtime outputs for the Building Formal Workstation vertical slice. Sources and processing live in:
+
+- `art-pipeline/ps242/`: the pixel characters and the weather.
+- `art-pipeline/ps244-blender/`: the room and the furniture.
+- `art-pipeline/ps250-characters/`: the Q-style characters under `characters/toon/`. These have been the default characters since PS-250B; the pixel characters are the pixel style.
 
 ## Runtime contract
 

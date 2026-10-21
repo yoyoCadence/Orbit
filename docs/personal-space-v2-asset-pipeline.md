@@ -280,7 +280,7 @@ The first validated set is capped at:
 
 Do not expand Survival/Mastery rooms or mass-generate furniture until the home-to-Session-to-world loop passes product and performance validation.
 
-PS-250 (user-approved 2026-10-21) expands this budget for the Building stage: two switchable style sets, each with several protagonists and Companion forms. Night and room styles and small furniture come later. The art bible §6.1 lists what has been added. Only the default set will be precached (PS-250B). Other choices will be downloaded the first time they are used, and the default will be shown offline when a choice is missing.
+PS-250 (user-approved 2026-10-21) expands this budget for the Building stage: two switchable style sets, each with several protagonists and Companion forms. Night and room styles and small furniture come later. The art bible §6.1 lists what has been added. Since PS-250B only the default set is precached. Other choices are downloaded the first time they are used. Offline, a missing choice is shown as the default.
 
 ## Acceptance Criteria
 
