@@ -191,40 +191,47 @@ function createWorldChange(revealId, reward, createdAt) {
   };
 }
 
-function activeUnlockKeys(entries) {
-  return new Set(entries
-    .filter(entry => entry.rewardType === 'world_unlock')
-    .map(entry => entry.rewardKey));
-}
-
-// What this reconciliation changed beyond individual ledger entries. When an
-// undo moves the project completion to another day, that day gains the same
-// unlock and relationship the undone day loses: nothing changes for the user.
-function getRevealContext(state, reconciliation, relationshipPoints) {
-  const before = activeUnlockKeys(activeCurrentRulesetEntries(state));
-  const after = activeUnlockKeys(activeCurrentRulesetEntries({
-    ...state,
-    rewardLedger: reconciliation.ledger,
-    rewardTombstones: reconciliation.tombstones,
-  }));
+// The project counts as complete before this reconciliation only if the
+// ledger says so; the stored activeProject can lag behind it.
+function getCompletedSourceId(state, reconciliation) {
+  const before = deriveActiveProject(activeCurrentRulesetEntries(state), []);
   const project = reconciliation.project || {};
-  return {
-    changedUnlockKeys: new Set([...before, ...after]
-      .filter(key => before.has(key) !== after.has(key))),
-    relationshipChanged: relationshipPoints !== relationshipPointsForState(state.companion),
-    completedSourceId: !state.activeProject?.completed && project.completed
-      ? project.completedBySessionId || null
-      : null,
-  };
+  return !before.completed && project.completed
+    ? project.completedBySessionId || null
+    : null;
 }
 
-function isHandoverReward(reward, context) {
-  if (reward.rewardType === 'world_unlock') return !context.changedUnlockKeys.has(reward.rewardKey);
-  if (reward.rewardType === 'relationship') return !context.relationshipChanged;
-  return false;
+// Rewards that only move between Sessions keep the same type, key and amount:
+// the day's Main Quest bundle when an undo hands it to another Session that
+// day, and the completion unlock and relationship when it moves to another day.
+function handoverKey(reward) {
+  const tier = reward.metadata?.tier;
+  const base = `${reward.rewardType}|${reward.rewardKey}|${reward.amount}`;
+  if (tier === 'daily-main-quest') return `${base}|${reward.metadata?.sessionDate || ''}`;
+  if (tier === 'project-completion') return base;
+  return null;
 }
 
-function buildRevealEvents(reconciliation, changeIds, reconciledAt, context) {
+// An added and a reversed copy of the same reward in one reconciliation change
+// nothing for the user, so neither is shown.
+function findHandoverIds(rewards) {
+  const byKey = new Map();
+  for (const reward of rewards) {
+    const key = handoverKey(reward);
+    if (!key) continue;
+    if (!byKey.has(key)) byKey.set(key, { added: [], reversed: [] });
+    byKey.get(key)[reward.direction].push(reward.id);
+  }
+  const ids = new Set();
+  for (const { added, reversed } of byKey.values()) {
+    const pairs = Math.min(added.length, reversed.length);
+    [...added.sort().slice(0, pairs), ...reversed.sort().slice(0, pairs)]
+      .forEach(id => ids.add(id));
+  }
+  return ids;
+}
+
+function buildRevealEvents(reconciliation, changeIds, reconciledAt, completedSourceId) {
   const entryById = new Map(reconciliation.ledger.map(entry => [entry.id, entry]));
   const grouped = new Map();
   const addToGroup = (id, direction) => {
@@ -248,14 +255,15 @@ function buildRevealEvents(reconciliation, changeIds, reconciledAt, context) {
 
   changeIds.added.forEach(id => addToGroup(id, 'added'));
   changeIds.reversed.forEach(id => addToGroup(id, 'reversed'));
+  const handoverIds = findHandoverIds([...grouped.values()].flat());
 
   return [...grouped.entries()].map(([sourceId, rewards]) => {
     const sortedRewards = [...rewards].sort((left, right) =>
       left.direction.localeCompare(right.direction) || left.id.localeCompare(right.id),
     );
-    // Handovers stay in the ids below, so the reveal still tracks the ledger,
-    // but are not shown; a reveal with nothing else is not queued.
-    const shownRewards = sortedRewards.filter(reward => !isHandoverReward(reward, context));
+    // A reveal shows, and is kept in step with the ledger by, what changed for
+    // the user; a reveal of handovers only is not queued.
+    const shownRewards = sortedRewards.filter(reward => !handoverIds.has(reward.id));
     if (!shownRewards.length) return null;
     const signature = sortedRewards
       .map(reward => `${reward.direction}:${reward.id}`)
@@ -270,10 +278,10 @@ function buildRevealEvents(reconciliation, changeIds, reconciledAt, context) {
       : sourceOccurredAt;
     const id = `reveal:${RULESET_ID}:${sourceId}:${stableHash(signature)}`;
     const importantReward = mostImportantReward(shownRewards);
-    const addedRewardIds = sortedRewards
+    const addedRewardIds = shownRewards
       .filter(reward => reward.direction === 'added')
       .map(reward => reward.id);
-    const reversedRewardIds = sortedRewards
+    const reversedRewardIds = shownRewards
       .filter(reward => reward.direction === 'reversed')
       .map(reward => reward.id);
     return {
@@ -283,11 +291,11 @@ function buildRevealEvents(reconciliation, changeIds, reconciledAt, context) {
       direction: addedRewardIds.length && reversedRewardIds.length
         ? 'mixed'
         : addedRewardIds.length ? 'settlement' : 'reversal',
-      rewardIds: sortedRewards.map(reward => reward.id),
+      rewardIds: shownRewards.map(reward => reward.id),
       addedRewardIds,
       reversedRewardIds,
       rewards: shownRewards,
-      projectCompleted: sourceId === context.completedSourceId,
+      projectCompleted: sourceId === completedSourceId,
       createdAt,
       sourceOccurredAt,
       worldChange: createWorldChange(id, importantReward, createdAt),
@@ -369,7 +377,7 @@ export function applyReconciliationToV2State(state, reconciliation, options = {}
       reconciliation,
       changeIds,
       options.reconciledAt,
-      getRevealContext(state, reconciliation, relationshipPoints),
+      getCompletedSourceId(state, reconciliation),
     )
     : [];
   const activeRewardIds = new Set(listActiveRewards(

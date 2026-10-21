@@ -252,14 +252,14 @@ describe('Personal Space V2 Pixi scene runtime', () => {
     runtime.destroy();
   });
 
-  it('does not bounce the protagonist for a reveal that only takes rewards back (BUG-113)', async () => {
-    const liftAfter = async direction => {
+  it('celebrates only when the view model says the protagonist celebrates (BUG-113)', async () => {
+    const liftAfter = async (protagonistState, direction) => {
       const fake = createFakePixi();
       const runtime = createPixiSceneRuntime({ loadPixi: () => Promise.resolve(fake.pixi) });
       const { host } = createRuntimeHost();
       await runtime.mount(host, {
         activeProject: { progress: 50 },
-        protagonist: { state: 'inspect' },
+        protagonist: { state: protagonistState },
         pendingReveal: { id: `reveal-${direction}`, direction },
       });
       const app = fake.applications[0];
@@ -272,8 +272,10 @@ describe('Personal Space V2 Pixi scene runtime', () => {
     };
 
     // Celebrating lifts by up to 6 px on a fast cycle; inspecting barely moves.
-    expect(await liftAfter('settlement')).toBeGreaterThan(2);
-    expect(await liftAfter('reversal')).toBeLessThan(1);
+    expect(await liftAfter('celebrate', 'settlement')).toBeGreaterThan(2);
+    // An undone Session, or a reward that is not progress, is shown as inspect.
+    expect(await liftAfter('inspect', 'reversal')).toBeLessThan(1);
+    expect(await liftAfter('inspect', 'settlement')).toBeLessThan(1);
   });
 
   it('re-renders the latest model after WebGL context restoration and cleans up once', async () => {

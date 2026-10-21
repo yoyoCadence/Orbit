@@ -11,8 +11,13 @@
 
 import { beforeEach, describe, expect, it } from 'vitest';
 import { REWARD_EPOCH } from '../../pwa/js/personalSpace/v2/config.js';
-import { reconcileAndSavePersonalSpaceV2 } from '../../pwa/js/personalSpace/v2/controller.js';
+import {
+  applyReconciliationToV2State,
+  reconcileAndSavePersonalSpaceV2,
+} from '../../pwa/js/personalSpace/v2/controller.js';
 import { getCompanionReaction } from '../../pwa/js/personalSpace/v2/companionEngine.js';
+import { reconcileRewardLedger } from '../../pwa/js/personalSpace/v2/reconciler.js';
+import { normalizeOrbitWindowModel } from '../../pwa/js/personalSpace/v2/ui/orbitWindow.js';
 import { selectProtagonistState } from '../../pwa/js/personalSpace/v2/viewModels.js';
 
 const EPOCH_DATE = REWARD_EPOCH.slice(0, 10);
@@ -23,13 +28,13 @@ function dateAtOffset(offset) {
   return date.toISOString().slice(0, 10);
 }
 
-function mainQuestDay(day) {
+function mainQuestDay(day, { id = `day-${day}`, hour = 10 } = {}) {
   const date = dateAtOffset(day - 1);
   return {
-    id: `day-${day}`,
+    id,
     taskId: 'task-1',
     date,
-    completedAt: `${date}T10:00:00.000Z`,
+    completedAt: `${date}T${String(hour).padStart(2, '0')}:00:00.000Z`,
     result: 'complete',
     durationMinutes: 30,
     impactType: 'task',
@@ -55,7 +60,7 @@ function settle(sessions, extra = {}) {
 }
 
 function undo(remaining, day) {
-  return settle(remaining, { deletedSourceIds: [`day-${day}`] });
+  return settle(remaining, { deletedSourceIds: [typeof day === 'number' ? `day-${day}` : day] });
 }
 
 // Reveals this reconciliation queued; earlier ones may still be waiting.
@@ -162,6 +167,52 @@ describe('BUG-113 project completion and reversal reveals', () => {
     expect(newReveals(previous, state).map(reveal => reveal.sourceId)).toEqual(['day-4']);
     expect(state.recentWorldChange.metadata.rewardType).not.toMatch(/world_unlock|relationship/);
   });
+
+  it('hands the day to a later Session that day without celebrating it', () => {
+    // Undoing the day's winner makes the next Session that day the winner: it
+    // gains the same Main Quest bundle the undone one loses.
+    const later = mainQuestDay(6, { id: 'day-6-later', hour: 12 });
+    const previous = settle([...days(6), later]);
+    const state = undo([...days(5), later], 6);
+    const reveals = newReveals(previous, state);
+
+    expect(reveals.map(reveal => reveal.sourceId)).toEqual(['day-6-later']);
+    const [reveal] = reveals;
+    expect(reveal.direction).toBe('reversal');
+    expect(rewardTypes(reveal)).toEqual(['reversed:hidden_stat']);
+    expect(reactionTo(reveal, state, [later])).toMatchObject({
+      state: 'observe',
+      dialogueKey: 'companion.observe',
+    });
+    expect(selectProtagonistState({ pendingReveal: reveal }).state).not.toBe('celebrate');
+  });
+
+  it('hands the completing day to a later Session that day without celebrating it', () => {
+    const later = mainQuestDay(4, { id: 'day-4-later', hour: 12 });
+    const previous = settle([...days(4), later]);
+    const state = undo([...days(3), later], 4);
+    const reveals = newReveals(previous, state);
+
+    expect(state.activeProject).toMatchObject({ completed: true, completedBySessionId: 'day-4-later' });
+    expect(reveals.every(reveal => reveal.kind !== 'major' && !reveal.projectCompleted)).toBe(true);
+    for (const reveal of reveals) {
+      expect(reactionTo(reveal, state, [later]).state).toBe('observe');
+      expect(selectProtagonistState({ pendingReveal: reveal }).state).not.toBe('celebrate');
+    }
+  });
+
+  it('decides the completion from the ledger even when the stored project lags behind', () => {
+    const three = settle(days(3));
+    const stale = { ...three, activeProject: { ...three.activeProject, completed: true } };
+    const reconciliation = reconcileRewardLedger({
+      sessions: days(4),
+      rewardLedger: stale.rewardLedger,
+      rewardTombstones: stale.rewardTombstones,
+    });
+    const state = applyReconciliationToV2State(stale, reconciliation, { queueReveal: true });
+
+    expect(revealFor(stale, state, 'day-4')).toMatchObject({ projectCompleted: true, kind: 'major' });
+  });
 });
 
 describe('BUG-113 reveal selectors', () => {
@@ -180,6 +231,16 @@ describe('BUG-113 reveal selectors', () => {
     expect(getCompanionReaction({
       pendingReveal: { rewards: [{ ...unlock, direction: 'reversed' }] },
     }).state).not.toBe('congratulate');
+  });
+
+  it('never shows an undo queued by an older version as a world milestone', () => {
+    const model = normalizeOrbitWindowModel({
+      pendingReveal: { id: 'old-undo', kind: 'major', direction: 'reversal' },
+    });
+    expect(model.pendingReveal.kind).toBe('medium');
+    expect(normalizeOrbitWindowModel({
+      pendingReveal: { id: 'completion', kind: 'major', direction: 'settlement' },
+    }).pendingReveal.kind).toBe('major');
   });
 
   it('does not count reversed progress as progress', () => {

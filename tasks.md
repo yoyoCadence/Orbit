@@ -17,6 +17,7 @@
 - [ ] **BUG-114** 專案已到 100% 後，reveal 仍顯示專案進度的增減
   - 問題（BUG-113 發現，2026-10-21）：工作站完成後，每個 Main Quest 日仍得到 `project_progress +25`，reveal 顯示 `workspace-upgrade +25`，但進度停在 100%（`projectEngine.js` 把總和截在 100）。撤銷完成那一天、由下一天接手時，reveal 顯示 `workspace-upgrade -25`，進度也仍是 100%。
   - 方向：與 BUG-113 的解鎖與關係相同，只顯示真的改變進度的專案進度行（比較前後的 `activeProject.progress`），或在完成後不再給專案進度。後者會改變 reward 規則與 ledger，要先提案。
+  - 同樣地，完成後撤銷任何一天（仍有至少 4 個 Main Quest 日）都顯示 `-25`，進度仍是 100%。完成後 Companion 的「工作空間改變了…」與主角的慶祝也來自這些 reward。
   - 只是顯示問題：Gold、Main Quest 與 hidden stats 的增減都正確。
 
 - [ ] **HW-112** 佐證圖片雲端同步（Supabase Storage）
@@ -301,12 +302,17 @@
   - 影響 AI-202B：階段變化的 reveal 依賴這個修正（提案 §3.4、§9 第 9 點）。
   - In progress（2026-10-21）：實作修正與回歸測試。
   - 完成（2026-10-21，v1.31.8）：
-    - `controller.js`：`applyReconciliationToV2State()` 比較前後的 `activeProject.completed`，在完成那一天的 reveal 記上 `projectCompleted: true`。比較前後啟用的解鎖與關係點數：沒有改變狀態的解鎖與關係（換一天承接完成）不顯示、不算 `major`；只剩這些的 reveal 不排入。`revealKind()` 只把加入的解鎖與關係算成 `major`。
-    - `revealSelectors.js`：完成只看 `projectCompleted`；沒有這個欄位的舊 reveal 只認加入的解鎖。進度與世界進度只看加入的 reward。
+    - `controller.js`：
+      - 以 ledger 推導 reconcile 前的專案是否完成（儲存的 `activeProject` 可能落後），由未完成變成完成時，在完成那一天的 reveal 記上 `projectCompleted: true`。
+      - 同一次 reconcile 中，加入與撤銷的同一個 reward（同 type、key、amount；當天的 Main Quest 再加上同一天）成對視為「換一個 Session 承接」：撤銷當天的 Main Quest 由當天較晚的 Session 接手，或完成由另一天接手。這些 reward 不顯示、不算 `major`，也不用來比對 ledger；只剩這些的 reveal 不排入；`direction` 依顯示的 reward 決定。
+      - `revealKind()` 只把加入的解鎖與關係算成 `major`。
+    - `revealSelectors.js`：完成只看 `projectCompleted`；沒有這個欄位的舊 reveal 改用原本的判斷（解鎖、`formal-workstation` 或 `project-completion` tier），但只看加入的 reward。進度與世界進度只看加入的 reward。
     - `companionEngine.js`：只含撤銷的 reveal（`direction: 'reversal'`）→ `observe`＋`companion.observe`，排在所有分支之前。
-    - `runtime/pixiSceneRuntime.js`：撤銷的 reveal 不讓主角跳動（原本任何 reveal 都會）。
+    - `runtime/pixiSceneRuntime.js`：主角只在 view model 的狀態是 `celebrate` 時跳動（原本任何 reveal 都跳）。
+    - `ui/orbitWindow.js`：舊版本留下、`kind: 'major'` 的撤銷 reveal 以 `medium` 顯示。
     - 為了 INFRA-105，沒有在既有 SHELL 模組之間新增 import／export：判斷寫在各自的模組內。
-    - 測試：`tests/unit/bug113RevealReactions.test.js`（以真實的 reconcile 重現四個情境，加上 selector 的舊 reveal 相容）與 Pixi 的跳動測試；以修正前的程式碼執行時都會失敗。
+    - 測試：`tests/unit/bug113RevealReactions.test.js`（以真實的 reconcile 重現 tasks 列出的情境，加上當天由較晚的 Session 接手、儲存的專案狀態落後、舊 reveal 相容）與 Pixi 的跳動測試。除了完成那一天的對照組，以修正前的程式碼執行時都會因行為而失敗。
+    - 已知限制：完成那一天的 reveal 還沒播放時，若完成改由另一天接手，這個 reveal 被移除，接手的那天也不恭喜，所以這次完成不會被慶祝。AI-202B 的 `presentedMilestones`（以使用者看過的狀態為基準）可以一併處理。
     - 另外發現：專案已到 100% 後，進度 reward 的行仍顯示 `workspace-upgrade +25`／`-25`，見 BUG-114。
 
 - [x] **INFRA-106** 查明 Focus 提前結束 e2e 的間歇性逾時
