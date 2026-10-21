@@ -211,6 +211,16 @@
 > - 下一個提案是 AI-202；之後擴充 Blender 製作的主題與素材（建立 PS-248）。兩者都從 Backlog／新建移入 Next，第一步是提案。
 > - 獨立 Claude review 恢復使用：除非只有 Codex 能做的事，否則不限制由誰 review。
 
+- [ ] **BUG-109A** 在 production 套用 013 signup trigger migration
+  - 目標：讓 production 的 `handle_new_user()` 截斷超過 30 字元的名稱來源，長 email local-part 與長 Google 顯示名稱都能註冊。
+  - 步驟：依 [`docs/bug-109-signup-name-truncation.md`](docs/bug-109-signup-name-truncation.md) 的 runbook：先以 `pg_get_functiondef` 比對 production 函式與 004、記錄回滾來源，在非 production 環境跑 `tests/database/bug109.test.sql`，再套用並驗證。
+  - **需專案擁有者執行**：production 資料庫操作，Claude 不具權限；依 AGENTS.md §3 屬 schema 變更的套用。
+  - 依賴：`BUG-109`
+
+---
+
+## In Progress
+
 - [ ] **BUG-113** 專案完成與撤銷的 reveal 讓 Companion 重複恭喜
   - 問題（AI-202 提案與其獨立 review 發現，2026-10-20；以 `reconcileRewardLedger` ＋ `applyReconciliationToV2State` ＋ `getCompanionReaction` 重現）：「專案完成」與 `major` 的判斷不看 reward 是加入還是撤銷，也不看專案原本是否已完成。
     - 專案完成後，每個 Main Quest 日的 reveal 都讓 Companion 再說「工作站完成了」：`revealSelectors.js` `isProjectCompletionReveal()` 的第二個條件是「進度 ≥ 100 且 reveal 含 `project_progress:workspace-upgrade`」，而 winner 每天都會得到 `project_progress +25`。
@@ -226,16 +236,7 @@
     - 只是換一天承接時，不顯示解鎖或關係的行。
   - 回歸測試（在修正前會失敗）：第 5 天的 reveal；專案完成後撤銷第 6 天；撤銷第 4 天（有與沒有第 5 天）。撤銷時（包括當天另有有效 Session）Companion 是 `observe`＋`companion.observe`，既不是 `congratulate` 也不是 `approach`；主角不慶祝。
   - 影響 AI-202B：階段變化的 reveal 依賴這個修正（提案 §3.4、§9 第 9 點）。
-
-- [ ] **BUG-109A** 在 production 套用 013 signup trigger migration
-  - 目標：讓 production 的 `handle_new_user()` 截斷超過 30 字元的名稱來源，長 email local-part 與長 Google 顯示名稱都能註冊。
-  - 步驟：依 [`docs/bug-109-signup-name-truncation.md`](docs/bug-109-signup-name-truncation.md) 的 runbook：先以 `pg_get_functiondef` 比對 production 函式與 004、記錄回滾來源，在非 production 環境跑 `tests/database/bug109.test.sql`，再套用並驗證。
-  - **需專案擁有者執行**：production 資料庫操作，Claude 不具權限；依 AGENTS.md §3 屬 schema 變更的套用。
-  - 依賴：`BUG-109`
-
----
-
-## In Progress
+  - In progress（2026-10-21）：實作修正與回歸測試。
 
 - [ ] **PS-248** 以 Blender 擴充「空間」的主題與素材（提案）
   - 使用者 2026-10-20 要求：「需要更新更多 blender 做的主題與素材等，讓本工具更豐富」。
