@@ -80,12 +80,22 @@ export function getCompanionReaction({
     });
   }
 
-  if (isQuestOrProjectProgressReveal(pendingReveal) && showsProjectProgress(pendingReveal)) {
+  if (isQuestOrProjectProgressReveal(pendingReveal)) {
+    if (showsProjectProgress(pendingReveal)) {
+      return freezeReaction({
+        state: 'approach',
+        dialogueKey: 'companion.project.workspace-upgrade.progress',
+        animationKey: 'approach',
+        worldAction: 'approach-project',
+      });
+    }
+    // The reveal still shows a productive Main Quest, whichever Sessions the
+    // current day holds.
     return freezeReaction({
       state: 'approach',
-      dialogueKey: 'companion.project.workspace-upgrade.progress',
+      dialogueKey: 'companion.session.productive-complete',
       animationKey: 'approach',
-      worldAction: 'approach-project',
+      worldAction: 'approach-player',
     });
   }
 

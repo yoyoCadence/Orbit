@@ -11,23 +11,25 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { REWARD_EPOCH } from '../../pwa/js/personalSpace/v2/config.js';
 import {
+  applyReconciliationToV2State,
   consumePersonalSpaceV2Reveal,
   reconcileAndSavePersonalSpaceV2,
 } from '../../pwa/js/personalSpace/v2/controller.js';
 import { getCompanionReaction } from '../../pwa/js/personalSpace/v2/companionEngine.js';
+import { reconcileRewardLedger } from '../../pwa/js/personalSpace/v2/reconciler.js';
 
 const EPOCH_DATE = REWARD_EPOCH.slice(0, 10);
 const currentUser = { id: 'bug-114-owner', totalXP: 2000 };
 
-function mainQuestDay(day) {
+function mainQuestDay(day, { id = `day-${day}`, hour = 10 } = {}) {
   const date = new Date(`${EPOCH_DATE}T12:00:00.000Z`);
   date.setUTCDate(date.getUTCDate() + day - 1);
   const isoDate = date.toISOString().slice(0, 10);
   return {
-    id: `day-${day}`,
+    id,
     taskId: 'task-1',
     date: isoDate,
-    completedAt: `${isoDate}T10:00:00.000Z`,
+    completedAt: `${isoDate}T${String(hour).padStart(2, '0')}:00:00.000Z`,
     result: 'complete',
     durationMinutes: 30,
     impactType: 'task',
@@ -41,18 +43,20 @@ function mainQuestDay(day) {
 
 const days = (...numbers) => numbers.map(mainQuestDay);
 
-// Settles the Sessions and returns the reveals this reconciliation queued,
-// after the user watched every earlier one.
-function settle(sessions, extra = {}) {
+// Settles the Sessions and returns the state with its queued reveals; unless
+// told otherwise, the user then watches them.
+function settle(sessions, { watch = true, ...extra } = {}) {
   const queued = reconcileAndSavePersonalSpaceV2({
     user: currentUser,
     sessions,
     queueReveal: true,
     ...extra,
   }).state;
-  queued.pendingRewardReveals.forEach(reveal => {
-    consumePersonalSpaceV2Reveal({ user: currentUser, revealId: reveal.id });
-  });
+  if (watch) {
+    queued.pendingRewardReveals.forEach(reveal => {
+      consumePersonalSpaceV2Reveal({ user: currentUser, revealId: reveal.id });
+    });
+  }
   return queued;
 }
 
@@ -84,7 +88,8 @@ describe('BUG-114 project progress lines', () => {
     expect(progressLines(state)).toEqual([]);
     expect(reveal.rewards.map(reward => reward.rewardType))
       .toEqual(expect.arrayContaining(['gold', 'quest_progress']));
-    expect(getCompanionReaction({ pendingReveal: reveal, recentSessions: days(5) }))
+    // The day's Session line, even when the reveal plays on a later day.
+    expect(getCompanionReaction({ pendingReveal: reveal }))
       .toMatchObject({ state: 'approach', dialogueKey: 'companion.session.productive-complete' });
   });
 
@@ -97,6 +102,56 @@ describe('BUG-114 project progress lines', () => {
     expect(progressLines(afterLaterDay)).toEqual([]);
     expect(afterCompletingDay.activeProject.progress).toBe(100);
     expect(progressLines(afterCompletingDay)).toEqual([]);
+  });
+
+  it('shows the project moving when a later Session takes over a day the user has not watched', () => {
+    const later = mainQuestDay(2, { id: 'day-2-later', hour: 12 });
+    settle(days(1));
+    settle(days(1, 2), { watch: false });
+    settle([...days(1, 2), later], { watch: false });
+    const state = settle([mainQuestDay(1), later], { deletedSourceIds: ['day-2'] });
+    const reveal = state.pendingRewardReveals.find(entry => entry.sourceId === 'day-2-later');
+
+    expect(state.activeProject.progress).toBe(50);
+    expect(progressLines(state)).toEqual(['added:25']);
+    expect(getCompanionReaction({ pendingReveal: reveal }).dialogueKey)
+      .toBe('companion.project.workspace-upgrade.progress');
+  });
+
+  it('cleans up a reveal and world change an older version saved past 100%', () => {
+    settle(days(1, 2, 3, 4));
+    const saved = settle(days(1, 2, 3, 4, 5), { watch: false });
+    const entry = saved.rewardLedger
+      .find(reward => reward.sourceId === 'day-5' && reward.rewardType === 'project_progress');
+    const progress = { ...entry, direction: 'added' };
+    const older = {
+      ...saved,
+      pendingRewardReveals: saved.pendingRewardReveals.map(reveal => ({
+        ...reveal,
+        rewards: [...reveal.rewards, progress],
+      })),
+      recentWorldChange: {
+        id: 'world-change:older',
+        sourceId: 'day-5',
+        type: 'project_progress',
+        key: 'workspace-upgrade',
+        amount: 25,
+        metadata: { direction: 'added', rewardId: entry.id, rewardType: 'project_progress' },
+      },
+      recentWorldChangeEventId: entry.id,
+    };
+    // The silent reconcile at boot.
+    const state = applyReconciliationToV2State(older, reconcileRewardLedger({
+      sessions: days(1, 2, 3, 4, 5),
+      rewardLedger: older.rewardLedger,
+      rewardTombstones: older.rewardTombstones,
+    }));
+
+    expect(progressLines(state)).toEqual([]);
+    expect(state.pendingRewardReveals[0].worldChange.metadata.rewardType).not.toBe('project_progress');
+    expect(state.recentWorldChange).toBeNull();
+    expect(getCompanionReaction({ pendingReveal: state.pendingRewardReveals[0] }).dialogueKey)
+      .toBe('companion.session.productive-complete');
   });
 
   it('shows the project moving back when an undo lowers its progress', () => {
