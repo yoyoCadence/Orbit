@@ -97,148 +97,148 @@
   },
   "files": {
     "assets/personal-space/v2/characters/toon/companion/catbot-approach.webp": {
-      "bytes": 5910,
-      "sha256": "7e8a04947f27d91a8ac92d72f99c18a421d0c3d6d4bc13604dfc1f00ae2d9bb8"
+      "bytes": 6040,
+      "sha256": "6a5190177d63b80420b87202cdfbf10afe8935c61e195fda8f559dbfbc4b4b76"
     },
     "assets/personal-space/v2/characters/toon/companion/catbot-congratulate.webp": {
-      "bytes": 7578,
-      "sha256": "5bee8ae886bbaee9b19b61ac945652f9f940c51976cbfeb9a56d07ae1d6e9d4a"
+      "bytes": 7934,
+      "sha256": "bdfadba6181bc17be73721c4ae9c6825dcd686ea45235e6855b00b04fcf1cabc"
     },
     "assets/personal-space/v2/characters/toon/companion/catbot-observe.webp": {
-      "bytes": 6080,
-      "sha256": "7ce4f9c3dd1d681e8f628ba270e0db8a76d249ddac32778bdc53280c4db423a5"
+      "bytes": 6272,
+      "sha256": "5dc3771ffb95cc57f2341bffac5dd1f6a4d12d56369f2c1f4693dcb01cfccac0"
     },
     "assets/personal-space/v2/characters/toon/companion/catbot-remind.webp": {
-      "bytes": 6892,
-      "sha256": "741c26f0a6167fdd68776de56dcb79c5ae3ebea7495077cd6691a6d94a4cd455"
+      "bytes": 6920,
+      "sha256": "81b6a4822eaa03dd1a5a738892b1756738663796562bdd1e3d869c4ba2b24aec"
     },
     "assets/personal-space/v2/characters/toon/companion/catbot-rest.webp": {
-      "bytes": 7326,
-      "sha256": "b256579018f5a604bf10a2d26b881f903c9414d078eecfe1d9faac0ea430c0a4"
+      "bytes": 7476,
+      "sha256": "8f2c07fabb810657acb8e10167a58831ff44202e02d0fe593f0c21328c08fe6e"
     },
     "assets/personal-space/v2/characters/toon/companion/catbot-work.webp": {
-      "bytes": 7238,
-      "sha256": "be6b55a0b7383c69d80d0031b02a9a0b1ee4d5abaf9e7b2943ec7e586b6d1e93"
+      "bytes": 7448,
+      "sha256": "794a4fad9e899b6286eb3eae14eae9b8b97beb6b88975e7d06f8e8e31c08c41e"
     },
     "assets/personal-space/v2/characters/toon/companion/cube-approach.webp": {
-      "bytes": 4754,
-      "sha256": "d7a189a57401ad9988c2307dc00fdd39a2bf138de53cc7217916c90af6159ac5"
+      "bytes": 4824,
+      "sha256": "4c9da9943b4e296a15ce8516c9b012c6af3143331d0c5f06b558a1766dbd9b2e"
     },
     "assets/personal-space/v2/characters/toon/companion/cube-congratulate.webp": {
-      "bytes": 6398,
-      "sha256": "0a8ce8eae1872cea37d58ebac131e7ff861ac802917a619e8bacdb947c42ffb6"
+      "bytes": 6780,
+      "sha256": "01bcbd4306cc4641c26bc7aeb54b68012ec831adfea48b5eda8371aa61b4fac6"
     },
     "assets/personal-space/v2/characters/toon/companion/cube-observe.webp": {
-      "bytes": 5018,
-      "sha256": "80a3a8dcf1df00c96e8cb1dfec7551c712b4d7c9425101fb3670e31f943bc4e6"
+      "bytes": 4980,
+      "sha256": "02f5f2c2a8f657c6487497a39b2e54863dfdaa60131f2e54f74916ea589b4c20"
     },
     "assets/personal-space/v2/characters/toon/companion/cube-remind.webp": {
-      "bytes": 6000,
-      "sha256": "d2533842b3b32f863ba1e8e6acfe525baa5b5eea41033036900cdac348cebb78"
+      "bytes": 5952,
+      "sha256": "3f6d26ebaee24509914ab2c95c26605444a3489bfb5a1ad54770544e2c00aac9"
     },
     "assets/personal-space/v2/characters/toon/companion/cube-rest.webp": {
-      "bytes": 6236,
-      "sha256": "5d07c0b51f470cb493ffac6e86229492d422d5fb6befe828aacc0ec8c2348ef0"
+      "bytes": 6156,
+      "sha256": "37e9d1a5297e3e818623ac4d8b3989d0180208c857a8e0e1e6cf62f7c0326805"
     },
     "assets/personal-space/v2/characters/toon/companion/cube-work.webp": {
-      "bytes": 6400,
-      "sha256": "cc4f9538332040808e9b8ba3cf99d573fb70f2ff7f01236cd71aaa63f9db52ae"
+      "bytes": 6456,
+      "sha256": "4bedac764ba0a551986fd8e06d01539ae222a24d4943b92be210e1f354ccaa2c"
     },
     "assets/personal-space/v2/characters/toon/companion/fox-approach.webp": {
-      "bytes": 8440,
-      "sha256": "1b08b0ad7b70a66c840f6a77e7d62b08ba153079f2e28a7cda5c781b847a73dc"
+      "bytes": 8646,
+      "sha256": "98b55791c0f27ac3f4599fb0471099a522e363820767a5c907ffbfcf4f57936d"
     },
     "assets/personal-space/v2/characters/toon/companion/fox-congratulate.webp": {
-      "bytes": 8950,
-      "sha256": "0b761e0defc4149757ef022b4a3dd305ca27c774615509ffe09cda9e9d9ec1ef"
+      "bytes": 9246,
+      "sha256": "5155c76d86092a0f4b1a49a85e6313c7639975f4d844bdf0f958d1fbbf896813"
     },
     "assets/personal-space/v2/characters/toon/companion/fox-observe.webp": {
-      "bytes": 7832,
-      "sha256": "e73c7edf9ec1f9ee88d76f6eb898452a70abf6c0cd8850cb606623aa75f0a9d1"
+      "bytes": 8030,
+      "sha256": "4fe31661a4d04466df6973de6cbbee6ae0476d745487652e0ace7be4dd7cfe77"
     },
     "assets/personal-space/v2/characters/toon/companion/fox-remind.webp": {
-      "bytes": 8364,
-      "sha256": "80c8eda08bd5165487349ac1ac3f29aec5826c5b76e7a727b1faf202474d4da0"
+      "bytes": 8482,
+      "sha256": "fff6c17099ee342ffeb18c7ebe3b35ce6f9eafbe4d1dca64ba513adbee6762db"
     },
     "assets/personal-space/v2/characters/toon/companion/fox-rest.webp": {
-      "bytes": 8972,
-      "sha256": "ff7e328eef3a5fffe29ffd459d9995f81830adc43c4398abc46b0eb94b6fdea6"
+      "bytes": 9162,
+      "sha256": "194b392a51d06525f6d0b8c199ac740fbbede68aae4903c73cee42c594b10cb6"
     },
     "assets/personal-space/v2/characters/toon/companion/fox-work.webp": {
-      "bytes": 7972,
-      "sha256": "28e70aa58ba1c6121e4266b3e64614b4417f1281f4a42ac65724f2179c62bf67"
+      "bytes": 8270,
+      "sha256": "495d8789b2a0e50d268da77dd5de49babaeb7a0672b0575e2126c9c2a06d668f"
     },
     "assets/personal-space/v2/characters/toon/companion/jelly-approach.webp": {
-      "bytes": 4978,
-      "sha256": "d5049e91950baad986dc534994de7144fe049da1c90d1ffcfebed832a563966e"
+      "bytes": 5034,
+      "sha256": "5a08d95575dc22e50cb202c53e4e3d7dde7ce282126672444c1b5d454a09f7bf"
     },
     "assets/personal-space/v2/characters/toon/companion/jelly-congratulate.webp": {
-      "bytes": 6672,
-      "sha256": "8ff5ee788f493b91b21dbf23ef1b7c24952ea97abc445cf707daa62780384e94"
+      "bytes": 6900,
+      "sha256": "7fc9f782057b0ac07ea8a18b3531e9e5d999e3ec7740ee620a05e6efb62f4470"
     },
     "assets/personal-space/v2/characters/toon/companion/jelly-observe.webp": {
-      "bytes": 5006,
-      "sha256": "35085a61a1afa4e7e38cbd3140a6f331cff4111295d22cc01c3120ac11abac94"
+      "bytes": 5058,
+      "sha256": "6a41c122bac8bef8da2d817a980d2157cd028715cac5c2708b494ed653b5d9cf"
     },
     "assets/personal-space/v2/characters/toon/companion/jelly-remind.webp": {
-      "bytes": 6022,
-      "sha256": "4cdfb778dd66d3b17a03448dd5d572a4e15b4704c0b60dc567b27a1a732ab43a"
+      "bytes": 5984,
+      "sha256": "c1f7169748ce773fdfca2081bbaecd30b1bcdd6b42b73f62710d71471433fd87"
     },
     "assets/personal-space/v2/characters/toon/companion/jelly-rest.webp": {
-      "bytes": 6312,
-      "sha256": "bebc4d1471212f7553fa78db0334b636986ed4e6b9e8027f66a4f4d0c5cbcb1d"
+      "bytes": 6498,
+      "sha256": "e3d9e8869a7c6cd05b9e280c1c7755c098b4e382d5033636ec077d45107a986b"
     },
     "assets/personal-space/v2/characters/toon/companion/jelly-work.webp": {
-      "bytes": 5968,
-      "sha256": "63d37fab08c8bcd37beeb0492d781dbd596ea880de0ef17a74320c004d9daff9"
+      "bytes": 6126,
+      "sha256": "f1c884ec1ca0f83f564c27a7a697d18d6b058a0e91545d6f8f9ea9fa38c14ed7"
     },
     "assets/personal-space/v2/characters/toon/companion/orbit-approach.webp": {
-      "bytes": 7814,
-      "sha256": "a4faf54cac77e506626f9cb26ba0f749eb9b0eb1637374702e6634bbd97b8e7d"
+      "bytes": 7988,
+      "sha256": "03324c81385539c37b7e1f271acb535fcf6be9d2c450e68d3850340639697b5c"
     },
     "assets/personal-space/v2/characters/toon/companion/orbit-congratulate.webp": {
-      "bytes": 9956,
-      "sha256": "b57c5324398d7a2e4b2ef533c493ab4564c52b71ecebc407f3242aca7895c961"
+      "bytes": 10208,
+      "sha256": "f063b4f42a4fc5232142051b36793458b858a3e6e46c03fbd7b0fb8743e4910e"
     },
     "assets/personal-space/v2/characters/toon/companion/orbit-observe.webp": {
-      "bytes": 8932,
-      "sha256": "7918acc6c8319eb1202758e677361c96798d60f9d96f230c50b444b3b85905d2"
+      "bytes": 8936,
+      "sha256": "19f15e2ad34ce9864043de44d10edab7453dc91ee97e5674fbfdd7fa39b345db"
     },
     "assets/personal-space/v2/characters/toon/companion/orbit-remind.webp": {
-      "bytes": 9856,
-      "sha256": "68654e2604008ecb14371bfdfdec7380a64050a123b32e4663786c70c9413189"
+      "bytes": 9834,
+      "sha256": "6a5a94b4f37a94870f23896a419769f765e72577b5cf02a4e9bb8638dfd24d3c"
     },
     "assets/personal-space/v2/characters/toon/companion/orbit-rest.webp": {
-      "bytes": 10844,
-      "sha256": "3095c1b29d433e01b922ba36a39934afe9615c76e068d0e395192209f898cba0"
+      "bytes": 10810,
+      "sha256": "5b811418c085cfa6e5ae3964effbaedd3c7e9c6fcc0ba42091c402f2abd188c4"
     },
     "assets/personal-space/v2/characters/toon/companion/orbit-work.webp": {
-      "bytes": 9956,
-      "sha256": "921f106ec33e91d22c2e4bf311e1db1ea960993e2baa1ed8776aaebfa0e571b8"
+      "bytes": 10060,
+      "sha256": "06f8bed973051785ec88f06479a761ea2f067801aacff3115b44cca19fb1f27c"
     },
     "assets/personal-space/v2/characters/toon/companion/owl-approach.webp": {
-      "bytes": 5838,
-      "sha256": "8f03e779b14d867156fd99ba06fcb405ecd4801c4ffaa61a622ca90183885026"
+      "bytes": 5982,
+      "sha256": "4387ca604df75593155af4c2805d9e929dad4287784e964975cd4256b0b176bc"
     },
     "assets/personal-space/v2/characters/toon/companion/owl-congratulate.webp": {
-      "bytes": 7294,
-      "sha256": "8b7cb8668256ad96a9119ebda4d0d3d080a0f518a8818b9a1d2520bf7e8ea443"
+      "bytes": 7562,
+      "sha256": "a82d534e591bc552ae4ce185613d87733cb49d914d0d34262156f336a2db3f2f"
     },
     "assets/personal-space/v2/characters/toon/companion/owl-observe.webp": {
-      "bytes": 5698,
-      "sha256": "2de32cd662e94e21b77c131d4cab24685eb23a331136d9997c8074c505734320"
+      "bytes": 5870,
+      "sha256": "297b26e46739f65f9fc83e4ea356117b5d16730e0bd79a75d99c0a0df3164377"
     },
     "assets/personal-space/v2/characters/toon/companion/owl-remind.webp": {
-      "bytes": 6742,
-      "sha256": "7d17693206f49af76ba45f36cc67c546eb0dd4ce973c1500460e4e273148bd7b"
+      "bytes": 6806,
+      "sha256": "d147b5f143294edcd744a398b0168e70ccf93d18f32ff22a73dd874e63940d38"
     },
     "assets/personal-space/v2/characters/toon/companion/owl-rest.webp": {
-      "bytes": 6360,
-      "sha256": "6a28c7a038755c85576c02ed50e87e4ffda0a45ce0ced020bbe6a151a9572154"
+      "bytes": 6576,
+      "sha256": "a9eb0566554f1944436ba0c9649ac78d55cb44af9fddc6160cf5b1217a4e9b3f"
     },
     "assets/personal-space/v2/characters/toon/companion/owl-work.webp": {
-      "bytes": 6728,
-      "sha256": "03562ed605f8d318b6810e1fb9ffbedc27d58dce5bdf23aa9c4743b54d260d95"
+      "bytes": 6902,
+      "sha256": "232c34330f4f08f9f60182188e761ae21bdcdd5b8a40ad6bf1fc294d7482e831"
     },
     "assets/personal-space/v2/characters/toon/protagonist/artist-celebrate-left.webp": {
       "bytes": 18076,
@@ -273,12 +273,12 @@
       "sha256": "04702d118bff54abb3fa4be27c23e608646c1ead4b1b7d5a9701a65243076868"
     },
     "assets/personal-space/v2/characters/toon/protagonist/artist-walk-left.webp": {
-      "bytes": 17170,
-      "sha256": "1bd91bf086f322d41c54f897916713d984eb1298e20384fce52eb63b609a4026"
+      "bytes": 17062,
+      "sha256": "1038472bb3b412026060d7e716a991423a16e9918b40a1486becc6b90b7c938d"
     },
     "assets/personal-space/v2/characters/toon/protagonist/artist-walk-right.webp": {
-      "bytes": 19020,
-      "sha256": "d080689a29b21e408ebdf64dae282cbf09be3bc9acecdb4f127eef16ae28999d"
+      "bytes": 18966,
+      "sha256": "402a3f3877e05ec58e57b1da914e489f171c4320d5bafcf1ca0e901a5d80966f"
     },
     "assets/personal-space/v2/characters/toon/protagonist/artist-work-left.webp": {
       "bytes": 17172,
@@ -321,12 +321,12 @@
       "sha256": "65113adf9f14384caf8767fee5701cd12e60a679f13978c7fb5e86ed32948283"
     },
     "assets/personal-space/v2/characters/toon/protagonist/hoodie-walk-left.webp": {
-      "bytes": 17722,
-      "sha256": "6cfab01f31a136c67498e0fa7076bada32877fafe035364d5fa550acf582ce8b"
+      "bytes": 17540,
+      "sha256": "4adebe53223cdc6f26fc5fbcce545d519eb45e23839750762579dc6f8c8970c7"
     },
     "assets/personal-space/v2/characters/toon/protagonist/hoodie-walk-right.webp": {
-      "bytes": 19028,
-      "sha256": "52c13327999a80d2a65bcd985a27476f440cc7e59a3da81088216bc300b66c82"
+      "bytes": 19022,
+      "sha256": "18a27e649bd1753a9d6b8b12b2cf96901b94d610f509bb395379d2823aab7a3d"
     },
     "assets/personal-space/v2/characters/toon/protagonist/hoodie-work-left.webp": {
       "bytes": 17422,
@@ -369,12 +369,12 @@
       "sha256": "7e3c16b75c1f8072bd1e8ee0ccc3a46c1f55bd1e50040b75968a0d803f746b69"
     },
     "assets/personal-space/v2/characters/toon/protagonist/office-walk-left.webp": {
-      "bytes": 15812,
-      "sha256": "6b027a27c5da41b0c30dde7c64439e69e79b1c0766dfdac455513394be716863"
+      "bytes": 15390,
+      "sha256": "d33399e7b10b9512827c54a8e79dda9295012a989b11be55003128cf3bb9a80b"
     },
     "assets/personal-space/v2/characters/toon/protagonist/office-walk-right.webp": {
-      "bytes": 16908,
-      "sha256": "65d156a5c6b5004e8820270866d604e1f971804dbe1fc6109636499183e14e8b"
+      "bytes": 16708,
+      "sha256": "1e64969aacfa0135abf7402c4de9a1376009fca55270af55311abcdfc6bd13fe"
     },
     "assets/personal-space/v2/characters/toon/protagonist/office-work-left.webp": {
       "bytes": 15278,
@@ -417,12 +417,12 @@
       "sha256": "390d2d98ab6f4082b8d1bebe0583117ebe70f495467179059ad0fe0bf2bb7653"
     },
     "assets/personal-space/v2/characters/toon/protagonist/scientist-walk-left.webp": {
-      "bytes": 16570,
-      "sha256": "c96e534171c30ff5a0aad22939d92cd57cf3d3f169f186f3fd2a1d7dfe8333fc"
+      "bytes": 15920,
+      "sha256": "e72f1899294a19626286178cf26afd1cdd41f2f417cfdc9296ad13115c43b4a0"
     },
     "assets/personal-space/v2/characters/toon/protagonist/scientist-walk-right.webp": {
-      "bytes": 17838,
-      "sha256": "84de3cf01d124c4d04b97c33c10c72205aa5718ffe037baec72b61d27dc8edc7"
+      "bytes": 18196,
+      "sha256": "341bc5a21b4b899d5f8bf3bfec70b6cff37f91a17194580f6ff1a8704fd12815"
     },
     "assets/personal-space/v2/characters/toon/protagonist/scientist-work-left.webp": {
       "bytes": 16046,
@@ -465,12 +465,12 @@
       "sha256": "439265270f07deb8a36f93b83eb24cdd7acac9198af7ebe9e74a30bb9a9c2433"
     },
     "assets/personal-space/v2/characters/toon/protagonist/sporty-walk-left.webp": {
-      "bytes": 16362,
-      "sha256": "7f291196a1d8de4c0ad61b61dc582000d44424c2e42e8374875247a145cd176f"
+      "bytes": 16490,
+      "sha256": "df8b5190a878eb01b875d74b79c4ae42b8f7835e89257203d0b28595429217a4"
     },
     "assets/personal-space/v2/characters/toon/protagonist/sporty-walk-right.webp": {
-      "bytes": 17726,
-      "sha256": "785cb42340d9d5455d20e9bda24f3b3d9553d0c5cc9781cd091cb37c7383a1a8"
+      "bytes": 17734,
+      "sha256": "40e81c7ea18e7d7b1be8735bd2afc5a98950666178fcb42ba3cca1e6c81d65b0"
     },
     "assets/personal-space/v2/characters/toon/protagonist/sporty-work-left.webp": {
       "bytes": 16110,
@@ -513,12 +513,12 @@
       "sha256": "c327b19c5084fff91ab80d6ae2570b8e7689f3d5bda7a3073a3861123b2f8095"
     },
     "assets/personal-space/v2/characters/toon/protagonist/sweater-walk-left.webp": {
-      "bytes": 15868,
-      "sha256": "a0e12bdef0c0ad7813c89c7779cb56d7f3a40d984c0a5753952e16770430764c"
+      "bytes": 16116,
+      "sha256": "e03123cd9c581ea105ab6ec9e19ce1a699086d2f225e35cdf513d758d0e934a6"
     },
     "assets/personal-space/v2/characters/toon/protagonist/sweater-walk-right.webp": {
-      "bytes": 17066,
-      "sha256": "70c4c4daae2c7d44ec2dc8e53bf43d5e23d3a3e30ee637b6407d533403b540b6"
+      "bytes": 17402,
+      "sha256": "e8d012a89affbde055029d5634fb242e12119bc2f2fbad81326ea53dcabd1ee2"
     },
     "assets/personal-space/v2/characters/toon/protagonist/sweater-work-left.webp": {
       "bytes": 15898,

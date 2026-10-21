@@ -8,7 +8,7 @@
  */
 
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -75,7 +75,14 @@ describe('PS-250C Q-style character catalog', () => {
     }
   });
 
-  it('keeps the set small: about 15 KB per protagonist and 9 KB per Companion', () => {
+  it('ships no other files in the Q-style folders', () => {
+    const onDisk = ['protagonist', 'companion'].flatMap(kind => readdirSync(
+      join(PWA, 'assets', 'personal-space', 'v2', 'characters', 'toon', kind),
+    ).map(name => `assets/personal-space/v2/characters/toon/${kind}/${name}`));
+    expect(onDisk.sort()).toEqual(Object.keys(outputs.files).sort());
+  });
+
+  it('keeps the set small: about 17 KB per protagonist and 7 KB per Companion', () => {
     const sizes = Object.entries(outputs.files);
     const protagonists = sizes.filter(([path]) => path.includes('/protagonist/'));
     const companions = sizes.filter(([path]) => path.includes('/companion/'));

@@ -47,13 +47,12 @@ def build_character(spec, pose):
     for side, sx in (('l', 1), ('r', -1)):
         hip = empty(f'hip_{side}', (sx * 0.065, 0, 0), hips)
         hip.rotation_euler = [D(a) for a in pose.get(f'leg_{side}', (0, 0, 0))]
-        upper = parent(capsule(f'thigh_{side}', 0.12, 0.05, m['pants']), hip)
+        parent(capsule(f'thigh_{side}', 0.12, 0.05, m['pants']), hip)
         knee = empty(f'knee_{side}', (0, 0, -0.12), hip)
         knee.rotation_euler = [D(a) for a in pose.get(f'knee_{side}', (0, 0, 0))]
         parent(capsule(f'shin_{side}', 0.12, 0.046, m['pants']), knee)
         ankle = empty(f'ankle_{side}', (0, 0, -0.13), knee)
         parent(rbox(f'shoe_{side}', (0.085, 0.13, 0.06), (0, -0.025, -0.015), m['shoes'], 0.025), ankle)
-        upper.name = upper.name
 
     # torso (jacket) with shirt, tie, belt
     chest = empty('chest', (0, 0, 0), hips)
@@ -225,7 +224,8 @@ POSES = {
                   'arm_l': (-20, -18, 0), 'elbow_l': (-110, 0, 0)},
     'rest': {'face': 'closed', 'mouth': 'smile', 'head': (-8, 0, 6),
              'arm_l': (-10, -150, 0), 'elbow_l': (0, -95, 0), 'arm_r': (-10, 150, 0), 'elbow_r': (0, 95, 0)},
-    'walk': {'face': 'neutral', 'mouth': 'smile', 'leg_l': (22, 0, 0), 'knee_l': (18, 0, 0), 'leg_r': (-25, 0, 0),
+    # Spread legs shorten the stance; drop the hips so both feet stay on the floor.
+    'walk': {'face': 'neutral', 'mouth': 'smile', 'lift': -0.025, 'leg_l': (22, 0, 0), 'knee_l': (18, 0, 0), 'leg_r': (-25, 0, 0),
              'knee_r': (10, 0, 0), 'arm_l': (-28, -10, 0), 'arm_r': (26, 10, 0), 'elbow_l': (-20, 0, 0), 'elbow_r': (-10, 0, 0)},
     'inspect': {'face': 'neutral', 'mouth': 'line', 'head': (14, 0, 0), 'notebook': True,
                 'arm_l': (-50, 22, 0), 'arm_r': (-50, -22, 0), 'elbow_l': (-55, 0, 0), 'elbow_r': (-55, 0, 0)},

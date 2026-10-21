@@ -246,13 +246,14 @@
   - In progress（2026-10-21）：
     - PS-250A 完成（v1.32.0）：`pwa/js/personalSpace/v2/ui/assetGallery.js`（新模組，只讀取 asset manifest 既有的 export）；設定頁開發者工具的勾選框寫入 `localStorage` 的 `orbit_dev_asset_gallery`；設定頁直接用這個 key，不 import 新模組（設定頁在啟動路徑上，INFRA-105）；「空間」頁面在勾選且為開發者模式時列出全部素材。
     - PS-250C 完成（2026-10-21）：先做 Q 版角色，PS-250B 再接，因為 PS-250B 要把預設改成全 Q 版，需要先有素材。
-      - `art-pipeline/ps250-characters/`：主角 6 套 × 6 個動作 × 左右，AI 夥伴 6 種 × 6 個狀態，共 108 張 WebP（品質 90、alpha 無損）。
+      - 管線與預覽圖在 `art-pipeline/ps250-characters/`；108 張 WebP（品質 90、alpha 無損）在 `pwa/assets/personal-space/v2/characters/toon/`：主角 6 套 × 6 個動作 × 左右，AI 夥伴 6 種 × 6 個狀態。
       - 主角畫布 512×512，地面點在 241/256，與像素主角相同；AI 夥伴畫布 256×256，置中。所以 placement 不用改。
       - `content/characterCatalog.js`（新模組）列出全部路徑，開發者總覽讀它。場景還不使用，也不預先快取。
     - 給 PS-250B 的備註：
       - `sw.js` 的圖片本來就是 cache-first，第一次 fetch 時存入快取，所以「其他選項按需快取」已經成立。PS-250B 要改的是：把 SHELL 的預設角色換成 Q 版；在 JS 端處理離線缺圖時退回預設（Pixi `Assets.load` 失敗、poster 的 `<img>` 載入失敗）。
       - 每次改版 activate 時會刪除舊的快取，所以按需快取的選項在改版後要重新下載；離線時會退回預設。
       - 預設改成 Q 版時，`build-manifest.mjs`、`ps211aPrecache` 與 PS-243 預算都會讀到 Q 版的 WebP：要確認 lossy＋alpha 的 WebP 能被 `build-manifest.mjs` 解析（提案記錄 lossless 會拋錯）。
+      - `ps211aPrecache.test.js` 的「只讀取 facing」名單整個放行了 `characterCatalog.js`；若 PS-250B 在那裡加入設定 facing 的邏輯，要重新檢查這個名單。
       - INFRA-105：`app.js`、`router.js` 直接 import `pixiSceneRuntime.js`（它再 import `assetManifest.js`），`home.js` import `controller.js` 與 `viewModels.js`，都在啟動路徑上。這些模組不能新增對其他模組的 import：跳過版本的使用者，舊快取中可能沒有那個模組（連 PS-250C 的 `characterCatalog.js` 也可能沒有），離線時整個 app 無法啟動。角色路徑的解析要寫在 `assetManifest.js` 自己裡面，以測試確保與 `characterCatalog.js` 一致；或由不在啟動路徑上的模組算好，當資料放進 model。
 
 - [ ] **PS-248** 以 Blender 擴充「空間」的主題與素材（提案）

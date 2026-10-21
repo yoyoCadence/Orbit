@@ -1,17 +1,22 @@
 """Turn PS-250C renders into runtime sprites, a hash list and QA previews.
 
 Usage:
-    python3 process_characters.py <render_dir> [--write-runtime] [--preview-dir DIR]
+    python3 process_characters.py <render_dir> [--write-runtime] [--reuse-committed]
+        [--preview-dir DIR]
 
 - Checks that nothing touches the canvas edge (a clipped pose or mark).
 - Adds a soft contact shadow under each protagonist at the ground point, so
   the figure stands on the floor; a jump (celebrate) leaves it on the ground.
 - Encodes every sprite as lossy WebP with a lossless alpha plane. At quality
   90 it cannot be told apart from the PNG at 2x zoom and is about a tenth of
-  the size (~15 KB per protagonist).
+  the size (~17 KB per protagonist, ~7 KB per Companion).
 - With --write-runtime, writes the sprites under pwa/ and outputs.json (ids,
   labels, canvas and SHA-256 of every file); otherwise only checks and
-  previews.
+  previews. Previews are always written, by default into the committed
+  previews/ folder.
+- With --reuse-committed, a sprite without a render keeps the committed
+  runtime file (hashed as it is on disk), so changing one character only
+  needs that character's renders.
 - Previews: every protagonist pose and Companion state on contact sheets, and
   the default pair in the phase-100 room at the runtime placements.
 
@@ -121,6 +126,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('render_dir')
     parser.add_argument('--write-runtime', action='store_true')
+    parser.add_argument('--reuse-committed', action='store_true')
     parser.add_argument('--preview-dir', default=os.path.join(HERE, 'previews'))
     args = parser.parse_args()
 
@@ -128,7 +134,14 @@ def main():
     for kind, name, path in expected():
         source = os.path.join(args.render_dir, kind, f'{name}.png')
         if not os.path.exists(source):
-            problems.append(f'missing render: {source}')
+            committed = os.path.join(PWA, path)
+            if not (args.reuse_committed and os.path.exists(committed)):
+                problems.append(f'missing render: {source}')
+                continue
+            with open(committed, 'rb') as fh:
+                data = fh.read()
+            sprites[name] = Image.open(io.BytesIO(data)).convert('RGBA')
+            files[path] = {'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest()}
             continue
         im = Image.open(source).convert('RGBA')
         canvas = PROTAGONIST_CANVAS if kind == 'protagonist' else COMPANION_CANVAS

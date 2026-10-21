@@ -18,15 +18,22 @@ import scene as S  # noqa: E402
 
 D = math.radians
 
-# Sprite framing. The protagonist canvas matches the room's texel density: it
-# is drawn at 24% of the frame, and 24% of the 1536 px room is ~369 px. The
-# ground point sits where the PS-242 pixel sprites put the feet (241/256), so
-# the runtime placement (centre-bottom anchor) needs no change.
+# Sprite framing. The protagonist is drawn at 24% of the frame, ~369 px of the
+# 1536 px room, so the 512 px canvas has about 1.4x the room's texel density
+# (the asset pipeline asks for 2x the runtime size). The ground point sits
+# where the PS-242 pixel sprites put the feet (241/256), so the runtime
+# placement (centre-bottom anchor) needs no change.
 PROTAGONIST_SIZE = 512
+PROTAGONIST_DRAWN = 0.24 * 1536
 PROTAGONIST_GROUND = (0.5, 241 / 256)
 PROTAGONIST_ORTHO = 1.16
 # The Companion is drawn centred at 13% of the frame (~200 px of the room).
 COMPANION_SIZE = 256
+COMPANION_DRAWN = 0.13 * 1536
+# The room's outline is 1.25 px at 1536; characters get a little more presence
+# (2.13 px on the protagonist canvas, 1.97 px on the Companion canvas).
+# Thickness is in canvas pixels, so it scales by how large the canvas is drawn.
+OUTLINE_IN_ROOM_PX = 1.536
 COMPANION_CENTRE_Z = 0.42
 COMPANION_ORTHO = 0.86
 
@@ -166,7 +173,7 @@ def boolean_cut(target, cutter):
     cutter.hide_viewport = True
 
 
-def setup(size, samples, ortho_scale, anchor_world, anchor_pixel):
+def setup(size, drawn, samples, ortho_scale, anchor_world, anchor_pixel):
     """An empty scene with the room's look and an orthographic camera.
 
     The camera looks along the canonical room camera's direction, so the
@@ -179,9 +186,7 @@ def setup(size, samples, ortho_scale, anchor_world, anchor_pixel):
     S.configure_render(scene, 1536, samples)
     scene.render.resolution_x = scene.render.resolution_y = size
     scene.render.film_transparent = True
-    # The room's outline is 1.25 px at 1536; characters are drawn at about the
-    # same density, so the stroke keeps that weight with a little more presence.
-    scene.render.line_thickness = 1.6 * size / 384
+    scene.render.line_thickness = OUTLINE_IN_ROOM_PX * size / drawn
     scene.view_layers[0].freestyle_settings.linesets[0].linestyle.alpha = 0.85
 
     world = bpy.data.worlds.new('world')
@@ -226,8 +231,10 @@ def setup(size, samples, ortho_scale, anchor_world, anchor_pixel):
 
 def protagonist_scene(samples):
     # The soles sit about 2 cm below the rig's origin.
-    return setup(PROTAGONIST_SIZE, samples, PROTAGONIST_ORTHO, (0, 0, -0.018), PROTAGONIST_GROUND)
+    return setup(PROTAGONIST_SIZE, PROTAGONIST_DRAWN, samples, PROTAGONIST_ORTHO, (0, 0, -0.018),
+                 PROTAGONIST_GROUND)
 
 
 def companion_scene(samples):
-    return setup(COMPANION_SIZE, samples, COMPANION_ORTHO, (0, 0, COMPANION_CENTRE_Z), (0.5, 0.5))
+    return setup(COMPANION_SIZE, COMPANION_DRAWN, samples, COMPANION_ORTHO, (0, 0, COMPANION_CENTRE_Z),
+                 (0.5, 0.5))
