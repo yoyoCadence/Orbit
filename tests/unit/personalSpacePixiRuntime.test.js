@@ -360,11 +360,69 @@ describe('Personal Space V2 Pixi scene runtime', () => {
     expect(room()).toMatch(/building-formal-workstation-room-pixel-night\.png$/);
     expect(layer()).toEqual({ color: 0x172449, alpha: 0.1 });
 
+    // Pixel night images keep hard edges like the day ones.
+    const pixelSprites = app().stage.children.filter(child => child.texture?.path.includes('/pixel/'));
+    expect(pixelSprites.length).toBe(1 + 7 + 2);
+    pixelSprites.forEach(sprite => expect(sprite.texture.source.scaleMode, sprite.texture.path).toBe('nearest'));
+
     await runtime.render({ activeProject: { progress: 100 }, timeBand: 'morning' });
     expect(room()).toMatch(/building-formal-workstation-room-v2\.webp$/);
     expect(props().some(path => path.endsWith('-night.png'))).toBe(false);
     expect(layer()).toEqual({ color: 0xf6d58b, alpha: 0.05 });
     runtime.destroy();
+  });
+
+  it('draws the day room under the full night layer when the night room cannot load (PS-250E1)', async () => {
+    const fake = createFakePixi();
+    const load = fake.pixi.Assets.load.getMockImplementation();
+    fake.pixi.Assets.load.mockImplementation(async requested => {
+      if (requested.some(path => /-night\.(png|webp)$/.test(path))) throw new Error('[Loader.load] offline');
+      return load(requested);
+    });
+    const runtime = createPixiSceneRuntime({ loadPixi: () => Promise.resolve(fake.pixi) });
+    const { host } = createRuntimeHost();
+    await runtime.mount(host, { activeProject: { progress: 100 }, timeBand: 'night', appearance: { style: 'pixel' } });
+    const app = fake.applications[0];
+    expect(runtime.getStatus()).toBe('ready');
+    expect(app.stage.children.find(child => child.zIndex === 0).texture.path)
+      .toMatch(/building-formal-workstation-room-v2\.webp$/);
+    const props = app.stage.children.filter(child => child.texture?.path.includes('/workspace/'))
+      .map(child => child.texture.path);
+    expect(props.every(path => !path.includes('-night') && !path.includes('/pixel/'))).toBe(true);
+    // The pixel characters stay; the layer is the one for a day room at night.
+    expect(app.stage.children.filter(child => child.texture?.path.includes('/characters/pixel/'))).toHaveLength(2);
+    expect(app.stage.children.find(child => child.zIndex === 80).fillStyle).toEqual({ color: 0x172449, alpha: 0.2 });
+    runtime.destroy();
+  });
+
+  it('keeps today\'s layer with an older manifest that returns no `lighting` (PS-250E1, INFRA-105)', async () => {
+    vi.resetModules();
+    vi.doMock('../../pwa/js/personalSpace/v2/content/assetManifest.js', async importOriginal => {
+      const actual = await importOriginal();
+      return {
+        ...actual,
+        getWorkspaceSceneAssets: (progress, overrides, visualState) => {
+          const { lighting, ...scene } = actual.getWorkspaceSceneAssets(progress, overrides, visualState);
+          expect(lighting).toBe('day');
+          return scene;
+        },
+      };
+    });
+    try {
+      const { createPixiSceneRuntime: createWithOlderManifest } = await import('../../pwa/js/personalSpace/v2/runtime/pixiSceneRuntime.js');
+      const fake = createFakePixi();
+      const runtime = createWithOlderManifest({ loadPixi: () => Promise.resolve(fake.pixi) });
+      const { host } = createRuntimeHost();
+      await runtime.mount(host, { activeProject: { progress: 100 }, timeBand: 'night' });
+      const app = fake.applications[0];
+      expect(app.stage.children.find(child => child.zIndex === 0).texture.path)
+        .toMatch(/building-formal-workstation-room-v2\.webp$/);
+      expect(app.stage.children.find(child => child.zIndex === 80).fillStyle).toEqual({ color: 0x172449, alpha: 0.2 });
+      runtime.destroy();
+    } finally {
+      vi.doUnmock('../../pwa/js/personalSpace/v2/content/assetManifest.js');
+      vi.resetModules();
+    }
   });
 
   it('draws the Q-style room when the pixel room cannot load, keeping the pixel characters (PS-250D)', async () => {

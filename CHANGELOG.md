@@ -9,7 +9,8 @@
 - **夜晚的房間（PS-250E1）**：傍晚與深夜（17:00–05:00）的「空間」改為夜晚版本，全 Q 版與全像素都有：
   - 同一個 Blender 場景、同一個相機重新打光：沒有陽光，後牆的 4 盞壁燈與燈罩是主要光源，窗外是深藍夜空與亮著的窗戶。以前的夜晚是白天的圖加上深藍色層，地板上還看得到陽光。
   - 房間與 8 件家具都有夜晚版本（Q 版 WebP／PNG、像素 PNG）。夜晚的影子朝畫面下方，所以每件夜晚家具有自己的裁切框與 placement，但家具仍在白天的位置。
-  - 夜晚房間上的色層改弱（Pixi alpha 0.2 → 0.1，poster 的 soft-light 層 opacity 0.5），只讓角色與天氣有夜晚感，房間不會暗兩次。早晨與白天維持原本的白天版本與色層。
+  - 夜晚房間上統一用較弱的深藍色層（Pixi alpha 0.1；poster 的 `--night` soft-light 層 opacity 0.5），只讓角色與天氣有夜晚感，房間不會暗兩次。深夜比原本弱（Pixi 0.2 → 0.1）；傍晚原本是暖色（Pixi `0xf6d58b` alpha 0.05、poster `--evening`），現在改成這層深藍。早晨與白天維持原本的白天版本與色層。
+  - 夜晚的圖片無法載入時（例如改版中斷又離線），poster 與 Pixi 最後退回白天的房間與家具（家具用白天的位置），不會空白。
   - 成就相框與照片在夜晚一起調暗（`brightness(0.65)`），否則會是房間裡最亮的東西。
   - 開發者的「全部 3D 資產」總覽也列出夜晚版本。
   - 管線：`art-pipeline/ps244-blender`（`--lighting night`）與 `art-pipeline/ps250-pixel`（`--lighting night`），預覽圖 `night-phase-*.jpg`、`room-night-phase-*.png`。
@@ -24,8 +25,8 @@
   - 每件夜晚家具的 placement 與 `placements.json` 的 `night` 一致，由自己的裁切框推導；位置調整以同樣的位移套用。
   - 像素夜晚家具與 Q 版夜晚家具同尺寸。
   - 預設的夜晚房間與家具在 SHELL 與 manifest 中，像素夜晚版本不在。
-  - poster：夜晚的色層與相框調暗；白天不變；換照片後仍調暗；舊的 manifest 時維持原本的色層。
-- `personalSpacePixiRuntime`：傍晚與深夜載入夜晚房間與家具、色層 alpha 0.1，早晨回到白天。
+  - poster：夜晚的色層與相框調暗；白天不變；換照片後仍調暗；舊的 manifest 時維持原本的色層；夜晚的圖片載入失敗時依序退回 Q 版夜晚、白天（家具換成白天的位置）。
+- `personalSpacePixiRuntime`：傍晚與深夜載入夜晚房間與家具、色層 alpha 0.1，像素夜晚版本以 nearest 取樣，早晨回到白天；夜晚房間載入失敗時畫白天的房間與完整的夜晚色層；舊的 manifest 時維持原本的色層。
 - `ps211aPrecache` 走過每個時段（poster 的圖 22 → 31 張）；`ps243AssetBudget` 新增夜晚的首次繪製。
 - e2e `sw-precache`：以固定的時間（12:00、22:00）離線重新載入，poster 都完整，夜晚是夜晚版本且相框調暗。
 

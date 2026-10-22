@@ -172,6 +172,8 @@ def write_placements(lighting, placements):
             data = json.load(fh)
     except FileNotFoundError:
         data = {}
+    if lighting != 'day' and 'props' not in data:
+        raise SystemExit('placements.json has no day placements: run the day pass first')
     section = {
         'background': BACKGROUND_PATHS[lighting],
         'props': {pid: {'path': prop_path(pid, lighting), **pl} for pid, pl in placements.items()},
@@ -238,8 +240,10 @@ def main():
         for prop_id, sprite in sprites.items():
             sprite.save(os.path.join(PWA, *prop_path(prop_id, lighting).split('/')), optimize=True)
         data = write_placements(lighting, placements)
-        if 'night' in data:
-            sync_asset_manifest(data)
+        if 'night' not in data:
+            raise SystemExit('PROP_DEFINITIONS not updated: placements.json has no night placements. '
+                             'Run --lighting night too.')
+        sync_asset_manifest(data)
 
     os.makedirs(args.preview_dir, exist_ok=True)
     for progress in PHASES:

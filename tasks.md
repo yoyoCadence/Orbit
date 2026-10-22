@@ -296,6 +296,7 @@
       - **執行時**：`getWorkspaceSceneAssets()` 的第四個參數 `{ timeBand }`，傍晚與深夜回傳夜晚版本與 `lighting: 'night'`。夜晚房間上的色層改弱（Pixi alpha 0.1、poster opacity 0.5），相框與照片以 `brightness(0.65)` 調暗。不讀 `visualState.timeBand`（舊 poster 配新 manifest 會變暗兩次）；舊 manifest 不回傳 `lighting`，新的呼叫端維持原本的色層。
       - **預先快取**：預設的夜晚背景與 8 件家具在 SHELL（+9 個檔案，約 537 KB）；manifest 29 → 38 個檔案；PS-243 新增夜晚的首次繪製（104,205 B）。
       - **驗收**：在實際 app、兩種 UI 主題（深紫、Liquid Glass）下，以 22:00、18:00、12:00 截圖 Pixi 與 poster；離線 e2e 以固定時間檢查日、夜的 poster 都完整。
+      - 離線：夜晚的圖片也無法載入時（改版中斷又離線），poster 與 Pixi 最後退回白天的房間與家具（家具用白天的 placement），不會空白（獨立 review 的 P2）。這時色層與相框仍是夜晚的設定（poster）。
       - 已知限制：
         - 檯燈與螢幕只在自己的輪廓內發光，不照亮桌面與牆（shadow catcher 只記錄陰影）。要光暈需另做疊加圖層。
         - 時段在每次 render 時計算，跨過 17:00 或 05:00 時下一次 render 才換版本（不新增計時器）。

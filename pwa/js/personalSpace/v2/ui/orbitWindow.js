@@ -39,6 +39,13 @@ export function renderOrbitWindow(inputModel = {}, options = {}) {
   // characters and weather, and the achievement frame is dimmed to match.
   const nightRoom = scene.lighting === 'night';
   const lightClass = nightRoom ? 'night' : model.timeBand;
+  // The day room is the last resort when a night image cannot load either
+  // (an interrupted update, offline): a night prop then becomes the day prop
+  // at the day placement, as before PS-250E1.
+  const day = nightRoom
+    ? getWorkspaceSceneAssets(model.activeProject.progress, model.placements, { ...model, appearance: null })
+    : null;
+  const dayProps = new Map((day?.props || []).map(entry => [entry.id, entry]));
   const fallbackProps = new Map(fallback.props.map(entry => [entry.id, entry.path]));
   // PS-250D: pixel images keep their hard pixel edges when scaled (CSS
   // image-rendering on [data-pixel-art]); a fallback image drops the marker.
@@ -69,8 +76,8 @@ export function renderOrbitWindow(inputModel = {}, options = {}) {
       <div class="orbit-window-stage-wrap">
         <button class="orbit-window-stage-action" type="button" data-orbit-open-world aria-label="進入完整 Personal Space">
           <span class="orbit-window-poster" aria-hidden="true">
-            <img class="orbit-window-background" src="${escapeHtml(scene.background)}" data-fallback-src="${escapeHtml(fallback.background)}"${pixelArt} alt="" draggable="false">
-            ${scene.props.map(entry => renderPosterProp(entry, fallbackProps.get(entry.id), pixelArt)).join('')}
+            <img class="orbit-window-background" src="${escapeHtml(scene.background)}" data-fallback-src="${escapeHtml(fallback.background)}"${day ? ` data-day-src="${escapeHtml(day.background)}"` : ''}${pixelArt} alt="" draggable="false">
+            ${scene.props.map(entry => renderPosterProp(entry, fallbackProps.get(entry.id), pixelArt, dayProps.get(entry.id))).join('')}
             <img
               class="orbit-window-protagonist"
               data-player-state="${escapeHtml(model.protagonist.state)}"
@@ -443,15 +450,25 @@ export function normalizeOrbitWindowModel(input = {}, renderMode) {
 // PS-250B: a chosen character that is neither cached nor reachable (offline)
 // shows the default character, which is precached. The pages mount right after
 // inserting the markup, before a load can fail, so the listener sees the error.
+// PS-250E1: a night room image then falls back once more, to the day room.
 function useFallbackWhenImagesFail(root) {
   root.querySelectorAll?.('img[data-fallback-src]').forEach(image => {
-    const fallbackSrc = image.dataset.fallbackSrc;
-    if (!fallbackSrc || image.getAttribute('src') === fallbackSrc) return;
-    image.addEventListener('error', () => {
-      // The fallback is a Q-style image: smooth scaling again.
+    const steps = [
+      { src: image.dataset.fallbackSrc },
+      { src: image.dataset.daySrc, style: image.dataset.dayStyle },
+    ].filter((step, index, all) => step.src
+      && step.src !== image.getAttribute('src')
+      && all.findIndex(other => other.src === step.src) === index);
+    if (!steps.length) return;
+    const next = () => {
+      const step = steps.shift();
+      // The fallbacks are Q-style images: smooth scaling again.
       image.removeAttribute('data-pixel-art');
-      image.setAttribute('src', fallbackSrc);
-    }, { once: true });
+      if (step.style) image.setAttribute('style', step.style);
+      image.setAttribute('src', step.src);
+      if (!steps.length) image.removeEventListener('error', next);
+    };
+    image.addEventListener('error', next);
   });
 }
 
@@ -523,8 +540,11 @@ function normalizeRevealKind(value, direction) {
   return ['small', 'medium', 'major'].includes(value) ? value : 'small';
 }
 
-function renderPosterProp(entry, fallbackSrc = entry.path, pixelArt = '') {
-  return `<img class="orbit-window-prop" src="${escapeHtml(entry.path)}" data-fallback-src="${escapeHtml(fallbackSrc)}"${pixelArt} alt="" draggable="false" style="${placementStyle(entry.placement)}">`;
+function renderPosterProp(entry, fallbackSrc = entry.path, pixelArt = '', day = null) {
+  const dayAttributes = day
+    ? ` data-day-src="${escapeHtml(day.path)}" data-day-style="${placementStyle(day.placement)}"`
+    : '';
+  return `<img class="orbit-window-prop" src="${escapeHtml(entry.path)}" data-fallback-src="${escapeHtml(fallbackSrc)}"${dayAttributes}${pixelArt} alt="" draggable="false" style="${placementStyle(entry.placement)}">`;
 }
 
 function placementStyle(placement = {}) {

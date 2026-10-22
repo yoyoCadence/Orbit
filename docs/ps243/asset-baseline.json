@@ -305,7 +305,7 @@
         },
         {
           "path": "pwa/js/personalSpace/v2/runtime/pixiSceneRuntime.js",
-          "bytes": 21892
+          "bytes": 22643
         },
         {
           "path": "pwa/js/personalSpace/v2/sessionAdapter.js",
@@ -333,22 +333,22 @@
         },
         {
           "path": "pwa/js/personalSpace/v2/ui/orbitWindow.js",
-          "bytes": 25560
+          "bytes": 26675
         },
         {
           "path": "pwa/js/personalSpace/v2/viewModels.js",
           "bytes": 26575
         }
       ],
-      "rawBytes": 247448,
-      "gzipBytes": 64823
+      "rawBytes": 249314,
+      "gzipBytes": 65440
     },
     "vendoredPixi": {
       "path": "pwa/vendor/pixi.js",
       "rawBytes": 796970,
       "gzipBytes": 225428
     },
-    "combinedGzipBytes": 290251,
+    "combinedGzipBytes": 290868,
     "budgetBytes": 307200,
     "result": "PASS"
   }

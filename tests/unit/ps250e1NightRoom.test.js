@@ -20,6 +20,7 @@ import {
   WORKSPACE_PROJECT_PHASES,
 } from '../../pwa/js/personalSpace/v2/content/assetManifest.js';
 import {
+  mountOrbitWindow,
   renderOrbitWindow,
   updateOrbitWindowAchievementPhoto,
 } from '../../pwa/js/personalSpace/v2/ui/orbitWindow.js';
@@ -182,6 +183,41 @@ describe('PS-250E1 night room', () => {
       expect(frame.hasAttribute('data-night-dim')).toBe(false);
       expect(frame.getAttribute('style')).toBeNull();
     }
+  });
+
+  it('falls back to the day room when a night image cannot load either (an interrupted update, offline)', () => {
+    const host = poster({ timeBand: 'night' });
+    const root = host.querySelector('[data-orbit-window]');
+    const cleanup = mountOrbitWindow(root, { runtime: { mount: vi.fn(() => Promise.resolve()), release: vi.fn() } });
+    const background = root.querySelector('.orbit-window-background');
+    // The default night room is its own default, so its fallback is the day room.
+    background.dispatchEvent(new Event('error'));
+    expect(background.getAttribute('src')).toBe(placements.background);
+    background.dispatchEvent(new Event('error'));
+    expect(background.getAttribute('src')).toBe(placements.background);
+
+    // A night prop becomes the day prop at the day placement.
+    const desk = root.querySelector(`.orbit-window-prop[src="${placements.night.props['corner-desk'].path}"]`);
+    desk.dispatchEvent(new Event('error'));
+    expect(desk.getAttribute('src')).toBe(placements.props['corner-desk'].path);
+    expect(desk.style.left).toBe(`${placements.props['corner-desk'].x}%`);
+    expect(desk.style.width).toBe(`${placements.props['corner-desk'].width}%`);
+    cleanup();
+
+    // A pixel night image falls back to the Q-style night image, then the day room.
+    const pixel = poster({ timeBand: 'evening', appearance: { style: 'pixel' } }).querySelector('[data-orbit-window]');
+    const stop = mountOrbitWindow(pixel, { runtime: { mount: vi.fn(() => Promise.resolve()), release: vi.fn() } });
+    const pixelRoom = pixel.querySelector('.orbit-window-background');
+    pixelRoom.dispatchEvent(new Event('error'));
+    expect(pixelRoom.getAttribute('src')).toBe(placements.night.background);
+    expect(pixelRoom.hasAttribute('data-pixel-art')).toBe(false);
+    pixelRoom.dispatchEvent(new Event('error'));
+    expect(pixelRoom.getAttribute('src')).toBe(placements.background);
+    stop();
+
+    // By day nothing changes: no second step.
+    const dayRoom = poster({ timeBand: 'day' }).querySelector('.orbit-window-background');
+    expect(dayRoom.hasAttribute('data-day-src')).toBe(false);
   });
 
   it('keeps the frame dimmed when the photo changes at night', () => {
