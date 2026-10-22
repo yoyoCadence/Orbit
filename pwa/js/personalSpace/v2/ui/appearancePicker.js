@@ -92,9 +92,11 @@ export function renderAppearancePicker(value, roomStyle, hiddenDecorations) {
   const pixelArt = style.id === 'pixel';
   const thumbnail = appearance => getWorkspaceSceneAssets(0, {}, { appearance });
   // An older page does not pass the hidden decorations, and an older
-  // assetManifest.js cannot draw them: no switches then.
-  const decorationPaths = new Map((getWorkspaceSceneAssets(100, {}, { appearance: choice }).decorations || [])
-    .map(entry => [entry.id, entry.path]));
+  // assetManifest.js cannot draw them: no switches then. Each switch shows
+  // the decoration of the chosen room (PS-250F2: each room has its own).
+  const decorationPaths = new Map((getWorkspaceSceneAssets(100, {}, { appearance: choice }, {
+    roomStyle: room ?? undefined,
+  }).decorations || []).map(entry => [entry.id, entry.path]));
   const hidden = Array.isArray(hiddenDecorations) ? hiddenDecorations : null;
   const decorations = hidden ? DECORATIONS.filter(option => decorationPaths.has(option.id)) : [];
   return `

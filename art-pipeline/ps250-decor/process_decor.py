@@ -43,6 +43,7 @@ import os
 import re
 import sys
 
+import numpy as np
 from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -70,6 +71,9 @@ DECOR = {
     'deco-coffee':     {'support': 'corner-desk', 'z': 25},
 }
 PREVIEW_PHASES = (0, 25, 50, 100)
+# render_pack.py --decor-boxes renders the box plus this ring; what lies past
+# it is not rendered, so `clipped` counts only the pixels within the ring.
+RENDERED_RING = 48
 
 
 def min_progress(decor_id):
@@ -185,6 +189,19 @@ def write_files(files):
             fh.write(blob)
 
 
+def reaches_ring(frame, box):
+    """Whether a shadow runs onto the outer edge of the rendered ring, so it
+    may continue past what was rendered (a few isolated specks are sampling
+    noise, which trim_prop drops anyway)."""
+    alpha = np.array(frame)[:, :, 3]
+    left, top = max(0, box[0] - RENDERED_RING), max(0, box[1] - RENDERED_RING)
+    right = min(Q.FRAME[0], box[2] + RENDERED_RING) - 1
+    bottom = min(Q.FRAME[1], box[3] + RENDERED_RING) - 1
+    edges = [alpha[top, left:right + 1], alpha[bottom, left:right + 1],
+             alpha[top:bottom + 1, left], alpha[top:bottom + 1, right]]
+    return sum(int((edge >= Q.ALPHA_FLOOR).sum()) for edge in edges) >= 8
+
+
 def process_style(args):
     """PS-250F2: a room style's decorations, cut to the default boxes."""
     sys.path.insert(0, os.path.join(HERE, '..', 'ps250-rooms'))
@@ -200,7 +217,11 @@ def process_style(args):
         frame = Q.lift_shadow_floor(Q.load_frame(os.path.join(args.render_dir, f'{decor_id}.png')),
                                     colours.get('shadow_floor', 0))
         sprite, own_box = Q.trim_prop(frame)
-        sprites[decor_id], clipped[decor_path(decor_id, lighting, style=style)] = Q.fit_to_box(sprite, own_box, box)
+        path = decor_path(decor_id, lighting, style=style)
+        sprites[decor_id], clipped[path] = Q.fit_to_box(sprite, own_box, box)
+        if reaches_ring(frame, box):
+            print(f'note: {path}: the shadow reaches the edge of the rendered ring; '
+                  f'clipped counts only the {RENDERED_RING} px around the box')
         pixel_sprites[decor_id] = P.process_prop(
             args.pixel_render_dir, decor_id, box, lighting, rooms.scene_folder(style, lighting),
             colours.get('pixel_shadow'), colours.get('shadow_floor', 0))

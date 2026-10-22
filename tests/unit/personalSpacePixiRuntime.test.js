@@ -403,17 +403,29 @@ describe('Personal Space V2 Pixi scene runtime', () => {
     const runtime = createPixiSceneRuntime({ loadPixi: () => Promise.resolve(fake.pixi) });
     const { host } = createRuntimeHost();
     const app = () => fake.applications[0];
+    // Where each decoration is drawn (960 x 640 logical stage), and where a
+    // scene entry says it should be.
     const decorations = () => app().stage.children
       .filter(child => child.label?.startsWith('orbit-decoration-'))
-      .map(child => ({ id: child.label.replace('orbit-decoration-', ''), path: child.texture.path, z: child.zIndex }));
-    const scene = getWorkspaceSceneAssets(100);
-
-    await runtime.mount(host, { activeProject: { progress: 100 } });
-    expect(decorations()).toEqual(scene.decorations.map(entry => ({
+      .map(child => ({
+        id: child.label.replace('orbit-decoration-', ''),
+        path: child.texture.path,
+        z: child.zIndex,
+        x: Math.round(child.x * 1000) / 1000,
+        y: Math.round(child.y * 1000) / 1000,
+      }));
+    const drawnAt = entries => entries.map(entry => ({
       id: entry.id,
       path: entry.path,
       z: entry.placement.z,
-    })));
+      x: Math.round(960 * entry.placement.x / 100 * 1000) / 1000,
+      y: Math.round(640 * entry.placement.y / 100 * 1000) / 1000,
+    }));
+    const scene = getWorkspaceSceneAssets(100);
+    const nightScene = getWorkspaceSceneAssets(100, {}, {}, { timeBand: 'night' });
+
+    await runtime.mount(host, { activeProject: { progress: 100 } });
+    expect(decorations()).toEqual(drawnAt(scene.decorations));
 
     await runtime.render({ activeProject: { progress: 100 }, world: { hiddenDecorations: ['deco-beanbag'] } });
     expect(decorations().map(entry => entry.id)).not.toContain('deco-beanbag');
@@ -442,12 +454,7 @@ describe('Personal Space V2 Pixi scene runtime', () => {
     await runtime.render({ activeProject: { progress: 100 }, timeBand: 'night', appearance: { style: 'pixel' } });
     expect(app().stage.children.find(child => child.zIndex === 0).texture.path)
       .toMatch(/building-formal-workstation-room-pixel-night\.png$/);
-    const nightScene = getWorkspaceSceneAssets(100, {}, {}, { timeBand: 'night' });
-    expect(decorations()).toEqual(nightScene.decorations.map(entry => ({
-      id: entry.id,
-      path: entry.path,
-      z: entry.placement.z,
-    })));
+    expect(decorations()).toEqual(drawnAt(nightScene.decorations));
     // A Q-style image on the pixel room is not sampled as pixel art.
     expect(app().stage.children.filter(child => child.label?.startsWith('orbit-decoration-'))
       .every(child => child.texture.source.scaleMode === 'linear')).toBe(true);
@@ -465,17 +472,28 @@ describe('Personal Space V2 Pixi scene runtime', () => {
     });
     expect(decorations().map(entry => entry.path)).toEqual(scene.decorations
       .filter(entry => entry.id !== 'deco-coffee').map(entry => entry.path));
+    // The night room loads but the night globe does not: only the globe
+    // steps down to the day one, at the day placement.
+    fake.pixi.Assets.load.mockImplementation(async requested => {
+      if (requested.some(path => path.endsWith('/deco-globe-night.png'))) throw new Error('[Loader.load] offline');
+      return load(requested);
+    });
+    await runtime.render({ activeProject: { progress: 100 }, timeBand: 'night' });
+    expect(app().stage.children.find(child => child.zIndex === 0).texture.path)
+      .toMatch(/building-formal-workstation-room-v2-night\.webp$/);
+    expect(decorations()).toEqual(drawnAt(nightScene.decorations.map(entry => (
+      entry.id === 'deco-globe' ? scene.decorations.find(day => day.id === 'deco-globe') : entry
+    ))));
+    expect(scene.decorations.find(day => day.id === 'deco-globe').placement)
+      .not.toEqual(nightScene.decorations.find(night => night.id === 'deco-globe').placement);
+
     // Neither the night room nor its decorations load: the day ones, at their own placements.
     fake.pixi.Assets.load.mockImplementation(async requested => {
       if (requested.some(path => /-night\.(png|webp)$/.test(path))) throw new Error('[Loader.load] offline');
       return load(requested);
     });
     await runtime.render({ activeProject: { progress: 100 }, timeBand: 'night', hiddenDecorations: ['deco-coffee'] });
-    expect(decorations()).toEqual(scene.decorations.filter(entry => entry.id !== 'deco-coffee').map(entry => ({
-      id: entry.id,
-      path: entry.path,
-      z: entry.placement.z,
-    })));
+    expect(decorations()).toEqual(drawnAt(scene.decorations.filter(entry => entry.id !== 'deco-coffee')));
     runtime.destroy();
   });
 

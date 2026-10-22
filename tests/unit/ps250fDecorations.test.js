@@ -257,9 +257,10 @@ describe('PS-250F1 decorations: scene', () => {
     expect(styled).toHaveLength(ROOM_STYLES.length * 6 * 2);
     expect(Object.keys(outputs.clipped).sort()).toEqual(styled.sort());
     // Most cuts drop a faint shadow tail (at most 366 pixels). The most is the
-    // night-owl floor lamp at night: the neon rail behind it casts the pole's
-    // shadow onto the near-black wall outside the box, where it cannot be
-    // seen (compared side by side). More than this would be a visible cut.
+    // night-owl floor lamp at night: mostly the pole's shadow, cast by the
+    // neon rail onto the near-black wall outside the box, where it cannot be
+    // seen (compared side by side), and a few rows of its base's contact
+    // shadow. More than this would be a visible cut.
     for (const [path, count] of Object.entries(outputs.clipped)) expect(count, path).toBeLessThan(1000);
   });
 
@@ -387,6 +388,15 @@ describe('PS-250F1 decoration switches', () => {
     const pixel = host.querySelector('[data-v2-appearance="decoration"] img');
     expect(pixel.getAttribute('src')).toContain('/pixel/decor/');
     expect(pixel.hasAttribute('data-pixel-art')).toBe(true);
+
+    // PS-250F2: the pictures are the chosen room's decorations.
+    for (const [roomStyle, style] of [['nightowl', null], ['washitsu', { style: 'pixel' }]]) {
+      host.innerHTML = renderAppearancePicker(style, roomStyle, []);
+      const pictures = [...host.querySelectorAll('[data-v2-appearance="decoration"] img')].map(image => image.getAttribute('src'));
+      expect(pictures).toEqual(getWorkspaceSceneAssets(100, {}, { appearance: style }, { roomStyle }).decorations
+        .map(entry => entry.path));
+      expect(pictures.every(src => src.includes(`/decor/styles/${roomStyle}/`))).toBe(true);
+    }
   });
 
   it('offers no switches to an older page or with an older manifest (INFRA-105)', async () => {

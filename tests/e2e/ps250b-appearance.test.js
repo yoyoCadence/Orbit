@@ -104,14 +104,22 @@ test.describe('PS-250B character style and choice', () => {
     await expect(home).toHaveAttribute('src', /workspace\/styles\/nordic\/background(-night)?\.webp$/);
     await expect.poll(() => home.evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true);
 
-    // A room style that cannot load falls back to the default room.
-    await page.route(/\/workspace\/styles\//, route => route.abort());
+    // A room style that cannot load falls back to the default room, and its
+    // decorations (PS-250F2) to the default room's.
+    await page.route(/\/workspace\/(decor\/)?styles\//, route => route.abort());
     const styleRequest = page.waitForRequest(/\/workspace\/styles\/nordic\//);
     await page.reload();
     await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
     await styleRequest;
     await expect(home).toHaveAttribute('src', /workspace\/backgrounds\/building-formal-workstation-room-v2(-night)?\.webp$/);
     await expect.poll(() => home.evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true);
+    // At 0% only the floor ones are shown.
+    const decorations = page.locator('[data-orbit-window] .orbit-window-decoration');
+    await expect(decorations).toHaveCount(2);
+    for (const decoration of await decorations.all()) {
+      await expect(decoration).toHaveAttribute('src', /\/workspace\/decor\/deco-[a-z-]+(-night)?\.png$/);
+      await expect.poll(() => decoration.evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true);
+    }
   });
 
   test('switches a decoration off and on in Edit Mode, on home too (PS-250F)', async ({ page }) => {
