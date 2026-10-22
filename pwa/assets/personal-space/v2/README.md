@@ -6,6 +6,7 @@ This folder contains only reviewed runtime outputs for the Building Formal Works
 - `art-pipeline/ps244-blender/`: the room and the furniture.
 - `art-pipeline/ps250-characters/`: the Q-style characters under `characters/toon/`. These have been the default characters since PS-250B.
 - `art-pipeline/ps250-pixel/`: the pixel style (PS-250D) under `workspace/pixel/` and `characters/pixel/`. The PS-242 characters under `characters/protagonist/` and `characters/companion/` are extra options in that style.
+- `art-pipeline/ps250-rooms/`: the room styles (PS-250E2) under `workspace/styles/<style>/` and `workspace/pixel/styles/<style>/`.
 
 ## Runtime contract
 

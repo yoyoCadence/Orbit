@@ -151,7 +151,9 @@ Each set has several protagonists and Companion forms. Added so far:
 - PS-250D: the pixel set. It contains a pixel room, eight pixel props, and the pixel version of every PS-250C character. The PS-242 pixel characters are extra options. One art pixel is four room pixels. Source: `art-pipeline/ps250-pixel/`.
 - PS-250E1: a night version of the room and the eight props, in both styles, shown in the evening and at night (17:00–05:00). It replaces the "night lighting overlay" above as the night look: the overlay stays, weaker, for the characters and weather. Source: `art-pipeline/ps244-blender/` (`--lighting night`) and `art-pipeline/ps250-pixel/`.
 
-Later PS-250 tasks add room styles (PS-250E2/E3: bright Nordic, Japanese, night-owl studio, dark-wood study, each by day and by night) and small furniture (PS-250F). Each one updates this list.
+- PS-250E2: room styles, chosen in Edit Mode. The first is bright Nordic (warm white walls, a sage wainscot, light oak and ash, black metal), in both styles, by day and by night. A room style keeps the camera, the furniture shapes and the lights and changes only materials, floor, outline colour, daylight ambient and backdrop, so its furniture shares the default room's placements. Source: `art-pipeline/ps250-rooms/` (style table: `ps244-blender/room_styles.py`).
+
+Later PS-250 tasks add the other room styles (PS-250E3: Japanese, night-owl studio, dark-wood study) and small furniture (PS-250F). Each one updates this list.
 
 ### 6.2 Workspace Upgrade Phases
 

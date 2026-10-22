@@ -2,7 +2,7 @@
 
 Usage:
     python3 process_pixel.py <render_dir> [--write-runtime] [--preview-dir DIR]
-                             [--lighting day|night]
+                             [--lighting day|night] [--style <room style>]
 
 - Room: composited over the PS-244 backdrop, reduced to its own 64-colour
   palette, scaled x4 with nearest neighbour to the 1536 x 1024 frame.
@@ -26,6 +26,10 @@ Usage:
   (<render_dir>/scene-night/), cropped to the Q-style night trim boxes
   ("night" in placements.json), with a -night suffix. outputs.json keeps the
   day files and characters; the characters have no night version.
+- --style <room style> (PS-250E2) processes only a room style's room and
+  props (<render_dir>/scene-<style>[-night]/), cut to the default Q-style
+  trim boxes of the same lighting, with the style's backdrop. The files go
+  under workspace/pixel/styles/<style>/ and into ps250-rooms/outputs.json.
 
 Requires Pillow and numpy.
 """
@@ -46,7 +50,7 @@ PWA = os.path.join(REPO, 'pwa')
 sys.path.insert(0, os.path.join(HERE, '..', 'ps244-blender'))
 sys.path.insert(0, os.path.join(HERE, '..', 'ps250-characters'))
 import catalog  # noqa: E402
-from process_pack import PROPS, backdrop  # noqa: E402
+from process_pack import PROPS, backdrop, lift_shadow_floor  # noqa: E402
 
 SCALE = 4
 FRAME = (1536, 1024)
@@ -81,6 +85,11 @@ PROTAGONIST_PLACEMENT = {'x': 58, 'y': 87, 'width': 24, 'anchor': 'center-bottom
 COMPANION_PLACEMENT = {'x': 69, 'y': 73, 'width': 13, 'anchor': 'center'}
 
 
+def hex_rgb(value):
+    value = value.lstrip('#')
+    return tuple(int(value[i:i + 2], 16) for i in (0, 2, 4))
+
+
 def quantize(rgb, colours):
     return rgb.quantize(colors=colours, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert('RGB')
 
@@ -99,12 +108,12 @@ def prop_path(prop_id, lighting):
     return f"{PROP_DIR}/{prop_id}{'-night' if lighting == 'night' else ''}.png"
 
 
-def process_room(render_dir, lighting='day'):
-    room = Image.open(os.path.join(render_dir, SCENE_DIRS[lighting], 'room.png')).convert('RGBA')
+def process_room(render_dir, lighting='day', folder=None, colours=None):
+    room = Image.open(os.path.join(render_dir, folder or SCENE_DIRS[lighting], 'room.png')).convert('RGBA')
     expected = (FRAME[0] // SCALE, FRAME[1] // SCALE)
     if room.size != expected:
         raise SystemExit(f'room render is {room.size}, expected {expected}')
-    canvas = backdrop(room.size).convert('RGBA')
+    canvas = backdrop(room.size, colours).convert('RGBA')
     canvas.alpha_composite(room)
     return upscale(quantize(canvas.convert('RGB'), ROOM_COLOURS))
 
@@ -115,15 +124,26 @@ def neighbours(mask):
                for dy in (-1, 0, 1) for dx in (-1, 0, 1) if dy or dx)
 
 
-def process_prop(render_dir, prop_id, bbox, lighting='day'):
-    render = Image.open(os.path.join(render_dir, SCENE_DIRS[lighting], f'{prop_id}.png')).convert('RGBA')
+def process_prop(render_dir, prop_id, bbox, lighting='day', folder=None, shadow=None, shadow_floor=0):
+    render = Image.open(os.path.join(render_dir, folder or SCENE_DIRS[lighting], f'{prop_id}.png')).convert('RGBA')
+    render = lift_shadow_floor(render, shadow_floor)
     left, top, right, bottom = bbox
     small_box = (left // SCALE, top // SCALE, math.ceil(right / SCALE), math.ceil(bottom / SCALE))
     rgba = np.array(render.crop(small_box))
     alpha = rgba[:, :, 3]
     solid = alpha >= SOLID_ALPHA
-    shadow = (alpha >= SHADOW_FLOOR) & ~solid
-    shadow &= neighbours(shadow | solid) >= 3
+    shade = (alpha >= SHADOW_FLOOR) & ~solid
+    shade &= neighbours(shade | solid) >= 3
+    # A light room style has its own shadow: the navy at two strong
+    # opacities reads as hard dark blocks on a pale floor.
+    if shadow:
+        colour = hex_rgb(shadow['colour'])
+        steps = shadow['levels']
+        levels = lambda a: np.select([a < limit for limit, _ in steps[:-1]], [value for _, value in steps[:-1]],
+                                     steps[-1][1])
+    else:
+        colour = SHADOW_COLOUR
+        levels = lambda a: np.where(a >= 110, SHADOW_LEVELS[1], SHADOW_LEVELS[0])
     out = np.zeros_like(rgba)
     if solid.any():
         # The palette comes from the solid pixels only: transparent and shadow
@@ -131,8 +151,8 @@ def process_prop(render_dir, prop_id, bbox, lighting='day'):
         solid_rgb = Image.fromarray(rgba[solid][:, :3].reshape(-1, 1, 3))
         out[solid, :3] = np.array(quantize(solid_rgb, PROP_COLOURS)).reshape(-1, 3)
         out[solid, 3] = 255
-    out[shadow, :3] = SHADOW_COLOUR
-    out[shadow, 3] = np.where(alpha[shadow] >= 110, SHADOW_LEVELS[1], SHADOW_LEVELS[0])
+    out[shade, :3] = colour
+    out[shade, 3] = levels(alpha[shade])
     big = upscale(Image.fromarray(out, 'RGBA'))
     dx, dy = left - small_box[0] * SCALE, top - small_box[1] * SCALE
     return big.crop((dx, dy, dx + right - left, dy + bottom - top))
@@ -185,8 +205,12 @@ def main():
     parser.add_argument('--write-runtime', action='store_true')
     parser.add_argument('--preview-dir', default=os.path.join(HERE, 'previews'))
     parser.add_argument('--lighting', choices=tuple(SCENE_DIRS), default='day')
+    parser.add_argument('--style', default='default')
     args = parser.parse_args()
     lighting = args.lighting
+    if args.style != 'default':
+        process_style(args)
+        return
 
     with open(PLACEMENTS, encoding='utf-8') as fh:
         placements = json.load(fh)
@@ -283,6 +307,46 @@ def main():
         room.convert('RGB').save(os.path.join(args.preview_dir, f'{prefix}-phase-{progress:03d}.png'), optimize=True)
     total = sum(entry['bytes'] for entry in files.values())
     print(f'{len(files)} files, {total:,} bytes')
+
+
+def process_style(args):
+    """PS-250E2: a room style's pixel room and props, cut to the default boxes."""
+    sys.path.insert(0, os.path.join(HERE, '..', 'ps250-rooms'))
+    import rooms
+    from room_styles import ROOM_STYLES
+    style, lighting = args.style, args.lighting
+    folder = rooms.scene_folder(style, lighting)
+    with open(PLACEMENTS, encoding='utf-8') as fh:
+        placements = json.load(fh)
+    placements = (placements if lighting == 'day' else placements[lighting])['props']
+    stage = (ROOM_STYLES[style].get('backdrop_night') if lighting == 'night' else None) or ROOM_STYLES[style].get('backdrop')
+    images = {rooms.background_path(style, lighting, pixel=True): process_room(args.render_dir, lighting, folder, stage)}
+    for prop_id in PROPS:
+        images[rooms.prop_path(style, prop_id, lighting, pixel=True)] = process_prop(
+            args.render_dir, prop_id, placements[prop_id]['bbox'], lighting, folder,
+            ROOM_STYLES[style].get('pixel_shadow'),
+            ROOM_STYLES[style].get('shadow_floor', 0))
+    files = {path: encode(image) for path, image in images.items()}
+    if args.write_runtime:
+        for path, blob in files.items():
+            target = os.path.join(PWA, *path.split('/'))
+            os.makedirs(os.path.dirname(target), exist_ok=True)
+            with open(target, 'wb') as fh:
+                fh.write(blob)
+        rooms.record(files)
+    preview_dir = args.preview_dir if args.preview_dir != os.path.join(HERE, 'previews') else rooms.PREVIEWS
+    os.makedirs(preview_dir, exist_ok=True)
+    room = images[rooms.background_path(style, lighting, pixel=True)].convert('RGBA')
+    for prop_id in sorted((p for p, spec in PROPS.items() if spec['min'] <= 100 <= spec['max']),
+                          key=lambda p: PROPS[p]['z']):
+        place(room, images[rooms.prop_path(style, prop_id, lighting, pixel=True)],
+              {**placements[prop_id], 'anchor': 'center-bottom'})
+    load = lambda path: Image.open(os.path.join(PWA, *path.split('/'))).convert('RGBA')
+    place(room, load(f'{PROTAGONIST_DIR}/office-idle-left.png'), {**PROTAGONIST_PLACEMENT, 'x': 58})
+    place(room, load(f'{COMPANION_DIR}/orbit-observe.png'), {**COMPANION_PLACEMENT, 'x': 69})
+    name = f"{style}{'-night' if lighting == 'night' else ''}-pixel-phase-100.png"
+    room.convert('RGB').save(os.path.join(preview_dir, name), optimize=True)
+    print(f'{len(files)} files, {sum(len(b) for b in files.values()):,} bytes')
 
 
 if __name__ == '__main__':

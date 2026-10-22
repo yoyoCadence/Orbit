@@ -124,7 +124,11 @@ export function createPixiSceneRuntime(options = {}) {
     };
     // PS-250E1: the time band picks the day or night room, as in the poster.
     const sceneOptions = { timeBand: renderModel.timeBand };
-    const chosen = getWorkspaceSceneAssets(project.progress || 0, placements, visualState, sceneOptions);
+    // PS-250E2: the room style; the fallback is the default room.
+    const chosen = getWorkspaceSceneAssets(project.progress || 0, placements, visualState, {
+      ...sceneOptions,
+      roomStyle: renderModel.selectedThemeId || renderModel.world?.selectedThemeId,
+    });
     const fallback = getWorkspaceSceneAssets(
       project.progress || 0,
       placements,

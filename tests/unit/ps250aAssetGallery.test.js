@@ -5,7 +5,7 @@
  * under its group, and is off unless the developer panel turned it on.
  */
 
-import { readdirSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -30,10 +30,16 @@ const PIXEL_FOLDERS = [
 ];
 const PIXEL_PATHS = PIXEL_FOLDERS.flatMap(folder => readdirSync(join(V2, ...folder.split('/')))
   .map(name => `assets/personal-space/v2/${folder}/${name}`));
+// PS-250E2: every room style file, in both character styles.
+const ROOM_STYLE_PATHS = Object.keys(JSON.parse(readFileSync(
+  join(V2, '..', '..', '..', '..', 'art-pipeline', 'ps250-rooms', 'outputs.json'),
+  'utf8',
+)).files);
 const ALL_PATHS = [...new Set([
   ...getWorkspaceAssetManifestPaths(),
   ...getToonCharacterPaths(),
   ...PIXEL_PATHS,
+  ...ROOM_STYLE_PATHS,
 ])].sort();
 
 describe('PS-250A developer asset gallery', () => {
@@ -51,7 +57,8 @@ describe('PS-250A developer asset gallery', () => {
     expect(listed.sort()).toEqual(ALL_PATHS);
     expect(new Set(listed).size).toBe(listed.length);
     expect(catalog.map(group => group.label)).toEqual([
-      '場景・房間', '家具', 'Q 版主角', 'Q 版 AI 夥伴', '像素場景・房間', '像素家具', '像素主角', '像素 AI 夥伴',
+      '場景・房間', '家具', '房間風格', 'Q 版主角', 'Q 版 AI 夥伴', '像素場景・房間', '像素家具', '像素房間風格',
+      '像素主角', '像素 AI 夥伴',
       '經典像素主角', '經典像素 AI 夥伴', '天氣特效',
     ]);
     expect(catalog.every(group => group.source)).toBe(true);

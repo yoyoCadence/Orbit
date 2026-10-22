@@ -1,0 +1,168 @@
+{
+  "schemaVersion": 1,
+  "taskId": "PS-250E2",
+  "files": {
+    "assets/personal-space/v2/workspace/pixel/styles/nordic/background-night.png": {
+      "bytes": 85864,
+      "sha256": "c7a1be254b16ee62a90cab248f887728b653303ab6504c0f142aaaad58c6a731"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/nordic/background.png": {
+      "bytes": 98003,
+      "sha256": "d97c676c9d1d1bb3c4b7539ec4da89f69c9d82827ba3ea1f5f2ec03c1e6f0e62"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/nordic/props/corner-desk-night.png": {
+      "bytes": 6122,
+      "sha256": "4ffd0827bf9050e26ded6a4158f45591840f0707bcc3881c994676b12cb0d52e"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/nordic/props/corner-desk.png": {
+      "bytes": 6347,
+      "sha256": "2cb6707e8cf22d3ec15d2be29ebf842d05e54b9115875635fa94dffa0c600147"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/nordic/props/desk-lamp-night.png": {
+      "bytes": 606,
+      "sha256": "a2c177e84f43c5d7404bf4ced3e60937ee0ed4f4d3b8adc7da9ed73102abf67c"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/nordic/props/desk-lamp.png": {
+      "bytes": 604,
+      "sha256": "eefffb855fedbb04cc98891c69fe5b8a1bbb3143e6904d12e9ec703a0c7fe203"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/nordic/props/dual-monitor-night.png": {
+      "bytes": 2313,
+      "sha256": "7f6e4ffdb631ea21d295a5abeefe325165ded0c6e1c8a478fe6d4991f8d8e583"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/nordic/props/dual-monitor.png": {
+      "bytes": 2371,
+      "sha256": "1ec66aaf8f71c15786da244eefc37bd2be06e06353ba9494c6d155da843aff08"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/nordic/props/office-chair-night.png": {
+      "bytes": 2837,
+      "sha256": "f70f868623bc87171d82d779ad7b6a2662ecca788db990139247240c0c512fa6"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/nordic/props/office-chair.png": {
+      "bytes": 2668,
+      "sha256": "09487e0e2ed265a3fd8daaa57d54d91cd49cfad166bfbf480c0448be5c56ae87"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/nordic/props/office-plant-night.png": {
+      "bytes": 3487,
+      "sha256": "5ed21c058e7d6c4815e2a3870365ae8bba747f812e0212c1546947b8172626de"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/nordic/props/office-plant.png": {
+      "bytes": 3907,
+      "sha256": "7eef05d33b9d5448546212a6b53d90f848c7c72f622f5fdc8418fca1ee6adbcd"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/nordic/props/office-shelf-night.png": {
+      "bytes": 12487,
+      "sha256": "cb340d0e9ca7af533d4c0d4e03b9d24bf64954d88426472372e7af1bd775653f"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/nordic/props/office-shelf.png": {
+      "bytes": 9640,
+      "sha256": "de7c7be75a9e0f1deaa02ff373626146765cf6c391450804c35edffcb299fae4"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/nordic/props/planning-board-night.png": {
+      "bytes": 4060,
+      "sha256": "b405a53f8edf3dfc1bed6c66eaf69bcc228f29ea7df840e4e4677cda767b03ac"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/nordic/props/planning-board.png": {
+      "bytes": 3667,
+      "sha256": "84e66716b14966a1d11eb78710d48dbf219816c529956bb36fd48a7bd81c7a65"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/nordic/props/single-monitor-night.png": {
+      "bytes": 1632,
+      "sha256": "5b3a7bb4cac94858925b20cd595c5b6a8fdfbd13b1fdee9ab1d50519860b7eec"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/nordic/props/single-monitor.png": {
+      "bytes": 1650,
+      "sha256": "a6956748981737521786086cc2411a83deec98a9003a673a27a03c5436c9cd5f"
+    },
+    "assets/personal-space/v2/workspace/styles/nordic/background-night.webp": {
+      "bytes": 69884,
+      "sha256": "7fb2c77b32ff2093edc599ab3639622442e8f9b15762111ec1a5bff154ac6d93"
+    },
+    "assets/personal-space/v2/workspace/styles/nordic/background.webp": {
+      "bytes": 58052,
+      "sha256": "2a0d683d464b350352099957bf4389ae838c11b429484dbfc9bffe83877474d5"
+    },
+    "assets/personal-space/v2/workspace/styles/nordic/props/corner-desk-night.png": {
+      "bytes": 71943,
+      "sha256": "dfc98a9e1c9c1310bb7ea66a1e1090c378f5cc00512ba9e03edcb0e828857524"
+    },
+    "assets/personal-space/v2/workspace/styles/nordic/props/corner-desk.png": {
+      "bytes": 59141,
+      "sha256": "e8c2bc7a2591423ca3e94efa9b66503ca1af9ece05ba0e70a4f61c3ebfe0a553"
+    },
+    "assets/personal-space/v2/workspace/styles/nordic/props/desk-lamp-night.png": {
+      "bytes": 5748,
+      "sha256": "b2c46519f5dd58d735e0c3765992b4b68113647d588b45fbc83ddaa7ab712af9"
+    },
+    "assets/personal-space/v2/workspace/styles/nordic/props/desk-lamp.png": {
+      "bytes": 5872,
+      "sha256": "da72ca48288545aafb6893de0342f159d01121b18f553419b1f98e6e1bbced8a"
+    },
+    "assets/personal-space/v2/workspace/styles/nordic/props/dual-monitor-night.png": {
+      "bytes": 25527,
+      "sha256": "017b445820a7452d2072fb331a477f5bccac5e63d944df5679537117f74cf0bd"
+    },
+    "assets/personal-space/v2/workspace/styles/nordic/props/dual-monitor.png": {
+      "bytes": 25660,
+      "sha256": "0a6527c66d237849c9fe0dcbe399d3810f0a98504ced86460002c502332fb3ab"
+    },
+    "assets/personal-space/v2/workspace/styles/nordic/props/office-chair-night.png": {
+      "bytes": 26255,
+      "sha256": "8682c09f1a9c54b5f213c9625f3023ab0c9b38ffde7bd3228c64a56c6fb969a2"
+    },
+    "assets/personal-space/v2/workspace/styles/nordic/props/office-chair.png": {
+      "bytes": 23430,
+      "sha256": "470f4d46fb60359f5be1c9edfcafd74d3210bbe06fa53de15e582edb80cdccd5"
+    },
+    "assets/personal-space/v2/workspace/styles/nordic/props/office-plant-night.png": {
+      "bytes": 29324,
+      "sha256": "cff2cb0fdff52ca2d0693bde7192d95855dff49bb56766a096d23962b74ef176"
+    },
+    "assets/personal-space/v2/workspace/styles/nordic/props/office-plant.png": {
+      "bytes": 48054,
+      "sha256": "ee16dd71810c9bd2b017716ce65a52e99bca5c32148942dcfb2ea78b77ef64b0"
+    },
+    "assets/personal-space/v2/workspace/styles/nordic/props/office-shelf-night.png": {
+      "bytes": 137029,
+      "sha256": "05dbb4fe3cf8f91d50674f85136501e950c36176781f73d03ab3b5a6373ba535"
+    },
+    "assets/personal-space/v2/workspace/styles/nordic/props/office-shelf.png": {
+      "bytes": 90315,
+      "sha256": "85cee25fdbb54fa668abee83bdc764d66b0da7d46c5fc5a347eb338071049849"
+    },
+    "assets/personal-space/v2/workspace/styles/nordic/props/planning-board-night.png": {
+      "bytes": 46672,
+      "sha256": "edec37e815be909a2c558bfc47cac89bf4a4ae2c6a0f4207a5ac3b2a2cb036cb"
+    },
+    "assets/personal-space/v2/workspace/styles/nordic/props/planning-board.png": {
+      "bytes": 38539,
+      "sha256": "af45299ea362a72cf4a6738104ab4ceaac08e511c5554cd6af11ad5033a427d4"
+    },
+    "assets/personal-space/v2/workspace/styles/nordic/props/single-monitor-night.png": {
+      "bytes": 15661,
+      "sha256": "4f5f155c1145aa41671d987ac921c1876b8ff5a924b0e6f7a5ae0f7307576e02"
+    },
+    "assets/personal-space/v2/workspace/styles/nordic/props/single-monitor.png": {
+      "bytes": 15895,
+      "sha256": "132b3d5565b35a7f4d56312d1696dc0678402a60545ce7d46477d381fe0bb270"
+    }
+  },
+  "clipped": {
+    "assets/personal-space/v2/workspace/styles/nordic/props/corner-desk-night.png": 0,
+    "assets/personal-space/v2/workspace/styles/nordic/props/corner-desk.png": 0,
+    "assets/personal-space/v2/workspace/styles/nordic/props/desk-lamp-night.png": 0,
+    "assets/personal-space/v2/workspace/styles/nordic/props/desk-lamp.png": 0,
+    "assets/personal-space/v2/workspace/styles/nordic/props/dual-monitor-night.png": 0,
+    "assets/personal-space/v2/workspace/styles/nordic/props/dual-monitor.png": 0,
+    "assets/personal-space/v2/workspace/styles/nordic/props/office-chair-night.png": 0,
+    "assets/personal-space/v2/workspace/styles/nordic/props/office-chair.png": 0,
+    "assets/personal-space/v2/workspace/styles/nordic/props/office-plant-night.png": 0,
+    "assets/personal-space/v2/workspace/styles/nordic/props/office-plant.png": 0,
+    "assets/personal-space/v2/workspace/styles/nordic/props/office-shelf-night.png": 0,
+    "assets/personal-space/v2/workspace/styles/nordic/props/office-shelf.png": 0,
+    "assets/personal-space/v2/workspace/styles/nordic/props/planning-board-night.png": 0,
+    "assets/personal-space/v2/workspace/styles/nordic/props/planning-board.png": 0,
+    "assets/personal-space/v2/workspace/styles/nordic/props/single-monitor-night.png": 0,
+    "assets/personal-space/v2/workspace/styles/nordic/props/single-monitor.png": 0
+  }
+}

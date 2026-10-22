@@ -24,11 +24,15 @@ export function renderOrbitWindow(inputModel = {}, options = {}) {
   const model = normalizeOrbitWindowModel(inputModel, options.renderMode);
   // PS-250E1: the time band picks the day or night room. It is passed as its
   // own option: the model also reaches the manifest as visualState.
+  // PS-250E2: so is the room style (world.selectedThemeId).
   const sceneOptions = { timeBand: model.timeBand };
-  const scene = getWorkspaceSceneAssets(model.activeProject.progress, model.placements, model, sceneOptions);
-  // PS-250B/D: only the default style is precached. A chosen character, or
-  // the pixel room and props, that is not cached yet falls back to the
-  // default when it cannot load.
+  const scene = getWorkspaceSceneAssets(model.activeProject.progress, model.placements, model, {
+    ...sceneOptions,
+    roomStyle: model.selectedThemeId,
+  });
+  // PS-250B/D/E2: only the default style and room are precached. A chosen
+  // character, room style, or the pixel room and props, that is not cached
+  // yet falls back to the default when it cannot load.
   const fallback = getWorkspaceSceneAssets(
     model.activeProject.progress,
     model.placements,
@@ -443,6 +447,7 @@ export function normalizeOrbitWindowModel(input = {}, renderMode) {
     weather: input.weather === 'rain' ? 'rain' : 'clear',
     placements: input.placements || input.world?.placements || {},
     appearance: input.appearance || input.world?.appearance || null,
+    selectedThemeId: input.selectedThemeId || input.world?.selectedThemeId || null,
     achievementPhoto: normalizeAchievementPhoto(input.achievementPhoto),
   };
 }

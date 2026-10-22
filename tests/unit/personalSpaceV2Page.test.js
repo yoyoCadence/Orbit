@@ -296,6 +296,43 @@ describe('Personal Space V2 full page', () => {
     cleanup();
   });
 
+  it('lets Edit Mode choose the room style, stored in world.selectedThemeId and drawn at once (PS-250E2)', () => {
+    const source = v2State();
+    savePersonalSpaceV2State('user-1', source);
+    const mountWindow = vi.fn(() => () => {});
+    const cleanup = renderPersonalSpaceV2(container, {
+      user: coreState().user,
+      coreState: coreState(),
+      reconcile: () => controllerResult(loadPersonalSpaceV2State('user-1')),
+      mountWindow,
+      destroyRuntime: vi.fn(),
+      effectiveDate: '2026-07-17',
+    });
+    const room = () => container.querySelector('.orbit-window-background').getAttribute('src');
+    expect(room()).not.toContain('/styles/');
+    container.querySelector('[data-v2-mode="edit"]').click();
+    expect(container.querySelector('[data-v2-appearance="room"][aria-pressed="true"]').dataset.value).toBe('default');
+
+    container.querySelector('[data-v2-appearance="room"][data-value="nordic"]').click();
+    const saved = loadPersonalSpaceV2State('user-1');
+    expect(saved.world.selectedThemeId).toBe('nordic');
+    // An unchosen look stays unchosen, and a room is not a world change.
+    expect(saved.world.appearance).toEqual(source.world.appearance ?? null);
+    expect(saved.worldRevision).toBe(source.worldRevision);
+    expect(saved.rewardLedger).toEqual(source.rewardLedger);
+    expect(room()).toContain('/workspace/styles/nordic/background');
+    expect(document.activeElement).toBe(container.querySelector('[data-v2-appearance="room"][data-value="nordic"]'));
+    expect(mountWindow.mock.calls.at(-1)[1].model.selectedThemeId).toBe('nordic');
+
+    // The pixel style draws the pixel version of the same room.
+    container.querySelector('[data-v2-appearance="style"][data-value="pixel"]').click();
+    expect(room()).toContain('/workspace/pixel/styles/nordic/background');
+    container.querySelector('[data-v2-appearance="room"][data-value="default"]').click();
+    expect(loadPersonalSpaceV2State('user-1').world.selectedThemeId).toBe('default');
+    expect(room()).toContain('/workspace/pixel/backgrounds/');
+    cleanup();
+  });
+
   it('AI-203B: re-renders into the reminder when the daily window opens, and stops after cleanup', () => {
     vi.useFakeTimers();
     try {

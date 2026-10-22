@@ -2,7 +2,7 @@
 
 Usage:
     python3 process_pack.py <render_dir> [--write-runtime] [--preview-dir DIR]
-                            [--lighting day|night]
+                            [--lighting day|night] [--style <room style>]
 
 - Composites room.png over the designed backdrop and encodes the background
   WebP (1536x1024).
@@ -20,6 +20,12 @@ Usage:
   "night" in placements.json (each night prop has its own trim box, since its
   shadows fall another way) and the day data is kept as it is. Previews are
   night-phase-XXX.jpg.
+- --style <room style> (PS-250E2) processes a render of another room style
+  (scene.ROOM_STYLES). Each prop is cut to the default style's trim box of the
+  same lighting, so every style shares one set of placements; pixels the cut
+  drops are counted in ps250-rooms/outputs.json. The files go under
+  workspace/styles/<style>/ and the previews into ps250-rooms/previews/.
+  placements.json and PROP_DEFINITIONS are not touched.
 
 Requires Pillow and numpy.
 """
@@ -27,6 +33,9 @@ import argparse
 import json
 import os
 import re
+
+import io
+import sys
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
@@ -82,14 +91,54 @@ PHOTO_FRAME = {'left': 47, 'top': 20, 'width': 86 / 960 * 100}
 PHOTO_FRAME_NIGHT_BRIGHTNESS = 0.65
 
 
-def backdrop(size):
-    """Soft navy stage behind the cut-away diorama."""
+def hex_rgb(value):
+    value = value.lstrip('#')
+    return tuple(int(value[i:i + 2], 16) for i in (0, 2, 4))
+
+
+def backdrop(size, colours=None):
+    """Soft stage behind the cut-away diorama: navy, or a room style's colours."""
+    base_colour, glow_colour = ((hex_rgb(colours[0]), hex_rgb(colours[1])) if colours
+                                else ((14, 19, 41), (36, 48, 92)))
     w, h = size
-    base = Image.new('RGB', size, (14, 19, 41))
+    base = Image.new('RGB', size, base_colour)
     glow = Image.new('L', size, 0)
     ImageDraw.Draw(glow).ellipse((int(w * 0.08), int(h * 0.05), int(w * 0.92), int(h * 1.05)), fill=110)
     glow = glow.filter(ImageFilter.GaussianBlur(w * 0.08))
-    return Image.composite(Image.new('RGB', size, (36, 48, 92)), base, glow)
+    return Image.composite(Image.new('RGB', size, glow_colour), base, glow)
+
+
+def lift_shadow_floor(im, floor):
+    """Drops a light room's faint shadow wash: alpha below `floor` goes, the
+    rest is rescaled so contact shadows keep their shape.
+
+    In a light room every prop darkens a wide area of the floor and wall a
+    little (alpha 30-55: the bright daylight ambient, or lamp light bounced
+    off pale walls at night); in the navy room that stays under ALPHA_FLOOR,
+    on a pale floor it shows as a grey rectangle at the cut.
+    """
+    if not floor:
+        return im
+    rgba = np.array(im)
+    alpha = rgba[:, :, 3].astype(np.float32)
+    solid = alpha >= CORE_ALPHA
+    lifted = np.clip((alpha - floor) * 255 / (255 - floor), 0, 255)
+    rgba[:, :, 3] = np.where(solid, alpha, lifted).astype(np.uint8)
+    return Image.fromarray(rgba, 'RGBA')
+
+
+def fit_to_box(sprite, own_box, box):
+    """Places a trimmed sprite on the canvas of another trim box.
+
+    Returns the sprite cut to `box` and how many of its visible pixels fell
+    outside (sampling noise, or a style's outline a pixel wider).
+    """
+    left, top, right, bottom = box
+    canvas = Image.new('RGBA', (right - left, bottom - top), (0, 0, 0, 0))
+    canvas.paste(sprite, (own_box[0] - left, own_box[1] - top))
+    visible = int((np.array(sprite)[:, :, 3] >= ALPHA_FLOOR).sum())
+    kept = int((np.array(canvas)[:, :, 3] >= ALPHA_FLOOR).sum())
+    return canvas, visible - kept
 
 
 def load_frame(path):
@@ -217,8 +266,12 @@ def main():
     parser.add_argument('--write-runtime', action='store_true')
     parser.add_argument('--preview-dir', default=os.path.join(HERE, 'previews'))
     parser.add_argument('--lighting', choices=('day', 'night'), default='day')
+    parser.add_argument('--style', default='default')
     args = parser.parse_args()
     lighting = args.lighting
+    if args.style != 'default':
+        process_style(args)
+        return
 
     room = load_frame(os.path.join(args.render_dir, 'room.png'))
     background = backdrop(FRAME).convert('RGBA')
@@ -261,6 +314,64 @@ def main():
         canvas.convert('RGB').resize((768, 512), Image.LANCZOS).save(
             os.path.join(args.preview_dir, f'{prefix}phase-{progress:03d}.jpg'), quality=86)
     print(json.dumps({pid: {k: v for k, v in pl.items() if k != 'bbox'} for pid, pl in placements.items()}, indent=1))
+
+
+def process_style(args):
+    """PS-250E2: one room style, cut to the default style's trim boxes."""
+    sys.path.insert(0, os.path.join(HERE, '..', 'ps250-rooms'))
+    import rooms
+    from room_styles import ROOM_STYLES
+    style, lighting = args.style, args.lighting
+    colours = ROOM_STYLES[style]
+    with open(PLACEMENTS, encoding='utf-8') as fh:
+        data = json.load(fh)
+    boxes = data if lighting == 'day' else data[lighting]
+
+    room = load_frame(os.path.join(args.render_dir, 'room.png'))
+    stage = (colours.get('backdrop_night') if lighting == 'night' else None) or colours.get('backdrop')
+    background = backdrop(FRAME, stage).convert('RGBA')
+    background.alpha_composite(room)
+    background = background.convert('RGB')
+    sprites, clipped = {}, {}
+    for prop_id in PROPS:
+        frame = lift_shadow_floor(load_frame(os.path.join(args.render_dir, f'{prop_id}.png')),
+                                  colours.get('shadow_floor', 0))
+        sprite, own_box = trim_prop(frame)
+        sprites[prop_id], clipped[rooms.prop_path(style, prop_id, lighting)] = fit_to_box(
+            sprite, own_box, tuple(boxes['props'][prop_id]['bbox']))
+
+    if args.write_runtime:
+        files = {}
+        buffer = io.BytesIO()
+        background.save(buffer, 'WEBP', quality=86, method=6)
+        files[rooms.background_path(style, lighting)] = buffer.getvalue()
+        for prop_id, sprite in sprites.items():
+            buffer = io.BytesIO()
+            sprite.save(buffer, 'PNG', optimize=True)
+            files[rooms.prop_path(style, prop_id, lighting)] = buffer.getvalue()
+        for path, blob in files.items():
+            target = os.path.join(PWA, *path.split('/'))
+            os.makedirs(os.path.dirname(target), exist_ok=True)
+            with open(target, 'wb') as fh:
+                fh.write(blob)
+        rooms.record(files, clipped)
+
+    preview_dir = args.preview_dir if args.preview_dir != os.path.join(HERE, 'previews') else rooms.PREVIEWS
+    os.makedirs(preview_dir, exist_ok=True)
+    for progress in PHASES:
+        canvas = background.convert('RGBA')
+        layers = [(PROPS[pid]['z'], pid) for pid in PROPS
+                  if PROPS[pid]['min'] <= progress <= PROPS[pid]['max']]
+        for _, pid in sorted(layers):
+            pl = boxes['props'][pid]
+            place(canvas, sprites[pid], pl['x'], pl['y'], pl['width'])
+        for spec in CHARACTERS.values():
+            sprite = Image.open(os.path.join(PWA, *spec['path']['night'].split('/'))).convert('RGBA')
+            place(canvas, sprite, spec['x'](progress), spec['y'], spec['width'], spec['anchor'])
+        draw_photo_frame(canvas, PHOTO_FRAME_NIGHT_BRIGHTNESS if lighting == 'night' else 1.0)
+        name = f"{style}{'-night' if lighting == 'night' else ''}-phase-{progress:03d}.jpg"
+        canvas.convert('RGB').resize((768, 512), Image.LANCZOS).save(os.path.join(preview_dir, name), quality=86)
+    print(json.dumps({path: count for path, count in clipped.items() if count}, indent=1))
 
 
 if __name__ == '__main__':

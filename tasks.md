@@ -288,8 +288,20 @@
         - poster 的房間與家具也帶 `data-fallback-src`。
         - Pixi 把房間（含家具）、主角、夥伴分成三部分載入，只把載入失敗的部分換成 Q 版。
       - **預先快取**：全像素都不預先快取。
-    - 下一步：PS-250E2（房間風格的基礎＋明亮北歐）→ PS-250E3（日式和風、夜貓工作室、深木書房）→ PS-250F（小家具）。
-    - PS-250E2 進行中（2026-10-22）。
+    - PS-250E2 完成（2026-10-22，v1.36.0）：
+      - **風格表**：`art-pipeline/ps244-blender/room_styles.py`。每個房間風格是同一個場景、相機、家具造型與燈光，只換材質（顏色、粗糙度、金屬、光澤或發光）、地板、描邊色、白天的環境光與背景色。`default` 不變。
+      - **管線**：`render_pack.py`／`process_pack.py`／`render_pixel.py`／`process_pixel.py` 新增 `--style`；路徑與 `outputs.json` 在 `art-pipeline/ps250-rooms/`。
+        - 家具裁成預設房間同一時段的框，所以所有風格共用 `PROP_DEFINITIONS`。
+        - 淺色房間的家具在亮的環境光與牆面反光下，周圍會有一大片很淡的陰影（alpha 30–55），在共用的框邊緣變成灰色的長方形。`shadow_floor`（北歐 56）去掉這層，接觸陰影保留；沒有它，夜晚會裁掉約 13.5 萬個像素。
+        - 淺色房間的像素陰影用較淡的暖灰（`pixel_shadow`）；夜晚用深色的背景色（`backdrop_night`）。
+      - **明亮北歐**：Q 版＋像素、白天＋夜晚，36 個檔案，約 1.04 MB。
+      - **執行時**：
+        - `getWorkspaceSceneAssets()` 的第四個參數加上 `roomStyle`，回傳 `roomStyle`；不認得的值（包括 legacy 的 `night`）畫預設房間。
+        - poster 與 Pixi 從 model 的 `selectedThemeId`（view model 本來就有）傳入；退回對象是預設房間。
+        - 沒有新增 import；開發者總覽自己列出風格 id，不 import 選擇介面的新 export（INFRA-105）。
+      - **選擇**：Edit Mode 的「風格、房間與角色」新增「房間」（3:2 縮圖），寫入既有的 `world.selectedThemeId`。這個欄位舊版本也保留，所以混用時不會遺失。
+      - **快取**：房間風格不預先快取，第一次顯示時下載。
+    - 下一步：PS-250E3（日式和風、夜貓工作室、深木書房；渲染已在進行）→ PS-250F（小家具）。
     - PS-250E1 完成（2026-10-21，v1.35.0）：
       - **渲染**：`scene.py` 的 `lighting='night'`：同一個場景與相機，沒有太陽，4 盞壁燈是主要光源、燈罩發光，補光與 world 調暗，窗外是深藍夜空與一半亮著的窗戶。白天的檔案、placement 與預覽圖不變。
       - **家具**：夜晚的影子朝畫面下方，每件夜晚家具有自己的裁切框與 placement（`placements.json` 的 `night`，`PROP_DEFINITIONS` 的第四個參數），draw order 與白天相同。書架在夜晚會遮住後牆的燈光，裁切框較大（218 KB）。

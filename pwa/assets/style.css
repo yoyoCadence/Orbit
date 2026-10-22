@@ -6605,6 +6605,18 @@ html.has-bg[data-ui-skin="modern"] .levelup-box {
   object-fit: contain;
 }
 
+/* PS-250E2: room thumbnails are 3:2. */
+.personal-space-v2-appearance-rooms {
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+}
+
+.personal-space-v2-appearance-rooms img {
+  max-width: 108px;
+  aspect-ratio: 3 / 2;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
 .personal-space-v2-dock {
   position: sticky;
   bottom: calc(66px + var(--sab));
