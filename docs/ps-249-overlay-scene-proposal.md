@@ -93,7 +93,8 @@
 
 ### 3.3 Reveal 計時與畫面（程式碼）
 
-- **計時**：reveal 計時（`syncRevealClock()`）只在分頁可見且 Orbit Window 在可視區時走，否則暫停並保留剩餘時間。它不看任何 overlay，包括 Focus overlay。`reward_reveal_started` 在計時第一次開始時送出（以 event id 去重）。
+- **計時**：reveal 計時（`syncRevealClock()`）只在分頁可見且 Orbit Window 在可視區時走，否則暫停並保留剩餘時間。它不看任何 overlay，包括 Focus overlay。
+  - 「在可視區」來自與場景共用的 `IntersectionObserver`，`rootMargin: '160px'`（為了提早啟動場景）：Orbit Window 在畫面外 160 px 以內仍算在可視區，計時照走。`reward_reveal_started` 在計時第一次開始時送出（以 event id 去重）。
 - **畫面**：reveal 的畫面由 markup 上的 class 決定：
   - `is-revealing`、`orbit-window--reveal-<kind>`；
   - 看得到的部分：獎勵條上升、進度條的光暈、`medium` 的外框（`.orbit-window-stage-wrap::after`），以及 `major` 的 `.orbit-window-major-reveal` 橫幅（`position: fixed`、`inset: 0`、z 1200、`pointer-events: none`，6 秒的 CSS 動畫，最深 86% 的深藍）；
@@ -150,6 +151,9 @@
       - 不能用 `.orbit-window.is-reveal-held *`：權重 (0,2,0) 低於 reveal 規則的 (0,3,0)，而且 `*` 不含 `::after`。
       - 要逐一寫出選擇器（含 `.orbit-window-stage-wrap::after`），放在 reveal 規則之後，或用 `!important`。
     - `major` 橫幅在 held 時隱藏（`visibility: hidden`）：Orbit Window 不在可視區或分頁隱藏時，不會再蓋滿畫面。
+  - **Reveal 用自己的可視判斷**：另建一個 `rootMargin: 0` 的 `IntersectionObserver`（或等效的幾何檢查），只給 reveal 的計時與 held 使用。
+    - 現有的 160 px 判斷保留給場景的啟動、暫停與恢復。
+    - 若沿用 160 px 的判斷，Orbit Window 剛捲出畫面（160 px 以內）時，計時與動畫仍在走，`major` 橫幅仍蓋滿畫面，正是要修正的情況。
   - 動畫在暫停時插入，會停在第一格（量測確認；`major` 橫幅停在 0% 的透明度），恢復後從 0 開始。
   - **Overlay 關閉後怎麼繼續**（需要決定，§6.1）：
     - **重播（建議）**：被 overlay 蓋住時 reveal 還沒播完，overlay 關閉、Orbit Window 在可視區時就從頭播放。
@@ -226,6 +230,7 @@
   - `is-reveal-held` 隨之加上、移除；
   - 場景依 P1／P2 暫停、恢復；
   - 混合情況：overlay 開著時離開可視區、分頁隱藏再回來；
+  - Reveal 的可視判斷與場景的分開：只有 160 px 邊界內的觀察回報「在可視區」、`rootMargin: 0` 的回報「不在」時，reveal held、場景照常；
   - 首頁與個人空間頁兩種模式（依 §6.5）。
 - **e2e**：
   - 重做 §3.2 的流程：
@@ -233,7 +238,7 @@
     - 兩者都關閉後，reveal 從頭播放（各 reveal 動畫的 `currentTime` 接近 0），播完後 state 中沒有 reveal。
     - 這會改變 `tests/e2e/flows.test.js`「首頁 Main Quest → Focus 結算 → 世界揭露」的順序：目前它在關閉佐證 sheet **之前**就等 reveal 結束、檢查 `pendingRewardReveals` 為空。改成先關閉佐證 sheet 再等 reveal 結束。這是預期的行為改變。
   - Held 時，Orbit Window 中每個 reveal 動畫（`getAnimations({ subtree: true })`，含 `::after` 與 `major` 橫幅）都是 `paused`，`currentTime` 不變。jsdom 的單元測試檢查不到這一點。
-  - `major` reveal：Orbit Window 捲出可視區時，橫幅不可見；捲回後才出現。
+  - `major` reveal：Orbit Window 捲出可視區時，橫幅不可見、計時暫停，包括剛好捲出不到 160 px 時；捲回後才出現。
   - 場景在 overlay 底下的 `data-runtime-status` 是 `suspended`，關閉後回到 `ready`。
 - **新舊版本混用**（INFRA-105）：
   - 舊的 `style.css`：只有計時延後，動畫照舊；
