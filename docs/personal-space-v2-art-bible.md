@@ -120,6 +120,8 @@ Palette values are starting tokens, not a substitute for lighting and material Q
 
 Do not communicate stage or unlock state through hue alone. Density, silhouette, material quality, lighting, animation, and room function must reinforce it.
 
+PS-250E3 (user decision, 2026-10-21): the dark-wood study room style uses colours from the Mastery palette (deep wood, ink green, warm gold) and is offered in the Building stage as a free room style. The user chose this knowing the palette was meant for Mastery. A future Mastery stage therefore has to set itself apart through density, silhouette, material quality and room function, not through this palette alone.
+
 ## 6. Building-Stage Vertical Slice
 
 ### 6.1 Required Asset Set
@@ -153,7 +155,9 @@ Each set has several protagonists and Companion forms. Added so far:
 
 - PS-250E2: room styles, chosen in Edit Mode. The first is bright Nordic (warm white walls, a sage wainscot, light oak and ash, black metal), in both styles, by day and by night. A room style keeps the camera, the furniture shapes and the lights and changes only materials, floor, outline colour, daylight ambient and backdrop, so its furniture shares the default room's placements. Source: `art-pipeline/ps250-rooms/` (style table: `ps244-blender/room_styles.py`).
 
-Later PS-250 tasks add the other room styles (PS-250E3: Japanese, night-owl studio, dark-wood study) and small furniture (PS-250F). Each one updates this list.
+- PS-250E3: the other three room styles, in both styles, by day and by night: Japanese (plaster and shoji white, wood frames, a tatami-coloured floor, indigo cloth), night-owl studio (deep navy, cyan neon on the rails, magenta accents) and dark-wood study (ink green, dark wood, gold trim, a burgundy rug; see the note under the stage palettes).
+
+A later PS-250 task adds small furniture (PS-250F) and updates this list.
 
 ### 6.2 Workspace Upgrade Phases
 

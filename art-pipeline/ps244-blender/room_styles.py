@@ -48,6 +48,7 @@ ROOM_STYLES = {
     },
     # 日式和風: plaster and shoji white, wood frames, tatami-coloured floor, indigo cloth.
     'washitsu': {
+        'shadow_floor': 56,
         'pixel_shadow': {'colour': '#5b4630', 'levels': ((50, 44), (110, 84), (None, 128))},
         'outline': '#2a1f16',
         'world': ('#cdbf9f', 0.9),
@@ -80,6 +81,7 @@ ROOM_STYLES = {
     },
     # 夜貓工作室: deep navy, cyan neon on the rails, magenta accents.
     'nightowl': {
+        'shadow_floor': 40,
         'outline': '#05060f',
         'world': ('#241a48', 1.2),
         'backdrop': ('#0c0920', '#1d1440'),
@@ -109,6 +111,7 @@ ROOM_STYLES = {
     },
     # 深木書房: ink green, dark wood, gold trim, a burgundy rug. The art bible kept this palette for Mastery; the user chose to offer it now (2026-10-21).
     'study': {
+        'shadow_floor': 40,
         'outline': '#120c08',
         'world': ('#2a3a2c', 1.2),
         'backdrop': ('#0f140f', '#223024'),

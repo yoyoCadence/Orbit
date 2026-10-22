@@ -35,7 +35,7 @@ const NIGHT_TIME_BANDS = Object.freeze(['evening', 'night']);
 // cut to the default room's trim boxes, so they share PROP_DEFINITIONS.
 // Callers pass the style as an option, like the time band; anything unknown
 // (including legacy theme ids such as 'night') is the default room.
-const ROOM_STYLE_IDS = Object.freeze(['default', 'nordic']);
+const ROOM_STYLE_IDS = Object.freeze(['default', 'nordic', 'washitsu', 'nightowl', 'study']);
 const DEFAULT_ROOM_STYLE = 'default';
 
 // PS-250B: two switchable styles; the first id of each list is that style's
