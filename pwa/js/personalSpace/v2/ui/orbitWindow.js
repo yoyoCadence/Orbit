@@ -6,6 +6,9 @@ import {
 } from '../runtime/pixiSceneRuntime.js';
 import { emitPersonalSpaceTelemetry } from '../telemetry.js';
 
+const NIGHT_ROOM_LIGHT_OPACITY = 0.5;
+const NIGHT_ROOM_FRAME_FILTER = 'brightness(0.65)';
+
 const REVEAL_DURATIONS_MS = Object.freeze({
   small: Object.freeze({ standard: 2200, reduced: 500 }),
   medium: Object.freeze({ standard: 4200, reduced: 750 }),
@@ -19,11 +22,30 @@ export function getRevealDurationMs(kind, reducedMotion = false) {
 
 export function renderOrbitWindow(inputModel = {}, options = {}) {
   const model = normalizeOrbitWindowModel(inputModel, options.renderMode);
-  const scene = getWorkspaceSceneAssets(model.activeProject.progress, model.placements, model);
+  // PS-250E1: the time band picks the day or night room. It is passed as its
+  // own option: the model also reaches the manifest as visualState.
+  const sceneOptions = { timeBand: model.timeBand };
+  const scene = getWorkspaceSceneAssets(model.activeProject.progress, model.placements, model, sceneOptions);
   // PS-250B/D: only the default style is precached. A chosen character, or
   // the pixel room and props, that is not cached yet falls back to the
   // default when it cannot load.
-  const fallback = getWorkspaceSceneAssets(model.activeProject.progress, model.placements, { ...model, appearance: null });
+  const fallback = getWorkspaceSceneAssets(
+    model.activeProject.progress,
+    model.placements,
+    { ...model, appearance: null },
+    sceneOptions,
+  );
+  // PS-250E1: the night room is already dark. Its light layer only tints the
+  // characters and weather, and the achievement frame is dimmed to match.
+  const nightRoom = scene.lighting === 'night';
+  const lightClass = nightRoom ? 'night' : model.timeBand;
+  // The day room is the last resort when a night image cannot load either
+  // (an interrupted update, offline): a night prop then becomes the day prop
+  // at the day placement, as before PS-250E1.
+  const day = nightRoom
+    ? getWorkspaceSceneAssets(model.activeProject.progress, model.placements, { ...model, appearance: null })
+    : null;
+  const dayProps = new Map((day?.props || []).map(entry => [entry.id, entry]));
   const fallbackProps = new Map(fallback.props.map(entry => [entry.id, entry.path]));
   // PS-250D: pixel images keep their hard pixel edges when scaled (CSS
   // image-rendering on [data-pixel-art]); a fallback image drops the marker.
@@ -54,8 +76,8 @@ export function renderOrbitWindow(inputModel = {}, options = {}) {
       <div class="orbit-window-stage-wrap">
         <button class="orbit-window-stage-action" type="button" data-orbit-open-world aria-label="進入完整 Personal Space">
           <span class="orbit-window-poster" aria-hidden="true">
-            <img class="orbit-window-background" src="${escapeHtml(scene.background)}" data-fallback-src="${escapeHtml(fallback.background)}"${pixelArt} alt="" draggable="false">
-            ${scene.props.map(entry => renderPosterProp(entry, fallbackProps.get(entry.id), pixelArt)).join('')}
+            <img class="orbit-window-background" src="${escapeHtml(scene.background)}" data-fallback-src="${escapeHtml(fallback.background)}"${day ? ` data-day-src="${escapeHtml(day.background)}"` : ''}${pixelArt} alt="" draggable="false">
+            ${scene.props.map(entry => renderPosterProp(entry, fallbackProps.get(entry.id), pixelArt, dayProps.get(entry.id))).join('')}
             <img
               class="orbit-window-protagonist"
               data-player-state="${escapeHtml(model.protagonist.state)}"
@@ -81,10 +103,10 @@ export function renderOrbitWindow(inputModel = {}, options = {}) {
               alt=""
               draggable="false"
             >
-            <span class="orbit-window-light orbit-window-light--${escapeHtml(model.timeBand)}"></span>
+            <span class="orbit-window-light orbit-window-light--${escapeHtml(lightClass)}"${nightRoom ? ` style="opacity: ${NIGHT_ROOM_LIGHT_OPACITY}"` : ''}></span>
           </span>
           <span class="orbit-window-runtime-host" data-orbit-runtime-host data-runtime-status="poster"></span>
-          ${renderAchievementPhoto(model.achievementPhoto)}
+          ${renderAchievementPhoto(model.achievementPhoto, { dim: nightRoom })}
         </button>
 
         <div class="orbit-window-reward" role="status" aria-live="polite" aria-atomic="true">
@@ -428,15 +450,25 @@ export function normalizeOrbitWindowModel(input = {}, renderMode) {
 // PS-250B: a chosen character that is neither cached nor reachable (offline)
 // shows the default character, which is precached. The pages mount right after
 // inserting the markup, before a load can fail, so the listener sees the error.
+// PS-250E1: a night room image then falls back once more, to the day room.
 function useFallbackWhenImagesFail(root) {
   root.querySelectorAll?.('img[data-fallback-src]').forEach(image => {
-    const fallbackSrc = image.dataset.fallbackSrc;
-    if (!fallbackSrc || image.getAttribute('src') === fallbackSrc) return;
-    image.addEventListener('error', () => {
-      // The fallback is a Q-style image: smooth scaling again.
+    const steps = [
+      { src: image.dataset.fallbackSrc },
+      { src: image.dataset.daySrc, style: image.dataset.dayStyle },
+    ].filter((step, index, all) => step.src
+      && step.src !== image.getAttribute('src')
+      && all.findIndex(other => other.src === step.src) === index);
+    if (!steps.length) return;
+    const next = () => {
+      const step = steps.shift();
+      // The fallbacks are Q-style images: smooth scaling again.
       image.removeAttribute('data-pixel-art');
-      image.setAttribute('src', fallbackSrc);
-    }, { once: true });
+      if (step.style) image.setAttribute('style', step.style);
+      image.setAttribute('src', step.src);
+      if (!steps.length) image.removeEventListener('error', next);
+    };
+    image.addEventListener('error', next);
   });
 }
 
@@ -444,7 +476,9 @@ export function updateOrbitWindowAchievementPhoto(root, input = {}) {
   const current = root?.querySelector?.('[data-achievement-photo]');
   if (!current) return false;
   const shell = document.createElement('div');
-  shell.innerHTML = renderAchievementPhoto(normalizeAchievementPhoto(input));
+  shell.innerHTML = renderAchievementPhoto(normalizeAchievementPhoto(input), {
+    dim: current.hasAttribute('data-night-dim'),
+  });
   const next = shell.firstElementChild;
   if (!next) return false;
   current.replaceWith(next);
@@ -472,7 +506,9 @@ function normalizeAchievementPhoto(input = {}) {
   };
 }
 
-function renderAchievementPhoto(input = {}) {
+// The frame and its photo are dimmed together under the night room (user
+// decision, 2026-10-21); otherwise the frame is the brightest thing in it.
+function renderAchievementPhoto(input = {}, { dim = false } = {}) {
   const photo = normalizeAchievementPhoto(input);
   const selected = photo.status === 'selected' && photo.src;
   const title = selected
@@ -486,7 +522,7 @@ function renderAchievementPhoto(input = {}) {
       data-achievement-photo
       data-photo-status="${photo.status}"
       title="${escapeHtml(title)}"
-      aria-hidden="true"
+      aria-hidden="true"${dim ? ` data-night-dim style="filter: ${NIGHT_ROOM_FRAME_FILTER}"` : ''}
     >
       <span class="orbit-window-achievement-mat">
         ${selected
@@ -504,8 +540,11 @@ function normalizeRevealKind(value, direction) {
   return ['small', 'medium', 'major'].includes(value) ? value : 'small';
 }
 
-function renderPosterProp(entry, fallbackSrc = entry.path, pixelArt = '') {
-  return `<img class="orbit-window-prop" src="${escapeHtml(entry.path)}" data-fallback-src="${escapeHtml(fallbackSrc)}"${pixelArt} alt="" draggable="false" style="${placementStyle(entry.placement)}">`;
+function renderPosterProp(entry, fallbackSrc = entry.path, pixelArt = '', day = null) {
+  const dayAttributes = day
+    ? ` data-day-src="${escapeHtml(day.path)}" data-day-style="${placementStyle(day.placement)}"`
+    : '';
+  return `<img class="orbit-window-prop" src="${escapeHtml(entry.path)}" data-fallback-src="${escapeHtml(fallbackSrc)}"${dayAttributes}${pixelArt} alt="" draggable="false" style="${placementStyle(entry.placement)}">`;
 }
 
 function placementStyle(placement = {}) {

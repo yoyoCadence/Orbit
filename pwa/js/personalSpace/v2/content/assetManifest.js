@@ -10,11 +10,22 @@ const TOON_ROOT = `${ASSET_ROOT}/characters/toon`;
 const PIXEL_ROOT = `${ASSET_ROOT}/characters/pixel`;
 const PIXEL_SCENE_ROOT = `${ASSET_ROOT}/workspace/pixel`;
 const BACKGROUND = `${ASSET_ROOT}/workspace/backgrounds/building-formal-workstation-room-v2.webp`;
+const NIGHT_BACKGROUND = `${ASSET_ROOT}/workspace/backgrounds/building-formal-workstation-room-v2-night.webp`;
 const EFFECTS_ROOT = `${ASSET_ROOT}/effects`;
 const CANONICAL_CAMERA_ID = 'building-workspace-v2';
 
 const PROTAGONIST_STATES = Object.freeze(['idle', 'work', 'celebrate', 'rest', 'walk', 'inspect']);
 const COMPANION_STATES = Object.freeze(['observe', 'approach', 'congratulate', 'rest', 'work', 'remind']);
+
+// PS-250E1: the room and props have a night render (no sun, the sconces and
+// lamps lit), used in the evening and at night (user decision, 2026-10-21).
+// Callers pass the time band as its own option, not in visualState: the
+// poster passes its whole model (which has timeBand) as visualState, so an
+// older poster would show the night room under its full-strength night layer.
+// The scene reports which lighting it returned; callers soften their night
+// layer only for 'night', so a newer caller with this module's older version
+// keeps today's look.
+const NIGHT_TIME_BANDS = Object.freeze(['evening', 'night']);
 
 // PS-250B: two switchable styles; the first id of each list is that style's
 // default. 'toon' (全 Q 版, the default style) uses the PS-250C Blender
@@ -32,8 +43,8 @@ const CHARACTER_STYLES = Object.freeze({
     companions: TOON_COMPANIONS,
     protagonistPath: (id, state, facing) => `${TOON_ROOT}/protagonist/${id}-${state}-${facing}.webp`,
     companionPath: (id, state) => `${TOON_ROOT}/companion/${id}-${state}.webp`,
-    background: BACKGROUND,
-    propPath: id => `${PROP_ROOT}/${id}.png`,
+    backgrounds: Object.freeze({ day: BACKGROUND, night: NIGHT_BACKGROUND }),
+    propPath: (id, lighting) => `${PROP_ROOT}/${id}${lighting === 'night' ? '-night' : ''}.png`,
     // The PS-242 pixel characters are the office worker and Orbit, so a
     // choice of one of them carries over to the Q style as those two.
     aliases: Object.freeze({ default: 'office', 'orbit-guide': 'orbit' }),
@@ -47,8 +58,11 @@ const CHARACTER_STYLES = Object.freeze({
     companionPath: (id, state) => (id === 'orbit-guide'
       ? `${COMPANION_ROOT}/orbit-guide-${state}.png`
       : `${PIXEL_ROOT}/companion/${id}-${state}.png`),
-    background: `${PIXEL_SCENE_ROOT}/backgrounds/building-formal-workstation-room-pixel.png`,
-    propPath: id => `${PIXEL_SCENE_ROOT}/props/${id}.png`,
+    backgrounds: Object.freeze({
+      day: `${PIXEL_SCENE_ROOT}/backgrounds/building-formal-workstation-room-pixel.png`,
+      night: `${PIXEL_SCENE_ROOT}/backgrounds/building-formal-workstation-room-pixel-night.png`,
+    }),
+    propPath: (id, lighting) => `${PIXEL_SCENE_ROOT}/props/${id}${lighting === 'night' ? '-night' : ''}.png`,
   }),
 });
 const DEFAULT_STYLE = 'toon';
@@ -92,14 +106,22 @@ export const WORKSPACE_V2_ASSETS = Object.freeze({
 });
 
 const PROP_DEFINITIONS = Object.freeze([
-  prop('corner-desk', 25, { x: 38.965, y: 66.309, width: 23.633, z: 24 }),
-  prop('office-chair', 25, { x: 40.299, y: 69.434, width: 6.25, z: 30 }),
-  prop('office-shelf', 50, { x: 69.466, y: 54.395, width: 34.766, z: 22 }),
-  prop('desk-lamp', 50, { x: 32.943, y: 47.754, width: 3.776, z: 29 }),
-  prop('planning-board', 75, { x: 39.193, y: 39.062, width: 14.193, z: 10 }),
-  prop('single-monitor', 75, { x: 40.755, y: 48.438, width: 7.031, z: 28 }, 99),
-  prop('dual-monitor', 100, { x: 40.495, y: 48.438, width: 12.891, z: 28 }),
-  prop('office-plant', 100, { x: 72.135, y: 64.746, width: 23.307, z: 23 }),
+  prop('corner-desk', 25, { x: 38.965, y: 66.309, width: 23.633, z: 24 },
+    { x: 39.03, y: 72.07, width: 24.414 }),
+  prop('office-chair', 25, { x: 40.299, y: 69.434, width: 6.25, z: 30 },
+    { x: 41.569, y: 79.297, width: 10.352 }),
+  prop('office-shelf', 50, { x: 69.466, y: 54.395, width: 34.766, z: 22 },
+    { x: 75.26, y: 71.094, width: 48.307 }),
+  prop('desk-lamp', 50, { x: 32.943, y: 47.754, width: 3.776, z: 29 },
+    { x: 32.91, y: 47.754, width: 3.841 }),
+  prop('planning-board', 75, { x: 39.193, y: 39.062, width: 14.193, z: 10 },
+    { x: 39.16, y: 39.16, width: 14.258 }),
+  prop('single-monitor', 75, { x: 40.755, y: 48.438, width: 7.031, z: 28 },
+    { x: 40.918, y: 48.438, width: 7.227 }, 99),
+  prop('dual-monitor', 100, { x: 40.495, y: 48.438, width: 12.891, z: 28 },
+    { x: 40.495, y: 48.438, width: 12.891 }),
+  prop('office-plant', 100, { x: 72.135, y: 64.746, width: 23.307, z: 23 },
+    { x: 86.556, y: 68.164, width: 15.69 }),
 ]);
 
 export const WORKSPACE_PROJECT_PHASES = Object.freeze([
@@ -117,18 +139,27 @@ export const WORKSPACE_INITIAL_PAINT_ASSETS = Object.freeze([
   WORKSPACE_V2_ASSETS.companion.path,
   WORKSPACE_V2_ASSETS.weather.path,
 ]);
+// The same in the evening and at night (PS-250E1). For scripts and tests only.
+export const WORKSPACE_NIGHT_INITIAL_PAINT_ASSETS = Object.freeze([
+  NIGHT_BACKGROUND,
+  ...WORKSPACE_INITIAL_PAINT_ASSETS.slice(1),
+]);
 
 // Deterministic, de-duplicated list of every image the default appearance can
-// resolve (PS-250B: the toon office worker and Orbit). The runtime still loads
-// only the active state bundle; PS-243 derives its complete-scene evidence from
-// this same contract. Other styles and characters are downloaded when chosen.
+// resolve (PS-250B: the toon office worker and Orbit), by day and by night
+// (PS-250E1). The runtime still loads only the active state bundle; PS-243
+// derives its complete-scene evidence from this same contract. Other styles
+// and characters are downloaded when chosen.
 export function getWorkspaceAssetManifestPaths() {
+  const { propPath } = CHARACTER_STYLES[DEFAULT_STYLE];
   return Object.freeze([...new Set([
     ...WORKSPACE_INITIAL_PAINT_ASSETS,
     ...Object.values(PROTAGONIST_VARIANTS).flatMap(Object.values),
     ...Object.values(COMPANION_VARIANTS),
     ...Object.values(WEATHER_VARIANTS),
     ...PROP_DEFINITIONS.map(entry => entry.path),
+    NIGHT_BACKGROUND,
+    ...PROP_DEFINITIONS.map(entry => propPath(entry.id, 'night')),
   ])]);
 }
 
@@ -179,13 +210,15 @@ export function getWorkspaceProjectPhase(progress = 0) {
     || WORKSPACE_PROJECT_PHASES[0];
 }
 
-export function getWorkspaceSceneAssets(progress = 0, placementOverrides = {}, visualState = {}) {
+export function getWorkspaceSceneAssets(progress = 0, placementOverrides = {}, visualState = {}, options = {}) {
   const normalized = clampProgress(progress);
   const resolvedVisuals = resolveWorkspaceVisualState(visualState);
   const style = CHARACTER_STYLES[resolvedVisuals.appearance.style];
+  const lighting = NIGHT_TIME_BANDS.includes(options?.timeBand) ? 'night' : 'day';
   return {
     ...WORKSPACE_V2_ASSETS,
-    background: style.background,
+    background: style.backgrounds[lighting],
+    lighting,
     appearance: resolvedVisuals.appearance,
     protagonist: resolvedVisuals.protagonist.path,
     protagonistVariant: resolvedVisuals.protagonist,
@@ -198,13 +231,12 @@ export function getWorkspaceSceneAssets(progress = 0, placementOverrides = {}, v
     phase: getWorkspaceProjectPhase(normalized),
     props: PROP_DEFINITIONS
       .filter(entry => normalized >= entry.minProgress && normalized <= entry.maxProgress)
-      .map(entry => ({
+      .map(({ nightPlacement, ...entry }) => ({
         ...entry,
-        path: style.propPath(entry.id),
-        placement: {
-          ...entry.placement,
-          ...normalizePositionOverride(placementOverrides[entry.id]),
-        },
+        path: style.propPath(entry.id, lighting),
+        placement: lighting === 'night'
+          ? movedLike(nightPlacement, entry.placement, placementOverrides[entry.id])
+          : { ...entry.placement, ...normalizePositionOverride(placementOverrides[entry.id]) },
       })),
     // PS-244: sized so the chibi sprite matches a 1.7 m figure in the Blender camera.
     protagonistPlacement: normalizePlacementOverride(placementOverrides.protagonist, {
@@ -265,13 +297,16 @@ function normalizeFacing(value) {
   return value === 'right' ? 'right' : 'left';
 }
 
-function prop(id, minProgress, placement, maxProgress = 100) {
+// A prop's night sprite has its own trim box (its shadows fall another way),
+// so it has its own x, y and width; it shares the day sprite's draw order.
+function prop(id, minProgress, placement, nightPlacement, maxProgress = 100) {
   return Object.freeze({
     id,
     path: `${PROP_ROOT}/${id}.png`,
     minProgress,
     maxProgress,
     placement: Object.freeze({ anchor: 'center-bottom', ...placement }),
+    nightPlacement: Object.freeze({ anchor: 'center-bottom', ...nightPlacement, z: placement.z }),
   });
 }
 
@@ -289,6 +324,19 @@ function normalizePositionOverride(value) {
     ...(x === undefined ? {} : { x }),
     ...(y === undefined ? {} : { y }),
   };
+}
+
+// An override is where the user moved the day sprite. The night sprite moves
+// by the same offset, so the furniture stays in place when the light changes.
+function movedLike(nightPlacement, dayPlacement, override) {
+  const moved = normalizePositionOverride(override);
+  const result = { ...nightPlacement };
+  for (const key of ['x', 'y']) {
+    if (moved[key] !== undefined) {
+      result[key] = Math.round((nightPlacement[key] + moved[key] - dayPlacement[key]) * 1000) / 1000;
+    }
+  }
+  return result;
 }
 
 function normalizePlacementOverride(value, fallback = {}) {

@@ -44,6 +44,11 @@ PROP_OCCLUDERS = {
     'office-chair': ('corner-desk',),
 }
 
+# PS-250E1: the same room under two lights. Geometry, camera and materials
+# are the same; only the light sources, the sky, the skyline and what glows
+# change. 'day' is the PS-244 look and must stay exactly as it was.
+LIGHTINGS = ('day', 'night')
+
 
 # ── colour helpers ───────────────────────────────────────────────────────────
 def srgb(hex_color):
@@ -271,7 +276,8 @@ def screen_material(name, accent):
     return m
 
 
-def build_materials():
+def build_materials(lighting='day'):
+    night = lighting == 'night'
     return {
         'wall': toon_material('wall', srgb('#22305c'), 0.85),
         'wall_low': toon_material('wall_low', srgb('#1b2650'), 0.8),
@@ -307,6 +313,9 @@ def build_materials():
         'curtain': toon_material('curtain', srgb('#41618a'), 0.9),
         'outlet': toon_material('outlet', srgb('#e6e2d8'), 0.5),
         'fixture': toon_material('fixture', srgb('#1a1d24'), 0.35, metal=0.7, gloss=0.2),
+        # The sconce shades glow at night; by day they are the fixture metal.
+        'sconce_shade': (emission_material('sconce_shade', srgb('#ffd59a'), 6) if night
+                         else toon_material('sconce_shade', srgb('#1a1d24'), 0.35, metal=0.7, gloss=0.2)),
         'saucer': toon_material('saucer', srgb('#cfc6b4'), 0.45),
         'paper': toon_material('paper', srgb('#f4ecdb'), 0.9),
         'ink': toon_material('ink', srgb('#4a5572'), 0.9),
@@ -444,7 +453,19 @@ class Builder:
 
 
 # ── room ─────────────────────────────────────────────────────────────────────
-def build_room(b):
+SKY = {
+    'day': {'bottom': '#f5c58a', 'top': '#5f94d6', 'strength': 1.6},
+    'night': {'bottom': '#2b3d7a', 'top': '#070b22', 'strength': 1.0},
+}
+SKYLINE = {
+    # near and far towers (colour, strength), lit windows (colour, strength,
+    # share of window rows that are lit)
+    'day': {'near': ('#56729f', 0.9), 'far': ('#8aa6cf', 1.0), 'glints': ('#e8f1ff', 1.4, 0.25)},
+    'night': {'near': ('#111a36', 0.7), 'far': ('#1c2850', 0.7), 'glints': ('#ffd27a', 3.2, 0.5)},
+}
+
+
+def build_room(b, lighting='day'):
     m = b.m
     g = 'room'
     b.box(g, (W, D, 0.1), (0, 0, -0.05), m['floor'])
@@ -507,11 +528,12 @@ def build_room(b):
     coord = nt.nodes.new('ShaderNodeTexCoord')
     sep = nt.nodes.new('ShaderNodeSeparateXYZ')
     ramp = nt.nodes.new('ShaderNodeValToRGB')
-    ramp.color_ramp.elements[0].color = (*srgb('#f5c58a'), 1)
-    ramp.color_ramp.elements[1].color = (*srgb('#5f94d6'), 1)
+    sky_spec = SKY[lighting]
+    ramp.color_ramp.elements[0].color = (*srgb(sky_spec['bottom']), 1)
+    ramp.color_ramp.elements[1].color = (*srgb(sky_spec['top']), 1)
     ramp.color_ramp.elements[0].position = 0.35
     em = nt.nodes.new('ShaderNodeEmission')
-    em.inputs['Strength'].default_value = 1.6
+    em.inputs['Strength'].default_value = sky_spec['strength']
     nt.links.new(coord.outputs['Generated'], sep.inputs['Vector'])
     nt.links.new(sep.outputs['Z'], ramp.inputs['Fac'])
     nt.links.new(ramp.outputs['Color'], em.inputs['Color'])
@@ -535,10 +557,12 @@ def build_room(b):
     sky_bottom = cam_z + (0.45 - cam_z) * (sky_x - cam_x) / (RIGHT_X - cam_x)
     sky_top = over_wall_z(sky_x) - 0.05
     b.box('outside', (0.1, y_hi - y_lo + 4, sky_top - sky_bottom), (sky_x, (y_lo + y_hi) / 2, (sky_top + sky_bottom) / 2), sky)
-    # daylight skyline: flat, hazy silhouettes read as distance
-    city_near = emission_material('city_near', srgb('#56729f'), 0.9)
-    city_far = emission_material('city_far', srgb('#8aa6cf'), 1.0)
-    glints = emission_material('city_glints', srgb('#e8f1ff'), 1.4)
+    # skyline: flat, hazy silhouettes read as distance; lit windows at night
+    skyline = SKYLINE[lighting]
+    city_near = emission_material('city_near', srgb(skyline['near'][0]), skyline['near'][1])
+    city_far = emission_material('city_far', srgb(skyline['far'][0]), skyline['far'][1])
+    glints = emission_material('city_glints', srgb(skyline['glints'][0]), skyline['glints'][1])
+    lit_share = skyline['glints'][2]
     rng = random.Random(11)
     span = D - 1.0
     for i in range(18):
@@ -550,7 +574,7 @@ def build_room(b):
         far = x > RIGHT_X + 4
         b.box('outside', (1.2, w, h), (x, y, OUTSIDE_GROUND_Z + h / 2), city_far if far else city_near)
         for k in range(int(h / 0.5)):
-            if rng.random() < 0.25:
+            if rng.random() < lit_share:
                 b.box('outside', (0.02, w * 0.7, 0.05), (x - 0.61, y, OUTSIDE_GROUND_Z + 0.3 + k * 0.5), glints)
 
     # Holdouts: nothing below the floor line may ever reach the frame. The
@@ -581,7 +605,7 @@ def build_room_details(b):
         parts = (
             b.box(g, (0.07, 0.02, 0.12), (x, BACK_Y - 0.01, H - 0.28), m['fixture'], bevel=0.006),
             b.cyl(g, 0.008, 0.2, (x, BACK_Y - 0.11, H - 0.26), m['fixture'], rot=(math.pi / 2, 0, 0), verts=10),
-            b.cyl(g, 0.045, 0.1, (x, BACK_Y - 0.23, H - 0.29), m['fixture'], rot=(math.radians(-35), 0, 0), r2=0.03),
+            b.cyl(g, 0.045, 0.1, (x, BACK_Y - 0.23, H - 0.29), m['sconce_shade'], rot=(math.radians(-35), 0, 0), r2=0.03),
         )
         for part in parts:
             part.visible_shadow = False
@@ -910,26 +934,38 @@ PROP_BUILDERS = {
 
 
 # ── lights, camera, render style ─────────────────────────────────────────────
-def build_lighting(scene):
+LIGHTS = {
+    'day': {'world': ('#1a2348', 1.4), 'sun': 6.5, 'fill': (1100, (0.78, 0.82, 1.0)),
+            'sconce': (220, (1.0, 0.8, 0.58))},
+    # Night: no sun, so no shadow falls toward the left; a dim cool fill keeps
+    # the room readable and the four sconces become the key light.
+    'night': {'world': ('#0b1030', 0.55), 'sun': 0.0, 'fill': (320, (0.55, 0.63, 1.0)),
+              'sconce': (330, (1.0, 0.76, 0.5))},
+}
+
+
+def build_lighting(scene, lighting='day'):
+    spec = LIGHTS[lighting]
     world = bpy.data.worlds.new('world')
     scene.world = world
     world.use_nodes = True
     bg = world.node_tree.nodes['Background']
-    bg.inputs['Color'].default_value = (*srgb('#1a2348'), 1)
-    bg.inputs['Strength'].default_value = 1.4
+    bg.inputs['Color'].default_value = (*srgb(spec['world'][0]), 1)
+    bg.inputs['Strength'].default_value = spec['world'][1]
 
-    bpy.ops.object.light_add(type='SUN', location=(12, 0, 8))
-    sun = bpy.context.object
-    sun.data.energy = 6.5
-    sun.data.color = (1.0, 0.86, 0.68)
-    sun.data.angle = math.radians(2.5)
-    sun.rotation_euler = (math.radians(58), 0, math.radians(104))
+    if spec['sun']:
+        bpy.ops.object.light_add(type='SUN', location=(12, 0, 8))
+        sun = bpy.context.object
+        sun.data.energy = spec['sun']
+        sun.data.color = (1.0, 0.86, 0.68)
+        sun.data.angle = math.radians(2.5)
+        sun.rotation_euler = (math.radians(58), 0, math.radians(104))
 
     bpy.ops.object.light_add(type='AREA', location=(-0.5, -3.5, H + 1.5))
     fill = bpy.context.object
-    fill.data.energy = 1100
+    fill.data.energy = spec['fill'][0]
     fill.data.size = 6
-    fill.data.color = (0.78, 0.82, 1.0)
+    fill.data.color = spec['fill'][1]
     # Fill lights the room but casts no shadow: a 6 m soft shadow would smear
     # across every prop render and inflate its transparent bounding box.
     fill.data.use_shadow = False
@@ -938,10 +974,10 @@ def build_lighting(scene):
     for x in (-2.4, -0.8, 0.8, 2.4):
         bpy.ops.object.light_add(type='SPOT', location=(x, BACK_Y - 0.55, H - 0.05))
         spot = bpy.context.object
-        spot.data.energy = 220
+        spot.data.energy = spec['sconce'][0]
         spot.data.spot_size = math.radians(75)
         spot.data.spot_blend = 0.7
-        spot.data.color = (1.0, 0.8, 0.58)
+        spot.data.color = spec['sconce'][1]
         spot.rotation_euler = (math.radians(18), 0, 0)
 
 
@@ -1011,16 +1047,18 @@ def no_line_collection():
     return col
 
 
-def build_scene(width=1536, samples=96):
+def build_scene(width=1536, samples=96, lighting='day'):
     """Builds the full room and every prop. Returns {group: [objects]}."""
+    if lighting not in LIGHTINGS:
+        raise ValueError(f'unknown lighting {lighting!r}')
     bpy.ops.wm.read_factory_settings(use_empty=True)
     scene = bpy.context.scene
-    materials = build_materials()
+    materials = build_materials(lighting)
     builder = Builder(materials)
-    build_room(builder)
+    build_room(builder, lighting)
     for prop_id in PROP_IDS:
         PROP_BUILDERS[prop_id](builder)
-    build_lighting(scene)
+    build_lighting(scene, lighting)
     build_camera(scene)
     configure_render(scene, width, samples)
     lines_off = no_line_collection()

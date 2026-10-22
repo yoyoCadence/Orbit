@@ -19,6 +19,7 @@ import {
   WORKSPACE_PROJECT_PHASES,
 } from '../../pwa/js/personalSpace/v2/content/assetManifest.js';
 import { PERSONAL_SPACE_V2_WEATHER } from '../../pwa/js/personalSpace/v2/viewModels.js';
+import { TIME_BANDS } from '../../pwa/js/timeBand.js';
 
 const PWA = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'pwa');
 const read = file => readFileSync(join(PWA, file), 'utf8');
@@ -44,16 +45,19 @@ function posterAssetPaths() {
     for (const protagonist of protagonistStates) {
       for (const companion of companionStates) {
         for (const weather of PERSONAL_SPACE_V2_WEATHER) {
-          // No code sets a facing, so the poster always uses the default (left).
-          // PS-250B: only the default appearance is precached (user-approved);
-          // a chosen style or character falls back to it when offline.
-          const scene = getWorkspaceSceneAssets(progress, {}, {
-            protagonist: { state: protagonist },
-            companion: { state: companion },
-            weather,
-          });
-          [scene.background, scene.protagonist, scene.companion.path, scene.weatherOverlay,
-            ...scene.props.map(entry => entry.path)].forEach(path => paths.add(path));
+          // PS-250E1: every time band, so the night room is precached too.
+          for (const timeBand of Object.keys(TIME_BANDS)) {
+            // No code sets a facing, so the poster always uses the default (left).
+            // PS-250B: only the default appearance is precached (user-approved);
+            // a chosen style or character falls back to it when offline.
+            const scene = getWorkspaceSceneAssets(progress, {}, {
+              protagonist: { state: protagonist },
+              companion: { state: companion },
+              weather,
+            }, { timeBand });
+            [scene.background, scene.protagonist, scene.companion.path, scene.weatherOverlay,
+              ...scene.props.map(entry => entry.path)].forEach(path => paths.add(path));
+          }
         }
       }
     }
@@ -106,7 +110,8 @@ describe('PS-211A service worker precache', () => {
 
   it('precaches exactly the images the Orbit Window poster can show', () => {
     const { paths } = posterAssetPaths();
-    expect(paths).toHaveLength(22);
+    // PS-250E1: 22 by day, plus the night room and its 8 props.
+    expect(paths).toHaveLength(31);
     expect(SHELL.filter(path => path.startsWith('assets/personal-space/v2/')).sort()).toEqual(paths);
   });
 

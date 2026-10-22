@@ -2,6 +2,7 @@
 
 Usage:
     python3 process_pack.py <render_dir> [--write-runtime] [--preview-dir DIR]
+                            [--lighting day|night]
 
 - Composites room.png over the designed backdrop and encodes the background
   WebP (1536x1024).
@@ -14,6 +15,11 @@ Usage:
   the two in sync).
 - Builds one composite preview per Workspace Upgrade phase, including the
   protagonist and Companion at their runtime placements, for visual QA.
+- --lighting night (PS-250E1) processes a night render of the same scene:
+  the background and props get a -night suffix, the placements go under
+  "night" in placements.json (each night prop has its own trim box, since its
+  shadows fall another way) and the day data is kept as it is. Previews are
+  night-phase-XXX.jpg.
 
 Requires Pillow and numpy.
 """
@@ -30,8 +36,12 @@ REPO = os.path.abspath(os.path.join(HERE, '..', '..'))
 PWA = os.path.join(REPO, 'pwa')
 V2 = 'assets/personal-space/v2'
 ASSET_MANIFEST = os.path.join(PWA, 'js', 'personalSpace', 'v2', 'content', 'assetManifest.js')
-BACKGROUND_PATH = f'{V2}/workspace/backgrounds/building-formal-workstation-room-v2.webp'
+BACKGROUND_PATHS = {
+    'day': f'{V2}/workspace/backgrounds/building-formal-workstation-room-v2.webp',
+    'night': f'{V2}/workspace/backgrounds/building-formal-workstation-room-v2-night.webp',
+}
 PROP_DIR = f'{V2}/workspace/props'
+PLACEMENTS = os.path.join(HERE, 'placements.json')
 FRAME = (1536, 1024)
 ALPHA_FLOOR = 14          # below this the catcher output is sampling noise
 CORE_ALPHA = 200          # solid geometry
@@ -52,11 +62,15 @@ PROPS = {
     'dual-monitor':   {'min': 100, 'max': 100, 'z': 28},
     'office-plant':   {'min': 100, 'max': 100, 'z': 23},
 }
-# Mirrors protagonist/Companion placements in getWorkspaceSceneAssets().
+# Mirrors protagonist/Companion placements in getWorkspaceSceneAssets(). The
+# committed day previews predate PS-250B and show the PS-242 pixel pair; night
+# previews show the default Q-style pair.
 CHARACTERS = {
-    'protagonist': {'path': f'{V2}/characters/protagonist/player-default-idle-left.png',
+    'protagonist': {'path': {'day': f'{V2}/characters/protagonist/player-default-idle-left.png',
+                             'night': f'{V2}/characters/toon/protagonist/office-idle-left.webp'},
                     'x': lambda p: 58 if p >= 25 else 51, 'y': 87, 'width': 24, 'anchor': 'center-bottom'},
-    'companion': {'path': f'{V2}/characters/companion/orbit-guide-observe.png',
+    'companion': {'path': {'day': f'{V2}/characters/companion/orbit-guide-observe.png',
+                           'night': f'{V2}/characters/toon/companion/orbit-observe.webp'},
                   'x': lambda p: 69 if p >= 75 else 73, 'y': 73, 'width': 13, 'anchor': 'center'},
 }
 PHASES = (0, 25, 50, 75, 100)
@@ -64,6 +78,8 @@ PHASES = (0, 25, 50, 75, 100)
 # DOM frame is drawn over every phase, so previews show it to catch overlaps.
 # Size is its 86px cap on the 960px logical frame; 4:3 plus 3px padding.
 PHOTO_FRAME = {'left': 47, 'top': 20, 'width': 86 / 960 * 100}
+# Mirrors the frame's brightness filter under the night room (orbitWindow.js).
+PHOTO_FRAME_NIGHT_BRIGHTNESS = 0.65
 
 
 def backdrop(size):
@@ -135,22 +151,55 @@ def place(canvas, sprite, x, y, width, anchor='center-bottom'):
     canvas.alpha_composite(sprite, (round(cx - w / 2), round(top)))
 
 
-def draw_photo_frame(canvas):
+def draw_photo_frame(canvas, brightness=1.0):
     w = canvas.width * PHOTO_FRAME['width'] / 100
     left, top = canvas.width * PHOTO_FRAME['left'] / 100, canvas.height * PHOTO_FRAME['top'] / 100
     pad = w * 3 / 86
     draw = ImageDraw.Draw(canvas)
-    draw.rectangle((left, top, left + w, top + w * 3 / 4 + 2 * pad), fill=(214, 165, 92))
-    draw.rectangle((left + pad, top + pad, left + w - pad, top + w * 3 / 4 + pad), fill=(233, 223, 198))
+    dim = lambda rgb: tuple(round(c * brightness) for c in rgb)
+    draw.rectangle((left, top, left + w, top + w * 3 / 4 + 2 * pad), fill=dim((214, 165, 92)))
+    draw.rectangle((left + pad, top + pad, left + w - pad, top + w * 3 / 4 + pad), fill=dim((233, 223, 198)))
 
 
-def sync_asset_manifest(placements):
+def prop_path(prop_id, lighting):
+    return f"{PROP_DIR}/{prop_id}{'-night' if lighting == 'night' else ''}.png"
+
+
+def write_placements(lighting, placements):
+    """Writes one lighting's placements and keeps the other's as it is."""
+    try:
+        with open(PLACEMENTS, encoding='utf-8') as fh:
+            data = json.load(fh)
+    except FileNotFoundError:
+        data = {}
+    if lighting != 'day' and 'props' not in data:
+        raise SystemExit('placements.json has no day placements: run the day pass first')
+    section = {
+        'background': BACKGROUND_PATHS[lighting],
+        'props': {pid: {'path': prop_path(pid, lighting), **pl} for pid, pl in placements.items()},
+    }
+    if lighting == 'day':
+        data = {'frame': {'width': FRAME[0], 'height': FRAME[1]}, **section,
+                **({'night': data['night']} if 'night' in data else {})}
+    else:
+        data[lighting] = section
+    with open(PLACEMENTS, 'w', encoding='utf-8') as fh:
+        json.dump(data, fh, indent=2)
+        fh.write('\n')
+    return data
+
+
+def sync_asset_manifest(data):
+    """Rewrites PROP_DEFINITIONS from both lightings in placements.json."""
+    day, night = data['props'], data['night']['props']
     lines = ['const PROP_DEFINITIONS = Object.freeze([']
     for pid, spec in PROPS.items():
-        pl = placements[pid]
+        pl, npl = day[pid], night[pid]
         place = f"{{ x: {pl['x']}, y: {pl['y']}, width: {pl['width']}, z: {spec['z']} }}"
+        night_place = f"{{ x: {npl['x']}, y: {npl['y']}, width: {npl['width']} }}"
         until = f", {spec['max']}" if spec['max'] != 100 else ''
-        lines.append(f"  prop('{pid}', {spec['min']}, {place}{until}),")
+        lines.append(f"  prop('{pid}', {spec['min']}, {place},")
+        lines.append(f"    {night_place}{until}),")
     lines.append(']);')
     with open(ASSET_MANIFEST, encoding='utf-8') as fh:
         source = fh.read()
@@ -167,7 +216,9 @@ def main():
     parser.add_argument('render_dir')
     parser.add_argument('--write-runtime', action='store_true')
     parser.add_argument('--preview-dir', default=os.path.join(HERE, 'previews'))
+    parser.add_argument('--lighting', choices=('day', 'night'), default='day')
     args = parser.parse_args()
+    lighting = args.lighting
 
     room = load_frame(os.path.join(args.render_dir, 'room.png'))
     background = backdrop(FRAME).convert('RGBA')
@@ -181,21 +232,18 @@ def main():
         placements[prop_id] = {**placement_for(box), 'z': PROPS[prop_id]['z'], 'bbox': list(box)}
 
     if args.write_runtime:
-        bg_out = os.path.join(PWA, *BACKGROUND_PATH.split('/'))
+        bg_out = os.path.join(PWA, *BACKGROUND_PATHS[lighting].split('/'))
         os.makedirs(os.path.dirname(bg_out), exist_ok=True)
         background.save(bg_out, 'WEBP', quality=86, method=6)
         prop_out = os.path.join(PWA, *PROP_DIR.split('/'))
         os.makedirs(prop_out, exist_ok=True)
         for prop_id, sprite in sprites.items():
-            sprite.save(os.path.join(prop_out, f'{prop_id}.png'), optimize=True)
-        with open(os.path.join(HERE, 'placements.json'), 'w', encoding='utf-8') as fh:
-            json.dump({
-                'frame': {'width': FRAME[0], 'height': FRAME[1]},
-                'background': BACKGROUND_PATH,
-                'props': {pid: {'path': f'{PROP_DIR}/{pid}.png', **pl} for pid, pl in placements.items()},
-            }, fh, indent=2)
-            fh.write('\n')
-        sync_asset_manifest(placements)
+            sprite.save(os.path.join(PWA, *prop_path(prop_id, lighting).split('/')), optimize=True)
+        data = write_placements(lighting, placements)
+        if 'night' not in data:
+            raise SystemExit('PROP_DEFINITIONS not updated: placements.json has no night placements. '
+                             'Run --lighting night too.')
+        sync_asset_manifest(data)
 
     os.makedirs(args.preview_dir, exist_ok=True)
     for progress in PHASES:
@@ -206,11 +254,12 @@ def main():
             pl = placements[pid]
             place(canvas, sprites[pid], pl['x'], pl['y'], pl['width'])
         for spec in CHARACTERS.values():
-            sprite = Image.open(os.path.join(PWA, *spec['path'].split('/'))).convert('RGBA')
+            sprite = Image.open(os.path.join(PWA, *spec['path'][lighting].split('/'))).convert('RGBA')
             place(canvas, sprite, spec['x'](progress), spec['y'], spec['width'], spec['anchor'])
-        draw_photo_frame(canvas)
+        draw_photo_frame(canvas, PHOTO_FRAME_NIGHT_BRIGHTNESS if lighting == 'night' else 1.0)
+        prefix = '' if lighting == 'day' else f'{lighting}-'
         canvas.convert('RGB').resize((768, 512), Image.LANCZOS).save(
-            os.path.join(args.preview_dir, f'phase-{progress:03d}.jpg'), quality=86)
+            os.path.join(args.preview_dir, f'{prefix}phase-{progress:03d}.jpg'), quality=86)
     print(json.dumps({pid: {k: v for k, v in pl.items() if k != 'bbox'} for pid, pl in placements.items()}, indent=1))
 
 

@@ -11,9 +11,10 @@ Everything is generated from code. There are no external models, textures or HDR
 | `scene.py` | Builds the room, props, toon materials, Freestyle outlines, lights and the canonical camera (`building-workspace-v2`) |
 | `render_pack.py` | Renders `room.png` (transparent film) and each prop, with room surfaces and its support surface as shadow catchers and any occluding prop as a holdout (PS-247) |
 | `process_pack.py` | Composites the room over the backdrop → WebP. Trims props (noise floor plus speck filter) → PNG. Writes `placements.json`, rewrites `PROP_DEFINITIONS` in `assetManifest.js`, and renders per-phase QA previews (with the HW-105 photo frame) |
-| `placements.json` | Placement of every prop as measured from its trimmed render; `assetManifest.js` must match it (`tests/unit/ps244WorkspacePlacements.test.js`) |
+| `placements.json` | Placement of every prop as measured from its trimmed render, by day (top level) and by night (`night`, PS-250E1); `assetManifest.js` must match it (`tests/unit/ps244WorkspacePlacements.test.js`, `ps250e1NightRoom.test.js`) |
 | `model-manifest.json` | Generator, version, license and processing provenance |
-| `previews/phase-*.jpg` | Composites for each project phase (0/25/50/75/100) with the protagonist and Companion at runtime placements |
+| `previews/phase-*.jpg` | Composites for each project phase (0/25/50/75/100) with the protagonist and Companion at runtime placements. They predate PS-250B and show the PS-242 pixel pair |
+| `previews/night-phase-*.jpg` | The same for the night lighting (PS-250E1), with the default Q-style pair and the dimmed photo frame |
 
 ## Reproduce
 
@@ -27,6 +28,11 @@ python3 -m venv /tmp/bpyenv
 /tmp/bpyenv/bin/python art-pipeline/ps244-blender/render_pack.py /tmp/ps244-renders --width 1536 --samples 96
 /tmp/bpyenv/bin/python art-pipeline/ps244-blender/process_pack.py /tmp/ps244-renders --write-runtime
 npm run ps242:manifest && npm run ps243:assets
+
+# PS-250E1 night lighting: a separate render directory. --lighting night writes
+# the -night files and the "night" placements and keeps the day data as it is.
+/tmp/bpyenv/bin/python art-pipeline/ps244-blender/render_pack.py /tmp/ps244-night --lighting night
+/tmp/bpyenv/bin/python art-pipeline/ps244-blender/process_pack.py /tmp/ps244-night --write-runtime --lighting night
 ```
 
 The full pack (room plus 8 props, 1536×1024, 96 samples) takes roughly 30–50 minutes on a 4-core CPU (PS-245 measured about 31 minutes). `--width 768 --samples 24` gives a 3-minute draft for composition checks. Cycles is seeded (`scene.cycles.seed = 244`), but reruns are not byte-identical, even with the same command on the same machine. Props differ by sampling noise, and a trim box can move by 1 px; PS-247 saw the desk and shelf shift by 1 px. To change one prop:
@@ -55,6 +61,16 @@ The full pack (room plus 8 props, 1536×1024, 96 samples) takes roughly 30–50 
 
   Everything stays on the camera from PS-244, so character scale did not change. The fixed wall overlay of the achievement frame (`top:20% left:47%`; on phones up to x 60.5%, y 36%) is kept clear.
 - **Diorama framing.** The front wall and ceiling are cut away. Everything outside the window is confined to the camera's view cone through the window, and holdouts keep anything below the floor line out of frame. The empty area around the room is a designed navy backdrop added in `process_pack.py`.
+
+## Night lighting (PS-250E1)
+
+The user chose a night version of the room for the evening and the night (17:00–05:00, the `evening` and `night` time bands), on 2026-10-21. Before, the night was the day render under a dark overlay, so the sunlight still showed.
+
+- **Same scene, other lights.** `scene.py` takes `lighting='night'`. Geometry, camera, materials and outlines are the same. There is no sun, so no shadow falls to the left; the four sconces are the key light and their shades glow; a dim cool fill and a darker world keep the room readable. The sky is a deep navy gradient and half of the skyline's window rows are lit. The desk lamp bulb and the screens glow as by day. `day` is unchanged.
+- **Re-run both.** `--lighting night` keeps the day data and a day run keeps the night data, so after a scene edit render and process both lightings; otherwise the other lighting's placements are stale. `PROP_DEFINITIONS` needs both, and a run fails loudly when the other one is missing.
+- **Own trim boxes.** The sconces stand behind the furniture, so night shadows fall toward the camera and spread in a fan. A night prop therefore has its own trim box and placement (`placements.json` → `night`). The day boxes, placements and files are unchanged. At runtime a night prop shares its day twin's draw order.
+- **Only within their outline.** Lamp and screen light is not cast on the desk or the wall: props are rendered on shadow catchers, which record shadows, not light, and the room is shared by every phase. A glow would need a separate additive layer (not done).
+- **Runtime.** `getWorkspaceSceneAssets()` picks the night room and props from a `timeBand` option and reports `lighting: 'night'`. The poster and Pixi then use a weaker night layer (the characters and weather still need it), and the poster dims the achievement frame with its photo.
 
 ## Not in scope
 

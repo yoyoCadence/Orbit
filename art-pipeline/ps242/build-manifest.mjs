@@ -53,7 +53,7 @@ export function buildPs242AssetManifest() {
         source: BLENDER_SOURCE,
         placements: 'art-pipeline/ps244-blender/placements.json',
         previews: 'art-pipeline/ps244-blender/previews/',
-        review: 'Shared-camera renders, shadow-catcher contact shadows, trimmed placements, and per-phase composites with the protagonist and Companion.',
+        review: 'Shared-camera renders by day and by night (PS-250E1: own trim box per night prop), shadow-catcher contact shadows, trimmed placements, and per-phase composites with the protagonist and Companion.',
       },
       characters: {
         modelManifest: 'art-pipeline/ps250-characters/model-manifest.json',
@@ -86,11 +86,14 @@ function buildOutputEntry(path) {
     status: 'production',
   };
 
+  // PS-250E1: the room and props also have a night render (-night).
+  const night = /-night\.(png|webp)$/.test(path);
   if (path.includes('/workspace/backgrounds/')) {
     return {
-      id: 'building-formal-workstation-room',
-      label: 'Building Formal Workstation room',
+      id: `building-formal-workstation-room${night ? '-night' : ''}`,
+      label: `Building Formal Workstation room${night ? ' (night)' : ''}`,
       role: 'background',
+      lighting: night ? 'night' : 'day',
       projectPhase: 'all',
       source: BLENDER_SOURCE,
       qc: 'passed: authored-3:2, shared-camera, backdrop-composite, visual, WebP-budget',
@@ -181,11 +184,15 @@ function buildOutputEntry(path) {
     };
   }
 
-  const prop = PROP_METADATA[path];
-  if (!prop) throw new Error(`PS-242 manifest metadata missing for ${path}`);
+  const dayProp = PROP_METADATA[night ? path.replace(/-night\.png$/, '.png') : path];
+  if (!dayProp) throw new Error(`PS-242 manifest metadata missing for ${path}`);
+  const prop = night
+    ? { ...dayProp, id: `${dayProp.id}-night`, label: `${dayProp.label} (night)` }
+    : dayProp;
   return {
     ...prop,
     role: 'project-prop',
+    lighting: night ? 'night' : 'day',
     source: BLENDER_SOURCE,
     qc: 'passed: shared-camera, contact-shadow-catcher, trimmed-placement, phase-composite, visual',
     licenseRef: BLENDER_LICENSE,

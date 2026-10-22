@@ -1,6 +1,6 @@
 // Service Worker
 // Bump CACHE version on every deploy so users always get fresh code.
-const CACHE = 'orbit-v1.34.0';
+const CACHE = 'orbit-v1.35.0';
 
 const SHELL = [
   './',
@@ -141,6 +141,17 @@ const SHELL = [
   './assets/personal-space/v2/workspace/props/single-monitor.png',
   './assets/personal-space/v2/workspace/props/dual-monitor.png',
   './assets/personal-space/v2/workspace/props/office-plant.png',
+  // PS-250E1: the default room's night version, shown in the evening and at
+  // night (user-approved precache, 2026-10-21).
+  './assets/personal-space/v2/workspace/backgrounds/building-formal-workstation-room-v2-night.webp',
+  './assets/personal-space/v2/workspace/props/corner-desk-night.png',
+  './assets/personal-space/v2/workspace/props/office-chair-night.png',
+  './assets/personal-space/v2/workspace/props/office-shelf-night.png',
+  './assets/personal-space/v2/workspace/props/desk-lamp-night.png',
+  './assets/personal-space/v2/workspace/props/planning-board-night.png',
+  './assets/personal-space/v2/workspace/props/single-monitor-night.png',
+  './assets/personal-space/v2/workspace/props/dual-monitor-night.png',
+  './assets/personal-space/v2/workspace/props/office-plant-night.png',
   './vendor/pixi.js',
 ];
 

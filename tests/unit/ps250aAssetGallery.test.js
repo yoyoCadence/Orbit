@@ -20,8 +20,9 @@ import {
   setAssetGalleryEnabled,
 } from '../../pwa/js/personalSpace/v2/ui/assetGallery.js';
 
-// The default scene, every Q-style character (PS-250C) and every file of the
-// pixel style on disk: the PS-242 characters and the PS-250D pixel set.
+// The default scene (by day and by night), every Q-style character (PS-250C)
+// and every file of the pixel style on disk: the PS-242 characters and the
+// PS-250D pixel set with its PS-250E1 night room and props.
 const V2 = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'pwa', 'assets', 'personal-space', 'v2');
 const PIXEL_FOLDERS = [
   'characters/protagonist', 'characters/companion', 'characters/pixel/protagonist', 'characters/pixel/companion',
@@ -45,7 +46,8 @@ describe('PS-250A developer asset gallery', () => {
     const catalog = buildAssetCatalog();
     const listed = catalog.flatMap(group => group.assets.map(asset => asset.path));
 
-    expect(PIXEL_PATHS).toHaveLength(6 * 2 + 6 + 6 * 6 * 2 + 6 * 6 + 1 + 8);
+    // The pixel room and props by day and by night (PS-250E1).
+    expect(PIXEL_PATHS).toHaveLength(6 * 2 + 6 + 6 * 6 * 2 + 6 * 6 + (1 + 8) * 2);
     expect(listed.sort()).toEqual(ALL_PATHS);
     expect(new Set(listed).size).toBe(listed.length);
     expect(catalog.map(group => group.label)).toEqual([

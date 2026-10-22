@@ -122,21 +122,34 @@ export function createPixiSceneRuntime(options = {}) {
       weather,
       appearance: renderModel.appearance || renderModel.world?.appearance || null,
     };
-    const chosen = getWorkspaceSceneAssets(project.progress || 0, placements, visualState);
-    const fallback = getWorkspaceSceneAssets(project.progress || 0, placements, { ...visualState, appearance: null });
+    // PS-250E1: the time band picks the day or night room, as in the poster.
+    const sceneOptions = { timeBand: renderModel.timeBand };
+    const chosen = getWorkspaceSceneAssets(project.progress || 0, placements, visualState, sceneOptions);
+    const fallback = getWorkspaceSceneAssets(
+      project.progress || 0,
+      placements,
+      { ...visualState, appearance: null },
+      sceneOptions,
+    );
+    // The day room is the last resort for the room: a night room that is not
+    // cached (an interrupted update, offline) is drawn as the day room, as
+    // before PS-250E1, instead of failing over to the poster.
+    const dayFallback = getWorkspaceSceneAssets(project.progress || 0, placements, { ...visualState, appearance: null });
     // PS-250B/D: only the default style is precached. The room with its props,
     // the protagonist and the Companion load separately; a part that cannot
     // load (offline, not cached yet) is drawn from the default style and the
     // other parts stay as chosen. (The poster falls back per image, so with a
     // partly cached pixel room the two can differ until the next render.)
+    const sceneryTiers = [chosen, fallback, dayFallback];
     const [scenery, protagonistPart, companionPart] = await Promise.all([
-      loadPart(pixi, sceneryPaths(chosen), sceneryPaths(fallback)),
-      loadPart(pixi, [chosen.protagonist], [fallback.protagonist]),
-      loadPart(pixi, [chosen.companion.path], [fallback.companion.path]),
+      loadPart(pixi, sceneryTiers.map(sceneryPaths)),
+      loadPart(pixi, [[chosen.protagonist], [fallback.protagonist]]),
+      loadPart(pixi, [[chosen.companion.path], [fallback.companion.path]]),
     ]);
+    const drawnScenery = sceneryTiers[scenery.tier];
     const scene = {
       ...chosen,
-      ...(scenery.usedFallback ? { background: fallback.background, props: fallback.props } : {}),
+      ...(scenery.usedFallback ? { background: drawnScenery.background, props: drawnScenery.props } : {}),
       ...(protagonistPart.usedFallback
         ? { protagonist: fallback.protagonist, protagonistVariant: fallback.protagonistVariant }
         : {}),
@@ -201,9 +214,17 @@ export function createPixiSceneRuntime(options = {}) {
     if (weatherOverlay) app.stage.addChild(weatherOverlay);
 
     const timeBand = renderModel.timeBand || 'day';
+    // PS-250E1: the night room is already dark, so its layer only tints the
+    // characters and weather toward it. A scene without `lighting` (an older
+    // assetManifest.js), or the day room drawn as the last resort, keeps the
+    // full night layer.
+    const nightRoom = drawnScenery.lighting === 'night';
+    const lightingLayer = nightRoom
+      ? { color: 0x172449, alpha: 0.1 }
+      : { color: timeBand === 'night' ? 0x172449 : 0xf6d58b, alpha: timeBand === 'night' ? 0.2 : 0.05 };
     const lighting = new pixi.Graphics()
       .rect(0, 0, ORBIT_WINDOW_LOGICAL_SIZE.width, ORBIT_WINDOW_LOGICAL_SIZE.height)
-      .fill({ color: timeBand === 'night' ? 0x172449 : 0xf6d58b, alpha: timeBand === 'night' ? 0.2 : 0.05 });
+      .fill(lightingLayer);
     lighting.zIndex = 80;
     app.stage.addChild(lighting);
     app.stage.sortChildren();
@@ -495,13 +516,22 @@ function sceneryPaths(scene) {
   return [scene.background, scene.weatherOverlay, ...scene.props.map(entry => entry.path)].filter(Boolean);
 }
 
-async function loadPart(pixi, paths, fallbackPaths) {
-  try {
-    return { textures: await pixi.Assets.load(paths), usedFallback: false };
-  } catch (error) {
-    if (fallbackPaths.every((path, index) => path === paths[index])) throw error;
-    return { textures: await pixi.Assets.load(fallbackPaths), usedFallback: true };
+// Loads the first tier of paths that loads; a tier identical to an earlier
+// one is not retried. `tier` is the index of the tier drawn.
+async function loadPart(pixi, tiers) {
+  let failure;
+  for (const [tier, paths] of tiers.entries()) {
+    const tried = tiers.slice(0, tier).some(earlier => (
+      earlier.length === paths.length && earlier.every((path, index) => path === paths[index])
+    ));
+    if (tried) continue;
+    try {
+      return { textures: await pixi.Assets.load(paths), tier, usedFallback: tier > 0 };
+    } catch (error) {
+      failure = error;
+    }
   }
+  throw failure;
 }
 
 function applyPlacement(sprite, placement = {}) {

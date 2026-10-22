@@ -1,6 +1,6 @@
 {
   "artifact": "ps243-asset-baseline",
-  "appVersion": "1.34.0",
+  "appVersion": "1.35.0",
   "note": "Reproducible: a pure function of committed files with CRLF normalized to LF. No timestamps; regenerate with `npm run ps243:assets` and diff to verify.",
   "method": {
     "assetSizes": "raw binary file bytes on disk (fs.statSync.size)",
@@ -30,6 +30,30 @@
         }
       ],
       "totalBytes": 122433,
+      "targetBytes": 1572864,
+      "hardThresholdBytes": 2621440,
+      "result": "PASS"
+    },
+    "nightInitialPaint": {
+      "files": [
+        {
+          "path": "pwa/assets/personal-space/v2/workspace/backgrounds/building-formal-workstation-room-v2-night.webp",
+          "bytes": 64318
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/characters/toon/protagonist/office-idle-left.webp",
+          "bytes": 16526
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/characters/toon/companion/orbit-observe.webp",
+          "bytes": 8936
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/effects/weather-building-clear-motes.png",
+          "bytes": 14425
+        }
+      ],
+      "totalBytes": 104205,
       "targetBytes": 1572864,
       "hardThresholdBytes": 2621440,
       "result": "PASS"
@@ -151,9 +175,45 @@
         {
           "path": "pwa/assets/personal-space/v2/workspace/props/office-plant.png",
           "bytes": 56446
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/workspace/backgrounds/building-formal-workstation-room-v2-night.webp",
+          "bytes": 64318
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/workspace/props/corner-desk-night.png",
+          "bytes": 79985
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/workspace/props/office-chair-night.png",
+          "bytes": 36936
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/workspace/props/office-shelf-night.png",
+          "bytes": 218167
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/workspace/props/desk-lamp-night.png",
+          "bytes": 5474
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/workspace/props/planning-board-night.png",
+          "bytes": 50064
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/workspace/props/single-monitor-night.png",
+          "bytes": 15018
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/workspace/props/dual-monitor-night.png",
+          "bytes": 24926
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/workspace/props/office-plant-night.png",
+          "bytes": 42067
         }
       ],
-      "totalBytes": 751670,
+      "totalBytes": 1288625,
       "targetBytes": 4194304,
       "hardThresholdBytes": 6291456,
       "result": "PASS"
@@ -189,7 +249,7 @@
         },
         {
           "path": "pwa/js/personalSpace/v2/content/assetManifest.js",
-          "bytes": 13202
+          "bytes": 15997
         },
         {
           "path": "pwa/js/personalSpace/v2/content/characterCatalog.js",
@@ -245,7 +305,7 @@
         },
         {
           "path": "pwa/js/personalSpace/v2/runtime/pixiSceneRuntime.js",
-          "bytes": 21316
+          "bytes": 22643
         },
         {
           "path": "pwa/js/personalSpace/v2/sessionAdapter.js",
@@ -269,26 +329,26 @@
         },
         {
           "path": "pwa/js/personalSpace/v2/ui/assetGallery.js",
-          "bytes": 6700
+          "bytes": 6969
         },
         {
           "path": "pwa/js/personalSpace/v2/ui/orbitWindow.js",
-          "bytes": 24575
+          "bytes": 26675
         },
         {
           "path": "pwa/js/personalSpace/v2/viewModels.js",
           "bytes": 26575
         }
       ],
-      "rawBytes": 242823,
-      "gzipBytes": 63186
+      "rawBytes": 249314,
+      "gzipBytes": 65440
     },
     "vendoredPixi": {
       "path": "pwa/vendor/pixi.js",
       "rawBytes": 796970,
       "gzipBytes": 225428
     },
-    "combinedGzipBytes": 288614,
+    "combinedGzipBytes": 290868,
     "budgetBytes": 307200,
     "result": "PASS"
   }

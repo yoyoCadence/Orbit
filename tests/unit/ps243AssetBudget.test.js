@@ -21,13 +21,23 @@ describe('PS-243 asset baseline', () => {
     expect(initialPaint.result).toBe('PASS');
   });
 
+  it('keeps the night first paint (PS-250E1: evening and night) below the same target', () => {
+    const { nightInitialPaint } = baseline.runtimeSceneAssets;
+    expect(nightInitialPaint.files[0].path).toMatch(/building-formal-workstation-room-v2-night\.webp$/);
+    expect(nightInitialPaint.totalBytes).toBe(104_205);
+    expect(nightInitialPaint.totalBytes).toBeLessThan(BUDGETS.initialPaint.targetBytes);
+    expect(nightInitialPaint.result).toBe('PASS');
+  });
+
   it('keeps the complete production state pack plus eight props within budget', () => {
     const { completeProofScene } = baseline.runtimeSceneAssets;
     // PS-250B: the default characters are the Q-style WebPs (1,293,693 B before).
-    expect(completeProofScene.totalBytes).toBe(751_670);
+    // PS-250E1: plus the night room and its 8 props (751,670 B before).
+    expect(completeProofScene.totalBytes).toBe(1_288_625);
     // Legacy evidence key retained for artifact compatibility: 1 background,
-    // 12 protagonist poses, 6 Companion states, 2 weather overlays, and 8 props.
-    expect(completeProofScene.files).toHaveLength(29);
+    // 12 protagonist poses, 6 Companion states, 2 weather overlays, 8 props,
+    // and the night background with 8 night props.
+    expect(completeProofScene.files).toHaveLength(38);
     expect(completeProofScene.result).toBe('PASS');
   });
 

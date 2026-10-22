@@ -8,7 +8,8 @@
  * across SHELL modules can fail to link while an older copy is cached
  * (INFRA-105). Characters outside the default come from characterCatalog.js
  * (Q style, PS-250C); the pixel style is resolved through the scene for every
- * option the Edit Mode picker offers (PS-250B, PS-250D).
+ * option the Edit Mode picker offers (PS-250B, PS-250D), by day and by night
+ * (PS-250E1).
  */
 import { FLAG_DEV_PANEL } from '../../../flags.js';
 import {
@@ -26,12 +27,12 @@ const ASSET_ROOT = 'assets/personal-space/v2/';
 
 // Folder → group, in the order the gallery shows them.
 const ASSET_GROUPS = Object.freeze([
-  { folder: 'workspace/backgrounds', label: '場景・房間', source: 'Blender（PS-244～PS-245）' },
-  { folder: 'workspace/props', label: '家具', source: 'Blender（PS-244～PS-247）' },
+  { folder: 'workspace/backgrounds', label: '場景・房間', source: 'Blender（PS-244～PS-245；夜晚 PS-250E1）' },
+  { folder: 'workspace/props', label: '家具', source: 'Blender（PS-244～PS-247；夜晚 PS-250E1）' },
   { folder: 'characters/toon/protagonist', label: 'Q 版主角', source: 'Blender（PS-250C）' },
   { folder: 'characters/toon/companion', label: 'Q 版 AI 夥伴', source: 'Blender（PS-250C）' },
-  { folder: 'workspace/pixel/backgrounds', label: '像素場景・房間', source: 'Blender 像素渲染（PS-250D）' },
-  { folder: 'workspace/pixel/props', label: '像素家具', source: 'Blender 像素渲染（PS-250D）' },
+  { folder: 'workspace/pixel/backgrounds', label: '像素場景・房間', source: 'Blender 像素渲染（PS-250D；夜晚 PS-250E1）' },
+  { folder: 'workspace/pixel/props', label: '像素家具', source: 'Blender 像素渲染（PS-250D；夜晚 PS-250E1）' },
   { folder: 'characters/pixel/protagonist', label: '像素主角', source: '由 Q 版縮小（PS-250D）' },
   { folder: 'characters/pixel/companion', label: '像素 AI 夥伴', source: '由 Q 版縮小（PS-250D）' },
   { folder: 'characters/protagonist', label: '經典像素主角', source: '影像生成（PS-242）' },
@@ -74,16 +75,19 @@ function groupFor(path) {
 
 // The pixel style is not the default, so the manifest list leaves it out:
 // resolve every option the picker offers, in every state and project phase,
-// through the scene the way the runtime does (PS-250B, PS-250D).
+// through the scene the way the runtime does (PS-250B, PS-250D). A day and a
+// night time band give the day and night rooms (PS-250E1).
 function pixelStylePaths() {
   const { protagonist, facings, companion } = WORKSPACE_VISUAL_STATES;
   const pixel = APPEARANCE_STYLES.find(style => style.id === 'pixel');
-  const resolve = (appearance, visual = {}, progress = 0) => getWorkspaceSceneAssets(progress, {}, { appearance, ...visual });
+  const resolve = (appearance, visual = {}, progress = 0, timeBand = 'day') => (
+    getWorkspaceSceneAssets(progress, {}, { appearance, ...visual }, { timeBand })
+  );
   return [
-    ...WORKSPACE_PROJECT_PHASES.flatMap(({ progress }) => {
-      const scene = resolve({ style: 'pixel' }, {}, progress);
+    ...['day', 'night'].flatMap(timeBand => WORKSPACE_PROJECT_PHASES.flatMap(({ progress }) => {
+      const scene = resolve({ style: 'pixel' }, {}, progress, timeBand);
       return [scene.background, ...scene.props.map(entry => entry.path)];
-    }),
+    })),
     ...pixel.protagonists.flatMap(({ id }) => protagonist.flatMap(state => facings.map(facing => (
       resolve({ style: 'pixel', protagonistId: id }, { protagonist: { state, facing } }).protagonist
     )))),
