@@ -49,6 +49,10 @@ PROP_OCCLUDERS = {
 # change. 'day' is the PS-244 look and must stay exactly as it was.
 LIGHTINGS = ('day', 'night')
 
+# PS-250E2: room styles live in room_styles.py (no bpy, so the processing
+# scripts can read the backdrop colours too).
+from room_styles import ROOM_STYLES  # noqa: E402
+
 
 # ── colour helpers ───────────────────────────────────────────────────────────
 def srgb(hex_color):
@@ -114,7 +118,8 @@ def emission_material(name, color, strength):
     return m
 
 
-def plank_material():
+def plank_material(colours=None):
+    colours = colours or {'c1': '#a56a3a', 'c2': '#8d5730', 'mortar': '#5c3519'}
     m = toon_material('floor', srgb('#9a6235'), rough=0.35, gloss=0.18)
     nt = m.node_tree
     coord = nt.nodes.new('ShaderNodeTexCoord')
@@ -122,9 +127,9 @@ def plank_material():
     mapping.inputs['Scale'].default_value = (0.42, 1.55, 1)
     brick = nt.nodes.new('ShaderNodeTexBrick')
     brick.offset = 0.41
-    brick.inputs['Color1'].default_value = (*srgb('#a56a3a'), 1)
-    brick.inputs['Color2'].default_value = (*srgb('#8d5730'), 1)
-    brick.inputs['Mortar'].default_value = (*srgb('#5c3519'), 1)
+    brick.inputs['Color1'].default_value = (*srgb(colours['c1']), 1)
+    brick.inputs['Color2'].default_value = (*srgb(colours['c2']), 1)
+    brick.inputs['Mortar'].default_value = (*srgb(colours['mortar']), 1)
     brick.inputs['Mortar Size'].default_value = 0.006
     brick.inputs['Scale'].default_value = 1.0
     brick.inputs['Brick Width'].default_value = 1.6
@@ -276,62 +281,74 @@ def screen_material(name, accent):
     return m
 
 
-def build_materials(lighting='day'):
+def build_materials(lighting='day', style='default'):
     night = lighting == 'night'
+    overrides = ROOM_STYLES[style].get('materials', {})
+
+    def tm(name, color, rough=0.55, metal=0.0, gloss=0.0):
+        """A toon material, or the room style's version of it."""
+        spec = overrides.get(name)
+        if spec is None:
+            return toon_material(name, srgb(color), rough, metal, gloss=gloss)
+        if 'emit' in spec:
+            return emission_material(name, srgb(spec['emit']), spec.get('strength', 2.0))
+        return toon_material(name, srgb(spec.get('color', color)), spec.get('rough', rough),
+                             spec.get('metal', metal), gloss=spec.get('gloss', gloss))
+
     return {
-        'wall': toon_material('wall', srgb('#22305c'), 0.85),
-        'wall_low': toon_material('wall_low', srgb('#1b2650'), 0.8),
-        'wall_side': toon_material('wall_side', srgb('#1e2a55'), 0.85),
-        'trim': toon_material('trim', srgb('#c79a52'), 0.32, metal=0.65, gloss=0.25),
-        'floor': plank_material(),
-        'ceiling': toon_material('ceiling', srgb('#141b33'), 0.9),
-        'slat': toon_material('slat', srgb('#7a4b27'), 0.5),
-        'oak': toon_material('oak', srgb('#c3843f'), 0.38, gloss=0.2),
-        'oak_dark': toon_material('oak_dark', srgb('#7c4a26'), 0.5),
-        'walnut': toon_material('walnut', srgb('#5a3620'), 0.55),
-        'steel': toon_material('steel', srgb('#3a3f48'), 0.35, metal=0.85, gloss=0.2),
-        'brass': toon_material('brass', srgb('#d9a85a'), 0.3, metal=0.9, gloss=0.3),
-        'fabric': toon_material('fabric', srgb('#3a4560'), 0.85),
-        'fabric_mesh': toon_material('fabric_mesh', srgb('#46526f'), 0.9),
-        'plastic': toon_material('plastic', srgb('#1d2028'), 0.45),
-        'bezel': toon_material('bezel', srgb('#15171d'), 0.35, gloss=0.15),
+        'wall': tm('wall', '#22305c', 0.85),
+        'wall_low': tm('wall_low', '#1b2650', 0.8),
+        'wall_side': tm('wall_side', '#1e2a55', 0.85),
+        'trim': tm('trim', '#c79a52', 0.32, metal=0.65, gloss=0.25),
+        'floor': plank_material(ROOM_STYLES[style].get('floor')),
+        'ceiling': tm('ceiling', '#141b33', 0.9),
+        'slat': tm('slat', '#7a4b27', 0.5),
+        'oak': tm('oak', '#c3843f', 0.38, gloss=0.2),
+        'oak_dark': tm('oak_dark', '#7c4a26', 0.5),
+        'walnut': tm('walnut', '#5a3620', 0.55),
+        'steel': tm('steel', '#3a3f48', 0.35, metal=0.85, gloss=0.2),
+        'brass': tm('brass', '#d9a85a', 0.3, metal=0.9, gloss=0.3),
+        'fabric': tm('fabric', '#3a4560', 0.85),
+        'fabric_mesh': tm('fabric_mesh', '#46526f', 0.9),
+        'plastic': tm('plastic', '#1d2028', 0.45),
+        'bezel': tm('bezel', '#15171d', 0.35, gloss=0.15),
         'screen_a': screen_ui_material('screen_a', 'code'),
         'screen_b': screen_ui_material('screen_b', 'dashboard'),
         'cork': cork_material(),
-        'felt': toon_material('felt', srgb('#2c3346'), 0.95),
-        'rubber': toon_material('rubber', srgb('#17191f'), 0.8),
-        'keycap': toon_material('keycap', srgb('#e9e5dc'), 0.45),
-        'kb_base': toon_material('kb_base', srgb('#2a2e38'), 0.45),
-        'mug': toon_material('mug', srgb('#e2875f'), 0.35, gloss=0.2),
-        'coffee': toon_material('coffee', srgb('#3b2416'), 0.25, gloss=0.3),
-        'notebook': toon_material('notebook', srgb('#2f5694'), 0.7),
-        'yarn': toon_material('yarn', srgb('#d1453b'), 0.8),
-        'rug_field': toon_material('rug_field', srgb('#2f4f63'), 0.95),
-        'rug_border': toon_material('rug_border', srgb('#d9c49a'), 0.95),
-        'clock_face': toon_material('clock_face', srgb('#f3ecdc'), 0.6),
-        'blind': toon_material('blind', srgb('#ddd5c4'), 0.85),
-        'curtain': toon_material('curtain', srgb('#41618a'), 0.9),
-        'outlet': toon_material('outlet', srgb('#e6e2d8'), 0.5),
-        'fixture': toon_material('fixture', srgb('#1a1d24'), 0.35, metal=0.7, gloss=0.2),
+        'felt': tm('felt', '#2c3346', 0.95),
+        'rubber': tm('rubber', '#17191f', 0.8),
+        'keycap': tm('keycap', '#e9e5dc', 0.45),
+        'kb_base': tm('kb_base', '#2a2e38', 0.45),
+        'mug': tm('mug', '#e2875f', 0.35, gloss=0.2),
+        'coffee': tm('coffee', '#3b2416', 0.25, gloss=0.3),
+        'notebook': tm('notebook', '#2f5694', 0.7),
+        'yarn': tm('yarn', '#d1453b', 0.8),
+        'rug_field': tm('rug_field', '#2f4f63', 0.95),
+        'rug_border': tm('rug_border', '#d9c49a', 0.95),
+        'clock_face': tm('clock_face', '#f3ecdc', 0.6),
+        'blind': tm('blind', '#ddd5c4', 0.85),
+        'curtain': tm('curtain', '#41618a', 0.9),
+        'outlet': tm('outlet', '#e6e2d8', 0.5),
+        'fixture': tm('fixture', '#1a1d24', 0.35, metal=0.7, gloss=0.2),
         # The sconce shades glow at night; by day they are the fixture metal.
         'sconce_shade': (emission_material('sconce_shade', srgb('#ffd59a'), 6) if night
-                         else toon_material('sconce_shade', srgb('#1a1d24'), 0.35, metal=0.7, gloss=0.2)),
-        'saucer': toon_material('saucer', srgb('#cfc6b4'), 0.45),
-        'paper': toon_material('paper', srgb('#f4ecdb'), 0.9),
-        'ink': toon_material('ink', srgb('#4a5572'), 0.9),
-        'note_y': toon_material('note_y', srgb('#f4c552'), 0.9),
-        'note_b': toon_material('note_b', srgb('#79b4d8'), 0.9),
-        'note_r': toon_material('note_r', srgb('#ee8b6f'), 0.9),
-        'note_g': toon_material('note_g', srgb('#8fcf8a'), 0.9),
-        'pin': toon_material('pin', srgb('#d6443b'), 0.4, gloss=0.3),
-        'ceramic': toon_material('ceramic', srgb('#e9e2d4'), 0.4, gloss=0.2),
-        'soil': toon_material('soil', srgb('#3b2a1e'), 0.95),
-        'leaf': toon_material('leaf', srgb('#3f9a4a'), 0.5, gloss=0.12),
-        'leaf_dark': toon_material('leaf_dark', srgb('#2f7a3d'), 0.55),
-        'stem': toon_material('stem', srgb('#5a4630'), 0.8),
+                         else tm('sconce_shade', '#1a1d24', 0.35, metal=0.7, gloss=0.2)),
+        'saucer': tm('saucer', '#cfc6b4', 0.45),
+        'paper': tm('paper', '#f4ecdb', 0.9),
+        'ink': tm('ink', '#4a5572', 0.9),
+        'note_y': tm('note_y', '#f4c552', 0.9),
+        'note_b': tm('note_b', '#79b4d8', 0.9),
+        'note_r': tm('note_r', '#ee8b6f', 0.9),
+        'note_g': tm('note_g', '#8fcf8a', 0.9),
+        'pin': tm('pin', '#d6443b', 0.4, gloss=0.3),
+        'ceramic': tm('ceramic', '#e9e2d4', 0.4, gloss=0.2),
+        'soil': tm('soil', '#3b2a1e', 0.95),
+        'leaf': tm('leaf', '#3f9a4a', 0.5, gloss=0.12),
+        'leaf_dark': tm('leaf_dark', '#2f7a3d', 0.55),
+        'stem': tm('stem', '#5a4630', 0.8),
         'bulb': emission_material('bulb', srgb('#ffe2b0'), 18),
-        'window_frame': toon_material('window_frame', srgb('#141a2a'), 0.4, metal=0.6),
-        'sill': toon_material('sill', srgb('#c79a52'), 0.35, metal=0.5, gloss=0.2),
+        'window_frame': tm('window_frame', '#141a2a', 0.4, metal=0.6),
+        'sill': tm('sill', '#c79a52', 0.35, metal=0.5, gloss=0.2),
         'books': [toon_material(f'book{i}', srgb(c), 0.7) for i, c in enumerate(
             ['#8c3b3b', '#2f5694', '#3f7a52', '#d4a548', '#6a568f', '#a5683f', '#e6dcc4', '#2c6f7a'])],
     }
@@ -944,14 +961,16 @@ LIGHTS = {
 }
 
 
-def build_lighting(scene, lighting='day'):
+def build_lighting(scene, lighting='day', style='default'):
     spec = LIGHTS[lighting]
     world = bpy.data.worlds.new('world')
     scene.world = world
     world.use_nodes = True
     bg = world.node_tree.nodes['Background']
-    bg.inputs['Color'].default_value = (*srgb(spec['world'][0]), 1)
-    bg.inputs['Strength'].default_value = spec['world'][1]
+    # A style's ambient colour is for daylight; every style shares the night.
+    world_colour, world_strength = (ROOM_STYLES[style].get('world') if lighting == 'day' else None) or spec['world']
+    bg.inputs['Color'].default_value = (*srgb(world_colour), 1)
+    bg.inputs['Strength'].default_value = world_strength
 
     if spec['sun']:
         bpy.ops.object.light_add(type='SUN', location=(12, 0, 8))
@@ -1047,20 +1066,24 @@ def no_line_collection():
     return col
 
 
-def build_scene(width=1536, samples=96, lighting='day'):
+def build_scene(width=1536, samples=96, lighting='day', style='default'):
     """Builds the full room and every prop. Returns {group: [objects]}."""
     if lighting not in LIGHTINGS:
         raise ValueError(f'unknown lighting {lighting!r}')
+    if style not in ROOM_STYLES:
+        raise ValueError(f'unknown room style {style!r}')
     bpy.ops.wm.read_factory_settings(use_empty=True)
     scene = bpy.context.scene
-    materials = build_materials(lighting)
+    materials = build_materials(lighting, style)
     builder = Builder(materials)
     build_room(builder, lighting)
     for prop_id in PROP_IDS:
         PROP_BUILDERS[prop_id](builder)
-    build_lighting(scene, lighting)
+    build_lighting(scene, lighting, style)
     build_camera(scene)
     configure_render(scene, width, samples)
+    if 'outline' in ROOM_STYLES[style]:
+        scene.view_layers[0].freestyle_settings.linesets[0].linestyle.color = srgb(ROOM_STYLES[style]['outline'])
     lines_off = no_line_collection()
     for obj in builder.groups.get('outside', []) + builder.groups.get('holdout', []):
         lines_off.objects.link(obj)

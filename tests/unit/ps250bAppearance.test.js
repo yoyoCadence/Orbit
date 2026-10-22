@@ -245,6 +245,7 @@ describe('PS-250B Edit Mode picker', () => {
     const host = document.createElement('div');
     host.innerHTML = renderAppearancePicker({ style: 'toon', protagonistId: 'hoodie', companionId: 'cube' });
     const pressed = [...host.querySelectorAll('[aria-pressed="true"]')].map(button => button.dataset.value);
+    // Without a room (as an older page calls it, PS-250E2) no room is marked.
     expect(pressed).toEqual(['toon', 'hoodie', 'cube']);
     const protagonists = host.querySelectorAll('[data-v2-appearance="protagonist"]');
     expect([...protagonists].map(button => button.dataset.value)).toEqual(TOON_PROTAGONISTS.map(entry => entry.id));

@@ -1,0 +1,136 @@
+"""PS-250E2 room styles for scene.py (materials) and process_pack.py (backdrop)."""
+
+# Room styles (user decision, 2026-10-21). The same geometry,
+# camera and lights; a style swaps material colours, the floor planks, the
+# outline colour, the daylight ambient (world) colour and the backdrop
+# behind the cut-away room. An 'emit' material glows (neon). 'pixel_shadow'
+# is the prop shadow of the pixel version (ps250-pixel): a colour and
+# (alpha below, opacity) steps, the last one for everything darker.
+# 'shadow_floor' drops the faint shadow wash a light room leaves around every
+# prop, from the bright daylight ambient and from lamp light bounced off pale
+# walls at night (process_pack.lift_shadow_floor). 'default' is the PS-244
+# look and must stay exactly as it was. 'backdrop_night' replaces a light
+# backdrop at night.
+ROOM_STYLES = {
+    'default': {},
+    # 明亮北歐: warm white walls, a sage wainscot, light oak and ash, black metal.
+    'nordic': {
+        'shadow_floor': 56,
+        'backdrop_night': ('#1c2026', '#30363f'),
+        'pixel_shadow': {'colour': '#6e6253', 'levels': ((50, 40), (110, 76), (None, 118))},
+        'outline': '#3a3934',
+        'world': ('#b9c3cc', 0.9),
+        'backdrop': ('#cfd3cb', '#e6e6df'),
+        'floor': {'c1': '#dcc39b', 'c2': '#cdb088', 'mortar': '#a58a63'},
+        'materials': {
+            'wall': {'color': '#ece7dd'},
+            'wall_low': {'color': '#a9baa4'},
+            'wall_side': {'color': '#e3ddd1'},
+            'trim': {'color': '#f4f1ea', 'metal': 0.0, 'gloss': 0.1},
+            'ceiling': {'color': '#e6e1d7'},
+            'slat': {'color': '#d3b68c'},
+            'oak': {'color': '#e0c7a0'},
+            'oak_dark': {'color': '#c2a378'},
+            'walnut': {'color': '#a98a63'},
+            'steel': {'color': '#2f2f31', 'metal': 0.3},
+            'brass': {'color': '#2f2f31', 'metal': 0.3, 'gloss': 0.1},
+            'fabric': {'color': '#8ea28d'},
+            'fabric_mesh': {'color': '#9db09b'},
+            'felt': {'color': '#cdc6b8'},
+            'rug_field': {'color': '#b9c8b2'},
+            'rug_border': {'color': '#f3efe6'},
+            'curtain': {'color': '#dfe4d6'},
+            'window_frame': {'color': '#f1eee7', 'metal': 0.0},
+            'sill': {'color': '#e0c7a0', 'metal': 0.0},
+            'fixture': {'color': '#2f2f31', 'metal': 0.3},
+            'sconce_shade': {'color': '#2f2f31', 'metal': 0.3},
+        },
+    },
+    # 日式和風: plaster and shoji white, wood frames, tatami-coloured floor, indigo cloth.
+    'washitsu': {
+        'pixel_shadow': {'colour': '#5b4630', 'levels': ((50, 44), (110, 84), (None, 128))},
+        'outline': '#2a1f16',
+        'world': ('#cdbf9f', 0.9),
+        'backdrop': ('#1a2238', '#2c3a5e'),
+        'floor': {'c1': '#cdbf86', 'c2': '#c2b47b', 'mortar': '#857245'},
+        'materials': {
+            'wall': {'color': '#efe6d3'},
+            'wall_low': {'color': '#a8814f'},
+            'wall_side': {'color': '#e7dcc6'},
+            'trim': {'color': '#6e4b2e', 'metal': 0.0, 'gloss': 0.05},
+            'ceiling': {'color': '#e6dcc6'},
+            'slat': {'color': '#8a6038'},
+            'oak': {'color': '#c8a06a'},
+            'oak_dark': {'color': '#8a6038'},
+            'walnut': {'color': '#5e3f25'},
+            'brass': {'color': '#3b3a38', 'metal': 0.5},
+            'steel': {'color': '#3b3a38', 'metal': 0.5},
+            'fabric': {'color': '#33507f'},
+            'fabric_mesh': {'color': '#3e5c8c'},
+            'felt': {'color': '#33507f'},
+            'rug_field': {'color': '#2f4a7a'},
+            'rug_border': {'color': '#efe6d3'},
+            'curtain': {'color': '#2f4a7a'},
+            'blind': {'color': '#f6f1e4'},
+            'window_frame': {'color': '#5e3f25', 'metal': 0.0},
+            'sill': {'color': '#8a6038', 'metal': 0.0},
+            'fixture': {'color': '#3b3a38', 'metal': 0.4},
+            'sconce_shade': {'color': '#f3e6c8', 'metal': 0.0},
+        },
+    },
+    # 夜貓工作室: deep navy, cyan neon on the rails, magenta accents.
+    'nightowl': {
+        'outline': '#05060f',
+        'world': ('#241a48', 1.2),
+        'backdrop': ('#0c0920', '#1d1440'),
+        'floor': {'c1': '#2f3250', 'c2': '#282b47', 'mortar': '#15172b'},
+        'materials': {
+            'wall': {'color': '#1d1f33'},
+            'wall_low': {'color': '#16182b'},
+            'wall_side': {'color': '#1a1c30'},
+            'trim': {'emit': '#3fe3ff', 'strength': 2.4},
+            'ceiling': {'color': '#0e0f1c'},
+            'slat': {'color': '#2b2e4a'},
+            'oak': {'color': '#3a3f5e'},
+            'oak_dark': {'color': '#2b2f49'},
+            'walnut': {'color': '#24273d'},
+            'brass': {'color': '#ff5fd2', 'metal': 0.6, 'gloss': 0.3},
+            'steel': {'color': '#33364a', 'metal': 0.8},
+            'fabric': {'color': '#2d3150'},
+            'fabric_mesh': {'color': '#353a5c'},
+            'felt': {'color': '#2d3150'},
+            'rug_field': {'color': '#3a1f55'},
+            'rug_border': {'color': '#ff5fd2'},
+            'curtain': {'color': '#2a1f4c'},
+            'window_frame': {'color': '#0f1020', 'metal': 0.4},
+            'sill': {'emit': '#ff5fd2', 'strength': 2.0},
+            'fixture': {'color': '#1a1b28', 'metal': 0.6},
+        },
+    },
+    # 深木書房: ink green, dark wood, gold trim, a burgundy rug. The art bible kept this palette for Mastery; the user chose to offer it now (2026-10-21).
+    'study': {
+        'outline': '#120c08',
+        'world': ('#2a3a2c', 1.2),
+        'backdrop': ('#0f140f', '#223024'),
+        'floor': {'c1': '#5f3e24', 'c2': '#53361f', 'mortar': '#2a1a0e'},
+        'materials': {
+            'wall': {'color': '#22402f'},
+            'wall_low': {'color': '#4a2e1c'},
+            'wall_side': {'color': '#1d3829'},
+            'trim': {'color': '#c9a24a', 'metal': 0.8, 'gloss': 0.3},
+            'ceiling': {'color': '#1a1410'},
+            'slat': {'color': '#4a2e1c'},
+            'oak': {'color': '#704528'},
+            'oak_dark': {'color': '#4a2e1c'},
+            'walnut': {'color': '#3a2214'},
+            'fabric': {'color': '#6a3426', 'rough': 0.5, 'gloss': 0.15},
+            'fabric_mesh': {'color': '#7a3d2c'},
+            'felt': {'color': '#22402f'},
+            'rug_field': {'color': '#6e2626'},
+            'rug_border': {'color': '#c9a24a'},
+            'curtain': {'color': '#22402f'},
+            'window_frame': {'color': '#2a1a0e', 'metal': 0.0},
+            'sill': {'color': '#4a2e1c', 'metal': 0.0},
+        },
+    },
+}

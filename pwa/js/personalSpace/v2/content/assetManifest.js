@@ -27,6 +27,17 @@ const COMPANION_STATES = Object.freeze(['observe', 'approach', 'congratulate', '
 // keeps today's look.
 const NIGHT_TIME_BANDS = Object.freeze(['evening', 'night']);
 
+// PS-250E2: room styles (user decision, 2026-10-21), chosen in Edit Mode and
+// stored in world.selectedThemeId (an existing field older versions keep).
+// The same camera, furniture shapes and lights; each style is its own render
+// of the room and props under workspace/styles/<id>/ (pixel:
+// workspace/pixel/styles/<id>/), by day and by night. Every style's props are
+// cut to the default room's trim boxes, so they share PROP_DEFINITIONS.
+// Callers pass the style as an option, like the time band; anything unknown
+// (including legacy theme ids such as 'night') is the default room.
+const ROOM_STYLE_IDS = Object.freeze(['default', 'nordic']);
+const DEFAULT_ROOM_STYLE = 'default';
+
 // PS-250B: two switchable styles; the first id of each list is that style's
 // default. 'toon' (全 Q 版, the default style) uses the PS-250C Blender
 // characters with the PS-244 room. 'pixel' (全像素, PS-250D) uses the pixel
@@ -213,12 +224,14 @@ export function getWorkspaceProjectPhase(progress = 0) {
 export function getWorkspaceSceneAssets(progress = 0, placementOverrides = {}, visualState = {}, options = {}) {
   const normalized = clampProgress(progress);
   const resolvedVisuals = resolveWorkspaceVisualState(visualState);
-  const style = CHARACTER_STYLES[resolvedVisuals.appearance.style];
   const lighting = NIGHT_TIME_BANDS.includes(options?.timeBand) ? 'night' : 'day';
+  const roomStyle = ROOM_STYLE_IDS.includes(options?.roomStyle) ? options.roomStyle : DEFAULT_ROOM_STYLE;
+  const room = roomPaths(resolvedVisuals.appearance.style, roomStyle);
   return {
     ...WORKSPACE_V2_ASSETS,
-    background: style.backgrounds[lighting],
+    background: room.backgrounds[lighting],
     lighting,
+    roomStyle,
     appearance: resolvedVisuals.appearance,
     protagonist: resolvedVisuals.protagonist.path,
     protagonistVariant: resolvedVisuals.protagonist,
@@ -233,7 +246,7 @@ export function getWorkspaceSceneAssets(progress = 0, placementOverrides = {}, v
       .filter(entry => normalized >= entry.minProgress && normalized <= entry.maxProgress)
       .map(({ nightPlacement, ...entry }) => ({
         ...entry,
-        path: style.propPath(entry.id, lighting),
+        path: room.propPath(entry.id, lighting),
         placement: lighting === 'night'
           ? movedLike(nightPlacement, entry.placement, placementOverrides[entry.id])
           : { ...entry.placement, ...normalizePositionOverride(placementOverrides[entry.id]) },
@@ -273,6 +286,20 @@ function resolveAppearance(value) {
     style,
     protagonistId: pick(protagonists, input.protagonistId),
     companionId: pick(companions, input.companionId),
+  };
+}
+
+// The default room is the PS-244 render (PS-250D for pixel); the others have
+// their own folder in each character style.
+function roomPaths(characterStyle, roomStyle) {
+  const style = CHARACTER_STYLES[characterStyle];
+  if (roomStyle === DEFAULT_ROOM_STYLE) return style;
+  const pixel = characterStyle === 'pixel';
+  const root = `${ASSET_ROOT}/workspace/${pixel ? 'pixel/' : ''}styles/${roomStyle}`;
+  const ext = pixel ? 'png' : 'webp';
+  return {
+    backgrounds: { day: `${root}/background.${ext}`, night: `${root}/background-night.${ext}` },
+    propPath: (id, lighting) => `${root}/props/${id}${lighting === 'night' ? '-night' : ''}.png`,
   };
 }
 

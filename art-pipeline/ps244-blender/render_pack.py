@@ -2,7 +2,7 @@
 
 Usage:
     python render_pack.py <out_dir> [--width 1536] [--samples 96] [--only id,id]
-                          [--lighting day|night]
+                          [--lighting day|night] [--style <room style>]
 
 Writes full-frame RGBA PNGs to <out_dir>:
     room.png          empty room, transparent outside the diorama
@@ -34,6 +34,7 @@ def parse_args():
     parser.add_argument('--samples', type=int, default=96)
     parser.add_argument('--only', default='')
     parser.add_argument('--lighting', choices=S.LIGHTINGS, default='day')
+    parser.add_argument('--style', choices=tuple(S.ROOM_STYLES), default='default')
     return parser.parse_args(argv)
 
 
@@ -119,7 +120,7 @@ def render(path):
 def main():
     args = parse_args()
     os.makedirs(args.out_dir, exist_ok=True)
-    groups = S.build_scene(width=args.width, samples=args.samples, lighting=args.lighting)
+    groups = S.build_scene(width=args.width, samples=args.samples, lighting=args.lighting, style=args.style)
     scene = bpy.context.scene
     scene.render.film_transparent = True
     only = {item for item in args.only.split(',') if item}

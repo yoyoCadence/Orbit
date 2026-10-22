@@ -9,7 +9,8 @@
  * (INFRA-105). Characters outside the default come from characterCatalog.js
  * (Q style, PS-250C); the pixel style is resolved through the scene for every
  * option the Edit Mode picker offers (PS-250B, PS-250D), by day and by night
- * (PS-250E1).
+ * (PS-250E1). The room styles (PS-250E2) are resolved the same way, in both
+ * character styles.
  */
 import { FLAG_DEV_PANEL } from '../../../flags.js';
 import {
@@ -29,10 +30,12 @@ const ASSET_ROOT = 'assets/personal-space/v2/';
 const ASSET_GROUPS = Object.freeze([
   { folder: 'workspace/backgrounds', label: '場景・房間', source: 'Blender（PS-244～PS-245；夜晚 PS-250E1）' },
   { folder: 'workspace/props', label: '家具', source: 'Blender（PS-244～PS-247；夜晚 PS-250E1）' },
+  { folder: 'workspace/styles', label: '房間風格', source: 'Blender（PS-250E）' },
   { folder: 'characters/toon/protagonist', label: 'Q 版主角', source: 'Blender（PS-250C）' },
   { folder: 'characters/toon/companion', label: 'Q 版 AI 夥伴', source: 'Blender（PS-250C）' },
   { folder: 'workspace/pixel/backgrounds', label: '像素場景・房間', source: 'Blender 像素渲染（PS-250D；夜晚 PS-250E1）' },
   { folder: 'workspace/pixel/props', label: '像素家具', source: 'Blender 像素渲染（PS-250D；夜晚 PS-250E1）' },
+  { folder: 'workspace/pixel/styles', label: '像素房間風格', source: 'Blender 像素渲染（PS-250E）' },
   { folder: 'characters/pixel/protagonist', label: '像素主角', source: '由 Q 版縮小（PS-250D）' },
   { folder: 'characters/pixel/companion', label: '像素 AI 夥伴', source: '由 Q 版縮小（PS-250D）' },
   { folder: 'characters/protagonist', label: '經典像素主角', source: '影像生成（PS-242）' },
@@ -41,6 +44,12 @@ const ASSET_GROUPS = Object.freeze([
 ]);
 
 const OTHER_GROUP = Object.freeze({ folder: '', label: '其他', source: '' });
+
+// PS-250E2: the room styles other than the default. These mirror
+// ROOM_STYLE_IDS in assetManifest.js and ROOM_STYLES in appearancePicker.js;
+// importing a new export of those cached modules could fail to link
+// (INFRA-105). ps250e2RoomStyles.test.js keeps the three in sync.
+const ROOM_STYLE_IDS = Object.freeze(['nordic']);
 
 // The same rule as the developer panel in Settings: local hosts, ngrok, or the
 // panel turned on explicitly. Turning the panel off also hides the gallery.
@@ -97,8 +106,18 @@ function pixelStylePaths() {
   ];
 }
 
+// Every room style's room and props, in both character styles, by day and by night.
+function roomStylePaths() {
+  return ROOM_STYLE_IDS.flatMap(roomStyle => ['toon', 'pixel'].flatMap(style => ['day', 'night'].flatMap(timeBand => (
+    WORKSPACE_PROJECT_PHASES.flatMap(({ progress }) => {
+      const scene = getWorkspaceSceneAssets(progress, {}, { appearance: { style } }, { timeBand, roomStyle });
+      return [scene.background, ...scene.props.map(entry => entry.path)];
+    })
+  ))));
+}
+
 function allAssetPaths() {
-  return [...getWorkspaceAssetManifestPaths(), ...getToonCharacterPaths(), ...pixelStylePaths()];
+  return [...getWorkspaceAssetManifestPaths(), ...getToonCharacterPaths(), ...pixelStylePaths(), ...roomStylePaths()];
 }
 
 /** Every asset once, grouped for the gallery; empty groups are left out. */
