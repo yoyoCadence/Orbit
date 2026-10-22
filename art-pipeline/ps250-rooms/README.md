@@ -18,6 +18,8 @@ Each style is the PS-244 scene with other materials: the same geometry, camera, 
 |---|---|
 | `rooms.py` | Runtime paths of a style's files and the `outputs.json` record, used by `ps244-blender/process_pack.py` and `ps250-pixel/process_pixel.py` |
 | `outputs.json` | Size and SHA-256 of every style file, and how many visible pixels the cut to the shared boxes dropped. `tests/unit/ps250e2RoomStyles.test.js` checks the files against it |
+| `thumbnails.py` | PS-250G: the Edit Mode picker's 216 x 144 WebP thumbnail of each room's day background, in both styles (`workspace/[pixel/]thumbnails/<room>.webp`); run it again after re-rendering a room |
+| `thumbnails.json` | Size and SHA-256 of the thumbnails; `tests/unit/ps250gPickerThumbnails.test.js` checks them |
 | `previews/` | `<style>[-night]-phase-*.jpg` (Q style, every project phase, with the default pair and the photo frame) and `<style>[-night]-pixel-phase-100.png` |
 
 Runtime files: `pwa/assets/personal-space/v2/workspace/styles/<style>/` (Q style: `background[-night].webp`, `props/<id>[-night].png`) and `pwa/assets/personal-space/v2/workspace/pixel/styles/<style>/` (pixel, all PNG).

@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "taskId": "PS-250G",
+  "size": [
+    216,
+    144
+  ],
+  "files": {
+    "assets/personal-space/v2/workspace/pixel/thumbnails/default.webp": {
+      "bytes": 5364,
+      "sha256": "4c9df9c5f9b52e5974fd6e2387314297d4d089312d3134bcca54d2a9fc8a2886"
+    },
+    "assets/personal-space/v2/workspace/pixel/thumbnails/nightowl.webp": {
+      "bytes": 4296,
+      "sha256": "48e38d90c16acd474f82eb1c7527b0eac34678efea27a7b5424d2aa89810d408"
+    },
+    "assets/personal-space/v2/workspace/pixel/thumbnails/nordic.webp": {
+      "bytes": 2974,
+      "sha256": "a126b2379ec73fe1ce0731f4500285a101f345512794fe819e6dc709c002b39c"
+    },
+    "assets/personal-space/v2/workspace/pixel/thumbnails/study.webp": {
+      "bytes": 4386,
+      "sha256": "e933e007c371cccbdd75f520c93f5362a354b791ef5fba1a23928fa6e18ab10b"
+    },
+    "assets/personal-space/v2/workspace/pixel/thumbnails/washitsu.webp": {
+      "bytes": 4892,
+      "sha256": "5f084edcaad7a3a75168ae93ed716bc3ca60da8fc9a19c3e1c34698c34116fc5"
+    },
+    "assets/personal-space/v2/workspace/thumbnails/default.webp": {
+      "bytes": 4276,
+      "sha256": "b733c635b2bd6aaa42c80afacc34b6cd6ca39a2e0e8ce4c5c3bf8797c779178c"
+    },
+    "assets/personal-space/v2/workspace/thumbnails/nightowl.webp": {
+      "bytes": 3988,
+      "sha256": "04ee4729a9ce319d766ad4f2f7d910fbee39b3bccff15a4f736fac1e534153ff"
+    },
+    "assets/personal-space/v2/workspace/thumbnails/nordic.webp": {
+      "bytes": 2162,
+      "sha256": "1e59569d6f19c2de8f9ef80bf56fbba0abf6752359983bd726de31ba0ec6d1a5"
+    },
+    "assets/personal-space/v2/workspace/thumbnails/study.webp": {
+      "bytes": 3584,
+      "sha256": "27226b22e087b27832905309a9af39ba643c3c8043ae455585b007d3ece46d4e"
+    },
+    "assets/personal-space/v2/workspace/thumbnails/washitsu.webp": {
+      "bytes": 3864,
+      "sha256": "cbb9e19df21b52d698a56cf489a96d108c73f27c9894a77d9437cb6bf1011d82"
+    }
+  }
+}

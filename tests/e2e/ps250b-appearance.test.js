@@ -122,6 +122,37 @@ test.describe('PS-250B character style and choice', () => {
     }
   });
 
+  test('shows small room thumbnails, and the precached defaults when pictures cannot load (PS-250G)', async ({ page }) => {
+    const requested = [];
+    page.on('request', request => requested.push(new URL(request.url()).pathname));
+    await page.goto('/');
+    await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
+    await page.locator('[data-orbit-open-world]').click();
+    await page.locator('[data-personal-space-v2] [data-v2-mode="edit"]').first().click();
+    const thumbnails = page.locator('[data-v2-appearance="room"] img');
+    await expect(thumbnails).toHaveCount(5);
+    for (const thumbnail of await thumbnails.all()) {
+      await thumbnail.scrollIntoViewIfNeeded();
+      await expect(thumbnail).toHaveAttribute('src', /\/workspace\/thumbnails\/[a-z]+\.webp$/);
+      await expect.poll(() => thumbnail.evaluate(image => image.complete && image.naturalWidth === 216)).toBe(true);
+    }
+    // Opening the picker no longer downloads the other rooms' full backgrounds.
+    expect(requested.filter(path => path.includes('/workspace/styles/'))).toEqual([]);
+
+    // Offline, never downloaded: the pixel thumbnails and the room style's
+    // decorations show the precached defaults instead of blank pictures.
+    await page.route(/\/(pixel\/)?thumbnails\/|\/decor\/styles\/|\/workspace\/pixel\//, route => route.abort());
+    await page.locator('[data-v2-appearance="room"][data-value="nightowl"]').click();
+    await page.locator('[data-v2-appearance="style"][data-value="pixel"]').click();
+    const pictures = page.locator('[data-v2-appearance="room"] img, [data-v2-appearance="decoration"] img');
+    await expect(pictures).toHaveCount(11);
+    for (const picture of await pictures.all()) {
+      await picture.scrollIntoViewIfNeeded();
+      await expect.poll(() => picture.evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true);
+      await expect(picture).not.toHaveAttribute('src', /\/pixel\/|\/decor\/styles\//);
+    }
+  });
+
   test('switches a decoration off and on in Edit Mode, on home too (PS-250F)', async ({ page }) => {
     await page.goto('/');
     await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });

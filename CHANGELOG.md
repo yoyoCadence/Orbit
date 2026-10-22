@@ -3,6 +3,20 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.38.1] - 2026-10-22
+
+### Changed
+- **選擇介面的房間縮圖（PS-250G）**：「空間」編輯模式的「房間」改用每個房間 216×144 的小縮圖（Q 版與像素各 5 張，共約 39.8 KB），打開時不再下載其他房間完整的背景（Q 版約 280 KB、像素約 350 KB）。縮圖由 `art-pipeline/ps250-rooms/thumbnails.py` 從已提交的背景產生。
+
+### Fixed
+- **離線時選擇介面的圖片不再空白（PS-250G）**：沒下載過的房間縮圖、裝飾、主角與 AI 夥伴的圖片，離線時改為顯示已預先快取的預設（藍色工作室、它的裝飾、上班族與 Orbit），與說明「離線時暫時以預設顯示」一致。
+
+### Validation
+- `ps250gPickerThumbnails.test.js`：縮圖的檔案、雜湊與尺寸；選擇介面使用縮圖；每張圖的退回都在預先快取中。`personalSpaceV2Page.test.js`：載入失敗時換成預設、不重複、不碰 poster、離開頁面後不再處理。
+- e2e：縮圖正常載入、打開選擇介面不下載完整背景；擋下縮圖與房間風格的裝飾時顯示預設。
+
+---
+
 ## [1.38.0] - 2026-10-22
 
 ### Added

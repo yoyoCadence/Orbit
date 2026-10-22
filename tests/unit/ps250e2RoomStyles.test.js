@@ -213,9 +213,9 @@ describe('PS-250E2 room style choice', () => {
     expect(rooms.map(button => button.dataset.value)).toEqual(ROOM_STYLES.map(entry => entry.id));
     expect(rooms.filter(button => button.getAttribute('aria-pressed') === 'true').map(button => button.dataset.value))
       .toEqual([STYLES[0]]);
-    expect(rooms[1].querySelector('img').getAttribute('src')).toBe(
-      getWorkspaceSceneAssets(0, {}, {}, { roomStyle: rooms[1].dataset.value }).background,
-    );
+    // PS-250G: each room's small thumbnail, not its full background.
+    expect(rooms[1].querySelector('img').getAttribute('src'))
+      .toBe(`assets/personal-space/v2/workspace/thumbnails/${rooms[1].dataset.value}.webp`);
     expect(rooms[0].querySelector('img').getAttribute('width')).toBe('108');
 
     // An older page that passes no room (INFRA-105) marks none, so either can be chosen.
@@ -229,7 +229,7 @@ describe('PS-250E2 room style choice', () => {
     const pressed = host.querySelector('[data-v2-appearance="room"][aria-pressed="true"]');
     expect(pressed.dataset.value).toBe('default');
     expect(pressed.querySelector('img').hasAttribute('data-pixel-art')).toBe(true);
-    expect(pressed.querySelector('img').getAttribute('src')).toContain('/pixel/');
+    expect(pressed.querySelector('img').getAttribute('src')).toContain('/pixel/thumbnails/');
   });
 
   it('stores a room in world.selectedThemeId and leaves an unchosen look unchosen', () => {
