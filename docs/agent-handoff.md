@@ -110,9 +110,9 @@
 25. **PS-250F2：完成**（與 F1 同一個 PR #201）。Codex 的 P2：F1 單獨時，選了房間風格又離線，poster 退回預設房間卻沒有裝飾（Pixi 有）；讓每個房間都有自己的裝飾才是正解，所以把 F2 併入 #201。四套房間風格的裝飾在 `workspace/[pixel/]decor/styles/<style>/`，裁成預設的框，不預先快取。Pixi 的裝飾改為與 poster 相同的退回步驟。
 26. **PS-250G：完成**（#202，v1.38.1）。選擇介面的房間改用 216×144 的縮圖（`ps250-rooms/thumbnails.py`，10 張約 39.8 KB），每張圖都有預先快取的退回（`data-fallback-src`）；`personalSpaceV2.js` 以 capture 監聽 `error`，只處理選擇介面的圖。PS-250 全部完成，PS-248 由它取代而結案。
     - 房間重新渲染後要重跑 `thumbnails.py`（`ps250gPickerThumbnails.test.js` 會檢查雜湊）。
-27. **PS-249 提案**（#203，[`docs/ps-249-overlay-scene-proposal.md`](ps-249-overlay-scene-proposal.md)，等待使用者決定 §6）。Session 結束後的 reveal 大多在升級畫面與佐證 sheet 底下播完、不再重播；場景在這些 overlay 底下照常重畫。建議 C1＋R-A＋P1，核准後拆成 PS-249A。
+27. **PS-249 提案**（#203，[`docs/ps-249-overlay-scene-proposal.md`](ps-249-overlay-scene-proposal.md)，等待使用者決定 §6）。Session 結束後的 reveal 大多在升級畫面與佐證 sheet 底下播完、不再重播；場景在這些 overlay 底下照常重畫。建議 C1＋R-A（overlay 關閉後從頭重播）＋P1，核准後拆成 PS-249A。`major` 橫幅因 `isolation: isolate` 不會畫在 overlay 之上（更正 tasks.md 原本的描述）。
     - 量測方式：時間線以頁面內的 `MutationObserver` 記錄；成本讀 `/proc` 中所有 Chromium 程序的 CPU 時間（SwiftShader 軟體繪圖，只比較相對值；renderer 主執行緒的時間量不到繪圖成本）。
-28. **下一步**：等待 PS-249 §6 與 AI-202 §9。Backlog 其餘項目需要核准或屬高風險（HW-112 的 Storage migration、INFRA-101／INFRA-105／PS-211D 的部署行為、PRO-014* 的 entitlement）。同時等待 AI-202 §9 的決定。PS-248 已由 PS-250 取代並結案；它 §9 中沒有被涵蓋的 A2 與順帶整理移到 PS-251（Backlog），刪檔與改驗收紀錄前先向使用者確認。INFRA-105（SHELL 的 JS／CSS／HTML 安裝時重新驗證）需核准。使用者原則：以「任務確實完成」為準，合併是後話；做不到的先寫進 `tasks.md`。
+28. **下一步**：等待 PS-249 §6 與 AI-202 §9。Backlog 其餘項目需要核准或屬高風險（HW-112 的 Storage migration、INFRA-101／INFRA-105／PS-211D 的部署行為、PRO-014* 的 entitlement）。PS-248 已由 PS-250 取代並結案；它 §9 中沒有被涵蓋的 A2 與順帶整理移到 PS-251（Backlog），刪檔與改驗收紀錄前先向使用者確認。INFRA-105（SHELL 的 JS／CSS／HTML 安裝時重新驗證）需核准。使用者原則：以「任務確實完成」為準，合併是後話；做不到的先寫進 `tasks.md`。
 
 其他：
 
