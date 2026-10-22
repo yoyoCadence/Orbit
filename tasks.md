@@ -230,6 +230,11 @@
   - 方向：決定哪些 overlay 要暫停場景（半透明的 modal 底下仍看得到場景，不一定要暫停）、reveal 是否要等 overlay 關閉再播；可選的最佳化：overlay 開著時延後掛載、`app.init` 傳 `autoStart: false`。
   - 屬於效能與呈現的調整，先提案再實作。
   - In progress（2026-10-22）：PS-250 完成後，Backlog 中不需核准就能開始的只剩本項的提案。第一步是提案（Mode A，只寫文件、不改程式碼），核准前不實作。
+    - 提案：[`docs/ps-249-overlay-scene-proposal.md`](docs/ps-249-overlay-scene-proposal.md)。在實際 app 量到：
+      - Session 結束後 reveal 立刻開始，0.6 秒後升級畫面、0.7 秒後佐證 sheet 蓋上；4.2 秒的 reveal 約 3.6 秒在底下播完，接著被標記為已看過、不再重播。`major` 橫幅（z 1200）畫在它們之上。
+      - 場景在 modal 與升級畫面底下照常重畫：量測環境中 CPU 與沒有 overlay 時相同，Focus overlay 底下暫停時少約 93%（軟體繪圖，只能比較相對值）。
+    - 建議：C1（只改 `orbitWindow.js`，以 `MutationObserver` 判斷被蓋住）＋R-A（被蓋住時 reveal 的計時與 CSS 動畫都暫停，`major` 橫幅隱藏）＋P1（所有全螢幕 overlay 都暫停場景）；可選：被蓋住時延後第一次掛載 Pixi。核准後拆成 PS-249A。
+    - **等待使用者決定**提案 §6。
 
 - [ ] **AI-202** 定義 companion relationship stage 與 hidden stats 的最小映射規則
   - 目標：讓 companion 關係變化可由真實行為驅動，而不是聊天次數
