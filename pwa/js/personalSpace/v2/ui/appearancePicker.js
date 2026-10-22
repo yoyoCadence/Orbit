@@ -100,7 +100,7 @@ export function renderAppearancePicker(value, roomStyle, hiddenDecorations) {
   return `
     <section class="personal-space-v2-appearance" data-v2-appearance-picker aria-labelledby="personal-space-v2-appearance-title">
       <div class="personal-space-v2-editor-heading">
-        <div><small>外觀</small><h2 id="personal-space-v2-appearance-title">風格、房間與角色</h2></div>
+        <div><small>外觀</small><h2 id="personal-space-v2-appearance-title">風格、房間、裝飾與角色</h2></div>
       </div>
       <fieldset>
         <legend>風格</legend>
@@ -134,9 +134,10 @@ export function renderAppearancePicker(value, roomStyle, hiddenDecorations) {
               stored: false,
               src: decorationPaths.get(option.id),
               pixelArt,
+              describedBy: 'personal-space-v2-decorations-hint',
             })).join('')}
           </ul>
-          <small>點一下顯示或收起。書架與桌上的小物在書架、書桌出現後才會擺上；目前只擺在藍色工作室。</small>
+          <small id="personal-space-v2-decorations-hint">點一下顯示或收起，每個房間都適用。書架與桌上的小物在書架、書桌出現後才會擺上。</small>
         </fieldset>
       ` : ''}
       <fieldset>
@@ -166,10 +167,10 @@ export function renderAppearancePicker(value, roomStyle, hiddenDecorations) {
   `;
 }
 
-function optionMarkup(kind, option, { selected, stored, src, pixelArt, size = { width: 72, height: 72 } }) {
+function optionMarkup(kind, option, { selected, stored, src, pixelArt, size = { width: 72, height: 72 }, describedBy }) {
   return `
     <li>
-      <button type="button" data-v2-appearance="${kind}" data-value="${escapeHtml(option.id)}" aria-pressed="${selected}"${stored ? ' data-stored' : ''}>
+      <button type="button" data-v2-appearance="${kind}" data-value="${escapeHtml(option.id)}" aria-pressed="${selected}"${stored ? ' data-stored' : ''}${describedBy ? ` aria-describedby="${describedBy}"` : ''}>
         <img src="${escapeHtml(src)}" alt="" width="${size.width}" height="${size.height}" loading="lazy" decoding="async" draggable="false"${pixelArt ? ' data-pixel-art' : ''}>
         <span>${escapeHtml(option.label)}</span>
       </button>

@@ -143,7 +143,7 @@ const PROP_DEFINITIONS = Object.freeze([
 // art-pipeline/ps250-decor like the props; placements come from its
 // placements.json (test-enforced). One on the shelf or the desk shows from
 // that prop's phase and moves with it; one on the floor shows from the start.
-// They are only in the default room for now (PS-250F2 adds the room styles).
+// PS-250F2: every room style has them too, cut to the same boxes.
 const DECOR_DEFINITIONS = Object.freeze([
   decoration('deco-trophy', 'office-shelf', 50, { x: 61.947, y: 32.031, width: 6.055, z: 23 },
     { x: 61.947, y: 32.129, width: 6.055 }),
@@ -342,7 +342,9 @@ function roomPaths(characterStyle, roomStyle) {
   return {
     backgrounds: { day: `${root}/background.${ext}`, night: `${root}/background-night.${ext}` },
     propPath: (id, lighting) => `${root}/props/${id}${lighting === 'night' ? '-night' : ''}.png`,
-    decorPath: null,
+    decorPath: (id, lighting) => (
+      `${ASSET_ROOT}/workspace/${pixel ? 'pixel/' : ''}decor/styles/${roomStyle}/${id}${lighting === 'night' ? '-night' : ''}.png`
+    ),
   };
 }
 

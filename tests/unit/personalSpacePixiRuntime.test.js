@@ -433,14 +433,78 @@ describe('Personal Space V2 Pixi scene runtime', () => {
     expect(decorations().every(entry => entry.path.includes('/pixel/decor/') && entry.path.endsWith('-night.png')))
       .toBe(true);
 
-    // The pixel room cannot load: the decorations are those of the room drawn.
+    // Only the pixel decorations were never downloaded: like the poster,
+    // each steps down to the precached Q-style one, on the pixel room.
+    fake.pixi.Assets.load.mockImplementation(async requested => {
+      if (requested.some(path => path.includes('/pixel/decor/'))) throw new Error('[Loader.load] offline');
+      return load(requested);
+    });
+    await runtime.render({ activeProject: { progress: 100 }, timeBand: 'night', appearance: { style: 'pixel' } });
+    expect(app().stage.children.find(child => child.zIndex === 0).texture.path)
+      .toMatch(/building-formal-workstation-room-pixel-night\.png$/);
+    const nightScene = getWorkspaceSceneAssets(100, {}, {}, { timeBand: 'night' });
+    expect(decorations()).toEqual(nightScene.decorations.map(entry => ({
+      id: entry.id,
+      path: entry.path,
+      z: entry.placement.z,
+    })));
+    // A Q-style image on the pixel room is not sampled as pixel art.
+    expect(app().stage.children.filter(child => child.label?.startsWith('orbit-decoration-'))
+      .every(child => child.texture.source.scaleMode === 'linear')).toBe(true);
+
+    // The pixel room cannot load: the decorations are those of the room
+    // drawn, still without the hidden ones.
     fake.pixi.Assets.load.mockImplementation(async requested => {
       if (requested.some(path => path.includes('/workspace/pixel/'))) throw new Error('[Loader.load] offline');
       return load(requested);
     });
-    await runtime.render({ activeProject: { progress: 100 }, appearance: { style: 'pixel' } });
-    expect(decorations().map(entry => entry.path)).toEqual(scene.decorations.map(entry => entry.path));
+    await runtime.render({
+      activeProject: { progress: 100 },
+      appearance: { style: 'pixel' },
+      hiddenDecorations: ['deco-coffee'],
+    });
+    expect(decorations().map(entry => entry.path)).toEqual(scene.decorations
+      .filter(entry => entry.id !== 'deco-coffee').map(entry => entry.path));
+    // Neither the night room nor its decorations load: the day ones, at their own placements.
+    fake.pixi.Assets.load.mockImplementation(async requested => {
+      if (requested.some(path => /-night\.(png|webp)$/.test(path))) throw new Error('[Loader.load] offline');
+      return load(requested);
+    });
+    await runtime.render({ activeProject: { progress: 100 }, timeBand: 'night', hiddenDecorations: ['deco-coffee'] });
+    expect(decorations()).toEqual(scene.decorations.filter(entry => entry.id !== 'deco-coffee').map(entry => ({
+      id: entry.id,
+      path: entry.path,
+      z: entry.placement.z,
+    })));
     runtime.destroy();
+  });
+
+  it('draws no decorations with an older manifest that has none (PS-250F, INFRA-105)', async () => {
+    vi.resetModules();
+    vi.doMock('../../pwa/js/personalSpace/v2/content/assetManifest.js', async importOriginal => {
+      const actual = await importOriginal();
+      return {
+        ...actual,
+        getWorkspaceSceneAssets: (...args) => {
+          const { decorations: _decorations, ...scene } = actual.getWorkspaceSceneAssets(...args);
+          return scene;
+        },
+      };
+    });
+    try {
+      const { createPixiSceneRuntime: createWithOlderManifest } = await import('../../pwa/js/personalSpace/v2/runtime/pixiSceneRuntime.js');
+      const fake = createFakePixi();
+      const runtime = createWithOlderManifest({ loadPixi: () => Promise.resolve(fake.pixi) });
+      const { host } = createRuntimeHost();
+      await runtime.mount(host, { activeProject: { progress: 100 } });
+      expect(runtime.getStatus()).toBe('ready');
+      expect(fake.applications[0].stage.children.filter(child => child.label?.startsWith('orbit-decoration-')))
+        .toEqual([]);
+      runtime.destroy();
+    } finally {
+      vi.doUnmock('../../pwa/js/personalSpace/v2/content/assetManifest.js');
+      vi.resetModules();
+    }
   });
 
   it('keeps today\'s layer with an older manifest that returns no `lighting` (PS-250E1, INFRA-105)', async () => {

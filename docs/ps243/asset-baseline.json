@@ -297,7 +297,7 @@
         },
         {
           "path": "pwa/js/personalSpace/v2/content/assetManifest.js",
-          "bytes": 20761
+          "bytes": 20902
         },
         {
           "path": "pwa/js/personalSpace/v2/content/characterCatalog.js",
@@ -353,7 +353,7 @@
         },
         {
           "path": "pwa/js/personalSpace/v2/runtime/pixiSceneRuntime.js",
-          "bytes": 24256
+          "bytes": 24911
         },
         {
           "path": "pwa/js/personalSpace/v2/sessionAdapter.js",
@@ -373,7 +373,7 @@
         },
         {
           "path": "pwa/js/personalSpace/v2/ui/appearancePicker.js",
-          "bytes": 11367
+          "bytes": 11543
         },
         {
           "path": "pwa/js/personalSpace/v2/ui/assetGallery.js",
@@ -388,15 +388,15 @@
           "bytes": 26773
         }
       ],
-      "rawBytes": 263670,
-      "gzipBytes": 69250
+      "rawBytes": 264642,
+      "gzipBytes": 69526
     },
     "vendoredPixi": {
       "path": "pwa/vendor/pixi.js",
       "rawBytes": 796970,
       "gzipBytes": 225428
     },
-    "combinedGzipBytes": 294678,
+    "combinedGzipBytes": 294954,
     "budgetBytes": 307200,
     "result": "PASS"
   }

@@ -190,9 +190,16 @@ describe('PS-250E2 room style choice', () => {
     const background = host.querySelector('.orbit-window-background');
     expect(background.getAttribute('src')).toBe(getWorkspaceSceneAssets(100, {}, {}, { timeBand: 'night', roomStyle }).background);
     expect(background.dataset.fallbackSrc).toBe(placements.night.background);
-    for (const image of host.querySelectorAll('.orbit-window-prop')) {
+    for (const image of host.querySelectorAll('.orbit-window-prop:not(.orbit-window-decoration)')) {
       expect(image.getAttribute('src')).toContain(`/styles/${roomStyle}/props/`);
       expect(image.dataset.fallbackSrc).not.toContain('/styles/');
+    }
+    // PS-250F2: so do its decorations, so a room that falls back keeps them.
+    const decorations = [...host.querySelectorAll('.orbit-window-decoration')];
+    expect(decorations).toHaveLength(6);
+    for (const image of decorations) {
+      expect(image.getAttribute('src')).toContain(`/decor/styles/${roomStyle}/`);
+      expect(image.dataset.fallbackSrc).toMatch(/\/workspace\/decor\/deco-[a-z-]+-night\.png$/);
     }
     // The world model carries the choice too.
     host.innerHTML = renderOrbitWindow({ activeProject: { progress: 0 }, world: { selectedThemeId: roomStyle } });

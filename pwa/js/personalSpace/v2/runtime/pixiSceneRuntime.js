@@ -153,15 +153,16 @@ export function createPixiSceneRuntime(options = {}) {
       loadPart(pixi, sceneryTiers.map(sceneryPaths)),
       loadPart(pixi, [[chosen.protagonist], [fallback.protagonist]]),
       loadPart(pixi, [[chosen.companion.path], [fallback.companion.path]]),
-      loadEach(pixi, decorationPaths(chosen)),
+      loadDecorations(pixi, sceneryTiers),
     ]);
     const drawnScenery = sceneryTiers[scenery.tier];
     // PS-250F: the decorations of the room that is drawn. Each loads on its
-    // own: one that cannot load is left out, and the room stays as it is.
-    const decorations = drawnScenery.decorations || [];
-    const decorationTextures = scenery.usedFallback
-      ? await loadEach(pixi, decorationPaths(drawnScenery))
+    // own, stepping down like the poster (the default style, then the day
+    // room); one that loads nowhere is left out and the room stays as it is.
+    const decorations = scenery.usedFallback
+      ? await loadDecorations(pixi, sceneryTiers.slice(scenery.tier))
       : chosenDecorations;
+    const decorationTextures = Object.fromEntries(decorations.map(({ entry, texture }) => [entry.path, texture]));
     const scene = {
       ...chosen,
       ...(scenery.usedFallback ? { background: drawnScenery.background, props: drawnScenery.props } : {}),
@@ -182,7 +183,7 @@ export function createPixiSceneRuntime(options = {}) {
         ...(scenery.usedFallback ? [] : [
           chosen.background,
           ...chosen.props.map(entry => entry.path),
-          ...decorationPaths(chosen),
+          ...(chosen.decorations || []).map(entry => entry.path),
         ]),
         ...(protagonistPart.usedFallback ? [] : [chosen.protagonist]),
         ...(companionPart.usedFallback ? [] : [chosen.companion.path]),
@@ -222,8 +223,8 @@ export function createPixiSceneRuntime(options = {}) {
       app.stage.addChild(sprite);
     });
 
-    decorations.filter(entry => decorationTextures[entry.path]).forEach(entry => {
-      const sprite = new pixi.Sprite(textures[entry.path]);
+    decorations.forEach(({ entry, texture }) => {
+      const sprite = new pixi.Sprite(texture);
       applyPlacement(sprite, entry.placement);
       sprite.label = `orbit-decoration-${entry.id}`;
       app.stage.addChild(sprite);
@@ -547,17 +548,25 @@ function sceneryPaths(scene) {
   return [scene.background, scene.weatherOverlay, ...scene.props.map(entry => entry.path)].filter(Boolean);
 }
 
-function decorationPaths(scene) {
-  return (scene.decorations || []).map(entry => entry.path);
-}
-
-// Loads each path on its own; the result has only the textures that loaded.
-async function loadEach(pixi, paths) {
-  const loaded = await Promise.all(paths.map(path => pixi.Assets.load([path]).then(
-    textures => [path, textures[path]],
-    () => null,
-  )));
-  return Object.fromEntries(loaded.filter(Boolean));
+// Loads each decoration of the first scene on its own, trying the same
+// decoration in the later scenes when it cannot load; the result has
+// { entry, texture } for each one that loaded, with the entry it came from.
+async function loadDecorations(pixi, tiers) {
+  const byId = tiers.map(tier => new Map((tier.decorations || []).map(entry => [entry.id, entry])));
+  const loaded = await Promise.all((tiers[0].decorations || []).map(async ({ id }) => {
+    const candidates = byId.map(entries => entries.get(id)).filter(Boolean)
+      .filter((entry, index, all) => all.findIndex(other => other.path === entry.path) === index);
+    for (const entry of candidates) {
+      try {
+        const textures = await pixi.Assets.load([entry.path]);
+        return { entry, texture: textures[entry.path] };
+      } catch {
+        // Not cached and offline: try the next scene's version.
+      }
+    }
+    return null;
+  }));
+  return loaded.filter(Boolean);
 }
 
 // Loads the first tier of paths that loads; a tier identical to an earlier

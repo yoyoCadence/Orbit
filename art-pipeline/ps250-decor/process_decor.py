@@ -2,7 +2,7 @@
 
 Usage:
     python3 process_decor.py <render_dir> <pixel_render_dir> [--lighting day|night]
-                             [--write-runtime]
+                             [--style <room style>] [--write-runtime]
 
 <render_dir> holds the Q-style renders of
     ps244-blender/render_pack.py <render_dir> --only decor [--lighting night]
@@ -24,6 +24,15 @@ and <pixel_render_dir> the pixel renders of
 - Previews (always): the committed background and props of the phases where
   decorations appear, with every decoration and the default pair (Q style),
   and the pixel room at 100%.
+- --style <room style> (PS-250F2) processes a room style's renders
+  (render_pack.py --style, and render_pixel.py --style, whose folder is
+  scene-<style>[-night]). Like the style props (ps250-rooms), each decoration
+  is cut to the default box of the same lighting, after the style's
+  shadow_floor, and the pixels the cut drops are counted in outputs.json
+  ("clipped"); the pixel ones get the style's pixel_shadow. The files go under
+  workspace/decor/styles/<style>/ and workspace/pixel/decor/styles/<style>/.
+  placements.json and DECOR_DEFINITIONS are not touched. The renders only need
+  the default boxes (render_pack.py --decor-boxes placements.json).
 
 Requires Pillow and numpy.
 """
@@ -68,8 +77,9 @@ def min_progress(decor_id):
     return Q.PROPS[support]['min'] if support else 0
 
 
-def decor_path(decor_id, lighting, pixel=False):
-    return f"{V2}/workspace/{'pixel/' if pixel else ''}decor/{decor_id}{'-night' if lighting == 'night' else ''}.png"
+def decor_path(decor_id, lighting, pixel=False, style='default'):
+    folder = '' if style == 'default' else f'styles/{style}/'
+    return f"{V2}/workspace/{'pixel/' if pixel else ''}decor/{folder}{decor_id}{'-night' if lighting == 'night' else ''}.png"
 
 
 def write_placements(lighting, placements):
@@ -112,8 +122,9 @@ def sync_asset_manifest(data):
         fh.write(updated)
 
 
-def record(files):
-    """Adds {path: bytes} to outputs.json with sizes and SHA-256, keeping the rest."""
+def record(files, clipped=None):
+    """Adds {path: bytes} to outputs.json with sizes and SHA-256 (and, for a
+    room style, the pixels each cut dropped), keeping the rest."""
     try:
         with open(OUTPUTS, encoding='utf-8') as fh:
             data = json.load(fh)
@@ -122,6 +133,8 @@ def record(files):
     for path, blob in files.items():
         data['files'][path] = {'bytes': len(blob), 'sha256': hashlib.sha256(blob).hexdigest()}
     data['files'] = dict(sorted(data['files'].items()))
+    if clipped:
+        data['clipped'] = dict(sorted({**data.get('clipped', {}), **clipped}.items()))
     with open(OUTPUTS, 'w', encoding='utf-8') as fh:
         json.dump(data, fh, ensure_ascii=False, indent=2)
         fh.write('\n')
@@ -164,14 +177,83 @@ def previews(lighting, sprites, placements, pixel_sprites):
     canvas.convert('RGB').save(os.path.join(PREVIEWS, f'decor{suffix}-pixel-phase-100.png'), optimize=True)
 
 
+def write_files(files):
+    for path, blob in files.items():
+        target = os.path.join(Q.PWA, *path.split('/'))
+        os.makedirs(os.path.dirname(target), exist_ok=True)
+        with open(target, 'wb') as fh:
+            fh.write(blob)
+
+
+def process_style(args):
+    """PS-250F2: a room style's decorations, cut to the default boxes."""
+    sys.path.insert(0, os.path.join(HERE, '..', 'ps250-rooms'))
+    import rooms
+    style, lighting = args.style, args.lighting
+    colours = Q.ROOM_STYLES[style]
+    with open(PLACEMENTS, encoding='utf-8') as fh:
+        data = json.load(fh)
+    placements = (data if lighting == 'day' else data[lighting])['decor']
+    sprites, pixel_sprites, clipped = {}, {}, {}
+    for decor_id in DECOR:
+        box = tuple(placements[decor_id]['bbox'])
+        frame = Q.lift_shadow_floor(Q.load_frame(os.path.join(args.render_dir, f'{decor_id}.png')),
+                                    colours.get('shadow_floor', 0))
+        sprite, own_box = Q.trim_prop(frame)
+        sprites[decor_id], clipped[decor_path(decor_id, lighting, style=style)] = Q.fit_to_box(sprite, own_box, box)
+        pixel_sprites[decor_id] = P.process_prop(
+            args.pixel_render_dir, decor_id, box, lighting, rooms.scene_folder(style, lighting),
+            colours.get('pixel_shadow'), colours.get('shadow_floor', 0))
+
+    if args.write_runtime:
+        files = {}
+        for decor_id in DECOR:
+            files[decor_path(decor_id, lighting, style=style)] = P.encode(sprites[decor_id])
+            files[decor_path(decor_id, lighting, pixel=True, style=style)] = P.encode(pixel_sprites[decor_id])
+        write_files(files)
+        record(files, clipped)
+
+    # Previews: the committed style room at 100% with its decorations, both styles.
+    with open(Q.PLACEMENTS, encoding='utf-8') as fh:
+        room = json.load(fh)
+    room = room if lighting == 'day' else room[lighting]
+    suffix = '-night' if lighting == 'night' else ''
+    os.makedirs(PREVIEWS, exist_ok=True)
+    for pixel in (False, True):
+        canvas = load_runtime(rooms.background_path(style, lighting, pixel=pixel))
+        layers = [(spec['z'], 0, pid, room['props'][pid], load_runtime(rooms.prop_path(style, pid, lighting, pixel=pixel)))
+                  for pid, spec in Q.PROPS.items() if spec['min'] <= 100 <= spec['max']]
+        layers += [(DECOR[did]['z'], 1, did, placements[did], (pixel_sprites if pixel else sprites)[did]) for did in DECOR]
+        for _, _, _, pl, sprite in sorted(layers, key=lambda layer: layer[:3]):
+            if pixel:
+                P.place(canvas, sprite, {**pl, 'anchor': 'center-bottom'})
+            else:
+                Q.place(canvas, sprite, pl['x'], pl['y'], pl['width'])
+        if pixel:
+            P.place(canvas, load_runtime(f'{P.PROTAGONIST_DIR}/office-idle-left.png'), {**P.PROTAGONIST_PLACEMENT, 'x': 58})
+            P.place(canvas, load_runtime(f'{P.COMPANION_DIR}/orbit-observe.png'), {**P.COMPANION_PLACEMENT, 'x': 69})
+        else:
+            for spec in Q.CHARACTERS.values():
+                Q.place(canvas, load_runtime(spec['path']['night']), spec['x'](100), spec['y'], spec['width'],
+                        spec['anchor'])
+        name = f"{style}{suffix}{'-pixel' if pixel else ''}-phase-100.jpg"
+        canvas.convert('RGB').resize((768, 512), Image.NEAREST if pixel else Image.LANCZOS).save(
+            os.path.join(PREVIEWS, name), quality=86)
+    print(json.dumps({path: count for path, count in clipped.items() if count}, indent=1))
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('render_dir')
     parser.add_argument('pixel_render_dir')
     parser.add_argument('--lighting', choices=('day', 'night'), default='day')
+    parser.add_argument('--style', choices=tuple(Q.ROOM_STYLES), default='default')
     parser.add_argument('--write-runtime', action='store_true')
     args = parser.parse_args()
     lighting = args.lighting
+    if args.style != 'default':
+        process_style(args)
+        return
 
     sprites, placements = {}, {}
     for decor_id, spec in DECOR.items():
@@ -186,17 +268,13 @@ def main():
         for decor_id in DECOR:
             files[decor_path(decor_id, lighting)] = P.encode(sprites[decor_id])
             files[decor_path(decor_id, lighting, pixel=True)] = P.encode(pixel_sprites[decor_id])
-        for path, blob in files.items():
-            target = os.path.join(Q.PWA, *path.split('/'))
-            os.makedirs(os.path.dirname(target), exist_ok=True)
-            with open(target, 'wb') as fh:
-                fh.write(blob)
+        write_files(files)
         record(files)
         data = write_placements(lighting, placements)
         if 'decor' in data and 'night' in data:
             sync_asset_manifest(data)
         else:
-            print('DECOR_DEFINITIONS not updated: run both lightings (day first).')
+            print('DECOR_DEFINITIONS not updated: run the other lighting too.')
 
     previews(lighting, sprites, placements, pixel_sprites)
     print(json.dumps({did: {k: v for k, v in pl.items() if k != 'bbox'} for did, pl in placements.items()}, indent=1))

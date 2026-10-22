@@ -6581,11 +6581,7 @@ html.has-bg[data-ui-skin="modern"] .levelup-box {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 45%, transparent);
 }
 
-/* PS-250F: decoration sprites are not square; show them whole. */
-.personal-space-v2-appearance-decorations img {
-  object-fit: contain;
-}
-
+/* PS-250F: the hint under the decoration switches. */
 .personal-space-v2-appearance fieldset > small {
   color: var(--text-muted);
   font-size: 11px;

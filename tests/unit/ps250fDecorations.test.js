@@ -1,17 +1,18 @@
 /**
  * @vitest-environment jsdom
  *
- * ps250fDecorations.test.js — PS-250F1: six decorations (user decision,
+ * ps250fDecorations.test.js — PS-250F: six decorations (user decision,
  * 2026-10-22: trophy and globe on the shelf, beanbag and floor lamp on the
  * floor, succulent and coffee set on the desk), rendered by the PS-244 scene
- * (art-pipeline/ps250-decor) in both character styles, by day and by night.
+ * (art-pipeline/ps250-decor) in both character styles, by day and by night,
+ * in the default room (PS-250F1) and every room style (PS-250F2).
  * Each is shown unless switched off in Edit Mode; the switches are stored
  * only on this device, in world.hiddenDecorations. The default room's
  * decorations are precached.
  */
 
 import { createHash } from 'node:crypto';
-import { readdirSync, readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -39,6 +40,7 @@ const placements = JSON.parse(readFileSync(join(DECOR, 'placements.json'), 'utf8
 const SHELL = [...readFileSync(join(PWA, 'sw.js'), 'utf8').match(/const SHELL = \[([\s\S]*?)\];/)[1]
   .matchAll(/'\.\/([^']*)'/g)].map(match => match[1]);
 const IDS = DECORATIONS.map(entry => entry.id);
+const ROOM_STYLES = ['nordic', 'washitsu', 'nightowl', 'study'];
 const ON_SHELF = ['deco-trophy', 'deco-globe'];
 const ON_DESK = ['deco-succulent', 'deco-coffee'];
 const ON_FLOOR = ['deco-beanbag', 'deco-floor-lamp'];
@@ -61,6 +63,15 @@ function pngSize(path) {
 
 const ids = scene => scene.decorations.map(entry => entry.id);
 
+function filesUnder(folder) {
+  const root = join(PWA, 'assets', 'personal-space', 'v2', ...folder.split('/'));
+  const walk = dir => readdirSync(dir).flatMap(name => {
+    const path = join(dir, name);
+    return statSync(path).isDirectory() ? walk(path) : [path];
+  });
+  return walk(root).map(path => `assets/personal-space/v2/${folder}/${path.slice(root.length + 1).split('\\').join('/')}`);
+}
+
 afterEach(() => {
   localStorage.clear();
   document.body.innerHTML = '';
@@ -79,6 +90,25 @@ describe('PS-250F1 decorations: assets', () => {
     expect(pythonIds('ps244-blender/scene.py', 'DECOR_IDS')).toEqual(IDS);
     expect(pythonIds('ps250-decor/process_decor.py', 'DECOR')).toEqual(IDS);
     expect(ids(getWorkspaceSceneAssets(100))).toEqual(IDS);
+  });
+
+  it('puts each decoration on the same support in the pipeline and the scene', () => {
+    const scene = readFileSync(join(REPO, 'art-pipeline', 'ps244-blender', 'scene.py'), 'utf8');
+    const sceneSupports = Object.fromEntries([...scene.slice(scene.indexOf('DECOR_SUPPORTS = {'))
+      .split('\n}')[0].matchAll(/'(deco-[a-z-]+)': \('([a-z-]+)',\)/g)].map(match => [match[1], match[2]]));
+    const pipeline = readFileSync(join(DECOR, 'process_decor.py'), 'utf8');
+    const pipelineSupports = Object.fromEntries([...pipeline.matchAll(/'(deco-[a-z-]+)':\s*\{'support': '([a-z-]+)'/g)]
+      .map(match => [match[1], match[2]]));
+    const runtimeSupports = Object.fromEntries(getWorkspaceSceneAssets(100).decorations
+      .filter(entry => entry.support).map(entry => [entry.id, entry.support]));
+    expect(runtimeSupports).toEqual({
+      'deco-trophy': 'office-shelf',
+      'deco-globe': 'office-shelf',
+      'deco-succulent': 'corner-desk',
+      'deco-coffee': 'corner-desk',
+    });
+    expect(sceneSupports).toEqual(runtimeSupports);
+    expect(pipelineSupports).toEqual(runtimeSupports);
   });
 
   it('places each decoration where the pipeline trimmed it, by day and by night', () => {
@@ -114,20 +144,25 @@ describe('PS-250F1 decorations: assets', () => {
     expect(Object.values(z).every(Number.isInteger)).toBe(true);
   });
 
-  it('ships exactly the hashed files the pipeline wrote, in both character styles', () => {
-    const onDisk = ['workspace/decor', 'workspace/pixel/decor'].flatMap(folder => (
-      readdirSync(join(PWA, 'assets', 'personal-space', 'v2', ...folder.split('/')))
-        .map(name => `assets/personal-space/v2/${folder}/${name}`)
-    )).sort();
+  it('ships exactly the hashed files the pipeline wrote, in both character styles and every room', () => {
+    const onDisk = [...filesUnder('workspace/decor'), ...filesUnder('workspace/pixel/decor')].sort();
     expect(onDisk).toEqual(Object.keys(outputs.files).sort());
-    // Six decorations, by day and by night, Q style and pixel.
-    expect(onDisk).toHaveLength(6 * 2 * 2);
+    // Six decorations, by day and by night, Q style and pixel, in five rooms.
+    expect(onDisk).toHaveLength(6 * 2 * 2 * 5);
     for (const [path, entry] of Object.entries(outputs.files)) {
       const data = readFileSync(join(PWA, path));
       expect(data.length, path).toBe(entry.bytes);
       expect(createHash('sha256').update(data).digest('hex'), path).toBe(entry.sha256);
     }
     const resolved = new Set();
+    for (const roomStyle of ROOM_STYLES) {
+      for (const style of ['toon', 'pixel']) {
+        for (const timeBand of ['day', 'night']) {
+          getWorkspaceSceneAssets(100, {}, { appearance: { style } }, { timeBand, roomStyle })
+            .decorations.forEach(entry => resolved.add(entry.path));
+        }
+      }
+    }
     for (const style of ['toon', 'pixel']) {
       for (const timeBand of ['day', 'night']) {
         const scene = getWorkspaceSceneAssets(100, {}, { appearance: { style } }, { timeBand });
@@ -154,15 +189,16 @@ describe('PS-250F1 decorations: assets', () => {
       expect(SHELL).toContain(path);
       expect(getWorkspaceAssetManifestPaths()).toContain(path);
     }
-    expect(SHELL.filter(path => path.includes('/pixel/decor/'))).toEqual([]);
+    expect(SHELL.filter(path => path.includes('/pixel/decor/') || path.includes('/decor/styles/'))).toEqual([]);
+    expect(getWorkspaceAssetManifestPaths().filter(path => path.includes('/decor/styles/'))).toEqual([]);
   });
 
   it('lists every decoration file in the developer gallery', () => {
     const catalog = buildAssetCatalog();
     const listed = catalog.flatMap(group => group.assets.map(asset => asset.path));
     for (const path of Object.keys(outputs.files)) expect(listed).toContain(path);
-    expect(catalog.find(group => group.label === '裝飾').assets).toHaveLength(12);
-    expect(catalog.find(group => group.label === '像素裝飾').assets).toHaveLength(12);
+    expect(catalog.find(group => group.label === '裝飾').assets).toHaveLength(12 * 5);
+    expect(catalog.find(group => group.label === '像素裝飾').assets).toHaveLength(12 * 5);
   });
 });
 
@@ -199,10 +235,32 @@ describe('PS-250F1 decorations: scene', () => {
     expect(pixel.decorations.every(entry => /\/workspace\/pixel\/decor\/deco-[a-z-]+\.png$/.test(entry.path))).toBe(true);
   });
 
-  it('has none in the other room styles yet (PS-250F2)', () => {
-    for (const roomStyle of ['nordic', 'washitsu', 'nightowl', 'study']) {
-      expect(getWorkspaceSceneAssets(100, {}, {}, { roomStyle }).decorations).toEqual([]);
+  it('has every room style\'s own decorations, cut to the default boxes (PS-250F2)', () => {
+    for (const roomStyle of ROOM_STYLES) {
+      for (const style of ['toon', 'pixel']) {
+        for (const timeBand of ['day', 'night']) {
+          const styled = getWorkspaceSceneAssets(100, {}, { appearance: { style } }, { timeBand, roomStyle });
+          const plain = getWorkspaceSceneAssets(100, {}, { appearance: { style } }, { timeBand });
+          expect(ids(styled)).toEqual(IDS);
+          styled.decorations.forEach((entry, index) => {
+            expect(entry.path).toContain(`/decor/styles/${roomStyle}/`);
+            expect(entry.placement).toEqual(plain.decorations[index].placement);
+            expect(pngSize(entry.path), entry.path).toEqual(pngSize(plain.decorations[index].path));
+          });
+        }
+      }
     }
+  });
+
+  it('records how many pixels the cut of each Q-style room-style decoration dropped, and keeps it small', () => {
+    const styled = Object.keys(outputs.files).filter(path => /\/workspace\/decor\/styles\//.test(path));
+    expect(styled).toHaveLength(ROOM_STYLES.length * 6 * 2);
+    expect(Object.keys(outputs.clipped).sort()).toEqual(styled.sort());
+    // Most cuts drop a faint shadow tail (at most 366 pixels). The most is the
+    // night-owl floor lamp at night: the neon rail behind it casts the pole's
+    // shadow onto the near-black wall outside the box, where it cannot be
+    // seen (compared side by side). More than this would be a visible cut.
+    for (const [path, count] of Object.entries(outputs.clipped)) expect(count, path).toBeLessThan(1000);
   });
 
   it('moves a decoration with what it stands on', () => {

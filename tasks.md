@@ -333,8 +333,10 @@
       - **執行時**：`getWorkspaceSceneAssets()` 回傳獨立的 `decorations`（舊的呼叫端不畫），第四個參數加上 `hiddenDecorations`。書架、書桌上的裝飾在支撐物出現時才顯示，也跟著支撐物的 placement 移動。poster 用家具的 class 與同樣的退回步驟；Pixi 每件各自載入，載入失敗的略過，房間不會因此退回預設。
       - **開關**：Edit Mode 的「風格、房間與角色」新增「裝飾」，每件一個開關（以裝飾本身當縮圖）。本機只記錄關掉的（`world.hiddenDecorations`），預設全部顯示；疊在最新已存的 state 上加入或移除一個 id，不認得的 id 保留。不碰獎勵、經濟與 ledger。舊頁面（不傳 `hiddenDecorations`）或舊 `assetManifest.js` 時不顯示開關（INFRA-105）。
       - **快取**：預設（全 Q 版＋藍色工作室）的 6 件裝飾白天與夜晚在 SHELL（+12 個檔案，約 119 KB）；manifest 38 → 50 個檔案；PS-243 完整場景 1,288,625 → 1,409,958 B。像素版按需下載。
-      - 已知限制：其他四套房間風格在 F2 之前不顯示裝飾（開關下方有說明）。
-    - 下一步：PS-250F2（其他四套房間風格的裝飾）。只渲染預設裝飾的框（render border），因為風格裝飾會裁成那個框。
+    - PS-250F2 完成（2026-10-22，與 F1 同一個 PR #201、v1.38.0）：Codex 指出 F1 單獨合併時，選了房間風格又離線時 poster 退回預設房間卻沒有裝飾（Pixi 有），F2 讓每個房間都有自己的裝飾才是正解，所以兩者合併為一個 PR。
+      - 四套房間風格各 6 件裝飾（Q 版＋像素、白天＋夜晚），換成該風格的材質；像房間風格的家具一樣，在 `shadow_floor` 之後裁成預設裝飾同一時段的框，所以共用 `DECOR_DEFINITIONS`。被裁掉的像素記在 `ps250-decor/outputs.json` 的 `clipped`（多半是很淡的陰影尾端，最多 366；夜貓工作室的落地燈夜晚 729，是霓虹燈條投在近乎全黑牆上的燈桿影子，並排比較看不出差別）。檔案在 `workspace/[pixel/]decor/styles/<style>/`，開發者總覽列在「裝飾」「像素裝飾」。不預先快取。
+      - `render_pack.py --decor-boxes`：只渲染預設的框加 48 px（render border），每個時段約 5 分鐘（整個畫面約 35 分鐘）；與整個畫面的渲染只差取樣雜訊。`render_pack.py` 只在 `--only` 指名時渲染裝飾，完整的渲染仍只有房間與家具。
+      - 獨立 review（F1 無 P1／P2）的 P3 一併處理：Pixi 的裝飾改為與 poster 相同的退回步驟（預設房間的 Q 版、白天），都無法載入才略過；補上測試（退回時保留收起的裝飾、舊 manifest 沒有 `decorations`、三處的支撐物一致）；標題改為「風格、房間、裝飾與角色」，開關以 `aria-describedby` 連到說明。書架內原本就有一個小獎盃（PS-244），與書架頂的獎盃裝飾並存，視為一櫃獎盃，不改。
     - PS-250E1 完成（2026-10-21，v1.35.0）：
       - **渲染**：`scene.py` 的 `lighting='night'`：同一個場景與相機，沒有太陽，4 盞壁燈是主要光源、燈罩發光，補光與 world 調暗，窗外是深藍夜空與一半亮著的窗戶。白天的檔案、placement 與預覽圖不變。
       - **家具**：夜晚的影子朝畫面下方，每件夜晚家具有自己的裁切框與 placement（`placements.json` 的 `night`，`PROP_DEFINITIONS` 的第四個參數），draw order 與白天相同。書架在夜晚會遮住後牆的燈光，裁切框較大（218 KB）。

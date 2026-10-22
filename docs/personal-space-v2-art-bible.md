@@ -159,7 +159,7 @@ Each set has several protagonists and Companion forms. Added so far:
 
 - PS-250F1: six decorations in the default room, in both styles, by day and by night: a trophy and a globe on the shelf, a beanbag and a floor lamp on the floor, a succulent and a coffee set (walnut tray, pour-over, two mugs) on the desk. Each is a separate sprite from the same scene and camera, trimmed like a prop; the one on the shelf or desk appears with that piece of furniture. The floor lamp's shade glows at night but lights nothing else, so the shared room render stays the same with or without it. Every decoration is shown unless switched off in Edit Mode. Source: `art-pipeline/ps250-decor/` (models: `ps244-blender/scene.py`).
 
-PS-250F2 adds the decorations to the other four room styles and updates this list.
+- PS-250F2: the same six decorations in the other four room styles, with each style's materials (the tray and the trophy's wood and metal follow the room), in both styles, by day and by night. They are cut to the default room's boxes, like the style furniture, so every room shares one set of placements.
 
 ### 6.2 Workspace Upgrade Phases
 

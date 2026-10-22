@@ -5,6 +5,7 @@ art pixel.
 Usage:
     python3 render_pixel.py <render_dir> [--samples N] [--lighting day|night]
                             [--style <room style>] [--only id,id]
+                            [--decor-boxes <ps250-decor/placements.json>]
 
 Writes <render_dir>/scene/room.png and <render_dir>/scene/<prop-id>.png at
 384 x 256 (<render_dir>/scene-night/ for the PS-250E1 night lighting, and
@@ -40,7 +41,7 @@ def pixel_settings(scene):
     scene.render.line_thickness = 1.0
 
 
-def render_scene(out_dir, samples, lighting='day', style='default', only=''):
+def render_scene(out_dir, samples, lighting='day', style='default', only='', decor_boxes=''):
     # render_pack builds the scene through scene.configure_render, so wrapping
     # it applies the pixel settings to the room and every prop render.
     configure = S.configure_render
@@ -51,7 +52,7 @@ def render_scene(out_dir, samples, lighting='day', style='default', only=''):
 
     S.configure_render = configure_pixel
     sys.argv = [sys.argv[0], out_dir, '--width', str(SCENE_WIDTH), '--samples', str(samples),
-                '--lighting', lighting, '--style', style, '--only', only]
+                '--lighting', lighting, '--style', style, '--only', only, '--decor-boxes', decor_boxes]
     render_pack.main()
 
 
@@ -63,9 +64,10 @@ def main():
     parser.add_argument('--lighting', choices=S.LIGHTINGS, default='day')
     parser.add_argument('--style', choices=tuple(S.ROOM_STYLES), default='default')
     parser.add_argument('--only', default='')
+    parser.add_argument('--decor-boxes', default='')
     args = parser.parse_args(argv)
     render_scene(os.path.join(args.render_dir, rooms.scene_folder(args.style, args.lighting)),
-                 args.samples, args.lighting, args.style, args.only)
+                 args.samples, args.lighting, args.style, args.only, args.decor_boxes)
 
 
 if __name__ == '__main__':
