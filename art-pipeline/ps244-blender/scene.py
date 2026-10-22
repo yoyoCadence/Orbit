@@ -44,6 +44,19 @@ PROP_OCCLUDERS = {
     'office-chair': ('corner-desk',),
 }
 
+# PS-250F: decorations (user decision, 2026-10-22), shown or hidden in Edit
+# Mode. Rendered like props, but hidden in the room render and in every prop
+# render, so adding them changes none of the existing files.
+DECOR_IDS = (
+    'deco-trophy', 'deco-globe', 'deco-beanbag', 'deco-floor-lamp', 'deco-succulent', 'deco-coffee',
+)
+DECOR_SUPPORTS = {
+    'deco-trophy': ('office-shelf',),
+    'deco-globe': ('office-shelf',),
+    'deco-succulent': ('corner-desk',),
+    'deco-coffee': ('corner-desk',),
+}
+
 # PS-250E1: the same room under two lights. Geometry, camera and materials
 # are the same; only the light sources, the sky, the skyline and what glows
 # change. 'day' is the PS-244 look and must stay exactly as it was.
@@ -346,6 +359,16 @@ def build_materials(lighting='day', style='default'):
         'leaf': tm('leaf', '#3f9a4a', 0.5, gloss=0.12),
         'leaf_dark': tm('leaf_dark', '#2f7a3d', 0.55),
         'stem': tm('stem', '#5a4630', 0.8),
+        # PS-250F decorations.
+        'globe_sea': tm('globe_sea', '#3f78b8', 0.35, gloss=0.25),
+        'globe_land': tm('globe_land', '#8fbf6a', 0.6),
+        'beanbag': tm('beanbag', '#d9a441', 0.9),
+        'beanbag_seam': tm('beanbag_seam', '#a87a2c', 0.9),
+        'succulent': tm('succulent', '#7fae8a', 0.55, gloss=0.1),
+        'succulent_tip': tm('succulent_tip', '#c98a8a', 0.6),
+        # The floor lamp's shade glows at night, like the sconces.
+        'lamp_shade': (emission_material('lamp_shade', srgb('#ffd8a0'), 4) if night
+                       else tm('lamp_shade', '#efe4cf', 0.85)),
         'bulb': emission_material('bulb', srgb('#ffe2b0'), 18),
         'window_frame': tm('window_frame', '#141a2a', 0.4, metal=0.6),
         'sill': tm('sill', '#c79a52', 0.35, metal=0.5, gloss=0.2),
@@ -938,6 +961,114 @@ def build_plant(b):
                    math.radians(rng.uniform(-55, -25)), mat)
 
 
+# ── decorations (PS-250F) ───────────────────────────────────────────────────
+SHELF_X, SHELF_Y, SHELF_TOP = RIGHT_X - 1.75, BACK_Y - 0.22, 1.99
+
+
+def build_trophy(b):
+    # A cup on the left of the shelf top, clear of the clock above its middle.
+    m, g = b.m, 'deco-trophy'
+    tx, ty, z = SHELF_X - 0.4, SHELF_Y - 0.02, SHELF_TOP
+    b.box(g, (0.13, 0.11, 0.05), (tx, ty, z + 0.025), m['walnut'], bevel=0.006)
+    b.box(g, (0.09, 0.006, 0.025), (tx, ty - 0.058, z + 0.025), m['brass'])
+    b.cyl(g, 0.012, 0.07, (tx, ty, z + 0.085), m['brass'], verts=12)
+    b.cyl(g, 0.03, 0.02, (tx, ty, z + 0.125), m['brass'], verts=16)
+    b.cyl(g, 0.075, 0.12, (tx, ty, z + 0.195), m['brass'], r2=0.035)
+    for side in (-1, 1):
+        b.torus(g, 0.03, 0.007, (tx + side * 0.08, ty, z + 0.205), m['brass'], rot=(math.pi / 2, 0, 0))
+
+
+def build_globe(b):
+    # A desk globe on a brass meridian, on the right of the shelf top.
+    m, g = b.m, 'deco-globe'
+    gx, gy, z = SHELF_X + 0.38, SHELF_Y - 0.02, SHELF_TOP
+    b.cyl(g, 0.07, 0.02, (gx, gy, z + 0.01), m['walnut'])
+    b.cyl(g, 0.01, 0.08, (gx, gy, z + 0.06), m['brass'], verts=10)
+    centre = (gx, gy, z + 0.21)
+    b.sphere(g, 0.1, centre, m['globe_sea'])
+    rng = random.Random(9)
+    for _ in range(6):
+        lat, lon = rng.uniform(-0.9, 0.9), rng.uniform(0, 2 * math.pi)
+        d = Vector((math.cos(lat) * math.cos(lon), math.cos(lat) * math.sin(lon), math.sin(lat)))
+        b.sphere(g, rng.uniform(0.035, 0.05), Vector(centre) + d * 0.08, m['globe_land'], scale=(1, 1, 0.55),
+                 rot=d.to_track_quat('Z', 'Y').to_euler())
+    b.torus(g, 0.115, 0.006, centre, m['brass'], rot=(0, math.radians(90), math.radians(-20)))
+
+
+def build_beanbag(b):
+    # A slouched beanbag on the free floor at the front left: one sphere
+    # pressed into a teardrop, low and wide at the front, a backrest rising at
+    # the back, a soft dent where one sits and flat where it rests on the
+    # floor. It is turned towards the desk so the backrest shows in profile.
+    m, g = b.m, 'deco-beanbag'
+    bx, by = LEFT_X + 1.6, -1.0
+    turn = math.radians(-20)
+    o = b.sphere(g, 1.0, (bx, by, 0.0), m['beanbag'], segments=48)
+    for v in o.data.vertices:
+        x, y, z = v.co
+        back = min(1.0, max(0.0, (y + 1) / 2))  # 0 at the front, 1 at the back
+        height = 0.3 + 0.6 * back ** 2.0        # front edge 0.3 m, backrest 0.9 m
+        top = max(0.0, z)
+        z = max(z, -0.15) + 0.15                # flat bottom
+        dent = 0.45 * math.exp(-((x / 0.4) ** 2 + ((y + 0.05) / 0.35) ** 2)) * top
+        lx, ly = x * 0.5 * (1 - 0.15 * back), y * 0.48
+        v.co = (lx * math.cos(turn) - ly * math.sin(turn), lx * math.sin(turn) + ly * math.cos(turn),
+                z / 1.15 * height * (1 - dent))
+    o.data.update()
+    seam = b.torus(g, 0.43, 0.012, (bx, by, 0.07), m['beanbag_seam'])
+    seam.scale = (1.05, 1.0, 1.0)
+    seam.rotation_euler = (0, 0, turn)
+
+
+def build_floor_lamp(b):
+    # An arc of a floor lamp in the back-left corner, by the slat wall.
+    m, g = b.m, 'deco-floor-lamp'
+    fx, fy = LEFT_X + 0.45, BACK_Y - 0.6
+    b.cyl(g, 0.16, 0.03, (fx, fy, 0.015), m['steel'])
+    b.cyl(g, 0.014, 1.5, (fx, fy, 0.78), m['steel'], verts=12)
+    b.cyl(g, 0.2, 0.26, (fx, fy, 1.64), m['lamp_shade'], r2=0.15)
+    b.torus(g, 0.2, 0.008, (fx, fy, 1.51), m['brass'])
+    b.torus(g, 0.15, 0.008, (fx, fy, 1.77), m['brass'])
+
+
+def build_succulent(b):
+    # A potted succulent at the left end of the desk, beside the lamp.
+    m, g = b.m, 'deco-succulent'
+    sx, sy, z = DESK_X - 0.9, DESK_Y - 0.2, DESK_TOP
+    b.cyl(g, 0.065, 0.09, (sx, sy, z + 0.045), m['ceramic'], r2=0.05)
+    b.cyl(g, 0.058, 0.01, (sx, sy, z + 0.088), m['soil'])
+    for ring, (count, length, pitch) in enumerate(((7, 0.07, -50), (6, 0.055, -30), (4, 0.04, -10))):
+        for k in range(count):
+            yaw = k * 2 * math.pi / count + ring * 0.4
+            b.leaf(g, (sx, sy, z + 0.095 + ring * 0.012), length, 0.035, yaw, math.radians(pitch),
+                   m['succulent_tip'] if ring == 0 and k % 2 else m['succulent'])
+
+
+def build_coffee(b):
+    # A small pour-over set on a tray, on the desk return beside the mug.
+    m, g = b.m, 'deco-coffee'
+    cx, cy, z = DESK_X + 0.62, DESK_Y - 0.78, DESK_TOP
+    b.box(g, (0.3, 0.2, 0.015), (cx, cy, z + 0.0075), m['walnut'], bevel=0.006)
+    b.cyl(g, 0.05, 0.12, (cx - 0.06, cy + 0.02, z + 0.075), m['ceramic'], r2=0.04)
+    b.cyl(g, 0.065, 0.06, (cx - 0.06, cy + 0.02, z + 0.165), m['ceramic'], r2=0.03)
+    b.tube(g, [(cx - 0.01, cy + 0.02, z + 0.11), (cx + 0.03, cy + 0.0, z + 0.14), (cx + 0.05, cy - 0.01, z + 0.13)],
+           0.007, m['ceramic'])
+    for dx in (0.06, 0.11):
+        b.cyl(g, 0.026, 0.045, (cx + dx, cy - 0.04, z + 0.0375), m['mug'])
+        b.cyl(g, 0.022, 0.004, (cx + dx, cy - 0.04, z + 0.058), m['coffee'])
+
+
+DECOR_BUILDERS = {
+    'deco-trophy': build_trophy,
+    'deco-globe': build_globe,
+    'deco-beanbag': build_beanbag,
+    'deco-floor-lamp': build_floor_lamp,
+    'deco-succulent': build_succulent,
+    'deco-coffee': build_coffee,
+}
+assert tuple(DECOR_BUILDERS) == DECOR_IDS
+
+
 PROP_BUILDERS = {
     'corner-desk': build_desk,
     'office-chair': build_chair,
@@ -1079,6 +1210,8 @@ def build_scene(width=1536, samples=96, lighting='day', style='default'):
     build_room(builder, lighting)
     for prop_id in PROP_IDS:
         PROP_BUILDERS[prop_id](builder)
+    for decor_id in DECOR_IDS:
+        DECOR_BUILDERS[decor_id](builder)
     build_lighting(scene, lighting, style)
     build_camera(scene)
     configure_render(scene, width, samples)

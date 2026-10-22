@@ -10,7 +10,7 @@
  * (Q style, PS-250C); the pixel style is resolved through the scene for every
  * option the Edit Mode picker offers (PS-250B, PS-250D), by day and by night
  * (PS-250E1). The room styles (PS-250E2) are resolved the same way, in both
- * character styles.
+ * character styles, and so are the decorations (PS-250F).
  */
 import { FLAG_DEV_PANEL } from '../../../flags.js';
 import {
@@ -30,11 +30,13 @@ const ASSET_ROOT = 'assets/personal-space/v2/';
 const ASSET_GROUPS = Object.freeze([
   { folder: 'workspace/backgrounds', label: '場景・房間', source: 'Blender（PS-244～PS-245；夜晚 PS-250E1）' },
   { folder: 'workspace/props', label: '家具', source: 'Blender（PS-244～PS-247；夜晚 PS-250E1）' },
+  { folder: 'workspace/decor', label: '裝飾', source: 'Blender（PS-250F）' },
   { folder: 'workspace/styles', label: '房間風格', source: 'Blender（PS-250E）' },
   { folder: 'characters/toon/protagonist', label: 'Q 版主角', source: 'Blender（PS-250C）' },
   { folder: 'characters/toon/companion', label: 'Q 版 AI 夥伴', source: 'Blender（PS-250C）' },
   { folder: 'workspace/pixel/backgrounds', label: '像素場景・房間', source: 'Blender 像素渲染（PS-250D；夜晚 PS-250E1）' },
   { folder: 'workspace/pixel/props', label: '像素家具', source: 'Blender 像素渲染（PS-250D；夜晚 PS-250E1）' },
+  { folder: 'workspace/pixel/decor', label: '像素裝飾', source: 'Blender 像素渲染（PS-250F）' },
   { folder: 'workspace/pixel/styles', label: '像素房間風格', source: 'Blender 像素渲染（PS-250E）' },
   { folder: 'characters/pixel/protagonist', label: '像素主角', source: '由 Q 版縮小（PS-250D）' },
   { folder: 'characters/pixel/companion', label: '像素 AI 夥伴', source: '由 Q 版縮小（PS-250D）' },
@@ -95,7 +97,7 @@ function pixelStylePaths() {
   return [
     ...['day', 'night'].flatMap(timeBand => WORKSPACE_PROJECT_PHASES.flatMap(({ progress }) => {
       const scene = resolve({ style: 'pixel' }, {}, progress, timeBand);
-      return [scene.background, ...scene.props.map(entry => entry.path)];
+      return [scene.background, ...scene.props.map(entry => entry.path), ...sceneDecorations(scene)];
     })),
     ...pixel.protagonists.flatMap(({ id }) => protagonist.flatMap(state => facings.map(facing => (
       resolve({ style: 'pixel', protagonistId: id }, { protagonist: { state, facing } }).protagonist
@@ -111,9 +113,14 @@ function roomStylePaths() {
   return ROOM_STYLE_IDS.flatMap(roomStyle => ['toon', 'pixel'].flatMap(style => ['day', 'night'].flatMap(timeBand => (
     WORKSPACE_PROJECT_PHASES.flatMap(({ progress }) => {
       const scene = getWorkspaceSceneAssets(progress, {}, { appearance: { style } }, { timeBand, roomStyle });
-      return [scene.background, ...scene.props.map(entry => entry.path)];
+      return [scene.background, ...scene.props.map(entry => entry.path), ...sceneDecorations(scene)];
     })
   ))));
+}
+
+// PS-250F: every decoration is shown unless hidden, so a scene lists them all.
+function sceneDecorations(scene) {
+  return (scene.decorations || []).map(entry => entry.path);
 }
 
 function allAssetPaths() {

@@ -66,9 +66,10 @@ describe('Personal Space V2 Orbit Window', () => {
   it('keeps the manifest contract while resolving every production state on demand', () => {
     expect(WORKSPACE_V2_ASSETS.status).toBe('production');
     expect(WORKSPACE_INITIAL_PAINT_ASSETS).toHaveLength(4);
-    // PS-250E1: 29 by day, plus the night room and its 8 props.
-    expect(getWorkspaceAssetManifestPaths()).toHaveLength(38);
-    expect(new Set(getWorkspaceAssetManifestPaths()).size).toBe(38);
+    // PS-250E1: 29 by day, plus the night room and its 8 props; PS-250F: the
+    // 6 decorations by day and by night.
+    expect(getWorkspaceAssetManifestPaths()).toHaveLength(50);
+    expect(new Set(getWorkspaceAssetManifestPaths()).size).toBe(50);
     expect(WORKSPACE_VISUAL_STATES.protagonist).toEqual([
       'idle', 'work', 'celebrate', 'rest', 'walk', 'inspect',
     ]);

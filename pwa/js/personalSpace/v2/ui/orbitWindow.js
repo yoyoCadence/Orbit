@@ -25,7 +25,8 @@ export function renderOrbitWindow(inputModel = {}, options = {}) {
   // PS-250E1: the time band picks the day or night room. It is passed as its
   // own option: the model also reaches the manifest as visualState.
   // PS-250E2: so is the room style (world.selectedThemeId).
-  const sceneOptions = { timeBand: model.timeBand };
+  // PS-250F: and the decorations hidden in Edit Mode.
+  const sceneOptions = { timeBand: model.timeBand, hiddenDecorations: model.hiddenDecorations };
   const scene = getWorkspaceSceneAssets(model.activeProject.progress, model.placements, model, {
     ...sceneOptions,
     roomStyle: model.selectedThemeId,
@@ -47,10 +48,16 @@ export function renderOrbitWindow(inputModel = {}, options = {}) {
   // (an interrupted update, offline): a night prop then becomes the day prop
   // at the day placement, as before PS-250E1.
   const day = nightRoom
-    ? getWorkspaceSceneAssets(model.activeProject.progress, model.placements, { ...model, appearance: null })
+    ? getWorkspaceSceneAssets(model.activeProject.progress, model.placements, { ...model, appearance: null }, {
+      hiddenDecorations: model.hiddenDecorations,
+    })
     : null;
   const dayProps = new Map((day?.props || []).map(entry => [entry.id, entry]));
   const fallbackProps = new Map(fallback.props.map(entry => [entry.id, entry.path]));
+  // PS-250F: decorations fall back the same way; one that cannot load at all
+  // is an empty image (alt=""), so the room is drawn without it.
+  const dayDecorations = new Map((day?.decorations || []).map(entry => [entry.id, entry]));
+  const fallbackDecorations = new Map((fallback.decorations || []).map(entry => [entry.id, entry.path]));
   // PS-250D: pixel images keep their hard pixel edges when scaled (CSS
   // image-rendering on [data-pixel-art]); a fallback image drops the marker.
   const pixelArt = scene.appearance?.style === 'pixel' ? ' data-pixel-art' : '';
@@ -82,6 +89,7 @@ export function renderOrbitWindow(inputModel = {}, options = {}) {
           <span class="orbit-window-poster" aria-hidden="true">
             <img class="orbit-window-background" src="${escapeHtml(scene.background)}" data-fallback-src="${escapeHtml(fallback.background)}"${day ? ` data-day-src="${escapeHtml(day.background)}"` : ''}${pixelArt} alt="" draggable="false">
             ${scene.props.map(entry => renderPosterProp(entry, fallbackProps.get(entry.id), pixelArt, dayProps.get(entry.id))).join('')}
+            ${(scene.decorations || []).map(entry => renderPosterProp(entry, fallbackDecorations.get(entry.id), pixelArt, dayDecorations.get(entry.id), true)).join('')}
             <img
               class="orbit-window-protagonist"
               data-player-state="${escapeHtml(model.protagonist.state)}"
@@ -448,6 +456,7 @@ export function normalizeOrbitWindowModel(input = {}, renderMode) {
     placements: input.placements || input.world?.placements || {},
     appearance: input.appearance || input.world?.appearance || null,
     selectedThemeId: input.selectedThemeId || input.world?.selectedThemeId || null,
+    hiddenDecorations: input.hiddenDecorations || input.world?.hiddenDecorations || [],
     achievementPhoto: normalizeAchievementPhoto(input.achievementPhoto),
   };
 }
@@ -545,11 +554,14 @@ function normalizeRevealKind(value, direction) {
   return ['small', 'medium', 'major'].includes(value) ? value : 'small';
 }
 
-function renderPosterProp(entry, fallbackSrc = entry.path, pixelArt = '', day = null) {
+// A decoration keeps the prop class, so an older style.css still places it.
+function renderPosterProp(entry, fallbackSrc = entry.path, pixelArt = '', day = null, decoration = false) {
   const dayAttributes = day
     ? ` data-day-src="${escapeHtml(day.path)}" data-day-style="${placementStyle(day.placement)}"`
     : '';
-  return `<img class="orbit-window-prop" src="${escapeHtml(entry.path)}" data-fallback-src="${escapeHtml(fallbackSrc)}"${dayAttributes}${pixelArt} alt="" draggable="false" style="${placementStyle(entry.placement)}">`;
+  const className = decoration ? 'orbit-window-prop orbit-window-decoration' : 'orbit-window-prop';
+  const decorationId = decoration ? ` data-decoration-id="${escapeHtml(entry.id)}"` : '';
+  return `<img class="${className}"${decorationId} src="${escapeHtml(entry.path)}" data-fallback-src="${escapeHtml(fallbackSrc)}"${dayAttributes}${pixelArt} alt="" draggable="false" style="${placementStyle(entry.placement)}">`;
 }
 
 function placementStyle(placement = {}) {

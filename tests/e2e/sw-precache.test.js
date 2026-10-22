@@ -72,8 +72,9 @@ test.describe('PS-211A service worker precache', () => {
 
   for (const { lighting, hour } of [{ lighting: 'day', hour: 12 }, { lighting: 'night', hour: 22 }]) {
     test(`precaches the poster art and Pixi, and an offline reload shows a complete poster (${lighting})`, async ({ page, context }) => {
-      // 22 day images, the night room with 8 night props, and Pixi.
-      expect(PRECACHED).toHaveLength(32);
+      // 22 day images, the night room with 8 night props, the 6 decorations
+      // by day and by night (PS-250F), and Pixi.
+      expect(PRECACHED).toHaveLength(44);
       const now = todayAt(hour);
       await page.clock.setFixedTime(now);
       await seedStorage(page, [FOCUS_TASK, RECOVERY_TASK], sessionsBefore(now), { ...GUEST_USER, totalXP: 5000 });
@@ -103,7 +104,10 @@ test.describe('PS-211A service worker precache', () => {
         await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
         const orbit = page.locator('[data-orbit-window]');
         await expect(orbit).toHaveAttribute('data-project-progress', '100');
-        await expect(orbit.locator('.orbit-window-poster img.orbit-window-prop')).toHaveCount(7);
+        await expect(orbit.locator('.orbit-window-poster img.orbit-window-prop:not(.orbit-window-decoration)'))
+          .toHaveCount(7);
+        // PS-250F: the six decorations, precached by day and by night.
+        await expect(orbit.locator('.orbit-window-poster img.orbit-window-decoration')).toHaveCount(6);
         await expect(orbit.locator('.orbit-window-weather')).toHaveAttribute('data-weather', 'rain');
         await expect(orbit.locator('.orbit-window-protagonist')).toHaveAttribute('data-player-state', 'rest');
         await expect(orbit.locator('.orbit-window-companion')).toHaveAttribute('data-companion-state', 'rest');

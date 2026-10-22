@@ -33,11 +33,12 @@ describe('PS-243 asset baseline', () => {
     const { completeProofScene } = baseline.runtimeSceneAssets;
     // PS-250B: the default characters are the Q-style WebPs (1,293,693 B before).
     // PS-250E1: plus the night room and its 8 props (751,670 B before).
-    expect(completeProofScene.totalBytes).toBe(1_288_625);
+    // PS-250F: plus the 6 decorations by day and by night (1,288,625 B before).
+    expect(completeProofScene.totalBytes).toBe(1_409_958);
     // Legacy evidence key retained for artifact compatibility: 1 background,
     // 12 protagonist poses, 6 Companion states, 2 weather overlays, 8 props,
-    // and the night background with 8 night props.
-    expect(completeProofScene.files).toHaveLength(38);
+    // the night background with 8 night props, and 12 decorations.
+    expect(completeProofScene.files).toHaveLength(50);
     expect(completeProofScene.result).toBe('PASS');
   });
 

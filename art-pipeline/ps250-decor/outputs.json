@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "taskId": "PS-250F",
+  "files": {
+    "assets/personal-space/v2/workspace/decor/deco-beanbag-night.png": {
+      "bytes": 25727,
+      "sha256": "18abd830fc01e3ac6a182f323e5a439f00cf06e5e1a6391c9cf0c79baf42b9c7"
+    },
+    "assets/personal-space/v2/workspace/decor/deco-beanbag.png": {
+      "bytes": 26187,
+      "sha256": "8b10d3f7259f1bfe0f178d4e9b099da6c9f812b982eb8c56c85c4f96373985a9"
+    },
+    "assets/personal-space/v2/workspace/decor/deco-coffee-night.png": {
+      "bytes": 3593,
+      "sha256": "b70f63c40013ee9aa4d0c30200912dee68ac8879bcd57a52559d8fd41837d90c"
+    },
+    "assets/personal-space/v2/workspace/decor/deco-coffee.png": {
+      "bytes": 3801,
+      "sha256": "419fd9035b7449089ca316cebb5226265d117b30f9a7ab16dcac4e5b67304b13"
+    },
+    "assets/personal-space/v2/workspace/decor/deco-floor-lamp-night.png": {
+      "bytes": 15796,
+      "sha256": "994a49ec321c9a063b5c65936eb017e9ca2bf756fc209653af5a92bacdcdb32f"
+    },
+    "assets/personal-space/v2/workspace/decor/deco-floor-lamp.png": {
+      "bytes": 17170,
+      "sha256": "ee56c04c80e3b77ced82f5fcfd809aba923e719bdaa1120a685884c737e7032a"
+    },
+    "assets/personal-space/v2/workspace/decor/deco-globe-night.png": {
+      "bytes": 7703,
+      "sha256": "81832267f5909b0a41e1a74728a85f4f951088c40d13ef92f2f5d34379596d83"
+    },
+    "assets/personal-space/v2/workspace/decor/deco-globe.png": {
+      "bytes": 6212,
+      "sha256": "feeaed002d3201d4abdf2af497f133dbd09c07bb95e06607e8a32ccd07aff399"
+    },
+    "assets/personal-space/v2/workspace/decor/deco-succulent-night.png": {
+      "bytes": 1602,
+      "sha256": "df162080ce78371b14c184da9bea93b861b4b27b129f2ae810d18662bbc3c704"
+    },
+    "assets/personal-space/v2/workspace/decor/deco-succulent.png": {
+      "bytes": 1711,
+      "sha256": "00186a66aadb84ec8d0de18407a709d6e622615176ad28877cc08ba1d7665402"
+    },
+    "assets/personal-space/v2/workspace/decor/deco-trophy-night.png": {
+      "bytes": 5951,
+      "sha256": "200ea3fe0b301c3a3d78dfc5b8f8c77d1a6d98cf26493b1dbb8f143f19b4d0c6"
+    },
+    "assets/personal-space/v2/workspace/decor/deco-trophy.png": {
+      "bytes": 5880,
+      "sha256": "766d2360bb73a40c344302ef91dcbc02471ca61a2ff5a0ef3618e66211254993"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/deco-beanbag-night.png": {
+      "bytes": 3139,
+      "sha256": "2d869165de7f253880563b4b9b9811cb787d8adebb20bbbd15ca9a7e286beb1a"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/deco-beanbag.png": {
+      "bytes": 2736,
+      "sha256": "743555f7e6c047110ca6a666ea5abdc5299217b3942fefc6fbbeb916b2d0fd91"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/deco-coffee-night.png": {
+      "bytes": 511,
+      "sha256": "f6a3343d27bfae5ccb51b816bde9d2d7304fd9eb4c27d93afd5cdf6176958403"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/deco-coffee.png": {
+      "bytes": 501,
+      "sha256": "a9987661f06d7fd087dd8df3d10e603b69eaa65d7e4d898e7a8a95cf5edeaa82"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/deco-floor-lamp-night.png": {
+      "bytes": 1589,
+      "sha256": "cd22bf1d3f0baf6803ffc6bd30bf565eb47557f8882fe49259e74ba6b0a71240"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/deco-floor-lamp.png": {
+      "bytes": 1729,
+      "sha256": "9aaafa26340b477e8361dbee346723816e7f6a8bf0aecdf3f2710fa036f5069e"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/deco-globe-night.png": {
+      "bytes": 741,
+      "sha256": "4b536bdfe943f291397ac4c463cea98cfbeb4a2c3d876009ebe414090b8c6229"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/deco-globe.png": {
+      "bytes": 535,
+      "sha256": "96737f4d83bb5b4bb0dd3c4a462fd7309e2cfd8a7ef36942c6df34125db0c6e6"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/deco-succulent-night.png": {
+      "bytes": 284,
+      "sha256": "81288487174392af74368351850a58d580bd0d6c7a06a6592dee11191e496839"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/deco-succulent.png": {
+      "bytes": 283,
+      "sha256": "d81a0c4f1a7d12bb54856a68db93a4d909d15856e7b2d25707d96e0a304fc36f"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/deco-trophy-night.png": {
+      "bytes": 562,
+      "sha256": "9de1bd65517a203559a4812a47a15e688d64951ad354821845a07765184f41a5"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/deco-trophy.png": {
+      "bytes": 534,
+      "sha256": "ca971e5fc30a6000e3ce4d5f9595df11f1df93cbdb629bcb27ad98e984567b95"
+    }
+  }
+}

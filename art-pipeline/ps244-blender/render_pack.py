@@ -4,11 +4,17 @@ Usage:
     python render_pack.py <out_dir> [--width 1536] [--samples 96] [--only id,id]
                           [--lighting day|night] [--style <room style>]
 
+--only takes room, prop ids, decoration ids, or `decor` for every decoration.
+
 Writes full-frame RGBA PNGs to <out_dir>:
     room.png          empty room, transparent outside the diorama
     <prop-id>.png     one prop; floor, walls and its support surface are shadow
                       catchers, so contact shadows stay in the PNG, and any
                       PROP_OCCLUDERS are holdouts that cut out its hidden parts
+
+    <decor-id>.png    one PS-250F decoration, the same way (its support is the
+                      shelf or the desk); decorations are hidden in the room
+                      and prop renders, so those are unchanged
 
 Every file comes from the same scene, camera and lights in scene.py, so a prop
 lands pixel-exact on the room once process_pack.py trims it and derives its
@@ -124,6 +130,8 @@ def main():
     scene = bpy.context.scene
     scene.render.film_transparent = True
     only = {item for item in args.only.split(',') if item}
+    if 'decor' in only:
+        only = (only - {'decor'}) | set(S.DECOR_IDS)
     no_lines = S.no_line_collection()
 
     # The ceiling is invisible to the camera but still blocks light; as a
@@ -131,6 +139,10 @@ def main():
     room = groups['room'] + groups.get('ceiling', [])
     outside = groups.get('outside', [])
     props = {prop_id: groups[prop_id] for prop_id in S.PROP_IDS}
+    decor = {decor_id: groups[decor_id] for decor_id in S.DECOR_IDS}
+    # PS-250F: decorations stay out of the room and prop renders.
+    for objects in decor.values():
+        set_visible(objects, False)
 
     # 1. Empty room: every prop hidden.
     if not only or 'room' in only:
@@ -165,6 +177,24 @@ def main():
                 elif not hide_lines and linked:
                     no_lines.objects.unlink(obj)
         render(os.path.join(args.out_dir, f'{prop_id}.png'))
+
+    # 3. Each decoration alone, with its support (shelf or desk) as a shadow
+    #    catcher and every other prop hidden.
+    for decor_id, objects in decor.items():
+        if only and decor_id not in only:
+            continue
+        supports = S.DECOR_SUPPORTS.get(decor_id, ())
+        for other_id, other in props.items():
+            is_support = other_id in supports
+            set_visible(other, is_support)
+            for obj in other:
+                obj.is_shadow_catcher = is_support
+                set_occluder(obj, False)
+                if is_support and obj.name not in no_lines.objects:
+                    no_lines.objects.link(obj)
+        for other_id, other in decor.items():
+            set_visible(other, other_id == decor_id)
+        render(os.path.join(args.out_dir, f'{decor_id}.png'))
 
 
 if __name__ == '__main__':

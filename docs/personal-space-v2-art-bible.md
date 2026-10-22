@@ -157,7 +157,9 @@ Each set has several protagonists and Companion forms. Added so far:
 
 - PS-250E3: the other three room styles, in both styles, by day and by night: Japanese (plaster and shoji white, wood frames, a tatami-coloured floor, indigo cloth), night-owl studio (deep navy, cyan neon on the rails, magenta accents) and dark-wood study (ink green, dark wood, gold trim, a burgundy rug; see the note under the stage palettes).
 
-A later PS-250 task adds small furniture (PS-250F) and updates this list.
+- PS-250F1: six decorations in the default room, in both styles, by day and by night: a trophy and a globe on the shelf, a beanbag and a floor lamp on the floor, a succulent and a coffee set (walnut tray, pour-over, two mugs) on the desk. Each is a separate sprite from the same scene and camera, trimmed like a prop; the one on the shelf or desk appears with that piece of furniture. The floor lamp's shade glows at night but lights nothing else, so the shared room render stays the same with or without it. Every decoration is shown unless switched off in Edit Mode. Source: `art-pipeline/ps250-decor/` (models: `ps244-blender/scene.py`).
+
+PS-250F2 adds the decorations to the other four room styles and updates this list.
 
 ### 6.2 Workspace Upgrade Phases
 

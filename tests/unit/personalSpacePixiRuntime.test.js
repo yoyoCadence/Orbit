@@ -3,6 +3,7 @@
  */
 
 import { describe, expect, it, vi } from 'vitest';
+import { getWorkspaceSceneAssets } from '../../pwa/js/personalSpace/v2/content/assetManifest.js';
 import {
   createDeferredRuntimeDestroyer,
   createPixiSceneRuntime,
@@ -325,7 +326,8 @@ describe('Personal Space V2 Pixi scene runtime', () => {
     const app = fake.applications[0];
     const sprites = app.stage.children.filter(child => child.texture?.path);
     const pixel = sprites.filter(child => child.texture.path.includes('/pixel/'));
-    expect(pixel.length).toBe(1 + 7 + 2); // room, the seven props shown at 100%, two characters
+    // Room, the seven props shown at 100%, the six decorations (PS-250F), two characters.
+    expect(pixel.length).toBe(1 + 7 + 6 + 2);
     pixel.forEach(sprite => {
       expect(sprite.texture.source.scaleMode, sprite.texture.path).toBe('nearest');
       expect(sprite.texture.source.style.update).toHaveBeenCalled();
@@ -362,7 +364,7 @@ describe('Personal Space V2 Pixi scene runtime', () => {
 
     // Pixel night images keep hard edges like the day ones.
     const pixelSprites = app().stage.children.filter(child => child.texture?.path.includes('/pixel/'));
-    expect(pixelSprites.length).toBe(1 + 7 + 2);
+    expect(pixelSprites.length).toBe(1 + 7 + 6 + 2);
     pixelSprites.forEach(sprite => expect(sprite.texture.source.scaleMode, sprite.texture.path).toBe('nearest'));
 
     await runtime.render({ activeProject: { progress: 100 }, timeBand: 'morning' });
@@ -392,6 +394,52 @@ describe('Personal Space V2 Pixi scene runtime', () => {
     // The pixel characters stay; the layer is the one for a day room at night.
     expect(app.stage.children.filter(child => child.texture?.path.includes('/characters/pixel/'))).toHaveLength(2);
     expect(app.stage.children.find(child => child.zIndex === 80).fillStyle).toEqual({ color: 0x172449, alpha: 0.2 });
+    runtime.destroy();
+  });
+
+  it('draws the decorations unless hidden, and leaves out one that cannot load (PS-250F)', async () => {
+    const fake = createFakePixi();
+    const load = fake.pixi.Assets.load.getMockImplementation();
+    const runtime = createPixiSceneRuntime({ loadPixi: () => Promise.resolve(fake.pixi) });
+    const { host } = createRuntimeHost();
+    const app = () => fake.applications[0];
+    const decorations = () => app().stage.children
+      .filter(child => child.label?.startsWith('orbit-decoration-'))
+      .map(child => ({ id: child.label.replace('orbit-decoration-', ''), path: child.texture.path, z: child.zIndex }));
+    const scene = getWorkspaceSceneAssets(100);
+
+    await runtime.mount(host, { activeProject: { progress: 100 } });
+    expect(decorations()).toEqual(scene.decorations.map(entry => ({
+      id: entry.id,
+      path: entry.path,
+      z: entry.placement.z,
+    })));
+
+    await runtime.render({ activeProject: { progress: 100 }, world: { hiddenDecorations: ['deco-beanbag'] } });
+    expect(decorations().map(entry => entry.id)).not.toContain('deco-beanbag');
+    expect(decorations()).toHaveLength(scene.decorations.length - 1);
+
+    // Offline without the globe: the room stays as chosen, without the globe.
+    fake.pixi.Assets.load.mockImplementation(async requested => {
+      if (requested.some(path => path.includes('deco-globe'))) throw new Error('[Loader.load] offline');
+      return load(requested);
+    });
+    await runtime.render({ activeProject: { progress: 100 }, timeBand: 'night', appearance: { style: 'pixel' } });
+    expect(runtime.getStatus()).toBe('ready');
+    expect(app().stage.children.find(child => child.zIndex === 0).texture.path)
+      .toMatch(/building-formal-workstation-room-pixel-night\.png$/);
+    expect(decorations().map(entry => entry.id)).toEqual(scene.decorations.map(entry => entry.id)
+      .filter(id => id !== 'deco-globe'));
+    expect(decorations().every(entry => entry.path.includes('/pixel/decor/') && entry.path.endsWith('-night.png')))
+      .toBe(true);
+
+    // The pixel room cannot load: the decorations are those of the room drawn.
+    fake.pixi.Assets.load.mockImplementation(async requested => {
+      if (requested.some(path => path.includes('/workspace/pixel/'))) throw new Error('[Loader.load] offline');
+      return load(requested);
+    });
+    await runtime.render({ activeProject: { progress: 100 }, appearance: { style: 'pixel' } });
+    expect(decorations().map(entry => entry.path)).toEqual(scene.decorations.map(entry => entry.path));
     runtime.destroy();
   });
 

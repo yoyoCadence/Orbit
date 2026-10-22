@@ -591,6 +591,8 @@ export function buildPersonalSpaceV2Snapshot(coreOrInput = {}, v2Arg = {}, ledge
     // PS-250B: the chosen character style and characters; assetManifest.js
     // resolves them, falling back to the defaults.
     appearance: world.appearance || null,
+    // PS-250F: the decorations hidden in Edit Mode.
+    hiddenDecorations: Array.isArray(world.hiddenDecorations) ? world.hiddenDecorations : [],
     activeProject,
     mainQuest,
     wallet: resolveWallet(v2State, ledgerSnapshot, worldRevision),
@@ -639,6 +641,7 @@ function commonProjection(snapshot, renderMode) {
     sceneStage: snapshot.sceneStage,
     selectedThemeId: snapshot.selectedThemeId,
     appearance: snapshot.appearance,
+    hiddenDecorations: snapshot.hiddenDecorations,
     player: snapshot.player,
     playerState: snapshot.playerState,
     protagonist: snapshot.protagonist,

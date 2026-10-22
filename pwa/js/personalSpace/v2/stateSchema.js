@@ -60,6 +60,14 @@ function normalizeAppearance(value) {
   };
 }
 
+// PS-250F: the decorations hidden in Edit Mode (ids; unknown ones are kept,
+// so a newer version's choice survives an older one).
+function normalizeStringList(value) {
+  return Array.isArray(value)
+    ? [...new Set(value.map(normalizeNullableString).filter(Boolean))]
+    : [];
+}
+
 function normalizeNullableString(value) {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
@@ -96,6 +104,7 @@ export function createDefaultPersonalSpaceV2State(ownerId, options = {}) {
       memoryViewSceneId: null,
       selectedThemeId: 'default',
       appearance: null,
+      hiddenDecorations: [],
       placedItems: [],
       idleWindowLayouts: {},
       memorySceneLog: {},
@@ -158,6 +167,7 @@ export function normalizePersonalSpaceV2State(value, options = {}) {
       memoryViewSceneId: normalizeNullableString(rawWorld.memoryViewSceneId),
       selectedThemeId: normalizeNullableString(rawWorld.selectedThemeId) ?? defaults.world.selectedThemeId,
       appearance: normalizeAppearance(rawWorld.appearance),
+      hiddenDecorations: normalizeStringList(rawWorld.hiddenDecorations),
       placedItems: normalizeObjectArray(rawWorld.placedItems),
       idleWindowLayouts: normalizeObject(rawWorld.idleWindowLayouts),
       memorySceneLog: normalizeObject(rawWorld.memorySceneLog),

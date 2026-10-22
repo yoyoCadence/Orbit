@@ -1,6 +1,6 @@
 // Service Worker
 // Bump CACHE version on every deploy so users always get fresh code.
-const CACHE = 'orbit-v1.37.0';
+const CACHE = 'orbit-v1.38.0';
 
 const SHELL = [
   './',
@@ -152,6 +152,20 @@ const SHELL = [
   './assets/personal-space/v2/workspace/props/single-monitor-night.png',
   './assets/personal-space/v2/workspace/props/dual-monitor-night.png',
   './assets/personal-space/v2/workspace/props/office-plant-night.png',
+  // PS-250F: the default room's decorations, shown unless hidden in Edit Mode
+  // (PS-250: only the defaults are precached, user-approved).
+  './assets/personal-space/v2/workspace/decor/deco-trophy.png',
+  './assets/personal-space/v2/workspace/decor/deco-globe.png',
+  './assets/personal-space/v2/workspace/decor/deco-beanbag.png',
+  './assets/personal-space/v2/workspace/decor/deco-floor-lamp.png',
+  './assets/personal-space/v2/workspace/decor/deco-succulent.png',
+  './assets/personal-space/v2/workspace/decor/deco-coffee.png',
+  './assets/personal-space/v2/workspace/decor/deco-trophy-night.png',
+  './assets/personal-space/v2/workspace/decor/deco-globe-night.png',
+  './assets/personal-space/v2/workspace/decor/deco-beanbag-night.png',
+  './assets/personal-space/v2/workspace/decor/deco-floor-lamp-night.png',
+  './assets/personal-space/v2/workspace/decor/deco-succulent-night.png',
+  './assets/personal-space/v2/workspace/decor/deco-coffee-night.png',
   './vendor/pixi.js',
 ];
 

@@ -35,6 +35,13 @@
       "previews": "art-pipeline/ps250-characters/previews/",
       "review": "PS-250B default characters: shared-camera Q-style renders, ground point and canvas matching the PS-242 sprites, edge-clipping check, contact sheets and a room composite. The PS-242 pixel characters stay selectable as the pixel style."
     },
+    "decorations": {
+      "source": "art-pipeline/ps244-blender/scene.py",
+      "placements": "art-pipeline/ps250-decor/placements.json",
+      "outputs": "art-pipeline/ps250-decor/outputs.json",
+      "previews": "art-pipeline/ps250-decor/previews/",
+      "review": "PS-250F decorations: shared-camera renders by day and by night with their support as a shadow catcher, trimmed like the props, and per-phase composites over the committed room."
+    },
     "modelManifest": "art-pipeline/ps242/model-manifest.json",
     "prompts": "art-pipeline/ps242/prompts/",
     "rawSources": "art-pipeline/ps242/raw/",
@@ -849,6 +856,258 @@
       "alpha": true,
       "bytes": 42067,
       "sha256": "ac1de9c0c6953b474b8924afbb25746b4158e3f9e6a43ba7f6943603ecf37162",
+      "canonicalCameraId": "building-workspace-v2",
+      "status": "production"
+    },
+    {
+      "id": "deco-trophy",
+      "label": "Trophy",
+      "projectPhase": 50,
+      "role": "decoration",
+      "lighting": "day",
+      "source": "art-pipeline/ps244-blender/scene.py",
+      "qc": "passed: shared-camera, contact-shadow-catcher, trimmed-placement, phase-composite, visual",
+      "licenseRef": "art-pipeline/ps244-blender/model-manifest.json#orbit-blender-procedural-workstation",
+      "path": "assets/personal-space/v2/workspace/decor/deco-trophy.png",
+      "dimensions": {
+        "width": 93,
+        "height": 92
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 5880,
+      "sha256": "766d2360bb73a40c344302ef91dcbc02471ca61a2ff5a0ef3618e66211254993",
+      "canonicalCameraId": "building-workspace-v2",
+      "status": "production"
+    },
+    {
+      "id": "deco-trophy-night",
+      "label": "Trophy (night)",
+      "projectPhase": 50,
+      "role": "decoration",
+      "lighting": "night",
+      "source": "art-pipeline/ps244-blender/scene.py",
+      "qc": "passed: shared-camera, contact-shadow-catcher, trimmed-placement, phase-composite, visual",
+      "licenseRef": "art-pipeline/ps244-blender/model-manifest.json#orbit-blender-procedural-workstation",
+      "path": "assets/personal-space/v2/workspace/decor/deco-trophy-night.png",
+      "dimensions": {
+        "width": 93,
+        "height": 93
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 5951,
+      "sha256": "200ea3fe0b301c3a3d78dfc5b8f8c77d1a6d98cf26493b1dbb8f143f19b4d0c6",
+      "canonicalCameraId": "building-workspace-v2",
+      "status": "production"
+    },
+    {
+      "id": "deco-globe",
+      "label": "Globe",
+      "projectPhase": 50,
+      "role": "decoration",
+      "lighting": "day",
+      "source": "art-pipeline/ps244-blender/scene.py",
+      "qc": "passed: shared-camera, contact-shadow-catcher, trimmed-placement, phase-composite, visual",
+      "licenseRef": "art-pipeline/ps244-blender/model-manifest.json#orbit-blender-procedural-workstation",
+      "path": "assets/personal-space/v2/workspace/decor/deco-globe.png",
+      "dimensions": {
+        "width": 80,
+        "height": 106
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 6212,
+      "sha256": "feeaed002d3201d4abdf2af497f133dbd09c07bb95e06607e8a32ccd07aff399",
+      "canonicalCameraId": "building-workspace-v2",
+      "status": "production"
+    },
+    {
+      "id": "deco-globe-night",
+      "label": "Globe (night)",
+      "projectPhase": 50,
+      "role": "decoration",
+      "lighting": "night",
+      "source": "art-pipeline/ps244-blender/scene.py",
+      "qc": "passed: shared-camera, contact-shadow-catcher, trimmed-placement, phase-composite, visual",
+      "licenseRef": "art-pipeline/ps244-blender/model-manifest.json#orbit-blender-procedural-workstation",
+      "path": "assets/personal-space/v2/workspace/decor/deco-globe-night.png",
+      "dimensions": {
+        "width": 91,
+        "height": 125
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 7703,
+      "sha256": "81832267f5909b0a41e1a74728a85f4f951088c40d13ef92f2f5d34379596d83",
+      "canonicalCameraId": "building-workspace-v2",
+      "status": "production"
+    },
+    {
+      "id": "deco-beanbag",
+      "label": "Beanbag",
+      "projectPhase": 0,
+      "role": "decoration",
+      "lighting": "day",
+      "source": "art-pipeline/ps244-blender/scene.py",
+      "qc": "passed: shared-camera, contact-shadow-catcher, trimmed-placement, phase-composite, visual",
+      "licenseRef": "art-pipeline/ps244-blender/model-manifest.json#orbit-blender-procedural-workstation",
+      "path": "assets/personal-space/v2/workspace/decor/deco-beanbag.png",
+      "dimensions": {
+        "width": 186,
+        "height": 160
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 26187,
+      "sha256": "8b10d3f7259f1bfe0f178d4e9b099da6c9f812b982eb8c56c85c4f96373985a9",
+      "canonicalCameraId": "building-workspace-v2",
+      "status": "production"
+    },
+    {
+      "id": "deco-beanbag-night",
+      "label": "Beanbag (night)",
+      "projectPhase": 0,
+      "role": "decoration",
+      "lighting": "night",
+      "source": "art-pipeline/ps244-blender/scene.py",
+      "qc": "passed: shared-camera, contact-shadow-catcher, trimmed-placement, phase-composite, visual",
+      "licenseRef": "art-pipeline/ps244-blender/model-manifest.json#orbit-blender-procedural-workstation",
+      "path": "assets/personal-space/v2/workspace/decor/deco-beanbag-night.png",
+      "dimensions": {
+        "width": 190,
+        "height": 160
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 25727,
+      "sha256": "18abd830fc01e3ac6a182f323e5a439f00cf06e5e1a6391c9cf0c79baf42b9c7",
+      "canonicalCameraId": "building-workspace-v2",
+      "status": "production"
+    },
+    {
+      "id": "deco-floor-lamp",
+      "label": "Floor lamp",
+      "projectPhase": 0,
+      "role": "decoration",
+      "lighting": "day",
+      "source": "art-pipeline/ps244-blender/scene.py",
+      "qc": "passed: shared-camera, contact-shadow-catcher, trimmed-placement, phase-composite, visual",
+      "licenseRef": "art-pipeline/ps244-blender/model-manifest.json#orbit-blender-procedural-workstation",
+      "path": "assets/personal-space/v2/workspace/decor/deco-floor-lamp.png",
+      "dimensions": {
+        "width": 80,
+        "height": 275
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 17170,
+      "sha256": "ee56c04c80e3b77ced82f5fcfd809aba923e719bdaa1120a685884c737e7032a",
+      "canonicalCameraId": "building-workspace-v2",
+      "status": "production"
+    },
+    {
+      "id": "deco-floor-lamp-night",
+      "label": "Floor lamp (night)",
+      "projectPhase": 0,
+      "role": "decoration",
+      "lighting": "night",
+      "source": "art-pipeline/ps244-blender/scene.py",
+      "qc": "passed: shared-camera, contact-shadow-catcher, trimmed-placement, phase-composite, visual",
+      "licenseRef": "art-pipeline/ps244-blender/model-manifest.json#orbit-blender-procedural-workstation",
+      "path": "assets/personal-space/v2/workspace/decor/deco-floor-lamp-night.png",
+      "dimensions": {
+        "width": 80,
+        "height": 268
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 15796,
+      "sha256": "994a49ec321c9a063b5c65936eb017e9ca2bf756fc209653af5a92bacdcdb32f",
+      "canonicalCameraId": "building-workspace-v2",
+      "status": "production"
+    },
+    {
+      "id": "deco-succulent",
+      "label": "Succulent",
+      "projectPhase": 25,
+      "role": "decoration",
+      "lighting": "day",
+      "source": "art-pipeline/ps244-blender/scene.py",
+      "qc": "passed: shared-camera, contact-shadow-catcher, trimmed-placement, phase-composite, visual",
+      "licenseRef": "art-pipeline/ps244-blender/model-manifest.json#orbit-blender-procedural-workstation",
+      "path": "assets/personal-space/v2/workspace/decor/deco-succulent.png",
+      "dimensions": {
+        "width": 23,
+        "height": 27
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 1711,
+      "sha256": "00186a66aadb84ec8d0de18407a709d6e622615176ad28877cc08ba1d7665402",
+      "canonicalCameraId": "building-workspace-v2",
+      "status": "production"
+    },
+    {
+      "id": "deco-succulent-night",
+      "label": "Succulent (night)",
+      "projectPhase": 25,
+      "role": "decoration",
+      "lighting": "night",
+      "source": "art-pipeline/ps244-blender/scene.py",
+      "qc": "passed: shared-camera, contact-shadow-catcher, trimmed-placement, phase-composite, visual",
+      "licenseRef": "art-pipeline/ps244-blender/model-manifest.json#orbit-blender-procedural-workstation",
+      "path": "assets/personal-space/v2/workspace/decor/deco-succulent-night.png",
+      "dimensions": {
+        "width": 23,
+        "height": 27
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 1602,
+      "sha256": "df162080ce78371b14c184da9bea93b861b4b27b129f2ae810d18662bbc3c704",
+      "canonicalCameraId": "building-workspace-v2",
+      "status": "production"
+    },
+    {
+      "id": "deco-coffee",
+      "label": "Coffee set",
+      "projectPhase": 25,
+      "role": "decoration",
+      "lighting": "day",
+      "source": "art-pipeline/ps244-blender/scene.py",
+      "qc": "passed: shared-camera, contact-shadow-catcher, trimmed-placement, phase-composite, visual",
+      "licenseRef": "art-pipeline/ps244-blender/model-manifest.json#orbit-blender-procedural-workstation",
+      "path": "assets/personal-space/v2/workspace/decor/deco-coffee.png",
+      "dimensions": {
+        "width": 52,
+        "height": 39
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 3801,
+      "sha256": "419fd9035b7449089ca316cebb5226265d117b30f9a7ab16dcac4e5b67304b13",
+      "canonicalCameraId": "building-workspace-v2",
+      "status": "production"
+    },
+    {
+      "id": "deco-coffee-night",
+      "label": "Coffee set (night)",
+      "projectPhase": 25,
+      "role": "decoration",
+      "lighting": "night",
+      "source": "art-pipeline/ps244-blender/scene.py",
+      "qc": "passed: shared-camera, contact-shadow-catcher, trimmed-placement, phase-composite, visual",
+      "licenseRef": "art-pipeline/ps244-blender/model-manifest.json#orbit-blender-procedural-workstation",
+      "path": "assets/personal-space/v2/workspace/decor/deco-coffee-night.png",
+      "dimensions": {
+        "width": 52,
+        "height": 39
+      },
+      "format": "png",
+      "alpha": true,
+      "bytes": 3593,
+      "sha256": "b70f63c40013ee9aa4d0c30200912dee68ac8879bcd57a52559d8fd41837d90c",
       "canonicalCameraId": "building-workspace-v2",
       "status": "production"
     }

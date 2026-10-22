@@ -123,7 +123,9 @@ export function createPixiSceneRuntime(options = {}) {
       appearance: renderModel.appearance || renderModel.world?.appearance || null,
     };
     // PS-250E1: the time band picks the day or night room, as in the poster.
-    const sceneOptions = { timeBand: renderModel.timeBand };
+    // PS-250F: the decorations hidden in Edit Mode.
+    const hiddenDecorations = renderModel.hiddenDecorations || renderModel.world?.hiddenDecorations;
+    const sceneOptions = { timeBand: renderModel.timeBand, hiddenDecorations };
     // PS-250E2: the room style; the fallback is the default room.
     const chosen = getWorkspaceSceneAssets(project.progress || 0, placements, visualState, {
       ...sceneOptions,
@@ -138,19 +140,28 @@ export function createPixiSceneRuntime(options = {}) {
     // The day room is the last resort for the room: a night room that is not
     // cached (an interrupted update, offline) is drawn as the day room, as
     // before PS-250E1, instead of failing over to the poster.
-    const dayFallback = getWorkspaceSceneAssets(project.progress || 0, placements, { ...visualState, appearance: null });
+    const dayFallback = getWorkspaceSceneAssets(project.progress || 0, placements, { ...visualState, appearance: null }, {
+      hiddenDecorations,
+    });
     // PS-250B/D: only the default style is precached. The room with its props,
     // the protagonist and the Companion load separately; a part that cannot
     // load (offline, not cached yet) is drawn from the default style and the
     // other parts stay as chosen. (The poster falls back per image, so with a
     // partly cached pixel room the two can differ until the next render.)
     const sceneryTiers = [chosen, fallback, dayFallback];
-    const [scenery, protagonistPart, companionPart] = await Promise.all([
+    const [scenery, protagonistPart, companionPart, chosenDecorations] = await Promise.all([
       loadPart(pixi, sceneryTiers.map(sceneryPaths)),
       loadPart(pixi, [[chosen.protagonist], [fallback.protagonist]]),
       loadPart(pixi, [[chosen.companion.path], [fallback.companion.path]]),
+      loadEach(pixi, decorationPaths(chosen)),
     ]);
     const drawnScenery = sceneryTiers[scenery.tier];
+    // PS-250F: the decorations of the room that is drawn. Each loads on its
+    // own: one that cannot load is left out, and the room stays as it is.
+    const decorations = drawnScenery.decorations || [];
+    const decorationTextures = scenery.usedFallback
+      ? await loadEach(pixi, decorationPaths(drawnScenery))
+      : chosenDecorations;
     const scene = {
       ...chosen,
       ...(scenery.usedFallback ? { background: drawnScenery.background, props: drawnScenery.props } : {}),
@@ -159,11 +170,20 @@ export function createPixiSceneRuntime(options = {}) {
         : {}),
       ...(companionPart.usedFallback ? { companion: fallback.companion } : {}),
     };
-    const textures = { ...scenery.textures, ...protagonistPart.textures, ...companionPart.textures };
+    const textures = {
+      ...decorationTextures,
+      ...scenery.textures,
+      ...protagonistPart.textures,
+      ...companionPart.textures,
+    };
     // PS-250D: pixel images keep hard pixel edges when the stage is scaled.
     if (chosen.appearance?.style === 'pixel') {
       const pixelPaths = [
-        ...(scenery.usedFallback ? [] : [chosen.background, ...chosen.props.map(entry => entry.path)]),
+        ...(scenery.usedFallback ? [] : [
+          chosen.background,
+          ...chosen.props.map(entry => entry.path),
+          ...decorationPaths(chosen),
+        ]),
         ...(protagonistPart.usedFallback ? [] : [chosen.protagonist]),
         ...(companionPart.usedFallback ? [] : [chosen.companion.path]),
       ];
@@ -199,6 +219,13 @@ export function createPixiSceneRuntime(options = {}) {
     scene.props.forEach(entry => {
       const sprite = new pixi.Sprite(textures[entry.path]);
       applyPlacement(sprite, entry.placement);
+      app.stage.addChild(sprite);
+    });
+
+    decorations.filter(entry => decorationTextures[entry.path]).forEach(entry => {
+      const sprite = new pixi.Sprite(textures[entry.path]);
+      applyPlacement(sprite, entry.placement);
+      sprite.label = `orbit-decoration-${entry.id}`;
       app.stage.addChild(sprite);
     });
 
@@ -518,6 +545,19 @@ function useNearestSampling(texture) {
 
 function sceneryPaths(scene) {
   return [scene.background, scene.weatherOverlay, ...scene.props.map(entry => entry.path)].filter(Boolean);
+}
+
+function decorationPaths(scene) {
+  return (scene.decorations || []).map(entry => entry.path);
+}
+
+// Loads each path on its own; the result has only the textures that loaded.
+async function loadEach(pixi, paths) {
+  const loaded = await Promise.all(paths.map(path => pixi.Assets.load([path]).then(
+    textures => [path, textures[path]],
+    () => null,
+  )));
+  return Object.fromEntries(loaded.filter(Boolean));
 }
 
 // Loads the first tier of paths that loads; a tier identical to an earlier
