@@ -3,6 +3,7 @@
  */
 
 import { describe, expect, it, vi } from 'vitest';
+import { getWorkspaceSceneAssets } from '../../pwa/js/personalSpace/v2/content/assetManifest.js';
 import {
   createDeferredRuntimeDestroyer,
   createPixiSceneRuntime,
@@ -325,7 +326,8 @@ describe('Personal Space V2 Pixi scene runtime', () => {
     const app = fake.applications[0];
     const sprites = app.stage.children.filter(child => child.texture?.path);
     const pixel = sprites.filter(child => child.texture.path.includes('/pixel/'));
-    expect(pixel.length).toBe(1 + 7 + 2); // room, the seven props shown at 100%, two characters
+    // Room, the seven props shown at 100%, the six decorations (PS-250F), two characters.
+    expect(pixel.length).toBe(1 + 7 + 6 + 2);
     pixel.forEach(sprite => {
       expect(sprite.texture.source.scaleMode, sprite.texture.path).toBe('nearest');
       expect(sprite.texture.source.style.update).toHaveBeenCalled();
@@ -362,7 +364,7 @@ describe('Personal Space V2 Pixi scene runtime', () => {
 
     // Pixel night images keep hard edges like the day ones.
     const pixelSprites = app().stage.children.filter(child => child.texture?.path.includes('/pixel/'));
-    expect(pixelSprites.length).toBe(1 + 7 + 2);
+    expect(pixelSprites.length).toBe(1 + 7 + 6 + 2);
     pixelSprites.forEach(sprite => expect(sprite.texture.source.scaleMode, sprite.texture.path).toBe('nearest'));
 
     await runtime.render({ activeProject: { progress: 100 }, timeBand: 'morning' });
@@ -393,6 +395,134 @@ describe('Personal Space V2 Pixi scene runtime', () => {
     expect(app.stage.children.filter(child => child.texture?.path.includes('/characters/pixel/'))).toHaveLength(2);
     expect(app.stage.children.find(child => child.zIndex === 80).fillStyle).toEqual({ color: 0x172449, alpha: 0.2 });
     runtime.destroy();
+  });
+
+  it('draws the decorations unless hidden, and leaves out one that cannot load (PS-250F)', async () => {
+    const fake = createFakePixi();
+    const load = fake.pixi.Assets.load.getMockImplementation();
+    const runtime = createPixiSceneRuntime({ loadPixi: () => Promise.resolve(fake.pixi) });
+    const { host } = createRuntimeHost();
+    const app = () => fake.applications[0];
+    // Where each decoration is drawn (960 x 640 logical stage), and where a
+    // scene entry says it should be.
+    const decorations = () => app().stage.children
+      .filter(child => child.label?.startsWith('orbit-decoration-'))
+      .map(child => ({
+        id: child.label.replace('orbit-decoration-', ''),
+        path: child.texture.path,
+        z: child.zIndex,
+        x: Math.round(child.x * 1000) / 1000,
+        y: Math.round(child.y * 1000) / 1000,
+      }));
+    const drawnAt = entries => entries.map(entry => ({
+      id: entry.id,
+      path: entry.path,
+      z: entry.placement.z,
+      x: Math.round(960 * entry.placement.x / 100 * 1000) / 1000,
+      y: Math.round(640 * entry.placement.y / 100 * 1000) / 1000,
+    }));
+    const scene = getWorkspaceSceneAssets(100);
+    const nightScene = getWorkspaceSceneAssets(100, {}, {}, { timeBand: 'night' });
+
+    await runtime.mount(host, { activeProject: { progress: 100 } });
+    expect(decorations()).toEqual(drawnAt(scene.decorations));
+
+    await runtime.render({ activeProject: { progress: 100 }, world: { hiddenDecorations: ['deco-beanbag'] } });
+    expect(decorations().map(entry => entry.id)).not.toContain('deco-beanbag');
+    expect(decorations()).toHaveLength(scene.decorations.length - 1);
+
+    // Offline without the globe: the room stays as chosen, without the globe.
+    fake.pixi.Assets.load.mockImplementation(async requested => {
+      if (requested.some(path => path.includes('deco-globe'))) throw new Error('[Loader.load] offline');
+      return load(requested);
+    });
+    await runtime.render({ activeProject: { progress: 100 }, timeBand: 'night', appearance: { style: 'pixel' } });
+    expect(runtime.getStatus()).toBe('ready');
+    expect(app().stage.children.find(child => child.zIndex === 0).texture.path)
+      .toMatch(/building-formal-workstation-room-pixel-night\.png$/);
+    expect(decorations().map(entry => entry.id)).toEqual(scene.decorations.map(entry => entry.id)
+      .filter(id => id !== 'deco-globe'));
+    expect(decorations().every(entry => entry.path.includes('/pixel/decor/') && entry.path.endsWith('-night.png')))
+      .toBe(true);
+
+    // Only the pixel decorations were never downloaded: like the poster,
+    // each steps down to the precached Q-style one, on the pixel room.
+    fake.pixi.Assets.load.mockImplementation(async requested => {
+      if (requested.some(path => path.includes('/pixel/decor/'))) throw new Error('[Loader.load] offline');
+      return load(requested);
+    });
+    await runtime.render({ activeProject: { progress: 100 }, timeBand: 'night', appearance: { style: 'pixel' } });
+    expect(app().stage.children.find(child => child.zIndex === 0).texture.path)
+      .toMatch(/building-formal-workstation-room-pixel-night\.png$/);
+    expect(decorations()).toEqual(drawnAt(nightScene.decorations));
+    // A Q-style image on the pixel room is not sampled as pixel art.
+    expect(app().stage.children.filter(child => child.label?.startsWith('orbit-decoration-'))
+      .every(child => child.texture.source.scaleMode === 'linear')).toBe(true);
+
+    // The pixel room cannot load: the decorations are those of the room
+    // drawn, still without the hidden ones.
+    fake.pixi.Assets.load.mockImplementation(async requested => {
+      if (requested.some(path => path.includes('/workspace/pixel/'))) throw new Error('[Loader.load] offline');
+      return load(requested);
+    });
+    await runtime.render({
+      activeProject: { progress: 100 },
+      appearance: { style: 'pixel' },
+      hiddenDecorations: ['deco-coffee'],
+    });
+    expect(decorations().map(entry => entry.path)).toEqual(scene.decorations
+      .filter(entry => entry.id !== 'deco-coffee').map(entry => entry.path));
+    // The night room loads but the night globe does not: only the globe
+    // steps down to the day one, at the day placement.
+    fake.pixi.Assets.load.mockImplementation(async requested => {
+      if (requested.some(path => path.endsWith('/deco-globe-night.png'))) throw new Error('[Loader.load] offline');
+      return load(requested);
+    });
+    await runtime.render({ activeProject: { progress: 100 }, timeBand: 'night' });
+    expect(app().stage.children.find(child => child.zIndex === 0).texture.path)
+      .toMatch(/building-formal-workstation-room-v2-night\.webp$/);
+    expect(decorations()).toEqual(drawnAt(nightScene.decorations.map(entry => (
+      entry.id === 'deco-globe' ? scene.decorations.find(day => day.id === 'deco-globe') : entry
+    ))));
+    expect(scene.decorations.find(day => day.id === 'deco-globe').placement)
+      .not.toEqual(nightScene.decorations.find(night => night.id === 'deco-globe').placement);
+
+    // Neither the night room nor its decorations load: the day ones, at their own placements.
+    fake.pixi.Assets.load.mockImplementation(async requested => {
+      if (requested.some(path => /-night\.(png|webp)$/.test(path))) throw new Error('[Loader.load] offline');
+      return load(requested);
+    });
+    await runtime.render({ activeProject: { progress: 100 }, timeBand: 'night', hiddenDecorations: ['deco-coffee'] });
+    expect(decorations()).toEqual(drawnAt(scene.decorations.filter(entry => entry.id !== 'deco-coffee')));
+    runtime.destroy();
+  });
+
+  it('draws no decorations with an older manifest that has none (PS-250F, INFRA-105)', async () => {
+    vi.resetModules();
+    vi.doMock('../../pwa/js/personalSpace/v2/content/assetManifest.js', async importOriginal => {
+      const actual = await importOriginal();
+      return {
+        ...actual,
+        getWorkspaceSceneAssets: (...args) => {
+          const { decorations: _decorations, ...scene } = actual.getWorkspaceSceneAssets(...args);
+          return scene;
+        },
+      };
+    });
+    try {
+      const { createPixiSceneRuntime: createWithOlderManifest } = await import('../../pwa/js/personalSpace/v2/runtime/pixiSceneRuntime.js');
+      const fake = createFakePixi();
+      const runtime = createWithOlderManifest({ loadPixi: () => Promise.resolve(fake.pixi) });
+      const { host } = createRuntimeHost();
+      await runtime.mount(host, { activeProject: { progress: 100 } });
+      expect(runtime.getStatus()).toBe('ready');
+      expect(fake.applications[0].stage.children.filter(child => child.label?.startsWith('orbit-decoration-')))
+        .toEqual([]);
+      runtime.destroy();
+    } finally {
+      vi.doUnmock('../../pwa/js/personalSpace/v2/content/assetManifest.js');
+      vi.resetModules();
+    }
   });
 
   it('keeps today\'s layer with an older manifest that returns no `lighting` (PS-250E1, INFRA-105)', async () => {

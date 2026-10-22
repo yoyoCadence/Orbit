@@ -32,6 +32,17 @@ const PROP_METADATA = Object.freeze({
   [`${PROP_ROOT}/dual-monitor.png`]: { id: 'dual-monitor', label: 'Dual monitor', projectPhase: 100 },
   [`${PROP_ROOT}/office-plant.png`]: { id: 'office-plant', label: 'Office plant', projectPhase: 100 },
 });
+// PS-250F: the default room's decorations, rendered by the same scene; each
+// is shown from its support's phase (the floor ones from the start).
+const DECOR_ROOT = 'assets/personal-space/v2/workspace/decor';
+const DECOR_METADATA = Object.freeze({
+  [`${DECOR_ROOT}/deco-trophy.png`]: { id: 'deco-trophy', label: 'Trophy', projectPhase: 50 },
+  [`${DECOR_ROOT}/deco-globe.png`]: { id: 'deco-globe', label: 'Globe', projectPhase: 50 },
+  [`${DECOR_ROOT}/deco-beanbag.png`]: { id: 'deco-beanbag', label: 'Beanbag', projectPhase: 0 },
+  [`${DECOR_ROOT}/deco-floor-lamp.png`]: { id: 'deco-floor-lamp', label: 'Floor lamp', projectPhase: 0 },
+  [`${DECOR_ROOT}/deco-succulent.png`]: { id: 'deco-succulent', label: 'Succulent', projectPhase: 25 },
+  [`${DECOR_ROOT}/deco-coffee.png`]: { id: 'deco-coffee', label: 'Coffee set', projectPhase: 25 },
+});
 
 export function buildPs242AssetManifest() {
   const outputs = getWorkspaceAssetManifestPaths().map(buildOutputEntry);
@@ -60,6 +71,13 @@ export function buildPs242AssetManifest() {
         outputs: 'art-pipeline/ps250-characters/outputs.json',
         previews: 'art-pipeline/ps250-characters/previews/',
         review: 'PS-250B default characters: shared-camera Q-style renders, ground point and canvas matching the PS-242 sprites, edge-clipping check, contact sheets and a room composite. The PS-242 pixel characters stay selectable as the pixel style.',
+      },
+      decorations: {
+        source: BLENDER_SOURCE,
+        placements: 'art-pipeline/ps250-decor/placements.json',
+        outputs: 'art-pipeline/ps250-decor/outputs.json',
+        previews: 'art-pipeline/ps250-decor/previews/',
+        review: 'PS-250F decorations: shared-camera renders by day and by night with their support as a shadow catcher, trimmed like the props, and per-phase composites over the committed room.',
       },
       modelManifest: 'art-pipeline/ps242/model-manifest.json',
       prompts: 'art-pipeline/ps242/prompts/',
@@ -184,14 +202,16 @@ function buildOutputEntry(path) {
     };
   }
 
-  const dayProp = PROP_METADATA[night ? path.replace(/-night\.png$/, '.png') : path];
+  const dayPath = night ? path.replace(/-night\.png$/, '.png') : path;
+  const decoration = Object.hasOwn(DECOR_METADATA, dayPath);
+  const dayProp = decoration ? DECOR_METADATA[dayPath] : PROP_METADATA[dayPath];
   if (!dayProp) throw new Error(`PS-242 manifest metadata missing for ${path}`);
   const prop = night
     ? { ...dayProp, id: `${dayProp.id}-night`, label: `${dayProp.label} (night)` }
     : dayProp;
   return {
     ...prop,
-    role: 'project-prop',
+    role: decoration ? 'decoration' : 'project-prop',
     lighting: night ? 'night' : 'day',
     source: BLENDER_SOURCE,
     qc: 'passed: shared-camera, contact-shadow-catcher, trimmed-placement, phase-composite, visual',

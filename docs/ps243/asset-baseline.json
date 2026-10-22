@@ -1,6 +1,6 @@
 {
   "artifact": "ps243-asset-baseline",
-  "appVersion": "1.37.0",
+  "appVersion": "1.38.0",
   "note": "Reproducible: a pure function of committed files with CRLF normalized to LF. No timestamps; regenerate with `npm run ps243:assets` and diff to verify.",
   "method": {
     "assetSizes": "raw binary file bytes on disk (fs.statSync.size)",
@@ -211,9 +211,57 @@
         {
           "path": "pwa/assets/personal-space/v2/workspace/props/office-plant-night.png",
           "bytes": 42067
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/workspace/decor/deco-trophy.png",
+          "bytes": 5880
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/workspace/decor/deco-trophy-night.png",
+          "bytes": 5951
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/workspace/decor/deco-globe.png",
+          "bytes": 6212
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/workspace/decor/deco-globe-night.png",
+          "bytes": 7703
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/workspace/decor/deco-beanbag.png",
+          "bytes": 26187
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/workspace/decor/deco-beanbag-night.png",
+          "bytes": 25727
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/workspace/decor/deco-floor-lamp.png",
+          "bytes": 17170
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/workspace/decor/deco-floor-lamp-night.png",
+          "bytes": 15796
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/workspace/decor/deco-succulent.png",
+          "bytes": 1711
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/workspace/decor/deco-succulent-night.png",
+          "bytes": 1602
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/workspace/decor/deco-coffee.png",
+          "bytes": 3801
+        },
+        {
+          "path": "pwa/assets/personal-space/v2/workspace/decor/deco-coffee-night.png",
+          "bytes": 3593
         }
       ],
-      "totalBytes": 1288625,
+      "totalBytes": 1409958,
       "targetBytes": 4194304,
       "hardThresholdBytes": 6291456,
       "result": "PASS"
@@ -225,7 +273,7 @@
       "files": [
         {
           "path": "pwa/js/pages/personalSpaceV2.js",
-          "bytes": 18438
+          "bytes": 18501
         },
         {
           "path": "pwa/js/personalSpace/economy.js",
@@ -249,7 +297,7 @@
         },
         {
           "path": "pwa/js/personalSpace/v2/content/assetManifest.js",
-          "bytes": 17501
+          "bytes": 20902
         },
         {
           "path": "pwa/js/personalSpace/v2/content/characterCatalog.js",
@@ -305,7 +353,7 @@
         },
         {
           "path": "pwa/js/personalSpace/v2/runtime/pixiSceneRuntime.js",
-          "bytes": 22812
+          "bytes": 24911
         },
         {
           "path": "pwa/js/personalSpace/v2/sessionAdapter.js",
@@ -313,7 +361,7 @@
         },
         {
           "path": "pwa/js/personalSpace/v2/stateSchema.js",
-          "bytes": 6490
+          "bytes": 6877
         },
         {
           "path": "pwa/js/personalSpace/v2/store.js",
@@ -325,30 +373,30 @@
         },
         {
           "path": "pwa/js/personalSpace/v2/ui/appearancePicker.js",
-          "bytes": 8982
+          "bytes": 11671
         },
         {
           "path": "pwa/js/personalSpace/v2/ui/assetGallery.js",
-          "bytes": 8132
+          "bytes": 8594
         },
         {
           "path": "pwa/js/personalSpace/v2/ui/orbitWindow.js",
-          "bytes": 26897
+          "bytes": 27951
         },
         {
           "path": "pwa/js/personalSpace/v2/viewModels.js",
-          "bytes": 26575
+          "bytes": 26773
         }
       ],
-      "rawBytes": 254417,
-      "gzipBytes": 66862
+      "rawBytes": 264770,
+      "gzipBytes": 69567
     },
     "vendoredPixi": {
       "path": "pwa/vendor/pixi.js",
       "rawBytes": 796970,
       "gzipBytes": 225428
     },
-    "combinedGzipBytes": 292290,
+    "combinedGzipBytes": 294995,
     "budgetBytes": 307200,
     "result": "PASS"
   }

@@ -3,6 +3,15 @@
 Usage:
     python render_pack.py <out_dir> [--width 1536] [--samples 96] [--only id,id]
                           [--lighting day|night] [--style <room style>]
+                          [--decor-boxes <ps250-decor/placements.json>]
+
+--only takes room, prop ids, decoration ids, or `decor` for every decoration.
+Decorations are rendered only when --only names them: a full pack is the room
+and the props, as before PS-250F.
+--decor-boxes (PS-250F2) renders each decoration only inside its default trim
+box of the same lighting, plus DECOR_BOX_PAD pixels; the rest of the frame
+stays transparent. A room style's decoration is cut to that box anyway, so the
+result is the same at a fraction of the time.
 
 Writes full-frame RGBA PNGs to <out_dir>:
     room.png          empty room, transparent outside the diorama
@@ -10,11 +19,16 @@ Writes full-frame RGBA PNGs to <out_dir>:
                       catchers, so contact shadows stay in the PNG, and any
                       PROP_OCCLUDERS are holdouts that cut out its hidden parts
 
+    <decor-id>.png    one PS-250F decoration, the same way (its support is the
+                      shelf or the desk); decorations are hidden in the room
+                      and prop renders, so those are unchanged
+
 Every file comes from the same scene, camera and lights in scene.py, so a prop
 lands pixel-exact on the room once process_pack.py trims it and derives its
 placement. Run process_pack.py next.
 """
 import argparse
+import json
 import os
 import sys
 
@@ -24,6 +38,9 @@ sys.path.insert(0, HERE)
 import bpy  # noqa: E402
 
 import scene as S  # noqa: E402
+
+FRAME = (1536, 1024)   # trim boxes are in pixels of the full-size frame
+DECOR_BOX_PAD = 48     # room for a style's own trim to show past the box
 
 
 def parse_args():
@@ -35,7 +52,35 @@ def parse_args():
     parser.add_argument('--only', default='')
     parser.add_argument('--lighting', choices=S.LIGHTINGS, default='day')
     parser.add_argument('--style', choices=tuple(S.ROOM_STYLES), default='default')
+    parser.add_argument('--decor-boxes', default='')
     return parser.parse_args(argv)
+
+
+def decor_boxes(path, lighting):
+    """{decor id: trim box} of one lighting from ps250-decor/placements.json."""
+    if not path:
+        return {}
+    with open(path, encoding='utf-8') as fh:
+        data = json.load(fh)
+    section = data if lighting == 'day' else data[lighting]
+    return {decor_id: entry['bbox'] for decor_id, entry in section['decor'].items()}
+
+
+def set_border(scene, box):
+    """Renders only `box` (left, top, right, bottom in frame pixels) plus the
+    pad, or the whole frame for None."""
+    r = scene.render
+    r.use_border = box is not None
+    if box is None:
+        return
+    left, top, right, bottom = box
+    w, h = FRAME
+    r.use_crop_to_border = False
+    r.border_min_x = max(0.0, (left - DECOR_BOX_PAD) / w)
+    r.border_max_x = min(1.0, (right + DECOR_BOX_PAD) / w)
+    # Blender measures the border from the bottom of the frame.
+    r.border_min_y = max(0.0, 1 - (bottom + DECOR_BOX_PAD) / h)
+    r.border_max_y = min(1.0, 1 - (top - DECOR_BOX_PAD) / h)
 
 
 def set_visible(objects, visible):
@@ -124,6 +169,8 @@ def main():
     scene = bpy.context.scene
     scene.render.film_transparent = True
     only = {item for item in args.only.split(',') if item}
+    if 'decor' in only:
+        only = (only - {'decor'}) | set(S.DECOR_IDS)
     no_lines = S.no_line_collection()
 
     # The ceiling is invisible to the camera but still blocks light; as a
@@ -131,6 +178,10 @@ def main():
     room = groups['room'] + groups.get('ceiling', [])
     outside = groups.get('outside', [])
     props = {prop_id: groups[prop_id] for prop_id in S.PROP_IDS}
+    decor = {decor_id: groups[decor_id] for decor_id in S.DECOR_IDS}
+    # PS-250F: decorations stay out of the room and prop renders.
+    for objects in decor.values():
+        set_visible(objects, False)
 
     # 1. Empty room: every prop hidden.
     if not only or 'room' in only:
@@ -165,6 +216,27 @@ def main():
                 elif not hide_lines and linked:
                     no_lines.objects.unlink(obj)
         render(os.path.join(args.out_dir, f'{prop_id}.png'))
+
+    # 3. Each decoration named in --only, alone, with its support (shelf or
+    #    desk) as a shadow catcher and every other prop hidden.
+    boxes = decor_boxes(args.decor_boxes, args.lighting)
+    for decor_id, objects in decor.items():
+        if decor_id not in only:
+            continue
+        supports = S.DECOR_SUPPORTS.get(decor_id, ())
+        for other_id, other in props.items():
+            is_support = other_id in supports
+            set_visible(other, is_support)
+            for obj in other:
+                obj.is_shadow_catcher = is_support
+                set_occluder(obj, False)
+                if is_support and obj.name not in no_lines.objects:
+                    no_lines.objects.link(obj)
+        for other_id, other in decor.items():
+            set_visible(other, other_id == decor_id)
+        set_border(scene, boxes.get(decor_id))
+        render(os.path.join(args.out_dir, f'{decor_id}.png'))
+    set_border(scene, None)
 
 
 if __name__ == '__main__':

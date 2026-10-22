@@ -195,17 +195,25 @@ describe('PS-250B offline fallback in the poster', () => {
     const background = host.querySelector('.orbit-window-background');
     expect(background.getAttribute('src')).toContain('/workspace/pixel/backgrounds/');
     expect(background.dataset.fallbackSrc).toBe('assets/personal-space/v2/workspace/backgrounds/building-formal-workstation-room-v2.webp');
-    const props = [...host.querySelectorAll('.orbit-window-prop')];
+    const props = [...host.querySelectorAll('.orbit-window-prop:not(.orbit-window-decoration)')];
     expect(props.length).toBeGreaterThan(0);
     props.forEach(prop => {
       expect(prop.getAttribute('src')).toContain('/workspace/pixel/props/');
       expect(prop.dataset.fallbackSrc).toBe(prop.getAttribute('src').replace('/workspace/pixel/props/', '/workspace/props/'));
     });
+    // PS-250F: so do the decorations.
+    const decorations = [...host.querySelectorAll('.orbit-window-decoration')];
+    expect(decorations.length).toBeGreaterThan(0);
+    decorations.forEach(decoration => {
+      expect(decoration.getAttribute('src')).toContain('/workspace/pixel/decor/');
+      expect(decoration.dataset.fallbackSrc)
+        .toBe(decoration.getAttribute('src').replace('/workspace/pixel/decor/', '/workspace/decor/'));
+    });
 
     // Pixel images keep hard edges; the weather overlay is not pixel art.
     const marked = [...host.querySelectorAll('.orbit-window-poster img[data-pixel-art]')];
     expect(marked).toEqual([
-      background, ...props,
+      background, ...props, ...decorations,
       host.querySelector('.orbit-window-protagonist'),
       host.querySelector('.orbit-window-companion'),
     ]);

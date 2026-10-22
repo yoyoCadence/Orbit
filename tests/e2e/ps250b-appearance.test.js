@@ -104,13 +104,62 @@ test.describe('PS-250B character style and choice', () => {
     await expect(home).toHaveAttribute('src', /workspace\/styles\/nordic\/background(-night)?\.webp$/);
     await expect.poll(() => home.evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true);
 
-    // A room style that cannot load falls back to the default room.
-    await page.route(/\/workspace\/styles\//, route => route.abort());
+    // A room style that cannot load falls back to the default room, and its
+    // decorations (PS-250F2) to the default room's.
+    await page.route(/\/workspace\/(decor\/)?styles\//, route => route.abort());
     const styleRequest = page.waitForRequest(/\/workspace\/styles\/nordic\//);
     await page.reload();
     await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
     await styleRequest;
     await expect(home).toHaveAttribute('src', /workspace\/backgrounds\/building-formal-workstation-room-v2(-night)?\.webp$/);
     await expect.poll(() => home.evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true);
+    // At 0% only the floor ones are shown.
+    const decorations = page.locator('[data-orbit-window] .orbit-window-decoration');
+    await expect(decorations).toHaveCount(2);
+    for (const decoration of await decorations.all()) {
+      await expect(decoration).toHaveAttribute('src', /\/workspace\/decor\/deco-[a-z-]+(-night)?\.png$/);
+      await expect.poll(() => decoration.evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true);
+    }
+  });
+
+  test('switches a decoration off and on in Edit Mode, on home too (PS-250F)', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
+    const homeBeanbag = page.locator('[data-orbit-window] [data-decoration-id="deco-beanbag"]');
+    await expect(homeBeanbag).toHaveCount(1);
+    await expect.poll(() => homeBeanbag.evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true);
+
+    await page.locator('[data-orbit-open-world]').click();
+    await page.locator('[data-personal-space-v2] [data-v2-mode="edit"]').first().click();
+    const switches = page.locator('[data-v2-appearance="decoration"]');
+    await expect(switches).toHaveCount(6);
+    for (const button of await switches.all()) await expect(button).toHaveAttribute('aria-pressed', 'true');
+    // Each switch shows the decoration itself.
+    for (const thumbnail of await page.locator('[data-v2-appearance="decoration"] img').all()) {
+      await thumbnail.scrollIntoViewIfNeeded();
+      await expect.poll(() => thumbnail.evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true);
+    }
+
+    const beanbag = page.locator('[data-v2-appearance="decoration"][data-value="deco-beanbag"]');
+    const worldBeanbag = page.locator('[data-personal-space-v2] [data-decoration-id="deco-beanbag"]');
+    await expect(worldBeanbag).toHaveCount(1);
+    await beanbag.click();
+    await expect(beanbag).toHaveAttribute('aria-pressed', 'false');
+    await expect(beanbag).toBeFocused();
+    await expect(worldBeanbag).toHaveCount(0);
+    await expect(page.locator('[data-personal-space-v2] .orbit-window-decoration')).not.toHaveCount(0);
+
+    // Kept on this device: home leaves it out too.
+    await page.locator('[data-personal-space-v2] [data-v2-mode="full-world"]').first().click();
+    await page.goto('/');
+    await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
+    await expect(page.locator('[data-orbit-window] .orbit-window-background')).toBeVisible();
+    await expect(homeBeanbag).toHaveCount(0);
+
+    await page.locator('[data-orbit-open-world]').click();
+    await page.locator('[data-personal-space-v2] [data-v2-mode="edit"]').first().click();
+    await beanbag.click();
+    await expect(beanbag).toHaveAttribute('aria-pressed', 'true');
+    await expect(worldBeanbag).toHaveCount(1);
   });
 });

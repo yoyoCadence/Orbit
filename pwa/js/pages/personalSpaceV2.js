@@ -173,7 +173,7 @@ function pageMarkup(model, mode, renderWindow) {
           <p class="personal-space-v2-empty">工作站家具的位置由固定視角的場景決定，目前不能移動。舊版編輯器的擺放仍保留在舊版場景，不會套用到這裡。</p>
           <p>編輯模式不會產生任何獎勵。</p>
         </section>
-        ${renderAppearancePicker(model.appearance, model.selectedThemeId)}
+        ${renderAppearancePicker(model.appearance, model.selectedThemeId, model.hiddenDecorations)}
       ` : ''}
 
       ${isAssetGalleryEnabled() ? renderAssetGallery() : ''}
@@ -369,8 +369,9 @@ export function renderPersonalSpaceV2(container, options = {}) {
     }
   }
 
-  // PS-250B: store the chosen style or character (PS-250E2: or room) and
-  // redraw with it; focus returns to the same option in the new markup.
+  // PS-250B: store the chosen style or character (PS-250E2: or room;
+  // PS-250F: or a decoration switch) and redraw with it; focus returns to the
+  // same option in the new markup.
   function changeAppearance(button) {
     const change = readAppearanceChange(button);
     if (!change) return;

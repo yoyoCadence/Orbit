@@ -9,6 +9,7 @@ const COMPANION_ROOT = `${ASSET_ROOT}/characters/companion`;
 const TOON_ROOT = `${ASSET_ROOT}/characters/toon`;
 const PIXEL_ROOT = `${ASSET_ROOT}/characters/pixel`;
 const PIXEL_SCENE_ROOT = `${ASSET_ROOT}/workspace/pixel`;
+const DECOR_ROOT = `${ASSET_ROOT}/workspace/decor`;
 const BACKGROUND = `${ASSET_ROOT}/workspace/backgrounds/building-formal-workstation-room-v2.webp`;
 const NIGHT_BACKGROUND = `${ASSET_ROOT}/workspace/backgrounds/building-formal-workstation-room-v2-night.webp`;
 const EFFECTS_ROOT = `${ASSET_ROOT}/effects`;
@@ -56,6 +57,7 @@ const CHARACTER_STYLES = Object.freeze({
     companionPath: (id, state) => `${TOON_ROOT}/companion/${id}-${state}.webp`,
     backgrounds: Object.freeze({ day: BACKGROUND, night: NIGHT_BACKGROUND }),
     propPath: (id, lighting) => `${PROP_ROOT}/${id}${lighting === 'night' ? '-night' : ''}.png`,
+    decorPath: (id, lighting) => `${DECOR_ROOT}/${id}${lighting === 'night' ? '-night' : ''}.png`,
     // The PS-242 pixel characters are the office worker and Orbit, so a
     // choice of one of them carries over to the Q style as those two.
     aliases: Object.freeze({ default: 'office', 'orbit-guide': 'orbit' }),
@@ -74,6 +76,7 @@ const CHARACTER_STYLES = Object.freeze({
       night: `${PIXEL_SCENE_ROOT}/backgrounds/building-formal-workstation-room-pixel-night.png`,
     }),
     propPath: (id, lighting) => `${PIXEL_SCENE_ROOT}/props/${id}${lighting === 'night' ? '-night' : ''}.png`,
+    decorPath: (id, lighting) => `${PIXEL_SCENE_ROOT}/decor/${id}${lighting === 'night' ? '-night' : ''}.png`,
   }),
 });
 const DEFAULT_STYLE = 'toon';
@@ -135,6 +138,27 @@ const PROP_DEFINITIONS = Object.freeze([
     { x: 86.556, y: 68.164, width: 15.69 }),
 ]);
 
+// PS-250F: decorations (user decision, 2026-10-22), each shown unless hidden
+// in Edit Mode (world.hiddenDecorations). Rendered by
+// art-pipeline/ps250-decor like the props; placements come from its
+// placements.json (test-enforced). One on the shelf or the desk shows from
+// that prop's phase and moves with it; one on the floor shows from the start.
+// PS-250F2: every room style has them too, cut to the same boxes.
+const DECOR_DEFINITIONS = Object.freeze([
+  decoration('deco-trophy', 'office-shelf', 50, { x: 61.947, y: 32.031, width: 6.055, z: 23 },
+    { x: 61.947, y: 32.129, width: 6.055 }),
+  decoration('deco-globe', 'office-shelf', 50, { x: 72.396, y: 32.324, width: 5.208, z: 23 },
+    { x: 72.754, y: 34.18, width: 5.924 }),
+  decoration('deco-beanbag', null, 0, { x: 16.992, y: 79.492, width: 12.109, z: 31 },
+    { x: 16.862, y: 79.492, width: 12.37 }),
+  decoration('deco-floor-lamp', null, 0, { x: 9.375, y: 58.594, width: 5.208, z: 21 },
+    { x: 9.375, y: 57.91, width: 5.208 }),
+  decoration('deco-succulent', 'corner-desk', 25, { x: 30.306, y: 49.023, width: 1.497, z: 25 },
+    { x: 30.306, y: 49.023, width: 1.497 }),
+  decoration('deco-coffee', 'corner-desk', 25, { x: 45.898, y: 50.977, width: 3.385, z: 25 },
+    { x: 45.898, y: 50.977, width: 3.385 }),
+]);
+
 export const WORKSPACE_PROJECT_PHASES = Object.freeze([
   phase(0, '空白工作角', '完成一次 Main Quest，建立基本書桌。'),
   phase(25, '基本書桌', '再完成一次 Main Quest，加入燈具與收納。'),
@@ -162,7 +186,7 @@ export const WORKSPACE_NIGHT_INITIAL_PAINT_ASSETS = Object.freeze([
 // derives its complete-scene evidence from this same contract. Other styles
 // and characters are downloaded when chosen.
 export function getWorkspaceAssetManifestPaths() {
-  const { propPath } = CHARACTER_STYLES[DEFAULT_STYLE];
+  const { propPath, decorPath } = CHARACTER_STYLES[DEFAULT_STYLE];
   return Object.freeze([...new Set([
     ...WORKSPACE_INITIAL_PAINT_ASSETS,
     ...Object.values(PROTAGONIST_VARIANTS).flatMap(Object.values),
@@ -171,6 +195,8 @@ export function getWorkspaceAssetManifestPaths() {
     ...PROP_DEFINITIONS.map(entry => entry.path),
     NIGHT_BACKGROUND,
     ...PROP_DEFINITIONS.map(entry => propPath(entry.id, 'night')),
+    // PS-250F: decorations are shown unless hidden.
+    ...DECOR_DEFINITIONS.flatMap(entry => [decorPath(entry.id, 'day'), decorPath(entry.id, 'night')]),
   ])]);
 }
 
@@ -227,6 +253,7 @@ export function getWorkspaceSceneAssets(progress = 0, placementOverrides = {}, v
   const lighting = NIGHT_TIME_BANDS.includes(options?.timeBand) ? 'night' : 'day';
   const roomStyle = ROOM_STYLE_IDS.includes(options?.roomStyle) ? options.roomStyle : DEFAULT_ROOM_STYLE;
   const room = roomPaths(resolvedVisuals.appearance.style, roomStyle);
+  const hiddenDecorations = Array.isArray(options?.hiddenDecorations) ? options.hiddenDecorations : [];
   return {
     ...WORKSPACE_V2_ASSETS,
     background: room.backgrounds[lighting],
@@ -251,6 +278,21 @@ export function getWorkspaceSceneAssets(progress = 0, placementOverrides = {}, v
           ? movedLike(nightPlacement, entry.placement, placementOverrides[entry.id])
           : { ...entry.placement, ...normalizePositionOverride(placementOverrides[entry.id]) },
       })),
+    // PS-250F: a list of its own, so a caller that predates it draws none and
+    // a caller can leave out one that cannot load without losing the room.
+    decorations: room.decorPath
+      ? DECOR_DEFINITIONS
+        .filter(entry => normalized >= entry.minProgress && !hiddenDecorations.includes(entry.id))
+        .map(({ nightPlacement, ...entry }) => ({
+          ...entry,
+          path: room.decorPath(entry.id, lighting),
+          placement: movedLike(
+            lighting === 'night' ? nightPlacement : entry.placement,
+            decorationAnchor(entry).placement,
+            placementOverrides[decorationAnchor(entry).id],
+          ),
+        }))
+      : [],
     // PS-244: sized so the chibi sprite matches a 1.7 m figure in the Blender camera.
     protagonistPlacement: normalizePlacementOverride(placementOverrides.protagonist, {
       x: normalized >= 25 ? 58 : 51,
@@ -300,6 +342,9 @@ function roomPaths(characterStyle, roomStyle) {
   return {
     backgrounds: { day: `${root}/background.${ext}`, night: `${root}/background-night.${ext}` },
     propPath: (id, lighting) => `${root}/props/${id}${lighting === 'night' ? '-night' : ''}.png`,
+    decorPath: (id, lighting) => (
+      `${ASSET_ROOT}/workspace/${pixel ? 'pixel/' : ''}decor/styles/${roomStyle}/${id}${lighting === 'night' ? '-night' : ''}.png`
+    ),
   };
 }
 
@@ -337,6 +382,22 @@ function prop(id, minProgress, placement, nightPlacement, maxProgress = 100) {
   });
 }
 
+// A decoration's night sprite has its own trim box, like a prop's.
+function decoration(id, support, minProgress, placement, nightPlacement) {
+  return Object.freeze({
+    id,
+    support,
+    minProgress,
+    placement: Object.freeze({ anchor: 'center-bottom', ...placement }),
+    nightPlacement: Object.freeze({ anchor: 'center-bottom', ...nightPlacement, z: placement.z }),
+  });
+}
+
+// What a decoration moves with: its support prop, or itself on the floor.
+function decorationAnchor(entry) {
+  return PROP_DEFINITIONS.find(candidate => candidate.id === entry.support) || entry;
+}
+
 function phase(progress, label, nextRequirement) {
   return Object.freeze({ progress, label, nextRequirement });
 }
@@ -355,6 +416,8 @@ function normalizePositionOverride(value) {
 
 // An override is where the user moved the day sprite. The night sprite moves
 // by the same offset, so the furniture stays in place when the light changes.
+// PS-250F: a decoration moves by the offset of its support (dayPlacement is
+// then the support's), so it stays on the shelf or the desk.
 function movedLike(nightPlacement, dayPlacement, override) {
   const moved = normalizePositionOverride(override);
   const result = { ...nightPlacement };

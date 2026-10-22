@@ -3,7 +3,8 @@
  * Companion. The choice is stored only on this device, in the V2 state
  * (`world.appearance`). assetManifest.js resolves it, so the home Orbit Window
  * and the full page draw the same characters. PS-250E2 adds the room style,
- * stored in the existing `world.selectedThemeId`.
+ * stored in the existing `world.selectedThemeId`, and PS-250F the decorations
+ * (`world.hiddenDecorations`, the ones switched off).
  *
  * A new module that only reads existing exports (INFRA-105): the scene
  * resolution in assetManifest.js, the Q-style character list (PS-250C) and the
@@ -47,6 +48,18 @@ export const ROOM_STYLES = Object.freeze([
   Object.freeze({ id: 'study', label: '深木書房' }),
 ]);
 
+// PS-250F: decorations (user decision, 2026-10-22), switched on and off in
+// Edit Mode. The ids mirror DECOR_DEFINITIONS in assetManifest.js
+// (ps250fDecorations.test.js keeps them in sync).
+export const DECORATIONS = Object.freeze([
+  Object.freeze({ id: 'deco-trophy', label: '獎盃' }),
+  Object.freeze({ id: 'deco-globe', label: '地球儀' }),
+  Object.freeze({ id: 'deco-beanbag', label: '懶骨頭' }),
+  Object.freeze({ id: 'deco-floor-lamp', label: '落地燈' }),
+  Object.freeze({ id: 'deco-succulent', label: '多肉盆栽' }),
+  Object.freeze({ id: 'deco-coffee', label: '咖啡杯組' }),
+]);
+
 /** The stored room style, or the default for anything unknown (legacy theme ids too). */
 export function resolveRoomStyleChoice(value) {
   return ROOM_STYLES.some(entry => entry.id === value) ? value : ROOM_STYLES[0].id;
@@ -69,7 +82,7 @@ export function resolveAppearanceChoice(value) {
   };
 }
 
-export function renderAppearancePicker(value, roomStyle) {
+export function renderAppearancePicker(value, roomStyle, hiddenDecorations) {
   const choice = resolveAppearanceChoice(value);
   // An older page does not pass the room (INFRA-105): mark none, so either
   // room can still be chosen.
@@ -78,10 +91,18 @@ export function renderAppearancePicker(value, roomStyle) {
   const stored = value && typeof value === 'object' ? value : {};
   const pixelArt = style.id === 'pixel';
   const thumbnail = appearance => getWorkspaceSceneAssets(0, {}, { appearance });
+  // An older page does not pass the hidden decorations, and an older
+  // assetManifest.js cannot draw them: no switches then. Each switch shows
+  // the decoration of the chosen room (PS-250F2: each room has its own).
+  const decorationPaths = new Map((getWorkspaceSceneAssets(100, {}, { appearance: choice }, {
+    roomStyle: room ?? undefined,
+  }).decorations || []).map(entry => [entry.id, entry.path]));
+  const hidden = Array.isArray(hiddenDecorations) ? hiddenDecorations : null;
+  const decorations = hidden ? DECORATIONS.filter(option => decorationPaths.has(option.id)) : [];
   return `
     <section class="personal-space-v2-appearance" data-v2-appearance-picker aria-labelledby="personal-space-v2-appearance-title">
       <div class="personal-space-v2-editor-heading">
-        <div><small>外觀</small><h2 id="personal-space-v2-appearance-title">風格、房間與角色</h2></div>
+        <div><small>外觀</small><h2 id="personal-space-v2-appearance-title">風格、房間、裝飾與角色</h2></div>
       </div>
       <fieldset>
         <legend>風格</legend>
@@ -106,6 +127,21 @@ export function renderAppearancePicker(value, roomStyle) {
           })).join('')}
         </ul>
       </fieldset>
+      ${decorations.length ? `
+        <fieldset>
+          <legend>裝飾</legend>
+          <ul class="personal-space-v2-appearance-options personal-space-v2-appearance-decorations">
+            ${decorations.map(option => optionMarkup('decoration', option, {
+              selected: !hidden.includes(option.id),
+              stored: false,
+              src: decorationPaths.get(option.id),
+              pixelArt,
+              describedBy: 'personal-space-v2-decorations-hint',
+            })).join('')}
+          </ul>
+          <small id="personal-space-v2-decorations-hint">點一下顯示或收起，每個房間都適用。書架與桌上的小物在書架、書桌出現後才會擺上。</small>
+        </fieldset>
+      ` : ''}
       <fieldset>
         <legend>主角</legend>
         <ul class="personal-space-v2-appearance-options">
@@ -133,10 +169,10 @@ export function renderAppearancePicker(value, roomStyle) {
   `;
 }
 
-function optionMarkup(kind, option, { selected, stored, src, pixelArt, size = { width: 72, height: 72 } }) {
+function optionMarkup(kind, option, { selected, stored, src, pixelArt, size = { width: 72, height: 72 }, describedBy }) {
   return `
     <li>
-      <button type="button" data-v2-appearance="${kind}" data-value="${escapeHtml(option.id)}" aria-pressed="${selected}"${stored ? ' data-stored' : ''}>
+      <button type="button" data-v2-appearance="${kind}" data-value="${escapeHtml(option.id)}" aria-pressed="${selected}"${stored ? ' data-stored' : ''}${describedBy ? ` aria-describedby="${describedBy}"` : ''}>
         <img src="${escapeHtml(src)}" alt="" width="${size.width}" height="${size.height}" loading="lazy" decoding="async" draggable="false"${pixelArt ? ' data-pixel-art' : ''}>
         <span>${escapeHtml(option.label)}</span>
       </button>
@@ -155,6 +191,8 @@ export function readAppearanceChange(button) {
   if (!value) return null;
   const kind = button.dataset.v2Appearance;
   const shown = button.getAttribute?.('aria-pressed') === 'true';
+  // PS-250F: a decoration switch turns that decoration off or on.
+  if (kind === 'decoration') return shown ? { hideDecoration: value } : { showDecoration: value };
   if (shown && (kind === 'style' || kind === 'room' || button.hasAttribute?.('data-stored'))) return null;
   if (kind === 'room') return { selectedThemeId: value };
   const field = { style: 'style', protagonist: 'protagonistId', companion: 'companionId' }[kind];
@@ -172,13 +210,18 @@ export function saveAppearanceChange(ownerId, change) {
   const state = loadPersonalSpaceV2State(ownerId);
   const world = state.world || {};
   // The room style is its own field; a room change leaves an unchosen
-  // appearance (null, which follows the default) as it is.
-  const { selectedThemeId, ...appearance } = change;
+  // appearance (null, which follows the default) as it is. So are the hidden
+  // decorations: ids this version does not know stay hidden.
+  const { selectedThemeId, hideDecoration, showDecoration, ...appearance } = change;
+  const hidden = new Set(Array.isArray(world.hiddenDecorations) ? world.hiddenDecorations : []);
+  if (hideDecoration) hidden.add(hideDecoration);
+  if (showDecoration) hidden.delete(showDecoration);
   return savePersonalSpaceV2State(ownerId, {
     ...state,
     world: {
       ...world,
       ...(selectedThemeId === undefined ? {} : { selectedThemeId }),
+      ...(hideDecoration || showDecoration ? { hiddenDecorations: [...hidden] } : {}),
       ...(Object.keys(appearance).length ? { appearance: { ...world.appearance, ...appearance } } : {}),
     },
   });
