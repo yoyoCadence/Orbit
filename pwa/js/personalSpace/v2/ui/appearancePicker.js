@@ -42,6 +42,9 @@ export const APPEARANCE_STYLES = Object.freeze([
 export const ROOM_STYLES = Object.freeze([
   Object.freeze({ id: 'default', label: '藍色工作室' }),
   Object.freeze({ id: 'nordic', label: '明亮北歐' }),
+  Object.freeze({ id: 'washitsu', label: '日式和風' }),
+  Object.freeze({ id: 'nightowl', label: '夜貓工作室' }),
+  Object.freeze({ id: 'study', label: '深木書房' }),
 ]);
 
 /** The stored room style, or the default for anything unknown (legacy theme ids too). */

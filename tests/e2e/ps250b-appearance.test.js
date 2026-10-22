@@ -90,7 +90,7 @@ test.describe('PS-250B character style and choice', () => {
     await expect.poll(() => room.evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true);
     // The thumbnail of each room loads too.
     const thumbnails = page.locator('[data-v2-appearance="room"] img');
-    await expect(thumbnails).toHaveCount(2);
+    await expect(thumbnails).toHaveCount(5);
     for (const thumbnail of await thumbnails.all()) {
       await thumbnail.scrollIntoViewIfNeeded();
       await expect.poll(() => thumbnail.evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true);
