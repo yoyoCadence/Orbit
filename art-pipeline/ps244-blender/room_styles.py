@@ -6,9 +6,9 @@
 # behind the cut-away room. An 'emit' material glows (neon). 'pixel_shadow'
 # is the prop shadow of the pixel version (ps250-pixel): a colour and
 # (alpha below, opacity) steps, the last one for everything darker.
-# 'shadow_floor' drops the faint shadow wash a light room leaves around every
-# prop, from the bright daylight ambient and from lamp light bounced off pale
-# walls at night (process_pack.lift_shadow_floor). 'default' is the PS-244
+# 'shadow_floor' drops the faint shadow wash every non-default style leaves
+# around each prop (process_pack.lift_shadow_floor): light rooms 56, dark
+# rooms 40. 'default' is the PS-244
 # look and must stay exactly as it was. 'backdrop_night' replaces a light
 # backdrop at night.
 ROOM_STYLES = {
