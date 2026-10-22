@@ -58,6 +58,18 @@ describe('PS-250G picker thumbnails', () => {
       expect(webpSize(path), path).toEqual({ width: 216, height: 144 });
       // A full background is 70–110 KB; the point is to download far less.
       expect(data.length, path).toBeLessThan(12_000);
+      // Made from the room as it is now: re-run thumbnails.py after a re-render.
+      const source = readFileSync(join(PWA, entry.source.path));
+      expect(createHash('sha256').update(source).digest('hex'), entry.source.path).toBe(entry.source.sha256);
+    }
+    const sources = Object.values(record.files).map(entry => entry.source.path);
+    expect(new Set(sources).size).toBe(sources.length);
+    for (const { id } of ROOM_STYLES) {
+      for (const style of ['toon', 'pixel']) {
+        const thumbnail = `${V2}/workspace/${style === 'pixel' ? 'pixel/' : ''}thumbnails/${id}.webp`;
+        expect(record.files[thumbnail].source.path, thumbnail)
+          .toBe(getWorkspaceSceneAssets(0, {}, { appearance: { style } }, { roomStyle: id }).background);
+      }
     }
   });
 

@@ -7,8 +7,10 @@ The picker used to show each room's full 1536 x 1024 background as a
 108 x 72 thumbnail, so opening it downloaded four other rooms' backgrounds
 (about 280 KB in the Q style, 350 KB in pixels). This makes a 216 x 144 WebP
 (twice the display size) of each room's committed day background, in both
-character styles, and records their size and SHA-256 in thumbnails.json
-(tests/unit/ps250gPickerThumbnails.test.js checks the files against it):
+character styles, and records their size and SHA-256, with the path and
+SHA-256 of the background each was made from, in thumbnails.json
+(tests/unit/ps250gPickerThumbnails.test.js checks the files and the current
+backgrounds against it, so a room re-rendered without re-running this fails):
 
     pwa/assets/personal-space/v2/workspace/thumbnails/<room>.webp        Q style
     pwa/assets/personal-space/v2/workspace/pixel/thumbnails/<room>.webp  pixel
@@ -58,7 +60,11 @@ def main():
             os.makedirs(os.path.dirname(target), exist_ok=True)
             with open(target, 'wb') as fh:
                 fh.write(buffer.getvalue())
-            files[path] = {'bytes': len(buffer.getvalue()), 'sha256': hashlib.sha256(buffer.getvalue()).hexdigest()}
+            source = source_path(room, pixel)
+            with open(os.path.join(PWA, *source.split('/')), 'rb') as fh:
+                source_sha = hashlib.sha256(fh.read()).hexdigest()
+            files[path] = {'bytes': len(buffer.getvalue()), 'sha256': hashlib.sha256(buffer.getvalue()).hexdigest(),
+                           'source': {'path': source, 'sha256': source_sha}}
     with open(RECORD, 'w', encoding='utf-8') as fh:
         json.dump({'schemaVersion': 1, 'taskId': 'PS-250G', 'size': list(SIZE), 'files': dict(sorted(files.items()))},
                   fh, ensure_ascii=False, indent=2)

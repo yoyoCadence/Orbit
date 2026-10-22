@@ -163,6 +163,15 @@
   - 目標：完成 roadmap 既有 SUB-17
   - 對應 roadmap：中期
 
+- [ ] **PS-251** PS-248 提案 §9 中 PS-250 沒有涵蓋的項目
+  - 來源：PS-248 結案時（#202 獨立 review 的 P2）。使用者的 PS-250 決定取代了 PS-248 §9 的範圍、擴充前提、順序、做法與快取，但沒有決定下面兩項。
+  - **§9.3 PS-248A2 窗外依時段變化**（可選；超出 art bible §6.1「一張 exterior」的上限）：**需使用者決定**要不要做。
+  - **§9.8 順帶整理**（提案建議放在 PS-248A，使用者沒有另外決定）：
+    - 刪除未被引用的 `pwa/assets/personal-space/v2/workspace/backgrounds/building-formal-workstation-room-v1.webp`（159 KB）：只在 v1.22.0～PS-244 之間被引用、從未在 SHELL；原始檔 `art-pipeline/ps242/source/building-formal-workstation-room-v1.png` 保留。順便修正 `art-pipeline/ps242/companion-state-pack-metadata.json` 中指向不存在的 `…/room-v1.png`。
+    - `docs/ps-243-production-acceptance.md` 的預算表仍是 PS-244 之前的數字（259,133 B／1,766,935 B）；那是當時的驗收紀錄，是否更新由使用者決定（PS-211 提案已註明）。`pwa/assets/personal-space/v2/README.md` 的數字已在 PS-250G 更新。
+    - 根目錄 `README.md`「25% 空間擴充 → 50% 家具 → 75% 風格 → 100% 全新主題」與實際的專案階段（`WORKSPACE_PROJECT_PHASES`：基本書桌、燈具與收納、單螢幕工作站、雙螢幕正式工作站）不符。
+  - 整理的三項風險低（不改程式行為），可一起做一個 PR；刪檔與改驗收紀錄前先向使用者確認。
+
 - [ ] **AI-015** AI 晨間報告
   - 目標：完成 roadmap 既有 SUB-15
   - 對應 roadmap：長期（v2.x）
@@ -263,7 +272,7 @@
   - 做法候選：處理腳本另外輸出小的縮圖（例如 216×144 WebP）並列入 `outputs.json`；縮圖 `<img>` 加 `data-fallback-src`（預設房間的縮圖），沿用 poster 的退回機制。
   - PS-250F2（#201 獨立 review 的 P3）：「裝飾」開關的圖片是所選房間的裝飾，離線時沒下載過的房間同樣是空白；一併加上 `data-fallback-src`（預設房間、已預先快取的裝飾）。
   - 不影響場景本身與預先快取。
-  - In progress（2026-10-22）：PS-250F 合併後，PS-250 只剩這一項後續。不涉及 auth／schema／部署（不改 `sw.js`），直接開始。
+  - In progress（2026-10-22）：PS-250F 合併後，PS-250 只剩這一項後續。不涉及 auth／schema／部署（`sw.js` 只隨版本號換 CACHE 名稱），直接開始。
   - 完成（2026-10-22，v1.38.1）：
     - `art-pipeline/ps250-rooms/thumbnails.py`：由已提交的白天背景產生每個房間 216×144 的 WebP 縮圖（顯示大小的兩倍），Q 版與像素各 5 張，共 10 張、約 39.8 KB，大小與 SHA-256 記在 `thumbnails.json`。房間重新渲染後重跑。
     - 選擇介面的「房間」改用縮圖：打開時不再下載其他房間完整的背景（Q 版約 280 KB、像素約 350 KB）。
@@ -419,7 +428,7 @@
     - 風格與裝飾不寫入 reward ledger、不新增 `world_unlock`。新房間、新相機、3D runtime、角色與天氣不在範圍內。
     - 使用者決定後，把核准的階段拆成 PS-248A／B／C 任務並寫入驗收條件（PS-248A 的草稿在提案 §8）。
   - 2026-10-21：使用者的 PS-250 決定取代 §9 的範圍（角色與 AI 形象在範圍內，上面「角色與天氣不在範圍內」不再適用）、擴充前提（同意擴充；art bible §6.1 與 asset pipeline 的上限要一併更新）、順序，以及快取（只預先快取預設，即 §6 的 S2）。PS-248A／B 併入 PS-250E，PS-248C 併入 PS-250F，不再另外拆成 PS-248A／B／C 任務。
-  - 結案（2026-10-22）：由 PS-250 取代。PS-248A（夜晚版本）在 PS-250E1、PS-248B（房間風格）在 PS-250E2／E3、PS-248C（裝飾小物）在 PS-250F 完成；裝飾依使用者的 PS-250F 決定改為 Edit Mode 自由開關，不由 AI-202B 的資料解鎖。§9 不再需要另外決定。
+  - 結案（2026-10-22）：由 PS-250 取代。PS-248A（夜晚版本）在 PS-250E1、PS-248B（房間風格）在 PS-250E2／E3、PS-248C（裝飾小物）在 PS-250F 完成；裝飾依使用者的 PS-250F 決定改為 Edit Mode 自由開關，不由 AI-202B 的資料解鎖。§9 中 PS-250 沒有涵蓋的兩項（A2 窗外依時段變化、§9.8 順帶整理）移到 **PS-251**（Backlog），沒有遺失。
 
 - [x] **BUG-114** 專案已到 100% 後，reveal 仍顯示專案進度的增減
   - 問題（BUG-113 發現，2026-10-21）：工作站完成後，每個 Main Quest 日仍得到 `project_progress +25`，reveal 顯示 `workspace-upgrade +25`，但進度停在 100%（`projectEngine.js` 把總和截在 100）。撤銷完成那一天、由下一天接手時，reveal 顯示 `workspace-upgrade -25`，進度也仍是 100%。

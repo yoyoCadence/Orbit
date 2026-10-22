@@ -8,43 +8,83 @@
   "files": {
     "assets/personal-space/v2/workspace/pixel/thumbnails/default.webp": {
       "bytes": 5364,
-      "sha256": "4c9df9c5f9b52e5974fd6e2387314297d4d089312d3134bcca54d2a9fc8a2886"
+      "sha256": "4c9df9c5f9b52e5974fd6e2387314297d4d089312d3134bcca54d2a9fc8a2886",
+      "source": {
+        "path": "assets/personal-space/v2/workspace/pixel/backgrounds/building-formal-workstation-room-pixel.png",
+        "sha256": "949bfd997ca82800e4e7791522177d915461bed57467fc47d96160de8da35113"
+      }
     },
     "assets/personal-space/v2/workspace/pixel/thumbnails/nightowl.webp": {
       "bytes": 4296,
-      "sha256": "48e38d90c16acd474f82eb1c7527b0eac34678efea27a7b5424d2aa89810d408"
+      "sha256": "48e38d90c16acd474f82eb1c7527b0eac34678efea27a7b5424d2aa89810d408",
+      "source": {
+        "path": "assets/personal-space/v2/workspace/pixel/styles/nightowl/background.png",
+        "sha256": "631e7c8e0633b3db2505bbde3e7e7358580f7c81d069febaf994a8691d285d01"
+      }
     },
     "assets/personal-space/v2/workspace/pixel/thumbnails/nordic.webp": {
       "bytes": 2974,
-      "sha256": "a126b2379ec73fe1ce0731f4500285a101f345512794fe819e6dc709c002b39c"
+      "sha256": "a126b2379ec73fe1ce0731f4500285a101f345512794fe819e6dc709c002b39c",
+      "source": {
+        "path": "assets/personal-space/v2/workspace/pixel/styles/nordic/background.png",
+        "sha256": "d97c676c9d1d1bb3c4b7539ec4da89f69c9d82827ba3ea1f5f2ec03c1e6f0e62"
+      }
     },
     "assets/personal-space/v2/workspace/pixel/thumbnails/study.webp": {
       "bytes": 4386,
-      "sha256": "e933e007c371cccbdd75f520c93f5362a354b791ef5fba1a23928fa6e18ab10b"
+      "sha256": "e933e007c371cccbdd75f520c93f5362a354b791ef5fba1a23928fa6e18ab10b",
+      "source": {
+        "path": "assets/personal-space/v2/workspace/pixel/styles/study/background.png",
+        "sha256": "b110dee44d1cc04de8a543a0a468f76edb3d7e178a6093fcc763ea952d1c4f3b"
+      }
     },
     "assets/personal-space/v2/workspace/pixel/thumbnails/washitsu.webp": {
       "bytes": 4892,
-      "sha256": "5f084edcaad7a3a75168ae93ed716bc3ca60da8fc9a19c3e1c34698c34116fc5"
+      "sha256": "5f084edcaad7a3a75168ae93ed716bc3ca60da8fc9a19c3e1c34698c34116fc5",
+      "source": {
+        "path": "assets/personal-space/v2/workspace/pixel/styles/washitsu/background.png",
+        "sha256": "574dde510f4c70cc9965ca3ec3af4b73678c4b5d6a9cd14a89f5f0eca2860297"
+      }
     },
     "assets/personal-space/v2/workspace/thumbnails/default.webp": {
       "bytes": 4276,
-      "sha256": "b733c635b2bd6aaa42c80afacc34b6cd6ca39a2e0e8ce4c5c3bf8797c779178c"
+      "sha256": "b733c635b2bd6aaa42c80afacc34b6cd6ca39a2e0e8ce4c5c3bf8797c779178c",
+      "source": {
+        "path": "assets/personal-space/v2/workspace/backgrounds/building-formal-workstation-room-v2.webp",
+        "sha256": "31ccec5e879864b0c647200ec9f09a65807e64d0ba42ea082fd29d14830b340e"
+      }
     },
     "assets/personal-space/v2/workspace/thumbnails/nightowl.webp": {
       "bytes": 3988,
-      "sha256": "04ee4729a9ce319d766ad4f2f7d910fbee39b3bccff15a4f736fac1e534153ff"
+      "sha256": "04ee4729a9ce319d766ad4f2f7d910fbee39b3bccff15a4f736fac1e534153ff",
+      "source": {
+        "path": "assets/personal-space/v2/workspace/styles/nightowl/background.webp",
+        "sha256": "11d428e20b9cf5b5e51562f5666e9103aff1401028f70b13ec862bda371a90aa"
+      }
     },
     "assets/personal-space/v2/workspace/thumbnails/nordic.webp": {
       "bytes": 2162,
-      "sha256": "1e59569d6f19c2de8f9ef80bf56fbba0abf6752359983bd726de31ba0ec6d1a5"
+      "sha256": "1e59569d6f19c2de8f9ef80bf56fbba0abf6752359983bd726de31ba0ec6d1a5",
+      "source": {
+        "path": "assets/personal-space/v2/workspace/styles/nordic/background.webp",
+        "sha256": "2a0d683d464b350352099957bf4389ae838c11b429484dbfc9bffe83877474d5"
+      }
     },
     "assets/personal-space/v2/workspace/thumbnails/study.webp": {
       "bytes": 3584,
-      "sha256": "27226b22e087b27832905309a9af39ba643c3c8043ae455585b007d3ece46d4e"
+      "sha256": "27226b22e087b27832905309a9af39ba643c3c8043ae455585b007d3ece46d4e",
+      "source": {
+        "path": "assets/personal-space/v2/workspace/styles/study/background.webp",
+        "sha256": "72eb59f49fcf436a95dc5ce3752224aaf3185004d9270ffb192141dc3a767a53"
+      }
     },
     "assets/personal-space/v2/workspace/thumbnails/washitsu.webp": {
       "bytes": 3864,
-      "sha256": "cbb9e19df21b52d698a56cf489a96d108c73f27c9894a77d9437cb6bf1011d82"
+      "sha256": "cbb9e19df21b52d698a56cf489a96d108c73f27c9894a77d9437cb6bf1011d82",
+      "source": {
+        "path": "assets/personal-space/v2/workspace/styles/washitsu/background.webp",
+        "sha256": "ff297f2974dd8b1268c0a562f7be0b293098fa95421680834b65b22760bcbbd9"
+      }
     }
   }
 }

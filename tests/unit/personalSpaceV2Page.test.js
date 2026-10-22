@@ -363,10 +363,13 @@ describe('Personal Space V2 full page', () => {
     fail(fox);
     expect(fox.getAttribute('src')).toBe('assets/personal-space/v2/characters/toon/companion/orbit-observe.webp');
 
-    // A poster image keeps its own fallback steps; the picker's handler leaves it alone.
-    const poster = container.querySelector('.orbit-window-background');
+    // A poster image keeps its own fallback steps (mountWindow is mocked, so
+    // they are not attached here): the picker's handler leaves it alone even
+    // though it has a data-fallback-src.
+    const poster = container.querySelector('.orbit-window-protagonist');
     const posterSrc = poster.getAttribute('src');
-    poster.removeAttribute('data-fallback-src');
+    expect(poster.dataset.fallbackSrc).toBeTruthy();
+    expect(poster.dataset.fallbackSrc).not.toBe(posterSrc);
     fail(poster);
     expect(poster.getAttribute('src')).toBe(posterSrc);
 
