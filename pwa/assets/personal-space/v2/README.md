@@ -6,7 +6,8 @@ This folder contains only reviewed runtime outputs for the Building Formal Works
 - `art-pipeline/ps244-blender/`: the room and the furniture.
 - `art-pipeline/ps250-characters/`: the Q-style characters under `characters/toon/`. These have been the default characters since PS-250B.
 - `art-pipeline/ps250-pixel/`: the pixel style (PS-250D) under `workspace/pixel/` and `characters/pixel/`. The PS-242 characters under `characters/protagonist/` and `characters/companion/` are extra options in that style.
-- `art-pipeline/ps250-rooms/`: the room styles (PS-250E2) under `workspace/styles/<style>/` and `workspace/pixel/styles/<style>/`.
+- `art-pipeline/ps250-rooms/`: the room styles (PS-250E2) under `workspace/styles/<style>/` and `workspace/pixel/styles/<style>/`, and the Edit Mode picker's room thumbnails (PS-250G) under `workspace/thumbnails/` and `workspace/pixel/thumbnails/`.
+- `art-pipeline/ps250-decor/`: the decorations (PS-250F) under `workspace/decor/` and `workspace/pixel/decor/`, a room style's under `styles/<style>/` in each.
 
 ## Runtime contract
 
@@ -21,7 +22,9 @@ This folder contains only reviewed runtime outputs for the Building Formal Works
 
 ## Budget
 
-- Initial background + default protagonist + Companion + clear weather: 259,133 bytes (PASS, target ≤ 1.5 MB).
-- Full 29-file production state pack including eight project props: 1,766,935 bytes (PASS, target ≤ 4 MB).
+Measured by `npm run ps243:assets` (`docs/ps243/asset-baseline.json`, test-enforced) as of PS-250G:
+
+- Initial background + default protagonist + Companion + clear weather: 122,433 bytes by day, 104,205 bytes in the evening and at night (PASS, target ≤ 1.5 MB).
+- Complete default set, 50 files: the day and night rooms, 16 props, 12 decorations, the default characters and the weather: 1,409,958 bytes (PASS, target ≤ 4 MB).
 
 The Pixi runtime loads only the active state bundle. The static DOM poster resolves the same files and remains the accessible/reduced-motion/WebGL-failure fallback.

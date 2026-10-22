@@ -333,6 +333,53 @@ describe('Personal Space V2 full page', () => {
     cleanup();
   });
 
+  it('shows the precached default when a picker picture cannot load (PS-250G)', () => {
+    savePersonalSpaceV2State('user-1', v2State());
+    const cleanup = renderPersonalSpaceV2(container, {
+      user: coreState().user,
+      coreState: coreState(),
+      reconcile: () => controllerResult(loadPersonalSpaceV2State('user-1')),
+      mountWindow: vi.fn(() => () => {}),
+      destroyRuntime: vi.fn(),
+      effectiveDate: '2026-07-17',
+    });
+    container.querySelector('[data-v2-mode="edit"]').click();
+    container.querySelector('[data-v2-appearance="style"][data-value="pixel"]').click();
+    const picture = selector => container.querySelector(`${selector} img`);
+    const fail = image => image.dispatchEvent(new Event('error'));
+
+    // Offline, never downloaded: the pixel thumbnail of a room becomes the
+    // precached default room, drawn smooth again.
+    const nordic = picture('[data-v2-appearance="room"][data-value="nordic"]');
+    expect(nordic.getAttribute('src')).toBe('assets/personal-space/v2/workspace/pixel/thumbnails/nordic.webp');
+    fail(nordic);
+    expect(nordic.getAttribute('src')).toBe('assets/personal-space/v2/workspace/backgrounds/building-formal-workstation-room-v2.webp');
+    expect(nordic.hasAttribute('data-pixel-art')).toBe(false);
+    // The default itself never loops: a second error leaves it alone.
+    fail(nordic);
+    expect(nordic.getAttribute('src')).toBe('assets/personal-space/v2/workspace/backgrounds/building-formal-workstation-room-v2.webp');
+
+    const fox = picture('[data-v2-appearance="companion"][data-value="fox"]');
+    fail(fox);
+    expect(fox.getAttribute('src')).toBe('assets/personal-space/v2/characters/toon/companion/orbit-observe.webp');
+
+    // A poster image keeps its own fallback steps (mountWindow is mocked, so
+    // they are not attached here): the picker's handler leaves it alone even
+    // though it has a data-fallback-src.
+    const poster = container.querySelector('.orbit-window-protagonist');
+    const posterSrc = poster.getAttribute('src');
+    expect(poster.dataset.fallbackSrc).toBeTruthy();
+    expect(poster.dataset.fallbackSrc).not.toBe(posterSrc);
+    fail(poster);
+    expect(poster.getAttribute('src')).toBe(posterSrc);
+
+    // After cleanup the page no longer swaps pictures.
+    const washitsu = picture('[data-v2-appearance="room"][data-value="washitsu"]');
+    cleanup();
+    fail(washitsu);
+    expect(washitsu.getAttribute('src')).toBe('assets/personal-space/v2/workspace/pixel/thumbnails/washitsu.webp');
+  });
+
   it('AI-203B: re-renders into the reminder when the daily window opens, and stops after cleanup', () => {
     vi.useFakeTimers();
     try {

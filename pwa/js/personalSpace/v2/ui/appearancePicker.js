@@ -60,6 +60,11 @@ export const DECORATIONS = Object.freeze([
   Object.freeze({ id: 'deco-coffee', label: '咖啡杯組' }),
 ]);
 
+// PS-250G: each room's 216 x 144 thumbnail (art-pipeline/ps250-rooms/
+// thumbnails.py), instead of its full 1536 x 1024 background.
+const THUMBNAIL_ROOT = 'assets/personal-space/v2/workspace';
+const roomThumbnail = (roomId, pixel) => `${THUMBNAIL_ROOT}/${pixel ? 'pixel/' : ''}thumbnails/${roomId}.webp`;
+
 /** The stored room style, or the default for anything unknown (legacy theme ids too). */
 export function resolveRoomStyleChoice(value) {
   return ROOM_STYLES.some(entry => entry.id === value) ? value : ROOM_STYLES[0].id;
@@ -99,6 +104,12 @@ export function renderAppearancePicker(value, roomStyle, hiddenDecorations) {
   }).decorations || []).map(entry => [entry.id, entry.path]));
   const hidden = Array.isArray(hiddenDecorations) ? hiddenDecorations : null;
   const decorations = hidden ? DECORATIONS.filter(option => decorationPaths.has(option.id)) : [];
+  // PS-250G: offline, a picture that was never downloaded shows the
+  // precached default instead (the page swaps in data-fallback-src): the
+  // default room, its decorations by day, the default characters.
+  const defaults = getWorkspaceSceneAssets(0);
+  const defaultDecorations = new Map((getWorkspaceSceneAssets(100).decorations || [])
+    .map(entry => [entry.id, entry.path]));
   return `
     <section class="personal-space-v2-appearance" data-v2-appearance-picker aria-labelledby="personal-space-v2-appearance-title">
       <div class="personal-space-v2-editor-heading">
@@ -121,7 +132,8 @@ export function renderAppearancePicker(value, roomStyle, hiddenDecorations) {
           ${ROOM_STYLES.map(option => optionMarkup('room', option, {
             selected: option.id === room,
             stored: option.id === roomStyle,
-            src: getWorkspaceSceneAssets(0, {}, { appearance: choice }, { roomStyle: option.id }).background,
+            src: roomThumbnail(option.id, pixelArt),
+            fallbackSrc: defaults.background,
             pixelArt,
             size: { width: 108, height: 72 },
           })).join('')}
@@ -135,6 +147,7 @@ export function renderAppearancePicker(value, roomStyle, hiddenDecorations) {
               selected: !hidden.includes(option.id),
               stored: false,
               src: decorationPaths.get(option.id),
+              fallbackSrc: defaultDecorations.get(option.id),
               pixelArt,
               describedBy: 'personal-space-v2-decorations-hint',
             })).join('')}
@@ -149,6 +162,7 @@ export function renderAppearancePicker(value, roomStyle, hiddenDecorations) {
             selected: option.id === choice.protagonistId,
             stored: option.id === stored.protagonistId,
             src: thumbnail({ ...choice, protagonistId: option.id }).protagonist,
+            fallbackSrc: defaults.protagonist,
             pixelArt,
           })).join('')}
         </ul>
@@ -160,6 +174,7 @@ export function renderAppearancePicker(value, roomStyle, hiddenDecorations) {
             selected: option.id === choice.companionId,
             stored: option.id === stored.companionId,
             src: thumbnail({ ...choice, companionId: option.id }).companion.path,
+            fallbackSrc: defaults.companion.path,
             pixelArt,
           })).join('')}
         </ul>
@@ -169,11 +184,14 @@ export function renderAppearancePicker(value, roomStyle, hiddenDecorations) {
   `;
 }
 
-function optionMarkup(kind, option, { selected, stored, src, pixelArt, size = { width: 72, height: 72 }, describedBy }) {
+function optionMarkup(kind, option, {
+  selected, stored, src, fallbackSrc, pixelArt, size = { width: 72, height: 72 }, describedBy,
+}) {
+  const fallback = fallbackSrc && fallbackSrc !== src ? ` data-fallback-src="${escapeHtml(fallbackSrc)}"` : '';
   return `
     <li>
       <button type="button" data-v2-appearance="${kind}" data-value="${escapeHtml(option.id)}" aria-pressed="${selected}"${stored ? ' data-stored' : ''}${describedBy ? ` aria-describedby="${describedBy}"` : ''}>
-        <img src="${escapeHtml(src)}" alt="" width="${size.width}" height="${size.height}" loading="lazy" decoding="async" draggable="false"${pixelArt ? ' data-pixel-art' : ''}>
+        <img src="${escapeHtml(src)}"${fallback} alt="" width="${size.width}" height="${size.height}" loading="lazy" decoding="async" draggable="false"${pixelArt ? ' data-pixel-art' : ''}>
         <span>${escapeHtml(option.label)}</span>
       </button>
     </li>

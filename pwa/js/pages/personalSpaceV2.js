@@ -432,8 +432,22 @@ export function renderPersonalSpaceV2(container, options = {}) {
     }
   }
 
+  // PS-250G: a picker picture that cannot load (offline, never downloaded)
+  // shows its precached default. 'error' does not bubble, so it is caught on
+  // the way down; the poster's images have their own fallback steps.
+  function handlePickerImageError(event) {
+    const image = event.target;
+    if (image?.tagName !== 'IMG' || !image.closest('[data-v2-appearance-picker]')) return;
+    const fallback = image.dataset.fallbackSrc;
+    if (!fallback || image.getAttribute('src') === fallback) return;
+    // The defaults are Q-style images: smooth scaling again.
+    image.removeAttribute('data-pixel-art');
+    image.setAttribute('src', fallback);
+  }
+
   container.addEventListener('click', handleClick);
   container.addEventListener('keydown', handleKeydown);
+  container.addEventListener('error', handlePickerImageError, true);
   render(mode);
 
   return () => {
@@ -445,6 +459,7 @@ export function renderPersonalSpaceV2(container, options = {}) {
       sceneCleanup = null;
       container.removeEventListener('click', handleClick);
       container.removeEventListener('keydown', handleKeydown);
+      container.removeEventListener('error', handlePickerImageError, true);
       destroyRuntime();
     }
   };
