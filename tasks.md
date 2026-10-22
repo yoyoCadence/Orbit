@@ -45,15 +45,6 @@
   - 暫緩（使用者 2026-10-20 同意）：素材仍在調整；且要先驗證 GitHub Pages 的 ETag 是否隨部署改變（`curl -I` 比較兩次部署中同一個沒改過的素材）。ETag 不變時，PS-211A 之後的效益很小。
   - 改 service worker 與部署語意，實作前需提案與核准。
 
-- [ ] **PS-249** Orbit Window 在其他蓋住畫面的 overlay 下仍重畫、reveal 計時照走
-  - 背景（INFRA-106 獨立 review 發現，2026-10-20）：INFRA-106 只在 Focus overlay 開啟時暫停 Pixi 場景。其他 overlay 也會蓋住首頁：
-    - `#levelup-overlay`：85% 黑，z 100（`feedback.js`），升級後顯示到使用者關閉；
-    - `.modal-overlay`：65% 黑，用於早晨、每日報告、連勝解鎖、Focus 的結果選擇等 modal；
-    - `.shield-confirm-overlay`、`.pro-sheet-overlay`：55% 黑。
-  - 另外：reveal 的計時（`orbitWindow.js` 的 reveal clock）不看 Focus overlay，待播放的 reveal 可能在 overlay 底下播完；`.orbit-window-major-reveal`（fixed、z 1200）會畫在 Focus overlay（z 80）之上。
-  - 方向：決定哪些 overlay 要暫停場景（半透明的 modal 底下仍看得到場景，不一定要暫停）、reveal 是否要等 overlay 關閉再播；可選的最佳化：overlay 開著時延後掛載、`app.init` 傳 `autoStart: false`。
-  - 屬於效能與呈現的調整，先提案再實作。
-
 - [ ] **PS-227** Generate controlled idle furniture variants from approved references
   - Goal: replace one-view-only expanded props with true `front / left-wall-flush / right-wall-flush` variants that preserve material identity.
   - Scope: legacy Idle Growth Window only; pause further volume work while the fixed-camera Personal Space V2 vertical slice is validated.
@@ -187,6 +178,8 @@
 
 > 2026-10-18 排程：Next 只剩需專案擁有者執行的 BUG-109A。PS-246 的第一步是提案（只寫文件、不改程式碼），從 Backlog 移入 Next；核准前不實作。
 
+> 2026-10-22 排程：PS-250 完成後，Backlog 中不需核准就能開始的只剩 PS-249 的提案（只寫文件、不改程式碼）。PS-249 從 Backlog 移入 Next，再移入 In Progress；核准前不實作。
+
 > 2026-10-18 排程：Next 只剩需專案擁有者執行的 BUG-109A。AI-203 是 Mode A（只產出規格），從 Backlog 移入 Next；核准前不建立 AI-203B、不改程式碼。
 
 > 2026-10-18 排程：Next 只剩需專案擁有者執行的 BUG-109A。PRO-014Q 屬 entitlement 路徑，第一步是變更說明（只寫文件、不改程式碼），從 Backlog 移入 Next；核准前不實作。
@@ -229,6 +222,23 @@
 ---
 
 ## In Progress
+
+- [ ] **PS-249** Orbit Window 在其他蓋住畫面的 overlay 下仍重畫、reveal 計時照走
+  - 背景（INFRA-106 獨立 review 發現，2026-10-20）：INFRA-106 只在 Focus overlay 開啟時暫停 Pixi 場景。其他 overlay 也會蓋住首頁：
+    - `#levelup-overlay`：85% 黑，z 100（`feedback.js`），升級後顯示到使用者關閉；
+    - `.modal-overlay`：65% 黑，用於早晨、每日報告、連勝解鎖、Focus 的結果選擇等 modal；
+    - `.shield-confirm-overlay`、`.pro-sheet-overlay`：55% 黑。
+  - 另外：reveal 的計時（`orbitWindow.js` 的 reveal clock）不看 Focus overlay，待播放的 reveal 可能在 overlay 底下播完；`.orbit-window-major-reveal`（fixed、z 1200）會畫在 Focus overlay（z 80）之上。
+    - 更正（PS-249 提案量測）：`.orbit-window` 設了 `isolation: isolate`，橫幅的 z 1200 只在 Orbit Window 之內有效，不會畫在 overlay 之上；真正的問題是 Orbit Window 不在可視區時橫幅仍蓋滿畫面。
+  - 方向：決定哪些 overlay 要暫停場景（半透明的 modal 底下仍看得到場景，不一定要暫停）、reveal 是否要等 overlay 關閉再播；可選的最佳化：overlay 開著時延後掛載、`app.init` 傳 `autoStart: false`。
+  - 屬於效能與呈現的調整，先提案再實作。
+  - In progress（2026-10-22，Backlog → Next → In Progress，見 Next 的排程記錄）：PS-250 完成後，Backlog 中不需核准就能開始的只剩本項的提案。第一步是提案（Mode A，只寫文件、不改程式碼），核准前不實作。
+    - 提案：[`docs/ps-249-overlay-scene-proposal.md`](docs/ps-249-overlay-scene-proposal.md)。在實際 app 量到：
+      - Session 結束後 reveal 立刻開始（此時還沒被蓋住），0.6 秒後升級畫面、0.7 秒後佐證 sheet 蓋上；4.2 秒的 reveal 約 3.6 秒在底下播完，接著被標記為已看過、不再重播。
+      - Reveal 的 CSS 動畫不看計時：Orbit Window 不在可視區時照播，`major` 橫幅（fixed）在可視區外也蓋滿畫面。
+      - 場景在 modal 與升級畫面底下照常重畫：量測環境中 CPU 與沒有 overlay 時相同，Focus overlay 底下暫停時少約 93%（軟體繪圖，只能比較相對值）。
+    - 建議：C1（在 `orbitWindow.js` 以 `MutationObserver` 判斷被蓋住；`proofSheet.js` 的佐證大圖加一個 class）＋R-A（被蓋住、不在可視區、分頁隱藏時，reveal 的計時與 CSS 動畫都暫停，`major` 橫幅隱藏；overlay 關閉後從頭重播）＋P1（所有全螢幕 overlay 都暫停場景）。不建議延後第一次掛載 Pixi。核准後拆成 PS-249A，並調整 `flows.test.js` 中等 reveal 結束的順序。
+    - **等待使用者決定**提案 §6。
 
 - [ ] **AI-202** 定義 companion relationship stage 與 hidden stats 的最小映射規則
   - 目標：讓 companion 關係變化可由真實行為驅動，而不是聊天次數
