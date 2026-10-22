@@ -13,7 +13,7 @@ import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   getWorkspaceAssetManifestPaths,
   getWorkspaceSceneAssets,
@@ -107,24 +107,28 @@ describe('PS-250E2 room styles', () => {
     expect(STYLES.flatMap(stylePaths).sort()).toEqual(onDisk);
   });
 
-  it('keeps every style prop the size of the default prop of the same lighting, so they share placements', () => {
+  it('keeps every style prop the size of the default prop of the same lighting, in both styles', () => {
+    // Every style uses the same PROP_DEFINITIONS, so the files must fit them.
     for (const roomStyle of STYLES) {
       for (const timeBand of Object.values(LIGHTINGS)) {
-        const styled = getWorkspaceSceneAssets(100, {}, {}, { timeBand, roomStyle });
-        const plain = getWorkspaceSceneAssets(100, {}, {}, { timeBand });
-        expect(styled.props.map(entry => entry.placement)).toEqual(plain.props.map(entry => entry.placement));
-        styled.props.forEach((entry, index) => {
-          expect(pngSize(entry.path), entry.path).toEqual(pngSize(plain.props[index].path));
-        });
+        for (const style of ['toon', 'pixel']) {
+          const styled = getWorkspaceSceneAssets(100, {}, { appearance: { style } }, { timeBand, roomStyle });
+          const plain = getWorkspaceSceneAssets(100, {}, { appearance: { style } }, { timeBand });
+          styled.props.forEach((entry, index) => {
+            expect(pngSize(entry.path), entry.path).toEqual(pngSize(plain.props[index].path));
+          });
+        }
         const pixel = getWorkspaceSceneAssets(100, {}, { appearance: { style: 'pixel' } }, { timeBand, roomStyle });
         expect(pngSize(pixel.background)).toEqual({ width: 1536, height: 1024 });
       }
     }
   });
 
-  it('records how many pixels the cut to the shared boxes dropped, and keeps it small', () => {
+  it('records how many pixels the cut of each Q-style prop dropped, and keeps it small', () => {
+    const qProps = Object.keys(outputs.files).filter(path => /\/workspace\/styles\/[^/]+\/props\//.test(path));
+    expect(qProps).toHaveLength(STYLES.length * 8 * 2);
+    expect(Object.keys(outputs.clipped).sort()).toEqual(qProps.sort());
     for (const [path, count] of Object.entries(outputs.clipped)) {
-      expect(outputs.files[path], path).toBeTruthy();
       // A style's outline can be a pixel wider than the default's; more than
       // this would be a visible cut.
       expect(count, path).toBeLessThan(400);
@@ -151,6 +155,32 @@ describe('PS-250E2 room style choice', () => {
     const state = normalizePersonalSpaceV2State({ ownerId: 'user-1', world: { selectedThemeId: 'nordic' } }, { ownerId: 'user-1' });
     expect(state.world.selectedThemeId).toBe('nordic');
     expect(createDefaultPersonalSpaceV2State('user-1').world.selectedThemeId).toBe('default');
+  });
+
+  it('draws the default room when an older manifest ignores the room style (INFRA-105)', async () => {
+    vi.resetModules();
+    vi.doMock('../../pwa/js/personalSpace/v2/content/assetManifest.js', async importOriginal => {
+      const actual = await importOriginal();
+      return {
+        ...actual,
+        getWorkspaceSceneAssets: (progress, overrides, visualState, options = {}) => {
+          const { roomStyle, ...scene } = actual.getWorkspaceSceneAssets(progress, overrides, visualState, { timeBand: options.timeBand });
+          expect(roomStyle).toBe('default');
+          return scene;
+        },
+      };
+    });
+    try {
+      const { renderOrbitWindow: renderWithOlderManifest } = await import('../../pwa/js/personalSpace/v2/ui/orbitWindow.js');
+      const host = document.createElement('div');
+      host.innerHTML = renderWithOlderManifest({ activeProject: { progress: 100 }, timeBand: 'day', selectedThemeId: STYLES[0] });
+      expect(host.querySelector('.orbit-window-background').getAttribute('src')).toBe(placements.background);
+      expect([...host.querySelectorAll('.orbit-window-prop')].some(image => image.getAttribute('src').includes('/styles/')))
+        .toBe(false);
+    } finally {
+      vi.doUnmock('../../pwa/js/personalSpace/v2/content/assetManifest.js');
+      vi.resetModules();
+    }
   });
 
   it('draws the chosen room in the poster, with the default room as its fallback', () => {
@@ -180,6 +210,12 @@ describe('PS-250E2 room style choice', () => {
       getWorkspaceSceneAssets(0, {}, {}, { roomStyle: rooms[1].dataset.value }).background,
     );
     expect(rooms[0].querySelector('img').getAttribute('width')).toBe('108');
+
+    // An older page that passes no room (INFRA-105) marks none, so either can be chosen.
+    host.innerHTML = renderAppearancePicker(null);
+    expect(host.querySelectorAll('[data-v2-appearance="room"][aria-pressed="true"]')).toHaveLength(0);
+    expect(readAppearanceChange(host.querySelector('[data-v2-appearance="room"][data-value="default"]')))
+      .toEqual({ selectedThemeId: 'default' });
 
     // A legacy theme id shows the default room pressed; pixel thumbnails are pixel rooms.
     host.innerHTML = renderAppearancePicker({ style: 'pixel' }, 'night');

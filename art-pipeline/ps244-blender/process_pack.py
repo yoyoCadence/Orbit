@@ -40,6 +40,8 @@ import sys
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
+from room_styles import ROOM_STYLES
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, '..', '..'))
 PWA = os.path.join(REPO, 'pwa')
@@ -121,9 +123,12 @@ def lift_shadow_floor(im, floor):
         return im
     rgba = np.array(im)
     alpha = rgba[:, :, 3].astype(np.float32)
-    solid = alpha >= CORE_ALPHA
-    lifted = np.clip((alpha - floor) * 255 / (255 - floor), 0, 255)
-    rgba[:, :, 3] = np.where(solid, alpha, lifted).astype(np.uint8)
+    # Solid geometry and its anti-aliased edge (within 2 px) are kept as they
+    # are. Below that, floor..CORE_ALPHA maps onto 0..CORE_ALPHA, so the
+    # curve stays continuous where it meets the untouched values.
+    keep = box_mean(alpha >= CORE_ALPHA, 5) > 0
+    lifted = np.clip((alpha - floor) * CORE_ALPHA / (CORE_ALPHA - floor), 0, CORE_ALPHA)
+    rgba[:, :, 3] = np.where(keep | (alpha >= CORE_ALPHA), alpha, lifted).astype(np.uint8)
     return Image.fromarray(rgba, 'RGBA')
 
 
@@ -266,7 +271,7 @@ def main():
     parser.add_argument('--write-runtime', action='store_true')
     parser.add_argument('--preview-dir', default=os.path.join(HERE, 'previews'))
     parser.add_argument('--lighting', choices=('day', 'night'), default='day')
-    parser.add_argument('--style', default='default')
+    parser.add_argument('--style', choices=tuple(ROOM_STYLES), default='default')
     args = parser.parse_args()
     lighting = args.lighting
     if args.style != 'default':
@@ -320,7 +325,6 @@ def process_style(args):
     """PS-250E2: one room style, cut to the default style's trim boxes."""
     sys.path.insert(0, os.path.join(HERE, '..', 'ps250-rooms'))
     import rooms
-    from room_styles import ROOM_STYLES
     style, lighting = args.style, args.lighting
     colours = ROOM_STYLES[style]
     with open(PLACEMENTS, encoding='utf-8') as fh:

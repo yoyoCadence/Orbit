@@ -68,7 +68,9 @@ export function resolveAppearanceChoice(value) {
 
 export function renderAppearancePicker(value, roomStyle) {
   const choice = resolveAppearanceChoice(value);
-  const room = resolveRoomStyleChoice(roomStyle);
+  // An older page does not pass the room (INFRA-105): mark none, so either
+  // room can still be chosen.
+  const room = roomStyle === undefined ? null : resolveRoomStyleChoice(roomStyle);
   const style = APPEARANCE_STYLES.find(entry => entry.id === choice.style);
   const stored = value && typeof value === 'object' ? value : {};
   const pixelArt = style.id === 'pixel';

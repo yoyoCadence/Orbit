@@ -96,12 +96,20 @@ test.describe('PS-250B character style and choice', () => {
       await expect.poll(() => thumbnail.evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true);
     }
 
-    // Home draws it too; a room style that cannot load falls back to the default room.
-    await page.route(/\/workspace\/styles\//, route => route.abort());
+    // Home draws it too.
     await page.locator('[data-personal-space-v2] [data-v2-mode="full-world"]').first().click();
     await page.goto('/');
     await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
     const home = page.locator('[data-orbit-window] .orbit-window-background');
+    await expect(home).toHaveAttribute('src', /workspace\/styles\/nordic\/background(-night)?\.webp$/);
+    await expect.poll(() => home.evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true);
+
+    // A room style that cannot load falls back to the default room.
+    await page.route(/\/workspace\/styles\//, route => route.abort());
+    const styleRequest = page.waitForRequest(/\/workspace\/styles\/nordic\//);
+    await page.reload();
+    await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
+    await styleRequest;
     await expect(home).toHaveAttribute('src', /workspace\/backgrounds\/building-formal-workstation-room-v2(-night)?\.webp$/);
     await expect.poll(() => home.evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true);
   });

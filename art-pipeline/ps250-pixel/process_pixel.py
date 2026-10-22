@@ -51,6 +51,7 @@ sys.path.insert(0, os.path.join(HERE, '..', 'ps244-blender'))
 sys.path.insert(0, os.path.join(HERE, '..', 'ps250-characters'))
 import catalog  # noqa: E402
 from process_pack import PROPS, backdrop, lift_shadow_floor  # noqa: E402
+from room_styles import ROOM_STYLES  # noqa: E402
 
 SCALE = 4
 FRAME = (1536, 1024)
@@ -205,7 +206,7 @@ def main():
     parser.add_argument('--write-runtime', action='store_true')
     parser.add_argument('--preview-dir', default=os.path.join(HERE, 'previews'))
     parser.add_argument('--lighting', choices=tuple(SCENE_DIRS), default='day')
-    parser.add_argument('--style', default='default')
+    parser.add_argument('--style', choices=tuple(ROOM_STYLES), default='default')
     args = parser.parse_args()
     lighting = args.lighting
     if args.style != 'default':
@@ -313,7 +314,6 @@ def process_style(args):
     """PS-250E2: a room style's pixel room and props, cut to the default boxes."""
     sys.path.insert(0, os.path.join(HERE, '..', 'ps250-rooms'))
     import rooms
-    from room_styles import ROOM_STYLES
     style, lighting = args.style, args.lighting
     folder = rooms.scene_folder(style, lighting)
     with open(PLACEMENTS, encoding='utf-8') as fh:

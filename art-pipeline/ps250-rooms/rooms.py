@@ -45,6 +45,7 @@ def record(files, clipped=None):
         data = {'schemaVersion': 1, 'taskId': 'PS-250E2', 'files': {}, 'clipped': {}}
     for path, blob in files.items():
         data['files'][path] = {'bytes': len(blob), 'sha256': hashlib.sha256(blob).hexdigest()}
+    data.setdefault('clipped', {})
     for path, count in (clipped or {}).items():
         data['clipped'][path] = count
     data['files'] = dict(sorted(data['files'].items()))
