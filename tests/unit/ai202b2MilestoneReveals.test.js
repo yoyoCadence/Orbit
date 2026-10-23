@@ -80,6 +80,10 @@ function ordinarySession(day) {
   };
 }
 
+function invalidSession(day) {
+  return { ...ordinarySession(day), id: `invalid-${day}`, result: 'invalid', finalXP: 0, isProductiveXP: false };
+}
+
 const range = (first, last) => Array.from({ length: last - first + 1 }, (_, index) => mainQuestDay(first + index));
 const days = count => range(1, count);
 const without = (sessions, ...ids) => sessions.filter(session => !ids.includes(session.id));
@@ -502,6 +506,50 @@ describe('AI-202B2 milestone reveals', () => {
     });
   });
 
+  describe('a queued milestone and later Sessions', () => {
+    it('stays on the undo when the same undo is applied again', () => {
+      seenThrough(12);
+      const once = undo(days(11), 'day-12');
+      const twice = undo(days(11), 'day-12');
+
+      expect(carriers(twice).map(reveal => reveal.sourceId)).toEqual(['day-12']);
+      expect(stageLines(revealOf(twice, 'day-12'))).toEqual([FAMILIAR]);
+      expect(twice.presentedMilestones).toEqual(once.presentedMilestones);
+    });
+
+    it('stays on the undo when an ordinary Session is recorded next', () => {
+      seenThrough(12);
+      undo(days(11), 'day-12');
+      const next = settle([...days(11), ordinarySession(11)]);
+
+      expect(carriers(next).map(reveal => reveal.sourceId)).toEqual(['day-12']);
+      expect(stageLines(revealOf(next, 'ordinary-11'))).toEqual([]);
+    });
+
+    it('is not taken as seen when a Session that adds nothing is recorded', () => {
+      seenThrough(4);
+      undo(days(3), 'day-4');
+      const next = settle([...days(3), invalidSession(3)]);
+
+      expect(carriers(next).map(reveal => reveal.sourceId)).toEqual(['day-4']);
+      expect(revealOf(next, 'day-4').lines).toContain(UNLOCK_TAKEN_BACK);
+      expect(next.presentedMilestones).toMatchObject({ projectCompleted: true, relationshipStage: 'familiar' });
+    });
+
+    it('keeps a stage-up on a backdated 12th day when another Session follows', () => {
+      const eleven = without(days(12), 'day-3');
+      seeAll(settle(eleven));
+      const twelve = [...eleven, mainQuestDay(3)];
+      const recorded = settle(twelve);
+      expect(carriers(recorded).map(reveal => reveal.sourceId)).toEqual(['day-3']);
+
+      const next = settle([...twelve, ordinarySession(12)]);
+      expect(carriers(next).map(reveal => reveal.sourceId)).toEqual(['day-3']);
+      expect(revealOf(next, 'ordinary-12').title).toBeUndefined();
+      expect(selectProtagonistState({ pendingReveal: revealOf(next, 'day-3') }).state).toBe('celebrate');
+    });
+  });
+
   describe('the last world change', () => {
     it('follows a queued stage-up a sync shrinks', () => {
       seenThrough(11);
@@ -629,6 +677,51 @@ describe('AI-202B2 milestone reveals', () => {
       expect(carriers(state)).toEqual([]);
       expect(state.pendingRewardReveals.flatMap(stageLines)).toEqual([]);
       expect(state.presentedMilestones.relationshipStage).toBe('partner');
+    });
+
+    it('takes a 12th day a first-run sync brings in as seen', () => {
+      seenThrough(10);
+      asPreviousVersion(settle(days(11)));
+      const state = sync(days(12));
+
+      expect(carriers(state)).toEqual([]);
+      expect(revealOf(state, 'day-11').kind).not.toBe('major');
+      expect(state.presentedMilestones.relationshipStage).toBe('partner');
+    });
+
+    it('does not put a first-run synced undo on an unrelated reveal', () => {
+      const sessions = [...days(12), ordinarySession(12)];
+      settle(sessions).pendingRewardReveals
+        .filter(reveal => reveal.sourceId !== 'ordinary-12')
+        .forEach(reveal => consume(reveal.id));
+      asPreviousVersion(stored());
+      const state = sync(without(sessions, 'day-6'), { deletedSourceIds: ['day-6'] });
+
+      expect(carriers(state)).toEqual([]);
+      expect(state.pendingRewardReveals.flatMap(stageLines)).toEqual([]);
+      expect(state.presentedMilestones.relationshipStage).toBe('familiar');
+    });
+
+    it('keeps an unplayed completion and drops its stage when a first-run sync goes past it', () => {
+      seenThrough(3);
+      asPreviousVersion(settle(days(4)));
+      const state = sync(days(12));
+      const reveal = revealOf(state, 'day-4');
+
+      expect(reveal.lines).toContain(UNLOCK);
+      expect(stageLines(reveal)).toEqual([]);
+      expect(state.presentedMilestones).toMatchObject({ projectCompleted: false, relationshipStage: 'partner' });
+    });
+
+    it('survives a queued reveal with malformed rewards', () => {
+      seenThrough(3);
+      const { presentedMilestones: _presented, ...rest } = stored();
+      savePersonalSpaceV2State(currentUser.id, {
+        ...rest,
+        pendingRewardReveals: [{ id: 'reveal:malformed', sourceId: 'day-3', rewardIds: [], rewards: { bad: true } }],
+      });
+      expect(() => sync(days(3))).not.toThrow();
+      expect(stored().presentedMilestones).toMatchObject({ pending: null });
     });
 
     it('does not replay history the new rule catches up', () => {

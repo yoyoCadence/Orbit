@@ -512,6 +512,17 @@ function normalizePresentedMilestones(value) {
   return { projectCompleted: value.projectCompleted, relationshipStage: value.relationshipStage, pending };
 }
 
+// The milestones of the ledger before this reconciliation, under this rule,
+// and where they were reached.
+function milestonesBeforeReconciliation(state, legacyPoints) {
+  const entries = activeCurrentRulesetEntries(state);
+  return {
+    entries,
+    project: deriveActiveProject(entries, []),
+    current: milestonesForEntries(entries, legacyPoints),
+  };
+}
+
 // What the user last saw. The first time (no stored value) it is computed with
 // the current rule from the ledger before this reconciliation, minus what the
 // still-valid queued reveals have not shown yet; so history caught up by the
@@ -540,7 +551,7 @@ function presentedMilestonesBefore(state, legacyPoints) {
       continue;
     }
     if (isQueuedCompletionReveal(reveal)) unplayedCompletion = true;
-    unplayedRelationship += (reveal.rewards || [])
+    unplayedRelationship += (Array.isArray(reveal.rewards) ? reveal.rewards : [])
       .filter(reward => reward?.direction !== 'reversed' && reward?.rewardType === 'relationship'
         && activeIds.has(reward.id))
       .reduce((sum, reward) => sum + finiteNonNegative(reward.amount), 0);
@@ -577,7 +588,10 @@ function changesMainQuestDay(reveal) {
     && String(reward.rewardKey || '').startsWith('main-focus:'));
 }
 
-// Picks the one reveal that shows the net change (§3.4 placement order).
+// Picks the one reveal that shows the net change (§3.4 placement order). A
+// reveal that already shows it keeps it when nothing in this reconciliation
+// claims it: a later Session (even one that adds nothing) or the same
+// reconciliation applied again must not move it or let it go unseen.
 function chooseMilestoneReveal(queue, newIds, net, entries, project, { anchorOnly = false } = {}) {
   const up = isMilestoneUp(net);
   const allowed = reveal => !(up && isReversalOnly(reveal));
@@ -593,6 +607,8 @@ function chooseMilestoneReveal(queue, newIds, net, entries, project, { anchorOnl
   const dayChanged = queue.filter(reveal => newIds.has(reveal.id)
     && changesMainQuestDay(reveal) && allowed(reveal));
   if (dayChanged.length) return dayChanged.at(-1);
+  const carrier = queue.find(reveal => hasMilestone(reveal.milestone) && allowed(reveal));
+  if (carrier) return carrier;
   return [...queue].reverse().find(reveal => !isReversalOnly(reveal)) || null;
 }
 
@@ -693,27 +709,42 @@ function netMilestone(presentedBefore, current) {
   };
 }
 
-// `mode`: 'place' moves the whole net change onto one reveal (recording or
-// undoing a Session, and the first run under this rule); 'anchor' does so only
-// onto the anchor Session's reveal an older tab queued; 'shrink' can only
-// shrink or remove a queued milestone.
-function placeMilestones({ queue, newIds, presentedBefore, current, entries, project, mode }) {
+// `mode`:
+// - 'place' moves the whole net change onto one reveal (recording or undoing
+//   a Session);
+// - 'first' (the first run under this rule, opening the app or a sync) places
+//   only what queued reveals have not shown yet, as of the ledger before this
+//   reconciliation, then shrinks it like 'shrink': what the sync brought in is
+//   taken as seen;
+// - 'anchor' places the net change only onto the anchor Session's reveal an
+//   older tab queued;
+// - 'shrink' can only shrink or remove a queued milestone.
+function placeMilestones({ queue, newIds, presentedBefore, current, entries, project, mode, before }) {
   const net = netMilestone(presentedBefore, current);
   const candidates = queue.filter(isPresentable);
+  let placedNet = null;
   let target = null;
-  if (hasMilestone(net) && mode === 'place') {
-    target = chooseMilestoneReveal(candidates, newIds, net, entries, project);
-  } else if (hasMilestone(net) && mode === 'anchor') {
+  if (mode === 'place') {
+    placedNet = net;
+    target = hasMilestone(net) ? chooseMilestoneReveal(candidates, newIds, net, entries, project) : null;
+  } else if (mode === 'first') {
+    placedNet = netMilestone(presentedBefore, before.current);
+    target = hasMilestone(placedNet)
+      ? chooseMilestoneReveal(candidates, new Set(), placedNet, before.entries, before.project)
+      : null;
+  } else if (mode === 'anchor' && hasMilestone(net)) {
+    placedNet = net;
     target = chooseMilestoneReveal(candidates.filter(isPreMilestoneReveal), new Set(), net, entries, project, {
       anchorOnly: true,
     });
   }
   const placed = queue.map(reveal => {
     if (!isPresentable(reveal)) return reveal;
-    if (mode === 'shrink' || (mode === 'anchor' && !target)) {
-      return { ...reveal, milestone: shrinkMilestone(reveal.milestone, current) };
-    }
-    return { ...reveal, milestone: target && reveal.id === target.id ? net : null };
+    if (mode === 'place') return { ...reveal, milestone: target && reveal.id === target.id ? net : null };
+    const milestone = mode === 'first' || target
+      ? (target && reveal.id === target.id ? placedNet : null)
+      : reveal.milestone;
+    return { ...reveal, milestone: shrinkMilestone(milestone, current) };
   });
   const presented = placed.map(presentReveal)
     .filter(reveal => !isPresentable(reveal) || reveal.lines.length > 0);
@@ -785,6 +816,14 @@ export function applyReconciliationToV2State(state, reconciliation, options = {}
   const relationshipStage = relationshipStageForPoints(relationshipPoints);
   const queue = normalizeRevealQueue([...retainedRevealQueue, ...revealEvents]);
   const presentedBefore = presentedMilestonesBefore(state, legacyPoints);
+  // Only recording or undoing a Session places a milestone, and the first run
+  // under this rule places the ones older reveals have not shown yet.
+  // Afterwards a reveal an older tab queued can still take its own.
+  const placementMode = options.queueReveal === true
+    ? 'place'
+    : !normalizePresentedMilestones(state.presentedMilestones)
+      ? 'first'
+      : queue.some(isPreMilestoneReveal) ? 'anchor' : 'shrink';
   const milestones = placeMilestones({
     queue,
     newIds: new Set(revealEvents.map(reveal => reveal.id)),
@@ -795,12 +834,8 @@ export function applyReconciliationToV2State(state, reconciliation, options = {}
     },
     entries: currentRulesetRewards,
     project: reconciliation.project,
-    // Only recording or undoing a Session places a milestone, and the first
-    // run under this rule places the ones older reveals have not shown yet.
-    // Afterwards a reveal an older tab queued can still take its own.
-    mode: options.queueReveal === true || !normalizePresentedMilestones(state.presentedMilestones)
-      ? 'place'
-      : queue.some(isPreMilestoneReveal) ? 'anchor' : 'shrink',
+    mode: placementMode,
+    before: placementMode === 'first' ? milestonesBeforeReconciliation(state, legacyPoints) : null,
   });
   const pendingRewardReveals = milestones.reveals;
   const newRevealIds = new Set(revealEvents.map(reveal => reveal.id));

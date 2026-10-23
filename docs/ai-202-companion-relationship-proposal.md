@@ -181,12 +181,14 @@ Companion 的優先順序（有待播放的 reveal 時；取代 `companionEngine
     2. 否則，本次 `main-focus` entry 有變化的 Session 的 reveal（例如撤銷第 2 天時是第 2 天的撤銷 reveal）。階段退回可以放在撤銷的 reveal 上；
     3. 否則，最新一個保留、且不是只含撤銷的 reveal。專案完成與階段提升**不放**在只含撤銷的 reveal 上；
     4. 都沒有時，併入 `presentedMilestones`，不呈現。
+    - 實作補充（AI-202B2 獨立 review）：第 2 步之後、第 3 步之前，先保留**已帶著里程碑、仍在佇列中且方向允許**的 reveal。否則之後每次記錄 Session（包括沒有 ledger 變化的無效 Session）或重複套用同一次 reconcile，都會把由第 2、3 步放置的里程碑搬到別的 reveal，或在沒有 reveal 可放時未播放就併入基準。
   - `queueReveal: false` 的 reconcile（開啟 app、首頁 render、同步、remind 計時器）**只能移除或縮小**佇列中已有的里程碑，不新增。**逐項**比較佇列中的里程碑與目前狀態：
     - 專案完成在目前仍成立時保留；
     - 階段以基準（`from`）與目前階段重新計算：方向與原本相同且不為零時，**縮成** `from → 目前階段`（例如待播放的 `familiar → trusted-companion`，同步後目前是 `partner`，縮成 `familiar → partner`，仍會播放）；歸零或方向相反時移除；
     - 移除的項目，`presentedMilestones` 只把**那一項**設為目前狀態，其他項目的基準不變；然後重新計算該 reveal 的呈現（見下方）。
     - 所以同步帶入的變化直接併入基準，不會被貼到不相干的 reveal 上（例如待播放的撤銷 reveal 不會因為同步帶入第 12 天而變成恭喜）；同步也不會拿掉使用者自己第 4 天待播放的完成（例如同步帶入足以到第 12 天的日子時，第 4 天的 reveal 仍有解鎖行與恭喜，只移除過時的「夥伴關係：熟悉夥伴」）。
     - 例外：第一次以新規則 reconcile 時（不論 `queueReveal`），先依放置順序第 1–3 步把初始值保留的里程碑放回舊格式 reveal，再套用「只能移除或縮小」。第一次 reconcile 通常是開啟 app（`queueReveal: false`），沒有這個例外，舊版待播放的完成會在第一次 reconcile 就被併入基準。
+      - 實作補充：「初始值保留的里程碑」以 reconcile **之前**的 ledger 計算（初始值 → 舊 ledger 依新規則的里程碑），不含這次同步帶入的變化；同步帶入的部分照「只能移除或縮小」併入基準（AI-202B2 獨立 review 指出，否則同步帶入的第 12 天會被放到不相干的舊 reveal 上）。
   - 帶著里程碑的 reveal 即使沒有其他行也保留；其他 reveal 的里程碑資訊移除；沒有淨變化時全部移除。
   - 現在的 `revealMatchesActiveLedger()` 只檢查該 Session 自己的 entry，會留下過時的里程碑，或把尚未播放的里程碑整個丟掉。各方向都會發生：
     - 第 12 天的提升尚未播放時撤銷較早的一天，目前已回到 `familiar`，不能再顯示「合作夥伴」；
