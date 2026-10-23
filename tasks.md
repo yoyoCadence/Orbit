@@ -157,11 +157,7 @@
 - [ ] **PS-251** PS-248 提案 §9 中 PS-250 沒有涵蓋的項目
   - 來源：PS-248 結案時（#202 獨立 review 的 P2）。使用者的 PS-250 決定取代了 PS-248 §9 的範圍、擴充前提、順序、做法與快取，但沒有決定下面兩項。
   - **§9.3 PS-248A2 窗外依時段變化**（可選；超出 art bible §6.1「一張 exterior」的上限）：**需使用者決定**要不要做。
-  - **§9.8 順帶整理**（提案建議放在 PS-248A，使用者沒有另外決定）：
-    - 刪除未被引用的 `pwa/assets/personal-space/v2/workspace/backgrounds/building-formal-workstation-room-v1.webp`（159 KB）：只在 v1.22.0～PS-244 之間被引用、從未在 SHELL；原始檔 `art-pipeline/ps242/source/building-formal-workstation-room-v1.png` 保留。順便修正 `art-pipeline/ps242/companion-state-pack-metadata.json` 中指向不存在的 `…/room-v1.png`。
-    - `docs/ps-243-production-acceptance.md` 的預算表仍是 PS-244 之前的數字（259,133 B／1,766,935 B）；那是當時的驗收紀錄，是否更新由使用者決定（PS-211 提案已註明）。`pwa/assets/personal-space/v2/README.md` 的數字已在 PS-250G 更新。
-    - 根目錄 `README.md`「25% 空間擴充 → 50% 家具 → 75% 風格 → 100% 全新主題」與實際的專案階段（`WORKSPACE_PROJECT_PHASES`：基本書桌、燈具與收納、單螢幕工作站、雙螢幕正式工作站）不符。
-  - 整理的三項風險低（不改程式行為），可一起做一個 PR；刪檔與改驗收紀錄前先向使用者確認。
+  - **§9.8 順帶整理**：使用者 2026-10-23 核准三項都做，拆成 PS-251A。
 
 - [ ] **AI-015** AI 晨間報告
   - 目標：完成 roadmap 既有 SUB-15
@@ -213,6 +209,26 @@
 > - 下一個提案是 AI-202；之後擴充 Blender 製作的主題與素材（建立 PS-248）。兩者都從 Backlog／新建移入 Next，第一步是提案。
 > - 獨立 Claude review 恢復使用：除非只有 Codex 能做的事，否則不限制由誰 review。
 
+> 2026-10-23 核准（使用者以 AskUserQuestion 回覆）：
+> - PS-249 §6：
+>   - Reveal 採 R-A＋重播：被蓋住、不在可視區、分頁隱藏時，reveal 的計時與 CSS 動畫都暫停、`major` 橫幅隱藏；被 overlay 蓋住時，overlay 關閉後從頭重播。
+>   - 場景採 P1：所有全螢幕 overlay 底下都暫停。
+>   - 新使用者的導覽算「被蓋住」；`proofSheet.js` 的佐證大圖加一個 class；個人空間頁的 Orbit Window 也套用。
+>   - 不延後第一次掛載 Pixi。
+>   - PS-249 的提案完成，移到 Done；實作建立 PS-249A，移入 Next。
+> - PS-251 §9.8 的三項順帶整理都做（刪除 `room-v1.webp`、更新 PS-243 驗收紀錄的預算數字、修正根目錄 README 的專案階段）：拆成 PS-251A，從 Next 移入 In Progress。§9.3（A2）仍待決定，PS-251 留在 Backlog。
+> - 順序：PS-251A（不改程式行為）→ PS-249A。
+
+- [ ] **PS-249A** 實作 PS-249：Orbit Window 被 overlay 蓋住時暫停 reveal 與場景
+  - 依據：[`docs/ps-249-overlay-scene-proposal.md`](docs/ps-249-overlay-scene-proposal.md)，使用者 2026-10-23 的 §6 決定（見上方核准紀錄）。
+  - 範圍：
+    - C1：`orbitWindow.js` 以 `MutationObserver` 判斷「被蓋住」：常駐的 `#focus-overlay`、`#levelup-overlay`、`#focus-duration-picker` 看 `hidden`；`body` 的直接子元素中不帶 `hidden` 的 `.modal-overlay`、`.pro-sheet-overlay`、`.shield-confirm-overlay`、`.tour-backdrop` 與佐證大圖（`proofSheet.js` 加 class）。「沒被蓋住」等兩個 animation frame 才生效。
+    - R-A＋重播：reveal 用自己的 `rootMargin: 0` 可視判斷；held 時計時與 CSS 動畫（含 `::after`、`major` 橫幅）暫停，橫幅隱藏；被 overlay 蓋住後從頭重播。
+    - P1：被蓋住時 `suspend()` 場景，沿用 INFRA-106。
+    - 首頁與個人空間頁都套用。
+  - 驗收：提案 §7（單元測試、e2e、`flows.test.js` 改成先關閉佐證 sheet 再等 reveal 結束、INFRA-105 新舊混用、reduced motion）。
+  - 依賴：`PS-249`
+
 - [ ] **BUG-109A** 在 production 套用 013 signup trigger migration
   - 目標：讓 production 的 `handle_new_user()` 截斷超過 30 字元的名稱來源，長 email local-part 與長 Google 顯示名稱都能註冊。
   - 步驟：依 [`docs/bug-109-signup-name-truncation.md`](docs/bug-109-signup-name-truncation.md) 的 runbook：先以 `pg_get_functiondef` 比對 production 函式與 004、記錄回滾來源，在非 production 環境跑 `tests/database/bug109.test.sql`，再套用並驗證。
@@ -223,22 +239,12 @@
 
 ## In Progress
 
-- [ ] **PS-249** Orbit Window 在其他蓋住畫面的 overlay 下仍重畫、reveal 計時照走
-  - 背景（INFRA-106 獨立 review 發現，2026-10-20）：INFRA-106 只在 Focus overlay 開啟時暫停 Pixi 場景。其他 overlay 也會蓋住首頁：
-    - `#levelup-overlay`：85% 黑，z 100（`feedback.js`），升級後顯示到使用者關閉；
-    - `.modal-overlay`：65% 黑，用於早晨、每日報告、連勝解鎖、Focus 的結果選擇等 modal；
-    - `.shield-confirm-overlay`、`.pro-sheet-overlay`：55% 黑。
-  - 另外：reveal 的計時（`orbitWindow.js` 的 reveal clock）不看 Focus overlay，待播放的 reveal 可能在 overlay 底下播完；`.orbit-window-major-reveal`（fixed、z 1200）會畫在 Focus overlay（z 80）之上。
-    - 更正（PS-249 提案量測）：`.orbit-window` 設了 `isolation: isolate`，橫幅的 z 1200 只在 Orbit Window 之內有效，不會畫在 overlay 之上；真正的問題是 Orbit Window 不在可視區時橫幅仍蓋滿畫面。
-  - 方向：決定哪些 overlay 要暫停場景（半透明的 modal 底下仍看得到場景，不一定要暫停）、reveal 是否要等 overlay 關閉再播；可選的最佳化：overlay 開著時延後掛載、`app.init` 傳 `autoStart: false`。
-  - 屬於效能與呈現的調整，先提案再實作。
-  - In progress（2026-10-22，Backlog → Next → In Progress，見 Next 的排程記錄）：PS-250 完成後，Backlog 中不需核准就能開始的只剩本項的提案。第一步是提案（Mode A，只寫文件、不改程式碼），核准前不實作。
-    - 提案：[`docs/ps-249-overlay-scene-proposal.md`](docs/ps-249-overlay-scene-proposal.md)。在實際 app 量到：
-      - Session 結束後 reveal 立刻開始（此時還沒被蓋住），0.6 秒後升級畫面、0.7 秒後佐證 sheet 蓋上；4.2 秒的 reveal 約 3.6 秒在底下播完，接著被標記為已看過、不再重播。
-      - Reveal 的 CSS 動畫不看計時：Orbit Window 不在可視區時照播，`major` 橫幅（fixed）在可視區外也蓋滿畫面。
-      - 場景在 modal 與升級畫面底下照常重畫：量測環境中 CPU 與沒有 overlay 時相同，Focus overlay 底下暫停時少約 93%（軟體繪圖，只能比較相對值）。
-    - 建議：C1（在 `orbitWindow.js` 以 `MutationObserver` 判斷被蓋住；`proofSheet.js` 的佐證大圖加一個 class）＋R-A（被蓋住、不在可視區、分頁隱藏時，reveal 的計時與 CSS 動畫都暫停，`major` 橫幅隱藏；overlay 關閉後從頭重播）＋P1（所有全螢幕 overlay 都暫停場景）。不建議延後第一次掛載 Pixi。核准後拆成 PS-249A，並調整 `flows.test.js` 中等 reveal 結束的順序。
-    - **等待使用者決定**提案 §6。
+- [ ] **PS-251A** PS-248 §9.8 的順帶整理
+  - 使用者 2026-10-23 核准（見 Next 的核准紀錄）。三項都不改程式行為：
+    - 刪除未被引用的 `pwa/assets/personal-space/v2/workspace/backgrounds/building-formal-workstation-room-v1.webp`（159,396 B）：只在 v1.22.0～PS-244 之間被引用、從未在 SHELL；原始檔 `art-pipeline/ps242/source/building-formal-workstation-room-v1.png` 保留。修正 `art-pipeline/ps242/companion-state-pack-metadata.json` 中指向不存在的 `…/room-v1.png`。
+    - 更新 `docs/ps-243-production-acceptance.md` 的預算表為目前提交的 `docs/ps243/asset-baseline.json`，並保留原本 PS-243 量到的數字。
+    - 根目錄 `README.md` 的專案階段改成實際的 `WORKSPACE_PROJECT_PHASES`。
+  - In progress（2026-10-23）。
 
 - [ ] **AI-202** 定義 companion relationship stage 與 hidden stats 的最小映射規則
   - 目標：讓 companion 關係變化可由真實行為驅動，而不是聊天次數
@@ -276,6 +282,23 @@
 ---
 
 ## Done
+
+- [x] **PS-249** Orbit Window 在其他蓋住畫面的 overlay 下仍重畫、reveal 計時照走
+  - 背景（INFRA-106 獨立 review 發現，2026-10-20）：INFRA-106 只在 Focus overlay 開啟時暫停 Pixi 場景。其他 overlay 也會蓋住首頁：
+    - `#levelup-overlay`：85% 黑，z 100（`feedback.js`），升級後顯示到使用者關閉；
+    - `.modal-overlay`：65% 黑，用於早晨、每日報告、連勝解鎖、Focus 的結果選擇等 modal；
+    - `.shield-confirm-overlay`、`.pro-sheet-overlay`：55% 黑。
+  - 另外：reveal 的計時（`orbitWindow.js` 的 reveal clock）不看 Focus overlay，待播放的 reveal 可能在 overlay 底下播完；`.orbit-window-major-reveal`（fixed、z 1200）會畫在 Focus overlay（z 80）之上。
+    - 更正（PS-249 提案量測）：`.orbit-window` 設了 `isolation: isolate`，橫幅的 z 1200 只在 Orbit Window 之內有效，不會畫在 overlay 之上；真正的問題是 Orbit Window 不在可視區時橫幅仍蓋滿畫面。
+  - 方向：決定哪些 overlay 要暫停場景（半透明的 modal 底下仍看得到場景，不一定要暫停）、reveal 是否要等 overlay 關閉再播；可選的最佳化：overlay 開著時延後掛載、`app.init` 傳 `autoStart: false`。
+  - 屬於效能與呈現的調整，先提案再實作。
+  - In progress（2026-10-22，Backlog → Next → In Progress，見 Next 的排程記錄）：PS-250 完成後，Backlog 中不需核准就能開始的只剩本項的提案。第一步是提案（Mode A，只寫文件、不改程式碼），核准前不實作。
+    - 提案：[`docs/ps-249-overlay-scene-proposal.md`](docs/ps-249-overlay-scene-proposal.md)。在實際 app 量到：
+      - Session 結束後 reveal 立刻開始（此時還沒被蓋住），0.6 秒後升級畫面、0.7 秒後佐證 sheet 蓋上；4.2 秒的 reveal 約 3.6 秒在底下播完，接著被標記為已看過、不再重播。
+      - Reveal 的 CSS 動畫不看計時：Orbit Window 不在可視區時照播，`major` 橫幅（fixed）在可視區外也蓋滿畫面。
+      - 場景在 modal 與升級畫面底下照常重畫：量測環境中 CPU 與沒有 overlay 時相同，Focus overlay 底下暫停時少約 93%（軟體繪圖，只能比較相對值）。
+    - 建議：C1（在 `orbitWindow.js` 以 `MutationObserver` 判斷被蓋住；`proofSheet.js` 的佐證大圖加一個 class）＋R-A（被蓋住、不在可視區、分頁隱藏時，reveal 的計時與 CSS 動畫都暫停，`major` 橫幅隱藏；overlay 關閉後從頭重播）＋P1（所有全螢幕 overlay 都暫停場景）。不建議延後第一次掛載 Pixi。核准後拆成 PS-249A，並調整 `flows.test.js` 中等 reveal 結束的順序。
+  - 完成（2026-10-23）：提案 #203 合併；使用者決定 §6（R-A＋重播、P1、導覽算被蓋住、佐證大圖加 class、個人空間頁也套用、不延後掛載）。實作拆成 PS-249A（Next）。
 
 - [x] **PS-250G** 選擇介面的房間縮圖改用小檔案，並在離線時退回
   - 來源：#200 獨立 review 的 P3。房間縮圖目前是完整的 1536×1024 背景：打開 Edit Mode 的「房間」會下載 4 張其他風格的背景（Q 版約 280 KB、像素約 350 KB），離線時沒下載過的縮圖是空白，但說明寫「離線時暫時以預設顯示」。
