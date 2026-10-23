@@ -211,11 +211,6 @@
 > - INFRA-105 核准：先寫變更說明，PR 合併前讓使用者看過。從 Backlog 移入 Next。
 > - 順序：AI-202B1 → AI-202B2 → PS-251 的提案 → INFRA-105（要等使用者看過才合併，放在最後，避免擋住同一個 branch 的其他 PR）。
 
-- [ ] **AI-202B2** 實作 AI-202：里程碑（專案完成與關係階段）的 reveal
-  - 依據：[`docs/ai-202-companion-relationship-proposal.md`](docs/ai-202-companion-relationship-proposal.md) §3.4、§8（reveal 與 Companion 的驗收條件），使用者 2026-10-23 的決定。
-  - 範圍：`presentedMilestones`（新的本機欄位）與淨變化的放置；第 12、30 天的階段提升是 `major`，標題與行「夥伴關係：合作夥伴」，Companion `congratulate`＋`companion.relationship.stage-up`；階段退回不是 `major`、`observe`；`queueReveal: false` 只移除或縮小；舊格式 reveal 的重新計算；消耗帶里程碑的 reveal 時前進基準。與 BUG-113 的專案完成判斷整合。
-  - 依賴：`AI-202B1`
-
 - [ ] **PS-251** PS-248 提案 §9 中 PS-250 沒有涵蓋的項目
   - 來源：PS-248 結案時（#202 獨立 review 的 P2）。使用者的 PS-250 決定取代了 PS-248 §9 的範圍、擴充前提、順序、做法與快取，但沒有決定下面兩項。
   - **§9.3 PS-248A2 窗外依時段變化**（可選；超出 art bible §6.1「一張 exterior」的上限）：使用者 2026-10-23 決定**做**。第一步是實作提案（窗戶遮罩、圖層、素材預算與快取），核准後再渲染。
@@ -240,6 +235,12 @@
 ---
 
 ## In Progress
+
+- [ ] **AI-202B2** 實作 AI-202：里程碑（專案完成與關係階段）的 reveal
+  - 依據：[`docs/ai-202-companion-relationship-proposal.md`](docs/ai-202-companion-relationship-proposal.md) §3.4、§8（reveal 與 Companion 的驗收條件），使用者 2026-10-23 的決定。
+  - 範圍：`presentedMilestones`（新的本機欄位）與淨變化的放置；第 12、30 天的階段提升是 `major`，標題與行「夥伴關係：合作夥伴」，Companion `congratulate`＋`companion.relationship.stage-up`；階段退回不是 `major`、`observe`；`queueReveal: false` 只移除或縮小；舊格式 reveal 的重新計算；消耗帶里程碑的 reveal 時前進基準。與 BUG-113 的專案完成判斷整合。
+  - 依賴：`AI-202B1`
+  - In progress（2026-10-23）：AI-202B1 合併後開始（Next → In Progress）。
 
 - [ ] **PRO-014Q** 開發者面板的 backup 不應擋住其他帳號或非 Pro 模擬的 entitlement refresh
   - 問題（PR #158 Codex review 指出，2026-10-18 確認）：`storage.refreshProEntitlement()` 只要 `FLAG_DEV_BACKUP` 存在就直接 return。這個 backup 也由等級模擬器建立，且 `storage.clearAll()` 登出時不會清除。開發者登出後換另一個帳號，該帳號的 refresh 會一直被跳過，在 `server` source 下 fail closed，直到手動重設。
