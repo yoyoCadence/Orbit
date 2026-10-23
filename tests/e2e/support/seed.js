@@ -36,7 +36,7 @@ export const BASE_ENERGY = {
 };
 
 // Minimal unauthenticated Supabase client so tests run fully offline.
-const SUPABASE_STUB = `
+export const SUPABASE_STUB = `
 export function createClient() {
   const chain = () => {
     const q = {

@@ -227,17 +227,6 @@
 
 ## In Progress
 
-- [ ] **INFRA-105** service worker 安裝時，SHELL 的 JS／CSS／HTML 也要重新驗證，避免改版後先跑舊程式
-  - 問題（PS-211A 獨立 review 發現，2026-10-20；修改前就存在）：`sw.js` 的 install 只對圖片與 `pixi.js` 使用 `cache: 'no-cache'`。JS、CSS、HTML 仍走瀏覽器的 HTTP cache。GitHub Pages 的 `max-age=600` 內，新版本的快取會存到**舊的** `version.js` 等模組。
-  - 影響：
-    - 「新版本已就緒」後的第一次載入，最多約 10 分鐘內仍執行舊程式。stale-while-revalidate 的背景更新也會讀到仍然有效的 HTTP cache。
-    - 改版若改了素材檔名，舊的 `assetManifest.js` 會要求不在 SHELL 中的舊檔名：線上 404、離線缺圖。
-    - 新模組使用舊模組沒有的 export 時，可能無法 link。
-  - 方向：SHELL 的所有項目都以 `new Request(path, { cache: 'no-cache' })` 取得（沒變的檔案只需 304），並以 e2e 模擬改版驗證。
-  - **改 service worker 的快取行為（部署行為），需使用者核准**。
-  - 使用者 2026-10-23 核准：先寫一份短的變更說明（做法、風險、以 e2e 模擬改版的驗證），**PR 合併前讓使用者看過**，再實作。
-  - In progress（2026-10-23）：PS-251B 的提案（#208）合併後開始（Next → In Progress）。
-
 - [ ] **PRO-014Q** 開發者面板的 backup 不應擋住其他帳號或非 Pro 模擬的 entitlement refresh
   - 問題（PR #158 Codex review 指出，2026-10-18 確認）：`storage.refreshProEntitlement()` 只要 `FLAG_DEV_BACKUP` 存在就直接 return。這個 backup 也由等級模擬器建立，且 `storage.clearAll()` 登出時不會清除。開發者登出後換另一個帳號，該帳號的 refresh 會一直被跳過，在 `server` source 下 fail closed，直到手動重設。
   - 影響：只影響使用過開發者面板的裝置。
@@ -260,6 +249,22 @@
 ---
 
 ## Done
+
+- [x] **INFRA-105** service worker 安裝時，SHELL 的 JS／CSS／HTML 也要重新驗證，避免改版後先跑舊程式
+  - 問題（PS-211A 獨立 review 發現，2026-10-20；修改前就存在）：`sw.js` 的 install 只對圖片與 `pixi.js` 使用 `cache: 'no-cache'`。JS、CSS、HTML 仍走瀏覽器的 HTTP cache。GitHub Pages 的 `max-age=600` 內，新版本的快取會存到**舊的** `version.js` 等模組。
+  - 影響：
+    - 「新版本已就緒」後的第一次載入，最多約 10 分鐘內仍執行舊程式。stale-while-revalidate 的背景更新也會讀到仍然有效的 HTTP cache。
+    - 改版若改了素材檔名，舊的 `assetManifest.js` 會要求不在 SHELL 中的舊檔名：線上 404、離線缺圖。
+    - 新模組使用舊模組沒有的 export 時，可能無法 link。
+  - 方向：SHELL 的所有項目都以 `new Request(path, { cache: 'no-cache' })` 取得（沒變的檔案只需 304），並以 e2e 模擬改版驗證。
+  - **改 service worker 的快取行為（部署行為），需使用者核准**。
+  - 使用者 2026-10-23 核准：先寫一份短的變更說明（做法、風險、以 e2e 模擬改版的驗證），**PR 合併前讓使用者看過**，再實作。
+  - In progress（2026-10-23）：PS-251B 的提案（#208）合併後開始（Next → In Progress）。
+  - 完成（2026-10-23，v1.40.1；**PR 合併前等使用者看過**）：
+    - 變更說明 [`docs/infra-105-shell-revalidate.md`](docs/infra-105-shell-revalidate.md)。
+    - `sw.js`：install 時 SHELL 的每一項都以 `cache: 'no-cache'` 重新驗證（沒變的只回 304）；JS／CSS 的背景更新也是。導覽請求（HTML）的 network-first 不變（理由見變更說明 §2）。
+    - e2e `infra105-sw-update.test.js`：自己的靜態伺服器回應 `max-age=600` 與 ETag，模擬「舊檔仍在 HTTP cache 有效期內就部署新版」。修改前兩項都失敗（新快取是舊的 `version.js`；背景更新仍是舊檔），修改後通過。
+    - 「SHELL 模組不 import 既有 SHELL 模組的新 export」的規則**仍保留**：已開著的頁面在重新整理前、延遲載入的模組仍可能新舊混用。
 
 - [x] **AI-202B2** 實作 AI-202：里程碑（專案完成與關係階段）的 reveal
   - 依據：[`docs/ai-202-companion-relationship-proposal.md`](docs/ai-202-companion-relationship-proposal.md) §3.4、§8（reveal 與 Companion 的驗收條件），使用者 2026-10-23 的決定。
