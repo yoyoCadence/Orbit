@@ -103,7 +103,7 @@ from the route entry `pwa/js/pages/personalSpaceV2.js` (adds `personalSpaceV2.js
 `unlockRules.js`, `economy.js`, `gameState.js`); every path is listed in the
 artifact.
 
-| Budget | Measured (v1.38.1) | Target / threshold | Result |
+| Budget | Measured (v1.38.2) | Target / threshold | Result |
 |---|---:|---:|---|
 | Personal Space V2 application JS gzip estimate (29-file V2 module set) | 70,153 bytes | part of 300 KB deferred budget | PASS |
 | Vendored Pixi gzip estimate (`pwa/vendor/pixi.js`) | 225,428 bytes | part of 300 KB deferred budget | PASS |
@@ -113,7 +113,7 @@ artifact.
 | Complete 50-file production scene: day and night backgrounds, 12 protagonist poses, 6 Companion states, 2 weather overlays, 8 props and 6 decorations by day and by night | 1,409,958 bytes | 4 MB / 6 MB hard | PASS |
 
 Updated 2026-10-23 (PS-251A) to the committed `docs/ps243/asset-baseline.json`
-at v1.38.1. The table recorded at the PS-242 art refresh (v1.22.0, 2026-07-31)
+at v1.38.2. The table recorded at the PS-242 art refresh (v1.22.0, 2026-07-31)
 read 50,489 / 225,428 / 275,917 bytes for the three JS rows, 259,133 bytes for
 the initial paint and 1,766,935 bytes for the 29-file state pack plus eight
 props. Since then PS-244 replaced the room, PS-250 made the Q-style WebPs the

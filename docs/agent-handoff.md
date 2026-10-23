@@ -112,7 +112,7 @@
     - 房間重新渲染後要重跑 `thumbnails.py`（`ps250gPickerThumbnails.test.js` 會檢查雜湊）。
 27. **PS-249 提案**（#203，[`docs/ps-249-overlay-scene-proposal.md`](ps-249-overlay-scene-proposal.md)，已核准）。使用者 2026-10-23 的決定：R-A＋重播、P1、導覽算被蓋住、佐證大圖加 class、個人空間頁也套用、不延後第一次掛載。Session 結束後的 reveal 大多在升級畫面與佐證 sheet 底下播完、不再重播；場景在這些 overlay 底下照常重畫。建議 C1＋R-A（overlay 關閉後從頭重播）＋P1，核准後拆成 PS-249A。`major` 橫幅因 `isolation: isolate` 不會畫在 overlay 之上（更正 tasks.md 原本的描述）。
     - 量測方式：時間線以頁面內的 `MutationObserver` 記錄；成本讀 `/proc` 中所有 Chromium 程序的 CPU 時間（SwiftShader 軟體繪圖，只比較相對值；renderer 主執行緒的時間量不到繪圖成本）。
-28. **PS-251A：完成**（#204，v1.38.2）。使用者 2026-10-23 核准 PS-248 §9.8 的三項：刪除未被引用的 `room-v1.webp`（159,396 B，原始 PNG 保留），修正 PS-242 metadata 的參考路徑；`docs/ps-243-production-acceptance.md` 的預算表更新為 v1.38.1 的 baseline（保留 PS-242 時記錄的數字）；根目錄 README 的專案階段改成實際的 `WORKSPACE_PROJECT_PHASES`。
+28. **PS-251A：完成**（#204，v1.38.2）。使用者 2026-10-23 核准 PS-248 §9.8 的三項：刪除未被引用的 `room-v1.webp`（159,396 B，原始 PNG 保留），修正 PS-242 metadata 的參考路徑；`docs/ps-243-production-acceptance.md` 的預算表更新為 v1.38.2 的 baseline（保留 PS-242 時記錄的數字）；根目錄 README 的專案階段改成實際的 `WORKSPACE_PROJECT_PHASES`。
     - 注意：延後載入的 V2 JS＋Pixi gzip 是 295,581 / 307,200 B，300 KiB 的預算只剩 11,619 B（約 11.3 KB）。
     - v1.22.0～v1.28.2 很久沒開的裝置，部署後第一次開啟可能拿不到這張舊背景（404）：舊程式退回 poster 並顯示「互動場景暫時無法載入」，下次重新載入就是新版（INFRA-105）。
 29. **下一步**：PS-249A（Next）。之後等待 AI-202 §9 與 PS-251 §9.3（A2）的決定。Backlog 其餘項目需要核准或屬高風險（HW-112 的 Storage migration、INFRA-101／INFRA-105／PS-211D 的部署行為、PRO-014* 的 entitlement）。INFRA-105（SHELL 的 JS／CSS／HTML 安裝時重新驗證）需核准。使用者原則：以「任務確實完成」為準，合併是後話；做不到的先寫進 `tasks.md`。
