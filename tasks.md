@@ -239,13 +239,6 @@
 
 ## In Progress
 
-- [ ] **PS-251A** PS-248 §9.8 的順帶整理
-  - 使用者 2026-10-23 核准（見 Next 的核准紀錄）。三項都不改程式行為：
-    - 刪除未被引用的 `pwa/assets/personal-space/v2/workspace/backgrounds/building-formal-workstation-room-v1.webp`（159,396 B）：只在 v1.22.0～PS-244 之間被引用、從未在 SHELL；原始檔 `art-pipeline/ps242/source/building-formal-workstation-room-v1.png` 保留。修正 `art-pipeline/ps242/companion-state-pack-metadata.json` 中指向不存在的 `…/room-v1.png`。
-    - 更新 `docs/ps-243-production-acceptance.md` 的預算表為目前提交的 `docs/ps243/asset-baseline.json`，並保留原本 PS-243 量到的數字。
-    - 根目錄 `README.md` 的專案階段改成實際的 `WORKSPACE_PROJECT_PHASES`。
-  - In progress（2026-10-23）。
-
 - [ ] **AI-202** 定義 companion relationship stage 與 hidden stats 的最小映射規則
   - 目標：讓 companion 關係變化可由真實行為驅動，而不是聊天次數
   - 對應 roadmap：Phase 2 / Phase 4
@@ -282,6 +275,17 @@
 ---
 
 ## Done
+
+- [x] **PS-251A** PS-248 §9.8 的順帶整理
+  - 使用者 2026-10-23 核准（見 Next 的核准紀錄）。三項都不改程式行為：
+    - 刪除未被引用的 `pwa/assets/personal-space/v2/workspace/backgrounds/building-formal-workstation-room-v1.webp`（159,396 B）：只在 v1.22.0～PS-244 之間被引用、從未在 SHELL；原始檔 `art-pipeline/ps242/source/building-formal-workstation-room-v1.png` 保留。修正 `art-pipeline/ps242/companion-state-pack-metadata.json` 中指向不存在的 `…/room-v1.png`。
+    - 更新 `docs/ps-243-production-acceptance.md` 的預算表為目前提交的 `docs/ps243/asset-baseline.json`，並保留原本 PS-243 量到的數字。
+    - 根目錄 `README.md` 的專案階段改成實際的 `WORKSPACE_PROJECT_PHASES`。
+  - In progress（2026-10-23）。
+  - 完成（2026-10-23，只有文件與刪檔，不改版本號）：
+    - 刪除 `room-v1.webp`；`companion-state-pack-metadata.json` 的參考改為 `art-pipeline/ps242/source/building-formal-workstation-room-v1.png`。`npm run ps243:assets` 的結果不變（它從未在場景中）。
+    - PS-243 驗收紀錄的預算表改為 v1.38.1：JS gzip 70,153＋225,428＝295,581 B（預算 307,200 B，剩約 11.6 KB）、首屏 122,433 B、夜晚首屏 104,205 B、完整場景 50 個檔案 1,409,958 B；原本的數字保留在表下的說明。
+    - README：Active Project 每完成一次今日 Main Quest 推進 25%（`DAILY_PROJECT_PROGRESS`），階段為基本書桌 → 燈具與收納 → 單螢幕工作站 → 雙螢幕正式工作站。
 
 - [x] **PS-249** Orbit Window 在其他蓋住畫面的 overlay 下仍重畫、reveal 計時照走
   - 背景（INFRA-106 獨立 review 發現，2026-10-20）：INFRA-106 只在 Focus overlay 開啟時暫停 Pixi 場景。其他 overlay 也會蓋住首頁：

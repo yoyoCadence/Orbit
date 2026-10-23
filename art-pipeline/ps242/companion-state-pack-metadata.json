@@ -9,7 +9,7 @@
     "sourceOutput": "C:/Users/memor/.codex/generated_images/019fb886-e222-71f0-bd7f-ecb11d6cf3a3/exec-be9a8d38-b63d-4e77-8e95-40f51182c9d7.png",
     "rawProjectPath": "art-pipeline/ps242/raw/companion-state-pack-sheet-magenta.png",
     "referencePaths": [
-      "pwa/assets/personal-space/v2/workspace/backgrounds/building-formal-workstation-room-v1.png",
+      "art-pipeline/ps242/source/building-formal-workstation-room-v1.png",
       "art-pipeline/ps242/processed/protagonist-final/sheet-transparent.png"
     ],
     "promptPaths": [
