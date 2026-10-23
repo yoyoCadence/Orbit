@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "taskId": "PS-251B",
+  "files": {
+    "assets/personal-space/v2/workspace/pixel/window/exterior-evening.png": {
+      "bytes": 12940,
+      "sha256": "826064bd8600df617ede38112baeff9287397119ebf0d941b9d012a819505153"
+    },
+    "assets/personal-space/v2/workspace/pixel/window/exterior-morning.png": {
+      "bytes": 12872,
+      "sha256": "1596a7006b17314d0b61e00297264496ea00e998b77faca07c0e012d0c411851"
+    },
+    "assets/personal-space/v2/workspace/window/exterior-evening.webp": {
+      "bytes": 12884,
+      "sha256": "5165d42261fa8bf2e8583a3ea3d86ee200543210ef6ea1d6b715b2ad49718dce"
+    },
+    "assets/personal-space/v2/workspace/window/exterior-morning.webp": {
+      "bytes": 11658,
+      "sha256": "82bf7a4e1ff691dc8e03e71a57145b6a493e28e85c71e6df6d1bd91e44f827e8"
+    }
+  }
+}

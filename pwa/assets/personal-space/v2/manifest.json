@@ -1110,6 +1110,48 @@
       "sha256": "b70f63c40013ee9aa4d0c30200912dee68ac8879bcd57a52559d8fd41837d90c",
       "canonicalCameraId": "building-workspace-v2",
       "status": "production"
+    },
+    {
+      "id": "building-formal-workstation-exterior-morning",
+      "label": "Building Formal Workstation window view (morning)",
+      "role": "exterior",
+      "band": "morning",
+      "projectPhase": "all",
+      "source": "art-pipeline/ps251-window/render_window.py",
+      "qc": "passed: shared-camera, window-only-alpha, same-alpha-every-room-style, visual",
+      "licenseRef": "art-pipeline/ps244-blender/model-manifest.json#orbit-blender-procedural-workstation",
+      "path": "assets/personal-space/v2/workspace/window/exterior-morning.webp",
+      "dimensions": {
+        "width": 1536,
+        "height": 1024
+      },
+      "format": "webp",
+      "alpha": true,
+      "bytes": 11658,
+      "sha256": "82bf7a4e1ff691dc8e03e71a57145b6a493e28e85c71e6df6d1bd91e44f827e8",
+      "canonicalCameraId": "building-workspace-v2",
+      "status": "production"
+    },
+    {
+      "id": "building-formal-workstation-exterior-evening",
+      "label": "Building Formal Workstation window view (evening)",
+      "role": "exterior",
+      "band": "evening",
+      "projectPhase": "all",
+      "source": "art-pipeline/ps251-window/render_window.py",
+      "qc": "passed: shared-camera, window-only-alpha, same-alpha-every-room-style, visual",
+      "licenseRef": "art-pipeline/ps244-blender/model-manifest.json#orbit-blender-procedural-workstation",
+      "path": "assets/personal-space/v2/workspace/window/exterior-evening.webp",
+      "dimensions": {
+        "width": 1536,
+        "height": 1024
+      },
+      "format": "webp",
+      "alpha": true,
+      "bytes": 12884,
+      "sha256": "5165d42261fa8bf2e8583a3ea3d86ee200543210ef6ea1d6b715b2ad49718dce",
+      "canonicalCameraId": "building-workspace-v2",
+      "status": "production"
     }
   ]
 }

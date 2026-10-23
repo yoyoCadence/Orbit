@@ -19,9 +19,12 @@ describe('PS-242 production asset manifest', () => {
     expect(manifest.scene.dimensions).toEqual({ width: 1536, height: 1024 });
     expect(manifest.outputs.map(entry => entry.path)).toEqual(runtimePaths);
     // PS-250E1: 29 by day, plus the night room and its 8 props; PS-250F: the
-    // 6 decorations by day and by night.
-    expect(manifest.outputs).toHaveLength(50);
+    // 6 decorations by day and by night; PS-251B: the morning and evening
+    // views outside the window.
+    expect(manifest.outputs).toHaveLength(52);
     expect(manifest.outputs.filter(entry => entry.role === 'decoration')).toHaveLength(12);
+    expect(manifest.outputs.filter(entry => entry.role === 'exterior').map(entry => [entry.band, entry.alpha]))
+      .toEqual([['morning', true], ['evening', true]]);
 
     for (const entry of manifest.outputs) {
       expect(entry).toEqual(expect.objectContaining({

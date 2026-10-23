@@ -269,7 +269,7 @@ The atlas build must be deterministic for identical inputs.
 The first validated set is capped at:
 
 - one canonical room background;
-- one exterior/window background;
+- one exterior/window background (PS-251B, user-approved 2026-10-23: the day and night views baked into the room renders, plus morning and evening view overlays, one per style for every room; see below);
 - day and night lighting overlays;
 - 8–12 furniture/prop assets;
 - one protagonist identity with 5–6 actions;
@@ -281,6 +281,8 @@ The first validated set is capped at:
 Do not expand Survival/Mastery rooms or mass-generate furniture until the home-to-Session-to-world loop passes product and performance validation.
 
 PS-250 (user-approved 2026-10-21) expands this budget for the Building stage: two switchable style sets, each with several protagonists and Companion forms, and (PS-250E1) a night render of the room and props in both styles instead of a night overlay alone. Room styles (PS-250E2 onward: other materials for the same room, sharing its placements) are not precached. Small furniture (PS-250F: six decorations, switched on and off in Edit Mode) is rendered by the same scene; the default room's decorations are precached by day and by night. The art bible §6.1 lists what has been added. Since PS-250B only the default set is precached; the default set includes its night room and props (PS-250E1, user-approved). Other choices are downloaded the first time they are used. Offline, a missing choice is shown as the default.
+
+PS-251B (user-approved 2026-10-23) adds the view outside the window in the morning and the evening: an RGBA overlay of only the window area, drawn above the room background and below the props, in each style (four images, about 12–13 KB each; the Q-style ones are lossy WebP with alpha, the pixel ones 32-colour PNG with hard alpha). The five room styles share the window, so one overlay per style serves them all; by day and at night the baked-in view stays. The Q-style overlays are in the PS-242 manifest and precached; the pixel ones are downloaded the first time they are shown, like the pixel room. An overlay that cannot load is left out and the baked-in view shows. Source and steps: `art-pipeline/ps251-window/README.md`.
 
 ## Acceptance Criteria
 

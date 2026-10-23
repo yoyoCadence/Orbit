@@ -127,7 +127,7 @@ PS-250E3 (user decision, 2026-10-21): the dark-wood study room style uses colour
 ### 6.1 Required Asset Set
 
 - 1 canonical empty-room shell;
-- 1 modular window/exterior layer;
+- 1 modular window/exterior layer (PS-251B, user-approved 2026-10-23: the day and night views baked into the room renders, plus a morning and an evening view overlay in each style, shared by every room);
 - 1 daytime lighting overlay;
 - 1 night lighting overlay;
 - 8–12 furniture or functional prop assets;
@@ -161,6 +161,8 @@ Each set has several protagonists and Companion forms. Added so far:
 
 - PS-250G: the Edit Mode picker shows each room as a 216 × 144 thumbnail of its day background (made by `art-pipeline/ps250-rooms/thumbnails.py`), not the full background.
 - PS-250F2: the same six decorations in the other four room styles, with each style's materials (the tray and the trophy's wood and metal follow the room), in both styles, by day and by night. They are cut to the default room's boxes, like the style furniture, so every room shares one set of placements.
+
+- PS-251B: the view outside the window in the morning (05:00–10:00) and the evening (17:00–21:00), in both styles. The skyline keeps its shape; the morning recolours it peach and lilac with few lit windows, the evening purple with a warm far side and many lit windows. Each is an RGBA image of only what the window shows, laid over the room; the five room styles share the window, so one image per style serves them all. By day and at night the view baked into the room stays. Source: `art-pipeline/ps251-window/`.
 
 ### 6.2 Workspace Upgrade Phases
 
@@ -202,6 +204,7 @@ room shell
 
 - Window frame and exterior view should be separable when practical.
 - Exterior supports time and weather changes without repainting the entire room.
+- Since PS-251B the morning and evening views are overlays: the same scene and camera, rendered with every room object as a holdout (`is_holdout`, not a Holdout material, which Freestyle would outline) and the props and decorations hidden, so only the glass area is opaque. The overlay sits above the room background and below every prop, covering the baked-in view; the window frame and blinds stay from the room. It has no light of its own: the room's lighting overlay tints it with the rest.
 - Reflections and emissive light must not obscure player or Project silhouettes.
 
 ### 7.3 Lighting

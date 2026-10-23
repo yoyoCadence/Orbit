@@ -149,13 +149,23 @@ export function createPixiSceneRuntime(options = {}) {
     // other parts stay as chosen. (The poster falls back per image, so with a
     // partly cached pixel room the two can differ until the next render.)
     const sceneryTiers = [chosen, fallback, dayFallback];
-    const [scenery, protagonistPart, companionPart, chosenDecorations] = await Promise.all([
+    const [scenery, protagonistPart, companionPart, chosenDecorations, chosenExterior] = await Promise.all([
       loadPart(pixi, sceneryTiers.map(sceneryPaths)),
       loadPart(pixi, [[chosen.protagonist], [fallback.protagonist]]),
       loadPart(pixi, [[chosen.companion.path], [fallback.companion.path]]),
       loadDecorations(pixi, sceneryTiers),
+      loadOptional(pixi, chosen.exterior),
     ]);
     const drawnScenery = sceneryTiers[scenery.tier];
+    // PS-251B: the morning or evening view outside the window follows the art
+    // style of the room drawn: a fallback room is the Q-style one. The day
+    // room drawn for a night room that cannot load keeps the band's view
+    // (it was resolved without a time band). One that cannot load is left
+    // out: the room's baked-in view shows.
+    const exteriorPath = scenery.usedFallback ? fallback.exterior : chosen.exterior;
+    const exteriorTexture = exteriorPath === chosen.exterior
+      ? chosenExterior
+      : await loadOptional(pixi, exteriorPath);
     // PS-250F: the decorations of the room that is drawn. Each loads on its
     // own, stepping down like the poster (the default style, then the day
     // room); one that loads nowhere is left out and the room stays as it is.
@@ -216,6 +226,20 @@ export function createPixiSceneRuntime(options = {}) {
     background.scale.set(backgroundCover.scale);
     background.zIndex = 0;
     app.stage.addChild(background);
+
+    if (exteriorTexture) {
+      const exterior = new pixi.Sprite(exteriorTexture);
+      const exteriorCover = getCoverTransform(exterior.texture.width, exterior.texture.height);
+      exterior.anchor.set(0.5);
+      exterior.x = exteriorCover.x;
+      exterior.y = exteriorCover.y;
+      exterior.scale.set(exteriorCover.scale);
+      // Above the room, below every prop and decoration.
+      exterior.zIndex = 1;
+      exterior.label = 'orbit-exterior';
+      if (chosen.appearance?.style === 'pixel' && !scenery.usedFallback) useNearestSampling(exteriorTexture);
+      app.stage.addChild(exterior);
+    }
 
     scene.props.forEach(entry => {
       const sprite = new pixi.Sprite(textures[entry.path]);
@@ -542,6 +566,16 @@ function useNearestSampling(texture) {
   if (!source || source.scaleMode === 'nearest') return;
   source.scaleMode = 'nearest';
   source.style?.update?.();
+}
+
+// An image the scene can do without: null when it cannot load.
+async function loadOptional(pixi, path) {
+  if (!path) return null;
+  try {
+    return (await pixi.Assets.load([path]))[path] || null;
+  } catch {
+    return null;
+  }
 }
 
 function sceneryPaths(scene) {

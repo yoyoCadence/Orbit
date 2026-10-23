@@ -1,6 +1,6 @@
 // Service Worker
 // Bump CACHE version on every deploy so users always get fresh code.
-const CACHE = 'orbit-v1.40.1';
+const CACHE = 'orbit-v1.41.0';
 
 const SHELL = [
   './',
@@ -167,6 +167,10 @@ const SHELL = [
   './assets/personal-space/v2/workspace/decor/deco-floor-lamp-night.png',
   './assets/personal-space/v2/workspace/decor/deco-succulent-night.png',
   './assets/personal-space/v2/workspace/decor/deco-coffee-night.png',
+  // PS-251B: the morning and evening views outside the window (Q style;
+  // the pixel ones are downloaded when first shown, user-approved).
+  './assets/personal-space/v2/workspace/window/exterior-morning.webp',
+  './assets/personal-space/v2/workspace/window/exterior-evening.webp',
   './vendor/pixi.js',
 ];
 

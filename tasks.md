@@ -216,13 +216,6 @@
 > - INFRA-105 核准：先寫變更說明，PR 合併前讓使用者看過。從 Backlog 移入 Next。
 > - 順序：AI-202B1 → AI-202B2 → PS-251 的提案 → INFRA-105（要等使用者看過才合併，放在最後，避免擋住同一個 branch 的其他 PR）。
 
-- [ ] **PS-251** PS-248 提案 §9 中 PS-250 沒有涵蓋的項目
-  - 來源：PS-248 結案時（#202 獨立 review 的 P2）。使用者的 PS-250 決定取代了 PS-248 §9 的範圍、擴充前提、順序、做法與快取，但沒有決定下面兩項。
-  - **§9.3 PS-248A2 窗外依時段變化**（可選；超出 art bible §6.1「一張 exterior」的上限）：使用者 2026-10-23 決定**做**。第一步是實作提案（窗戶遮罩、圖層、素材預算與快取），核准後再渲染。
-    - 實作提案（2026-10-23）：[`docs/ps-251b-window-view-proposal.md`](docs/ps-251b-window-view-proposal.md)。建議 E-A：晨間與傍晚各一張「只有窗外」的 RGBA 疊層（Blender holdout），疊在房間背景之上、家具之下，五個房間共用，兩種畫風共 4 張圖；不重新渲染房間、不改房間背景的格式；只在 `getWorkspaceSceneAssets()` 的回傳加一個屬性（INFRA-105）。窗內幾乎都是建築（天空約 0.1%），所以看得出差別的是建築的顏色、亮度與亮窗，或讓天際線低一點（§8.2）；實作第一步是預覽，確認後才產生正式素材。**等待使用者決定 §8**（時段、窗外的樣子與預覽、房間內的光、開著 app 跨過時段、快取、文件上限）。核准後實作為 PS-251B，驗收條件見提案 §9。
-    - **2026-10-23 使用者決定 §8**：S1（天際線不變，換建築的顏色、亮度與亮窗）、W2（只做晨間與傍晚的疊層）、T1（時段邊界準時重新 render）、其餘照建議（房間內的光不變；Q 版疊層預先快取、像素版第一次顯示時下載；更新 art bible 與 asset pipeline 的「一張 exterior」上限）。下一步：PS-251B 的第一步是**預覽**（五個房間 × 兩種畫風 × 晨間與傍晚的合成圖），使用者確認配色後才產生正式素材與實作，驗收條件見提案 §9。使用者已確認預覽的配色，實作為 PS-251B（In Progress）。
-  - **§9.8 順帶整理**：使用者 2026-10-23 核准三項都做，拆成 PS-251A。
-
 - [ ] **BUG-109A** 在 production 套用 013 signup trigger migration
   - 目標：讓 production 的 `handle_new_user()` 截斷超過 30 字元的名稱來源，長 email local-part 與長 Google 顯示名稱都能註冊。
   - 步驟：依 [`docs/bug-109-signup-name-truncation.md`](docs/bug-109-signup-name-truncation.md) 的 runbook：先以 `pg_get_functiondef` 比對 production 函式與 004、記錄回滾來源，在非 production 環境跑 `tests/database/bug109.test.sql`，再套用並驗證。
@@ -232,13 +225,6 @@
 ---
 
 ## In Progress
-
-- [ ] **PS-251B** 實作 PS-248A2：窗外依時段變化
-  - 依據：[`docs/ps-251b-window-view-proposal.md`](docs/ps-251b-window-view-proposal.md)（#208），使用者 2026-10-23 決定 §8：S1（天際線不變，換建築的顏色、亮度與亮窗）、W2（只做晨間與傍晚的疊層）、T1（時段邊界準時重新 render）、其餘照建議（房間內的光不變；Q 版疊層預先快取、像素版第一次顯示時下載；更新 art bible 與 asset pipeline 的「一張 exterior」上限）。
-  - 預覽（2026-10-23）：以提案 §4 的初稿配色渲染晨間、傍晚的疊層，合成五個房間 × 兩種畫風 × 兩個時段的預覽；**使用者確認配色可以**。
-  - 範圍與驗收：提案 §4、§5、§9。
-  - 依賴：`INFRA-105`（已合併）
-  - In progress（2026-10-23）：INFRA-105（#209）合併、使用者確認預覽後開始。
 
 - [ ] **PRO-014Q** 開發者面板的 backup 不應擋住其他帳號或非 Pro 模擬的 entitlement refresh
   - 問題（PR #158 Codex review 指出，2026-10-18 確認）：`storage.refreshProEntitlement()` 只要 `FLAG_DEV_BACKUP` 存在就直接 return。這個 backup 也由等級模擬器建立，且 `storage.clearAll()` 登出時不會清除。開發者登出後換另一個帳號，該帳號的 refresh 會一直被跳過，在 `server` source 下 fail closed，直到手動重設。
@@ -263,6 +249,31 @@
 
 ## Done
 
+- [x] **PS-251B** 實作 PS-248A2：窗外依時段變化
+  - 依據：[`docs/ps-251b-window-view-proposal.md`](docs/ps-251b-window-view-proposal.md)（#208），使用者 2026-10-23 決定 §8：S1（天際線不變，換建築的顏色、亮度與亮窗）、W2（只做晨間與傍晚的疊層）、T1（時段邊界準時重新 render）、其餘照建議（房間內的光不變；Q 版疊層預先快取、像素版第一次顯示時下載；更新 art bible 與 asset pipeline 的「一張 exterior」上限）。
+  - 預覽（2026-10-23）：以提案 §4 的初稿配色渲染晨間、傍晚的疊層，合成五個房間 × 兩種畫風 × 兩個時段的預覽；**使用者確認配色可以**。
+  - 範圍與驗收：提案 §4、§5、§9。
+  - 依賴：`INFRA-105`（已合併）
+  - In progress（2026-10-23）：INFRA-105（#209）合併、使用者確認預覽後開始。
+  - 完成（2026-10-23，v1.41.0）：
+    - 素材（`art-pipeline/ps251-window/`）：`render_window.py` 以 PS-244 場景渲染只有窗外的 RGBA 疊層（房間物件設 `is_holdout`，家具與裝飾隱藏，不用會被 Freestyle 描邊的 Holdout 材質），`process_window.py` 檢查只有窗戶範圍不透明並輸出：Q 版 `workspace/window/exterior-{morning,evening}.webp`（有 alpha 的 lossy WebP）、像素版 `workspace/pixel/window/exterior-{morning,evening}.png`（32 色、硬邊 alpha、4 倍放大），每張約 12–13 KB；`outputs.json` 記錄大小與 SHA-256。日式和風與夜貓工作室的疊層 alpha 與預設只差 3 個邊緣像素（8/255），五個房間共用。
+    - `assetManifest.js`：`getWorkspaceSceneAssets()` 回傳多一個 `exterior`（只從 `timeBand` 選項讀，晨間與傍晚有、白天與深夜是 `null`，與房間風格無關）；Q 版疊層加入 `getWorkspaceAssetManifestPaths()`（52 個）與 PS-242 manifest（`build-manifest.mjs` 的 exterior 分支）。沒有新增 export（INFRA-105）。
+    - 首頁 poster：背景之後、家具之前的 `<img class="orbit-window-exterior">`（自己的 class、inline 定位，舊的 `style.css` 也能放對位置）。疊層載入失敗就移除；背景退回 Q 版預設房間時，像素疊層換成 Q 版；夜晚房間退回白天房間時，傍晚仍畫傍晚的疊層。
+    - Pixi：`orbit-exterior` sprite（`zIndex` 1，家具最小是 10），像素版用 nearest；疊層跟著實際畫出的房間，載入失敗就不畫，房間照常。
+    - T1：`watchRemindWindow()` 也追蹤時段（邊界 05、10、12、14、17、21 時），首頁與個人空間頁準時重新 render，保留開著的詳細資訊面板與焦點（沿用 AI-203B）。
+    - 快取：Q 版疊層加入 SHELL（PS-211A 推導 45 個，e2e 46 個含 Pixi），像素版第一次顯示時下載。開發者的素材總覽加上兩種畫風的疊層。
+    - 文件：art bible §6.1、§7.2；asset pipeline 的素材上限；technical design §12.2 與時段的說明；`ps244-blender`、`ps250-rooms` README；`art-pipeline/ps251-window/README.md`；提案狀態。
+    - 測試：`ps251bWindowView.test.js`（manifest、素材與 `outputs.json`、poster 疊層與退回、舊 manifest）、`personalSpacePixiRuntime.test.js`（疊層的位置、順序、退回、載入失敗）、`personalSpaceV2RemindWindow.test.js`（每個時段邊界、時段內不重新 render、睡眠跨時段）；e2e `ps251b-window-view.test.js`（晨間與傍晚的疊層與圖層順序；開著 app 跨過 17 時房間換夜晚、窗外換傍晚、只重新 render 一次、保留焦點；跨過 21 時保留詳細資訊面板與焦點；不改 `remindWindow.js` 時失敗）、`sw-precache.test.js` 加上晨間與傍晚的離線 poster。全部 e2e 也在晨間（America/Los_Angeles）與傍晚（Asia/Kolkata）的時區各跑一次，既有以 `.orbit-window-background` 找背景的測試都通過。
+    - 延後載入的 JS gzip 304,916 / 307,200 B，只剩 2,284 B。
+
+- [x] **PS-251** PS-248 提案 §9 中 PS-250 沒有涵蓋的項目
+  - 來源：PS-248 結案時（#202 獨立 review 的 P2）。使用者的 PS-250 決定取代了 PS-248 §9 的範圍、擴充前提、順序、做法與快取，但沒有決定下面兩項。
+  - **§9.3 PS-248A2 窗外依時段變化**（可選；超出 art bible §6.1「一張 exterior」的上限）：使用者 2026-10-23 決定**做**。第一步是實作提案（窗戶遮罩、圖層、素材預算與快取），核准後再渲染。
+    - 實作提案（2026-10-23）：[`docs/ps-251b-window-view-proposal.md`](docs/ps-251b-window-view-proposal.md)。建議 E-A：晨間與傍晚各一張「只有窗外」的 RGBA 疊層（Blender holdout），疊在房間背景之上、家具之下，五個房間共用，兩種畫風共 4 張圖；不重新渲染房間、不改房間背景的格式；只在 `getWorkspaceSceneAssets()` 的回傳加一個屬性（INFRA-105）。窗內幾乎都是建築（天空約 0.1%），所以看得出差別的是建築的顏色、亮度與亮窗，或讓天際線低一點（§8.2）；實作第一步是預覽，確認後才產生正式素材。**等待使用者決定 §8**（時段、窗外的樣子與預覽、房間內的光、開著 app 跨過時段、快取、文件上限）。核准後實作為 PS-251B，驗收條件見提案 §9。
+    - **2026-10-23 使用者決定 §8**：S1（天際線不變，換建築的顏色、亮度與亮窗）、W2（只做晨間與傍晚的疊層）、T1（時段邊界準時重新 render）、其餘照建議（房間內的光不變；Q 版疊層預先快取、像素版第一次顯示時下載；更新 art bible 與 asset pipeline 的「一張 exterior」上限）。下一步：PS-251B 的第一步是**預覽**（五個房間 × 兩種畫風 × 晨間與傍晚的合成圖），使用者確認配色後才產生正式素材與實作，驗收條件見提案 §9。使用者已確認預覽的配色，實作為 PS-251B（In Progress）。
+  - **§9.8 順帶整理**：使用者 2026-10-23 核准三項都做，拆成 PS-251A。
+  - 完成（2026-10-23）：§9.3 由 PS-251B（#210，v1.41.0）完成，§9.8 由 PS-251A（#204）完成。
+
 - [x] **INFRA-105** service worker 安裝時，SHELL 的 JS／CSS／HTML 也要重新驗證，避免改版後先跑舊程式
   - 問題（PS-211A 獨立 review 發現，2026-10-20；修改前就存在）：`sw.js` 的 install 只對圖片與 `pixi.js` 使用 `cache: 'no-cache'`。JS、CSS、HTML 仍走瀏覽器的 HTTP cache。GitHub Pages 的 `max-age=600` 內，新版本的快取會存到**舊的** `version.js` 等模組。
   - 影響：
@@ -273,7 +284,7 @@
   - **改 service worker 的快取行為（部署行為），需使用者核准**。
   - 使用者 2026-10-23 核准：先寫一份短的變更說明（做法、風險、以 e2e 模擬改版的驗證），**PR 合併前讓使用者看過**，再實作。
   - In progress（2026-10-23）：PS-251B 的提案（#208）合併後開始（Next → In Progress）。
-  - 完成（2026-10-23，v1.40.1；**PR 合併前等使用者看過**）：
+  - 完成（2026-10-23，#209，v1.40.1；使用者看過變更說明與結果後核准合併）：
     - 變更說明 [`docs/infra-105-shell-revalidate.md`](docs/infra-105-shell-revalidate.md)。
     - `sw.js`：install 時 SHELL 的每一項都以 `cache: 'no-cache'` 重新驗證（沒變的只回 304）；JS／CSS 的背景更新也是。導覽請求（HTML）的 network-first 不變（理由見變更說明 §2）。
     - e2e `infra105-sw-update.test.js`：自己的靜態伺服器回應 `max-age=600` 與 ETag，模擬「舊檔仍在 HTTP cache 有效期內就部署新版」。修改前兩項都失敗（新快取是舊的 `version.js`；背景更新仍是舊檔），修改後通過。

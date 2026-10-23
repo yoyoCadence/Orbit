@@ -38,12 +38,15 @@ const outputsOf = folder => Object.keys(JSON.parse(readFileSync(
 const ROOM_STYLE_PATHS = outputsOf('ps250-rooms');
 // PS-250F: every decoration, in both character styles.
 const DECOR_PATHS = outputsOf('ps250-decor');
+// PS-251B: the views outside the window, in both character styles.
+const WINDOW_PATHS = outputsOf('ps251-window');
 const ALL_PATHS = [...new Set([
   ...getWorkspaceAssetManifestPaths(),
   ...getToonCharacterPaths(),
   ...PIXEL_PATHS,
   ...ROOM_STYLE_PATHS,
   ...DECOR_PATHS,
+  ...WINDOW_PATHS,
 ])].sort();
 
 describe('PS-250A developer asset gallery', () => {
@@ -61,8 +64,8 @@ describe('PS-250A developer asset gallery', () => {
     expect(listed.sort()).toEqual(ALL_PATHS);
     expect(new Set(listed).size).toBe(listed.length);
     expect(catalog.map(group => group.label)).toEqual([
-      '場景・房間', '家具', '裝飾', '房間風格', 'Q 版主角', 'Q 版 AI 夥伴', '像素場景・房間', '像素家具', '像素裝飾',
-      '像素房間風格', '像素主角', '像素 AI 夥伴',
+      '場景・房間', '家具', '裝飾', '房間風格', '窗外（晨間、傍晚）', 'Q 版主角', 'Q 版 AI 夥伴', '像素場景・房間', '像素家具',
+      '像素裝飾', '像素房間風格', '像素窗外（晨間、傍晚）', '像素主角', '像素 AI 夥伴',
       '經典像素主角', '經典像素 AI 夥伴', '天氣特效',
     ]);
     expect(catalog.every(group => group.source)).toBe(true);

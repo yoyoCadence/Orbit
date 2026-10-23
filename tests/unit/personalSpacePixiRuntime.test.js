@@ -397,6 +397,76 @@ describe('Personal Space V2 Pixi scene runtime', () => {
     runtime.destroy();
   });
 
+  it('draws the morning and evening view outside the window over the room, under the furniture (PS-251B)', async () => {
+    const fake = createFakePixi();
+    const runtime = createPixiSceneRuntime({ loadPixi: () => Promise.resolve(fake.pixi) });
+    const { host } = createRuntimeHost();
+    const app = () => fake.applications[0];
+    const exterior = () => app().stage.children.find(child => child.label === 'orbit-exterior');
+
+    await runtime.mount(host, { activeProject: { progress: 100 }, timeBand: 'morning' });
+    expect(exterior().texture.path).toBe('assets/personal-space/v2/workspace/window/exterior-morning.webp');
+    expect(exterior().texture.source.scaleMode).toBe('linear');
+    // Placed like the room it is cut from, above it and below everything else.
+    const background = app().stage.children.find(child => child.zIndex === 0);
+    expect([exterior().x, exterior().y]).toEqual([background.x, background.y]);
+    expect(exterior().scale.set.mock.calls).toEqual(background.scale.set.mock.calls);
+    expect(exterior().zIndex).toBe(1);
+    const others = app().stage.children.filter(child => child !== background && child !== exterior());
+    expect(others.every(child => child.zIndex > 1), others.map(child => child.zIndex).join()).toBe(true);
+
+    await runtime.render({ activeProject: { progress: 100 }, timeBand: 'evening', appearance: { style: 'pixel' } });
+    expect(exterior().texture.path).toBe('assets/personal-space/v2/workspace/pixel/window/exterior-evening.png');
+    expect(exterior().texture.source.scaleMode).toBe('nearest');
+
+    // By day and at night the room's own view stays.
+    await runtime.render({ activeProject: { progress: 100 }, timeBand: 'day' });
+    expect(exterior()).toBeUndefined();
+    await runtime.render({ activeProject: { progress: 100 }, timeBand: 'night' });
+    expect(exterior()).toBeUndefined();
+    runtime.destroy();
+  });
+
+  it('draws the view of the room that loads, and the room alone when the view cannot load (PS-251B)', async () => {
+    const failing = pattern => {
+      const fake = createFakePixi();
+      const load = fake.pixi.Assets.load.getMockImplementation();
+      fake.pixi.Assets.load.mockImplementation(async requested => {
+        if (requested.some(path => pattern.test(path))) throw new Error('[Loader.load] offline');
+        return load(requested);
+      });
+      return fake;
+    };
+    const draw = async (fake, model) => {
+      const runtime = createPixiSceneRuntime({ loadPixi: () => Promise.resolve(fake.pixi) });
+      await runtime.mount(createRuntimeHost().host, { activeProject: { progress: 100 }, ...model });
+      expect(runtime.getStatus()).toBe('ready');
+      const children = fake.applications[0].stage.children;
+      const drawn = {
+        room: children.find(child => child.zIndex === 0).texture.path,
+        exterior: children.find(child => child.label === 'orbit-exterior')?.texture,
+      };
+      runtime.destroy();
+      return drawn;
+    };
+
+    // No pixel images: the Q-style night room and its view, smooth.
+    let drawn = await draw(failing(/\/workspace\/pixel\//), { timeBand: 'evening', appearance: { style: 'pixel' } });
+    expect(drawn.room).toMatch(/building-formal-workstation-room-v2-night\.webp$/);
+    expect(drawn.exterior.path).toBe('assets/personal-space/v2/workspace/window/exterior-evening.webp');
+    expect(drawn.exterior.source.scaleMode).toBe('linear');
+
+    // No night room: the day room keeps the evening view.
+    drawn = await draw(failing(/-night\.(png|webp)$/), { timeBand: 'evening', appearance: { style: 'pixel' } });
+    expect(drawn.room).toMatch(/building-formal-workstation-room-v2\.webp$/);
+    expect(drawn.exterior.path).toBe('assets/personal-space/v2/workspace/window/exterior-evening.webp');
+
+    // No view: the room as it is.
+    drawn = await draw(failing(/\/window\/exterior-/), { timeBand: 'morning' });
+    expect(drawn.room).toMatch(/building-formal-workstation-room-v2\.webp$/);
+    expect(drawn.exterior).toBeUndefined();
+  });
+
   it('draws the decorations unless hidden, and leaves out one that cannot load (PS-250F)', async () => {
     const fake = createFakePixi();
     const load = fake.pixi.Assets.load.getMockImplementation();

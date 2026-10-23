@@ -4,8 +4,9 @@
  * The service worker precaches every image the Orbit Window poster can show
  * and Pixi. After it installs, an offline reload still shows a complete poster
  * (here in a non-default state with rain) and the runtime reaches ready from the
- * cached Pixi, by day and, with the night room (PS-250E1), at night. The page
- * itself still fetches Pixi only when the runtime mounts.
+ * cached Pixi, by day and, with the night room (PS-250E1), at night, and with
+ * the view outside the window (PS-251B) in the morning and the evening. The
+ * page itself still fetches Pixi only when the runtime mounts.
  */
 
 import { readFileSync } from 'node:fs';
@@ -70,11 +71,19 @@ test.describe('PS-211A service worker precache', () => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
   });
 
-  for (const { lighting, hour } of [{ lighting: 'day', hour: 12 }, { lighting: 'night', hour: 22 }]) {
-    test(`precaches the poster art and Pixi, and an offline reload shows a complete poster (${lighting})`, async ({ page, context }) => {
+  // The evening and the night show the night room; the morning and the evening
+  // a view outside the window (PS-251B).
+  for (const { band, hour, night, exterior } of [
+    { band: 'morning', hour: 7, night: false, exterior: true },
+    { band: 'day', hour: 12, night: false, exterior: false },
+    { band: 'evening', hour: 18, night: true, exterior: true },
+    { band: 'night', hour: 22, night: true, exterior: false },
+  ]) {
+    test(`precaches the poster art and Pixi, and an offline reload shows a complete poster (${band})`, async ({ page, context }) => {
       // 22 day images, the night room with 8 night props, the 6 decorations
-      // by day and by night (PS-250F), and Pixi.
-      expect(PRECACHED).toHaveLength(44);
+      // by day and by night (PS-250F), the two Q-style window views (PS-251B)
+      // and Pixi.
+      expect(PRECACHED).toHaveLength(46);
       const now = todayAt(hour);
       await page.clock.setFixedTime(now);
       await seedStorage(page, [FOCUS_TASK, RECOVERY_TASK], sessionsBefore(now), { ...GUEST_USER, totalXP: 5000 });
@@ -115,11 +124,17 @@ test.describe('PS-211A service worker precache', () => {
           root.querySelector('.orbit-window-background'),
           ...root.querySelectorAll('.orbit-window-prop'),
         ].map(image => image.getAttribute('src')));
-        expect(roomAndProps.every(src => /-night\.(png|webp)$/.test(src))).toBe(lighting === 'night');
-        expect(roomAndProps.some(src => /-night\.(png|webp)$/.test(src))).toBe(lighting === 'night');
+        expect(roomAndProps.every(src => /-night\.(png|webp)$/.test(src))).toBe(night);
+        expect(roomAndProps.some(src => /-night\.(png|webp)$/.test(src))).toBe(night);
         // The achievement frame is dimmed with the night room.
         expect(await orbit.locator('[data-achievement-photo]').evaluate(frame => frame.hasAttribute('data-night-dim')))
-          .toBe(lighting === 'night');
+          .toBe(night);
+        // The view outside the window, loaded as checked below with every poster image.
+        const view = orbit.locator('.orbit-window-poster img.orbit-window-exterior');
+        await expect(view).toHaveCount(exterior ? 1 : 0);
+        if (exterior) {
+          await expect(view).toHaveAttribute('src', `assets/personal-space/v2/workspace/window/exterior-${band}.webp`);
+        }
         await expect.poll(() => orbit.evaluate(root => [...root.querySelectorAll('.orbit-window-poster img')]
           .filter(image => !image.complete || image.naturalWidth === 0)
           .map(image => image.getAttribute('src'))), { timeout: 8000 }).toEqual([]);

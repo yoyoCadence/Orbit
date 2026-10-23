@@ -72,6 +72,10 @@ The user chose a night version of the room for the evening and the night (17:00â
 - **Only within their outline.** Lamp and screen light is not cast on the desk or the wall: props are rendered on shadow catchers, which record shadows, not light, and the room is shared by every phase. A glow would need a separate additive layer (not done).
 - **Runtime.** `getWorkspaceSceneAssets()` picks the night room and props from a `timeBand` option and reports `lighting: 'night'`. The poster and Pixi then use a weaker night layer (the characters and weather still need it), and the poster dims the achievement frame with its photo.
 
+## Window view by time band (PS-251B)
+
+The morning and evening views outside the window are overlays rendered from this scene by `art-pipeline/ps251-window/` (the user's choice on 2026-10-23). By day and at night the view stays baked into the room. A change to the window, the camera or the skyline (`build_room()`, `SKY`, `SKYLINE`) needs those overlays rendered again; a change to anything else in the room does not.
+
 ## Not in scope
 
 - No 3D runtime: the app still draws 2D sprites with Pixi, and the JS budget is unchanged.
