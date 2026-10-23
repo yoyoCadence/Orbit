@@ -470,8 +470,15 @@ function formatRecentWorldChange(change) {
   return formatWorldChange(change);
 }
 
+// AI-202B2: a reveal that takes a stage back is never celebrated.
+function showsStageDown(reveal) {
+  const change = reveal?.relationshipStage;
+  return Boolean(change && typeof change === 'object')
+    && RELATIONSHIP_STAGES.indexOf(change.to) < RELATIONSHIP_STAGES.indexOf(change.from);
+}
+
 export function selectProtagonistState({ pendingReveal, recentSessions, momentum } = {}) {
-  if (isWorldProgressReveal(pendingReveal)) {
+  if (isWorldProgressReveal(pendingReveal) && !showsStageDown(pendingReveal)) {
     return immutable({ state: 'celebrate', animationKey: 'celebrate', reasonKey: 'reward-progress' });
   }
   if (pendingReveal) {

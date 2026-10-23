@@ -60,10 +60,16 @@ function localizePageModel(model) {
       : `開始「${questTarget.taskName || '專注任務'}」`;
   const pendingReveal = model.pendingReveal ? {
     ...model.pendingReveal,
-    title: model.pendingReveal.direction === 'reversal' ? '世界狀態已回復' : '世界有了新變化',
-    lines: Array.isArray(model.pendingReveal.rewards)
-      ? model.pendingReveal.rewards.map(reward => formatRewardLine(reward))
-      : model.pendingReveal.lines,
+    // AI-202B2: a stage-up keeps its own title, and the controller's lines
+    // carry the milestones the rewards no longer show.
+    title: model.pendingReveal.title && model.pendingReveal.relationshipStage
+      ? model.pendingReveal.title
+      : model.pendingReveal.direction === 'reversal' ? '世界狀態已回復' : '世界有了新變化',
+    lines: Array.isArray(model.pendingReveal.lines)
+      ? model.pendingReveal.lines
+      : Array.isArray(model.pendingReveal.rewards)
+        ? model.pendingReveal.rewards.map(reward => formatRewardLine(reward))
+        : [],
   } : null;
 
   return {

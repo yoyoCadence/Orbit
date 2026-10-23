@@ -236,12 +236,6 @@
 
 ## In Progress
 
-- [ ] **AI-202B2** 實作 AI-202：里程碑（專案完成與關係階段）的 reveal
-  - 依據：[`docs/ai-202-companion-relationship-proposal.md`](docs/ai-202-companion-relationship-proposal.md) §3.4、§8（reveal 與 Companion 的驗收條件），使用者 2026-10-23 的決定。
-  - 範圍：`presentedMilestones`（新的本機欄位）與淨變化的放置；第 12、30 天的階段提升是 `major`，標題與行「夥伴關係：合作夥伴」，Companion `congratulate`＋`companion.relationship.stage-up`；階段退回不是 `major`、`observe`；`queueReveal: false` 只移除或縮小；舊格式 reveal 的重新計算；消耗帶里程碑的 reveal 時前進基準。與 BUG-113 的專案完成判斷整合。
-  - 依賴：`AI-202B1`
-  - In progress（2026-10-23）：AI-202B1 合併後開始（Next → In Progress）。
-
 - [ ] **PRO-014Q** 開發者面板的 backup 不應擋住其他帳號或非 Pro 模擬的 entitlement refresh
   - 問題（PR #158 Codex review 指出，2026-10-18 確認）：`storage.refreshProEntitlement()` 只要 `FLAG_DEV_BACKUP` 存在就直接 return。這個 backup 也由等級模擬器建立，且 `storage.clearAll()` 登出時不會清除。開發者登出後換另一個帳號，該帳號的 refresh 會一直被跳過，在 `server` source 下 fail closed，直到手動重設。
   - 影響：只影響使用過開發者面板的裝置。
@@ -264,6 +258,22 @@
 ---
 
 ## Done
+
+- [x] **AI-202B2** 實作 AI-202：里程碑（專案完成與關係階段）的 reveal
+  - 依據：[`docs/ai-202-companion-relationship-proposal.md`](docs/ai-202-companion-relationship-proposal.md) §3.4、§8（reveal 與 Companion 的驗收條件），使用者 2026-10-23 的決定。
+  - 範圍：`presentedMilestones`（新的本機欄位）與淨變化的放置；第 12、30 天的階段提升是 `major`，標題與行「夥伴關係：合作夥伴」，Companion `congratulate`＋`companion.relationship.stage-up`；階段退回不是 `major`、`observe`；`queueReveal: false` 只移除或縮小；舊格式 reveal 的重新計算；消耗帶里程碑的 reveal 時前進基準。與 BUG-113 的專案完成判斷整合。
+  - 依賴：`AI-202B1`
+  - In progress（2026-10-23）：AI-202B1 合併後開始（Next → In Progress）。
+  - 完成（2026-10-23，v1.40.0）：
+    - `controller.js`：`presentedMilestones = { projectCompleted, relationshipStage, pending }`；淨變化＝目前狀態 − 基準，整個佇列最多一個 reveal 帶 `milestone: { project, stage }`。放置順序：錨點 Session（第 4／12／30 個 Main Quest 日；同一個 Session 有兩個 reveal 時用本次加入的）→ 本次 `main-focus` 有變化的 reveal → 最新一個不是只含撤銷的 reveal → 併入基準；完成與階段提升不放在只含撤銷的 reveal。
+    - 記錄或撤銷 Session、第一次以新規則計算時放置；舊版分頁排入的 reveal 只在它就是錨點時接收；其他 reconcile 只縮小或移除（階段只在 `from` 與原本的 `to` 之間縮小，超過 `to` 或反向就移除，例如同步帶入第 12 天時第 4 天待播放的 reveal 只移除「熟悉夥伴」）。
+    - 初始值：以目前規則從 reconcile 之前的 ledger 計算，扣掉仍有效的舊格式 reveal 中加入的 `world_unlock`（完成設為 `false`）與 `relationship`（階段不加推導的 milestone）。`pending` 指的 reveal 已不在佇列時（舊版分頁播放了它）基準設為 `pending.to`。
+    - 每次 reconcile 由 reward 與里程碑重新計算 reveal 的 `lines`、`kind`、`title`、`projectCompleted`、`relationshipStage`、`worldChange`；解鎖行與「夥伴關係：<階段>」只來自里程碑；`major` 只來自完成或階段提升；只有階段提升時 `title` 是新階段；沒有行的 reveal 不排入。移除 BUG-113 的 `completedSourceId`。
+    - `consumePersonalSpaceV2Reveal()`：消耗帶里程碑的 reveal 時把基準前進到它的 `to`。
+    - `companionEngine.js`：完成 → `companion.relationship.stage-up`（新台詞「我們一起走過的日子，又多了一些。」，加入文案表與 telemetry allowlist）→ 階段退回 `observe`＋目前階段的台詞。主角在階段退回的 reveal 不慶祝。完整頁面使用 reveal 的 `lines` 與階段提升的標題。
+    - 文件：vertical slice §4.3、§5.1、§7.2（Companion 優先順序）、`personal-space-state-flow.md`。
+    - 測試：`ai202b2MilestoneReveals.test.js`（32 項，涵蓋提案 §8 reveal 的每一項，另加舊版分頁排入的 reveal、「最近的世界變化」跟著里程碑、重複套用相同）；e2e `ai202b2-stage-reveal.test.js`（341 px 記錄第 12 天：Major、標題與台詞、標題一行、重新載入不重播）。BUG-113／BUG-114 的測試不變並通過。
+    - 預算：延後載入的 JS gzip 302,706 / 307,200 B（剩 4,494 B）。
 
 - [x] **AI-202B1** 實作 AI-202：關係階段的推導與顯示
   - 依據：[`docs/ai-202-companion-relationship-proposal.md`](docs/ai-202-companion-relationship-proposal.md) §3.2、§3.3、§5–§7，使用者 2026-10-23 的決定（N1、只算 Main Quest 日、K4＋R1、S1、H1、T0）。

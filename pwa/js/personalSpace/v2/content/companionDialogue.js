@@ -6,6 +6,7 @@
  * lines); docs/ai-204-companion-dialogue-proposal.md.
  * AI-202B1 (S1, approved 2026-10-23): the two lines seen most often also have
  * one per relationship stage after the first; the first keeps the W-A line.
+ * AI-202B2: the stage-up line of the same proposal (§7).
  */
 
 export const COMPANION_NAME = 'Orbit 夥伴';
@@ -25,6 +26,7 @@ export const COMPANION_DIALOGUE = Object.freeze({
   'companion.observe.familiar': '我開始熟悉你的節奏了。',
   'companion.observe.partner': '這個空間是我們一天一天累積起來的。',
   'companion.observe.trusted-companion': '你的節奏我很熟悉了，需要時我都在。',
+  'companion.relationship.stage-up': '我們一起走過的日子，又多了一些。',
 });
 
 /** The line for a dialogue key; an unknown key falls back to `companion.observe`. */

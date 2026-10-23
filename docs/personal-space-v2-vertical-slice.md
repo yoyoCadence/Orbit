@@ -174,6 +174,8 @@ For the first ruleset, `ps-v2-workspace-v1`:
 
 The 12th and 30th Main Quest days each add one more relationship point. They are derived from the active ledger (relationship policy `ai202-main-quest-days-v1`, §7.2) and are not ledger entries.
 
+Reveals show the completion and the relationship stage as milestones (AI-202B2): the net change from what the user last saw (`presentedMilestones`, §5.1), never the `world_unlock` or `relationship` entries themselves. The 4th day's reveal shows 「解鎖：正式工作站」 and 「夥伴關係：熟悉夥伴」; the 12th and 30th days' reveals are Major, titled 「夥伴關係：合作夥伴」／「夥伴關係：信賴夥伴」. A stage taken back by an undo shows the stage it returns to and is not Major. A handover to another day, a sync, and history caught up by a new rule show no milestone. docs/ai-202-companion-relationship-proposal.md §3.4.
+
 Ordinary low-value completions do not drop Gold. Gold is fixed, non-random, and tied to an understandable source.
 
 For a valid Session that did not receive the Main Quest Depth reward, choose exactly one primary hidden stat using this priority:
@@ -285,7 +287,7 @@ The exact implementation can split storage across modules, but the normalized lo
 }
 ```
 
-The implemented state keeps the relationship under `companion`: `relationshipPoints`, `relationshipStage`, and (AI-202B1) `legacyRelationshipPoints` (the migrated legacy floor, stored once) and `relationshipPolicyId` (the version of the derivation). These are local fields; V2 state is not synced and has no database schema.
+The implemented state keeps the relationship under `companion`: `relationshipPoints`, `relationshipStage`, and (AI-202B1) `legacyRelationshipPoints` (the migrated legacy floor, stored once) and `relationshipPolicyId` (the version of the derivation). `presentedMilestones` (AI-202B2) records the project completion and relationship stage the user last saw, and the one queued reveal that shows the change since (`pending`). These are local fields; V2 state is not synced and has no database schema.
 
 Project progress, quest completion, hidden stats, V2 Gold, relationship advancement, and unlocked project phases are reduced from active ledger entries. A persisted derived snapshot may be used for fast rendering, but reconciliation must be able to rebuild and verify it from the ledger.
 
@@ -495,13 +497,15 @@ Output:
 
 Priority for the slice:
 
-1. Project completion pending: `congratulate`.
-2. Main Quest/Project progress reveal pending: `approach` then `congratulate`.
-3. Valid recovery completed: `rest` with a recovery-specific dialogue key.
-4. Productive ordinary Session completed: `approach`.
-5. Strong/Peak Momentum with no reveal: `work`.
-6. Low Momentum: `observe`; a bounded `remind` may be used only when a user-selected goal exists.
-7. Otherwise: `observe`.
+1. The reveal that shows the project completing: `congratulate` with the completion line.
+2. The reveal that shows a stage-up: `congratulate` with `companion.relationship.stage-up`.
+3. An undo reveal (only reversed rewards, or a stage taken back): `observe` with the current stage's `observe` line, and nothing below applies; the protagonist does not celebrate.
+4. Added Main Quest/Project progress reveal pending: `approach`.
+5. Valid recovery completed: `rest` with a recovery-specific dialogue key.
+6. Productive ordinary Session completed: `approach`.
+7. Strong/Peak Momentum with no reveal: `work`.
+8. Low Momentum: `observe`; a bounded `remind` may be used only when a user-selected goal exists.
+9. Otherwise: `observe`.
 
 Relationship stages remain ordered:
 
@@ -514,7 +518,8 @@ The stage is derived from the active ledger (AI-202, policy `ai202-main-quest-da
 - Completing Workspace Upgrade (the 4th Main Quest day) adds one point through its ledger entry. Reversing the project-completion source reverses it unless a later active source independently sustains it.
 - The 12th and 30th distinct Main Quest days each add one derived point. They are not ledger entries, so an older tab cannot reverse them.
 - Only Main Quest days count; recovery, ordinary Sessions, hidden stats, Streak and interactions do not. There is no time decay: the stage only falls when undone Main Quest days take the count under a threshold.
-- The stage picks the `observe` and `momentum.strong` lines (one per stage after the first). Stage-change reveals and their priority in the list above are AI-202B2.
+- The stage picks the `observe` and `momentum.strong` lines (one per stage after the first). A stage change is shown once, as a milestone on one reveal (§4.3, AI-202B2).
+- Recording or undoing a Session places the change on the reveal of the Main Quest day that crossed the threshold (else the undo that changed a Main Quest day, else the latest reveal that is not only an undo). Opening the app or a sync only shrinks or removes a queued milestone; what they bring in is taken as seen.
 
 Dialogue uses approved keys, never raw generated text. It must describe the observed pattern or Project change without guilt, emotional coercion, or repetitive generic praise.
 

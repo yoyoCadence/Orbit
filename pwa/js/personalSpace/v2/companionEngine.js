@@ -1,3 +1,4 @@
+import { RELATIONSHIP_STAGES } from './content/worldLabels.js';
 import {
   isProjectCompletionReveal,
   isQuestOrProjectProgressReveal,
@@ -52,6 +53,14 @@ function isReversalOnlyReveal(reveal) {
   return reveal?.direction === 'reversal';
 }
 
+// AI-202B2: the stage change a reveal shows, from what the user last saw:
+// 1 up, -1 down, 0 none. The controller computes it; a reveal never changes it.
+function stageChange(reveal) {
+  const change = reveal?.relationshipStage;
+  if (!change || typeof change !== 'object') return 0;
+  return Math.sign(RELATIONSHIP_STAGES.indexOf(change.to) - RELATIONSHIP_STAGES.indexOf(change.from));
+}
+
 // The workspace line only when the reveal shows the project moving: past 100%
 // a Main Quest day is still progress, but the workspace no longer changes
 // (BUG-114).
@@ -83,7 +92,8 @@ export function getCompanionReaction({
   relationshipStage = null,
 } = {}) {
   // Nothing was earned, so neither congratulate nor approach (BUG-113); this
-  // also wins over a productive Session earlier the same day.
+  // also wins over a productive Session earlier the same day. A completion or
+  // a stage-up is never shown on such a reveal (AI-202B2).
   if (isReversalOnlyReveal(pendingReveal)) {
     return freezeReaction({
       state: 'observe',
@@ -99,6 +109,25 @@ export function getCompanionReaction({
       dialogueKey: 'companion.project.workspace-upgrade.complete',
       animationKey: 'congratulate',
       worldAction: 'celebrate-project',
+    });
+  }
+
+  const stage = stageChange(pendingReveal);
+  if (stage > 0) {
+    return freezeReaction({
+      state: 'congratulate',
+      dialogueKey: 'companion.relationship.stage-up',
+      animationKey: 'congratulate',
+      worldAction: 'approach-player',
+    });
+  }
+  // A stage taken back by an undo: the current stage's line, never progress.
+  if (stage < 0) {
+    return freezeReaction({
+      state: 'observe',
+      dialogueKey: observeLine(relationshipStage),
+      animationKey: 'observe',
+      worldAction: null,
     });
   }
 

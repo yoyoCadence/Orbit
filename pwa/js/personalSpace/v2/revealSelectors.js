@@ -42,6 +42,7 @@ export function isQuestOrProjectProgressReveal(reveal) {
 }
 
 export function isWorldProgressReveal(reveal) {
-  return isQuestOrProjectProgressReveal(reveal)
-    || hasAddedReward(reveal, reward => reward.rewardType === WORLD_UNLOCK);
+  // The unlock as the reveal shows it: a handover moves the entry without
+  // unlocking anything (AI-202B2).
+  return isQuestOrProjectProgressReveal(reveal) || isProjectCompletionReveal(reveal);
 }

@@ -98,7 +98,7 @@ sessions（state.sessions，含遠端合併結果）
 |---|---|---|
 | App 載入／遠端同步後 | `pwa/js/app.js` → `loadStateFromStorage()` → `refreshCanonicalStateAndReconcilePersonalSpaceV2()` | 遠端完整載入成功時 `authoritative: true` |
 | Session 新增、結算、刪除 | `pwa/js/sessionFlow.js` → `reconcilePersonalSpaceAfterSessionChange()` → `reconcileAndSavePersonalSpaceV2()` | 失敗只記 warning，下次 render 再試 |
-| Reveal 確認 | `controller.js` → `consumePersonalSpaceV2Reveal()` | 從 `pendingRewardReveals` 移除該筆 |
+| Reveal 確認 | `controller.js` → `consumePersonalSpaceV2Reveal()` | 從 `pendingRewardReveals` 移除該筆；帶里程碑的 reveal 同時把 `presentedMilestones` 前進到它的 `to`（AI-202B2） |
 
 V2 失敗被刻意隔離：`refreshCanonicalStateAndReconcilePersonalSpaceV2()` 先更新 tasks／sessions／energy，再 reconcile；reconcile 丟錯不影響核心 UI。
 
@@ -135,6 +135,9 @@ Session 刪除或 Undo 會為該 source 建立 tombstone 並撤銷其 entry（`r
 | `companion.legacyRelationshipPoints` | 欄位不存在時寫入一次：`max(0, 已儲存的點數 − reconcile 之前 ledger 的 relationship)`；之後只讀，無效值視為 0 |
 | `companion.relationshipPolicyId` | 每次 reconcile 寫入目前的 policy id（`ai202-main-quest-days-v1`） |
 | `companion.relationshipStage` | relationship points 對應 `stranger-observer → familiar → partner → trusted-companion`（0–3） |
+| `presentedMilestones` | 使用者**最後看到**的里程碑 `{ projectCompleted, relationshipStage, pending }`（AI-202B2）。欄位不存在時以目前規則從 reconcile 之前的 ledger 計算，扣掉仍有效、尚未播放的舊格式 reveal 所代表的完成與 relationship entry；`pending` 記錄帶里程碑的 reveal 與它的 `to`，該 reveal 已不在佇列（舊版分頁播放了它）時先把基準設為 `to` |
+| `pendingRewardReveals[].milestone` | 淨變化（目前狀態 − `presentedMilestones`）：`{ project: 'completed' \| 'uncompleted' \| null, stage: { from, to } \| null }`，整個佇列最多一個 reveal 帶它。記錄或撤銷 Session（`queueReveal: true`）與第一次以新規則計算時，依序放在錨點 Session（完成與 `familiar` 是第 4 個、`partner`／`trusted-companion` 是第 12／30 個 Main Quest 日）的 reveal、本次 `main-focus` 有變化的 reveal、最新一個不是只含撤銷的 reveal；完成與階段提升不放在只含撤銷的 reveal。其他 reconcile 只縮小或移除已排入的里程碑，移除的部分併入基準；舊版分頁排入的 reveal 只在它就是錨點時接收里程碑 |
+| `pendingRewardReveals[]` 的 `lines`／`kind`／`title`／`projectCompleted`／`relationshipStage`／`worldChange` | 由 reward 與里程碑重新計算：`world_unlock`／`relationship` entry 不再直接成為行，解鎖行與「夥伴關係：<階段>」只來自里程碑；`major` 只來自完成或階段提升；只有階段提升（沒有完成）時 `title` 是「夥伴關係：<階段>」；沒有任何行的 reveal 不排入。`projectCompleted`／`relationshipStage` 供 `companionEngine` 判斷恭喜或 `observe` |
 | `activeProject` | `projectEngine.deriveActiveProject()`；phase 依 progress 0／25／50／75／100 對應 `viewModels.js` 的 `PROJECT_PHASES` |
 | `worldRevision` | 任何 ledger 或語意變動時 +1；`savePersonalSpaceV2State()` 可用 `expectedRevision` 擋下過期寫入 |
 
@@ -142,12 +145,12 @@ Session 刪除或 Undo 會為該 source 建立 tombstone 並撤銷其 entry（`r
 
 | 動作 | 位置 | 寫入欄位 |
 |---|---|---|
-| Reconcile（§4.1） | `controller.js` → `reconcileAndSavePersonalSpaceV2()` | `economy`、`hiddenStats`、`companion`、`activeProject`、`rewardLedger`、`rewardTombstones`、`pendingRewardReveals`、`worldRevision` |
+| Reconcile（§4.1） | `controller.js` → `reconcileAndSavePersonalSpaceV2()` | `economy`、`hiddenStats`、`companion`、`activeProject`、`rewardLedger`、`rewardTombstones`、`pendingRewardReveals`、`presentedMilestones`、`worldRevision` |
 | Edit Mode：工作站佈置 | `pages/personalSpaceV2.js` | **無**。PS-246 起 Edit Mode 只顯示「位置由固定視角的場景決定」的說明，不列出、不調整、也不清除 legacy 擺放；V2 也不套用 `world.placedItems`、`world.idleWindowLayouts` 中的座標 |
 | Edit Mode：風格與角色（PS-250B） | `ui/appearancePicker.js` → `saveAppearanceChange()` | `world.appearance`（`{ style, protagonistId, companionId }`；使用者選擇前是 `null`，以預設顯示）。疊在已存的 state 上寫入；還沒有 V2 state 時不寫入（避免跳過遷移）。不改變 `worldRevision`、ledger 與任何獎勵 |
 | Edit Mode：房間風格（PS-250E2） | `ui/appearancePicker.js` → `saveAppearanceChange()` | `world.selectedThemeId`（既有欄位，以前只存不讀；`default`、`nordic`…，不認得的值包括 legacy 的 `night` 都畫預設房間）。只改這個欄位，沒選過的 `world.appearance` 維持 `null`。與風格與角色相同：不寫入沒有遷移過的 state，不改變 `worldRevision`、ledger 與任何獎勵 |
 | Edit Mode：裝飾開關（PS-250F） | `ui/appearancePicker.js` → `saveAppearanceChange()` | `world.hiddenDecorations`（關掉的裝飾 id；預設 `[]`＝全部顯示，之後新增的裝飾也會出現）。疊在最新已存的 state 上加入或移除一個 id，不認得的 id（較新版本的裝飾）保留。與風格與角色相同：不寫入沒有遷移過的 state，不改變 `worldRevision`、ledger、經濟與任何獎勵 |
-| Reveal 確認 | `controller.js` → `consumePersonalSpaceV2Reveal()` | `pendingRewardReveals` |
+| Reveal 確認 | `controller.js` → `consumePersonalSpaceV2Reveal()` | `pendingRewardReveals`；帶里程碑時還有 `presentedMilestones` |
 | 購買、新增物件、切換場景 | — | **無**（見 §7） |
 
 ### 4.6 Scene 與 level 在 V2 的角色
