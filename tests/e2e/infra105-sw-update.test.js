@@ -147,9 +147,15 @@ test.describe('INFRA-105 service worker update', () => {
     });
     await expect.poll(() => cachedText(page, cacheName, '/js/timeBand.js'), { timeout: 20_000 })
       .toContain('getTimeBand');
+    const reloadStart = pages.log.length;
     await page.reload();
     await page.waitForSelector('#main-app:not(.hidden)', { timeout: 10_000 });
     expect(await page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
+    // The reload's own background update: a 304 shows the browser held a
+    // cached copy (the HTTP cache is on) and asked the server anyway, and
+    // waiting for it keeps a late write of the old copy out of the check.
+    await expect.poll(() => pages.log.slice(reloadStart), { timeout: 10_000 })
+      .toContainEqual({ path: '/js/timeBand.js', status: 304 });
 
     // Changed on the server, still fresh in the HTTP cache: the page gets the
     // cached copy at once, and the cache is updated from the server behind it.

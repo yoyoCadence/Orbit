@@ -132,7 +132,8 @@
 33. **INFRA-105**（#209，v1.40.1）：service worker 安裝時 SHELL 的每一項都以 `cache: 'no-cache'` 重新驗證，JS／CSS 的背景更新也是。變更說明 [`docs/infra-105-shell-revalidate.md`](infra-105-shell-revalidate.md)。**使用者要求合併前先看過**，所以 CI 與 review 都過了也要等使用者。
     - e2e 的教訓：Playwright 的 routing 會關掉 HTTP cache，重現不了快取問題，所以 `infra105-sw-update.test.js` 自己開伺服器（`max-age=600`＋ETag）。headless 的軟體 WebGL 持續繪製時 Chromium 會延後 service worker 的更新檢查，要以 reduced motion 開啟 app。
     - Codex 在 #208 期間用完額度（「You have reached your Codex usage limits」）；依 §2 的規則以獨立的 Claude review 代替。
-34. **下一步**：PS-251B 等使用者決定 §8 後實作（第一步是預覽）；INFRA-105 等使用者看過後合併。Backlog 其餘項目需要核准或屬高風險。Backlog 其餘項目需要核准或屬高風險（HW-112 的 Storage migration、INFRA-101／PS-211D 的部署行為、PRO-014* 的 entitlement）。使用者原則：以「任務確實完成」為準，合併是後話；做不到的先寫進 `tasks.md`。
+    - 獨立 review（代替額度用完的 Codex）沒有 P1／P2；依 P3 補上背景更新不快取錯誤回應、e2e 確認 HTTP cache 有作用、304 的說明；根目錄 `isHtml` 的舊問題記為 Backlog INFRA-107。
+34. **下一步**：使用者 2026-10-23 決定 PS-251B §8（S1、W2、T1、其餘照建議，見 `tasks.md`）；第一步是渲染預覽給使用者確認配色（`/tmp/bpyenv` 有 Blender）。INFRA-105 等使用者看過後合併。Backlog 其餘項目需要核准或屬高風險（HW-112 的 Storage migration、INFRA-101／PS-211D 的部署行為、PRO-014* 的 entitlement）。使用者原則：以「任務確實完成」為準，合併是後話；做不到的先寫進 `tasks.md`。
 
 其他：
 

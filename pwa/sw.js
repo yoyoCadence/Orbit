@@ -173,7 +173,8 @@ const SHELL = [
 // Precache on install. Every entry is revalidated with the server (INFRA-105):
 // GitHub Pages lets the browser keep a file for 10 minutes (max-age=600), so a
 // version deployed within that time would otherwise cache the previous
-// version's code and art. An unchanged file only costs a 304.
+// version's code and art. An unchanged file costs a 304 while the server keeps
+// its ETag.
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL.map(path => (
     new Request(path, { cache: 'no-cache' })
@@ -217,12 +218,13 @@ self.addEventListener('fetch', e => {
     );
   } else if (isJsCss) {
     // Stale-while-revalidate: return cached copy immediately; update cache in
-    // background, from the server rather than the browser's HTTP cache (INFRA-105)
+    // background, from the server rather than the browser's HTTP cache
+    // (INFRA-105). An error response never replaces a working module.
     e.respondWith(
       caches.open(CACHE).then(cache =>
         cache.match(e.request).then(cached => {
           const networkFetch = fetch(e.request, { cache: 'no-cache' })
-            .then(res => { cache.put(e.request, res.clone()); return res; })
+            .then(res => { if (res.ok) cache.put(e.request, res.clone()); return res; })
             .catch(() => null);
           return cached ?? networkFetch;
         })

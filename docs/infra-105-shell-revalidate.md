@@ -18,11 +18,13 @@
 只改 `pwa/sw.js`：
 
 1. **install**：SHELL 的**每一項**都以 `new Request(path, { cache: 'no-cache' })` 取得。
-   - `no-cache` 不是不用快取，而是**一定先向伺服器確認**：檔案沒變時伺服器回 `304`，瀏覽器用 HTTP cache 的內容（不重新下載）；有變時回 `200` 與新內容。
+   - `no-cache` 不是不用快取，而是**一定先向伺服器確認**：伺服器認得 HTTP cache 裡那一份（`ETag` 相同）時回 `304`，瀏覽器用 HTTP cache 的內容（不重新下載）；不同時回 `200` 與新內容。
    - 取代 `REVALIDATE_ON_INSTALL`（圖片與 `pixi.js` 原本就這樣做），改成一律套用，註解改寫。
 2. **JS／CSS 的背景更新**（stale-while-revalidate）：背景的 `fetch` 改為 `fetch(e.request, { cache: 'no-cache' })`。頁面仍立刻拿到快取中的版本（不變慢），只有背景更新一定拿到伺服器上的最新版本。
+   - 錯誤回應（404、5xx）**不寫進快取**（與圖片的分支相同）：背景更新現在每次都問伺服器，一次失敗的回應不能取代能用的模組（獨立 review 指出，原本就有、這次更常發生）。
 3. **不改**：
-   - HTML 的 network-first（導覽請求）：導覽請求不能直接改 cache mode（要重建 `Request`，redirect 與 mode 會改變），風險比收益大。`index.html` 很少改，且 install 時已重新驗證（第 1 點）。
+   - HTML 的 network-first（導覽請求）：導覽請求不能直接改 cache mode（要重建 `Request`，redirect 與 mode 會改變），風險比收益大。安全的原因是第 1 點：install 時重新驗證 `./`、`./index.html`，也同時更新了頁面與 service worker 共用的 HTTP cache。
+   - 已知、原本就有的問題（不在本 PR 修，記為 Backlog INFRA-107）：`isHtml` 以 `url.pathname === '/'` 判斷根目錄，在 GitHub Pages 的 `/Orbit/` 不成立，所以 `https://yoyocadence.github.io/Orbit/` 其實走 cache-first。它仍是新版的內容，因為第 1 點在 install 時重新驗證了 `./`。
    - 圖片的 cache-first、`activate` 清除舊快取、`skipWaiting`／`clients.claim`、「新版本已就緒」橫幅。
    - `CACHE` 名稱與 `npm run bump` 的流程。
 4. 第一次部署就生效：瀏覽器檢查 `sw.js` 本身更新時預設不經過 HTTP cache（`updateViaCache: 'imports'`），所以帶著這個修正的 `sw.js` 一安裝，它自己的 install 就用新的取法。
@@ -31,10 +33,10 @@
 
 | 項目 | 說明 | 處理 |
 |---|---|---|
-| 安裝時的請求 | 每次新版本安裝，約 110 個 JS／CSS／HTML 多一個條件式請求。沒變的檔案只回 `304`（沒有內容），流量很小；本來就只在部署新版本時發生 | 可接受 |
+| 安裝時的請求 | 每次新版本安裝，約 110 個 JS／CSS／HTML 多一個條件式請求。伺服器保留 `ETag` 時，沒變的檔案只回 `304`（沒有內容）；GitHub Pages 每次部署若讓所有檔案的 `ETag` 都改變（未驗證，部署會重新上傳整個網站），就是全部重新下載，與現在「上次載入超過 10 分鐘後」的安裝相同。只在部署新版本時發生 | 可接受，最差也與現在相同 |
 | 安裝失敗 | `addAll()` 任一項失敗整個 install 失敗，舊的 service worker 繼續運作。與現在相同（現在也是同一個 `addAll()`）；只是現在 HTTP cache 有時會替網路故障「補位」，之後一定要連得到伺服器 | 下次開啟時瀏覽器會再試；與圖片現在的行為相同 |
 | 背景更新多一次往返 | 只有背景的請求，頁面不等它 | 不影響載入速度 |
-| GitHub Pages 的 304 | Pages 回應 `ETag`／`Last-Modified`，支援條件式請求 | e2e 以同樣的標頭驗證（§4） |
+| GitHub Pages 的 304 | Pages 回應 `ETag`／`Last-Modified`，支援條件式請求；部署後 `ETag` 是否不變未驗證（PS-211D 也需要確認） | e2e 用內容雜湊的 `ETag`（最佳情況），只驗證「有變的拿到新版、沒變的可以 304」；正確性不依賴 304 |
 | 仍在執行舊程式的頁面 | 已開著的頁面在重新整理前仍是舊程式（與現在相同，靠橫幅提示） | 不在範圍 |
 | 回復 | 只改 `sw.js`，沒有資料或格式變更 | revert 即可；下一次部署會換掉快取 |
 
@@ -55,11 +57,11 @@
      - `sw.js` 的 `CACHE` 換成新名稱；
      - `js/version.js` 換成新的 `APP_VERSION`；
      - 一個 CSS 也換內容。
-  3. `registration.update()`，等新的 service worker 啟用（`controllerchange`）。
+  3. `registration.update()`，等到快取只剩新名稱（新的 service worker 已啟用，舊快取已刪）。
   4. 驗證：
      - 新快取中的 `js/version.js` 與 CSS 是**新版**內容；
      - 重新整理後 app 讀到新的 `APP_VERSION`；
-     - 沒變的 JS 以 `304` 回應（不是重新下載）。
+     - 沒變的 JS 以 `304` 回應（不是重新下載；測試伺服器的 `ETag` 是內容雜湊）。
   5. 背景更新：頁面在新版本下載入一個已改內容、但仍在 HTTP cache 有效期內的 JS 後，快取中的內容是伺服器上的最新版。
 - 對照：同一個測試在修改前的 `sw.js` 上**會失敗**（新快取裡是舊的 `version.js`）。實作時先確認失敗，再套用修正，並把兩次結果寫在 PR。
 - 既有的 `tests/e2e/sw-precache.test.js`（PS-211A 的離線 poster）照常通過。
@@ -87,7 +89,8 @@
   - 改過的 `js/version.js` 回 `200`；
   - 沒變的 `js/app.js`、`index.html` 回 `304`；
   - 重新整理後 app 讀到新的 `APP_VERSION`。
-- 完整驗證：lint、unit 80 個檔案／1230 項、e2e 71 項（含 PS-211A 的離線 poster）都通過。
+- 完整驗證：lint、unit 80 個檔案／1232 項、e2e 71 項（含 PS-211A 的離線 poster）都通過。
+- 獨立 review（Codex 額度用完時的替代）：沒有 P1／P2。依它的 P3 補上：背景更新不快取錯誤回應（含 unit test）；e2e 確認 HTTP cache 有作用（背景更新拿到 `304`）；304 的說明改為「伺服器保留 `ETag` 時」；根目錄的 `isHtml` 舊問題記為 INFRA-107。它也確認：各瀏覽器以 init 重建 `Request` 沒問題；直接開啟 `/js/*.js` 也正常；兩個 e2e 各自涵蓋修正的一半（只修 install 時第 2 項失敗，只修背景更新時第 1 項失敗）。
 - 修改：
   - `pwa/sw.js`：install 時 SHELL 的每一項都以 `cache: 'no-cache'` 取得，取代只對圖片與 `pixi.js` 的 `REVALIDATE_ON_INSTALL`；JS／CSS 背景更新的 `fetch` 加上 `cache: 'no-cache'`。
   - `tests/unit/ps211aPrecache.test.js`：「圖片與 Pixi 重新驗證」改為「每一項都重新驗證」，並檢查背景更新。

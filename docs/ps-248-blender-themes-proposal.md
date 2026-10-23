@@ -45,7 +45,7 @@
 | 素材與程式的耦合 | `assetManifest.js`、`process_pack.py`、`build-manifest.mjs`、`computeAssetBaseline.mjs`、`sw.js`、測試 | 都假設只有一套：`process_pack.py` 寫死輸出路徑、每次都讀房間與 8 件家具的原始渲染，並以 regex 改寫 `PROP_DEFINITIONS`；`placements.json` 每件家具只有一個路徑；`WORKSPACE_INITIAL_PAINT_ASSETS` 是固定的清單；`build-manifest.mjs` 把 `/workspace/backgrounds/` 下的任何檔案都標成同一個房間 id，不認得的家具路徑與 lossless WebP 則直接拋錯；`ps211aPrecache.test.js` 要求 SHELL 與 poster 可能顯示的圖片完全一致 |
 | 經濟 | `v2/rewardRules.js`；vertical slice §4.4 | Main Quest 每天 100 Gold，但 V2 **沒有任何花費途徑**。要加購買，必須先替 request-only 的商店訂出可撤銷的結算規則 |
 | 預算 | `docs/ps243/asset-baseline.json`；vertical slice §10 | 完整素材 1,293,693 B／目標 4 MB；首次繪製 182,283 B／目標 1.5 MB；延遲載入的 JS gzip 278,410 B／上限 300 KB（只剩約 28 KB） |
-| 快取 | `sw.js`；technical design §12.2 | SHELL 放 poster 可能顯示的全部 22 張圖片（987,645 B）與 `pixi.js`（PS-211A），以 `cache: 'no-cache'` 安裝。不在 SHELL 的圖片按需快取，每次改版都會清掉。JS／CSS／HTML 仍可能在改版後約 10 分鐘內是舊版（INFRA-105，未修） |
+| 快取 | `sw.js`；technical design §12.2 | SHELL 放 poster 可能顯示的全部 22 張圖片（987,645 B）與 `pixi.js`（PS-211A），以 `cache: 'no-cache'` 安裝。不在 SHELL 的圖片按需快取，每次改版都會清掉。JS／CSS／HTML 仍可能在改版後約 10 分鐘內是舊版（INFRA-105，#209 修正） |
 | 渲染成本 | `art-pipeline/ps244-blender/README.md` | 完整一套（房間＋8 件）在 4 核 CPU 上約 30–50 分鐘；重渲染不是逐位元相同（家具位置可能差 1 px）；原始渲染不進 git；CI 不渲染 |
 | 擴充的前提 | asset pipeline 文件；art bible §6.1；product spec §3.2 原則 8 | Vertical slice 的第一套素材上限是「一張房間背景、一張 exterior／window background、日夜光線疊層、8–12 件家具……」；「首頁 → Session → 世界的迴圈通過產品與效能驗證前，不擴充 Survival／Mastery 房間、不大量產生家具」；「先證明一個房間，再做世界規模的內容」。PS-243 的實機檢查仍未完成 |
 

@@ -14,6 +14,11 @@
 
 ## Backlog
 
+- [ ] **INFRA-107** service worker 的 HTML network-first 在 GitHub Pages 的根目錄不成立
+  - 問題（INFRA-105 獨立 review 發現，2026-10-23；原本就有）：`sw.js` 以 `url.pathname.endsWith('.html') || url.pathname === '/'` 判斷 HTML。網站在 `/Orbit/` 底下，`https://yoyocadence.github.io/Orbit/` 的 pathname 是 `/Orbit/`，不符合，所以根目錄走圖片的 cache-first。
+  - 影響：目前沒有可見的錯誤，因為 INFRA-105 起 install 時重新驗證 `./`，新版的快取裡是新版的根目錄頁面；但根目錄不會走 network-first（例如離線時的退回順序與註解所述不同）。
+  - 方向：以 service worker 的 registration scope 判斷根目錄（`url.href === self.registration.scope`），或判斷 `e.request.mode === 'navigate'`；加 unit test。屬 service worker 的快取行為（部署行為），**實作前先說明並取得使用者核准**。
+
 - [ ] **HW-112** 佐證圖片雲端同步（Supabase Storage）
   - Goal: upload proof photos to Supabase Storage so they persist across devices and app reinstalls.
   - Scope: `platform/badge.js` → new `pwa/js/platform/proofStorage.js` adapter; bucket `orbit-proof`, path `{user_id}/{sessionId}.jpg`; RLS: SELECT/INSERT/DELETE scoped to `auth.uid()`; use existing `compressImage()` output; graceful fallback to localStorage-only for guests.
@@ -215,6 +220,7 @@
   - 來源：PS-248 結案時（#202 獨立 review 的 P2）。使用者的 PS-250 決定取代了 PS-248 §9 的範圍、擴充前提、順序、做法與快取，但沒有決定下面兩項。
   - **§9.3 PS-248A2 窗外依時段變化**（可選；超出 art bible §6.1「一張 exterior」的上限）：使用者 2026-10-23 決定**做**。第一步是實作提案（窗戶遮罩、圖層、素材預算與快取），核准後再渲染。
     - 實作提案（2026-10-23）：[`docs/ps-251b-window-view-proposal.md`](docs/ps-251b-window-view-proposal.md)。建議 E-A：晨間與傍晚各一張「只有窗外」的 RGBA 疊層（Blender holdout），疊在房間背景之上、家具之下，五個房間共用，兩種畫風共 4 張圖；不重新渲染房間、不改房間背景的格式；只在 `getWorkspaceSceneAssets()` 的回傳加一個屬性（INFRA-105）。窗內幾乎都是建築（天空約 0.1%），所以看得出差別的是建築的顏色、亮度與亮窗，或讓天際線低一點（§8.2）；實作第一步是預覽，確認後才產生正式素材。**等待使用者決定 §8**（時段、窗外的樣子與預覽、房間內的光、開著 app 跨過時段、快取、文件上限）。核准後實作為 PS-251B，驗收條件見提案 §9。
+    - **2026-10-23 使用者決定 §8**：S1（天際線不變，換建築的顏色、亮度與亮窗）、W2（只做晨間與傍晚的疊層）、T1（時段邊界準時重新 render）、其餘照建議（房間內的光不變；Q 版疊層預先快取、像素版第一次顯示時下載；更新 art bible 與 asset pipeline 的「一張 exterior」上限）。下一步：PS-251B 的第一步是**預覽**（五個房間 × 兩種畫風 × 晨間與傍晚的合成圖），使用者確認配色後才產生正式素材與實作，驗收條件見提案 §9。
   - **§9.8 順帶整理**：使用者 2026-10-23 核准三項都做，拆成 PS-251A。
 
 - [ ] **BUG-109A** 在 production 套用 013 signup trigger migration
@@ -265,6 +271,7 @@
     - `sw.js`：install 時 SHELL 的每一項都以 `cache: 'no-cache'` 重新驗證（沒變的只回 304）；JS／CSS 的背景更新也是。導覽請求（HTML）的 network-first 不變（理由見變更說明 §2）。
     - e2e `infra105-sw-update.test.js`：自己的靜態伺服器回應 `max-age=600` 與 ETag，模擬「舊檔仍在 HTTP cache 有效期內就部署新版」。修改前兩項都失敗（新快取是舊的 `version.js`；背景更新仍是舊檔），修改後通過。
     - 「SHELL 模組不 import 既有 SHELL 模組的新 export」的規則**仍保留**：已開著的頁面在重新整理前、延遲載入的模組仍可能新舊混用。
+    - 獨立 review（Codex 額度用完時的替代）：沒有 P1／P2；依 P3 補上背景更新不快取錯誤回應（unit test）、e2e 確認 HTTP cache 有作用、304 說明改為「伺服器保留 `ETag` 時」（GitHub Pages 部署後 `ETag` 是否不變未驗證，最差與現在相同）；根目錄 `isHtml` 的舊問題記為 INFRA-107。
 
 - [x] **AI-202B2** 實作 AI-202：里程碑（專案完成與關係階段）的 reveal
   - 依據：[`docs/ai-202-companion-relationship-proposal.md`](docs/ai-202-companion-relationship-proposal.md) §3.4、§8（reveal 與 Companion 的驗收條件），使用者 2026-10-23 的決定。
