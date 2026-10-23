@@ -25,7 +25,7 @@
 
 | 項目 | 位置 | 現況 |
 |---|---|---|
-| 窗外的建模 | `art-pipeline/ps244-blender/scene.py` `build_room()` | 右牆整面落地窗，只有窗框與捲簾、沒有玻璃。天空是一片自發光的漸層平面，天際線是 18 棟建築，都在獨立的 `outside` 群組（不投影、不描邊）。建築頂端放在剛好越過右牆頂的視線之下，比窗頂高；天空平面只出現在窗戶視野最上面約 11%，再往下的視線先碰到 `ground` holdout。配色在 `SKY` 與 `SKYLINE`，只有 `day` 與 `night` |
+| 窗外的建模 | `art-pipeline/ps244-blender/scene.py` `build_room()` | 右牆整面落地窗，只有窗框與捲簾、沒有玻璃。天空是一片自發光的漸層平面，天際線是 18 棟建築，都在獨立的 `outside` 群組（不投影、不描邊）。建築頂端放在剛好越過右牆頂的視線之下，多數比窗頂高（後排補滿空隙）；天空平面只出現在窗戶視野最上面約 11%，再往下的視線先碰到 `ground` holdout。配色在 `SKY` 與 `SKYLINE`，只有 `day` 與 `night` |
 | 窗內看得到什麼 | 獨立 review 渲染量測 | 近處建築約 85%、遠處建築約 14%、亮著的窗約 1%、天空約 0.1% |
 | 窗戶的面積 | 疊層的 alpha（量測） | 約 3.4% 的畫面（x 1228–1535、y 117–595）。以日夜亮度差估計會高估（5.4%，混到地板陽光、窗台與壁燈） |
 | 房間背景 | `pwa/assets/personal-space/v2/workspace/…` | 窗外烘在背景中，背景不含家具與裝飾。Q 版 1536 × 1024 WebP（白天 82,546 B、夜晚 64,318 B）；像素版 1536 × 1024 PNG（一個美術像素＝四個房間像素） |
@@ -35,7 +35,7 @@
 | 光線疊層 | `ui/orbitWindow.js`、`runtime/pixiSceneRuntime.js` | 白天的房間依時段加淡淡的色調（Pixi：`0xf6d58b`，alpha .05）；夜晚的房間只輕微調暗角色與天氣（Pixi：深藍，alpha .1；poster 是 soft-light 漸層） |
 | 時段何時更新 | `viewModels.js` `getTimeBand(now)` | 只在建立 view model（重新 render）時計算；app 開著跨過時段時，要等下一次 render 才換（現在的日夜房間也是如此）。提醒時段（12、14 時）已有重新 render 的計時器：`remindWindow.js` 的 `watchRemindWindow()` |
 | 預算 | `docs/ps243/asset-baseline.json` | 圖片：首次繪製 122,433 / 1,572,864 B，寬鬆。延後載入的 JS gzip **303,269 / 307,200 B，只剩 3,931 B**；`assetManifest.js`、`orbitWindow.js`、`pixiSceneRuntime.js`、`assetGallery.js` 都計入 |
-| manifest | `art-pipeline/ps242/build-manifest.mjs` | 讀得懂 PNG 與有損 WebP（含 alpha 的 `VP8X`）；無損 WebP（`VP8L`）會拋錯。PS-242 manifest 只收 `getWorkspaceAssetManifestPaths()` 列出的 Q 版檔案，像素版另記在 `ps250-pixel/outputs.json` |
+| manifest | `art-pipeline/ps242/build-manifest.mjs` | 讀得懂 PNG 與有損 WebP（含 alpha 的 `VP8X`）；無損 WebP（`VP8L`）會拋錯。PS-242 manifest 只收 `getWorkspaceAssetManifestPaths()` 列出的 Q 版檔案，像素版另記在各自管線的 `outputs.json` |
 
 ## 3. 做法
 
@@ -83,8 +83,8 @@
     - Q 版存成**有損、有 alpha 的 WebP**（`VP8X`，`build-manifest.mjs` 讀得懂）；
     - 像素版存成 PNG（以調色盤 PNG 存約 3 KB；沿用現有的 RGBA 寫法約 13 KB）；
     - 檢查 alpha 只在窗戶範圍內；
-    - 寫入 `outputs.json`（尺寸、SHA-256）。
-  - `art-pipeline/ps242/build-manifest.mjs`：`buildOutputEntry()` 只認得背景、角色、天氣與已知的家具／裝飾路徑，其他路徑會拋出「PS-242 manifest metadata missing」。要新增 `workspace/window/exterior-*.webp` 的分支（`role: 'exterior'`、`band`、來源、QC、授權），Q 版疊層才能進入 manifest。
+    - 寫入 `art-pipeline/ps251-window/outputs.json`（兩種畫風的尺寸、SHA-256）。不寫進 `ps250-pixel/outputs.json`：`ps250dPixelSet.test.js` 以固定的資料夾、數量與日夜場景檢查它。
+  - `art-pipeline/ps242/build-manifest.mjs`：`buildOutputEntry()` 只認得背景、角色、天氣與已知的家具／裝飾路徑，其他路徑會拋出「PS-242 manifest metadata missing」。要新增 `workspace/window/exterior-*.webp` 的分支（`id`、`label`、`role: 'exterior'`、`band`、`projectPhase: 'all'`、來源、QC、授權；PS-242 的測試要求 `id`、`label`、`projectPhase`），Q 版疊層才能進入 manifest。
 - 檔案：`workspace/window/exterior-{morning,evening}.webp`、`workspace/pixel/window/exterior-{morning,evening}.png`。
 - 大小（試渲染 q86）：Q 版每張約 11 KB，兩張約 22 KB。
 - 預覽：`art-pipeline/ps251-window/previews/` 放五個房間 × 兩種畫風 × 晨間與傍晚的合成圖（房間背景＋疊層＋100% 家具＋執行時的光線疊層：晨間是白天房間的暖色，傍晚是夜晚房間的深藍）。
@@ -99,8 +99,9 @@
   - 夜晚房間載入失敗時退回的白天房間，是不帶時段建立的（`exterior` 會是 `null`），但傍晚仍要畫傍晚的疊層；
   - 像素房間退回 Q 版房間時要畫 Q 版疊層，否則像素的階梯邊緣會疊在反鋸齒的窗框上。
 - 首頁 poster（`orbitWindow.js`）：
-  - 在背景圖之後加一個 `<img class="orbit-window-background orbit-window-exterior" alt="">`。沿用背景的 class，位置與尺寸相同；舊的 `style.css` 下也不會錯位（新的 JS 搭配舊的 CSS）。poster 本身已是 `aria-hidden`；
+  - 在背景圖之後加一個 `<img class="orbit-window-exterior" alt="">`，位置以 inline style 寫（`position:absolute; inset:0; width:100%; height:100%; object-fit:cover; pointer-events:none`），與背景相同。**不沿用 `orbit-window-background` 的 class**：`ps250b-appearance.test.js` 等 e2e 以這個 class 找背景（Playwright 的 locator 是 strict），在晨間、傍晚跑測試時會同時找到兩個元素而失敗。inline style 讓新的 JS 搭配舊的 `style.css` 也不會錯位。poster 本身已是 `aria-hidden`；
   - `onerror` 時移除自己（不顯示破圖），露出烘進去的窗外；
+  - poster 的圖片是各自退回：背景圖載入失敗、換成另一個畫風或白天房間時，背景的錯誤處理也要一併換掉或移除疊層，疊層才會跟著實際畫出的背景（只在疊層上設 `data-fallback-src` 做不到）；
   - 像素版沿用 `data-pixel-art`（`image-rendering: pixelated`）。
 - Pixi（`pixiSceneRuntime.js`）：
   - 疊層另外載入，在房間的 `Promise.all` 之外，錯誤自行處理（`loadPart()` 在每一層都失敗時會拋錯）。失敗時不畫，**不影響**房間與家具的退回順序；
@@ -158,7 +159,7 @@
 - 素材：
   - 晨間、傍晚的窗外疊層，Q 版與像素版各一套；
   - holdout 用物件旗標，alpha 只在窗戶範圍內，五個房間風格逐像素相同；
-  - Q 版加入 `getWorkspaceAssetManifestPaths()`，進入 PS-242 manifest（`ps242AssetManifest.test.js`、`personalSpaceOrbitWindow.test.js` 中固定的檔案數 50 隨之更新）；像素版記在 `ps250-pixel/outputs.json`（PS-242 manifest 不收像素檔，`ps250dPixelSet.test.js`）；
+  - Q 版加入 `getWorkspaceAssetManifestPaths()`，進入 PS-242 manifest（`ps242AssetManifest.test.js`、`personalSpaceOrbitWindow.test.js` 中固定的檔案數 50 隨之更新）；兩種畫風都記在 `art-pipeline/ps251-window/outputs.json`（PS-242 manifest 不收像素檔，`ps250dPixelSet.test.js`；`ps250-pixel/outputs.json` 不變）；
   - PS-211A 的預先快取推導（`ps211aPrecache.test.js`）加上 `scene.exterior`。
 - 執行時：
   - 晨間、傍晚在首頁 poster、Pixi 場景與個人空間頁都畫出疊層，白天與深夜沒有；
@@ -175,7 +176,8 @@
   - 以固定時間的 e2e 驗證：app 開著跨過 17 時，房間換成夜晚、窗外換成傍晚，只重新 render 一次；
   - 頁面在背景（或裝置睡眠）跨過 17 時，回到前景時更新；
   - 個人空間頁的詳細資訊面板打開、焦點在面板內時跨過時段邊界：面板仍打開，焦點仍在同一個控制項（與 AI-203B 提醒時段的既有測試相同）；首頁卡片上的焦點保留。
-- 快取：依 §8.5 的決定加入 SHELL，PS-211A 的離線 e2e 在晨間與傍晚也顯示完整的 poster。
+- 快取：依 §8.5 的決定加入 SHELL，PS-211A 的離線 e2e（`sw-precache.test.js`）固定的預先快取數 44 隨之更新，並加上一個晨間與一個傍晚的時刻（現在只跑 12 時與 22 時），在晨間與傍晚也顯示完整的 poster。
+- 既有 e2e 以 `.orbit-window-background` 找背景，疊層不能用同一個 class（§5）；在晨間、傍晚的時刻跑一次這些測試確認。
 - 預算：PS-243 baseline 更新；延後載入的 JS 不超過 307,200 B。
 - 文件：§7。
 
