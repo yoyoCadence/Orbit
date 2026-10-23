@@ -221,13 +221,6 @@
 
 ## In Progress
 
-- [ ] **INFRA-107** service worker 的 HTML network-first 在 GitHub Pages 的根目錄不成立
-  - 問題（INFRA-105 獨立 review 發現，2026-10-23；原本就有）：`sw.js` 以 `url.pathname.endsWith('.html') || url.pathname === '/'` 判斷 HTML。網站在 `/Orbit/` 底下，`https://yoyocadence.github.io/Orbit/` 的 pathname 是 `/Orbit/`，不符合，所以根目錄走圖片的 cache-first。
-  - 影響：目前沒有可見的錯誤，因為 INFRA-105 起 install 時重新驗證 `./`，新版的快取裡是新版的根目錄頁面；但根目錄不會走 network-first（例如離線時的退回順序與註解所述不同）。
-  - 方向：以 service worker 的 registration scope 判斷根目錄（`url.href === self.registration.scope`），或判斷 `e.request.mode === 'navigate'`；加 unit test。屬 service worker 的快取行為（部署行為），**實作前先說明並取得使用者核准**。
-  - **2026-10-23 使用者決定**（AskUserQuestion）：根目錄與 `index.html` **都回傳 service worker 快取中的 HTML**（離線也一樣），新版本照現在的流程：安裝時重新驗證 → 「新版本已就緒」→ 重新整理，HTML 與程式永遠同一版。比對時忽略網址的查詢字串；不快取錯誤回應。先寫變更說明＋e2e，**PR 合併前給使用者看**。
-  - In progress（2026-10-23）：PS-251B（#210）合併後開始（Backlog → In Progress）。
-
 - [ ] **PRO-014Q** 開發者面板的 backup 不應擋住其他帳號或非 Pro 模擬的 entitlement refresh
   - 問題（PR #158 Codex review 指出，2026-10-18 確認）：`storage.refreshProEntitlement()` 只要 `FLAG_DEV_BACKUP` 存在就直接 return。這個 backup 也由等級模擬器建立，且 `storage.clearAll()` 登出時不會清除。開發者登出後換另一個帳號，該帳號的 refresh 會一直被跳過，在 `server` source 下 fail closed，直到手動重設。
   - 影響：只影響使用過開發者面板的裝置。
@@ -250,6 +243,20 @@
 ---
 
 ## Done
+
+- [x] **INFRA-107** service worker 的 HTML network-first 在 GitHub Pages 的根目錄不成立
+  - 問題（INFRA-105 獨立 review 發現，2026-10-23；原本就有）：`sw.js` 以 `url.pathname.endsWith('.html') || url.pathname === '/'` 判斷 HTML。網站在 `/Orbit/` 底下，`https://yoyocadence.github.io/Orbit/` 的 pathname 是 `/Orbit/`，不符合，所以根目錄走圖片的 cache-first。
+  - 影響：目前沒有可見的錯誤，因為 INFRA-105 起 install 時重新驗證 `./`，新版的快取裡是新版的根目錄頁面；但根目錄不會走 network-first（例如離線時的退回順序與註解所述不同）。
+  - 方向：以 service worker 的 registration scope 判斷根目錄（`url.href === self.registration.scope`），或判斷 `e.request.mode === 'navigate'`；加 unit test。屬 service worker 的快取行為（部署行為），**實作前先說明並取得使用者核准**。
+  - **2026-10-23 使用者決定**（AskUserQuestion）：根目錄與 `index.html` **都回傳 service worker 快取中的 HTML**（離線也一樣），新版本照現在的流程：安裝時重新驗證 → 「新版本已就緒」→ 重新整理，HTML 與程式永遠同一版。比對時忽略網址的查詢字串；不快取錯誤回應。先寫變更說明＋e2e，**PR 合併前給使用者看**。
+  - In progress（2026-10-23）：PS-251B（#210）合併後開始（Backlog → In Progress）。
+  - 完成（2026-10-23，v1.41.1；**PR 合併前等使用者看過**）：
+    - 變更說明 [`docs/infra-107-html-cache.md`](docs/infra-107-html-cache.md)。
+    - `sw.js`：開啟頁面（`request.mode === 'navigate'`）或 `.html` 一律以 `ignoreSearch` 回傳這個版本快取中的 HTML，不問網路；快取中沒有的頁面向網路取得，只存成功且沒有經過 redirect 的回應，存在去掉查詢字串的網址下。修正「network-first 才能偵測新的 service worker」的錯誤註解（瀏覽器每次開啟頁面都會檢查 `sw.js`）。
+    - Unit：`serviceWorkerImageCache.test.js` 加 5 項（修改前 5 項失敗）。e2e `infra107-sw-html.test.js`：伺服器把 `pwa/` 放在 `/Orbit/` 底下；只改 `index.html` 時兩個入口都還是這個版本的 HTML、不向伺服器要頁面；下一版的 service worker 接手、出現「新版本已就緒」後才是新的 HTML 與 `APP_VERSION`；帶查詢字串與斷線時照樣開啟（修改前兩項都失敗，修改後連跑 3 次通過）。HTML 以 `max-age=0` 回應，代表瀏覽器的那一份已超過 10 分鐘，否則修改前的 network-first 會從 HTTP cache 拿到舊的一份，看不出差別。
+    - INFRA-105 的 e2e 伺服器抽成 `tests/e2e/support/pagesServer.js`（可設定 `base` 與每個路徑的 `Cache-Control`、記錄完整網址、模擬斷線），兩個 e2e 共用。
+    - 文件：technical design §12.2、`refactor-handoff.md` 的快取策略、INFRA-105 變更說明的後續。
+
 
 - [x] **PS-251B** 實作 PS-248A2：窗外依時段變化
   - 依據：[`docs/ps-251b-window-view-proposal.md`](docs/ps-251b-window-view-proposal.md)（#208），使用者 2026-10-23 決定 §8：S1（天際線不變，換建築的顏色、亮度與亮窗）、W2（只做晨間與傍晚的疊層）、T1（時段邊界準時重新 render）、其餘照建議（房間內的光不變；Q 版疊層預先快取、像素版第一次顯示時下載；更新 art bible 與 asset pipeline 的「一張 exterior」上限）。

@@ -106,6 +106,65 @@ describe('service worker JS / CSS stale-while-revalidate (INFRA-105)', () => {
   });
 });
 
+describe('service worker page loads (INFRA-107)', () => {
+  it('serves the site root under a sub-path from this version\'s cache, ignoring the query', async () => {
+    // GitHub Pages serves the app at /Orbit/; an auth redirect adds ?code=.
+    const request = { method: 'GET', mode: 'navigate', url: 'https://orbit.test/Orbit/?code=abc' };
+    const cachedResponse = { ok: true, source: 'cache' };
+    cache.match.mockResolvedValueOnce(cachedResponse);
+
+    expect(await dispatchFetch(request)).toBe(cachedResponse);
+    expect(cache.match).toHaveBeenCalledWith(request, { ignoreSearch: true });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(cache.put).not.toHaveBeenCalled();
+  });
+
+  it('serves index.html, the installed app\'s start page, from the cache too', async () => {
+    const request = { method: 'GET', mode: 'navigate', url: 'https://orbit.test/Orbit/index.html' };
+    const cachedResponse = { ok: true, source: 'cache' };
+    cache.match.mockResolvedValueOnce(cachedResponse);
+
+    expect(await dispatchFetch(request)).toBe(cachedResponse);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('fetches a page that is not cached and keeps it under its URL without the query', async () => {
+    const request = { method: 'GET', mode: 'navigate', url: 'https://orbit.test/Orbit/make-icons.html?size=192' };
+    const clonedResponse = { ok: true, source: 'clone' };
+    const networkResponse = { ok: true, redirected: false, clone: vi.fn(() => clonedResponse) };
+    cache.match.mockResolvedValueOnce(undefined);
+    fetchMock.mockResolvedValueOnce(networkResponse);
+
+    expect(await dispatchFetch(request)).toBe(networkResponse);
+    expect(fetchMock).toHaveBeenCalledWith(request);
+    expect(cache.put).toHaveBeenCalledWith('https://orbit.test/Orbit/make-icons.html', clonedResponse);
+  });
+
+  it('does not keep an error, a redirect or a redirected page', async () => {
+    const request = { method: 'GET', mode: 'navigate', url: 'https://orbit.test/Orbit/missing' };
+    for (const response of [
+      { ok: false, status: 404, clone: vi.fn() },
+      { ok: false, status: 0, type: 'opaqueredirect', clone: vi.fn() },
+      { ok: true, redirected: true, clone: vi.fn() },
+    ]) {
+      cache.match.mockResolvedValueOnce(undefined);
+      fetchMock.mockResolvedValueOnce(response);
+      expect(await dispatchFetch(request)).toBe(response);
+      expect(response.clone).not.toHaveBeenCalled();
+    }
+    expect(cache.put).not.toHaveBeenCalled();
+  });
+
+  it('leaves the page load to fail offline when the page was never cached', async () => {
+    const request = { method: 'GET', mode: 'navigate', url: 'https://orbit.test/Orbit/missing' };
+    cache.match.mockResolvedValueOnce(undefined);
+    fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+
+    await expect(dispatchFetch(request)).rejects.toThrow('Failed to fetch');
+    expect(cache.put).not.toHaveBeenCalled();
+  });
+});
+
 function dispatchFetch(request) {
   let responsePromise;
   listeners.fetch({

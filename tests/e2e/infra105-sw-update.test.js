@@ -7,70 +7,15 @@
  * of JS / CSS revalidates too. Unchanged files only cost a 304.
  *
  * `pwa/server.cjs` answers `no-store`, which cannot show the problem, so this
- * test serves `pwa/` itself with `max-age=600` and ETags. It uses no Playwright
- * routing: routing turns the HTTP cache off.
+ * test serves `pwa/` with `max-age=600` and ETags (`support/pagesServer.js`).
+ * It uses no Playwright routing: routing turns the HTTP cache off.
  */
 
-import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
-import { createServer } from 'node:http';
 import { test, expect } from '@playwright/test';
-import { GUEST_USER, SUPABASE_STUB, seedStorage } from './support/seed.js';
+import { GUEST_USER, seedStorage } from './support/seed.js';
+import { readPwaFile, startPagesServer } from './support/pagesServer.js';
 
-const PWA_ROOT = new URL('../../pwa/', import.meta.url);
 const NEXT_CACHE = 'orbit-e2e-next';
-const MIME = {
-  '.html': 'text/html; charset=utf-8',
-  '.js': 'text/javascript',
-  '.css': 'text/css',
-  '.json': 'application/json',
-  '.webmanifest': 'application/manifest+json',
-  '.png': 'image/png',
-  '.webp': 'image/webp',
-  '.svg': 'image/svg+xml',
-  '.ico': 'image/x-icon',
-};
-
-// A static server like GitHub Pages: max-age=600, ETags, 304 on a match.
-// `files` replaces a path's content (the next version); `log` records each
-// response.
-async function startPagesServer() {
-  const files = new Map([['/vendor/supabase.js', SUPABASE_STUB]]);
-  const log = [];
-  const server = createServer(async (request, response) => {
-    let path = decodeURIComponent(request.url.split('?')[0]);
-    if (path.endsWith('/')) path += 'index.html';
-    let body = files.get(path);
-    if (body === undefined) {
-      try {
-        body = await readFile(new URL(`.${path}`, PWA_ROOT));
-      } catch {
-        log.push({ path, status: 404 });
-        response.writeHead(404);
-        response.end();
-        return;
-      }
-    }
-    const etag = `"${createHash('sha1').update(body).digest('hex')}"`;
-    const extension = path.slice(path.lastIndexOf('.'));
-    const headers = {
-      'Content-Type': MIME[extension] || 'application/octet-stream',
-      'Cache-Control': 'max-age=600',
-      ETag: etag,
-    };
-    const status = request.headers['if-none-match'] === etag ? 304 : 200;
-    log.push({ path, status });
-    response.writeHead(status, headers);
-    response.end(status === 304 ? undefined : body);
-  });
-  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-  return {
-    origin: `http://127.0.0.1:${server.address().port}`,
-    files,
-    log,
-    close: () => new Promise(resolve => server.close(resolve)),
-  };
-}
 
 // Reduced motion stops the scene's animation loop: in headless software WebGL
 // it keeps the browser too busy to run a service worker update.
@@ -112,10 +57,9 @@ test.describe('INFRA-105 service worker update', () => {
 
     // The next version, deployed while the old files are still fresh in the
     // browser's HTTP cache.
-    const source = path => readFile(new URL(`.${path}`, PWA_ROOT), 'utf8');
-    pages.files.set('/sw.js', (await source('/sw.js')).replace(/const CACHE = '[^']*';/, `const CACHE = '${NEXT_CACHE}';`));
+    pages.files.set('/sw.js', (await readPwaFile('/sw.js')).replace(/const CACHE = '[^']*';/, `const CACHE = '${NEXT_CACHE}';`));
     pages.files.set('/js/version.js', "export const APP_VERSION = 'v-e2e-next';\n");
-    pages.files.set('/assets/style.css', `${await source('/assets/style.css')}\n/* e2e-next */\n`);
+    pages.files.set('/assets/style.css', `${await readPwaFile('/assets/style.css')}\n/* e2e-next */\n`);
     const updateStart = pages.log.length;
 
     await page.evaluate(async () => {
@@ -159,7 +103,7 @@ test.describe('INFRA-105 service worker update', () => {
 
     // Changed on the server, still fresh in the HTTP cache: the page gets the
     // cached copy at once, and the cache is updated from the server behind it.
-    const original = await readFile(new URL('./js/timeBand.js', PWA_ROOT), 'utf8');
+    const original = await readPwaFile('/js/timeBand.js');
     pages.files.set('/js/timeBand.js', `${original}\n// e2e-next\n`);
     await page.evaluate(() => fetch('/js/timeBand.js').then(response => response.text()));
     await expect.poll(() => cachedText(page, cacheName, '/js/timeBand.js'), { timeout: 10_000 })
