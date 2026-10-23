@@ -246,6 +246,11 @@ test.describe('Personal Space V2 垂直切片', () => {
 
     await expect(orbit).toHaveAttribute('data-project-progress', '25');
     await expect(orbit).toContainText('25%');
+
+    // PS-249A: the reveal is held under the proof sheet and replays after it.
+    await expect(page.locator('#proof-skip')).toBeVisible({ timeout: 2000 });
+    await page.locator('#proof-skip').click();
+    await expect(page.locator('.pro-sheet-overlay')).toHaveCount(0);
     await expect(orbit).not.toHaveClass(/is-revealing/, { timeout: 3000 });
 
     const persisted = await page.evaluate(() => JSON.parse(
@@ -261,10 +266,6 @@ test.describe('Personal Space V2 垂直切片', () => {
         expect.objectContaining({ rewardType: 'project_progress', amount: 25 }),
       ])
     );
-
-    await expect(page.locator('#proof-skip')).toBeVisible({ timeout: 2000 });
-    await page.locator('#proof-skip').click();
-    await expect(page.locator('.pro-sheet-overlay')).toHaveCount(0);
 
     await orbit.locator('[data-orbit-open-world]').click();
     await expect(page.locator('[data-personal-space-v2]')).toBeVisible();

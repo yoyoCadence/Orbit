@@ -3,6 +3,21 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.38.3] - 2026-10-23
+
+### Fixed
+- **Session 結束後的世界揭露不再在升級畫面與佐證 sheet 底下播完（PS-249A）**：Orbit Window 被全螢幕的畫面蓋住時（升級、佐證 sheet、佐證大圖、日報與早晨等 modal、Focus 與 Pro 時長選擇、連勝保護確認、新使用者導覽），揭露暫停；蓋住的畫面關閉後**從頭重播**，播完才記為已看過。以前結算後約 0.7 秒佐證 sheet 就蓋上，4.2 秒的揭露大多在底下播完、不再重播。
+- **揭露的動畫跟著計時暫停（PS-249A）**：Orbit Window 不在畫面上（包括剛捲出畫面時）或分頁隱藏時，揭露的動畫也暫停，`major` 的全螢幕橫幅隱藏，不會在看不到 Orbit Window 時蓋滿畫面。回到畫面時從停下的地方繼續。首頁與個人空間頁相同。
+
+### Changed
+- **蓋住時暫停場景（PS-249A）**：上述畫面開著時，Orbit Window 的 Pixi 場景與 Focus 時一樣暫停，不再在底下每格重畫（量測環境中 CPU 少約 93%）；關閉後恢復。導覽換步驟時短暫移除再加回背景，不會讓場景來回暫停。
+
+### Validation
+- `ps249aOverlayCover.test.js`：每種畫面的暫停、恢復與重播；隱藏的與不在 `body` 底下的不算；Pro 時長選擇只切換 class；導覽兩格內換背景不來回；揭露自己的可視判斷（rootMargin 0）與場景的 160 px 分開；分頁隱藏時接續；個人空間頁；`style.css` 中全螢幕的規則都已分類。
+- e2e：佐證 sheet 開著時每個揭露動畫（含 `::after`）都暫停、時間不變、場景 `suspended`，超過揭露長度也不結束；關閉後全部從 0 重播。`major` 橫幅在 Orbit Window 捲出畫面時隱藏、計時暫停。既有的「首頁 Main Quest → Focus 結算 → 世界揭露」改成先關閉佐證 sheet 再等揭露結束。
+
+---
+
 ## [1.38.2] - 2026-10-23
 
 ### Removed
