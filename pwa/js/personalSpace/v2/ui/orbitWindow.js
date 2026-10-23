@@ -166,8 +166,55 @@ export function renderOrbitWindow(inputModel = {}, options = {}) {
   `;
 }
 
-function isFocusOverlayOpen(overlay) {
-  return Boolean(overlay) && !overlay.classList.contains('hidden');
+// PS-249A: what covers the whole app. These three stay in the DOM and open by
+// dropping `hidden`; the others are added to <body> while open and must be
+// removed when they close (only <body>'s children are observed, so hiding one
+// in place would leave the app covered until <body> changes again).
+const PERSISTENT_OVERLAY_IDS = Object.freeze(['focus-overlay', 'levelup-overlay', 'focus-duration-picker']);
+const BODY_OVERLAY_SELECTOR = '.modal-overlay, .pro-sheet-overlay, .shield-confirm-overlay, .tour-backdrop, .proof-lightbox';
+// The CSS animations of a reveal, replayed from the start after an overlay.
+const REVEAL_ANIMATIONS = new Set([
+  'orbit-reward-rise',
+  'orbit-character-celebrate',
+  'orbit-companion-approach',
+  'orbit-medium-reveal',
+  'orbit-major-reveal',
+]);
+
+function isOverlayOpen(overlay) {
+  return Boolean(overlay) && !overlay.hidden && !overlay.classList.contains('hidden');
+}
+
+function isAppCovered(persistentOverlays) {
+  return persistentOverlays.some(isOverlayOpen)
+    || [...(document.body?.children || [])]
+      .some(element => element.matches(BODY_OVERLAY_SELECTOR) && isOverlayOpen(element));
+}
+
+function afterTwoFrames(callback) {
+  if (typeof globalThis.requestAnimationFrame !== 'function') {
+    const timer = globalThis.setTimeout(callback, 32);
+    return () => globalThis.clearTimeout(timer);
+  }
+  let frame = globalThis.requestAnimationFrame(() => {
+    frame = globalThis.requestAnimationFrame(callback);
+  });
+  return () => globalThis.cancelAnimationFrame?.(frame);
+}
+
+// Re-adding the reveal classes restarts every class-driven reveal animation,
+// including those that already finished and, without a fill mode, are gone
+// (the celebration, the medium frame's ::after). The major banner keeps its
+// animation (fill: both), so it is rewound instead.
+function restartRevealAnimations(root) {
+  const revealClasses = [...root.classList]
+    .filter(name => name === 'is-revealing' || name.startsWith('orbit-window--reveal-'));
+  root.classList.remove(...revealClasses);
+  void root.offsetWidth;
+  root.classList.add(...revealClasses);
+  (root.getAnimations?.({ subtree: true }) || [])
+    .filter(animation => REVEAL_ANIMATIONS.has(animation.animationName))
+    .forEach(animation => { animation.currentTime = 0; });
 }
 
 export function mountOrbitWindow(root, options = {}) {
@@ -189,12 +236,21 @@ export function mountOrbitWindow(root, options = {}) {
   let runtimeReleased = false;
   let isInViewport = 'IntersectionObserver' in globalThis ? null : true;
   let lastVisibility = document.hidden ? 'hidden' : 'visible';
-  // INFRA-106: the Focus overlay covers the app for a whole session, so keep
-  // the scene still underneath instead of redrawing it every frame.
-  const focusOverlay = document.getElementById('focus-overlay');
-  let coveredByFocus = isFocusOverlayOpen(focusOverlay);
-  let focusObserver = null;
+  // INFRA-106, PS-249A: keep the scene still while an overlay covers the app
+  // instead of redrawing it every frame underneath.
+  const persistentOverlays = PERSISTENT_OVERLAY_IDS
+    .map(id => document.getElementById(id))
+    .filter(Boolean);
+  let covered = isAppCovered(persistentOverlays);
+  let coverObserver = null;
+  let cancelUncover = null;
   const revealId = model.pendingReveal?.id || null;
+  // PS-249A: the scene observer reaches 160px past the viewport to start early;
+  // a reveal only plays while the Orbit Window itself is on screen.
+  let revealObserver = null;
+  let revealInView = revealId && 'IntersectionObserver' in globalThis ? null : true;
+  // An overlay covered the reveal before it ended: play it again from the start.
+  let replayReveal = Boolean(revealId) && covered;
   let revealRemainingMs = revealId
     ? getRevealDurationMs(model.pendingReveal.kind, reducedMotion)
     : 0;
@@ -232,16 +288,29 @@ export function mountOrbitWindow(root, options = {}) {
     revealStartedAt = null;
   };
 
+  const consumeReveal = () => {
+    revealConsumed = true;
+    root.classList.remove('is-reveal-held');
+  };
+
   const syncRevealClock = () => {
     if (!revealId || revealConsumed || disposed) return;
-    const canPresentReveal = !document.hidden && isInViewport === true;
+    const canPresentReveal = !document.hidden && revealInView === true && !covered;
+    // PS-249A: style.css pauses the reveal animations and hides the major
+    // banner while the reveal is held.
+    root.classList.toggle('is-reveal-held', !canPresentReveal);
     if (!canPresentReveal) {
       pauseRevealClock();
       return;
     }
+    if (replayReveal) {
+      replayReveal = false;
+      revealRemainingMs = revealDurationMs;
+      restartRevealAnimations(root);
+    }
     if (revealTimer !== null) return;
     if (revealRemainingMs <= 0) {
-      revealConsumed = true;
+      consumeReveal();
       emitPersonalSpaceTelemetry('reward_reveal_completed', {
         ...revealTelemetryProperties,
         durationMs: revealDurationMs,
@@ -262,7 +331,7 @@ export function mountOrbitWindow(root, options = {}) {
       revealStartedAt = null;
       revealRemainingMs = 0;
       if (disposed || revealConsumed) return;
-      revealConsumed = true;
+      consumeReveal();
       emitPersonalSpaceTelemetry('reward_reveal_completed', {
         ...revealTelemetryProperties,
         durationMs: revealDurationMs,
@@ -274,7 +343,7 @@ export function mountOrbitWindow(root, options = {}) {
 
   const syncRuntimeActivity = () => {
     if (!runtimeReady || disposed) return;
-    const shouldBeActive = !document.hidden && isInViewport !== false && !coveredByFocus;
+    const shouldBeActive = !document.hidden && isInViewport !== false && !covered;
     if (shouldBeActive === runtimeActive) return;
     runtimeActive = shouldBeActive;
     if (shouldBeActive) runtime.resume?.();
@@ -326,7 +395,6 @@ export function mountOrbitWindow(root, options = {}) {
       isInViewport = nextInViewport;
       if (nextInViewport && !started) startRuntime();
       syncRuntimeActivity();
-      syncRevealClock();
     }, { rootMargin: '160px' });
     observer.observe(root);
     if (model.pendingReveal) startRuntime();
@@ -338,14 +406,46 @@ export function mountOrbitWindow(root, options = {}) {
     idleId = globalThis.setTimeout(startRuntime, 0);
   }
 
-  if (focusOverlay && 'MutationObserver' in globalThis) {
-    focusObserver = new globalThis.MutationObserver(() => {
-      const nextCovered = isFocusOverlayOpen(focusOverlay);
-      if (disposed || nextCovered === coveredByFocus) return;
-      coveredByFocus = nextCovered;
-      syncRuntimeActivity();
+  if (revealId && 'IntersectionObserver' in globalThis) {
+    revealObserver = new globalThis.IntersectionObserver(entries => {
+      if (disposed) return;
+      const nextInView = entries.some(entry => entry.isIntersecting);
+      if (nextInView === revealInView) return;
+      revealInView = nextInView;
+      syncRevealClock();
+    }, { rootMargin: '0px' });
+    revealObserver.observe(root);
+  }
+
+  const applyCovered = nextCovered => {
+    if (nextCovered === covered) return;
+    covered = nextCovered;
+    if (covered && revealId && !revealConsumed) replayReveal = true;
+    syncRuntimeActivity();
+    syncRevealClock();
+  };
+
+  if ('MutationObserver' in globalThis) {
+    coverObserver = new globalThis.MutationObserver(() => {
+      if (disposed) return;
+      if (isAppCovered(persistentOverlays)) {
+        cancelUncover?.();
+        cancelUncover = null;
+        applyCovered(true);
+        return;
+      }
+      if (!covered || cancelUncover) return;
+      // A tour step removes its backdrop and adds the next one two frames
+      // later; wait as long before treating the app as uncovered.
+      cancelUncover = afterTwoFrames(() => {
+        cancelUncover = null;
+        if (!disposed) applyCovered(isAppCovered(persistentOverlays));
+      });
     });
-    focusObserver.observe(focusOverlay, { attributes: true, attributeFilter: ['class'] });
+    if (document.body) coverObserver.observe(document.body, { childList: true });
+    persistentOverlays.forEach(overlay => {
+      coverObserver.observe(overlay, { attributes: true, attributeFilter: ['class', 'hidden'] });
+    });
   }
 
   const actionBindings = [];
@@ -380,7 +480,9 @@ export function mountOrbitWindow(root, options = {}) {
     if (disposed) return;
     disposed = true;
     observer?.disconnect();
-    focusObserver?.disconnect();
+    revealObserver?.disconnect();
+    coverObserver?.disconnect();
+    cancelUncover?.();
     if (idleId !== null) {
       if (typeof globalThis.cancelIdleCallback === 'function') globalThis.cancelIdleCallback(idleId);
       else globalThis.clearTimeout(idleId);

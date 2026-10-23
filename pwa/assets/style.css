@@ -423,6 +423,20 @@
 .orbit-window-major-reveal span { color: #8bd5ff; font-size: 11px; font-weight: 900; letter-spacing: .18em; }
 .orbit-window-major-reveal strong { max-width: 22ch; font-size: clamp(22px, 6vw, 44px); text-shadow: 0 4px 24px rgba(246, 213, 139, .4); }
 
+/* PS-249A: hold a reveal while it cannot be seen (an overlay covers the app,
+   the Orbit Window is off screen, or the tab is hidden). The reveal rules above
+   use the animation shorthand, which sets the play state back to running, so
+   these name the same elements with a higher specificity, ::after included. */
+.orbit-window.is-reveal-held .orbit-window-reward,
+.orbit-window.is-reveal-held .orbit-window-protagonist,
+.orbit-window.is-reveal-held .orbit-window-companion,
+.orbit-window.is-reveal-held .orbit-window-stage-wrap::after,
+.orbit-window.is-reveal-held .orbit-window-major-reveal {
+  animation-play-state: paused;
+}
+
+.orbit-window.is-reveal-held .orbit-window-major-reveal { visibility: hidden; }
+
 @keyframes orbit-reward-rise {
   from { opacity: 0; transform: translateY(12px) scale(.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }

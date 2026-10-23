@@ -8,6 +8,8 @@ import { bindProofThumbs, proofControlsHtml } from './sessionRow.js';
 
 export function showProofLightbox(src) {
   const overlay = document.createElement('div');
+  // PS-249A: the Orbit Window finds full-screen overlays by class.
+  overlay.className = 'proof-lightbox';
   overlay.style.cssText = [
     'position:fixed;inset:0;z-index:600',
     'background:rgba(0,0,0,0.88)',

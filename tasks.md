@@ -219,16 +219,6 @@
 > - PS-251 §9.8 的三項順帶整理都做（刪除 `room-v1.webp`、更新 PS-243 驗收紀錄的預算數字、修正根目錄 README 的專案階段）：從 Backlog 的 PS-251 拆出 PS-251A，移入 Next，再移入 In Progress。§9.3（A2）仍待決定，PS-251 留在 Backlog。
 > - 順序：PS-251A（不改程式行為）→ PS-249A。
 
-- [ ] **PS-249A** 實作 PS-249：Orbit Window 被 overlay 蓋住時暫停 reveal 與場景
-  - 依據：[`docs/ps-249-overlay-scene-proposal.md`](docs/ps-249-overlay-scene-proposal.md)，使用者 2026-10-23 的 §6 決定（見上方核准紀錄）。
-  - 範圍：
-    - C1：`orbitWindow.js` 以 `MutationObserver` 判斷「被蓋住」：常駐的 `#focus-overlay`、`#levelup-overlay`、`#focus-duration-picker` 看 `hidden`；`body` 的直接子元素中不帶 `hidden` 的 `.modal-overlay`、`.pro-sheet-overlay`、`.shield-confirm-overlay`、`.tour-backdrop` 與佐證大圖（`proofSheet.js` 加 class）。「沒被蓋住」等兩個 animation frame 才生效。
-    - R-A＋重播：reveal 用自己的 `rootMargin: 0` 可視判斷；held 時計時與 CSS 動畫（含 `::after`、`major` 橫幅）暫停，橫幅隱藏；被 overlay 蓋住後從頭重播。
-    - P1：被蓋住時 `suspend()` 場景，沿用 INFRA-106。
-    - 首頁與個人空間頁都套用。
-  - 驗收：提案 §7（單元測試、e2e、`flows.test.js` 改成先關閉佐證 sheet 再等 reveal 結束、INFRA-105 新舊混用、reduced motion）。
-  - 依賴：`PS-249`
-
 - [ ] **BUG-109A** 在 production 套用 013 signup trigger migration
   - 目標：讓 production 的 `handle_new_user()` 截斷超過 30 字元的名稱來源，長 email local-part 與長 Google 顯示名稱都能註冊。
   - 步驟：依 [`docs/bug-109-signup-name-truncation.md`](docs/bug-109-signup-name-truncation.md) 的 runbook：先以 `pg_get_functiondef` 比對 production 函式與 004、記錄回滾來源，在非 production 環境跑 `tests/database/bug109.test.sql`，再套用並驗證。
@@ -275,6 +265,29 @@
 ---
 
 ## Done
+
+- [x] **PS-249A** 實作 PS-249：Orbit Window 被 overlay 蓋住時暫停 reveal 與場景
+  - 依據：[`docs/ps-249-overlay-scene-proposal.md`](docs/ps-249-overlay-scene-proposal.md)，使用者 2026-10-23 的 §6 決定（見上方核准紀錄）。
+  - 範圍：
+    - C1：`orbitWindow.js` 以 `MutationObserver` 判斷「被蓋住」：常駐的 `#focus-overlay`、`#levelup-overlay`、`#focus-duration-picker` 看 `hidden`；`body` 的直接子元素中不帶 `hidden` 的 `.modal-overlay`、`.pro-sheet-overlay`、`.shield-confirm-overlay`、`.tour-backdrop` 與佐證大圖（`proofSheet.js` 加 class）。「沒被蓋住」等兩個 animation frame 才生效。
+    - R-A＋重播：reveal 用自己的 `rootMargin: 0` 可視判斷；held 時計時與 CSS 動畫（含 `::after`、`major` 橫幅）暫停，橫幅隱藏；被 overlay 蓋住後從頭重播。
+    - P1：被蓋住時 `suspend()` 場景，沿用 INFRA-106。
+    - 首頁與個人空間頁都套用。
+  - 驗收：提案 §7（單元測試、e2e、`flows.test.js` 改成先關閉佐證 sheet 再等 reveal 結束、INFRA-105 新舊混用、reduced motion）。
+  - 依賴：`PS-249`
+  - In progress（2026-10-23）：PS-251A 合併後開始（Next → In Progress）。
+  - 完成（2026-10-23，v1.38.3）：
+    - `orbitWindow.js`：
+      - 「被蓋住」：常駐的 `#focus-overlay`、`#levelup-overlay`、`#focus-duration-picker` 看 `hidden`；`body` 的直接子元素中不帶 `hidden` 的 `.modal-overlay`、`.pro-sheet-overlay`、`.shield-confirm-overlay`、`.tour-backdrop`、`.proof-lightbox`。一個 `MutationObserver` 觀察 `body` 的子元素與常駐三者的 class；「沒被蓋住」等兩個 animation frame 才生效。
+      - Reveal 另建 `rootMargin: 0` 的 `IntersectionObserver`；被蓋住、不在畫面、分頁隱藏時 held（`is-reveal-held`），計時暫停。被蓋住過就在恢復時重設計時並把 reveal 的動畫（`getAnimations({ subtree: true })`）倒回 0。`reward_reveal_started` 仍只送一次。
+      - 場景：被蓋住時 `suspend()`（取代 INFRA-106 只看 Focus overlay 的判斷）。
+    - `style.css`：`is-reveal-held` 時以較高權重的選擇器（含 `::after`）暫停 reveal 的動畫，`major` 橫幅 `visibility: hidden`。
+    - `proofSheet.js`：佐證大圖加 `proof-lightbox` class。
+    - 測試：`ps249aOverlayCover.test.js`（27 項）；e2e `ps249a-overlay.test.js`（佐證 sheet 下的暫停與重播、reveal 後段才開的 modal、`major` 橫幅捲出畫面時隱藏）；`flows.test.js` 改成先關閉佐證 sheet 再等 reveal 結束。
+    - 稽核：加在 `body` 底下的 overlay 關閉時都會移除，常駐的三個以 `hidden` 開關，不會留下「一直被蓋住」的情況。之後加在 `body` 底下的 overlay 也必須移除（原地加 `hidden` 不會被察覺）。
+    - 獨立 review 的 P2：overlay 在 reveal 後段才開時，沒有 fill mode、已播完的動畫（慶祝、medium 外框的 `::after`）不在 `getAnimations()` 中，倒回 0 無效；改成移除再加回 reveal 的 class 重新開始，`major` 橫幅（fill both）仍倒回 0。
+    - INFRA-105：沒有新增 import 或 export。舊 `style.css`＋新 JS：只有計時延後；舊 `proofSheet.js`：大圖不被偵測（與以前相同）。
+    - 預算：延後載入的 JS gzip 296,893 / 307,200 B（剩 10,307 B）。
 
 - [x] **PS-251A** PS-248 §9.8 的順帶整理
   - 使用者 2026-10-23 核准（見 Next 的核准紀錄）。三項都不改程式行為：
