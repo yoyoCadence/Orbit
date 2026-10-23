@@ -216,7 +216,7 @@
 >   - 新使用者的導覽算「被蓋住」；`proofSheet.js` 的佐證大圖加一個 class；個人空間頁的 Orbit Window 也套用。
 >   - 不延後第一次掛載 Pixi。
 >   - PS-249 的提案完成，移到 Done；實作建立 PS-249A，移入 Next。
-> - PS-251 §9.8 的三項順帶整理都做（刪除 `room-v1.webp`、更新 PS-243 驗收紀錄的預算數字、修正根目錄 README 的專案階段）：拆成 PS-251A，從 Next 移入 In Progress。§9.3（A2）仍待決定，PS-251 留在 Backlog。
+> - PS-251 §9.8 的三項順帶整理都做（刪除 `room-v1.webp`、更新 PS-243 驗收紀錄的預算數字、修正根目錄 README 的專案階段）：從 Backlog 的 PS-251 拆出 PS-251A，移入 Next，再移入 In Progress。§9.3（A2）仍待決定，PS-251 留在 Backlog。
 > - 順序：PS-251A（不改程式行為）→ PS-249A。
 
 - [ ] **PS-249A** 實作 PS-249：Orbit Window 被 overlay 蓋住時暫停 reveal 與場景
@@ -279,13 +279,15 @@
 - [x] **PS-251A** PS-248 §9.8 的順帶整理
   - 使用者 2026-10-23 核准（見 Next 的核准紀錄）。三項都不改程式行為：
     - 刪除未被引用的 `pwa/assets/personal-space/v2/workspace/backgrounds/building-formal-workstation-room-v1.webp`（159,396 B）：只在 v1.22.0～PS-244 之間被引用、從未在 SHELL；原始檔 `art-pipeline/ps242/source/building-formal-workstation-room-v1.png` 保留。修正 `art-pipeline/ps242/companion-state-pack-metadata.json` 中指向不存在的 `…/room-v1.png`。
-    - 更新 `docs/ps-243-production-acceptance.md` 的預算表為目前提交的 `docs/ps243/asset-baseline.json`，並保留原本 PS-243 量到的數字。
+    - 更新 `docs/ps-243-production-acceptance.md` 的預算表為目前提交的 `docs/ps243/asset-baseline.json`，並保留 PS-242 時（v1.22.0）記錄的數字。
     - 根目錄 `README.md` 的專案階段改成實際的 `WORKSPACE_PROJECT_PHASES`。
   - In progress（2026-10-23）。
   - 完成（2026-10-23，只有文件與刪檔，不改版本號）：
-    - 刪除 `room-v1.webp`；`companion-state-pack-metadata.json` 的參考改為 `art-pipeline/ps242/source/building-formal-workstation-room-v1.png`。`npm run ps243:assets` 的結果不變（它從未在場景中）。
-    - PS-243 驗收紀錄的預算表改為 v1.38.1：JS gzip 70,153＋225,428＝295,581 B（預算 307,200 B，剩約 11.6 KB）、首屏 122,433 B、夜晚首屏 104,205 B、完整場景 50 個檔案 1,409,958 B；原本的數字保留在表下的說明。
-    - README：Active Project 每完成一次今日 Main Quest 推進 25%（`DAILY_PROJECT_PROGRESS`），階段為基本書桌 → 燈具與收納 → 單螢幕工作站 → 雙螢幕正式工作站。
+    - 刪除 `room-v1.webp`；`companion-state-pack-metadata.json` 的參考改為 `art-pipeline/ps242/source/building-formal-workstation-room-v1.png`。`npm run ps243:assets` 的結果不變（目前的場景不使用它）。
+      - 舊版本：它是 v1.22.0～v1.28.2 的背景，當時的 service worker 會在第一次取用時快取圖片。很久沒開、仍是這些版本的裝置，部署後第一次開啟若舊快取中沒有它，會拿到 404：舊程式退回 poster（沒有背景圖，其他圖照常）並顯示「互動場景暫時無法載入」，只到下次重新載入（屬 INFRA-105 的範圍）。
+    - PS-243 驗收紀錄的預算表改為 v1.38.1：JS gzip 70,153＋225,428＝295,581 B（預算 307,200 B，剩 11,619 B，約 11.3 KB）、首屏 122,433 B、夜晚首屏 104,205 B、完整場景 50 個檔案 1,409,958 B；PS-242 時記錄的數字保留在表下的說明。
+    - README：Active Project 每完成一次今日 Main Quest 推進 25%（`DAILY_PROJECT_PROGRESS`），階段為基本書桌 → 燈具與收納 → 單螢幕工作站 → 雙螢幕正式工作站；房間風格與角色可在 Edit Mode 選擇，已出現的裝飾可個別開關（書架、桌上的裝飾要到 50%、25% 才出現）。
+    - 不 bump 版本：只刪除未被引用的素材，SHELL 與 `sw.js` 不變。bump 只會換 `CACHE` 名稱、讓所有人重新下載 SHELL，也幫不到上面的舊版本。
 
 - [x] **PS-249** Orbit Window 在其他蓋住畫面的 overlay 下仍重畫、reveal 計時照走
   - 背景（INFRA-106 獨立 review 發現，2026-10-20）：INFRA-106 只在 Focus overlay 開啟時暫停 Pixi 場景。其他 overlay 也會蓋住首頁：
