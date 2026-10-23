@@ -181,7 +181,7 @@ Companion 的優先順序（有待播放的 reveal 時；取代 `companionEngine
     2. 否則，本次 `main-focus` entry 有變化的 Session 的 reveal（例如撤銷第 2 天時是第 2 天的撤銷 reveal）。階段退回可以放在撤銷的 reveal 上；
     3. 否則，最新一個保留、且不是只含撤銷的 reveal。專案完成與階段提升**不放**在只含撤銷的 reveal 上；
     4. 都沒有時，併入 `presentedMilestones`，不呈現。
-    - 實作補充（AI-202B2 獨立 review）：第 2 步之後、第 3 步之前，先保留**已帶著里程碑、仍在佇列中且方向允許**的 reveal。否則之後每次記錄 Session（包括沒有 ledger 變化的無效 Session）或重複套用同一次 reconcile，都會把由第 2、3 步放置的里程碑搬到別的 reveal，或在沒有 reveal 可放時未播放就併入基準。
+    - 實作補充（AI-202B2 獨立 review）：第 1 步之後、第 2 步之前，先保留**已帶著同方向里程碑、仍在佇列中且方向允許**的 reveal。否則之後每次記錄 Session（包括沒有 ledger 變化的無效 Session）或重複套用同一次 reconcile，都會把由第 2、3 步放置的里程碑搬到別的 reveal，或在沒有 reveal 可放時未播放就併入基準。第 2 步只看與淨變化同方向的 `main-focus` 變化：提升放在新增 Main Quest 日的 reveal，退回放在撤銷的 reveal（不會把退回放到剛新增的一天上）。
   - `queueReveal: false` 的 reconcile（開啟 app、首頁 render、同步、remind 計時器）**只能移除或縮小**佇列中已有的里程碑，不新增。**逐項**比較佇列中的里程碑與目前狀態：
     - 專案完成在目前仍成立時保留；
     - 階段以基準（`from`）與目前階段重新計算：方向與原本相同且不為零時，**縮成** `from → 目前階段`（例如待播放的 `familiar → trusted-companion`，同步後目前是 `partner`，縮成 `familiar → partner`，仍會播放）；歸零或方向相反時移除；

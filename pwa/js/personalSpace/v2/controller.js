@@ -583,32 +583,37 @@ function stageAnchorSourceId(stage, entries, project) {
   return unique[day - 1]?.sourceId || null;
 }
 
-function changesMainQuestDay(reveal) {
+// A Main Quest day this reveal adds ('added') or takes back ('reversed').
+function changesMainQuestDay(reveal, direction) {
   return (reveal.rewards || []).some(reward => reward?.rewardType === 'quest_progress'
+    && reward.direction === direction
     && String(reward.rewardKey || '').startsWith('main-focus:'));
 }
 
 // Picks the one reveal that shows the net change (§3.4 placement order). A
-// reveal that already shows it keeps it when nothing in this reconciliation
-// claims it: a later Session (even one that adds nothing) or the same
-// reconciliation applied again must not move it or let it go unseen.
+// reveal that already shows a change the same way keeps it unless its anchor
+// Session's reveal claims it: a later Session (even one that adds nothing) or
+// the same reconciliation applied again must not move it or let it go unseen.
+// Otherwise a Main Quest day this reconciliation changed the same way takes
+// it: a stage taken back never lands on a day just added, nor the reverse.
 function chooseMilestoneReveal(queue, newIds, net, entries, project, { anchorOnly = false } = {}) {
   const up = isMilestoneUp(net);
   const allowed = reveal => !(up && isReversalOnly(reveal));
+  const carries = reveal => hasMilestone(reveal.milestone) && isMilestoneUp(reveal.milestone) === up;
   const anchor = isStageUp(net.stage)
     ? stageAnchorSourceId(net.stage.to, entries, project)
     : net.project === PROJECT_COMPLETED ? project?.completedBySessionId || null : null;
   if (anchor) {
     const atAnchor = queue.filter(reveal => reveal.sourceId === anchor && allowed(reveal));
-    const chosen = atAnchor.find(reveal => newIds.has(reveal.id)) || atAnchor.at(-1);
+    const chosen = atAnchor.find(reveal => newIds.has(reveal.id)) || atAnchor.find(carries) || atAnchor.at(-1);
     if (chosen) return chosen;
   }
   if (anchorOnly) return null;
-  const dayChanged = queue.filter(reveal => newIds.has(reveal.id)
-    && changesMainQuestDay(reveal) && allowed(reveal));
-  if (dayChanged.length) return dayChanged.at(-1);
-  const carrier = queue.find(reveal => hasMilestone(reveal.milestone) && allowed(reveal));
+  const carrier = queue.find(reveal => carries(reveal) && allowed(reveal));
   if (carrier) return carrier;
+  const dayChanged = queue.filter(reveal => newIds.has(reveal.id)
+    && changesMainQuestDay(reveal, up ? 'added' : 'reversed') && allowed(reveal));
+  if (dayChanged.length) return dayChanged.at(-1);
   return [...queue].reverse().find(reveal => !isReversalOnly(reveal)) || null;
 }
 

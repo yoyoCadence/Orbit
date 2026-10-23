@@ -124,10 +124,10 @@
     - 延後載入的 JS gzip 298,589 / 307,200 B，只剩 8,611 B。
 31. **AI-202B2：完成**（#207，v1.40.0）。專案完成與關係階段在 reveal 上以「使用者最後看到的狀態」（`presentedMilestones`）的淨變化呈現，整個佇列最多一個 reveal 帶它；`world_unlock`／`relationship` entry 不再直接成為行。
     - 每次 reconcile 都由 reward 與里程碑重新計算所有 reveal 的 `lines`／`kind`／`title`／`worldChange`（`controller.js` 的 `placeMilestones()`、`presentReveal()`）。沒有 reward 的 reveal（測試手寫的）原樣保留；`lines` 為空的 reveal 不排入。
-    - 放置模式：記錄或撤銷 Session 是 `place`（已帶著里程碑的 reveal 會保留它，除非錨點或本次的 Main Quest 日變化要求移動）；第一次以新規則計算而不是記錄 Session 時是 `first`（只放回 reconcile 之前保留的部分，再縮小）；舊版分頁排入的 reveal 在佇列中時是 `anchor`（只放在它就是錨點 Session 的 reveal）；其他（開啟、同步）是 `shrink`（只縮小或移除，不會變大）。
+    - 放置模式：記錄或撤銷 Session 是 `place`（已帶著同方向里程碑的 reveal 會保留它，除非錨點 Session 的 reveal 要求移動；第 2 步只看同方向的 Main Quest 日變化）；第一次以新規則計算而不是記錄 Session 時是 `first`（只放回 reconcile 之前保留的部分，再縮小）；舊版分頁排入的 reveal 在佇列中時是 `anchor`（只放在它就是錨點 Session 的 reveal）；其他（開啟、同步）是 `shrink`（只縮小或移除，不會變大）。
     - 舊版分頁消耗帶里程碑的 reveal 不會更新基準，靠 `presentedMilestones.pending` 補上；`stateSchema` 的 `...raw` 讓舊版保留這個欄位。
     - `companionEngine.js`：完成 → 階段提升（`companion.relationship.stage-up`）→ 階段退回 `observe`；主角在階段退回的 reveal 不慶祝（`viewModels.selectProtagonistState()`）。`revealSelectors.isWorldProgressReveal()` 改以完成旗標判斷解鎖（換一天承接時 entry 會移動但沒有解鎖）。
-    - 延後載入的 JS gzip 303,137 / 307,200 B，只剩 4,063 B。下一個加大 JS 的任務要先看預算。
+    - 延後載入的 JS gzip 303,269 / 307,200 B，只剩 3,931 B。下一個加大 JS 的任務要先看預算。
 32. **下一步**：PS-251 的提案（窗外依時段變化）→ INFRA-105（先寫變更說明，合併前要使用者看過）。Backlog 其餘項目需要核准或屬高風險（HW-112 的 Storage migration、INFRA-101／PS-211D 的部署行為、PRO-014* 的 entitlement）。使用者原則：以「任務確實完成」為準，合併是後話；做不到的先寫進 `tasks.md`。
 
 其他：

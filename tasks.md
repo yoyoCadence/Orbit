@@ -272,13 +272,14 @@
     - `consumePersonalSpaceV2Reveal()`：消耗帶里程碑的 reveal 時把基準前進到它的 `to`。
     - `companionEngine.js`：完成 → `companion.relationship.stage-up`（新台詞「我們一起走過的日子，又多了一些。」，加入文案表與 telemetry allowlist）→ 階段退回 `observe`＋目前階段的台詞。主角在階段退回的 reveal 不慶祝。完整頁面使用 reveal 的 `lines` 與階段提升的標題。
     - 文件：vertical slice §4.3、§5.1、§7.2（Companion 優先順序）、`personal-space-state-flow.md`。
-    - 測試：`ai202b2MilestoneReveals.test.js`（40 項，涵蓋提案 §8 reveal 的每一項，另加舊版分頁排入的 reveal、「最近的世界變化」跟著里程碑、重複套用相同）；e2e `ai202b2-stage-reveal.test.js`（341 px 記錄第 12 天：Major、標題與台詞、標題一行、重新載入不重播）。BUG-113／BUG-114 的測試不變並通過。
+    - 測試：`ai202b2MilestoneReveals.test.js`（41 項，涵蓋提案 §8 reveal 的每一項，另加舊版分頁排入的 reveal、「最近的世界變化」跟著里程碑、重複套用相同）；e2e `ai202b2-stage-reveal.test.js`（341 px 記錄第 12 天：Major、標題與台詞、標題一行、重新載入不重播）。BUG-113／BUG-114 的測試不變並通過。
     - 獨立 review（P1、P2 已修）：
-      - P1：之後記錄的 Session（包括沒有 ledger 變化的無效 Session）或重複套用同一次 reconcile，會把由放置第 2、3 步放上的里程碑搬走或未播放就併入基準。改為先保留已帶著里程碑的 reveal。
+      - P1：之後記錄的 Session（包括沒有 ledger 變化的無效 Session）或重複套用同一次 reconcile，會把由放置第 2、3 步放上的里程碑搬走或未播放就併入基準。改為錨點之後先保留已帶著同方向里程碑的 reveal；第 2 步只看與淨變化同方向的 Main Quest 日變化（複查的 P2：退回的階段不會放到剛新增的 Main Quest 日）。
       - P2：第一次以新規則計算時若是同步，同步帶入的第 12 天會被放到不相干的舊 reveal。改為只放回 reconcile 之前就保留的部分，其餘照同步縮小。
       - P3：佇列中 `rewards` 不是陣列的 reveal 不再讓第一次計算拋錯；主角在階段提升的 reveal 上一律慶祝。
       - 提案 §3.4 加上兩條實作補充。
-    - 預算：延後載入的 JS gzip 303,137 / 307,200 B（剩 4,063 B）。
+      - 已知、可接受（複查的 P3）：第一次以新規則計算的同步若也刪掉了保留中完成的錨點（另一台裝置刪除第 4 天、加入第 5 天），完成依第 3 步放到最新的 reveal（仍只顯示一次）。
+    - 預算：延後載入的 JS gzip 303,269 / 307,200 B（剩 3,931 B）。
 
 - [x] **AI-202B1** 實作 AI-202：關係階段的推導與顯示
   - 依據：[`docs/ai-202-companion-relationship-proposal.md`](docs/ai-202-companion-relationship-proposal.md) §3.2、§3.3、§5–§7，使用者 2026-10-23 的決定（N1、只算 Main Quest 日、K4＋R1、S1、H1、T0）。

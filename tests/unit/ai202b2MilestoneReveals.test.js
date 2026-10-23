@@ -536,6 +536,19 @@ describe('AI-202B2 milestone reveals', () => {
       expect(next.presentedMilestones).toMatchObject({ projectCompleted: true, relationshipStage: 'familiar' });
     });
 
+    it('never moves a stage taken back onto a Main Quest day just added', () => {
+      seenThrough(12);
+      undo(days(11), 'day-12');
+      undo(days(10), 'day-11');
+      const state = settle([...days(10), mainQuestDay(13)]);
+      const added = revealOf(state, 'day-13');
+
+      expect(state.companion.relationshipStage).toBe('familiar');
+      expect(stageLines(added)).toEqual([]);
+      expect(carriers(state).map(reveal => reveal.sourceId)).toEqual(['day-12']);
+      expect(reactionTo(added, state).state).toBe('approach');
+    });
+
     it('keeps a stage-up on a backdated 12th day when another Session follows', () => {
       const eleven = without(days(12), 'day-3');
       seeAll(settle(eleven));
@@ -547,6 +560,9 @@ describe('AI-202B2 milestone reveals', () => {
       expect(carriers(next).map(reveal => reveal.sourceId)).toEqual(['day-3']);
       expect(revealOf(next, 'ordinary-12').title).toBeUndefined();
       expect(selectProtagonistState({ pendingReveal: revealOf(next, 'day-3') }).state).toBe('celebrate');
+      // Nor does a later Main Quest day take it.
+      const later = settle([...twelve, ordinarySession(12), mainQuestDay(13)]);
+      expect(carriers(later).map(reveal => reveal.sourceId)).toEqual(['day-3']);
     });
   });
 
