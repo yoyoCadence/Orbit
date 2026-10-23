@@ -217,16 +217,6 @@
     - 實作提案（2026-10-23）：[`docs/ps-251b-window-view-proposal.md`](docs/ps-251b-window-view-proposal.md)。建議 E-A：晨間與傍晚各一張「只有窗外」的 RGBA 疊層（Blender holdout），疊在房間背景之上、家具之下，五個房間共用，兩種畫風共 4 張圖；不重新渲染房間、不改房間背景的格式；只在 `getWorkspaceSceneAssets()` 的回傳加一個屬性（INFRA-105）。窗內幾乎都是建築（天空約 0.1%），所以看得出差別的是建築的顏色、亮度與亮窗，或讓天際線低一點（§8.2）；實作第一步是預覽，確認後才產生正式素材。**等待使用者決定 §8**（時段、窗外的樣子與預覽、房間內的光、開著 app 跨過時段、快取、文件上限）。核准後實作為 PS-251B，驗收條件見提案 §9。
   - **§9.8 順帶整理**：使用者 2026-10-23 核准三項都做，拆成 PS-251A。
 
-- [ ] **INFRA-105** service worker 安裝時，SHELL 的 JS／CSS／HTML 也要重新驗證，避免改版後先跑舊程式
-  - 問題（PS-211A 獨立 review 發現，2026-10-20；修改前就存在）：`sw.js` 的 install 只對圖片與 `pixi.js` 使用 `cache: 'no-cache'`。JS、CSS、HTML 仍走瀏覽器的 HTTP cache。GitHub Pages 的 `max-age=600` 內，新版本的快取會存到**舊的** `version.js` 等模組。
-  - 影響：
-    - 「新版本已就緒」後的第一次載入，最多約 10 分鐘內仍執行舊程式。stale-while-revalidate 的背景更新也會讀到仍然有效的 HTTP cache。
-    - 改版若改了素材檔名，舊的 `assetManifest.js` 會要求不在 SHELL 中的舊檔名：線上 404、離線缺圖。
-    - 新模組使用舊模組沒有的 export 時，可能無法 link。
-  - 方向：SHELL 的所有項目都以 `new Request(path, { cache: 'no-cache' })` 取得（沒變的檔案只需 304），並以 e2e 模擬改版驗證。
-  - **改 service worker 的快取行為（部署行為），需使用者核准**。
-  - 使用者 2026-10-23 核准：先寫一份短的變更說明（做法、風險、以 e2e 模擬改版的驗證），**PR 合併前讓使用者看過**，再實作。
-
 - [ ] **BUG-109A** 在 production 套用 013 signup trigger migration
   - 目標：讓 production 的 `handle_new_user()` 截斷超過 30 字元的名稱來源，長 email local-part 與長 Google 顯示名稱都能註冊。
   - 步驟：依 [`docs/bug-109-signup-name-truncation.md`](docs/bug-109-signup-name-truncation.md) 的 runbook：先以 `pg_get_functiondef` 比對 production 函式與 004、記錄回滾來源，在非 production 環境跑 `tests/database/bug109.test.sql`，再套用並驗證。
@@ -236,6 +226,17 @@
 ---
 
 ## In Progress
+
+- [ ] **INFRA-105** service worker 安裝時，SHELL 的 JS／CSS／HTML 也要重新驗證，避免改版後先跑舊程式
+  - 問題（PS-211A 獨立 review 發現，2026-10-20；修改前就存在）：`sw.js` 的 install 只對圖片與 `pixi.js` 使用 `cache: 'no-cache'`。JS、CSS、HTML 仍走瀏覽器的 HTTP cache。GitHub Pages 的 `max-age=600` 內，新版本的快取會存到**舊的** `version.js` 等模組。
+  - 影響：
+    - 「新版本已就緒」後的第一次載入，最多約 10 分鐘內仍執行舊程式。stale-while-revalidate 的背景更新也會讀到仍然有效的 HTTP cache。
+    - 改版若改了素材檔名，舊的 `assetManifest.js` 會要求不在 SHELL 中的舊檔名：線上 404、離線缺圖。
+    - 新模組使用舊模組沒有的 export 時，可能無法 link。
+  - 方向：SHELL 的所有項目都以 `new Request(path, { cache: 'no-cache' })` 取得（沒變的檔案只需 304），並以 e2e 模擬改版驗證。
+  - **改 service worker 的快取行為（部署行為），需使用者核准**。
+  - 使用者 2026-10-23 核准：先寫一份短的變更說明（做法、風險、以 e2e 模擬改版的驗證），**PR 合併前讓使用者看過**，再實作。
+  - In progress（2026-10-23）：PS-251B 的提案（#208）合併後開始（Next → In Progress）。
 
 - [ ] **PRO-014Q** 開發者面板的 backup 不應擋住其他帳號或非 Pro 模擬的 entitlement refresh
   - 問題（PR #158 Codex review 指出，2026-10-18 確認）：`storage.refreshProEntitlement()` 只要 `FLAG_DEV_BACKUP` 存在就直接 return。這個 backup 也由等級模擬器建立，且 `storage.clearAll()` 登出時不會清除。開發者登出後換另一個帳號，該帳號的 refresh 會一直被跳過，在 `server` source 下 fail closed，直到手動重設。
