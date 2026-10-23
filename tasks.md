@@ -14,11 +14,6 @@
 
 ## Backlog
 
-- [ ] **INFRA-107** service worker 的 HTML network-first 在 GitHub Pages 的根目錄不成立
-  - 問題（INFRA-105 獨立 review 發現，2026-10-23；原本就有）：`sw.js` 以 `url.pathname.endsWith('.html') || url.pathname === '/'` 判斷 HTML。網站在 `/Orbit/` 底下，`https://yoyocadence.github.io/Orbit/` 的 pathname 是 `/Orbit/`，不符合，所以根目錄走圖片的 cache-first。
-  - 影響：目前沒有可見的錯誤，因為 INFRA-105 起 install 時重新驗證 `./`，新版的快取裡是新版的根目錄頁面；但根目錄不會走 network-first（例如離線時的退回順序與註解所述不同）。
-  - 方向：以 service worker 的 registration scope 判斷根目錄（`url.href === self.registration.scope`），或判斷 `e.request.mode === 'navigate'`；加 unit test。屬 service worker 的快取行為（部署行為），**實作前先說明並取得使用者核准**。
-
 - [ ] **HW-112** 佐證圖片雲端同步（Supabase Storage）
   - Goal: upload proof photos to Supabase Storage so they persist across devices and app reinstalls.
   - Scope: `platform/badge.js` → new `pwa/js/platform/proofStorage.js` adapter; bucket `orbit-proof`, path `{user_id}/{sessionId}.jpg`; RLS: SELECT/INSERT/DELETE scoped to `auth.uid()`; use existing `compressImage()` output; graceful fallback to localStorage-only for guests.
@@ -225,6 +220,13 @@
 ---
 
 ## In Progress
+
+- [ ] **INFRA-107** service worker 的 HTML network-first 在 GitHub Pages 的根目錄不成立
+  - 問題（INFRA-105 獨立 review 發現，2026-10-23；原本就有）：`sw.js` 以 `url.pathname.endsWith('.html') || url.pathname === '/'` 判斷 HTML。網站在 `/Orbit/` 底下，`https://yoyocadence.github.io/Orbit/` 的 pathname 是 `/Orbit/`，不符合，所以根目錄走圖片的 cache-first。
+  - 影響：目前沒有可見的錯誤，因為 INFRA-105 起 install 時重新驗證 `./`，新版的快取裡是新版的根目錄頁面；但根目錄不會走 network-first（例如離線時的退回順序與註解所述不同）。
+  - 方向：以 service worker 的 registration scope 判斷根目錄（`url.href === self.registration.scope`），或判斷 `e.request.mode === 'navigate'`；加 unit test。屬 service worker 的快取行為（部署行為），**實作前先說明並取得使用者核准**。
+  - **2026-10-23 使用者決定**（AskUserQuestion）：根目錄與 `index.html` **都回傳 service worker 快取中的 HTML**（離線也一樣），新版本照現在的流程：安裝時重新驗證 → 「新版本已就緒」→ 重新整理，HTML 與程式永遠同一版。比對時忽略網址的查詢字串；不快取錯誤回應。先寫變更說明＋e2e，**PR 合併前給使用者看**。
+  - In progress（2026-10-23）：PS-251B（#210）合併後開始（Backlog → In Progress）。
 
 - [ ] **PRO-014Q** 開發者面板的 backup 不應擋住其他帳號或非 Pro 模擬的 entitlement refresh
   - 問題（PR #158 Codex review 指出，2026-10-18 確認）：`storage.refreshProEntitlement()` 只要 `FLAG_DEV_BACKUP` 存在就直接 return。這個 backup 也由等級模擬器建立，且 `storage.clearAll()` 登出時不會清除。開發者登出後換另一個帳號，該帳號的 refresh 會一直被跳過，在 `server` source 下 fail closed，直到手動重設。
