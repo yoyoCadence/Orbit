@@ -102,7 +102,8 @@ function pixelStylePaths() {
       const scene = resolve({ style: 'pixel' }, {}, progress, timeBand);
       return [scene.background, ...scene.props.map(entry => entry.path), ...sceneDecorations(scene)];
     })),
-    ...['morning', 'evening'].map(timeBand => resolve({ style: 'pixel' }, {}, 0, timeBand).exterior),
+    // An older manifest has no `exterior` (INFRA-105).
+    ...['morning', 'evening'].map(timeBand => resolve({ style: 'pixel' }, {}, 0, timeBand).exterior).filter(Boolean),
     ...pixel.protagonists.flatMap(({ id }) => protagonist.flatMap(state => facings.map(facing => (
       resolve({ style: 'pixel', protagonistId: id }, { protagonist: { state, facing } }).protagonist
     )))),

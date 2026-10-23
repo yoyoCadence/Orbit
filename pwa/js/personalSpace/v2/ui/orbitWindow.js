@@ -615,18 +615,20 @@ function renderPosterExterior(scene, fallback, pixelArt) {
 
 // The view goes when it cannot load: the room's baked-in view shows. It also
 // follows the room: when the background falls back to the Q-style room (a
-// room style or the pixel room not cached), so does the view; the day room
-// used when the night room cannot load keeps the evening view.
+// room style or the pixel room not cached), so does the view, put back if its
+// own error came first; the day room used when the night room cannot load
+// keeps the evening view.
 function followBackgroundWithExterior(root) {
   const exterior = root.querySelector?.('.orbit-window-exterior');
   if (!exterior) return;
-  exterior.addEventListener('error', () => exterior.remove(), { once: true });
+  exterior.addEventListener('error', () => exterior.remove());
   const fallbackSrc = exterior.dataset.exteriorFallback;
   const background = root.querySelector('.orbit-window-background');
   if (!fallbackSrc || !background) return;
   background.addEventListener('error', () => {
     exterior.removeAttribute('data-pixel-art');
     exterior.setAttribute('src', fallbackSrc);
+    if (!exterior.parentNode) background.after(exterior);
   }, { once: true });
 }
 

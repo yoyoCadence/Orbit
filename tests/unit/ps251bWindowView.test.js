@@ -133,6 +133,25 @@ describe('PS-251B window view by time of day', () => {
       .querySelector('.orbit-window-exterior').hasAttribute('data-exterior-fallback')).toBe(false);
   });
 
+  it('puts the Q-style view back when the pixel view failed before the pixel room did', () => {
+    // Offline after an update with no pixel files: either error can come first.
+    const root = poster({ timeBand: 'morning', appearance: { style: 'pixel' } });
+    const stop = mount(root);
+    const exterior = root.querySelector('.orbit-window-exterior');
+    exterior.dispatchEvent(new Event('error'));
+    expect(root.querySelector('.orbit-window-exterior')).toBeNull();
+    const background = root.querySelector('.orbit-window-background');
+    background.dispatchEvent(new Event('error'));
+    expect(root.querySelector('.orbit-window-exterior')).toBe(exterior);
+    expect(exterior.previousElementSibling).toBe(background);
+    expect(exterior.getAttribute('src')).toBe(Q('morning'));
+    expect(exterior.hasAttribute('data-pixel-art')).toBe(false);
+    // And it goes again if the Q-style view cannot load either.
+    exterior.dispatchEvent(new Event('error'));
+    expect(root.querySelector('.orbit-window-exterior')).toBeNull();
+    stop();
+  });
+
   it('leaves the baked-in view when the window view cannot load', () => {
     const root = poster({ timeBand: 'morning' });
     const stop = mount(root);
@@ -156,12 +175,20 @@ describe('PS-251B window view by time of day', () => {
         },
       };
     });
-    const { renderOrbitWindow: render } = await import('../../pwa/js/personalSpace/v2/ui/orbitWindow.js');
-    const host = document.createElement('div');
-    host.innerHTML = render({ activeProject: { progress: 100 }, timeBand: 'evening' });
-    expect(host.querySelector('.orbit-window-exterior')).toBeNull();
-    expect(host.querySelector('.orbit-window-background')).not.toBeNull();
-    vi.doUnmock('../../pwa/js/personalSpace/v2/content/assetManifest.js');
-    vi.resetModules();
+    try {
+      const { renderOrbitWindow: render } = await import('../../pwa/js/personalSpace/v2/ui/orbitWindow.js');
+      const host = document.createElement('div');
+      host.innerHTML = render({ activeProject: { progress: 100 }, timeBand: 'evening' });
+      expect(host.querySelector('.orbit-window-exterior')).toBeNull();
+      expect(host.querySelector('.orbit-window-background')).not.toBeNull();
+      // The developer gallery still opens; it has no pixel views to list.
+      const { buildAssetCatalog } = await import('../../pwa/js/personalSpace/v2/ui/assetGallery.js');
+      const listed = buildAssetCatalog().flatMap(group => group.assets.map(asset => asset.path));
+      expect(listed.length).toBeGreaterThan(0);
+      expect(listed.some(path => path.includes('/pixel/window/'))).toBe(false);
+    } finally {
+      vi.doUnmock('../../pwa/js/personalSpace/v2/content/assetManifest.js');
+      vi.resetModules();
+    }
   });
 });

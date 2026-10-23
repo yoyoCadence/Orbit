@@ -264,7 +264,8 @@
     - 快取：Q 版疊層加入 SHELL（PS-211A 推導 45 個，e2e 46 個含 Pixi），像素版第一次顯示時下載。開發者的素材總覽加上兩種畫風的疊層。
     - 文件：art bible §6.1、§7.2；asset pipeline 的素材上限；technical design §12.2 與時段的說明；`ps244-blender`、`ps250-rooms` README；`art-pipeline/ps251-window/README.md`；提案狀態。
     - 測試：`ps251bWindowView.test.js`（manifest、素材與 `outputs.json`、poster 疊層與退回、舊 manifest）、`personalSpacePixiRuntime.test.js`（疊層的位置、順序、退回、載入失敗）、`personalSpaceV2RemindWindow.test.js`（每個時段邊界、時段內不重新 render、睡眠跨時段）；e2e `ps251b-window-view.test.js`（晨間與傍晚的疊層與圖層順序；開著 app 跨過 17 時房間換夜晚、窗外換傍晚、只重新 render 一次、保留焦點；跨過 21 時保留詳細資訊面板與焦點；不改 `remindWindow.js` 時失敗）、`sw-precache.test.js` 加上晨間與傍晚的離線 poster。全部 e2e 也在晨間（America/Los_Angeles）與傍晚（Asia/Kolkata）的時區各跑一次，既有以 `.orbit-window-background` 找背景的測試都通過。
-    - 延後載入的 JS gzip 304,916 / 307,200 B，只剩 2,284 B。
+    - 延後載入的 JS gzip 304,977 / 307,200 B，只剩 2,223 B。
+    - 獨立 review：沒有 P1／P2（逐項確認退回邏輯、新舊模組混用、時段邊界與 DST、Pixi 的順序與材質、測試在修改前會失敗、文件數字）。依 P3 修正：poster 上窗外的錯誤比背景先到時（離線、像素檔沒有快取），背景退回 Q 版房間時把 Q 版窗外放回去；開發者素材總覽搭配舊的 `assetManifest.js` 不再拋錯；technical design §12.2 的段落順序。刻意不處理的 P3：重新 render 恰好跨過時段邊界的幾毫秒內，watcher 讀到的時間比 model 晚，會等到下一個邊界才更新（AI-203B 的 12／14 時原本就如此）；疊層材質是整張畫面大小（約 6.3 MB GPU 記憶體，與房間背景相同），裁成窗戶範圍可省約 10 倍，留待之後需要時再做。
 
 - [x] **PS-251** PS-248 提案 §9 中 PS-250 沒有涵蓋的項目
   - 來源：PS-248 結案時（#202 獨立 review 的 P2）。使用者的 PS-250 決定取代了 PS-248 §9 的範圍、擴充前提、順序、做法與快取，但沒有決定下面兩項。

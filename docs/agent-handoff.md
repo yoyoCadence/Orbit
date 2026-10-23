@@ -137,7 +137,7 @@
     - 渲染：只有窗外的疊層用物件的 `is_holdout`（不是 Holdout 材質：材質會讓 Freestyle 把房間的描邊畫進圖裡；這與 PS-247 的遮擋物相反，那裡要的是被擋住的邊不留殘影）。像素版量化前要把 alpha 為 0 的顏色清成黑色，否則調色盤浪費在看不到的地方（51 KB → 13 KB）。
     - 疊層的畫風跟著實際畫出的房間（`scenery.usedFallback`／poster 背景的 `error`）；之後新增會讓房間退回的情況時，疊層也要跟著。
     - e2e：`page.clock.install()` 後跨時段要用 `fastForward()`；`setSystemTime()` 只改時間、不會讓已排程的計時器提前。poster 的圖片都是 `pointer-events: none`，`elementsFromPoint()` 看不到，圖層順序改看計算後的 `z-index` 與 DOM 順序。驗證既有 e2e 在其他時段時，把 `TZ` 與 Playwright 的 `timezoneId` 設成同一個時區（`TODAY` 由 Node 計算）。
-    - 延後載入的 JS gzip 304,916 / 307,200 B，只剩 2,284 B。下一個加大 JS 的任務要先看預算。
+    - 延後載入的 JS gzip 304,977 / 307,200 B，只剩 2,223 B。下一個加大 JS 的任務要先看預算。
 35. **下一步**：Backlog 其餘項目需要核准或屬高風險（INFRA-107 的根目錄 `isHtml`、HW-112 的 Storage migration、INFRA-101／PS-211D 的部署行為、PRO-014* 的 entitlement）。使用者原則：以「任務確實完成」為準，合併是後話；做不到的先寫進 `tasks.md`。
 
 其他：
