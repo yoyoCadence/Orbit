@@ -1,6 +1,11 @@
 import { getWorkspaceSceneAssets } from '../content/assetManifest.js';
 import { COMPANION_NAME, getCompanionDialogue } from '../content/companionDialogue.js';
 import {
+  formatRewardLine,
+  formatWorldChange,
+  relationshipStageLabel,
+} from '../content/worldLabels.js';
+import {
   orbitWindowRuntime,
   orbitWindowRuntimeDestroyer,
 } from '../runtime/pixiSceneRuntime.js';
@@ -145,8 +150,10 @@ export function renderOrbitWindow(inputModel = {}, options = {}) {
             <span style="width:${model.activeProject.progress}%"></span>
           </span>
         </button>
-        <button class="orbit-window-state-card" type="button" data-orbit-companion>
-          <span>COMPANION</span>
+        <button class="orbit-window-state-card" type="button" data-orbit-companion${model.companion.relationshipStage ? ` data-relationship-stage="${escapeHtml(model.companion.relationshipStage)}"` : ''}>
+          <span>${model.companion.relationshipStage
+            ? `COMPANION · <span class="orbit-window-relationship-stage">${escapeHtml(relationshipStageLabel(model.companion.relationshipStage))}</span>`
+            : 'COMPANION'}</span>
           <strong>${escapeHtml(model.companion.label)}</strong>
           <span>${escapeHtml(model.companion.message)}</span>
         </button>
@@ -544,6 +551,7 @@ export function normalizeOrbitWindowModel(input = {}, renderMode) {
       message: companion.message
         || companion.dialogue
         || getCompanionDialogue(companion.dialogueKey),
+      relationshipStage: companion.relationshipStage || input.relationshipStage || null,
     },
     protagonist: {
       state: protagonist.state || input.playerState || 'idle',
@@ -684,37 +692,14 @@ function buildRewardLines(reveal) {
   if (!reveal) return [];
   if (Array.isArray(reveal.lines)) return reveal.lines;
   if (Array.isArray(reveal.rewards)) {
-    return reveal.rewards.map(entry => {
-      if (entry.label) return entry.label;
-      const key = entry.metadata?.statKey || entry.rewardKey || entry.rewardType;
-      const amount = Number(entry.amount) || 0;
-      const signedAmount = entry.direction === 'reversed'
-        ? `-${Math.abs(amount)}`
-        : `${amount >= 0 ? '+' : ''}${amount}`;
-      return `${key} ${signedAmount}`;
-    });
+    // AI-202B1 (H1): the same names as the full page, not ledger keys.
+    return reveal.rewards.map(entry => entry.label || formatRewardLine(entry));
   }
   return [reveal.message || '世界狀態已同步'];
 }
 
 function formatRecentWorldChange(change) {
-  if (!change) return null;
-  if (typeof change === 'string') return change;
-  if (typeof change !== 'object') return String(change);
-
-  const message = change.label
-    || change.message
-    || change.title
-    || change.summary
-    || change.description
-    || change.text;
-  if (message) return String(message);
-
-  const subject = change.rewardKey || change.key || change.rewardType || change.type;
-  if (!subject) return null;
-  const amount = Number.isFinite(change.amount) ? change.amount : Number.parseFloat(change.amount);
-  if (!Number.isFinite(amount) || amount === 0) return String(subject);
-  return `${subject} ${amount > 0 ? `+${amount}` : amount}`;
+  return formatWorldChange(change);
 }
 
 function momentumLabel(value) {

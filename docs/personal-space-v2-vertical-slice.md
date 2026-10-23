@@ -169,8 +169,10 @@ For the first ruleset, `ps-v2-workspace-v1`:
 | Trigger | Ledger rewards | Reveal class |
 |---|---|---|
 | Valid ordinary productive Session | one primary hidden-stat reward from the mapping below | Small |
-| Daily Main Quest first completion | `gold:daily-main=100`, `hidden_stat:depth=3`, `quest_progress:main-focus:<effective-date>=1`, `project_progress:workspace-upgrade=25` | Medium |
-| Workspace Upgrade reaches 100% | `world_unlock:formal-workstation=1`, `relationship:companion-stage=1` | Major |
+| Daily Main Quest first completion | `gold:daily-main-quest=100`, `hidden_stat:depth.daily-main-quest=3`, `quest_progress:main-focus:<effective-date>=1`, `project_progress:workspace-upgrade=25` | Medium |
+| Workspace Upgrade reaches 100% | `world_unlock:formal-workstation=1`, `relationship:companion=1` | Major |
+
+The 12th and 30th Main Quest days each add one more relationship point. They are derived from the active ledger (relationship policy `ai202-main-quest-days-v1`, §7.2) and are not ledger entries.
 
 Ordinary low-value completions do not drop Gold. Gold is fixed, non-random, and tied to an understandable source.
 
@@ -283,6 +285,8 @@ The exact implementation can split storage across modules, but the normalized lo
 }
 ```
 
+The implemented state keeps the relationship under `companion`: `relationshipPoints`, `relationshipStage`, and (AI-202B1) `legacyRelationshipPoints` (the migrated legacy floor, stored once) and `relationshipPolicyId` (the version of the derivation). These are local fields; V2 state is not synced and has no database schema.
+
 Project progress, quest completion, hidden stats, V2 Gold, relationship advancement, and unlocked project phases are reduced from active ledger entries. A persisted derived snapshot may be used for fast rendering, but reconciliation must be able to rebuild and verify it from the ledger.
 
 ### 5.2 Ownership and migration scope
@@ -346,7 +350,15 @@ use distinct hidden-stat reward keys while both carry `metadata.statKey =
 Session promotion or winner reassignment from mutating an existing ledger
 record in place.
 
-No random id or current timestamp may decide whether a reward is new. Amount and metadata are immutable for a ruleset. Changing a rule requires a new `rulesetId` plus an explicit migration/reconciliation policy.
+No random id or current timestamp may decide whether a reward is new. Amount and metadata are immutable for a ruleset.
+
+`rulesetId` versions the **ledger entries**: which rewards a Session earns, their amounts and metadata. Changing any of those requires a new `rulesetId` plus an explicit migration/reconciliation policy.
+
+A rule derived only from the active ledger and never written into it (the AI-202 relationship milestones) is versioned by its own policy id stored in the state. Changing such a rule:
+
+- must not add, reverse, or change any ledger entry;
+- must leave a state the previous code can still read without damaging it (an older tab may reconcile it);
+- must record the old and new formulas in `docs/personal-space-state-flow.md`.
 
 ### 6.2 Reconciliation algorithm
 
@@ -497,7 +509,12 @@ Relationship stages remain ordered:
 stranger-observer -> familiar -> partner -> trusted-companion
 ```
 
-Completing Workspace Upgrade advances at most one stage through a ledger entry. Reversing the project-completion source reverses that advancement unless a later active source independently sustains it.
+The stage is derived from the active ledger (AI-202, policy `ai202-main-quest-days-v1`): points are `max(legacy floor, the ledger's relationship entries + derived milestones)`, and the stage is the points clamped to the four stages.
+
+- Completing Workspace Upgrade (the 4th Main Quest day) adds one point through its ledger entry. Reversing the project-completion source reverses it unless a later active source independently sustains it.
+- The 12th and 30th distinct Main Quest days each add one derived point. They are not ledger entries, so an older tab cannot reverse them.
+- Only Main Quest days count; recovery, ordinary Sessions, hidden stats, Streak and interactions do not. There is no time decay: the stage only falls when undone Main Quest days take the count under a threshold.
+- The stage picks the `observe` and `momentum.strong` lines (one per stage after the first). Stage-change reveals and their priority in the list above are AI-202B2.
 
 Dialogue uses approved keys, never raw generated text. It must describe the observed pattern or Project change without guilt, emotional coercion, or repetitive generic praise.
 
@@ -890,7 +907,7 @@ Those remain the regression floor.
 - Reward ids are deterministic.
 - Settling the same Session twice creates one reward set.
 - Repeated remote duplicates create one reward set.
-- Changed rules require a new ruleset id rather than mutating history.
+- Changed ledger rules require a new ruleset id rather than mutating history; a rule derived only from the active ledger carries its own policy id and adds, reverses or changes no ledger entry.
 - Invalid/pre-epoch Sessions earn no V2 reward.
 - Hidden-stat priority and amounts match the table.
 - Daily Main Quest selects one canonical source.

@@ -241,17 +241,6 @@
 
 ## In Progress
 
-- [ ] **AI-202B1** 實作 AI-202：關係階段的推導與顯示
-  - 依據：[`docs/ai-202-companion-relationship-proposal.md`](docs/ai-202-companion-relationship-proposal.md) §3.2、§3.3、§5–§7，使用者 2026-10-23 的決定（N1、只算 Main Quest 日、K4＋R1、S1、H1、T0）。
-  - 範圍：
-    - 推導：點數＝`max(legacy 點數, ledger 的 relationship ＋ 推導的 milestone)`；第 12、30 個 Main Quest 日各加 1。新的本機欄位 `companion.legacyRelationshipPoints`（只寫一次）與 `companion.relationshipPolicyId`。`rulesetId` 與 ledger 不變。
-    - 顯示：首頁 COMPANION 卡顯示階段（與完整頁面共用名稱表）；`companion.observe` 與 `companion.momentum.strong` 依階段（6 句新台詞）；撤銷的 reveal 用目前階段的 `observe` 台詞。
-    - H1：首頁與完整頁面的 reward 行共用一份中文名稱表，不再顯示原始 key。
-    - 文件：README 註明以 4 個階段為準；vertical slice §4.3、§5.1、§6.1、§7.2、§13.1 與 `docs/personal-space-state-flow.md`。
-    - 不在範圍（AI-202B2）：階段變化的 reveal。本任務之後，第 12、30 天只改變卡片上的階段，沒有專屬的 reveal。
-  - 驗收：提案 §8 的「推進」、「與舊版程式碼並存」、「顯示」各項（reveal 的項目在 AI-202B2）。
-  - In progress（2026-10-23）。
-
 - [ ] **PRO-014Q** 開發者面板的 backup 不應擋住其他帳號或非 Pro 模擬的 entitlement refresh
   - 問題（PR #158 Codex review 指出，2026-10-18 確認）：`storage.refreshProEntitlement()` 只要 `FLAG_DEV_BACKUP` 存在就直接 return。這個 backup 也由等級模擬器建立，且 `storage.clearAll()` 登出時不會清除。開發者登出後換另一個帳號，該帳號的 refresh 會一直被跳過，在 `server` source 下 fail closed，直到手動重設。
   - 影響：只影響使用過開發者面板的裝置。
@@ -274,6 +263,26 @@
 ---
 
 ## Done
+
+- [x] **AI-202B1** 實作 AI-202：關係階段的推導與顯示
+  - 依據：[`docs/ai-202-companion-relationship-proposal.md`](docs/ai-202-companion-relationship-proposal.md) §3.2、§3.3、§5–§7，使用者 2026-10-23 的決定（N1、只算 Main Quest 日、K4＋R1、S1、H1、T0）。
+  - 範圍：
+    - 推導：點數＝`max(legacy 點數, ledger 的 relationship ＋ 推導的 milestone)`；第 12、30 個 Main Quest 日各加 1。新的本機欄位 `companion.legacyRelationshipPoints`（只寫一次）與 `companion.relationshipPolicyId`。`rulesetId` 與 ledger 不變。
+    - 顯示：首頁 COMPANION 卡顯示階段（與完整頁面共用名稱表）；`companion.observe` 與 `companion.momentum.strong` 依階段（6 句新台詞）；撤銷的 reveal 用目前階段的 `observe` 台詞。
+    - H1：首頁與完整頁面的 reward 行共用一份中文名稱表，不再顯示原始 key。
+    - 文件：README 註明以 4 個階段為準；vertical slice §4.3、§5.1、§6.1、§7.2、§13.1 與 `docs/personal-space-state-flow.md`。
+    - 不在範圍（AI-202B2）：階段變化的 reveal。本任務之後，第 12、30 天只改變卡片上的階段，沒有專屬的 reveal。
+  - 驗收：提案 §8 的「推進」、「與舊版程式碼並存」、「顯示」各項（reveal 的項目在 AI-202B2）。
+  - In progress（2026-10-23）。
+  - 完成（2026-10-23，v1.39.0）：
+    - `controller.js`：`countMainQuestDays()`（不同的 `main-focus:<date>` key）、`derivedRelationshipMilestones()`（12、30）、`legacyRelationshipPoints()`（欄位不存在時以 reconcile 之前的 ledger 算一次，之後只讀、無效值為 0）。點數＝`max(legacy, ledger 的 relationship ＋ milestone)`；寫入 `relationshipPolicyId`。
+    - `content/worldLabels.js`（新模組，加入 SHELL）：階段名稱、hidden stats 名稱、`formatRewardLine()`、`formatWorldChange()`；首頁、完整頁面與 view model 共用。提案原本寫放在既有模組，但依 INFRA-105 的規則，SHELL 模組不能 import 既有 SHELL 模組的新 export，所以另立新模組。
+    - `companionEngine.js`：`observe`（含撤銷的 reveal）與 `momentum.strong` 依階段；`companionDialogue.js` 與 telemetry allowlist 加 6 句。
+    - `viewModels.js`：`resolveRelationshipStage()` 只讀儲存的階段（不再加上 ledger 的 relationship）。
+    - 首頁卡片「COMPANION · <階段>」：這張卡的標籤字距 .06em、階段名稱不加字距、單行。實測 341 px 時最長的「陌生觀察者」從只剩 0.7 px 變成留 9.9 px。
+    - 文件：README（以 4 個階段為準）、vertical slice §4.3（實際的 key）、§5.1（新欄位）、§6.1、§7.2、§13.1（`rulesetId` 只標示 ledger entry，推導的規則用 policy id）、`personal-space-state-flow.md`（新舊公式）。§7.2 的 Companion 優先順序（階段提升）留給 AI-202B2。
+    - 測試：`ai202b1RelationshipStage.test.js`（18 項，含以舊版的關係算法處理新版 state）；e2e `companion-dialogue.test.js` 加上階段標籤（341–1024 px、200% 縮放，至少留 4 px）與儲存的階段。
+    - 預算：延後載入的 JS gzip 298,466 / 307,200 B（剩 8,734 B）。
 
 - [x] **AI-202** 定義 companion relationship stage 與 hidden stats 的最小映射規則
   - 目標：讓 companion 關係變化可由真實行為驅動，而不是聊天次數

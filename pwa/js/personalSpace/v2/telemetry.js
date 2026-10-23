@@ -22,9 +22,15 @@ export const COMPANION_DIALOGUE_INTERACTION_KEYS = Object.freeze([
   'companion.recovery.completed',
   'companion.session.productive-complete',
   'companion.momentum.strong',
+  'companion.momentum.strong.familiar',
+  'companion.momentum.strong.partner',
+  'companion.momentum.strong.trusted-companion',
   'companion.goal.gentle-reminder',
   'companion.momentum.low',
   'companion.observe',
+  'companion.observe.familiar',
+  'companion.observe.partner',
+  'companion.observe.trusted-companion',
 ]);
 
 const EVENT_SCHEMAS = Object.freeze({

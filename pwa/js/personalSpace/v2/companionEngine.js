@@ -5,6 +5,23 @@ import {
 
 export const PRODUCTIVE_RESULTS = new Set(['complete', 'partial', 'instant']);
 
+// AI-202B1 (S1): the two lines seen most often follow the relationship stage.
+// The first stage, and an unknown one, keep the original line.
+const OBSERVE_LINE_BY_STAGE = Object.freeze({
+  familiar: 'companion.observe.familiar',
+  partner: 'companion.observe.partner',
+  'trusted-companion': 'companion.observe.trusted-companion',
+});
+const MOMENTUM_STRONG_LINE_BY_STAGE = Object.freeze({
+  familiar: 'companion.momentum.strong.familiar',
+  partner: 'companion.momentum.strong.partner',
+  'trusted-companion': 'companion.momentum.strong.trusted-companion',
+});
+
+function observeLine(relationshipStage) {
+  return OBSERVE_LINE_BY_STAGE[relationshipStage] || 'companion.observe';
+}
+
 function freezeReaction(reaction) {
   return Object.freeze({
     relationshipDelta: 0,
@@ -59,13 +76,14 @@ export function getCompanionReaction({
   momentum = 'low',
   missedPatterns = null,
   pendingReveal = null,
+  relationshipStage = null,
 } = {}) {
   // Nothing was earned, so neither congratulate nor approach (BUG-113); this
   // also wins over a productive Session earlier the same day.
   if (isReversalOnlyReveal(pendingReveal)) {
     return freezeReaction({
       state: 'observe',
-      dialogueKey: 'companion.observe',
+      dialogueKey: observeLine(relationshipStage),
       animationKey: 'observe',
       worldAction: null,
     });
@@ -124,7 +142,7 @@ export function getCompanionReaction({
   if (momentumState === 'strong' || momentumState === 'peak') {
     return freezeReaction({
       state: 'work',
-      dialogueKey: 'companion.momentum.strong',
+      dialogueKey: MOMENTUM_STRONG_LINE_BY_STAGE[relationshipStage] || 'companion.momentum.strong',
       animationKey: 'work',
       worldAction: 'work-at-project',
     });
@@ -143,7 +161,7 @@ export function getCompanionReaction({
     state: 'observe',
     dialogueKey: momentumState === 'low'
       ? 'companion.momentum.low'
-      : 'companion.observe',
+      : observeLine(relationshipStage),
     animationKey: 'observe',
     worldAction: null,
   });

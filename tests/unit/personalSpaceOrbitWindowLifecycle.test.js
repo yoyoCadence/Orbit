@@ -46,9 +46,10 @@ describe('Orbit Window lifecycle', () => {
     expect(normalized.companion.message).toContain('不用急');
     expect(renderOrbitWindow(normalized)).toContain('Workspace wall unlocked');
     expect(renderOrbitWindow(normalized)).not.toContain('[object Object]');
+    // AI-202B1 (H1): named like the full page, not by the ledger key.
     expect(normalizeOrbitWindowModel({
       recentWorldChange: { key: 'depth', amount: -3 },
-    }).recentWorldChange).toBe('depth -3');
+    }).recentWorldChange).toBe('深度 −3');
   });
 
   it('suspends and resumes once per visibility transition and removes every binding on cleanup', async () => {

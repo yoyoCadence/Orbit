@@ -784,6 +784,8 @@ AI companion 的關係應該靠真實行為品質變化，而不是聊天次數�
 - 理解型夥伴
 - 高階顧問
 
+> 上面是早期草案。程式碼與 vertical slice 以 4 個階段為準（AI-202）：陌生觀察者 → 熟悉夥伴（第 4 個 Main Quest 日，即 Workspace Upgrade 完成）→ 合作夥伴（第 12 個）→ 信賴夥伴（第 30 個）。只由 Main Quest 天數推進，不因缺席降級；只有 Main Quest 日被撤銷、數量跌破門檻時退回。
+
 ---
 
 ## Hidden Stats Direction
