@@ -470,8 +470,17 @@ function formatRecentWorldChange(change) {
   return formatWorldChange(change);
 }
 
+// AI-202B2: the stage change a reveal shows (1 up, -1 down, 0 none). A stage
+// taken back is never celebrated, a stage reached always is.
+function stageChange(reveal) {
+  const change = reveal?.relationshipStage;
+  if (!change || typeof change !== 'object') return 0;
+  return Math.sign(RELATIONSHIP_STAGES.indexOf(change.to) - RELATIONSHIP_STAGES.indexOf(change.from));
+}
+
 export function selectProtagonistState({ pendingReveal, recentSessions, momentum } = {}) {
-  if (isWorldProgressReveal(pendingReveal)) {
+  const stage = stageChange(pendingReveal);
+  if (stage > 0 || (stage === 0 && isWorldProgressReveal(pendingReveal))) {
     return immutable({ state: 'celebrate', animationKey: 'celebrate', reasonKey: 'reward-progress' });
   }
   if (pendingReveal) {

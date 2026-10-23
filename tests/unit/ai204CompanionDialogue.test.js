@@ -49,6 +49,7 @@ const APPROVED = {
   'companion.observe.familiar': '我開始熟悉你的節奏了。',
   'companion.observe.partner': '這個空間是我們一天一天累積起來的。',
   'companion.observe.trusted-companion': '你的節奏我很熟悉了，需要時我都在。',
+  'companion.relationship.stage-up': '我們一起走過的日子，又多了一些。',
 };
 
 // The full-page lines that W-A replaced; none may survive anywhere.

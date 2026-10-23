@@ -13,7 +13,12 @@ import {
   summarizeRewardLedger,
 } from './rewardLedger.js';
 import { reconcileRewardLedger } from './reconciler.js';
-import { RELATIONSHIP_STAGES } from './content/worldLabels.js';
+import { FORMAL_WORKSTATION_UNLOCK_KEY } from './rewardRules.js';
+import {
+  formatRewardLine,
+  RELATIONSHIP_STAGES,
+  relationshipStageLabel,
+} from './content/worldLabels.js';
 import {
   dedupeSessionsById,
   isSessionDeleted,
@@ -178,13 +183,8 @@ function stableHash(value) {
   return (hash >>> 0).toString(36);
 }
 
+// `major` comes only from a milestone (AI-202B2, presentReveal).
 function revealKind(rewards) {
-  // Only an unlock or relationship the world actually gained is a milestone;
-  // taking one back is not (BUG-113).
-  if (rewards.some(reward => reward.direction === 'added' && (
-    reward.rewardType === 'world_unlock' || reward.rewardType === 'relationship'))) {
-    return 'major';
-  }
   if (rewards.some(reward =>
     reward.rewardType === 'gold' ||
     reward.rewardType === 'quest_progress' ||
@@ -266,20 +266,12 @@ function isQueuedCompletionReveal(reveal) {
 
 // What this reconciliation changed for the user beyond its ledger entries.
 // The project before it is read from the ledger; the stored activeProject can
-// disagree.
-function getRevealContext(state, reconciliation, activeRewardIds) {
+// disagree. Which reveal shows the completion is decided with the other
+// milestones (AI-202B2, placeMilestones).
+function getRevealContext(state, reconciliation) {
   const before = deriveActiveProject(activeCurrentRulesetEntries(state), []);
   const project = reconciliation.project || {};
-  // Complete only if the user has also seen it: when the completion moves to
-  // another Session before its reveal played, the queued reveal no longer
-  // holds and that Session's reveal is the completion.
-  const completionUnseen = (state.pendingRewardReveals || []).some(reveal => (
-    isQueuedCompletionReveal(reveal) && !revealMatchesActiveLedger(reveal, activeRewardIds)
-  ));
   return {
-    completedSourceId: !(before.completed && !completionUnseen) && project.completed
-      ? project.completedBySessionId || null
-      : null,
     // Past 100% a Main Quest day still records project progress, but the
     // project does not move, so that progress is not shown (BUG-114).
     progressChanged: before.progress !== project.progress,
@@ -392,7 +384,6 @@ function buildRevealEvents(reconciliation, changeIds, reconciledAt, context) {
     return {
       id,
       sourceId,
-      kind: revealKind(shownRewards),
       direction: addedRewardIds.length && reversedRewardIds.length
         ? 'mixed'
         : addedRewardIds.length ? 'settlement' : 'reversal',
@@ -400,7 +391,6 @@ function buildRevealEvents(reconciliation, changeIds, reconciledAt, context) {
       addedRewardIds,
       reversedRewardIds,
       rewards: shownRewards,
-      projectCompleted: sourceId === context.completedSourceId,
       createdAt,
       sourceOccurredAt,
       worldChange: createWorldChange(id, importantReward, createdAt),
@@ -462,6 +452,334 @@ function getEffectiveChangeIds(state, reconciliation) {
   return { added, reversed };
 }
 
+// AI-202B2: milestones are the project completion and the relationship stage.
+// A reveal shows them as the net change from what the user last saw
+// (`presentedMilestones`), not from the ledger entries it carries, so a
+// handover, a sync or a reveal that never played cannot show a stale or a
+// repeated milestone. docs/ai-202-companion-relationship-proposal.md §3.4.
+const PROJECT_COMPLETED = 'completed';
+const PROJECT_UNCOMPLETED = 'uncompleted';
+const STAGE_MILESTONE_DAYS = Object.freeze({ partner: 12, 'trusted-companion': 30 });
+const MILESTONE_REWARD_TYPES = new Set(['world_unlock', 'relationship']);
+
+function stageIndex(stage) {
+  return Math.max(0, RELATIONSHIP_STAGES.indexOf(stage));
+}
+
+function isStageUp(change) {
+  return Boolean(change) && stageIndex(change.to) > stageIndex(change.from);
+}
+
+function isMilestoneUp(milestone) {
+  return milestone?.project === PROJECT_COMPLETED || isStageUp(milestone?.stage);
+}
+
+function hasMilestone(milestone) {
+  return Boolean(milestone?.project || milestone?.stage);
+}
+
+// Reveals queued before AI-202B2 (or by an older tab) carry no milestone field.
+function isPreMilestoneReveal(reveal) {
+  return !Object.hasOwn(reveal || {}, 'milestone');
+}
+
+function isReversalOnly(reveal) {
+  return reveal?.direction === 'reversal';
+}
+
+function milestonesForEntries(entries, legacyPoints, relationshipOffset = 0) {
+  const summary = summarizeRewardLedger(entries, []);
+  const derived = relationshipOffset ? 0 : derivedRelationshipMilestones(countMainQuestDays(entries));
+  const points = Math.max(
+    legacyPoints,
+    finiteNonNegative(summary.relationship) - relationshipOffset + derived,
+  );
+  return {
+    projectCompleted: Boolean(deriveActiveProject(entries, []).completed),
+    relationshipStage: relationshipStageForPoints(points),
+  };
+}
+
+function normalizePresentedMilestones(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  if (typeof value.projectCompleted !== 'boolean') return null;
+  if (!RELATIONSHIP_STAGES.includes(value.relationshipStage)) return null;
+  const pending = value.pending && typeof value.pending.revealId === 'string'
+    && value.pending.to && typeof value.pending.to.projectCompleted === 'boolean'
+    && RELATIONSHIP_STAGES.includes(value.pending.to.relationshipStage)
+    ? { revealId: value.pending.revealId, to: { ...value.pending.to } }
+    : null;
+  return { projectCompleted: value.projectCompleted, relationshipStage: value.relationshipStage, pending };
+}
+
+// The milestones of the ledger before this reconciliation, under this rule,
+// and where they were reached.
+function milestonesBeforeReconciliation(state, legacyPoints) {
+  const entries = activeCurrentRulesetEntries(state);
+  return {
+    entries,
+    project: deriveActiveProject(entries, []),
+    current: milestonesForEntries(entries, legacyPoints),
+  };
+}
+
+// What the user last saw. The first time (no stored value) it is computed with
+// the current rule from the ledger before this reconciliation, minus what the
+// still-valid queued reveals have not shown yet; so history caught up by the
+// rule is not replayed, while an unplayed completion still is.
+function presentedMilestonesBefore(state, legacyPoints) {
+  const stored = normalizePresentedMilestones(state.presentedMilestones);
+  const queuedIds = new Set((state.pendingRewardReveals || []).map(reveal => reveal?.id));
+  if (stored) {
+    // An older tab played the reveal and could not move the baseline.
+    if (stored.pending && !queuedIds.has(stored.pending.revealId)) {
+      return { ...stored.pending.to, pending: null };
+    }
+    return stored;
+  }
+  const entries = activeCurrentRulesetEntries(state);
+  const activeIds = new Set(entries.map(entry => entry.id));
+  const unplayed = (state.pendingRewardReveals || [])
+    .filter(reveal => reveal && revealMatchesActiveLedger(reveal, activeIds));
+  let unplayedRelationship = 0;
+  let unplayedCompletion = false;
+  let unplayedStageFrom = null;
+  for (const reveal of unplayed) {
+    if (!isPreMilestoneReveal(reveal)) {
+      if (reveal.milestone?.project === PROJECT_COMPLETED) unplayedCompletion = true;
+      if (reveal.milestone?.stage) unplayedStageFrom = reveal.milestone.stage.from;
+      continue;
+    }
+    if (isQueuedCompletionReveal(reveal)) unplayedCompletion = true;
+    unplayedRelationship += (Array.isArray(reveal.rewards) ? reveal.rewards : [])
+      .filter(reward => reward?.direction !== 'reversed' && reward?.rewardType === 'relationship'
+        && activeIds.has(reward.id))
+      .reduce((sum, reward) => sum + finiteNonNegative(reward.amount), 0);
+  }
+  // An unplayed relationship entry is shown together with whatever the rule
+  // has caught up since, as one change (not after the derived milestones).
+  const base = milestonesForEntries(entries, legacyPoints, unplayedRelationship);
+  return {
+    projectCompleted: unplayedCompletion ? false : base.projectCompleted,
+    relationshipStage: unplayedStageFrom || base.relationshipStage,
+    pending: null,
+  };
+}
+
+// The Session whose Main Quest day reached a stage: the project completion
+// for `familiar`, then the 12th and 30th distinct Main Quest days.
+function stageAnchorSourceId(stage, entries, project) {
+  if (stage === 'familiar') return project?.completedBySessionId || null;
+  const day = STAGE_MILESTONE_DAYS[stage];
+  if (!day) return null;
+  const days = entries
+    .filter(entry => entry.rewardType === 'quest_progress'
+      && String(entry.rewardKey || '').startsWith('main-focus:'))
+    .sort((left, right) => String(left.rewardKey).localeCompare(String(right.rewardKey)));
+  const unique = [];
+  for (const entry of days) {
+    if (!unique.length || unique.at(-1).rewardKey !== entry.rewardKey) unique.push(entry);
+  }
+  return unique[day - 1]?.sourceId || null;
+}
+
+// A Main Quest day this reveal adds ('added') or takes back ('reversed').
+function changesMainQuestDay(reveal, direction) {
+  return (reveal.rewards || []).some(reward => reward?.rewardType === 'quest_progress'
+    && reward.direction === direction
+    && String(reward.rewardKey || '').startsWith('main-focus:'));
+}
+
+// Picks the one reveal that shows the net change (§3.4 placement order). A
+// reveal that already shows a change the same way keeps it unless its anchor
+// Session's reveal claims it: a later Session (even one that adds nothing) or
+// the same reconciliation applied again must not move it or let it go unseen.
+// Otherwise a Main Quest day this reconciliation changed the same way takes
+// it: a stage taken back never lands on a day just added, nor the reverse.
+function chooseMilestoneReveal(queue, newIds, net, entries, project, { anchorOnly = false } = {}) {
+  const up = isMilestoneUp(net);
+  const allowed = reveal => !(up && isReversalOnly(reveal));
+  const carries = reveal => hasMilestone(reveal.milestone) && isMilestoneUp(reveal.milestone) === up;
+  const anchor = isStageUp(net.stage)
+    ? stageAnchorSourceId(net.stage.to, entries, project)
+    : net.project === PROJECT_COMPLETED ? project?.completedBySessionId || null : null;
+  if (anchor) {
+    const atAnchor = queue.filter(reveal => reveal.sourceId === anchor && allowed(reveal));
+    const chosen = atAnchor.find(reveal => newIds.has(reveal.id)) || atAnchor.find(carries) || atAnchor.at(-1);
+    if (chosen) return chosen;
+  }
+  if (anchorOnly) return null;
+  const carrier = queue.find(reveal => carries(reveal) && allowed(reveal));
+  if (carrier) return carrier;
+  const dayChanged = queue.filter(reveal => newIds.has(reveal.id)
+    && changesMainQuestDay(reveal, up ? 'added' : 'reversed') && allowed(reveal));
+  if (dayChanged.length) return dayChanged.at(-1);
+  return [...queue].reverse().find(reveal => !isReversalOnly(reveal)) || null;
+}
+
+// With nothing recorded (opening the app, a sync) a queued milestone can only
+// shrink or go: what came with a sync goes into the baseline instead.
+function shrinkMilestone(milestone, current) {
+  if (!hasMilestone(milestone)) return null;
+  let project = milestone.project;
+  if (project === PROJECT_COMPLETED && !current.projectCompleted) project = null;
+  if (project === PROJECT_UNCOMPLETED && current.projectCompleted) project = null;
+  let stage = milestone.stage;
+  if (stage) {
+    // Kept as `from → now` while now lies on the way to `to`; past `to`, at
+    // `from` or the other way, the stage is no longer this reveal's to show.
+    const from = stageIndex(stage.from);
+    const to = stageIndex(stage.to) - from;
+    const now = stageIndex(current.relationshipStage) - from;
+    const onTheWay = now !== 0 && Math.sign(now) === Math.sign(to) && Math.abs(now) <= Math.abs(to);
+    stage = onTheWay ? { from: stage.from, to: current.relationshipStage } : null;
+  }
+  return project || stage ? { project: project || null, stage: stage || null } : null;
+}
+
+function milestoneLines(milestone) {
+  const lines = [];
+  if (milestone?.project) {
+    lines.push(formatRewardLine({
+      rewardType: 'world_unlock',
+      rewardKey: FORMAL_WORKSTATION_UNLOCK_KEY,
+      direction: milestone.project === PROJECT_COMPLETED ? 'added' : 'reversed',
+    }));
+  }
+  if (milestone?.stage) lines.push(`夥伴關係：${relationshipStageLabel(milestone.stage.to)}`);
+  return lines;
+}
+
+// The controller never queues a reveal without rewards; one written by hand
+// (e.g. by a test) is shown as it is.
+function isPresentable(reveal) {
+  return Array.isArray(reveal?.rewards) && reveal.rewards.length > 0;
+}
+
+// The world change a milestone leaves: the unlock first, then the stage.
+function milestoneLabel(milestone) {
+  const [projectLine, stageLine] = [
+    milestoneLines({ project: milestone.project }),
+    milestoneLines({ stage: milestone.stage }),
+  ].map(lines => lines[0] || null);
+  return milestone.project === PROJECT_COMPLETED ? projectLine : stageLine || projectLine;
+}
+
+// Everything a reveal shows follows from its rewards and its milestone; the
+// unlock and relationship entries themselves are never lines any more.
+function presentReveal(reveal) {
+  if (!isPresentable(reveal)) return reveal;
+  const milestone = hasMilestone(reveal.milestone) ? reveal.milestone : null;
+  const lineRewards = reveal.rewards
+    .filter(reward => reward && !MILESTONE_REWARD_TYPES.has(reward.rewardType));
+  const lines = [...lineRewards.map(reward => formatRewardLine(reward)), ...milestoneLines(milestone)];
+  const stageUp = isStageUp(milestone?.stage);
+  const completed = milestone?.project === PROJECT_COMPLETED;
+  // The unlock entry, when the reveal has it, still names the world change.
+  const unlockReward = milestone?.project ? reveal.rewards.find(reward => reward?.rewardType === 'world_unlock'
+    && reward.direction === (completed ? 'added' : 'reversed')) : null;
+  const worldChange = createWorldChange(
+    reveal.id,
+    unlockReward || mostImportantReward(lineRewards),
+    reveal.createdAt,
+  );
+  const presented = {
+    ...reveal,
+    milestone,
+    projectCompleted: completed,
+    relationshipStage: milestone?.stage || null,
+    kind: completed || stageUp ? 'major' : revealKind(lineRewards),
+    lines,
+    worldChange: milestone
+      ? {
+        ...(worldChange || { id: `world-change:${reveal.id}`, sourceId: reveal.sourceId, createdAt: reveal.createdAt }),
+        label: milestoneLabel(milestone),
+      }
+      : worldChange,
+  };
+  // The page and the Orbit Window title a stage-up of its own (§3.4).
+  if (stageUp && !completed) presented.title = `夥伴關係：${relationshipStageLabel(milestone.stage.to)}`;
+  else delete presented.title;
+  return presented;
+}
+
+function netMilestone(presentedBefore, current) {
+  return {
+    project: current.projectCompleted === presentedBefore.projectCompleted
+      ? null
+      : current.projectCompleted ? PROJECT_COMPLETED : PROJECT_UNCOMPLETED,
+    stage: current.relationshipStage === presentedBefore.relationshipStage
+      ? null
+      : { from: presentedBefore.relationshipStage, to: current.relationshipStage },
+  };
+}
+
+// `mode`:
+// - 'place' moves the whole net change onto one reveal (recording or undoing
+//   a Session);
+// - 'first' (the first run under this rule, opening the app or a sync) places
+//   only what queued reveals have not shown yet, as of the ledger before this
+//   reconciliation, then shrinks it like 'shrink': what the sync brought in is
+//   taken as seen;
+// - 'anchor' places the net change only onto the anchor Session's reveal an
+//   older tab queued;
+// - 'shrink' can only shrink or remove a queued milestone.
+function placeMilestones({ queue, newIds, presentedBefore, current, entries, project, mode, before }) {
+  const net = netMilestone(presentedBefore, current);
+  const candidates = queue.filter(isPresentable);
+  let placedNet = null;
+  let target = null;
+  if (mode === 'place') {
+    placedNet = net;
+    target = hasMilestone(net) ? chooseMilestoneReveal(candidates, newIds, net, entries, project) : null;
+  } else if (mode === 'first') {
+    placedNet = netMilestone(presentedBefore, before.current);
+    target = hasMilestone(placedNet)
+      ? chooseMilestoneReveal(candidates, new Set(), placedNet, before.entries, before.project)
+      : null;
+  } else if (mode === 'anchor' && hasMilestone(net)) {
+    placedNet = net;
+    target = chooseMilestoneReveal(candidates.filter(isPreMilestoneReveal), new Set(), net, entries, project, {
+      anchorOnly: true,
+    });
+  }
+  const placed = queue.map(reveal => {
+    if (!isPresentable(reveal)) return reveal;
+    if (mode === 'place') return { ...reveal, milestone: target && reveal.id === target.id ? net : null };
+    const milestone = mode === 'first' || target
+      ? (target && reveal.id === target.id ? placedNet : null)
+      : reveal.milestone;
+    return { ...reveal, milestone: shrinkMilestone(milestone, current) };
+  });
+  const presented = placed.map(presentReveal)
+    .filter(reveal => !isPresentable(reveal) || reveal.lines.length > 0);
+  const carrier = presented.find(reveal => hasMilestone(reveal.milestone)) || null;
+  // What the carrier does not show is merged into the baseline.
+  const presentedMilestones = {
+    projectCompleted: carrier?.milestone.project ? !current.projectCompleted : current.projectCompleted,
+    relationshipStage: carrier?.milestone.stage ? carrier.milestone.stage.from : current.relationshipStage,
+    pending: carrier ? { revealId: carrier.id, to: { ...current } } : null,
+  };
+  return { reveals: presented, presentedMilestones, current };
+}
+
+// The last world change in the words of now: a reveal still queued names it
+// as it is shown, and a milestone a sync or undo has since taken back is no
+// longer named (its reward still is).
+function currentWorldChange(change, reveals, current) {
+  if (!change?.label) return change;
+  const revealId = String(change.id || '').replace(/^world-change:/, '');
+  const queued = reveals.find(reveal => reveal.id === revealId && reveal.worldChange);
+  if (queued) return queued.worldChange;
+  const holds = milestoneLines({
+    project: current.projectCompleted ? PROJECT_COMPLETED : PROJECT_UNCOMPLETED,
+    stage: { to: current.relationshipStage },
+  });
+  if (holds.includes(change.label)) return change;
+  const { label: _label, ...rest } = change;
+  return rest;
+}
+
 /** Purely applies a ledger reconciliation to a normalized V2 state. */
 export function applyReconciliationToV2State(state, reconciliation, options = {}) {
   const oldSummary = summarizeStateLedger(state);
@@ -479,9 +797,10 @@ export function applyReconciliationToV2State(state, reconciliation, options = {}
   const activeRewardIds = new Set(activeRewards.map(entry => entry.id));
   // AI-202: max(legacy points, the ledger's relationship + derived milestones).
   const legacyPoints = legacyRelationshipPoints(state, oldSummary);
-  const mainQuestDays = countMainQuestDays(activeRewards.filter(entry => (
+  const currentRulesetRewards = activeRewards.filter(entry => (
     entry.metadata?.rulesetId || entry.rulesetId || state.rulesetId || RULESET_ID
-  ) === RULESET_ID));
+  ) === RULESET_ID);
+  const mainQuestDays = countMainQuestDays(currentRulesetRewards);
   const relationshipPoints = Math.max(
     legacyPoints,
     finiteNonNegative(newSummary.relationship) + derivedRelationshipMilestones(mainQuestDays),
@@ -491,7 +810,7 @@ export function applyReconciliationToV2State(state, reconciliation, options = {}
       reconciliation,
       changeIds,
       options.reconciledAt,
-      getRevealContext(state, reconciliation, activeRewardIds),
+      getRevealContext(state, reconciliation),
     )
     : [];
   const countedSourceIds = countedProgressSourceIds(reconciliation.project);
@@ -499,12 +818,38 @@ export function applyReconciliationToV2State(state, reconciliation, options = {}
     .filter(reveal => revealMatchesActiveLedger(reveal, activeRewardIds))
     .map(reveal => withoutUncountedProgress(reveal, countedSourceIds))
     .filter(Boolean);
-  const pendingRewardReveals = normalizeRevealQueue([
-    ...retainedRevealQueue,
-    ...revealEvents,
-  ]);
-  const recentReveal = revealEvents.at(-1) || null;
-  const savedWorldChange = state.recentWorldChange;
+  const relationshipStage = relationshipStageForPoints(relationshipPoints);
+  const queue = normalizeRevealQueue([...retainedRevealQueue, ...revealEvents]);
+  const presentedBefore = presentedMilestonesBefore(state, legacyPoints);
+  // Only recording or undoing a Session places a milestone, and the first run
+  // under this rule places the ones older reveals have not shown yet.
+  // Afterwards a reveal an older tab queued can still take its own.
+  const placementMode = options.queueReveal === true
+    ? 'place'
+    : !normalizePresentedMilestones(state.presentedMilestones)
+      ? 'first'
+      : queue.some(isPreMilestoneReveal) ? 'anchor' : 'shrink';
+  const milestones = placeMilestones({
+    queue,
+    newIds: new Set(revealEvents.map(reveal => reveal.id)),
+    presentedBefore,
+    current: {
+      projectCompleted: Boolean(reconciliation.project?.completed),
+      relationshipStage,
+    },
+    entries: currentRulesetRewards,
+    project: reconciliation.project,
+    mode: placementMode,
+    before: placementMode === 'first' ? milestonesBeforeReconciliation(state, legacyPoints) : null,
+  });
+  const pendingRewardReveals = milestones.reveals;
+  const newRevealIds = new Set(revealEvents.map(reveal => reveal.id));
+  const recentReveal = pendingRewardReveals.filter(reveal => newRevealIds.has(reveal.id)).at(-1) || null;
+  const savedWorldChange = currentWorldChange(
+    state.recentWorldChange,
+    pendingRewardReveals,
+    milestones.current,
+  );
   const retainedWorldChange = worldChangeMatchesActiveLedger(savedWorldChange, activeRewardIds)
     && !isUncountedProgress(
       savedWorldChange?.metadata?.rewardType,
@@ -531,7 +876,7 @@ export function applyReconciliationToV2State(state, reconciliation, options = {}
     companion: {
       ...state.companion,
       relationshipPoints,
-      relationshipStage: relationshipStageForPoints(relationshipPoints),
+      relationshipStage,
       legacyRelationshipPoints: legacyPoints,
       relationshipPolicyId: RELATIONSHIP_POLICY_ID,
     },
@@ -539,6 +884,7 @@ export function applyReconciliationToV2State(state, reconciliation, options = {}
     rewardLedger: reconciliation.ledger,
     rewardTombstones: reconciliation.tombstones,
     pendingRewardReveals,
+    presentedMilestones: milestones.presentedMilestones,
     recentWorldChange: recentReveal?.worldChange || retainedWorldChange,
     recentWorldChangeEventId: recentReveal?.worldChange?.metadata?.rewardId ||
       retainedWorldChangeEventId ||
@@ -782,9 +1128,21 @@ export function consumePersonalSpaceV2Reveal({ user, revealId, legacyState } = {
   if (!consumedReveal) {
     return { state, v2State: state, consumedReveal: null, persisted: false };
   }
+  // AI-202B2: the user has now seen the reveal's milestone.
+  const presented = normalizePresentedMilestones(state.presentedMilestones);
+  const milestone = hasMilestone(consumedReveal.milestone) ? consumedReveal.milestone : null;
   const nextState = savePersonalSpaceV2State(ownerId, {
     ...state,
     pendingRewardReveals: queue.filter(reveal => reveal.id !== revealId),
+    ...(presented && milestone ? {
+      presentedMilestones: {
+        projectCompleted: milestone.project
+          ? milestone.project === PROJECT_COMPLETED
+          : presented.projectCompleted,
+        relationshipStage: milestone.stage ? milestone.stage.to : presented.relationshipStage,
+        pending: null,
+      },
+    } : {}),
   });
   return {
     state: nextState,

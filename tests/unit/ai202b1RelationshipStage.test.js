@@ -416,10 +416,15 @@ describe('AI-202B1 reward lines use one table of names (H1)', () => {
   it('names every reward type on Home and in the full page alike', () => {
     const state = settle(days(4));
     const reveal = state.pendingRewardReveals.at(-1);
-    const lines = reveal.rewards.map(formatRewardLine);
+    // AI-202B2: the unlock and the stage come from the milestone, not entries.
+    const lines = reveal.lines;
     expect(lines).toEqual(expect.arrayContaining([
-      '金幣 +100', '深度 +3', '每日主線任務 +1', '工作空間進度 +25', '解鎖：正式工作站', '夥伴關係 +1',
+      '金幣 +100', '深度 +3', '每日主線任務 +1', '工作空間進度 +25', '解鎖：正式工作站', '夥伴關係：熟悉夥伴',
     ]));
+    expect(lines).toEqual(reveal.rewards
+      .filter(reward => !['world_unlock', 'relationship'].includes(reward.rewardType))
+      .map(formatRewardLine)
+      .concat(['解鎖：正式工作站', '夥伴關係：熟悉夥伴']));
     const shell = document.createElement('div');
     shell.innerHTML = renderOrbitWindow(normalizeOrbitWindowModel({ pendingReveal: reveal }));
     const shown = shell.querySelector('.orbit-window-reward').textContent;
