@@ -23,14 +23,47 @@ const REVEAL_ANIMATIONS = [
   'orbit-major-reveal',
 ];
 
+// Waits for pending play/pause changes so a held snapshot is settled.
 function revealAnimations(orbit) {
-  return orbit.evaluate((root, names) => root.getAnimations({ subtree: true })
-    .filter(animation => names.includes(animation.animationName))
-    .map(animation => ({
+  return orbit.evaluate(async (root, names) => {
+    const animations = root.getAnimations({ subtree: true })
+      .filter(animation => names.includes(animation.animationName));
+    await Promise.all(animations.map(animation => animation.ready));
+    return animations.map(animation => ({
       name: animation.animationName,
       playState: animation.playState,
       currentTime: animation.currentTime,
-    })), REVEAL_ANIMATIONS);
+    }));
+  }, REVEAL_ANIMATIONS);
+}
+
+// Records the reveal animations the moment the hold ends: polling from the
+// test could come after a short animation has finished again.
+function recordRelease(orbit) {
+  return orbit.evaluate((root, names) => {
+    const observer = new MutationObserver(() => {
+      if (root.classList.contains('is-reveal-held')) return;
+      observer.disconnect();
+      window.__ps249aReleased = root.getAnimations({ subtree: true })
+        .filter(animation => names.includes(animation.animationName))
+        .map(animation => ({
+          name: animation.animationName,
+          playState: animation.playState,
+          currentTime: animation.currentTime,
+        }));
+    });
+    observer.observe(root, { attributes: true, attributeFilter: ['class'] });
+  }, REVEAL_ANIMATIONS);
+}
+
+async function injectReveal(page, reveal) {
+  await page.evaluate(([key, pending]) => {
+    const state = JSON.parse(localStorage.getItem(key));
+    state.pendingRewardReveals = [pending];
+    localStorage.setItem(key, JSON.stringify(state));
+  }, [V2_STATE_KEY, reveal]);
+  await page.reload();
+  await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
 }
 
 test.describe('PS-249A Orbit Window 被蓋住時', () => {
@@ -72,22 +105,7 @@ test.describe('PS-249A Orbit Window 被蓋住時', () => {
     const waiting = await page.evaluate(key => JSON.parse(localStorage.getItem(key)), V2_STATE_KEY);
     expect(waiting.pendingRewardReveals).toHaveLength(1);
 
-    // Record the animations the moment the hold ends: polling from the test
-    // could come after the 1.4 s Companion animation has finished again.
-    await orbit.evaluate((root, names) => {
-      const observer = new MutationObserver(() => {
-        if (root.classList.contains('is-reveal-held')) return;
-        observer.disconnect();
-        window.__ps249aReleased = root.getAnimations({ subtree: true })
-          .filter(animation => names.includes(animation.animationName))
-          .map(animation => ({
-            name: animation.animationName,
-            playState: animation.playState,
-            currentTime: animation.currentTime,
-          }));
-      });
-      observer.observe(root, { attributes: true, attributeFilter: ['class'] });
-    }, REVEAL_ANIMATIONS);
+    await recordRelease(orbit);
     await page.locator('#proof-skip').click();
     await expect(page.locator('.pro-sheet-overlay')).toHaveCount(0);
     await expect(orbit).not.toHaveClass(/is-reveal-held/);
@@ -107,21 +125,68 @@ test.describe('PS-249A Orbit Window 被蓋住時', () => {
     expect(persisted.pendingRewardReveals).toEqual([]);
   });
 
+  test('reveal 後段才開的 modal 關閉後，已播完的動畫也從頭重播', async ({ page }) => {
+    test.setTimeout(40000);
+    await injectReveal(page, {
+      id: 'reveal:e2e-ps249a-medium',
+      kind: 'medium',
+      direction: 'settlement',
+      title: '世界已更新',
+      lines: ['e2e'],
+    });
+    const orbit = page.locator('[data-orbit-window]');
+    await expect(orbit).toHaveAttribute('data-reveal-kind', 'medium');
+    await expect(orbit).not.toHaveClass(/is-reveal-held/);
+    // Open a modal right after the celebration (1.44 s) and the medium frame
+    // (3.3 s) finish: without a fill mode they are gone from getAnimations().
+    // The reveal itself lasts 4.2 s. Checked every frame inside the page.
+    const stillRevealing = await orbit.evaluate(root => new Promise(resolve => {
+      const check = () => {
+        const names = root.getAnimations({ subtree: true }).map(animation => animation.animationName);
+        if (names.includes('orbit-medium-reveal') || names.includes('orbit-character-celebrate')) {
+          requestAnimationFrame(check);
+          return;
+        }
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.id = 'e2e-late-modal';
+        document.body.appendChild(modal);
+        resolve(root.classList.contains('is-revealing'));
+      };
+      check();
+    }));
+    expect(stillRevealing).toBe(true);
+    await expect(orbit).toHaveClass(/is-reveal-held/);
+    await recordRelease(orbit);
+    await page.evaluate(() => document.getElementById('e2e-late-modal').remove());
+    await expect(orbit).not.toHaveClass(/is-reveal-held/);
+
+    const released = await page.evaluate(() => window.__ps249aReleased);
+    expect(released.map(animation => animation.name)).toEqual(expect.arrayContaining([
+      'orbit-reward-rise',
+      'orbit-character-celebrate',
+      'orbit-companion-approach',
+      'orbit-medium-reveal',
+    ]));
+    released.forEach(animation => {
+      expect(animation.playState).toBe('running');
+      expect(animation.currentTime).toBe(0);
+    });
+    // The whole 4.2 s again.
+    await page.waitForTimeout(3000);
+    await expect(orbit).toHaveClass(/is-revealing/);
+    await expect(orbit).not.toHaveClass(/is-revealing/, { timeout: 4000 });
+  });
+
   test('major 橫幅在 Orbit Window 捲出畫面時隱藏，計時暫停', async ({ page }) => {
     test.setTimeout(40000);
-    await page.evaluate(key => {
-      const state = JSON.parse(localStorage.getItem(key));
-      state.pendingRewardReveals = [{
-        id: 'reveal:e2e-ps249a-major',
-        kind: 'major',
-        direction: 'settlement',
-        title: '世界里程碑',
-        lines: ['e2e'],
-      }];
-      localStorage.setItem(key, JSON.stringify(state));
-    }, V2_STATE_KEY);
-    await page.reload();
-    await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
+    await injectReveal(page, {
+      id: 'reveal:e2e-ps249a-major',
+      kind: 'major',
+      direction: 'settlement',
+      title: '世界里程碑',
+      lines: ['e2e'],
+    });
 
     const orbit = page.locator('[data-orbit-window]');
     const banner = orbit.locator('.orbit-window-major-reveal');

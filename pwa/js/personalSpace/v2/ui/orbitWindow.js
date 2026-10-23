@@ -167,8 +167,9 @@ export function renderOrbitWindow(inputModel = {}, options = {}) {
 }
 
 // PS-249A: what covers the whole app. These three stay in the DOM and open by
-// dropping `hidden`; the others are added to <body> while open and removed (or
-// hidden) when they close.
+// dropping `hidden`; the others are added to <body> while open and must be
+// removed when they close (only <body>'s children are observed, so hiding one
+// in place would leave the app covered until <body> changes again).
 const PERSISTENT_OVERLAY_IDS = Object.freeze(['focus-overlay', 'levelup-overlay', 'focus-duration-picker']);
 const BODY_OVERLAY_SELECTOR = '.modal-overlay, .pro-sheet-overlay, .shield-confirm-overlay, .tour-backdrop, .proof-lightbox';
 // The CSS animations of a reveal, replayed from the start after an overlay.
@@ -201,8 +202,16 @@ function afterTwoFrames(callback) {
   return () => globalThis.cancelAnimationFrame?.(frame);
 }
 
-// Chromium includes the medium frame's ::after in a subtree query.
+// Re-adding the reveal classes restarts every class-driven reveal animation,
+// including those that already finished and, without a fill mode, are gone
+// (the celebration, the medium frame's ::after). The major banner keeps its
+// animation (fill: both), so it is rewound instead.
 function restartRevealAnimations(root) {
+  const revealClasses = [...root.classList]
+    .filter(name => name === 'is-revealing' || name.startsWith('orbit-window--reveal-'));
+  root.classList.remove(...revealClasses);
+  void root.offsetWidth;
+  root.classList.add(...revealClasses);
   (root.getAnimations?.({ subtree: true }) || [])
     .filter(animation => REVEAL_ANIMATIONS.has(animation.animationName))
     .forEach(animation => { animation.currentTime = 0; });

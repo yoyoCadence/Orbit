@@ -113,10 +113,10 @@
 27. **PS-249 提案**（#203，[`docs/ps-249-overlay-scene-proposal.md`](ps-249-overlay-scene-proposal.md)，已核准）。使用者 2026-10-23 的決定：R-A＋重播、P1、導覽算被蓋住、佐證大圖加 class、個人空間頁也套用、不延後第一次掛載。Session 結束後的 reveal 大多在升級畫面與佐證 sheet 底下播完、不再重播；場景在這些 overlay 底下照常重畫。建議 C1＋R-A（overlay 關閉後從頭重播）＋P1，核准後拆成 PS-249A。`major` 橫幅因 `isolation: isolate` 不會畫在 overlay 之上（更正 tasks.md 原本的描述）。
     - 量測方式：時間線以頁面內的 `MutationObserver` 記錄；成本讀 `/proc` 中所有 Chromium 程序的 CPU 時間（SwiftShader 軟體繪圖，只比較相對值；renderer 主執行緒的時間量不到繪圖成本）。
 28. **PS-251A：完成**（#204，v1.38.2）。使用者 2026-10-23 核准 PS-248 §9.8 的三項：刪除未被引用的 `room-v1.webp`（159,396 B，原始 PNG 保留），修正 PS-242 metadata 的參考路徑；`docs/ps-243-production-acceptance.md` 的預算表更新為 v1.38.2 的 baseline（保留 PS-242 時記錄的數字）；根目錄 README 的專案階段改成實際的 `WORKSPACE_PROJECT_PHASES`。
-    - 注意：延後載入的 V2 JS＋Pixi gzip 是 295,581 / 307,200 B，300 KiB 的預算只剩 11,619 B（約 11.3 KB）。
+    - 注意：延後載入的 V2 JS＋Pixi gzip 當時是 295,581 / 307,200 B（剩 11,619 B）；PS-249A（v1.38.3）後是 296,893 B，只剩 10,307 B。
     - v1.22.0～v1.28.2 很久沒開的裝置，部署後第一次開啟可能拿不到這張舊背景（404）：舊程式退回 poster 並顯示「互動場景暫時無法載入」，下次重新載入就是新版（INFRA-105）。
 29. **PS-249A：完成**（#205，v1.38.3）。Orbit Window 被全螢幕 overlay 蓋住時，reveal held、場景 `suspend()`；overlay 關閉後 reveal 從頭重播。reveal 用自己的 `rootMargin: 0` 可視判斷，不在畫面或分頁隱藏時也 held（接續）。首頁與個人空間頁相同。
-    - 新增會蓋住整個 app 的 overlay 時，加進 `orbitWindow.js` 的 `PERSISTENT_OVERLAY_IDS` 或 `BODY_OVERLAY_SELECTOR`；`ps249aOverlayCover.test.js` 會列出 `style.css` 中所有全螢幕的 fixed 規則提醒分類。overlay 關閉時要移除或加上 `hidden`，否則場景會一直暫停。
+    - 新增會蓋住整個 app 的 overlay 時，加進 `orbitWindow.js` 的 `PERSISTENT_OVERLAY_IDS` 或 `BODY_OVERLAY_SELECTOR`；`ps249aOverlayCover.test.js` 會列出 `style.css` 中所有全螢幕的 fixed 規則提醒分類。加在 `body` 底下的 overlay 關閉時一定要移除（只觀察 `body` 的子元素，原地加上 `hidden` 不會被察覺，場景會一直暫停）；以 `hidden` 開關的常駐 overlay 要加進 `PERSISTENT_OVERLAY_IDS`。
     - 教訓：e2e 要檢查「重播」時，在頁面內以 `MutationObserver` 記錄 held 解除那一刻的動畫狀態；從測試輪詢可能晚於 1.4 秒的動畫結束。
 30. **下一步**：等待 AI-202 §9 與 PS-251 §9.3（A2）的決定。Backlog 其餘項目需要核准或屬高風險（HW-112 的 Storage migration、INFRA-101／INFRA-105／PS-211D 的部署行為、PRO-014* 的 entitlement）。INFRA-105（SHELL 的 JS／CSS／HTML 安裝時重新驗證）需核准。使用者原則：以「任務確實完成」為準，合併是後話；做不到的先寫進 `tasks.md`。
 

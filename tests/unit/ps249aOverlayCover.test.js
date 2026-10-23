@@ -223,6 +223,72 @@ describe('PS-249A Orbit Window under overlays', () => {
     cleanup();
   });
 
+  it('restarts the reveal by re-adding its classes, so finished animations play again', async () => {
+    const { root, cleanup } = await mount({ kind: 'medium' });
+    // Each record's oldValue is the class list before that change.
+    const changes = [];
+    const observer = new MutationObserver(records => records.forEach(record => {
+      changes.push(record.oldValue.split(/\s+/));
+    }));
+    observer.observe(root, { attributes: true, attributeFilter: ['class'], attributeOldValue: true });
+    const close = open(OVERLAYS[3]);
+    await flush();
+    close();
+    await flush();
+    await twoFrames();
+    await flush();
+    observer.disconnect();
+    expect(changes.some(list => !list.includes('is-revealing') && !list.includes('orbit-window--reveal-medium')))
+      .toBe(true);
+    expect(root.classList.contains('is-revealing')).toBe(true);
+    expect(root.classList.contains('orbit-window--reveal-medium')).toBe(true);
+    expect(root.classList.contains('is-reveal-held')).toBe(false);
+    cleanup();
+  });
+
+  it('holds and replays with the reduced-motion durations', async () => {
+    vi.stubGlobal('matchMedia', query => ({ matches: query.includes('reduce') }));
+    const { onRevealConsumed, cleanup } = await mount({ kind: 'medium' });
+    await vi.advanceTimersByTimeAsync(500);
+    const close = open(OVERLAYS[1]);
+    await flush();
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(onRevealConsumed).not.toHaveBeenCalled();
+    close();
+    await flush();
+    await twoFrames();
+    await vi.advanceTimersByTimeAsync(700);
+    expect(onRevealConsumed).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(50);
+    expect(onRevealConsumed).toHaveBeenCalledTimes(1);
+    cleanup();
+  });
+
+  it('waits for a hidden tab to come back after the overlay closed there', async () => {
+    const { root, runtime, onRevealConsumed, cleanup } = await mount();
+    await vi.advanceTimersByTimeAsync(1000);
+    const close = open(OVERLAYS[3]);
+    await flush();
+    hidden = true;
+    document.dispatchEvent(new Event('visibilitychange'));
+    close();
+    await flush();
+    await twoFrames();
+    expect(root.classList.contains('is-reveal-held')).toBe(true);
+    expect(runtime.resume).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(onRevealConsumed).not.toHaveBeenCalled();
+    hidden = false;
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(root.classList.contains('is-reveal-held')).toBe(false);
+    expect(runtime.resume).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(2150);
+    expect(onRevealConsumed).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(50);
+    expect(onRevealConsumed).toHaveBeenCalledTimes(1);
+    cleanup();
+  });
+
   it('sends reward_reveal_started once and completed after the replay', async () => {
     const { onRevealConsumed, cleanup } = await mount();
     await vi.advanceTimersByTimeAsync(1000);

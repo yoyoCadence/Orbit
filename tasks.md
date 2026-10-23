@@ -283,10 +283,11 @@
       - 場景：被蓋住時 `suspend()`（取代 INFRA-106 只看 Focus overlay 的判斷）。
     - `style.css`：`is-reveal-held` 時以較高權重的選擇器（含 `::after`）暫停 reveal 的動畫，`major` 橫幅 `visibility: hidden`。
     - `proofSheet.js`：佐證大圖加 `proof-lightbox` class。
-    - 測試：`ps249aOverlayCover.test.js`（24 項）；e2e `ps249a-overlay.test.js`（佐證 sheet 下的暫停與重播、`major` 橫幅捲出畫面時隱藏）；`flows.test.js` 改成先關閉佐證 sheet 再等 reveal 結束。
-    - 稽核：所有會蓋住首頁的 overlay 關閉時都會移除或加上 `hidden`，不會留下「一直被蓋住」的情況。
+    - 測試：`ps249aOverlayCover.test.js`（27 項）；e2e `ps249a-overlay.test.js`（佐證 sheet 下的暫停與重播、reveal 後段才開的 modal、`major` 橫幅捲出畫面時隱藏）；`flows.test.js` 改成先關閉佐證 sheet 再等 reveal 結束。
+    - 稽核：加在 `body` 底下的 overlay 關閉時都會移除，常駐的三個以 `hidden` 開關，不會留下「一直被蓋住」的情況。之後加在 `body` 底下的 overlay 也必須移除（原地加 `hidden` 不會被察覺）。
+    - 獨立 review 的 P2：overlay 在 reveal 後段才開時，沒有 fill mode、已播完的動畫（慶祝、medium 外框的 `::after`）不在 `getAnimations()` 中，倒回 0 無效；改成移除再加回 reveal 的 class 重新開始，`major` 橫幅（fill both）仍倒回 0。
     - INFRA-105：沒有新增 import 或 export。舊 `style.css`＋新 JS：只有計時延後；舊 `proofSheet.js`：大圖不被偵測（與以前相同）。
-    - 預算：延後載入的 JS gzip 296,682 / 307,200 B（剩 10,518 B）。
+    - 預算：延後載入的 JS gzip 296,893 / 307,200 B（剩 10,307 B）。
 
 - [x] **PS-251A** PS-248 §9.8 的順帶整理
   - 使用者 2026-10-23 核准（見 Next 的核准紀錄）。三項都不改程式行為：
