@@ -23,7 +23,7 @@
 - **Codex 額度用完時（2026-10-18 使用者核准）**：改用獨立的 Claude review agent 代替。它只讀不改，對照程式碼逐項回報 P1／P2／P3。P1／P2 全部修完、CI 全綠才合併；需要核准的項目仍要先問使用者。
 - Codex 的 finding 先對照程式碼驗證。成立就修，在 thread 回覆修正的 commit 並 resolve，再留言 `@codex review` 要求重審，等重審乾淨才合併。不成立就回覆理由，並交給使用者決定。
 - 高風險（auth、tokens、`.env`、schema／migration、CI/CD、部署、修改既有設定、Pro entitlement 流程）：先寫變更說明，取得使用者核准才實作。
-- 純文件、任務定義、CI 或開發工具的 PR，以及只刪除未被引用素材的 PR（#204），不 bump 版本（本工作階段的作法，#155–#157、#161、#183、#186 皆如此；bump 會改變 `sw.js` 的 `CACHE` 名稱，讓使用者無謂地重新下載 SHELL）；其餘 PR 依 §14 bump。
+- 純文件、任務定義、CI 或開發工具的 PR 不 bump 版本（本工作階段的作法，#155–#157、#161、#183、#186 皆如此；bump 會改變 `sw.js` 的 `CACHE` 名稱，讓使用者無謂地重新下載 SHELL）；其餘 PR 依 §14 bump。
 - 合併 PR 時使用完整 40 字元 SHA 作為 `expectedHeadSha`。
 - Commit 結尾加 `Co-Authored-By` 與 `Claude-Session` 兩行；PR 描述結尾加 Claude Code 標記；不要寫入 model 名稱。
 
@@ -112,7 +112,7 @@
     - 房間重新渲染後要重跑 `thumbnails.py`（`ps250gPickerThumbnails.test.js` 會檢查雜湊）。
 27. **PS-249 提案**（#203，[`docs/ps-249-overlay-scene-proposal.md`](ps-249-overlay-scene-proposal.md)，已核准）。使用者 2026-10-23 的決定：R-A＋重播、P1、導覽算被蓋住、佐證大圖加 class、個人空間頁也套用、不延後第一次掛載。Session 結束後的 reveal 大多在升級畫面與佐證 sheet 底下播完、不再重播；場景在這些 overlay 底下照常重畫。建議 C1＋R-A（overlay 關閉後從頭重播）＋P1，核准後拆成 PS-249A。`major` 橫幅因 `isolation: isolate` 不會畫在 overlay 之上（更正 tasks.md 原本的描述）。
     - 量測方式：時間線以頁面內的 `MutationObserver` 記錄；成本讀 `/proc` 中所有 Chromium 程序的 CPU 時間（SwiftShader 軟體繪圖，只比較相對值；renderer 主執行緒的時間量不到繪圖成本）。
-28. **PS-251A：完成**（#204，只有文件與刪檔，不改版本號）。使用者 2026-10-23 核准 PS-248 §9.8 的三項：刪除未被引用的 `room-v1.webp`（159,396 B，原始 PNG 保留），修正 PS-242 metadata 的參考路徑；`docs/ps-243-production-acceptance.md` 的預算表更新為 v1.38.1 的 baseline（保留 PS-242 時記錄的數字）；根目錄 README 的專案階段改成實際的 `WORKSPACE_PROJECT_PHASES`。
+28. **PS-251A：完成**（#204，v1.38.2）。使用者 2026-10-23 核准 PS-248 §9.8 的三項：刪除未被引用的 `room-v1.webp`（159,396 B，原始 PNG 保留），修正 PS-242 metadata 的參考路徑；`docs/ps-243-production-acceptance.md` 的預算表更新為 v1.38.1 的 baseline（保留 PS-242 時記錄的數字）；根目錄 README 的專案階段改成實際的 `WORKSPACE_PROJECT_PHASES`。
     - 注意：延後載入的 V2 JS＋Pixi gzip 是 295,581 / 307,200 B，300 KiB 的預算只剩 11,619 B（約 11.3 KB）。
     - v1.22.0～v1.28.2 很久沒開的裝置，部署後第一次開啟可能拿不到這張舊背景（404）：舊程式退回 poster 並顯示「互動場景暫時無法載入」，下次重新載入就是新版（INFRA-105）。
 29. **下一步**：PS-249A（Next）。之後等待 AI-202 §9 與 PS-251 §9.3（A2）的決定。Backlog 其餘項目需要核准或屬高風險（HW-112 的 Storage migration、INFRA-101／INFRA-105／PS-211D 的部署行為、PRO-014* 的 entitlement）。INFRA-105（SHELL 的 JS／CSS／HTML 安裝時重新驗證）需核准。使用者原則：以「任務確實完成」為準，合併是後話；做不到的先寫進 `tasks.md`。
@@ -179,7 +179,7 @@
 | #201 | v1.38.0 | PS-250F1＋F2：五個房間的 6 件裝飾（Q 版＋像素、白天＋夜晚），Edit Mode 的「裝飾」開關 |
 | #202 | v1.38.1 | PS-250G：選擇介面的房間縮圖，選擇介面的圖片離線時退回預設 |
 | #203 | — | PS-249 提案：其他 overlay 蓋住首頁時的 Orbit Window（已核准） |
-| #204 | — | PS-251A：PS-248 §9.8 的順帶整理（刪除未被引用的 `room-v1.webp`、PS-243 預算表、README 專案階段） |
+| #204 | v1.38.2 | PS-251A：PS-248 §9.8 的順帶整理（刪除未被引用的 `room-v1.webp`、PS-243 預算表、README 專案階段） |
 
 教訓：#155–#164 在 Codex review 出現前就合併，造成 #165、#166、#167 的回頭修正。這就是 §2 合併條件的由來。獨立 review 在 #167、#168、#169 都找到真正的問題（例如椅子畫在螢幕後面、壁燈在相框下投出暗影），所以複查不能省。
 

@@ -282,12 +282,12 @@
     - 更新 `docs/ps-243-production-acceptance.md` 的預算表為目前提交的 `docs/ps243/asset-baseline.json`，並保留 PS-242 時（v1.22.0）記錄的數字。
     - 根目錄 `README.md` 的專案階段改成實際的 `WORKSPACE_PROJECT_PHASES`。
   - In progress（2026-10-23）。
-  - 完成（2026-10-23，只有文件與刪檔，不改版本號）：
+  - 完成（2026-10-23，v1.38.2）：
     - 刪除 `room-v1.webp`；`companion-state-pack-metadata.json` 的參考改為 `art-pipeline/ps242/source/building-formal-workstation-room-v1.png`。`npm run ps243:assets` 的結果不變（目前的場景不使用它）。
       - 舊版本：它是 v1.22.0～v1.28.2 的背景，當時的 service worker 會在第一次取用時快取圖片。很久沒開、仍是這些版本的裝置，部署後第一次開啟若舊快取中沒有它，會拿到 404：舊程式退回 poster（沒有背景圖，其他圖照常）並顯示「互動場景暫時無法載入」，只到下次重新載入（屬 INFRA-105 的範圍）。
     - PS-243 驗收紀錄的預算表改為 v1.38.1：JS gzip 70,153＋225,428＝295,581 B（預算 307,200 B，剩 11,619 B，約 11.3 KB）、首屏 122,433 B、夜晚首屏 104,205 B、完整場景 50 個檔案 1,409,958 B；PS-242 時記錄的數字保留在表下的說明。
     - README：Active Project 每完成一次今日 Main Quest 推進 25%（`DAILY_PROJECT_PROGRESS`），階段為基本書桌 → 燈具與收納 → 單螢幕工作站 → 雙螢幕正式工作站；房間風格與角色可在 Edit Mode 選擇，已出現的裝飾可個別開關（書架、桌上的裝飾要到 50%、25% 才出現）。
-    - 不 bump 版本：只刪除未被引用的素材，SHELL 與 `sw.js` 不變。bump 只會換 `CACHE` 名稱、讓所有人重新下載 SHELL，也幫不到上面的舊版本。
+    - 版本 v1.38.2：刪除的是已部署的檔案，依 AGENTS.md §14 每個 PR bump 一次（Codex 的 P1；原本打算比照純文件 PR 不 bump）。
 
 - [x] **PS-249** Orbit Window 在其他蓋住畫面的 overlay 下仍重畫、reveal 計時照走
   - 背景（INFRA-106 獨立 review 發現，2026-10-20）：INFRA-106 只在 Focus overlay 開啟時暫停 Pixi 場景。其他 overlay 也會蓋住首頁：

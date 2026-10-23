@@ -3,6 +3,16 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.38.2] - 2026-10-23
+
+### Removed
+- **未被引用的舊背景（PS-251A）**：刪除 `building-formal-workstation-room-v1.webp`（159 KB）。它是 v1.22.0～v1.28.2 的背景，PS-244 之後沒有任何地方引用；原始 PNG 保留在 `art-pipeline/ps242/source/`。很久沒開、仍是這些版本的裝置，更新後第一次開啟時若舊快取中沒有它，只會暫時以 poster 顯示（沒有背景圖），重新載入後就是新版。
+
+### Changed
+- **文件（PS-251A）**：`docs/ps-243-production-acceptance.md` 的預算表更新為 v1.38.1 的 baseline（延後載入的 JS gzip 295,581 / 307,200 B、首屏 122,433 B、夜晚首屏 104,205 B、完整場景 50 個檔案 1,409,958 B）；README 的專案階段改成實際的「基本書桌 → 燈具與收納 → 單螢幕工作站 → 雙螢幕正式工作站」。
+
+---
+
 ## [1.38.1] - 2026-10-22
 
 ### Changed
