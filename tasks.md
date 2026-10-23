@@ -219,16 +219,6 @@
 > - PS-251 §9.8 的三項順帶整理都做（刪除 `room-v1.webp`、更新 PS-243 驗收紀錄的預算數字、修正根目錄 README 的專案階段）：從 Backlog 的 PS-251 拆出 PS-251A，移入 Next，再移入 In Progress。§9.3（A2）仍待決定，PS-251 留在 Backlog。
 > - 順序：PS-251A（不改程式行為）→ PS-249A。
 
-- [ ] **PS-249A** 實作 PS-249：Orbit Window 被 overlay 蓋住時暫停 reveal 與場景
-  - 依據：[`docs/ps-249-overlay-scene-proposal.md`](docs/ps-249-overlay-scene-proposal.md)，使用者 2026-10-23 的 §6 決定（見上方核准紀錄）。
-  - 範圍：
-    - C1：`orbitWindow.js` 以 `MutationObserver` 判斷「被蓋住」：常駐的 `#focus-overlay`、`#levelup-overlay`、`#focus-duration-picker` 看 `hidden`；`body` 的直接子元素中不帶 `hidden` 的 `.modal-overlay`、`.pro-sheet-overlay`、`.shield-confirm-overlay`、`.tour-backdrop` 與佐證大圖（`proofSheet.js` 加 class）。「沒被蓋住」等兩個 animation frame 才生效。
-    - R-A＋重播：reveal 用自己的 `rootMargin: 0` 可視判斷；held 時計時與 CSS 動畫（含 `::after`、`major` 橫幅）暫停，橫幅隱藏；被 overlay 蓋住後從頭重播。
-    - P1：被蓋住時 `suspend()` 場景，沿用 INFRA-106。
-    - 首頁與個人空間頁都套用。
-  - 驗收：提案 §7（單元測試、e2e、`flows.test.js` 改成先關閉佐證 sheet 再等 reveal 結束、INFRA-105 新舊混用、reduced motion）。
-  - 依賴：`PS-249`
-
 - [ ] **BUG-109A** 在 production 套用 013 signup trigger migration
   - 目標：讓 production 的 `handle_new_user()` 截斷超過 30 字元的名稱來源，長 email local-part 與長 Google 顯示名稱都能註冊。
   - 步驟：依 [`docs/bug-109-signup-name-truncation.md`](docs/bug-109-signup-name-truncation.md) 的 runbook：先以 `pg_get_functiondef` 比對 production 函式與 004、記錄回滾來源，在非 production 環境跑 `tests/database/bug109.test.sql`，再套用並驗證。
@@ -238,6 +228,17 @@
 ---
 
 ## In Progress
+
+- [ ] **PS-249A** 實作 PS-249：Orbit Window 被 overlay 蓋住時暫停 reveal 與場景
+  - 依據：[`docs/ps-249-overlay-scene-proposal.md`](docs/ps-249-overlay-scene-proposal.md)，使用者 2026-10-23 的 §6 決定（見上方核准紀錄）。
+  - 範圍：
+    - C1：`orbitWindow.js` 以 `MutationObserver` 判斷「被蓋住」：常駐的 `#focus-overlay`、`#levelup-overlay`、`#focus-duration-picker` 看 `hidden`；`body` 的直接子元素中不帶 `hidden` 的 `.modal-overlay`、`.pro-sheet-overlay`、`.shield-confirm-overlay`、`.tour-backdrop` 與佐證大圖（`proofSheet.js` 加 class）。「沒被蓋住」等兩個 animation frame 才生效。
+    - R-A＋重播：reveal 用自己的 `rootMargin: 0` 可視判斷；held 時計時與 CSS 動畫（含 `::after`、`major` 橫幅）暫停，橫幅隱藏；被 overlay 蓋住後從頭重播。
+    - P1：被蓋住時 `suspend()` 場景，沿用 INFRA-106。
+    - 首頁與個人空間頁都套用。
+  - 驗收：提案 §7（單元測試、e2e、`flows.test.js` 改成先關閉佐證 sheet 再等 reveal 結束、INFRA-105 新舊混用、reduced motion）。
+  - 依賴：`PS-249`
+  - In progress（2026-10-23）：PS-251A 合併後開始（Next → In Progress）。
 
 - [ ] **AI-202** 定義 companion relationship stage 與 hidden stats 的最小映射規則
   - 目標：讓 companion 關係變化可由真實行為驅動，而不是聊天次數
