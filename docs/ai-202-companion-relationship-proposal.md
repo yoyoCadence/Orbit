@@ -1,6 +1,6 @@
 # AI-202 提案：Companion 關係階段與 hidden stats 的最小映射規則
 
-> 狀態：提案（Mode A，只有文件）。核准前不改程式碼。核准後由 `AI-202B` 實作；§8 是它的驗收條件草稿，§9 是需要使用者決定的事。
+> 狀態：**已核准**（2026-10-23）。使用者的 §9 決定：全部採用建議（N1、只算 Main Quest 日、K4＋R1、S1、H1、T0、README 註明以 4 個階段為準；BUG-113 已在 #192 修正）。實作分成 AI-202B1（推導與顯示，#206）與 AI-202B2（里程碑的 reveal，§3.4）。
 
 ## 1. 結論
 
@@ -212,6 +212,7 @@ Companion 的優先順序（有待播放的 reveal 時；取代 `companionEngine
 - **H1（建議）只改顯示名稱**：
   - reward 行與「最近的世界變化」顯示中文名稱，取代 `depth +1`、`depth.ordinary +1` 與 `depth.daily-main-quest +3`：紀律、深度、活力、秩序、勇氣、技藝（名稱見 §9 第 5 點）。
   - 首頁目前**每一種** reward 都顯示原始 key（§2）。首頁與完整頁面改為共用同一份名稱表，涵蓋所有 reward 類型（金幣、主線任務、工作空間進度、解鎖、hidden stats），放在既有模組中，不新增需要加入 `sw.js` SHELL 的檔案。否則第 12 天的首頁 reveal 會中英混雜。
+    - 實作（AI-202B1）改放在**新的**模組 `content/worldLabels.js`（加入 SHELL）：INFRA-105 的規則是 SHELL 模組不能 import 既有 SHELL 模組的新 export（舊版的快取可能還在），新模組則沒有這個問題。階段清單也只放在這裡一份。
   - 不顯示總數，維持「hidden」。
 - H2：H1 ＋ 完整頁面 Companion 詳細面板加一行「最近常見：深度、秩序」。
   - 取最近 7 個 effective date 的一般 hidden stat entry，只算 `ordinary` tier，排除 Main Quest 固定的 `depth +3`，取前兩名，不顯示數字。

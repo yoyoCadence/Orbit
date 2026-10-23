@@ -18,8 +18,12 @@ const MOMENTUM_STRONG_LINE_BY_STAGE = Object.freeze({
   'trusted-companion': 'companion.momentum.strong.trusted-companion',
 });
 
+function stagedLine(lines, relationshipStage, fallback) {
+  return Object.hasOwn(lines, relationshipStage) ? lines[relationshipStage] : fallback;
+}
+
 function observeLine(relationshipStage) {
-  return OBSERVE_LINE_BY_STAGE[relationshipStage] || 'companion.observe';
+  return stagedLine(OBSERVE_LINE_BY_STAGE, relationshipStage, 'companion.observe');
 }
 
 function freezeReaction(reaction) {
@@ -142,7 +146,7 @@ export function getCompanionReaction({
   if (momentumState === 'strong' || momentumState === 'peak') {
     return freezeReaction({
       state: 'work',
-      dialogueKey: MOMENTUM_STRONG_LINE_BY_STAGE[relationshipStage] || 'companion.momentum.strong',
+      dialogueKey: stagedLine(MOMENTUM_STRONG_LINE_BY_STAGE, relationshipStage, 'companion.momentum.strong'),
       animationKey: 'work',
       worldAction: 'work-at-project',
     });

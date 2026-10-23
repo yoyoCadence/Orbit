@@ -12,9 +12,12 @@
 
 import { beforeEach, describe, expect, it } from 'vitest';
 import { REWARD_EPOCH, RULESET_ID } from '../../pwa/js/personalSpace/v2/config.js';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   applyReconciliationToV2State,
   loadAndReconcilePersonalSpaceV2,
+  PERSONAL_SPACE_V2_RELATIONSHIP_STAGES,
   reconcileAndSavePersonalSpaceV2,
 } from '../../pwa/js/personalSpace/v2/controller.js';
 import { getCompanionReaction } from '../../pwa/js/personalSpace/v2/companionEngine.js';
@@ -23,6 +26,8 @@ import { listActiveRewards, summarizeRewardLedger } from '../../pwa/js/personalS
 import {
   formatRewardLine,
   formatWorldChange,
+  RELATIONSHIP_STAGE_LABELS,
+  RELATIONSHIP_STAGES,
   relationshipStageLabel,
 } from '../../pwa/js/personalSpace/v2/content/worldLabels.js';
 import { COMPANION_DIALOGUE } from '../../pwa/js/personalSpace/v2/content/companionDialogue.js';
@@ -230,8 +235,17 @@ describe('AI-202B1 the stage follows Main Quest days', () => {
 
   it('has no time input and no decay', () => {
     const early = settle(days(12), { reconciledAt: `${dateAtOffset(12)}T12:00:00.000Z` });
+    localStorage.clear();
     const late = settle(days(12), { reconciledAt: '2030-01-01T00:00:00.000Z', queueReveal: false });
     expect(late.companion).toEqual(early.companion);
+  });
+
+  it('keeps the stage from a partial snapshot that omits earlier days', () => {
+    settle(days(13));
+    const partial = settle(days(13).slice(10), { queueReveal: false });
+    expect(partial.companion.relationshipStage).toBe('partner');
+    const again = settle(days(13).slice(10), { queueReveal: false });
+    expect(again).toEqual(partial);
   });
 
   it('leaves the ledger, the ruleset, hidden stats and Gold as they were', () => {
@@ -338,16 +352,42 @@ describe('AI-202B1 the stage is visible', () => {
 
   it('reads the stage the controller stored, without adding the ledger again', () => {
     const state = settle(days(12));
+    // The old view model added the ledger's relationship to the stored stage:
+    // partner + 1 would read trusted-companion.
     const snapshot = buildPersonalSpaceV2Snapshot({
       coreState: { user: currentUser, tasks: [], dailyPlan: [], sessions: days(12) },
       v2State: state,
-      ledgerSnapshot: {},
+      ledgerSnapshot: { summary: { relationship: 1 } },
       effectiveDate: dateAtOffset(12),
       now: new Date(`${dateAtOffset(12)}T12:00:00.000Z`),
     });
     expect(snapshot.relationshipStage).toBe('partner');
     const home = buildHomeWindowViewModel(snapshot);
     expect(home.companion.relationshipStage).toBe('partner');
+  });
+
+  it('keeps one list of stages and one table of their names', () => {
+    expect(PERSONAL_SPACE_V2_RELATIONSHIP_STAGES).toBe(RELATIONSHIP_STAGES);
+    expect(Object.keys(RELATIONSHIP_STAGE_LABELS)).toEqual([...RELATIONSHIP_STAGES]);
+    const root = join(process.cwd(), 'pwa', 'js');
+    for (const file of ['personalSpace/v2/controller.js', 'personalSpace/v2/viewModels.js', 'pages/personalSpaceV2.js']) {
+      const source = readFileSync(join(root, file), 'utf8');
+      expect(source, file).not.toMatch(/'stranger-observer',\s*'familiar'/);
+      expect(source, file).not.toContain("'陌生觀察者'");
+    }
+  });
+
+  it('ignores inherited names such as constructor or toString', () => {
+    expect(relationshipStageLabel('constructor')).toBe('陌生觀察者');
+    expect(relationshipStageLabel('toString')).toBe('陌生觀察者');
+    expect(formatRewardLine({ rewardType: 'constructor', amount: 1 })).toBe('世界變化 +1');
+    expect(formatRewardLine({ rewardType: 'hidden_stat', rewardKey: '__proto__', amount: 1 })).toBe('隱藏能力 +1');
+    expect(getCompanionReaction({ relationshipStage: 'toString', momentum: 'stable' }).dialogueKey)
+      .toBe('companion.observe');
+    expect(getCompanionReaction({ relationshipStage: 'constructor', momentum: 'strong' }).dialogueKey)
+      .toBe('companion.momentum.strong');
+    const html = renderOrbitWindow(normalizeOrbitWindowModel({ companion: { relationshipStage: 'toString' } }));
+    expect(html).toContain('COMPANION · <span class="orbit-window-relationship-stage">陌生觀察者</span>');
   });
 
   it('picks the observe and strong-momentum lines by stage', () => {
@@ -428,6 +468,7 @@ describe('AI-202B1 reward lines use one table of names (H1)', () => {
     expect(formatWorldChange({ type: 'reward_reversed', key: 'daily-main-quest', amount: -100,
       metadata: { rewardType: 'gold', direction: 'reversed' } })).toBe('金幣 −100');
     expect(formatWorldChange({ label: '自訂文字' })).toBe('自訂文字');
+    expect(formatWorldChange({ type: 'gold', key: 'daily-main-quest' })).toBe('金幣');
     expect(formatWorldChange(null)).toBeNull();
   });
 });

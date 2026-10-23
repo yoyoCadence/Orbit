@@ -13,6 +13,7 @@ import {
   summarizeRewardLedger,
 } from './rewardLedger.js';
 import { reconcileRewardLedger } from './reconciler.js';
+import { RELATIONSHIP_STAGES } from './content/worldLabels.js';
 import {
   dedupeSessionsById,
   isSessionDeleted,
@@ -25,12 +26,7 @@ import {
   savePersonalSpaceV2State,
 } from './store.js';
 
-export const PERSONAL_SPACE_V2_RELATIONSHIP_STAGES = Object.freeze([
-  'stranger-observer',
-  'familiar',
-  'partner',
-  'trusted-companion',
-]);
+export const PERSONAL_SPACE_V2_RELATIONSHIP_STAGES = RELATIONSHIP_STAGES;
 
 const HIDDEN_STAT_KEYS = Object.freeze([
   'discipline',

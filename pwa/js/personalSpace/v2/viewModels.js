@@ -1,7 +1,7 @@
 import { getLevelInfo } from '../../engine.js';
 import { getTimeBand as getSharedTimeBand } from '../../timeBand.js';
 import { getCompanionReaction, PRODUCTIVE_RESULTS } from './companionEngine.js';
-import { formatWorldChange } from './content/worldLabels.js';
+import { formatWorldChange, RELATIONSHIP_STAGES } from './content/worldLabels.js';
 import { deriveMomentum } from './momentum.js';
 import { isWithinRemindWindow } from './remindWindow.js';
 import { isWorldProgressReveal } from './revealSelectors.js';
@@ -29,13 +29,6 @@ const PROJECT_PHASES = Object.freeze([
   { progress: 50, key: 'light-and-storage', label: 'Light and storage' },
   { progress: 75, key: 'monitor-and-planning-board', label: 'Monitor and planning board' },
   { progress: 100, key: 'formal-workstation', label: 'Formal workstation' },
-]);
-
-const RELATIONSHIP_STAGES = Object.freeze([
-  'stranger-observer',
-  'familiar',
-  'partner',
-  'trusted-companion',
 ]);
 
 function finite(value, fallback = null) {

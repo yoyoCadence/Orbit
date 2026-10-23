@@ -281,8 +281,9 @@
     - `viewModels.js`：`resolveRelationshipStage()` 只讀儲存的階段（不再加上 ledger 的 relationship）。
     - 首頁卡片「COMPANION · <階段>」：這張卡的標籤字距 .06em、階段名稱不加字距、單行。實測 341 px 時最長的「陌生觀察者」從只剩 0.7 px 變成留 9.9 px。
     - 文件：README（以 4 個階段為準）、vertical slice §4.3（實際的 key）、§5.1（新欄位）、§6.1、§7.2、§13.1（`rulesetId` 只標示 ledger entry，推導的規則用 policy id）、`personal-space-state-flow.md`（新舊公式）。§7.2 的 Companion 優先順序（階段提升）留給 AI-202B2。
-    - 測試：`ai202b1RelationshipStage.test.js`（18 項，含以舊版的關係算法處理新版 state）；e2e `companion-dialogue.test.js` 加上階段標籤（341–1024 px、200% 縮放，至少留 4 px）與儲存的階段。
-    - 預算：延後載入的 JS gzip 298,466 / 307,200 B（剩 8,734 B）。
+    - 階段清單與名稱表都只有一份（`content/worldLabels.js` 的 `RELATIONSHIP_STAGES`／`RELATIONSHIP_STAGE_LABELS`），`controller.js` 與 `viewModels.js` 改為 import（獨立 review 的 P2）。查表只看自身的 key（`constructor`、`toString` 不會查到 Object 的成員）。
+    - 測試：`ai202b1RelationshipStage.test.js`（21 項，含以舊版的關係算法處理新版 state、非 authoritative 的部分快照、view model 不再把 ledger 的 relationship 加到儲存的階段）；e2e `companion-dialogue.test.js` 加上階段標籤（341–1024 px、200% 縮放，至少留 4 px）與儲存的階段。
+    - 預算：延後載入的 JS gzip 298,589 / 307,200 B（剩 8,611 B）。
 
 - [x] **AI-202** 定義 companion relationship stage 與 hidden stats 的最小映射規則
   - 目標：讓 companion 關係變化可由真實行為驅動，而不是聊天次數

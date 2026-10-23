@@ -121,7 +121,7 @@
 30. **AI-202B1：完成**（#206，v1.39.0）。關係階段由 Main Quest 天數推進：第 4 天 `familiar`（專案完成的 ledger entry）、第 12、30 天各加 1 點（由 active ledger 推導，**不寫入 ledger**，policy `ai202-main-quest-days-v1`）。`companion.legacyRelationshipPoints` 只寫一次，之後點數＝`max(legacy, ledger 的 relationship ＋ 推導的 milestone)`。首頁卡片「COMPANION · 熟悉夥伴」；`observe` 與 `momentum.strong` 各有依階段的台詞；所有 reward 行共用 `content/worldLabels.js` 的中文名稱。
     - INFRA-105：名稱表放在**新的**模組 `content/worldLabels.js`（加入 SHELL），不是既有模組的新 export（提案原本寫放在既有模組，與 INFRA-105 的規則衝突）。新台詞只是既有表的新項目；舊的表遇到新 key 會退回 `companion.observe`。
     - 標籤在 341 px 的兩欄卡片只剩 0.7 px，所以這張卡片的標籤字距改為 .06em、階段名稱不加字距：最長的「陌生觀察者」留 9.9 px。卡片內的 span 有巢狀時，測試要用 `:scope > span:last-child`。
-    - 延後載入的 JS gzip 298,466 / 307,200 B，只剩 8,734 B。
+    - 延後載入的 JS gzip 298,589 / 307,200 B，只剩 8,611 B。
 31. **下一步**：AI-202B2（里程碑的 reveal，Next）→ PS-251 的提案（窗外依時段變化）→ INFRA-105（先寫變更說明，合併前要使用者看過）。Backlog 其餘項目需要核准或屬高風險（HW-112 的 Storage migration、INFRA-101／PS-211D 的部署行為、PRO-014* 的 entitlement）。使用者原則：以「任務確實完成」為準，合併是後話；做不到的先寫進 `tasks.md`。
 
 其他：

@@ -6,6 +6,14 @@
  * existing SHELL module, which may still be an older cached copy (INFRA-105).
  */
 
+/** The relationship stages, in order: the only copy of the list. */
+export const RELATIONSHIP_STAGES = Object.freeze([
+  'stranger-observer',
+  'familiar',
+  'partner',
+  'trusted-companion',
+]);
+
 export const RELATIONSHIP_STAGE_LABELS = Object.freeze({
   'stranger-observer': '陌生觀察者',
   familiar: '熟悉夥伴',
@@ -33,9 +41,14 @@ const REWARD_TYPE_LABELS = Object.freeze({
   relationship: '夥伴關係',
 });
 
+// Own keys only: 'constructor' or 'toString' must not find Object's members.
+function lookup(table, key) {
+  return Object.hasOwn(table, key) ? table[key] : undefined;
+}
+
 /** The stage's name; an unknown stage is shown as the first one. */
 export function relationshipStageLabel(stage) {
-  return RELATIONSHIP_STAGE_LABELS[stage] || RELATIONSHIP_STAGE_LABELS['stranger-observer'];
+  return lookup(RELATIONSHIP_STAGE_LABELS, stage) || RELATIONSHIP_STAGE_LABELS['stranger-observer'];
 }
 
 function hiddenStatKey(reward) {
@@ -48,13 +61,14 @@ export function formatRewardLine(reward = {}) {
   const rewardType = reward.rewardType;
   const reversed = reward.direction === 'reversed' || reward.metadata?.direction === 'reversed';
   if (rewardType === 'world_unlock') {
-    const name = UNLOCK_LABELS[reward.rewardKey || reward.key] || '新的空間';
+    const name = lookup(UNLOCK_LABELS, reward.rewardKey || reward.key) || '新的空間';
     return reversed ? `收回解鎖：${name}` : `解鎖：${name}`;
   }
   const name = rewardType === 'hidden_stat'
-    ? HIDDEN_STAT_LABELS[hiddenStatKey(reward)] || '隱藏能力'
-    : REWARD_TYPE_LABELS[rewardType] || '世界變化';
+    ? lookup(HIDDEN_STAT_LABELS, hiddenStatKey(reward)) || '隱藏能力'
+    : lookup(REWARD_TYPE_LABELS, rewardType) || '世界變化';
   const amount = Math.abs(Number(reward.amount) || 0);
+  if (!amount) return name;
   return `${name} ${reversed ? '−' : '+'}${amount}`;
 }
 
