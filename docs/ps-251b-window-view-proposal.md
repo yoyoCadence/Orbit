@@ -84,6 +84,7 @@
     - 像素版存成 PNG（以調色盤 PNG 存約 3 KB；沿用現有的 RGBA 寫法約 13 KB）；
     - 檢查 alpha 只在窗戶範圍內；
     - 寫入 `outputs.json`（尺寸、SHA-256）。
+  - `art-pipeline/ps242/build-manifest.mjs`：`buildOutputEntry()` 只認得背景、角色、天氣與已知的家具／裝飾路徑，其他路徑會拋出「PS-242 manifest metadata missing」。要新增 `workspace/window/exterior-*.webp` 的分支（`role: 'exterior'`、`band`、來源、QC、授權），Q 版疊層才能進入 manifest。
 - 檔案：`workspace/window/exterior-{morning,evening}.webp`、`workspace/pixel/window/exterior-{morning,evening}.png`。
 - 大小（試渲染 q86）：Q 版每張約 11 KB，兩張約 22 KB。
 - 預覽：`art-pipeline/ps251-window/previews/` 放五個房間 × 兩種畫風 × 晨間與傍晚的合成圖（房間背景＋疊層＋100% 家具＋執行時的光線疊層：晨間是白天房間的暖色，傍晚是夜晚房間的深藍）。
@@ -106,13 +107,16 @@
   - `zIndex` 在背景（0）之上、家具（10）之下；
   - 像素版疊層加入 nearest 取樣的清單（`useNearestSampling`）；
   - 個人空間頁沿用同一個 runtime。
-- 開發者的素材總覽（`assetGallery.js`）：加上晨間、傍晚的疊層（在 `ASSET_GROUPS` 加上 `workspace/window/` 與 `workspace/pixel/window/`）。現在它只列白天與夜晚。
+- 開發者的素材總覽（`assetGallery.js`）：
+  - Q 版疊層經由 `getWorkspaceAssetManifestPaths()` 出現；
+  - 像素版不在 manifest 裡，`pixelStylePaths()` 現在只以白天與夜晚取場景（`scene.exterior` 是 `null`），要加上晨間、傍晚（或直接列出疊層）才會出現；
+  - `ASSET_GROUPS` 加上 `workspace/window/` 與 `workspace/pixel/window/` 的分組（它只分類，不會找出檔案）。
 - 光線疊層不變：晨間仍是白天房間加 .05 的暖色，傍晚是夜晚房間。房間內的光（例如地板上的陽光）不隨窗外改變，這是「只換窗外」的代價（§8.3）。
 - 開著 app 跨過時段（§8.4）：
   - T0：維持現狀，下一次 render 才換（日夜房間也是如此）；
   - T1：首頁與個人空間頁在下一個時段邊界（05、10、17、21 時）重新 render 一次。房間的日夜與窗外會一起準時換。
     - 沿用 AI-203B 提醒時段的重新 render 路徑：`remindWindow.js` 的 `watchRemindWindow()` 已在 12:00、14:00 觸發，回到前景時（`visibilitychange`，裝置睡眠會延後計時器）也重新檢查。首頁走 `replaceHomeOrbitWindow()`，個人空間頁走 `refreshForRemindWindow()`；兩者已保留打開的詳細資訊面板、它的 invoker 與鍵盤焦點（`describeControl()`／`findControl()`，不捲動頁面）。
-    - 做法是把四個時段邊界加入 `watchRemindWindow()` 的計時點（多觸發的 render 沒有副作用），**不新增 export**（INFRA-105 的規則）。不另寫一條會關掉面板或丟失焦點的 render 路徑。
+    - 做法：`watchRemindWindow()` 的計時點加上四個時段邊界，而且它比較的狀態從「是否在提醒時段」改為「是否在提醒時段**與目前的時段**」：現在的 `check()` 只在提醒時段開關時才呼叫 callback，多數時段邊界（以及裝置睡眠後的 `visibilitychange`）都不會觸發。這是既有 export 的內部行為改變，**不新增 export**（INFRA-105 的規則），也不另寫一條會關掉面板或丟失焦點的 render 路徑。
     - 已知的共同行為：邊界剛好落在 reveal 播放中時，卡片重建會讓 reveal 從頭播放（不會被標記為已看過）；提醒時段現在也是如此。
 - 不需要改的：Edit Mode 的房間縮圖（用白天背景，與時段無關）；telemetry（不帶時段或光線）；減少動態效果（疊層是靜態圖，T1 是直接替換）；窗外的天氣（現在也沒有，不在範圍）。
 - JS：E-A 的執行時改動（`assetManifest.js`、`orbitWindow.js`、`pixiSceneRuntime.js`、`assetGallery.js`）加上 T1，估計約 0.4–0.8 KB gzip，在剩下的 3,931 B 之內，但之後的任務空間更小。
@@ -161,11 +165,13 @@
   - 疊層在背景之上、家具之下；五個房間與兩種畫風都正確；
   - 疊層的畫風跟著實際畫出的房間背景；夜晚房間退回白天房間時，傍晚仍畫傍晚的疊層；
   - 疊層載入失敗時不出現破圖，房間照常（看到烘進去的窗外），房間與家具不因此退回預設；
-  - 開發者的素材總覽列出疊層。
+  - 開發者的素材總覽列出兩種畫風的疊層（像素版經由 `pixelStylePaths()`）；
+  - `build-manifest.mjs` 有疊層的分支，重新產生 manifest 不拋錯。
 - 相容：
   - 舊的 `orbitWindow.js`／`pixiSceneRuntime.js` 搭配新的 `assetManifest.js`（以及反過來），新的 JS 搭配舊的 `style.css`，都不壞；
   - 不新增 export。
 - T1（若採用）：
+  - `watchRemindWindow()` 的 unit test：在 05、10、17、21 時與 12、14 時都呼叫 callback，跨過時段的 `visibilitychange` 也呼叫；不在邊界時不呼叫；
   - 以固定時間的 e2e 驗證：app 開著跨過 17 時，房間換成夜晚、窗外換成傍晚，只重新 render 一次；
   - 頁面在背景（或裝置睡眠）跨過 17 時，回到前景時更新；
   - 個人空間頁的詳細資訊面板打開、焦點在面板內時跨過時段邊界：面板仍打開，焦點仍在同一個控制項（與 AI-203B 提醒時段的既有測試相同）；首頁卡片上的焦點保留。
