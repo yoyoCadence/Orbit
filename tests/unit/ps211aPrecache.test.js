@@ -124,15 +124,12 @@ describe('PS-211A service worker precache', () => {
     expect(SHELL).toContain('vendor/pixi.js');
   });
 
-  it('revalidates the images and Pixi on install instead of trusting the HTTP cache', () => {
-    const pattern = new RegExp(swSource.match(/const REVALIDATE_ON_INSTALL = \/(.*)\/;/)[1]);
-    const revalidated = SHELL.filter(path => pattern.test(`./${path}`));
-    expect(revalidated.sort()).toEqual([
-      ...posterAssetPaths().paths,
-      ...SHELL.filter(path => /\.(png|webp)$/.test(path) && !path.startsWith('assets/personal-space/v2/')),
-      'vendor/pixi.js',
-    ].sort());
-    expect(swSource).toMatch(/new Request\(path, \{ cache: 'no-cache' \}\)/);
+  it('revalidates every SHELL entry on install instead of trusting the HTTP cache (INFRA-105)', () => {
+    // Art, Pixi, and since INFRA-105 the code: no entry is left to the browser's
+    // HTTP cache. tests/e2e/infra105-sw-update.test.js checks it in a browser.
+    expect(swSource).toMatch(/SHELL\.map\(path => \(\s*new Request\(path, \{ cache: 'no-cache' \}\)\s*\)\)/);
+    expect(swSource).not.toMatch(/REVALIDATE_ON_INSTALL/);
+    expect(swSource).toMatch(/fetch\(e\.request, \{ cache: 'no-cache' \}\)/);
   });
 
   it('keeps Pixi out of the page\'s initial load (technical design §12.1)', () => {

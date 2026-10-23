@@ -1,6 +1,6 @@
 // Service Worker
 // Bump CACHE version on every deploy so users always get fresh code.
-const CACHE = 'orbit-v1.40.0';
+const CACHE = 'orbit-v1.40.1';
 
 const SHELL = [
   './',
@@ -170,14 +170,14 @@ const SHELL = [
   './vendor/pixi.js',
 ];
 
-// Art is re-rendered under the same file names, so these entries are revalidated
-// instead of trusting a possibly stale HTTP cache entry for the whole release.
-const REVALIDATE_ON_INSTALL = /\.(png|webp)$|\/vendor\/pixi\.js$/;
-
-// Precache on install
+// Precache on install. Every entry is revalidated with the server (INFRA-105):
+// GitHub Pages lets the browser keep a file for 10 minutes (max-age=600), so a
+// version deployed within that time would otherwise cache the previous
+// version's code and art. An unchanged file costs a 304 while the server keeps
+// its ETag.
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL.map(path => (
-    REVALIDATE_ON_INSTALL.test(path) ? new Request(path, { cache: 'no-cache' }) : path
+    new Request(path, { cache: 'no-cache' })
   )))));
   self.skipWaiting();
 });
@@ -217,12 +217,14 @@ self.addEventListener('fetch', e => {
         .catch(() => caches.match(e.request))
     );
   } else if (isJsCss) {
-    // Stale-while-revalidate: return cached copy immediately; update cache in background
+    // Stale-while-revalidate: return cached copy immediately; update cache in
+    // background, from the server rather than the browser's HTTP cache
+    // (INFRA-105). An error response never replaces a working module.
     e.respondWith(
       caches.open(CACHE).then(cache =>
         cache.match(e.request).then(cached => {
-          const networkFetch = fetch(e.request)
-            .then(res => { cache.put(e.request, res.clone()); return res; })
+          const networkFetch = fetch(e.request, { cache: 'no-cache' })
+            .then(res => { if (res.ok) cache.put(e.request, res.clone()); return res; })
             .catch(() => null);
           return cached ?? networkFetch;
         })
