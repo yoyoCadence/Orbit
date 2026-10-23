@@ -13,6 +13,7 @@ import {
   summarizeRewardLedger,
 } from './rewardLedger.js';
 import { reconcileRewardLedger } from './reconciler.js';
+import { RELATIONSHIP_STAGES } from './content/worldLabels.js';
 import {
   dedupeSessionsById,
   isSessionDeleted,
@@ -25,12 +26,7 @@ import {
   savePersonalSpaceV2State,
 } from './store.js';
 
-export const PERSONAL_SPACE_V2_RELATIONSHIP_STAGES = Object.freeze([
-  'stranger-observer',
-  'familiar',
-  'partner',
-  'trusted-companion',
-]);
+export const PERSONAL_SPACE_V2_RELATIONSHIP_STAGES = RELATIONSHIP_STAGES;
 
 const HIDDEN_STAT_KEYS = Object.freeze([
   'discipline',
@@ -44,6 +40,14 @@ const HIDDEN_STAT_KEYS = Object.freeze([
 const LEGACY_RELATIONSHIP_STAGE_POINTS = Object.freeze({
   'quiet-familiarity': 1,
 });
+
+// AI-202: the relationship also grows on the 12th and 30th Main Quest day.
+// Derived from the active ledger rather than written into it: an older tab
+// still on the previous code would reverse a same-ruleset entry it does not
+// expect. The policy id versions this derivation; RULESET_ID versions the
+// ledger entries themselves.
+const RELATIONSHIP_POLICY_ID = 'ai202-main-quest-days-v1';
+const RELATIONSHIP_MILESTONE_MAIN_QUEST_DAYS = Object.freeze([12, 30]);
 
 const REWARD_CHANGE_PRIORITY = Object.freeze({
   world_unlock: 6,
@@ -91,6 +95,33 @@ function relationshipPointsForState(companion = {}) {
   const canonicalIndex = PERSONAL_SPACE_V2_RELATIONSHIP_STAGES.indexOf(stage);
   if (canonicalIndex >= 0) return canonicalIndex;
   return LEGACY_RELATIONSHIP_STAGE_POINTS[stage] || 0;
+}
+
+// Distinct Main Quest days: the reconciler keeps one winner a day, and its
+// quest_progress key names the day.
+function countMainQuestDays(entries = []) {
+  return new Set(entries
+    .filter(entry => entry.rewardType === 'quest_progress'
+      && String(entry.rewardKey || '').startsWith('main-focus:'))
+    .map(entry => entry.rewardKey)).size;
+}
+
+function derivedRelationshipMilestones(mainQuestDays) {
+  return RELATIONSHIP_MILESTONE_MAIN_QUEST_DAYS.filter(days => mainQuestDays >= days).length;
+}
+
+// The points a migrated legacy relationship gives: a floor, not a bonus, so
+// the thresholds are the same for everyone. Stored once, so that a stale
+// total written by an older tab can never be read back as legacy points.
+function legacyRelationshipPoints(state, oldSummary) {
+  const companion = state.companion || {};
+  if (Object.hasOwn(companion, 'legacyRelationshipPoints')) {
+    return finiteNonNegative(companion.legacyRelationshipPoints);
+  }
+  return Math.max(
+    0,
+    relationshipPointsForState(companion) - finiteNonNegative(oldSummary.relationship),
+  );
 }
 
 function relationshipStageForPoints(points) {
@@ -443,17 +474,18 @@ export function applyReconciliationToV2State(state, reconciliation, options = {}
   const openingGold = finiteNonNegative(state.economy?.openingGold);
   const spentGold = finiteNonNegative(state.economy?.spentGold);
   const earnedGold = finiteNonNegative(newSummary.earnedGold ?? newSummary.gold);
-  const existingRelationshipPoints = relationshipPointsForState(state.companion);
-  const relationshipBaseline = Math.max(
-    0,
-    existingRelationshipPoints - finiteNonNegative(oldSummary.relationship),
-  );
-  const relationshipPoints = relationshipBaseline + finiteNonNegative(newSummary.relationship);
   const changeIds = getEffectiveChangeIds(state, reconciliation);
-  const activeRewardIds = new Set(listActiveRewards(
-    reconciliation.ledger,
-    reconciliation.tombstones,
-  ).map(entry => entry.id));
+  const activeRewards = listActiveRewards(reconciliation.ledger, reconciliation.tombstones);
+  const activeRewardIds = new Set(activeRewards.map(entry => entry.id));
+  // AI-202: max(legacy points, the ledger's relationship + derived milestones).
+  const legacyPoints = legacyRelationshipPoints(state, oldSummary);
+  const mainQuestDays = countMainQuestDays(activeRewards.filter(entry => (
+    entry.metadata?.rulesetId || entry.rulesetId || state.rulesetId || RULESET_ID
+  ) === RULESET_ID));
+  const relationshipPoints = Math.max(
+    legacyPoints,
+    finiteNonNegative(newSummary.relationship) + derivedRelationshipMilestones(mainQuestDays),
+  );
   const revealEvents = options.queueReveal === true
     ? buildRevealEvents(
       reconciliation,
@@ -500,6 +532,8 @@ export function applyReconciliationToV2State(state, reconciliation, options = {}
       ...state.companion,
       relationshipPoints,
       relationshipStage: relationshipStageForPoints(relationshipPoints),
+      legacyRelationshipPoints: legacyPoints,
+      relationshipPolicyId: RELATIONSHIP_POLICY_ID,
     },
     activeProject: { ...reconciliation.project },
     rewardLedger: reconciliation.ledger,

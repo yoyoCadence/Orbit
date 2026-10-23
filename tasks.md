@@ -31,15 +31,6 @@
     3. Authentication → Notifications → Email → Templates，更新 Reset Password / Confirm Signup 模板（英文品牌版內容已備好，ask Claude）
   - 備註：Resend 免費方案 3,000 封/月；之後有域名可換成 `noreply@yourdomain.com`
 
-- [ ] **INFRA-105** service worker 安裝時，SHELL 的 JS／CSS／HTML 也要重新驗證，避免改版後先跑舊程式
-  - 問題（PS-211A 獨立 review 發現，2026-10-20；修改前就存在）：`sw.js` 的 install 只對圖片與 `pixi.js` 使用 `cache: 'no-cache'`。JS、CSS、HTML 仍走瀏覽器的 HTTP cache。GitHub Pages 的 `max-age=600` 內，新版本的快取會存到**舊的** `version.js` 等模組。
-  - 影響：
-    - 「新版本已就緒」後的第一次載入，最多約 10 分鐘內仍執行舊程式。stale-while-revalidate 的背景更新也會讀到仍然有效的 HTTP cache。
-    - 改版若改了素材檔名，舊的 `assetManifest.js` 會要求不在 SHELL 中的舊檔名：線上 404、離線缺圖。
-    - 新模組使用舊模組沒有的 export 時，可能無法 link。
-  - 方向：SHELL 的所有項目都以 `new Request(path, { cache: 'no-cache' })` 取得（沒變的檔案只需 304），並以 e2e 模擬改版驗證。
-  - **改 service worker 的快取行為（部署行為），需使用者核准**。
-
 - [ ] **PS-211D** 跨版本保存 V2 素材快取（以 `manifest.json` 的 `sha256` 為 key）
   - 背景：PS-211 提案 §5 D。activate 時保留素材快取、依目前 manifest 清理，讓沒改的素材在改版後不必重新下載。
   - 暫緩（使用者 2026-10-20 同意）：素材仍在調整；且要先驗證 GitHub Pages 的 ETag 是否隨部署改變（`curl -I` 比較兩次部署中同一個沒改過的素材）。ETag 不變時，PS-211A 之後的效益很小。
@@ -154,11 +145,6 @@
   - 目標：完成 roadmap 既有 SUB-17
   - 對應 roadmap：中期
 
-- [ ] **PS-251** PS-248 提案 §9 中 PS-250 沒有涵蓋的項目
-  - 來源：PS-248 結案時（#202 獨立 review 的 P2）。使用者的 PS-250 決定取代了 PS-248 §9 的範圍、擴充前提、順序、做法與快取，但沒有決定下面兩項。
-  - **§9.3 PS-248A2 窗外依時段變化**（可選；超出 art bible §6.1「一張 exterior」的上限）：**需使用者決定**要不要做。
-  - **§9.8 順帶整理**：使用者 2026-10-23 核准三項都做，拆成 PS-251A。
-
 - [ ] **AI-015** AI 晨間報告
   - 目標：完成 roadmap 既有 SUB-15
   - 對應 roadmap：長期（v2.x）
@@ -219,6 +205,32 @@
 > - PS-251 §9.8 的三項順帶整理都做（刪除 `room-v1.webp`、更新 PS-243 驗收紀錄的預算數字、修正根目錄 README 的專案階段）：從 Backlog 的 PS-251 拆出 PS-251A，移入 Next，再移入 In Progress。§9.3（A2）仍待決定，PS-251 留在 Backlog。
 > - 順序：PS-251A（不改程式行為）→ PS-249A。
 
+> 2026-10-23 核准（使用者以 AskUserQuestion 回覆）：
+> - AI-202 §9 全部採用建議。AI-202 移到 Done，實作拆成 AI-202B1（推導與顯示，移入 In Progress）與 AI-202B2（里程碑的 reveal，Next）。
+> - PS-251 §9.3（窗外依時段變化）：做，先寫實作提案。PS-251 從 Backlog 移入 Next。
+> - INFRA-105 核准：先寫變更說明，PR 合併前讓使用者看過。從 Backlog 移入 Next。
+> - 順序：AI-202B1 → AI-202B2 → PS-251 的提案 → INFRA-105（要等使用者看過才合併，放在最後，避免擋住同一個 branch 的其他 PR）。
+
+- [ ] **AI-202B2** 實作 AI-202：里程碑（專案完成與關係階段）的 reveal
+  - 依據：[`docs/ai-202-companion-relationship-proposal.md`](docs/ai-202-companion-relationship-proposal.md) §3.4、§8（reveal 與 Companion 的驗收條件），使用者 2026-10-23 的決定。
+  - 範圍：`presentedMilestones`（新的本機欄位）與淨變化的放置；第 12、30 天的階段提升是 `major`，標題與行「夥伴關係：合作夥伴」，Companion `congratulate`＋`companion.relationship.stage-up`；階段退回不是 `major`、`observe`；`queueReveal: false` 只移除或縮小；舊格式 reveal 的重新計算；消耗帶里程碑的 reveal 時前進基準。與 BUG-113 的專案完成判斷整合。
+  - 依賴：`AI-202B1`
+
+- [ ] **PS-251** PS-248 提案 §9 中 PS-250 沒有涵蓋的項目
+  - 來源：PS-248 結案時（#202 獨立 review 的 P2）。使用者的 PS-250 決定取代了 PS-248 §9 的範圍、擴充前提、順序、做法與快取，但沒有決定下面兩項。
+  - **§9.3 PS-248A2 窗外依時段變化**（可選；超出 art bible §6.1「一張 exterior」的上限）：使用者 2026-10-23 決定**做**。第一步是實作提案（窗戶遮罩、圖層、素材預算與快取），核准後再渲染。
+  - **§9.8 順帶整理**：使用者 2026-10-23 核准三項都做，拆成 PS-251A。
+
+- [ ] **INFRA-105** service worker 安裝時，SHELL 的 JS／CSS／HTML 也要重新驗證，避免改版後先跑舊程式
+  - 問題（PS-211A 獨立 review 發現，2026-10-20；修改前就存在）：`sw.js` 的 install 只對圖片與 `pixi.js` 使用 `cache: 'no-cache'`。JS、CSS、HTML 仍走瀏覽器的 HTTP cache。GitHub Pages 的 `max-age=600` 內，新版本的快取會存到**舊的** `version.js` 等模組。
+  - 影響：
+    - 「新版本已就緒」後的第一次載入，最多約 10 分鐘內仍執行舊程式。stale-while-revalidate 的背景更新也會讀到仍然有效的 HTTP cache。
+    - 改版若改了素材檔名，舊的 `assetManifest.js` 會要求不在 SHELL 中的舊檔名：線上 404、離線缺圖。
+    - 新模組使用舊模組沒有的 export 時，可能無法 link。
+  - 方向：SHELL 的所有項目都以 `new Request(path, { cache: 'no-cache' })` 取得（沒變的檔案只需 304），並以 e2e 模擬改版驗證。
+  - **改 service worker 的快取行為（部署行為），需使用者核准**。
+  - 使用者 2026-10-23 核准：先寫一份短的變更說明（做法、風險、以 e2e 模擬改版的驗證），**PR 合併前讓使用者看過**，再實作。
+
 - [ ] **BUG-109A** 在 production 套用 013 signup trigger migration
   - 目標：讓 production 的 `handle_new_user()` 截斷超過 30 字元的名稱來源，長 email local-part 與長 Google 顯示名稱都能註冊。
   - 步驟：依 [`docs/bug-109-signup-name-truncation.md`](docs/bug-109-signup-name-truncation.md) 的 runbook：先以 `pg_get_functiondef` 比對 production 函式與 004、記錄回滾來源，在非 production 環境跑 `tests/database/bug109.test.sql`，再套用並驗證。
@@ -228,20 +240,6 @@
 ---
 
 ## In Progress
-
-- [ ] **AI-202** 定義 companion relationship stage 與 hidden stats 的最小映射規則
-  - 目標：讓 companion 關係變化可由真實行為驅動，而不是聊天次數
-  - 對應 roadmap：Phase 2 / Phase 4
-  - 2026-10-20 排程（使用者指定為下一個）：第一步是提案（Mode A，只寫文件、不改程式碼），核准前不實作。不涉及 auth／schema；若映射需要新的持久化欄位，提案中列為需核准事項。
-  - In progress（2026-10-20）：提案 [`docs/ai-202-companion-relationship-proposal.md`](docs/ai-202-companion-relationship-proposal.md)（Mode A，只寫文件）。建議：
-    - 關係階段只由 Main Quest 天數推進：第 4 天 `familiar`（即現有的 Workspace Upgrade 完成，不改）、第 12 天 `partner`、第 30 天 `trusted-companion`。新的 milestone 由 active ledger 推導，**不寫成 ledger entry**：仍在執行舊版程式碼的分頁會撤銷它不認得的同 ruleset entry（Codex review 指出）。另存一個本機欄位 `companion.legacyRelationshipPoints`，讓舊版分頁寫入的過時點數不會汙染計算（需核准）；legacy 點數是下限而不是加分，門檻對所有使用者相同（Codex review 指出）。
-      - 現況：唯一的來源是專案完成，所以階段最多到 `familiar`；`companionEngine` 完全不讀階段。
-    - hidden stats 不決定階段：沒有每日上限、instant 也算，容易刷。AI-202B 只把它們的顯示改為中文名稱。
-    - 不因缺席降級；只有 Main Quest 日被撤銷、數量跌破門檻時退回。
-    - 階段變化的 reveal 由前後的階段決定：只有提升是 `major`；退回不恭喜；換一天承接時沒有關係的 reveal。第 4 天沿用已核准的專案完成台詞。
-    - 首頁顯示階段；依階段改變最常看到的兩句預設台詞（`observe`、`momentum.strong`）。
-    - `rulesetId` 與 ledger 都不變。換 ruleset 在現有程式碼下會讓 hidden stats 與關係重複計算（Gold 不會）。另存 `companion.relationshipPolicyId` 替推導的規則標版本；vertical slice §6.1、§13.1「改規則要換 `rulesetId`」需改為只適用於 ledger entry（Codex review 指出，需核准）。
-  - **等待使用者決定**提案 §9：門檻、輸入、機制與既有歷史（需同意新增三個本機欄位並修改 vertical slice §6.1、§7.2、§13.1）、顯示、hidden stats 名稱、台詞、README、telemetry、BUG-113 的處理。核准後比照 AI-204：AI-202 移到 Done，另立 AI-202B 實作。
 
 - [ ] **PRO-014Q** 開發者面板的 backup 不應擋住其他帳號或非 Pro 模擬的 entitlement refresh
   - 問題（PR #158 Codex review 指出，2026-10-18 確認）：`storage.refreshProEntitlement()` 只要 `FLAG_DEV_BACKUP` 存在就直接 return。這個 backup 也由等級模擬器建立，且 `storage.clearAll()` 登出時不會清除。開發者登出後換另一個帳號，該帳號的 refresh 會一直被跳過，在 `server` source 下 fail closed，直到手動重設。
@@ -265,6 +263,42 @@
 ---
 
 ## Done
+
+- [x] **AI-202B1** 實作 AI-202：關係階段的推導與顯示
+  - 依據：[`docs/ai-202-companion-relationship-proposal.md`](docs/ai-202-companion-relationship-proposal.md) §3.2、§3.3、§5–§7，使用者 2026-10-23 的決定（N1、只算 Main Quest 日、K4＋R1、S1、H1、T0）。
+  - 範圍：
+    - 推導：點數＝`max(legacy 點數, ledger 的 relationship ＋ 推導的 milestone)`；第 12、30 個 Main Quest 日各加 1。新的本機欄位 `companion.legacyRelationshipPoints`（只寫一次）與 `companion.relationshipPolicyId`。`rulesetId` 與 ledger 不變。
+    - 顯示：首頁 COMPANION 卡顯示階段（與完整頁面共用名稱表）；`companion.observe` 與 `companion.momentum.strong` 依階段（6 句新台詞）；撤銷的 reveal 用目前階段的 `observe` 台詞。
+    - H1：首頁與完整頁面的 reward 行共用一份中文名稱表，不再顯示原始 key。
+    - 文件：README 註明以 4 個階段為準；vertical slice §4.3、§5.1、§6.1、§7.2、§13.1 與 `docs/personal-space-state-flow.md`。
+    - 不在範圍（AI-202B2）：階段變化的 reveal。本任務之後，第 12、30 天只改變卡片上的階段，沒有專屬的 reveal。
+  - 驗收：提案 §8 的「推進」、「與舊版程式碼並存」、「顯示」各項（reveal 的項目在 AI-202B2）。
+  - In progress（2026-10-23）。
+  - 完成（2026-10-23，v1.39.0）：
+    - `controller.js`：`countMainQuestDays()`（不同的 `main-focus:<date>` key）、`derivedRelationshipMilestones()`（12、30）、`legacyRelationshipPoints()`（欄位不存在時以 reconcile 之前的 ledger 算一次，之後只讀、無效值為 0）。點數＝`max(legacy, ledger 的 relationship ＋ milestone)`；寫入 `relationshipPolicyId`。
+    - `content/worldLabels.js`（新模組，加入 SHELL）：階段名稱、hidden stats 名稱、`formatRewardLine()`、`formatWorldChange()`；首頁、完整頁面與 view model 共用。提案原本寫放在既有模組，但依 INFRA-105 的規則，SHELL 模組不能 import 既有 SHELL 模組的新 export，所以另立新模組。
+    - `companionEngine.js`：`observe`（含撤銷的 reveal）與 `momentum.strong` 依階段；`companionDialogue.js` 與 telemetry allowlist 加 6 句。
+    - `viewModels.js`：`resolveRelationshipStage()` 只讀儲存的階段（不再加上 ledger 的 relationship）。
+    - 首頁卡片「COMPANION · <階段>」：這張卡的標籤字距 .06em、階段名稱不加字距、單行。實測 341 px 時最長的「陌生觀察者」從只剩 0.7 px 變成留 9.9 px。
+    - 文件：README（以 4 個階段為準）、vertical slice §4.3（實際的 key）、§5.1（新欄位）、§6.1、§7.2、§13.1（`rulesetId` 只標示 ledger entry，推導的規則用 policy id）、`personal-space-state-flow.md`（新舊公式）。§7.2 的 Companion 優先順序（階段提升）留給 AI-202B2。
+    - 階段清單與名稱表都只有一份（`content/worldLabels.js` 的 `RELATIONSHIP_STAGES`／`RELATIONSHIP_STAGE_LABELS`），`controller.js` 與 `viewModels.js` 改為 import（獨立 review 的 P2）。查表只看自身的 key（`constructor`、`toString` 不會查到 Object 的成員）。
+    - 測試：`ai202b1RelationshipStage.test.js`（21 項，含以舊版的關係算法處理新版 state、非 authoritative 的部分快照、view model 不再把 ledger 的 relationship 加到儲存的階段）；e2e `companion-dialogue.test.js` 加上階段標籤（341–1024 px、200% 縮放，至少留 4 px）與儲存的階段。
+    - 預算：延後載入的 JS gzip 298,589 / 307,200 B（剩 8,611 B）。
+
+- [x] **AI-202** 定義 companion relationship stage 與 hidden stats 的最小映射規則
+  - 目標：讓 companion 關係變化可由真實行為驅動，而不是聊天次數
+  - 對應 roadmap：Phase 2 / Phase 4
+  - 2026-10-20 排程（使用者指定為下一個）：第一步是提案（Mode A，只寫文件、不改程式碼），核准前不實作。不涉及 auth／schema；若映射需要新的持久化欄位，提案中列為需核准事項。
+  - In progress（2026-10-20）：提案 [`docs/ai-202-companion-relationship-proposal.md`](docs/ai-202-companion-relationship-proposal.md)（Mode A，只寫文件）。建議：
+    - 關係階段只由 Main Quest 天數推進：第 4 天 `familiar`（即現有的 Workspace Upgrade 完成，不改）、第 12 天 `partner`、第 30 天 `trusted-companion`。新的 milestone 由 active ledger 推導，**不寫成 ledger entry**：仍在執行舊版程式碼的分頁會撤銷它不認得的同 ruleset entry（Codex review 指出）。另存一個本機欄位 `companion.legacyRelationshipPoints`，讓舊版分頁寫入的過時點數不會汙染計算（需核准）；legacy 點數是下限而不是加分，門檻對所有使用者相同（Codex review 指出）。
+      - 現況：唯一的來源是專案完成，所以階段最多到 `familiar`；`companionEngine` 完全不讀階段。
+    - hidden stats 不決定階段：沒有每日上限、instant 也算，容易刷。AI-202B 只把它們的顯示改為中文名稱。
+    - 不因缺席降級；只有 Main Quest 日被撤銷、數量跌破門檻時退回。
+    - 階段變化的 reveal 由前後的階段決定：只有提升是 `major`；退回不恭喜；換一天承接時沒有關係的 reveal。第 4 天沿用已核准的專案完成台詞。
+    - 首頁顯示階段；依階段改變最常看到的兩句預設台詞（`observe`、`momentum.strong`）。
+    - `rulesetId` 與 ledger 都不變。換 ruleset 在現有程式碼下會讓 hidden stats 與關係重複計算（Gold 不會）。另存 `companion.relationshipPolicyId` 替推導的規則標版本；vertical slice §6.1、§13.1「改規則要換 `rulesetId`」需改為只適用於 ledger entry（Codex review 指出，需核准）。
+  - **等待使用者決定**提案 §9：門檻、輸入、機制與既有歷史（需同意新增三個本機欄位並修改 vertical slice §6.1、§7.2、§13.1）、顯示、hidden stats 名稱、台詞、README、telemetry、BUG-113 的處理。核准後比照 AI-204：AI-202 移到 Done，另立 AI-202B 實作。
+  - 完成（2026-10-23）：使用者決定 §9，全部採用建議（N1 第 4／12／30 個 Main Quest 日、只算 Main Quest 日、K4＋R1、S1、H1、T0、README 註明以 4 個階段為準；BUG-113 已在 #192 修正）。實作拆成 AI-202B1（推導與顯示）與 AI-202B2（里程碑的 reveal）。
 
 - [x] **PS-249A** 實作 PS-249：Orbit Window 被 overlay 蓋住時暫停 reveal 與場景
   - 依據：[`docs/ps-249-overlay-scene-proposal.md`](docs/ps-249-overlay-scene-proposal.md)，使用者 2026-10-23 的 §6 決定（見上方核准紀錄）。

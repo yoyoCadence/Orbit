@@ -131,7 +131,10 @@ Session 刪除或 Undo 會為該 source 建立 tombstone 並撤銷其 entry（`r
 | `economy.earnedGold` | 有效 ledger 中 Gold entry 總和 |
 | `economy.balanceGold` | `max(0, openingGold + earnedGold - spentGold)` |
 | `hiddenStats[key]` | 遷移基準值 + 有效 ledger 的 hidden stat 總和 |
-| `companion.relationshipStage` | relationship points 對應 `stranger-observer → familiar → partner → trusted-companion` |
+| `companion.relationshipPoints` | `max(legacyRelationshipPoints, 有效 ledger 的 relationship 總和 ＋ 推導的 milestone)`；推導的 milestone：不同的 Main Quest 日（`quest_progress` 的 `main-focus:<date>` key）達 12 天 +1、達 30 天再 +1，不寫入 ledger（AI-202，policy `ai202-main-quest-days-v1`）。舊公式（AI-202B1 之前）：`已儲存的點數 − 舊 ledger 的 relationship ＋ 新 ledger 的 relationship` |
+| `companion.legacyRelationshipPoints` | 欄位不存在時寫入一次：`max(0, 已儲存的點數 − reconcile 之前 ledger 的 relationship)`；之後只讀，無效值視為 0 |
+| `companion.relationshipPolicyId` | 每次 reconcile 寫入目前的 policy id（`ai202-main-quest-days-v1`） |
+| `companion.relationshipStage` | relationship points 對應 `stranger-observer → familiar → partner → trusted-companion`（0–3） |
 | `activeProject` | `projectEngine.deriveActiveProject()`；phase 依 progress 0／25／50／75／100 對應 `viewModels.js` 的 `PROJECT_PHASES` |
 | `worldRevision` | 任何 ledger 或語意變動時 +1；`savePersonalSpaceV2State()` 可用 `expectedRevision` 擋下過期寫入 |
 

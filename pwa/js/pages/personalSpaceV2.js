@@ -22,6 +22,7 @@ import {
   saveAppearanceChange,
 } from '../personalSpace/v2/ui/appearancePicker.js';
 import { COMPANION_NAME, getCompanionDialogue } from '../personalSpace/v2/content/companionDialogue.js';
+import { formatRewardLine, relationshipStageLabel } from '../personalSpace/v2/content/worldLabels.js';
 import { emitPersonalSpaceTelemetry } from '../personalSpace/v2/telemetry.js';
 import { describeControl, findControl, watchRemindWindow } from '../personalSpace/v2/remindWindow.js';
 import { resolveAchievementPhoto } from '../platform/proofStore.js';
@@ -41,13 +42,6 @@ const PROJECT_PHASE_LABELS = Object.freeze({
   'formal-workstation': '正式工作站',
 });
 
-const RELATIONSHIP_LABELS = Object.freeze({
-  'stranger-observer': '陌生觀察者',
-  familiar: '熟悉夥伴',
-  partner: '合作夥伴',
-  'trusted-companion': '信賴夥伴',
-});
-
 function describeNextRequirement(requirement) {
   if (!requirement) return '專案已完成';
   if (requirement.label) return requirement.label;
@@ -55,20 +49,6 @@ function describeNextRequirement(requirement) {
     return `再完成 ${requirement.remainingCompletions} 次每日主線任務`;
   }
   return '完成每日主線任務';
-}
-
-function rewardLine(reward) {
-  const amount = Number(reward?.amount) || 0;
-  const sign = reward?.direction === 'reversed' ? '−' : '+';
-  const labels = {
-    gold: '金幣',
-    project_progress: '工作空間進度',
-    quest_progress: '主線任務進度',
-    hidden_stat: reward?.rewardKey || '隱藏能力',
-    world_unlock: '世界解鎖',
-    relationship: '夥伴關係',
-  };
-  return `${labels[reward?.rewardType] || reward?.rewardKey || '世界變化'} ${sign}${Math.abs(amount)}`;
 }
 
 function localizePageModel(model) {
@@ -82,7 +62,7 @@ function localizePageModel(model) {
     ...model.pendingReveal,
     title: model.pendingReveal.direction === 'reversal' ? '世界狀態已回復' : '世界有了新變化',
     lines: Array.isArray(model.pendingReveal.rewards)
-      ? model.pendingReveal.rewards.map(rewardLine)
+      ? model.pendingReveal.rewards.map(reward => formatRewardLine(reward))
       : model.pendingReveal.lines,
   } : null;
 
@@ -126,7 +106,7 @@ function detailPanelMarkup(model) {
         <p>${escapeHtml(describeNextRequirement(model.activeProject.nextRequirement))}</p>
       </section>
       <section data-v2-detail="companion" hidden>
-        <small>夥伴關係 · ${escapeHtml(RELATIONSHIP_LABELS[model.companion.relationshipStage] || model.companion.relationshipStage)}</small>
+        <small>夥伴關係 · ${escapeHtml(relationshipStageLabel(model.companion.relationshipStage))}</small>
         <h2 tabindex="-1">${escapeHtml(COMPANION_NAME)}</h2>
         <p>${escapeHtml(companionMessage)}</p>
       </section>

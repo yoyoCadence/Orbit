@@ -1,6 +1,6 @@
 {
   "artifact": "ps243-asset-baseline",
-  "appVersion": "1.38.3",
+  "appVersion": "1.39.0",
   "note": "Reproducible: a pure function of committed files with CRLF normalized to LF. No timestamps; regenerate with `npm run ps243:assets` and diff to verify.",
   "method": {
     "assetSizes": "raw binary file bytes on disk (fs.statSync.size)",
@@ -269,11 +269,11 @@
   },
   "deferredJsBundles": {
     "personalSpaceV2AppJs": {
-      "fileCount": 29,
+      "fileCount": 30,
       "files": [
         {
           "path": "pwa/js/pages/personalSpaceV2.js",
-          "bytes": 19306
+          "bytes": 18712
         },
         {
           "path": "pwa/js/personalSpace/economy.js",
@@ -289,7 +289,7 @@
         },
         {
           "path": "pwa/js/personalSpace/v2/companionEngine.js",
-          "bytes": 4851
+          "bytes": 5805
         },
         {
           "path": "pwa/js/personalSpace/v2/config.js",
@@ -305,11 +305,15 @@
         },
         {
           "path": "pwa/js/personalSpace/v2/content/companionDialogue.js",
-          "bytes": 1499
+          "bytes": 2205
+        },
+        {
+          "path": "pwa/js/personalSpace/v2/content/worldLabels.js",
+          "bytes": 3510
         },
         {
           "path": "pwa/js/personalSpace/v2/controller.js",
-          "bytes": 28258
+          "bytes": 30099
         },
         {
           "path": "pwa/js/personalSpace/v2/featureFlag.js",
@@ -369,7 +373,7 @@
         },
         {
           "path": "pwa/js/personalSpace/v2/telemetry.js",
-          "bytes": 7567
+          "bytes": 7799
         },
         {
           "path": "pwa/js/personalSpace/v2/ui/appearancePicker.js",
@@ -381,22 +385,22 @@
         },
         {
           "path": "pwa/js/personalSpace/v2/ui/orbitWindow.js",
-          "bytes": 32126
+          "bytes": 31780
         },
         {
           "path": "pwa/js/personalSpace/v2/viewModels.js",
-          "bytes": 26773
+          "bytes": 26313
         }
       ],
-      "rawBytes": 270732,
-      "gzipBytes": 71465
+      "rawBytes": 276575,
+      "gzipBytes": 73161
     },
     "vendoredPixi": {
       "path": "pwa/vendor/pixi.js",
       "rawBytes": 796970,
       "gzipBytes": 225428
     },
-    "combinedGzipBytes": 296893,
+    "combinedGzipBytes": 298589,
     "budgetBytes": 307200,
     "result": "PASS"
   }

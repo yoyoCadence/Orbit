@@ -1,6 +1,7 @@
 import { getLevelInfo } from '../../engine.js';
 import { getTimeBand as getSharedTimeBand } from '../../timeBand.js';
 import { getCompanionReaction, PRODUCTIVE_RESULTS } from './companionEngine.js';
+import { formatWorldChange, RELATIONSHIP_STAGES } from './content/worldLabels.js';
 import { deriveMomentum } from './momentum.js';
 import { isWithinRemindWindow } from './remindWindow.js';
 import { isWorldProgressReveal } from './revealSelectors.js';
@@ -28,13 +29,6 @@ const PROJECT_PHASES = Object.freeze([
   { progress: 50, key: 'light-and-storage', label: 'Light and storage' },
   { progress: 75, key: 'monitor-and-planning-board', label: 'Monitor and planning board' },
   { progress: 100, key: 'formal-workstation', label: 'Formal workstation' },
-]);
-
-const RELATIONSHIP_STAGES = Object.freeze([
-  'stranger-observer',
-  'familiar',
-  'partner',
-  'trusted-companion',
 ]);
 
 function finite(value, fallback = null) {
@@ -448,20 +442,16 @@ function resolveWallet(v2State, ledgerSnapshot, worldRevision) {
   };
 }
 
+// AI-202: the controller derives the stage (with milestones the ledger does
+// not hold), so it is read as stored; adding the ledger's relationship to it
+// again would count twice.
 function resolveRelationshipStage(v2State, ledgerSnapshot) {
-  const aggregate = getAggregate(ledgerSnapshot);
-  const direct = ledgerSnapshot.companion?.relationshipStage
-    || ledgerSnapshot.relationshipStage
-    || aggregate.relationshipStage;
-  if (RELATIONSHIP_STAGES.includes(direct)) return direct;
-
-  const base = RELATIONSHIP_STAGES.includes(v2State.companion?.relationshipStage)
-    ? v2State.companion.relationshipStage
-    : RELATIONSHIP_STAGES[0];
-  const delta = Math.floor(finite(aggregate.relationship, 0));
-  return RELATIONSHIP_STAGES[
-    clamp(RELATIONSHIP_STAGES.indexOf(base) + delta, 0, RELATIONSHIP_STAGES.length - 1)
-  ];
+  const stage = [
+    ledgerSnapshot.companion?.relationshipStage,
+    ledgerSnapshot.relationshipStage,
+    v2State.companion?.relationshipStage,
+  ].find(candidate => RELATIONSHIP_STAGES.includes(candidate));
+  return stage || RELATIONSHIP_STAGES[0];
 }
 
 function sortRecentSessions(sessions) {
@@ -477,12 +467,7 @@ function sortRecentSessions(sessions) {
 }
 
 function formatRecentWorldChange(change) {
-  if (!change) return null;
-  if (typeof change === 'string') return change;
-  if (change.label || change.message) return change.label || change.message;
-  const subject = change.key || change.type || 'World';
-  const amount = finite(change.amount, 0);
-  return amount ? `${subject} +${amount}` : subject;
+  return formatWorldChange(change);
 }
 
 export function selectProtagonistState({ pendingReveal, recentSessions, momentum } = {}) {

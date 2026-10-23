@@ -311,6 +311,18 @@
   letter-spacing: .11em;
 }
 
+/* AI-202B1: the Companion label also names the relationship stage. One line;
+   it uses narrower spacing (the stage name none) so the longest stage fits the
+   narrowest two-column card (341 px wide) with room to spare. */
+.orbit-window-state-card > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.orbit-window-state-card[data-orbit-companion] > span:first-child { letter-spacing: .06em; }
+.orbit-window-relationship-stage { letter-spacing: normal; }
+
 .orbit-window-state-card strong {
   overflow: hidden;
   font-size: 12px;

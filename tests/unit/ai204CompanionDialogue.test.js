@@ -32,16 +32,23 @@ import { renderPersonalSpaceV2 } from '../../pwa/js/pages/personalSpaceV2.js';
 // jsdom's import.meta.url is not a file: URL; vitest runs from the repo root.
 const PWA_JS = join(process.cwd(), 'pwa', 'js') + sep;
 
-// The copy the user approved (proposal W-A).
+// The copy the user approved (proposal W-A), and the per-stage lines of the
+// AI-202 proposal §7 (S1, approved 2026-10-23).
 const APPROVED = {
   'companion.project.workspace-upgrade.complete': '工作站完成了。這個房間記得你一路累積的努力。',
   'companion.project.workspace-upgrade.progress': '工作空間改變了，下一個有用的步驟已經看得見。',
   'companion.recovery.completed': '休息也算數。穩定的節奏需要恢復。',
   'companion.session.productive-complete': '這次行動在空間裡留下了痕跡。',
   'companion.momentum.strong': '你最近的節奏很穩，我會繼續陪你前進。',
+  'companion.momentum.strong.familiar': '這幾天的節奏很穩，我跟得上你。',
+  'companion.momentum.strong.partner': '我們的步調越來越一致了，繼續一起前進。',
+  'companion.momentum.strong.trusted-companion': '這份穩定是你一天天建立的，我一直都在。',
   'companion.goal.gentle-reminder': '你選擇的目標還在這裡，準備好時再開始。',
   'companion.momentum.low': '不用急，我們可以從一個清楚的小行動重新開始。',
   'companion.observe': '我會在這裡看著你的空間慢慢成形。',
+  'companion.observe.familiar': '我開始熟悉你的節奏了。',
+  'companion.observe.partner': '這個空間是我們一天一天累積起來的。',
+  'companion.observe.trusted-companion': '你的節奏我很熟悉了，需要時我都在。',
 };
 
 // The full-page lines that W-A replaced; none may survive anywhere.
@@ -194,7 +201,7 @@ describe('AI-204B every surface shows the same line', () => {
 
       try {
         const card = container.querySelector('[data-orbit-companion]');
-        const cardLine = card.querySelector('span:last-child').textContent;
+        const cardLine = card.querySelector(':scope > span:last-child').textContent;
         const dockLine = container.querySelector('[data-v2-open-detail="companion"] small').textContent;
         const detail = container.querySelector('[data-v2-detail="companion"]');
         const homeCard = homeShell.querySelector('[data-orbit-companion]');
@@ -203,7 +210,7 @@ describe('AI-204B every surface shows the same line', () => {
         expect(Object.values(APPROVED)).toContain(cardLine);
         expect(dockLine).toBe(cardLine);
         expect(detail.querySelector('p').textContent).toBe(cardLine);
-        expect(homeCard.querySelector('span:last-child').textContent).toBe(cardLine);
+        expect(homeCard.querySelector(':scope > span:last-child').textContent).toBe(cardLine);
         // pages/home.js shows this message in the toast.
         expect(onCompanion).toHaveBeenCalledWith(expect.objectContaining({ message: cardLine }));
         expect(card.querySelector('strong').textContent).toBe(COMPANION_NAME);
