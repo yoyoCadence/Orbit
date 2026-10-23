@@ -120,6 +120,23 @@ function buildOutputEntry(path) {
     };
   }
 
+  // PS-251B: the morning and evening views outside the window.
+  const exterior = path.match(/workspace\/window\/exterior-(morning|evening)\.webp$/);
+  if (exterior) {
+    const band = exterior[1];
+    return {
+      id: `building-formal-workstation-exterior-${band}`,
+      label: `Building Formal Workstation window view (${band})`,
+      role: 'exterior',
+      band,
+      projectPhase: 'all',
+      source: 'art-pipeline/ps251-window/render_window.py',
+      qc: 'passed: shared-camera, window-only-alpha, same-alpha-every-room-style, visual',
+      licenseRef: BLENDER_LICENSE,
+      ...shared,
+    };
+  }
+
   const toonProtagonist = path.match(/characters\/toon\/protagonist\/([a-z]+)-([a-z]+)-(left|right)\.webp$/);
   if (toonProtagonist) {
     const [, character, state, facing] = toonProtagonist;

@@ -56,9 +56,10 @@ function posterAssetPaths() {
               weather,
             }, { timeBand });
             // PS-250F: with every decoration shown, the default.
-            [scene.background, scene.protagonist, scene.companion.path, scene.weatherOverlay,
+            // PS-251B: the morning and evening views outside the window.
+            [scene.background, scene.exterior, scene.protagonist, scene.companion.path, scene.weatherOverlay,
               ...scene.props.map(entry => entry.path),
-              ...scene.decorations.map(entry => entry.path)].forEach(path => paths.add(path));
+              ...scene.decorations.map(entry => entry.path)].filter(Boolean).forEach(path => paths.add(path));
           }
         }
       }
@@ -113,8 +114,9 @@ describe('PS-211A service worker precache', () => {
   it('precaches exactly the images the Orbit Window poster can show', () => {
     const { paths } = posterAssetPaths();
     // PS-250E1: 22 by day, plus the night room and its 8 props; PS-250F: the
-    // 6 decorations by day and by night.
-    expect(paths).toHaveLength(43);
+    // 6 decorations by day and by night; PS-251B: the morning and evening
+    // views outside the window.
+    expect(paths).toHaveLength(45);
     expect(SHELL.filter(path => path.startsWith('assets/personal-space/v2/')).sort()).toEqual(paths);
   });
 

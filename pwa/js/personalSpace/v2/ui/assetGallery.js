@@ -32,12 +32,14 @@ const ASSET_GROUPS = Object.freeze([
   { folder: 'workspace/props', label: '家具', source: 'Blender（PS-244～PS-247；夜晚 PS-250E1）' },
   { folder: 'workspace/decor', label: '裝飾', source: 'Blender（PS-250F）' },
   { folder: 'workspace/styles', label: '房間風格', source: 'Blender（PS-250E）' },
+  { folder: 'workspace/window', label: '窗外（晨間、傍晚）', source: 'Blender（PS-251B）' },
   { folder: 'characters/toon/protagonist', label: 'Q 版主角', source: 'Blender（PS-250C）' },
   { folder: 'characters/toon/companion', label: 'Q 版 AI 夥伴', source: 'Blender（PS-250C）' },
   { folder: 'workspace/pixel/backgrounds', label: '像素場景・房間', source: 'Blender 像素渲染（PS-250D；夜晚 PS-250E1）' },
   { folder: 'workspace/pixel/props', label: '像素家具', source: 'Blender 像素渲染（PS-250D；夜晚 PS-250E1）' },
   { folder: 'workspace/pixel/decor', label: '像素裝飾', source: 'Blender 像素渲染（PS-250F）' },
   { folder: 'workspace/pixel/styles', label: '像素房間風格', source: 'Blender 像素渲染（PS-250E）' },
+  { folder: 'workspace/pixel/window', label: '像素窗外（晨間、傍晚）', source: 'Blender 像素渲染（PS-251B）' },
   { folder: 'characters/pixel/protagonist', label: '像素主角', source: '由 Q 版縮小（PS-250D）' },
   { folder: 'characters/pixel/companion', label: '像素 AI 夥伴', source: '由 Q 版縮小（PS-250D）' },
   { folder: 'characters/protagonist', label: '經典像素主角', source: '影像生成（PS-242）' },
@@ -87,7 +89,8 @@ function groupFor(path) {
 // The pixel style is not the default, so the manifest list leaves it out:
 // resolve every option the picker offers, in every state and project phase,
 // through the scene the way the runtime does (PS-250B, PS-250D). A day and a
-// night time band give the day and night rooms (PS-250E1).
+// night time band give the day and night rooms (PS-250E1); the morning and
+// the evening give the views outside the window (PS-251B).
 function pixelStylePaths() {
   const { protagonist, facings, companion } = WORKSPACE_VISUAL_STATES;
   const pixel = APPEARANCE_STYLES.find(style => style.id === 'pixel');
@@ -99,6 +102,8 @@ function pixelStylePaths() {
       const scene = resolve({ style: 'pixel' }, {}, progress, timeBand);
       return [scene.background, ...scene.props.map(entry => entry.path), ...sceneDecorations(scene)];
     })),
+    // An older manifest has no `exterior` (INFRA-105).
+    ...['morning', 'evening'].map(timeBand => resolve({ style: 'pixel' }, {}, 0, timeBand).exterior).filter(Boolean),
     ...pixel.protagonists.flatMap(({ id }) => protagonist.flatMap(state => facings.map(facing => (
       resolve({ style: 'pixel', protagonistId: id }, { protagonist: { state, facing } }).protagonist
     )))),

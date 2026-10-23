@@ -61,13 +61,49 @@ describe('AI-203B watchRemindWindow', () => {
     const onChange = vi.fn();
     const stop = watchRemindWindow(onChange, { doc: fakeDocument() });
 
-    // 15:00 → next day 11:59: still outside, nothing to refresh.
+    // 15:00 → next day 11:59: the reminder window stays shut, but the time
+    // band changes at 17, 21, 05 and 10 (PS-251B).
     vi.advanceTimersByTime((20 * 60 + 59) * 60 * 1000);
-    expect(onChange).not.toHaveBeenCalled();
+    expect(onChange).toHaveBeenCalledTimes(4);
 
     vi.advanceTimersByTime(2 * 60 * 1000);
-    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledTimes(5);
     expect(new Date(Date.now()).getDate()).toBe(18);
+    stop();
+  });
+
+  it('re-renders on time at every time band boundary (PS-251B)', () => {
+    vi.setSystemTime(at(4, 0));
+    const onChange = vi.fn();
+    const stop = watchRemindWindow(onChange, { doc: fakeDocument() });
+    const fired = [];
+    onChange.mockImplementation(() => fired.push(new Date(Date.now()).getHours()));
+
+    vi.advanceTimersByTime(24 * 60 * 60 * 1000);
+    // 05 morning, 10 day, 12/14 reminder window, 17 evening, 21 night.
+    expect(fired).toEqual([5, 10, 12, 14, 17, 21]);
+    expect(vi.getTimerCount()).toBe(1);
+    stop();
+  });
+
+  it('does not re-render inside a time band', () => {
+    vi.setSystemTime(at(17, 5));
+    const onChange = vi.fn();
+    const stop = watchRemindWindow(onChange, { doc: fakeDocument() });
+    vi.advanceTimersByTime((3 * 60 + 50) * 60 * 1000);
+    expect(onChange).not.toHaveBeenCalled();
+    stop();
+  });
+
+  it('updates when the page comes back after sleeping across a time band', () => {
+    vi.setSystemTime(at(16, 30));
+    const doc = fakeDocument();
+    const onChange = vi.fn();
+    const stop = watchRemindWindow(onChange, { doc });
+
+    vi.setSystemTime(at(17, 40));
+    doc.dispatchVisibility();
+    expect(onChange).toHaveBeenCalledTimes(1);
     stop();
   });
 

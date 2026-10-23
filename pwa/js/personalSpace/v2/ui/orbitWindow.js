@@ -93,6 +93,7 @@ export function renderOrbitWindow(inputModel = {}, options = {}) {
         <button class="orbit-window-stage-action" type="button" data-orbit-open-world aria-label="進入完整 Personal Space">
           <span class="orbit-window-poster" aria-hidden="true">
             <img class="orbit-window-background" src="${escapeHtml(scene.background)}" data-fallback-src="${escapeHtml(fallback.background)}"${day ? ` data-day-src="${escapeHtml(day.background)}"` : ''}${pixelArt} alt="" draggable="false">
+            ${renderPosterExterior(scene, fallback, pixelArt)}
             ${scene.props.map(entry => renderPosterProp(entry, fallbackProps.get(entry.id), pixelArt, dayProps.get(entry.id))).join('')}
             ${(scene.decorations || []).map(entry => renderPosterProp(entry, fallbackDecorations.get(entry.id), pixelArt, dayDecorations.get(entry.id), true)).join('')}
             <img
@@ -576,6 +577,7 @@ export function normalizeOrbitWindowModel(input = {}, renderMode) {
 // inserting the markup, before a load can fail, so the listener sees the error.
 // PS-250E1: a night room image then falls back once more, to the day room.
 function useFallbackWhenImagesFail(root) {
+  followBackgroundWithExterior(root);
   root.querySelectorAll?.('img[data-fallback-src]').forEach(image => {
     const steps = [
       { src: image.dataset.fallbackSrc },
@@ -594,6 +596,40 @@ function useFallbackWhenImagesFail(root) {
     };
     image.addEventListener('error', next);
   });
+}
+
+// PS-251B: the morning or evening view outside the window, over the room
+// background and under the furniture (no z-index; the props have one). Its
+// own class, positioned inline like the background: the e2e tests find the
+// background by its class, and an older style.css still places it.
+const EXTERIOR_STYLE = 'position:absolute;inset:0;width:100%;height:100%;max-width:none;'
+  + 'object-fit:cover;object-position:center;pointer-events:none;user-select:none';
+
+function renderPosterExterior(scene, fallback, pixelArt) {
+  if (!scene.exterior) return '';
+  const fallbackSrc = fallback.exterior && fallback.exterior !== scene.exterior
+    ? ` data-exterior-fallback="${escapeHtml(fallback.exterior)}"`
+    : '';
+  return `<img class="orbit-window-exterior" src="${escapeHtml(scene.exterior)}"${fallbackSrc}${pixelArt} alt="" draggable="false" style="${EXTERIOR_STYLE}">`;
+}
+
+// The view goes when it cannot load: the room's baked-in view shows. It also
+// follows the room: when the background falls back to the Q-style room (a
+// room style or the pixel room not cached), so does the view, put back if its
+// own error came first; the day room used when the night room cannot load
+// keeps the evening view.
+function followBackgroundWithExterior(root) {
+  const exterior = root.querySelector?.('.orbit-window-exterior');
+  if (!exterior) return;
+  exterior.addEventListener('error', () => exterior.remove());
+  const fallbackSrc = exterior.dataset.exteriorFallback;
+  const background = root.querySelector('.orbit-window-background');
+  if (!fallbackSrc || !background) return;
+  background.addEventListener('error', () => {
+    exterior.removeAttribute('data-pixel-art');
+    exterior.setAttribute('src', fallbackSrc);
+    if (!exterior.parentNode) background.after(exterior);
+  }, { once: true });
 }
 
 export function updateOrbitWindowAchievementPhoto(root, input = {}) {

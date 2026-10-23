@@ -4,7 +4,7 @@
 
 任務本身的定義與驗收條件以 [`tasks.md`](../tasks.md) 為準；本檔只記錄進行中的狀態、與使用者約定的工作規則，以及接手需要的操作細節。
 
-> 最後更新：2026-10-23。PS-246（#176，v1.30.1）、AI-203B（#177，v1.31.0）、HW-113（#180，v1.31.1）、PRO-014Q S0（#178，v1.31.2，含使用者核准的 A1＋B1）、AI-204 提案（#181）、PS-247（#182，v1.31.3）、INFRA-102（#183，CI 上傳 e2e artifact）、AI-204B（#184，v1.31.4，Companion 共用文案表）已合併。PS-211 提案（#185）已合併並核准（A3 ＋P、PS-211B 含沿用 Pixi app）。INFRA-103（#186）、PS-211B（#187，v1.31.5）、PS-211A（#188，v1.31.6）已合併。INFRA-104（#189）已合併。AI-202 提案與 INFRA-106（#190，v1.31.7）已合併，等待使用者決定 AI-202 §9。PS-248 提案（#191，Blender 主題與素材）已合併，等待使用者決定 §9（Codex 最後一輪的 P1 經查證不成立，使用者決定合併）。BUG-113（#192，v1.31.8）已合併。BUG-114（#193，v1.31.9）已合併。PS-250A（#194，v1.32.0，開發者的全部 3D 資產總覽）已合併。PS-250C（#195，v1.32.1，Q 版角色素材）已合併。PS-250B（#196，v1.33.0，風格與角色選擇）已合併。PS-250D（#197，v1.34.0，全像素）已合併。PS-250E1（#198，v1.35.0，夜晚版本）已合併。PS-250E2（#199，v1.36.0，房間風格＋明亮北歐）已合併。PS-250E3（#200，v1.37.0，其他三套房間風格）已合併。PS-250F1＋F2（#201，v1.38.0，五個房間的 6 件裝飾與 Edit Mode 開關）已合併。PS-250G（#202，v1.38.1，選擇介面的房間縮圖與離線退回）已合併；PS-250 與被它取代的 PS-248 一併結案。PS-249 提案（#203，只寫文件）已合併，使用者 2026-10-23 決定 §6，實作為 PS-249A。PS-251A（#204，v1.38.2，PS-248 §9.8 的順帶整理）已合併。PS-249A（#205，v1.38.3）已合併。使用者 2026-10-23 決定 AI-202 §9（全部採用建議）、PS-251 §9.3（做，先寫提案）、核准 INFRA-105（先寫變更說明，合併前給使用者看）。AI-202B1（#206，v1.39.0，關係階段的推導與顯示）已合併。AI-202B2（#207，v1.40.0，里程碑的 reveal）已合併。PS-251B 實作提案（#208，窗外依時段變化，只寫文件）已合併，等待使用者決定 §8。INFRA-105（#209，v1.40.1）開 PR，**合併前等使用者看過**。
+> 最後更新：2026-10-23。PS-246（#176，v1.30.1）、AI-203B（#177，v1.31.0）、HW-113（#180，v1.31.1）、PRO-014Q S0（#178，v1.31.2，含使用者核准的 A1＋B1）、AI-204 提案（#181）、PS-247（#182，v1.31.3）、INFRA-102（#183，CI 上傳 e2e artifact）、AI-204B（#184，v1.31.4，Companion 共用文案表）已合併。PS-211 提案（#185）已合併並核准（A3 ＋P、PS-211B 含沿用 Pixi app）。INFRA-103（#186）、PS-211B（#187，v1.31.5）、PS-211A（#188，v1.31.6）已合併。INFRA-104（#189）已合併。AI-202 提案與 INFRA-106（#190，v1.31.7）已合併，等待使用者決定 AI-202 §9。PS-248 提案（#191，Blender 主題與素材）已合併，等待使用者決定 §9（Codex 最後一輪的 P1 經查證不成立，使用者決定合併）。BUG-113（#192，v1.31.8）已合併。BUG-114（#193，v1.31.9）已合併。PS-250A（#194，v1.32.0，開發者的全部 3D 資產總覽）已合併。PS-250C（#195，v1.32.1，Q 版角色素材）已合併。PS-250B（#196，v1.33.0，風格與角色選擇）已合併。PS-250D（#197，v1.34.0，全像素）已合併。PS-250E1（#198，v1.35.0，夜晚版本）已合併。PS-250E2（#199，v1.36.0，房間風格＋明亮北歐）已合併。PS-250E3（#200，v1.37.0，其他三套房間風格）已合併。PS-250F1＋F2（#201，v1.38.0，五個房間的 6 件裝飾與 Edit Mode 開關）已合併。PS-250G（#202，v1.38.1，選擇介面的房間縮圖與離線退回）已合併；PS-250 與被它取代的 PS-248 一併結案。PS-249 提案（#203，只寫文件）已合併，使用者 2026-10-23 決定 §6，實作為 PS-249A。PS-251A（#204，v1.38.2，PS-248 §9.8 的順帶整理）已合併。PS-249A（#205，v1.38.3）已合併。使用者 2026-10-23 決定 AI-202 §9（全部採用建議）、PS-251 §9.3（做，先寫提案）、核准 INFRA-105（先寫變更說明，合併前給使用者看）。AI-202B1（#206，v1.39.0，關係階段的推導與顯示）已合併。AI-202B2（#207，v1.40.0，里程碑的 reveal）已合併。PS-251B 實作提案（#208，窗外依時段變化，只寫文件）已合併，使用者決定 §8（S1、W2、T1）並確認預覽的配色。INFRA-105（#209，v1.40.1）使用者看過後合併。PS-251B（#210，v1.41.0，晨間與傍晚的窗外疊層、時段邊界準時重新 render）開 PR。
 
 ## 1. 接手前先讀
 
@@ -128,12 +128,17 @@
     - 舊版分頁消耗帶里程碑的 reveal 不會更新基準，靠 `presentedMilestones.pending` 補上；`stateSchema` 的 `...raw` 讓舊版保留這個欄位。
     - `companionEngine.js`：完成 → 階段提升（`companion.relationship.stage-up`）→ 階段退回 `observe`；主角在階段退回的 reveal 不慶祝（`viewModels.selectProtagonistState()`）。`revealSelectors.isWorldProgressReveal()` 改以完成旗標判斷解鎖（換一天承接時 entry 會移動但沒有解鎖）。
     - 延後載入的 JS gzip 303,269 / 307,200 B，只剩 3,931 B。下一個加大 JS 的任務要先看預算。
-32. **PS-251B 實作提案**（#208，只寫文件）：[`docs/ps-251b-window-view-proposal.md`](ps-251b-window-view-proposal.md)。建議 E-A：晨間與傍晚各一張「只有窗外」的 RGBA 疊層（Blender 把房間設為 holdout），疊在房間背景之上、家具之下；五個房間幾何相同，所以兩種畫風共 4 張圖即可，不重新渲染房間；只在 `getWorkspaceSceneAssets()` 的回傳加一個屬性（INFRA-105）。**等待使用者決定 §8**，使用者說過「核准後再渲染」，所以決定前不渲染、不寫程式。
-33. **INFRA-105**（#209，v1.40.1）：service worker 安裝時 SHELL 的每一項都以 `cache: 'no-cache'` 重新驗證，JS／CSS 的背景更新也是。變更說明 [`docs/infra-105-shell-revalidate.md`](infra-105-shell-revalidate.md)。**使用者要求合併前先看過**，所以 CI 與 review 都過了也要等使用者。
+32. **PS-251B 實作提案**（#208，只寫文件）：[`docs/ps-251b-window-view-proposal.md`](ps-251b-window-view-proposal.md)。建議 E-A：晨間與傍晚各一張「只有窗外」的 RGBA 疊層（Blender 把房間設為 holdout），疊在房間背景之上、家具之下；五個房間幾何相同，所以兩種畫風共 4 張圖即可，不重新渲染房間；只在 `getWorkspaceSceneAssets()` 的回傳加一個屬性（INFRA-105）。使用者 2026-10-23 決定 §8：S1、W2、T1，其餘照建議。
+33. **INFRA-105：完成**（#209，v1.40.1）：service worker 安裝時 SHELL 的每一項都以 `cache: 'no-cache'` 重新驗證，JS／CSS 的背景更新也是。變更說明 [`docs/infra-105-shell-revalidate.md`](infra-105-shell-revalidate.md)。使用者看過後核准合併。「SHELL 模組不 import 既有 SHELL 模組的新 export」的規則仍保留。
     - e2e 的教訓：Playwright 的 routing 會關掉 HTTP cache，重現不了快取問題，所以 `infra105-sw-update.test.js` 自己開伺服器（`max-age=600`＋ETag）。headless 的軟體 WebGL 持續繪製時 Chromium 會延後 service worker 的更新檢查，要以 reduced motion 開啟 app。
     - Codex 在 #208 期間用完額度（「You have reached your Codex usage limits」）；依 §2 的規則以獨立的 Claude review 代替。
     - 獨立 review（代替額度用完的 Codex）沒有 P1／P2；依 P3 補上背景更新不快取錯誤回應、e2e 確認 HTTP cache 有作用、304 的說明；根目錄 `isHtml` 的舊問題記為 Backlog INFRA-107。
-34. **下一步**：使用者 2026-10-23 決定 PS-251B §8（S1、W2、T1、其餘照建議，見 `tasks.md`）；第一步是渲染預覽給使用者確認配色（`/tmp/bpyenv` 有 Blender）。INFRA-105 等使用者看過後合併。Backlog 其餘項目需要核准或屬高風險（HW-112 的 Storage migration、INFRA-101／PS-211D 的部署行為、PRO-014* 的 entitlement）。使用者原則：以「任務確實完成」為準，合併是後話；做不到的先寫進 `tasks.md`。
+34. **PS-251B：完成**（#210，v1.41.0）。晨間、傍晚的窗外疊層（Q 版 WebP、像素版 PNG，各 2 張，五個房間共用），首頁 poster 與 Pixi 都畫在背景之上、家具之下；時段邊界準時重新 render（T1）。管線與重現方式見 [`art-pipeline/ps251-window/README.md`](../art-pipeline/ps251-window/README.md)，完成內容見 `tasks.md`。
+    - 渲染：只有窗外的疊層用物件的 `is_holdout`（不是 Holdout 材質：材質會讓 Freestyle 把房間的描邊畫進圖裡；這與 PS-247 的遮擋物相反，那裡要的是被擋住的邊不留殘影）。像素版量化前要把 alpha 為 0 的顏色清成黑色，否則調色盤浪費在看不到的地方（51 KB → 13 KB）。
+    - 疊層的畫風跟著實際畫出的房間（`scenery.usedFallback`／poster 背景的 `error`）；之後新增會讓房間退回的情況時，疊層也要跟著。
+    - e2e：`page.clock.install()` 後跨時段要用 `fastForward()`；`setSystemTime()` 只改時間、不會讓已排程的計時器提前。poster 的圖片都是 `pointer-events: none`，`elementsFromPoint()` 看不到，圖層順序改看計算後的 `z-index` 與 DOM 順序。驗證既有 e2e 在其他時段時，把 `TZ` 與 Playwright 的 `timezoneId` 設成同一個時區（`TODAY` 由 Node 計算）。
+    - 延後載入的 JS gzip 304,977 / 307,200 B，只剩 2,223 B。下一個加大 JS 的任務要先看預算。
+35. **下一步**：Backlog 其餘項目需要核准或屬高風險（INFRA-107 的根目錄 `isHtml`、HW-112 的 Storage migration、INFRA-101／PS-211D 的部署行為、PRO-014* 的 entitlement）。使用者原則：以「任務確實完成」為準，合併是後話；做不到的先寫進 `tasks.md`。
 
 其他：
 
@@ -201,8 +206,9 @@
 | #205 | v1.38.3 | PS-249A：Orbit Window 被 overlay 蓋住時暫停 reveal 與場景，overlay 關閉後從頭重播 |
 | #206 | v1.39.0 | AI-202B1：關係階段由 Main Quest 天數推進（第 12、30 天），首頁顯示階段，依階段的台詞，獎勵行中文名稱 |
 | #207 | v1.40.0 | AI-202B2：專案完成與關係階段的 reveal 以使用者最後看到的狀態為準；第 12、30 天的 Major reveal 與台詞 |
-| #208 | — | PS-251B 實作提案：窗外依時段變化（等待使用者決定 §8） |
-| #209 | v1.40.1 | INFRA-105：service worker 安裝時重新驗證 SHELL 的程式碼與樣式（合併前等使用者看過） |
+| #208 | — | PS-251B 實作提案：窗外依時段變化（已決定 §8） |
+| #209 | v1.40.1 | INFRA-105：service worker 安裝時重新驗證 SHELL 的程式碼與樣式（使用者看過後合併） |
+| #210 | v1.41.0 | PS-251B：晨間與傍晚的窗外疊層（Q 版＋像素，五個房間共用），時段邊界準時重新 render |
 
 教訓：#155–#164 在 Codex review 出現前就合併，造成 #165、#166、#167 的回頭修正。這就是 §2 合併條件的由來。獨立 review 在 #167、#168、#169 都找到真正的問題（例如椅子畫在螢幕後面、壁燈在相框下投出暗影），所以複查不能省。
 
@@ -212,11 +218,9 @@
 
 - **BUG-109A**：在 production 套用 `pwa/db/013_signup_profile_name.sql`，需專案擁有者執行，步驟見 `docs/bug-109-signup-name-truncation.md`。
 - **PRO-014Q Q6 的測試帳號**：在 preview Supabase 專案建立（見 §3 第 4 點）。
-- **AI-202 提案 §9**：關係階段的門檻、機制與既有歷史（K4 需同意新增三個本機欄位並修改 vertical slice §6.1、§7.2、§13.1）、顯示、hidden stats 名稱、台詞（7 句）、README、telemetry、BUG-113 的處理。
-- **PS-251 §9.3（PS-248A2）**：窗外是否依時段變化（可選；超出 art bible §6.1「一張 exterior」的上限）。PS-248 §9 其餘項目已由 PS-250 的決定取代，§9.8 已在 PS-251A 完成。
 - **PRO-014P**：entitlement 流程，實作前需提案與核准，擋 `PRO-014H` cutover。與草稿 PR #154（PRO-014L）改同一段 SUB-16 路徑，寫提案前先問使用者先後順序。
 - **PS-243**：真機、installed PWA、雙帳號、螢幕閱讀器等 human gate。
-- **INFRA-105**：service worker 安裝時 SHELL 的 JS／CSS／HTML 也要重新驗證（既有問題，改版後最多約 10 分鐘先跑舊程式；改部署行為，需核准；見 `tasks.md`）。
+- **INFRA-107**：service worker 的 `isHtml` 以 `url.pathname === '/'` 判斷根目錄，在 GitHub Pages 的 `/Orbit/` 不成立（根目錄走 cache-first；install 時已重新驗證，所以仍是新版）。改部署行為，需核准；見 `tasks.md`。
 - 尚未回答：高風險項目（如 entitlement）連變更說明都要不要先問再排程（PRO-014Q 變更說明 §7）。在得到答案前，維持「寫變更說明可以，實作前一定要核准」。
 
 ### 可直接做（已核准）

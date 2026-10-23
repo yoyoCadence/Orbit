@@ -28,6 +28,14 @@ const COMPANION_STATES = Object.freeze(['observe', 'approach', 'congratulate', '
 // keeps today's look.
 const NIGHT_TIME_BANDS = Object.freeze(['evening', 'night']);
 
+// PS-251B: the view outside the window for the morning and the evening (user
+// decision, 2026-10-23), an image of only what the window shows, drawn above
+// the room background and below the furniture. The day and night views are
+// baked into the room backgrounds. Every room style shares the window, so
+// there is one per character style. A property of the scene, not an export:
+// a caller that predates it draws the baked view (INFRA-105).
+const EXTERIOR_TIME_BANDS = Object.freeze(['morning', 'evening']);
+
 // PS-250E2: room styles (user decision, 2026-10-21), chosen in Edit Mode and
 // stored in world.selectedThemeId (an existing field older versions keep).
 // The same camera, furniture shapes and lights; each style is its own render
@@ -56,6 +64,7 @@ const CHARACTER_STYLES = Object.freeze({
     protagonistPath: (id, state, facing) => `${TOON_ROOT}/protagonist/${id}-${state}-${facing}.webp`,
     companionPath: (id, state) => `${TOON_ROOT}/companion/${id}-${state}.webp`,
     backgrounds: Object.freeze({ day: BACKGROUND, night: NIGHT_BACKGROUND }),
+    exteriorPath: band => `${ASSET_ROOT}/workspace/window/exterior-${band}.webp`,
     propPath: (id, lighting) => `${PROP_ROOT}/${id}${lighting === 'night' ? '-night' : ''}.png`,
     decorPath: (id, lighting) => `${DECOR_ROOT}/${id}${lighting === 'night' ? '-night' : ''}.png`,
     // The PS-242 pixel characters are the office worker and Orbit, so a
@@ -75,6 +84,7 @@ const CHARACTER_STYLES = Object.freeze({
       day: `${PIXEL_SCENE_ROOT}/backgrounds/building-formal-workstation-room-pixel.png`,
       night: `${PIXEL_SCENE_ROOT}/backgrounds/building-formal-workstation-room-pixel-night.png`,
     }),
+    exteriorPath: band => `${PIXEL_SCENE_ROOT}/window/exterior-${band}.png`,
     propPath: (id, lighting) => `${PIXEL_SCENE_ROOT}/props/${id}${lighting === 'night' ? '-night' : ''}.png`,
     decorPath: (id, lighting) => `${PIXEL_SCENE_ROOT}/decor/${id}${lighting === 'night' ? '-night' : ''}.png`,
   }),
@@ -186,7 +196,7 @@ export const WORKSPACE_NIGHT_INITIAL_PAINT_ASSETS = Object.freeze([
 // derives its complete-scene evidence from this same contract. Other styles
 // and characters are downloaded when chosen.
 export function getWorkspaceAssetManifestPaths() {
-  const { propPath, decorPath } = CHARACTER_STYLES[DEFAULT_STYLE];
+  const { propPath, decorPath, exteriorPath } = CHARACTER_STYLES[DEFAULT_STYLE];
   return Object.freeze([...new Set([
     ...WORKSPACE_INITIAL_PAINT_ASSETS,
     ...Object.values(PROTAGONIST_VARIANTS).flatMap(Object.values),
@@ -197,6 +207,8 @@ export function getWorkspaceAssetManifestPaths() {
     ...PROP_DEFINITIONS.map(entry => propPath(entry.id, 'night')),
     // PS-250F: decorations are shown unless hidden.
     ...DECOR_DEFINITIONS.flatMap(entry => [decorPath(entry.id, 'day'), decorPath(entry.id, 'night')]),
+    // PS-251B: the morning and evening window views.
+    ...EXTERIOR_TIME_BANDS.map(exteriorPath),
   ])]);
 }
 
@@ -257,6 +269,9 @@ export function getWorkspaceSceneAssets(progress = 0, placementOverrides = {}, v
   return {
     ...WORKSPACE_V2_ASSETS,
     background: room.backgrounds[lighting],
+    exterior: EXTERIOR_TIME_BANDS.includes(options?.timeBand)
+      ? CHARACTER_STYLES[resolvedVisuals.appearance.style].exteriorPath(options.timeBand)
+      : null,
     lighting,
     roomStyle,
     appearance: resolvedVisuals.appearance,
