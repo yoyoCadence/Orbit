@@ -103,19 +103,30 @@ from the route entry `pwa/js/pages/personalSpaceV2.js` (adds `personalSpaceV2.js
 `unlockRules.js`, `economy.js`, `gameState.js`); every path is listed in the
 artifact.
 
-| Budget | Measured | Target / threshold | Result |
+| Budget | Measured (v1.38.2) | Target / threshold | Result |
 |---|---:|---:|---|
-| Personal Space V2 application JS gzip estimate (24-file V2 module set) | 50,489 bytes | part of 300 KB deferred budget | PASS |
+| Personal Space V2 application JS gzip estimate (29-file V2 module set) | 70,153 bytes | part of 300 KB deferred budget | PASS |
 | Vendored Pixi gzip estimate (`pwa/vendor/pixi.js`) | 225,428 bytes | part of 300 KB deferred budget | PASS |
-| Combined deferred V2 + Pixi gzip estimate | 275,917 bytes | 300 KB | PASS |
-| Initial production background + protagonist + Companion + clear weather | 259,133 bytes | 1.5 MB / 2.5 MB hard | PASS |
-| Complete 29-file production state pack + eight manifest props | 1,766,935 bytes | 4 MB / 6 MB hard | PASS |
+| Combined deferred V2 + Pixi gzip estimate | 295,581 bytes | 300 KB | PASS |
+| Initial production background + protagonist + Companion + clear weather | 122,433 bytes | 1.5 MB / 2.5 MB hard | PASS |
+| Night initial paint (night background + the same three images) | 104,205 bytes | 1.5 MB / 2.5 MB hard | PASS |
+| Complete 50-file production scene: day and night backgrounds, 12 protagonist poses, 6 Companion states, 2 weather overlays, 8 props and 6 decorations by day and by night | 1,409,958 bytes | 4 MB / 6 MB hard | PASS |
 
-PS-242 now supplies an authored 3:2 background, 12 protagonist state/facing
-poses, six Companion states, and clear/rain overlays through the same runtime
-manifest contract. The scene is explicitly `production`, and both the initial
-paint and complete state pack pass their authored-art targets. PS-243 remains
-open only for the separate human-device gates below.
+Updated 2026-10-23 (PS-251A) to the committed `docs/ps243/asset-baseline.json`
+at v1.38.2. The table recorded at the PS-242 art refresh (v1.22.0, 2026-07-31)
+read 50,489 / 225,428 / 275,917 bytes for the three JS rows, 259,133 bytes for
+the initial paint and 1,766,935 bytes for the 29-file state pack plus eight
+props. Since then PS-244 replaced the room, PS-250 made the Q-style WebPs the
+default characters and added the night room and the decorations, and the V2
+module set grew to 29 files. The combined deferred JS is now 295,581 of
+307,200 bytes (300 KiB), so about 11.3 KB (11,619 bytes) of headroom is left.
+
+The scene is authored art throughout: a 3:2 background by day and by night,
+12 protagonist state/facing poses, six Companion states, clear/rain overlays,
+and the props and decorations, all through the same runtime manifest contract.
+It is explicitly `production`, and both the initial paint and the complete
+scene pass their authored-art targets. PS-243 remains open only for the
+separate human-device gates below.
 
 ## Human-device acceptance checklist
 
