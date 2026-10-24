@@ -324,6 +324,8 @@ node pwa/server.cjs
 
 啟動後開啟 `http://localhost:3000`
 
+service worker 在本機也會註冊：頁面、程式與樣式都從它的快取回傳，只有 `pwa/sw.js` 改變（`npm run bump`）後才會換成新的（INFRA-107）。開發時改了 HTML、JS 或 CSS，用 Shift＋重新整理略過 service worker，或在 DevTools → Application → Service workers 勾選「Update on reload」或「Bypass for network」。
+
 環境變數（`.env`）：
 
 ```text

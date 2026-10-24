@@ -75,32 +75,39 @@ describe('service worker image cache-first strategy', () => {
   });
 });
 
-describe('service worker JS / CSS stale-while-revalidate (INFRA-105)', () => {
-  const flush = () => new Promise(resolve => setTimeout(resolve, 0));
-
-  it('serves the cached module and updates it from the server, not the HTTP cache', async () => {
+describe('service worker JS / CSS: this version\'s code (INFRA-107)', () => {
+  it('serves the cached module and does not refresh it in the background', async () => {
+    // Refreshing it would pair this version's HTML with the next version's code
+    // whenever the next worker fails to install.
     const request = { method: 'GET', url: 'https://orbit.test/js/app.js' };
     const cachedResponse = { ok: true, source: 'cache' };
-    const clonedResponse = { ok: true, source: 'clone' };
-    const networkResponse = { ok: true, clone: vi.fn(() => clonedResponse) };
     cache.match.mockResolvedValueOnce(cachedResponse);
-    fetchMock.mockResolvedValueOnce(networkResponse);
 
     expect(await dispatchFetch(request)).toBe(cachedResponse);
-    await flush();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(cache.put).not.toHaveBeenCalled();
+  });
+
+  it('fetches a module that is not cached from the server, not the HTTP cache (INFRA-105), and keeps it', async () => {
+    const request = { method: 'GET', url: 'https://orbit.test/js/app.js' };
+    const clonedResponse = { ok: true, source: 'clone' };
+    const networkResponse = { ok: true, clone: vi.fn(() => clonedResponse) };
+    cache.match.mockResolvedValueOnce(undefined);
+    fetchMock.mockResolvedValueOnce(networkResponse);
+
+    expect(await dispatchFetch(request)).toBe(networkResponse);
     expect(fetchMock).toHaveBeenCalledWith(request, { cache: 'no-cache' });
     expect(cache.put).toHaveBeenCalledWith(request, clonedResponse);
   });
 
-  it('keeps the cached module when the update gets an error response', async () => {
+  it('does not keep an error response for a module', async () => {
     const request = { method: 'GET', url: 'https://orbit.test/js/app.js' };
-    const cachedResponse = { ok: true, source: 'cache' };
     const errorResponse = { ok: false, status: 503, clone: vi.fn() };
-    cache.match.mockResolvedValueOnce(cachedResponse);
+    cache.match.mockResolvedValueOnce(undefined);
     fetchMock.mockResolvedValueOnce(errorResponse);
 
-    expect(await dispatchFetch(request)).toBe(cachedResponse);
-    await flush();
+    expect(await dispatchFetch(request)).toBe(errorResponse);
     expect(cache.put).not.toHaveBeenCalled();
     expect(errorResponse.clone).not.toHaveBeenCalled();
   });

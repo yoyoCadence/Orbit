@@ -50,6 +50,17 @@ function cacheKeys(page, cacheName) {
   }, cacheName);
 }
 
+const nextIndexHtml = async () => (await readPwaFile('/index.html')).replace('</head>', `${NEXT_MARK}\n</head>`);
+
+// The next version on the server: its worker (another cache name), HTML and code.
+async function deployNextVersion(pages) {
+  pages.files.set(`${BASE}sw.js`, (await readPwaFile('/sw.js')).replace(/const CACHE = '[^']*';/, `const CACHE = '${NEXT_CACHE}';`));
+  pages.files.set(`${BASE}index.html`, await nextIndexHtml());
+  pages.files.set(`${BASE}js/version.js`, "export const APP_VERSION = 'v-e2e-next';\n");
+}
+
+const appVersion = page => page.evaluate(async base => (await import(`${base}js/version.js`)).APP_VERSION, BASE);
+
 // The page loads asked of the server (not the worker's own install fetches).
 const pageLoads = urls => urls.filter(url => url === BASE || url.startsWith(`${BASE}?`) || url.startsWith(`${BASE}index.html`));
 
@@ -77,8 +88,7 @@ test.describe('INFRA-107 service worker page loads', () => {
 
     // index.html changes on the server, but no new worker comes with it: both
     // entry points keep this version's HTML, without asking the server.
-    const html = await readPwaFile('/index.html');
-    pages.files.set(`${BASE}index.html`, html.replace('</head>', `${NEXT_MARK}\n</head>`));
+    pages.files.set(`${BASE}index.html`, await nextIndexHtml());
     let start = pages.urls.length;
     for (const entry of ENTRY_POINTS) {
       await page.goto(`${pages.origin}${entry}`);
@@ -87,23 +97,69 @@ test.describe('INFRA-107 service worker page loads', () => {
     }
     expect(pageLoads(pages.urls.slice(start))).toEqual([]);
 
-    // The next version: a new worker installs, takes over and offers the reload.
-    pages.files.set(`${BASE}sw.js`, (await readPwaFile('/sw.js')).replace(/const CACHE = '[^']*';/, `const CACHE = '${NEXT_CACHE}';`));
-    pages.files.set(`${BASE}js/version.js`, "export const APP_VERSION = 'v-e2e-next';\n");
+    // The next version: a page load is all it takes for the browser to find
+    // the new worker, which installs, takes over and offers the reload.
+    await deployNextVersion(pages);
     const updateStart = pages.log.length;
-    await page.evaluate(async () => (await navigator.serviceWorker.getRegistration()).update());
+    await page.goto(`${pages.origin}${BASE}`);
+    await page.waitForSelector('#main-app:not(.hidden)', { timeout: 10_000 });
     await expect.poll(() => page.evaluate(() => window.caches.keys()), { timeout: 30_000 }).toEqual([NEXT_CACHE]);
-    await expect(page.locator('#update-banner')).toContainText('新版本已就緒');
+    const banner = page.locator('#update-banner');
+    await expect(banner).toContainText('新版本已就緒');
     // Its install fetched the new HTML; the page loads below are its cache.
     expect(pages.log.slice(updateStart)).toContainEqual({ path: `${BASE}index.html`, status: 200 });
     start = pages.urls.length;
+    await banner.getByRole('button', { name: '重新整理' }).click();
+    await expect(page.locator('meta[name="e2e-version"]')).toHaveCount(1);
+    await page.waitForSelector('#main-app:not(.hidden)', { timeout: 10_000 });
     for (const entry of ENTRY_POINTS) {
       await page.goto(`${pages.origin}${entry}`);
       await page.waitForSelector('#main-app:not(.hidden)', { timeout: 10_000 });
       await expect(page.locator('meta[name="e2e-version"]'), entry).toHaveCount(1);
-      expect(await page.evaluate(async base => (await import(`${base}js/version.js`)).APP_VERSION, BASE)).toBe('v-e2e-next');
+      expect(await appVersion(page)).toBe('v-e2e-next');
     }
     expect(pageLoads(pages.urls.slice(start))).toEqual([]);
+  });
+
+  test('when the next worker cannot install, every load keeps this version\'s HTML and code', async ({ page }) => {
+    // A flaky network, or the app closed during the install: one SHELL file
+    // fails, so the next worker never takes over. No load may pair this
+    // version's HTML with the next version's code.
+    test.setTimeout(60_000);
+    await openApp(page, `${pages.origin}${BASE}`);
+    const cacheName = await waitForPrecache(page);
+    const version = await appVersion(page);
+    expect(version).not.toBe('v-e2e-next');
+
+    await deployNextVersion(pages);
+    pages.failing.add(`${BASE}vendor/pixi.js`);
+    const updateStart = pages.log.length;
+    for (let load = 0; load < 3; load += 1) {
+      // A new tab each time: an open one can reuse the modules it already ran.
+      const tab = await page.context().newPage();
+      await tab.emulateMedia({ reducedMotion: 'reduce' });
+      await tab.goto(`${pages.origin}${BASE}`);
+      await tab.waitForSelector('#main-app:not(.hidden)', { timeout: 10_000 });
+      if (load === 0) {
+        // The page load found the next worker, and its install failed.
+        await expect.poll(() => pages.log.slice(updateStart), { timeout: 30_000 })
+          .toContainEqual({ path: `${BASE}vendor/pixi.js`, status: 500 });
+        await expect.poll(() => tab.evaluate(async () => {
+          const registration = await navigator.serviceWorker.getRegistration();
+          return Boolean(registration.installing || registration.waiting);
+        }), { timeout: 10_000 }).toBe(false);
+      }
+      await expect(tab.locator('meta[name="e2e-version"]'), `load ${load}`).toHaveCount(0);
+      expect(await appVersion(tab), `load ${load}`).toBe(version);
+      // The cause the check above could miss: the running version's cache took
+      // the server's next code.
+      expect(await tab.evaluate(async ([name, url]) => {
+        const response = await (await window.caches.open(name)).match(url);
+        return response.text();
+      }, [cacheName, `${BASE}js/version.js`]), `load ${load}`).not.toContain('v-e2e-next');
+      await expect(tab.locator('#update-banner')).toHaveCount(0);
+      await tab.close();
+    }
   });
 
   test('a page load with a query, and one offline, get the cached page', async ({ page }) => {

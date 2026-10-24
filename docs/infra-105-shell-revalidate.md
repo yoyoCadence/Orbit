@@ -21,6 +21,7 @@
    - `no-cache` 不是不用快取，而是**一定先向伺服器確認**：伺服器認得 HTTP cache 裡那一份（`ETag` 相同）時回 `304`，瀏覽器用 HTTP cache 的內容（不重新下載）；不同時回 `200` 與新內容。
    - 取代 `REVALIDATE_ON_INSTALL`（圖片與 `pixi.js` 原本就這樣做），改成一律套用，註解改寫。
 2. **JS／CSS 的背景更新**（stale-while-revalidate）：背景的 `fetch` 改為 `fetch(e.request, { cache: 'no-cache' })`。頁面仍立刻拿到快取中的版本（不變慢），只有背景更新一定拿到伺服器上的最新版本。
+   - **INFRA-107 之後（2026-10-24 使用者決定）不再有背景更新**：快取中有的 JS／CSS 直接回傳，沒有的才以 `cache: 'no-cache'` 向伺服器取得，新程式只隨新的 service worker 出現（見 [`infra-107-html-cache.md`](infra-107-html-cache.md) §2 第 5 點）。
    - 錯誤回應（404、5xx）**不寫進快取**（與圖片的分支相同）：背景更新現在每次都問伺服器，一次失敗的回應不能取代能用的模組（獨立 review 指出，原本就有、這次更常發生）。
 3. **不改**：
    - HTML 的 network-first（導覽請求）：導覽請求不能直接改 cache mode（要重建 `Request`，redirect 與 mode 會改變），風險比收益大。安全的原因是第 1 點：install 時重新驗證 `./`、`./index.html`，也同時更新了頁面與 service worker 共用的 HTTP cache。

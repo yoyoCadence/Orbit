@@ -8,6 +8,7 @@
  * - `cacheControl(path)`: the `Cache-Control` of a path, `max-age=600` by
  *   default (`max-age=0` stands for a copy older than 10 minutes).
  * - `files`: replaces a path's content (the next version).
+ * - `failing`: paths answered with a 500 (a download that fails).
  * - `log`: `{ path, status }` of each response (`/` is logged as `/index.html`).
  * - `urls`: the raw URL of each request, query included.
  * - `offline = true`: every request fails as if the network were down.
@@ -42,6 +43,7 @@ export async function startPagesServer({ base = '/', cacheControl = () => 'max-a
   const files = new Map([[`${base}vendor/supabase.js`, SUPABASE_STUB]]);
   const log = [];
   const urls = [];
+  const failing = new Set();
   let offline = false;
   const server = createServer(async (request, response) => {
     if (offline) {
@@ -51,6 +53,12 @@ export async function startPagesServer({ base = '/', cacheControl = () => 'max-a
     urls.push(request.url);
     let path = decodeURIComponent(request.url.split('?')[0]);
     if (path.endsWith('/')) path += 'index.html';
+    if (failing.has(path)) {
+      log.push({ path, status: 500 });
+      response.writeHead(500);
+      response.end();
+      return;
+    }
     let body = files.get(path);
     if (body === undefined && path.startsWith(base)) {
       body = await readPwaFile(`/${path.slice(base.length)}`, null).catch(() => undefined);
@@ -77,6 +85,7 @@ export async function startPagesServer({ base = '/', cacheControl = () => 'max-a
   return {
     origin: `http://127.0.0.1:${server.address().port}`,
     files,
+    failing,
     log,
     urls,
     set offline(value) { offline = value; },

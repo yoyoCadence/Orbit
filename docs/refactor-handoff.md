@@ -26,7 +26,7 @@ Orbit——個人成長追蹤 PWA（部署於 <https://yoyocadence.github.io/Orb
 
 - 純 Vanilla JS ES Modules，**無框架、無 bundler、無 build step**——`pwa/` 目錄原樣部署
 - Supabase（PostgreSQL + Auth + Storage），RLS 全開（規範見 repo 根目錄 `CLAUDE.md`）
-- Service Worker（`pwa/sw.js`）：開啟頁面時回傳快取中同一版的 HTML（INFRA-107；以前是 network-first）、JS/CSS stale-while-revalidate、圖片 cache-first；**SHELL 預快取清單為手寫逐檔列舉**
+- Service Worker（`pwa/sw.js`）：開啟頁面時回傳快取中同一版的 HTML、JS/CSS 也只用同一版的快取（INFRA-107；以前是 HTML network-first、JS/CSS stale-while-revalidate）、圖片 cache-first；新版本只隨新的 service worker（`CACHE` bump）出現；**SHELL 預快取清單為手寫逐檔列舉**
 - 部署：push `main` → GitHub Actions（`.github/workflows/deploy.yml`）→ 上傳 `pwa/` 到 GitHub Pages，無編譯
 - 本機開發：`node pwa/server.cjs` → <http://localhost:3000>
 
