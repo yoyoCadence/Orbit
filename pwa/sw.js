@@ -1,6 +1,7 @@
 // Service Worker
-// Bump CACHE version on every deploy so users always get fresh code.
-const CACHE = 'orbit-v1.41.0';
+// Bump CACHE version on every deploy: since INFRA-107 a new worker is the only
+// way new HTML and code reach users.
+const CACHE = 'orbit-v1.41.1';
 
 const SHELL = [
   './',
@@ -197,9 +198,11 @@ self.addEventListener('activate', e => {
 });
 
 // Fetch strategy (same-origin requests only):
-//   HTML             → network-first  (entry point must always be fresh so SW updates are detected)
-//   JS / CSS         → stale-while-revalidate (serve cache instantly; fetch in background for next load)
+//   Pages / HTML     → this version's cached HTML (INFRA-107)
+//   JS / CSS         → this version's cached code (INFRA-107), never refreshed in the background
 //   Images / others  → cache-first   (rarely change, save bandwidth)
+// So every page load runs the HTML and code of one version: the next version's
+// arrive together with its worker.
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
 
@@ -210,27 +213,44 @@ self.addEventListener('fetch', e => {
   // to have completed a successful remote load.
   if (url.origin !== self.location.origin) return;
 
-  const isHtml   = url.pathname.endsWith('.html') || url.pathname === '/';
+  // Every page load (the site root is `/Orbit/` on GitHub Pages) and any
+  // `.html` gets the HTML cached with this version's code (INFRA-107, user
+  // decision 2026-10-23), online or offline. A new version still arrives as
+  // before: the browser checks sw.js on page loads whatever is returned here,
+  // the new worker revalidates the SHELL on install, and the 「新版本已就緒」
+  // reload shows its HTML. The query is ignored (an auth redirect adds
+  // `?code=`); a page not in the cache is fetched, and a successful response
+  // is kept under its URL without the query.
+  const isHtml   = e.request.mode === 'navigate' || url.pathname.endsWith('.html');
   const isJsCss  = /\.(js|css)$/.test(url.pathname);
 
   if (isHtml) {
-    // Network-first: always fetch fresh HTML so the browser detects a new SW
     e.respondWith(
-      fetch(e.request)
-        .then(res => { caches.open(CACHE).then(c => c.put(e.request, res.clone())); return res; })
-        .catch(() => caches.match(e.request))
+      caches.open(CACHE).then(cache =>
+        cache.match(e.request, { ignoreSearch: true }).then(cached => {
+          if (cached) return cached;
+          return fetch(e.request).then(res => {
+            if (!res.ok || res.redirected) return res;
+            return cache.put(url.origin + url.pathname, res.clone()).then(() => res, () => res);
+          });
+        })
+      )
     );
   } else if (isJsCss) {
-    // Stale-while-revalidate: return cached copy immediately; update cache in
-    // background, from the server rather than the browser's HTTP cache
-    // (INFRA-105). An error response never replaces a working module.
+    // This version's code (INFRA-107, user decision 2026-10-24). Every module is
+    // in the SHELL and revalidated on install (INFRA-105), so the cache is not
+    // refreshed in the background: that would pair this version's HTML with the
+    // next version's code whenever the next worker fails to install. A file not
+    // cached is fetched from the server rather than the browser's HTTP cache,
+    // and only a successful response is kept.
     e.respondWith(
       caches.open(CACHE).then(cache =>
         cache.match(e.request).then(cached => {
-          const networkFetch = fetch(e.request, { cache: 'no-cache' })
-            .then(res => { if (res.ok) cache.put(e.request, res.clone()); return res; })
-            .catch(() => null);
-          return cached ?? networkFetch;
+          if (cached) return cached;
+          return fetch(e.request, { cache: 'no-cache' }).then(res => {
+            if (!res.ok) return res;
+            return cache.put(e.request, res.clone()).then(() => res, () => res);
+          });
         })
       )
     );
