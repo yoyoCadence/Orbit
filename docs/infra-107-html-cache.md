@@ -33,7 +33,7 @@
 5. **JS／CSS 也固定同一版**（2026-10-24 決定）：原本的 stale-while-revalidate 在背景以伺服器上的檔案更新**目前版本**的快取。HTML 固定之後，下一版的 service worker 沒裝成功（手機網路斷一下、iOS 中途關掉 app，或任何一個 SHELL 檔案失敗）時，下一次開啟會是「舊 HTML＋新程式」（獨立 review 以 Playwright 重現）。改為：
    - 快取中有的 JS／CSS 直接回傳，**不在背景更新**；
    - 快取中沒有的才向伺服器取得（`cache: 'no-cache'`，不用瀏覽器 HTTP cache 中的舊檔，INFRA-105），只存成功的回應。
-   - 所有 JS／CSS（109 個）都在 SHELL（`serviceWorkerShell.test.js` 檢查 app 能 import 的每個模組），install 時已重新驗證，所以新程式只隨新的 service worker 出現。
+   - 所有 JS／CSS（109 個）都在 SHELL（`serviceWorkerShell.test.js` 檢查 `pwa/` 裡每個 `.js`／`.css` 與 app 能 import 的每個模組），install 時已重新驗證，所以新程式只隨新的 service worker 出現。
 6. **不改**：圖片的 cache-first、install／activate、橫幅、`CACHE` 名稱與 `npm run bump`。
 
 ## 3. 風險與代價
@@ -43,6 +43,7 @@
 | 新 HTML 出現得比較晚 | 安裝的 PWA 以前在部署後第一次開啟就可能拿到新 HTML（但程式是舊的）；現在要等新的 service worker 接手、按「重新整理」 | 這正是決定的目的：HTML 與程式同一版；根目錄原本就是這樣 |
 | 新的 service worker 沒裝成功 | 例如 `addAll()` 某個檔案失敗：舊版本繼續完整運作（HTML 與程式都是舊的，第 5 點），下次開啟時瀏覽器再試 | 以前 `index.html` 會是新 HTML 配舊程式，背景更新後也可能是舊 HTML 配新程式 |
 | 部署時忘了 bump | 改了 `pwa/` 卻沒有改 `sw.js` 的 `CACHE`：已安裝的使用者**拿不到**新的 HTML 與程式，直到下一次 bump（以前 JS／CSS 會在背景更新） | AGENTS.md §14：每個改到部署檔案的 PR 都 `npm run bump`；`sw.js` 開頭的註解改寫 |
+| 安裝時存到錯的檔案 | 例如部署後 CDN 的某個節點仍回舊檔：那一版的快取會一直是那個檔案，直到下一次 bump（以前 JS／CSS 的背景更新會在下一次開啟時修正；圖片原本就是這樣） | install 以 `cache: 'no-cache'` 重新驗證（INFRA-105）；發現時再 bump 一次 |
 | 本機開發 | `node pwa/server.cjs` 下 service worker 同樣回傳快取，改了 `index.html` 或 JS 重新整理看不到，要等 `sw.js` 改變 | 用 Shift＋重新整理（略過 service worker），或 DevTools → Application → Service workers 的「Update on reload」／「Bypass for network」；寫進 README 的本機開發 |
 | 快取被瀏覽器清掉 | `cache.match` 找不到就向網路取得（與第一次開啟相同） | 不影響正確性 |
 | 導覽的 redirect | 導覽請求的 redirect mode 是 `manual`，經過 redirect 的回應不能拿來回應導覽 | 只存沒有經過 redirect 的成功回應；SHELL 的 `./`、`./index.html` 在 GitHub Pages 沒有 redirect |

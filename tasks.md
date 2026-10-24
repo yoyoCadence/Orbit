@@ -260,7 +260,8 @@
     - e2e 補上：只開啟頁面就讓瀏覽器找到新的 service worker、按橫幅的「重新整理」；下一版的 service worker 裝不起來（一個 SHELL 檔案回 500）時新分頁連開三次都是這個版本的 HTML 與程式（只固定 HTML 的版本上失敗）。INFRA-105 的第二項 e2e 改為「快取中有的模組不向伺服器要，沒有的才從伺服器（不是 HTTP cache）取得」。
     - 文件：technical design §12.2、`refactor-handoff.md` 的快取策略、INFRA-105 變更說明的後續、README 本機開發（Shift＋重新整理或 DevTools 的「Update on reload」）。
     - 獨立 review：沒有 P1；P2（只固定 HTML 時，下一版裝不起來會變成舊 HTML 配新程式）依使用者決定以固定 JS／CSS 修正。P3 都已處理：沒有快取的頁面存入時等 `cache.put` 完成並吞掉錯誤；註解與文件改為「每次開啟頁面與任何 `.html`」；本機開發的說明；e2e 改以一般的開啟頁面觸發更新並按橫幅。
-    - Codex：對 836e272 沒有 finding。
+    - Codex：對 836e272 沒有 finding；對 0895247 額度用完，依規則以獨立 review 代替。
+    - 獨立 review 複查 0895247：沒有 P1／P2（P2 已解決，移除背景更新沒有回歸，新測試在 836e272 上失敗）。依 P3 補上：`sw.js` 註解的決定日期、「每次開啟頁面」的措辭（已開著的頁面在新的 service worker 接手後仍可能延遲載入新版模組）、變更說明加上「安裝時存到錯的檔案會留到下一次 bump」、unit test 檢查 `pwa/` 裡每個 JS／CSS 都在 SHELL（新的保證依賴它）。
 
 - [x] **PS-251B** 實作 PS-248A2：窗外依時段變化
   - 依據：[`docs/ps-251b-window-view-proposal.md`](docs/ps-251b-window-view-proposal.md)（#208），使用者 2026-10-23 決定 §8：S1（天際線不變，換建築的顏色、亮度與亮窗）、W2（只做晨間與傍晚的疊層）、T1（時段邊界準時重新 render）、其餘照建議（房間內的光不變；Q 版疊層預先快取、像素版第一次顯示時下載；更新 art bible 與 asset pipeline 的「一張 exterior」上限）。

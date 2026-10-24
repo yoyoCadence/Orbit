@@ -201,7 +201,7 @@ self.addEventListener('activate', e => {
 //   Pages / HTML     → this version's cached HTML (INFRA-107)
 //   JS / CSS         → this version's cached code (INFRA-107), never refreshed in the background
 //   Images / others  → cache-first   (rarely change, save bandwidth)
-// So a page always runs the HTML and code of one version: the next version's
+// So every page load runs the HTML and code of one version: the next version's
 // arrive together with its worker.
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
@@ -237,7 +237,7 @@ self.addEventListener('fetch', e => {
       )
     );
   } else if (isJsCss) {
-    // This version's code (INFRA-107, user decision 2026-10-23). Every module is
+    // This version's code (INFRA-107, user decision 2026-10-24). Every module is
     // in the SHELL and revalidated on install (INFRA-105), so the cache is not
     // refreshed in the background: that would pair this version's HTML with the
     // next version's code whenever the next worker fails to install. A file not

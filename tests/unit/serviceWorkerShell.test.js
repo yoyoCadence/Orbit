@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, normalize, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -38,6 +38,19 @@ describe('service worker precache shell', () => {
   it('lists only files that exist, so cache.addAll() cannot reject the install', () => {
     const missing = SHELL.filter(path => path && !existsSync(join(PWA, path)));
     expect(missing).toEqual([]);
+  });
+
+  it('precaches every JS and CSS file, so new code arrives only with a new worker (INFRA-107)', () => {
+    // The worker never refreshes a cached JS or CSS file, and fetches one not
+    // in its cache from the server: a file left out of the SHELL could reach an
+    // older version's cache as the next version's code.
+    const shell = new Set(SHELL);
+    const walk = dir => readdirSync(join(PWA, dir), { withFileTypes: true }).flatMap(entry => (
+      entry.isDirectory() ? walk(join(dir, entry.name)) : [join(dir, entry.name)]
+    ));
+    const code = walk('.').filter(file => /\.(js|css)$/.test(file) && file !== 'sw.js');
+    expect(code.length).toBeGreaterThan(100);
+    expect(code.filter(file => !shell.has(file)).sort()).toEqual([]);
   });
 
   it('precaches every module the app can import', () => {
