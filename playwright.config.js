@@ -8,7 +8,7 @@ export default defineConfig({
 
   use: {
     baseURL: 'http://localhost:3000',
-    // Intercept Supabase CDN before tests run (see global setup in tests/e2e/setup.js)
+    // Supabase is stubbed per test (tests/e2e/support/seed.js: mockSupabase()).
     // Headless by default; set PWDEBUG=1 or --headed for visual debugging
     headless: true,
     screenshot: 'only-on-failure',

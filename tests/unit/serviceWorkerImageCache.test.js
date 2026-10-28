@@ -89,8 +89,8 @@ describe('service worker JS / CSS: this version\'s code (INFRA-107)', () => {
     expect(cache.put).not.toHaveBeenCalled();
   });
 
-  it('fetches a module that is not cached from the server, not the HTTP cache (INFRA-105), and keeps it', async () => {
-    const request = { method: 'GET', url: 'https://orbit.test/js/app.js' };
+  it.each(['js/app.js', 'assets/style.css'])('fetches %s when not cached from the server, not the HTTP cache (INFRA-105), and keeps it', async path => {
+    const request = { method: 'GET', url: `https://orbit.test/${path}` };
     const clonedResponse = { ok: true, source: 'clone' };
     const networkResponse = { ok: true, clone: vi.fn(() => clonedResponse) };
     cache.match.mockResolvedValueOnce(undefined);

@@ -16,24 +16,26 @@ npx playwright test --repeat-each=3 <file>                 # 檢查是否穩定
 
 ## 檔案
 
+主要涵蓋的範圍（不是完整清單，細節看各檔案開頭的說明）：
+
 | 檔案 | 涵蓋 |
 |---|---|
-| `flows.test.js` | 登入畫面、遊客模式、即時任務打卡、Focus 計時（提前結束、overlay 期間暫停場景）、Personal Space V2 垂直切片（Main Quest → 結算 → 揭露 → 完整世界 → 撤銷、legacy fallback、Pixi 失敗時的 poster、反覆切換路由） |
-| `day-cycle-boot.test.js` | 跨日開啟：日報 → 晨間狀態 → app（BUG-105） |
+| `flows.test.js` | 登入畫面、遊客模式、即時任務打卡、今日計畫、Focus 計時（暫停與繼續、提前結束、overlay 期間暫停場景）、設定頁（登出、主題、每日隨機主題）、Personal Space V2 垂直切片（Main Quest → 結算 → 揭露 → 完整世界 → 撤銷、legacy fallback、Pixi 失敗時的 poster、反覆切換路由） |
+| `day-cycle-boot.test.js` | 跨日開啟：日報 → 晨間狀態 → app（BUG-105），選擇存不下來時的提示、modal 開著時登出 |
 | `liquid-glass-modal.test.js` | Liquid Glass 主題下 modal 的滾輪捲動 |
 | `companion-dialogue.test.js` | 夥伴卡片的台詞在各寬度與 200% 縮放下最多兩行（AI-204B），階段名稱一行（AI-202B1） |
 | `ai202b2-stage-reveal.test.js` | 第 12 個 Main Quest 日的 Major reveal、標題與台詞，重新載入不重播（AI-202B2） |
 | `ps243-acceptance.test.js` | 可重現的瀏覽器驗收：版面、溢出、觸控目標、鍵盤順序、canvas、縮放（PS-243） |
-| `ps249a-overlay.test.js` | Orbit Window 被 overlay 蓋住時 reveal 暫停、之後從頭重播（PS-249A） |
+| `ps249a-overlay.test.js` | Orbit Window 被 overlay 蓋住時 reveal 暫停、之後從頭重播；捲出畫面時 major 橫幅隱藏（PS-249A） |
 | `ps250b-appearance.test.js` | Edit Mode 的畫風、角色、房間風格、縮圖、裝飾，與下載失敗時退回預設（PS-250B–G） |
 | `ps251b-window-view.test.js` | 晨間與傍晚的窗外疊層與圖層順序；開著 app 跨過時段邊界時準時重新 render，保留焦點與詳細資訊面板（PS-251B） |
-| `sw-precache.test.js` | service worker 預先快取 poster 的所有圖與 Pixi，四個時段的離線 poster 都完整（PS-211A、PS-250E1、PS-251B） |
+| `sw-precache.test.js` | service worker 預先快取 poster 的所有圖與 Pixi，四個時段的離線 poster 都完整；頁面只在 runtime 掛載時才取得 Pixi；舊版 idle-window 的圖（PS-211A、PS-250E1、PS-251B） |
 | `infra105-sw-update.test.js` | 改版時新的 service worker 重新驗證 SHELL，不存到 HTTP cache 的舊檔；快取中的模組不在背景更新（INFRA-105、INFRA-107） |
 | `infra107-sw-html.test.js` | 每次開啟頁面都用快取中同一版的 HTML 與程式，包括帶查詢字串、離線、下一版裝不起來時（INFRA-107） |
 
 `support/`：
 
-- `seed.js`：`seedStorage()`（以 `addInitScript` 寫入 localStorage，略過登入）、`mockSupabase()`（以 routing 換掉 Supabase）、`SUPABASE_STUB`、`GUEST_USER`、`FOCUS_TASK`、`INSTANT_TASK`、`TODAY`。
+- `seed.js`：`seedStorage()`（以 `addInitScript` 寫入 localStorage，略過登入）、`mockSupabase()`（以 routing 換掉 Supabase）、`SUPABASE_STUB`、`GUEST_USER`、`FOCUS_TASK`、`INSTANT_TASK`、`BASE_ENERGY`、`TODAY`。
 - `pagesServer.js`：模擬 GitHub Pages 的靜態伺服器（`max-age=600`、ETag、304）。可設定放在哪個路徑底下（`base: '/Orbit/'`）、每個路徑的 `Cache-Control`、換掉檔案內容（下一版）、讓某些路徑回 500、模擬斷線，並記錄每個請求。
 
 ## 寫測試時要注意
@@ -50,16 +52,17 @@ npx playwright test --repeat-each=3 <file>                 # 檢查是否穩定
 
 - 固定在某個時段：`page.clock.setFixedTime(...)`（計時器照常跑）。
 - 跨過時段邊界：`page.clock.install({ time })`，再用 `page.clock.fastForward(...)` 前進。`setSystemTime()` 只改時間，不會讓已排好的計時器提前。
-- `TODAY` 由 Node 以本機時區計算。要在其他時段跑整套測試（例如確認晨間、傍晚的疊層不影響既有的 locator），把 `TZ` 與 Playwright 的 `timezoneId` 設成同一個時區：
+- `TODAY` 由 Node 以本機時區計算。要在其他時段跑整套測試（例如確認晨間、傍晚的疊層不影響既有的 locator），讓 Node 與瀏覽器用同一個時區：設定檔從 `TZ` 讀 `timezoneId`，再挑一個**現在**當地時間落在想要的時段的時區（晨間 05–10、白天 10–17、傍晚 17–21、深夜 21–05）：
 
   ```js
-  // pw.morning.config.mjs
+  // pw.tz.config.mjs
   import config from './playwright.config.js';
-  export default { ...config, use: { ...config.use, timezoneId: 'America/Los_Angeles' } };
+  export default { ...config, use: { ...config.use, timezoneId: process.env.TZ } };
   ```
 
   ```bash
-  TZ=America/Los_Angeles npx playwright test -c pw.morning.config.mjs
+  TZ=Asia/Dubai date +%H:%M        # 先確認當地時間
+  TZ=Asia/Dubai npx playwright test -c pw.tz.config.mjs
   ```
 
 ### 其他

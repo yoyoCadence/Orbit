@@ -82,4 +82,14 @@ describe('the committed version (INFRA-107)', () => {
     // The newest CHANGELOG entry is this version.
     expect(read('CHANGELOG.md').match(/^## \[([^\]]+)\]/m)[1]).toBe(version);
   });
+
+  it('gives every CHANGELOG entry its own version', () => {
+    // Two PRs that both bump from the same version merge cleanly everywhere
+    // but in CHANGELOG. Folding both under one heading would ship the second
+    // PR's files under a CACHE name installed apps already have, so they would
+    // never get them; keeping two headings of the same version fails here.
+    const versions = [...read('CHANGELOG.md').matchAll(/^## \[v?([^\]]+)\]/gm)].map(match => match[1]);
+    expect(versions.length).toBeGreaterThan(50);
+    expect(versions.filter((version, index) => versions.indexOf(version) !== index)).toEqual([]);
+  });
 });

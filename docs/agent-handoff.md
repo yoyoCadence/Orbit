@@ -221,6 +221,7 @@
 
 ### 需要使用者決定或執行
 
+- **INFRA-108**：CI 檢查改了 `pwa/` 的 PR 有沒有 bump（INFRA-107 之後沒有 bump 的變更到不了使用者；改 CI 設定，需核准）。
 - **BUG-109A**：在 production 套用 `pwa/db/013_signup_profile_name.sql`，需專案擁有者執行，步驟見 `docs/bug-109-signup-name-truncation.md`。
 - **PRO-014Q Q6 的測試帳號**：在 preview Supabase 專案建立（見 §3 第 4 點）。
 - **PRO-014P**：entitlement 流程，實作前需提案與核准，擋 `PRO-014H` cutover。與草稿 PR #154（PRO-014L）改同一段 SUB-16 路徑，寫提案前先問使用者先後順序。
