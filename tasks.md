@@ -221,6 +221,11 @@
 
 ## In Progress
 
+- [ ] **TEST-003** 檢視最近的 PR（#207–#211），補上遺漏的測試與測試文件
+  - 來源：使用者 2026-10-28 要求檢視最近的 PR、檢查遺漏，必要時更新測試相關程式。
+  - 範圍：對照 AI-202B2、INFRA-105、PS-251B、INFRA-107 的驗收條件與 review 的意見，補上沒有測試的行為；確認測試不受執行時段影響；更新過時的 `tests/e2e/README.md`。不改 app 的行為。
+  - In progress（2026-10-28）：使用者要求後開始。
+
 - [ ] **PRO-014Q** 開發者面板的 backup 不應擋住其他帳號或非 Pro 模擬的 entitlement refresh
   - 問題（PR #158 Codex review 指出，2026-10-18 確認）：`storage.refreshProEntitlement()` 只要 `FLAG_DEV_BACKUP` 存在就直接 return。這個 backup 也由等級模擬器建立，且 `storage.clearAll()` 登出時不會清除。開發者登出後換另一個帳號，該帳號的 refresh 會一直被跳過，在 `server` source 下 fail closed，直到手動重設。
   - 影響：只影響使用過開發者面板的裝置。
