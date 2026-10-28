@@ -101,6 +101,16 @@ describe('service worker JS / CSS: this version\'s code (INFRA-107)', () => {
     expect(cache.put).toHaveBeenCalledWith(request, clonedResponse);
   });
 
+  it('still returns a module it could not keep (e.g. storage full)', async () => {
+    const request = { method: 'GET', url: 'https://orbit.test/js/app.js' };
+    const networkResponse = { ok: true, clone: vi.fn(() => ({ ok: true })) };
+    cache.match.mockResolvedValueOnce(undefined);
+    fetchMock.mockResolvedValueOnce(networkResponse);
+    cache.put.mockRejectedValueOnce(Object.assign(new Error('Quota exceeded'), { name: 'QuotaExceededError' }));
+
+    expect(await dispatchFetch(request)).toBe(networkResponse);
+  });
+
   it('does not keep an error response for a module', async () => {
     const request = { method: 'GET', url: 'https://orbit.test/js/app.js' };
     const errorResponse = { ok: false, status: 503, clone: vi.fn() };
@@ -160,6 +170,38 @@ describe('service worker page loads (INFRA-107)', () => {
       expect(response.clone).not.toHaveBeenCalled();
     }
     expect(cache.put).not.toHaveBeenCalled();
+  });
+
+  it('serves any page load from the cache, not only HTML', async () => {
+    // Opening the manifest or an image in a tab is a page load too; it gets
+    // the cached file, with the query ignored, and nothing else.
+    const request = { method: 'GET', mode: 'navigate', url: 'https://orbit.test/Orbit/manifest.json?from=tab' };
+    const cachedResponse = { ok: true, source: 'cache' };
+    cache.match.mockResolvedValueOnce(cachedResponse);
+
+    expect(await dispatchFetch(request)).toBe(cachedResponse);
+    expect(cache.match).toHaveBeenCalledWith(request, { ignoreSearch: true });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('serves an .html file fetched by a script from the cache like a page load', async () => {
+    const request = { method: 'GET', mode: 'cors', url: 'https://orbit.test/Orbit/index.html?probe=1' };
+    const cachedResponse = { ok: true, source: 'cache' };
+    cache.match.mockResolvedValueOnce(cachedResponse);
+
+    expect(await dispatchFetch(request)).toBe(cachedResponse);
+    expect(cache.match).toHaveBeenCalledWith(request, { ignoreSearch: true });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('still opens a page it could not keep (e.g. storage full)', async () => {
+    const request = { method: 'GET', mode: 'navigate', url: 'https://orbit.test/Orbit/make-icons.html' };
+    const networkResponse = { ok: true, redirected: false, clone: vi.fn(() => ({ ok: true })) };
+    cache.match.mockResolvedValueOnce(undefined);
+    fetchMock.mockResolvedValueOnce(networkResponse);
+    cache.put.mockRejectedValueOnce(Object.assign(new Error('Quota exceeded'), { name: 'QuotaExceededError' }));
+
+    expect(await dispatchFetch(request)).toBe(networkResponse);
   });
 
   it('leaves the page load to fail offline when the page was never cached', async () => {

@@ -221,11 +221,6 @@
 
 ## In Progress
 
-- [ ] **TEST-003** 檢視最近的 PR（#207–#211），補上遺漏的測試與測試文件
-  - 來源：使用者 2026-10-28 要求檢視最近的 PR、檢查遺漏，必要時更新測試相關程式。
-  - 範圍：對照 AI-202B2、INFRA-105、PS-251B、INFRA-107 的驗收條件與 review 的意見，補上沒有測試的行為；確認測試不受執行時段影響；更新過時的 `tests/e2e/README.md`。不改 app 的行為。
-  - In progress（2026-10-28）：使用者要求後開始。
-
 - [ ] **PRO-014Q** 開發者面板的 backup 不應擋住其他帳號或非 Pro 模擬的 entitlement refresh
   - 問題（PR #158 Codex review 指出，2026-10-18 確認）：`storage.refreshProEntitlement()` 只要 `FLAG_DEV_BACKUP` 存在就直接 return。這個 backup 也由等級模擬器建立，且 `storage.clearAll()` 登出時不會清除。開發者登出後換另一個帳號，該帳號的 refresh 會一直被跳過，在 `server` source 下 fail closed，直到手動重設。
   - 影響：只影響使用過開發者面板的裝置。
@@ -248,6 +243,22 @@
 ---
 
 ## Done
+
+- [x] **TEST-003** 檢視最近的 PR（#207–#211），補上遺漏的測試與測試文件
+  - 來源：使用者 2026-10-28 要求檢視最近的 PR、檢查遺漏，必要時更新測試相關程式。
+  - 範圍：對照 AI-202B2、INFRA-105、PS-251B、INFRA-107 的驗收條件與 review 的意見，補上沒有測試的行為；確認測試不受執行時段影響；更新過時的 `tests/e2e/README.md`。不改 app 的行為。
+  - In progress（2026-10-28）：使用者要求後開始。
+  - 完成（2026-10-28，只改測試與測試文件，不 bump）：
+    - 檢查結果：
+      - AI-202B2：提案 §8 的每一項 reveal 驗收都有對應的 unit test（`ai202b2MilestoneReveals.test.js`），沒有遺漏。
+      - 時段：整套 unit test 在晨間、白天、傍晚、深夜四個時區都通過，整套 e2e 在晨間、傍晚、深夜也通過（白天是平常的 CI），沒有依賴執行時刻的測試。
+      - main 上 #207–#211 的部署都成功；沒有 `skip`／`only` 的測試。
+    - 補上的測試：
+      - `serviceWorkerImageCache.test.js`（INFRA-107）：不是 `.html` 的開啟頁面（例如在分頁開啟 manifest）與 script 取得的 `.html` 都走快取的 HTML 分支；`cache.put` 失敗（儲存空間滿）時頁面與模組仍照常回傳。
+      - `personalSpacePixiRuntime.test.js`（PS-251B）：窗外載入失敗時，選擇的房間風格照常畫出；房間風格在兩種畫風都共用預設房間的窗外（像素版為 nearest）。
+      - `bumpLib.test.js`（INFRA-107）：`package.json`、`version.js`、`sw.js` 的 `CACHE`、`package-lock.json`、ROADMAP 與 CHANGELOG 最新一筆的版本一致。INFRA-107 之後新的 `CACHE` 是新版本到達使用者的唯一方式，只改了一部分的 bump 會讓使用者停在舊版。
+    - `tests/e2e/README.md` 重寫：原本寫「E2E 無法在此環境執行」、`node pwa/server.js` 等過時內容。改為執行方式、每個檔案涵蓋的範圍、`support/` 的工具，以及這幾個 PR 學到的注意事項（service worker 與 routing、HTTP cache、減少動態效果、開新分頁檢查程式版本、`page.clock`、在其他時段執行）。
+
 
 - [x] **INFRA-107** service worker 的 HTML network-first 在 GitHub Pages 的根目錄不成立
   - 問題（INFRA-105 獨立 review 發現，2026-10-23；原本就有）：`sw.js` 以 `url.pathname.endsWith('.html') || url.pathname === '/'` 判斷 HTML。網站在 `/Orbit/` 底下，`https://yoyocadence.github.io/Orbit/` 的 pathname 是 `/Orbit/`，不符合，所以根目錄走圖片的 cache-first。

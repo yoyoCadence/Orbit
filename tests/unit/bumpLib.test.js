@@ -1,6 +1,7 @@
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   replaceInFile,
@@ -60,5 +61,25 @@ describe('replaceInFile', () => {
     const file = join(dir, 'sample.js');
     writeFixture('sample.js', 'const A = 1;\n');
     expect(() => replaceInFile(file, /const B = \d;/, 'const B = 2;')).toThrow(/not found/);
+  });
+});
+
+describe('the committed version (INFRA-107)', () => {
+  // Since INFRA-107 a new service worker (another CACHE name) is the only way
+  // new HTML and code reach users, so a partial or hand-edited bump would leave
+  // them on the old version. `npm run bump` keeps these together.
+  const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+  const read = path => readFileSync(join(ROOT, path), 'utf8');
+
+  it('is the same in every versioned file', () => {
+    const version = JSON.parse(read('package.json')).version;
+    const lock = JSON.parse(read('package-lock.json'));
+    expect(version).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(read('pwa/js/version.js')).toContain(`export const APP_VERSION = 'v${version}';`);
+    expect(read('pwa/sw.js').match(/const CACHE = '([^']*)';/)[1]).toBe(`orbit-v${version}`);
+    expect([lock.version, lock.packages[''].version]).toEqual([version, version]);
+    expect(read('ROADMAP.md')).toContain(`目前版本：**v${version}**`);
+    // The newest CHANGELOG entry is this version.
+    expect(read('CHANGELOG.md').match(/^## \[([^\]]+)\]/m)[1]).toBe(version);
   });
 });

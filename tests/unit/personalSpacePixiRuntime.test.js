@@ -461,10 +461,22 @@ describe('Personal Space V2 Pixi scene runtime', () => {
     expect(drawn.room).toMatch(/building-formal-workstation-room-v2\.webp$/);
     expect(drawn.exterior.path).toBe('assets/personal-space/v2/workspace/window/exterior-evening.webp');
 
-    // No view: the room as it is.
+    // No view: the room as it is, the chosen room style included.
     drawn = await draw(failing(/\/window\/exterior-/), { timeBand: 'morning' });
     expect(drawn.room).toMatch(/building-formal-workstation-room-v2\.webp$/);
     expect(drawn.exterior).toBeUndefined();
+    drawn = await draw(failing(/\/window\/exterior-/), { timeBand: 'evening', selectedThemeId: 'nordic' });
+    expect(drawn.room).toBe('assets/personal-space/v2/workspace/styles/nordic/background-night.webp');
+    expect(drawn.exterior).toBeUndefined();
+
+    // A room style shares the default room's view, in both styles.
+    drawn = await draw(createFakePixi(), { timeBand: 'evening', selectedThemeId: 'washitsu' });
+    expect(drawn.room).toBe('assets/personal-space/v2/workspace/styles/washitsu/background-night.webp');
+    expect(drawn.exterior.path).toBe('assets/personal-space/v2/workspace/window/exterior-evening.webp');
+    drawn = await draw(createFakePixi(), { timeBand: 'morning', selectedThemeId: 'washitsu', appearance: { style: 'pixel' } });
+    expect(drawn.room).toMatch(/\/workspace\/pixel\/styles\/washitsu\//);
+    expect(drawn.exterior.path).toBe('assets/personal-space/v2/workspace/pixel/window/exterior-morning.png');
+    expect(drawn.exterior.source.scaleMode).toBe('nearest');
   });
 
   it('draws the decorations unless hidden, and leaves out one that cannot load (PS-250F)', async () => {
