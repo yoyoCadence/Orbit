@@ -5,13 +5,14 @@
  *
  * Atomically syncs the version across package.json, pwa/js/version.js
  * APP_VERSION, pwa/sw.js CACHE, package-lock.json and ROADMAP.md, then prepends
- * a CHANGELOG stub. Fail-closed: if any versioned marker is missing the process
- * exits non-zero so a partial bump is never reported as success.
+ * a CHANGELOG stub. Fail-closed: every file's new content is worked out before
+ * any is written, so if any versioned marker is missing the process exits
+ * non-zero with nothing written, and a partial bump is never left behind.
  */
 import { readFileSync, writeFileSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { replaceInFile, syncPackageLock, syncRoadmapVersion } from './bumpLib.mjs';
+import { changelogWithStub, packageLockWithVersion, replaceMarker, roadmapWithVersion } from './bumpLib.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const arg  = process.argv[2] ?? 'patch';
@@ -21,63 +22,57 @@ if (!['patch', 'minor', 'major'].includes(arg)) {
   process.exit(1);
 }
 
-// ── 1. Read & bump version ────────────────────────────────────────────────────
-const pkgPath = resolve(ROOT, 'package.json');
-const pkg     = JSON.parse(readFileSync(pkgPath, 'utf8'));
-const [maj, min, pat] = (pkg.version ?? '1.0.0').split('.').map(Number);
+const read = path => readFileSync(resolve(ROOT, path), 'utf8');
 
-let nextVersion;
-if (arg === 'major') nextVersion = `${maj + 1}.0.0`;
-else if (arg === 'minor') nextVersion = `${maj}.${min + 1}.0`;
-else nextVersion = `${maj}.${min}.${pat + 1}`;
+// ── 1. Work out every file's new content (throws before anything is written) ─
+function plan() {
+  const pkg = JSON.parse(read('package.json'));
+  const [maj, min, pat] = (pkg.version ?? '1.0.0').split('.').map(Number);
 
-const prevVStr = `v${pkg.version ?? '1.0.0'}`;
-const nextVStr = `v${nextVersion}`;
+  let nextVersion;
+  if (arg === 'major') nextVersion = `${maj + 1}.0.0`;
+  else if (arg === 'minor') nextVersion = `${maj}.${min + 1}.0`;
+  else nextVersion = `${maj}.${min}.${pat + 1}`;
 
-pkg.version = nextVersion;
-writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf8');
-console.log(`package.json  ${prevVStr} → ${nextVStr}`);
+  const prevVStr = `v${pkg.version ?? '1.0.0'}`;
+  const nextVStr = `v${nextVersion}`;
+  const moved = `${prevVStr} → ${nextVStr}`;
+  pkg.version = nextVersion;
 
-// ── 2. pwa/js/version.js ─────────────────────────────────────────────────────
-replaceInFile(
-  resolve(ROOT, 'pwa/js/version.js'),
-  /export const APP_VERSION = 'v[\d.]+';/,
-  `export const APP_VERSION = '${nextVStr}';`,
-);
-console.log(`pwa/js/version.js ${prevVStr} → ${nextVStr}`);
-
-// ── 3. pwa/sw.js ─────────────────────────────────────────────────────────────
-replaceInFile(
-  resolve(ROOT, 'pwa/sw.js'),
-  /const CACHE = 'orbit-v[\d.]+';/,
-  `const CACHE = 'orbit-${nextVStr}';`,
-);
-console.log(`pwa/sw.js     orbit-${prevVStr} → orbit-${nextVStr}`);
-
-// ── 4. package-lock.json ──────────────────────────────────────────────────────
-syncPackageLock(ROOT, nextVersion);
-console.log(`package-lock.json ${prevVStr} → ${nextVStr}`);
-
-// ── 5. ROADMAP.md 目前版本 ────────────────────────────────────────────────────
-syncRoadmapVersion(ROOT, nextVStr);
-console.log(`ROADMAP.md    ${prevVStr} → ${nextVStr}`);
-
-// ── 6. CHANGELOG.md stub ─────────────────────────────────────────────────────
-const clPath = resolve(ROOT, 'CHANGELOG.md');
-const clSrc  = readFileSync(clPath, 'utf8');
-const today  = new Date().toISOString().slice(0, 10);
-const stub   = `## [${nextVersion}] - ${today}\n\n### Added\n- \n\n### Fixed\n- \n\n---\n\n`;
-
-// Insert after the first line (title) + blank line, before the first ## version block
-const clNext = clSrc.replace(/(\n)(## \[)/, `\n${stub}$2`);
-if (clNext === clSrc) {
-  // fallback: prepend after first line
-  const lines = clSrc.split('\n');
-  lines.splice(2, 0, '', stub.trimEnd());
-  writeFileSync(clPath, lines.join('\n'), 'utf8');
-} else {
-  writeFileSync(clPath, clNext, 'utf8');
+  return [
+    ['package.json', `${JSON.stringify(pkg, null, 2)}\n`, moved],
+    ['pwa/js/version.js', replaceMarker(
+      read('pwa/js/version.js'),
+      /export const APP_VERSION = 'v[\d.]+';/,
+      `export const APP_VERSION = '${nextVStr}';`,
+      'pwa/js/version.js',
+    ), moved],
+    ['pwa/sw.js', replaceMarker(
+      read('pwa/sw.js'),
+      /const CACHE = 'orbit-v[\d.]+';/,
+      `const CACHE = 'orbit-${nextVStr}';`,
+      'pwa/sw.js',
+    ), `orbit-${prevVStr} → orbit-${nextVStr}`],
+    ['package-lock.json', packageLockWithVersion(read('package-lock.json'), nextVersion), moved],
+    ['ROADMAP.md', roadmapWithVersion(read('ROADMAP.md'), nextVStr), moved],
+    ['CHANGELOG.md', changelogWithStub(read('CHANGELOG.md'), nextVersion, new Date().toISOString().slice(0, 10)),
+      `stub [${nextVersion}] added`],
+  ];
 }
-console.log(`CHANGELOG.md  stub [${nextVersion}] added`);
+
+let files;
+try {
+  files = plan();
+} catch (error) {
+  console.error(error.message);
+  console.error('Nothing was written.');
+  process.exit(1);
+}
+
+// ── 2. Write them all ─────────────────────────────────────────────────────────
+for (const [path, content, change] of files) {
+  writeFileSync(resolve(ROOT, path), content, 'utf8');
+  console.log(`${path.padEnd(17)} ${change}`);
+}
 
 console.log(`\nDone! Next: fill in CHANGELOG.md, then commit & PR.`);

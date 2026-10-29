@@ -1,12 +1,14 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
-  replaceInFile,
-  syncPackageLock,
-  syncRoadmapVersion,
+  changelogWithStub,
+  packageLockWithVersion,
+  replaceMarker,
+  roadmapWithVersion,
 } from '../../scripts/bumpLib.mjs';
 
 let dir;
@@ -14,53 +16,97 @@ let dir;
 beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'bumplib-')); });
 afterEach(() => { rmSync(dir, { recursive: true, force: true }); });
 
-function writeFixture(name, content) {
-  writeFileSync(join(dir, name), content);
-}
-
-describe('syncPackageLock', () => {
+describe('packageLockWithVersion', () => {
   it('updates the root and packages[""] versions', () => {
-    writeFixture('package-lock.json', `${JSON.stringify({
+    const lock = JSON.parse(packageLockWithVersion(`${JSON.stringify({
       name: 'orbit', version: '1.0.0', packages: { '': { name: 'orbit', version: '1.0.0' } },
-    }, null, 2)}\n`);
-
-    syncPackageLock(dir, '1.2.3');
-
-    const lock = JSON.parse(readFileSync(join(dir, 'package-lock.json'), 'utf8'));
+    }, null, 2)}\n`, '1.2.3'));
     expect(lock.version).toBe('1.2.3');
     expect(lock.packages[''].version).toBe('1.2.3');
   });
 
   it('fails closed when packages[""] is missing', () => {
-    writeFixture('package-lock.json', JSON.stringify({ name: 'orbit', version: '1.0.0', packages: {} }));
-    expect(() => syncPackageLock(dir, '1.2.3')).toThrow(/root package entry/);
+    expect(() => packageLockWithVersion(JSON.stringify({ name: 'orbit', version: '1.0.0', packages: {} }), '1.2.3'))
+      .toThrow(/root package entry/);
   });
 
-  it('fails closed when the lockfile is absent or invalid JSON', () => {
-    expect(() => syncPackageLock(dir, '1.2.3')).toThrow(/unreadable or invalid JSON/);
-    writeFixture('package-lock.json', '{ not valid json');
-    expect(() => syncPackageLock(dir, '1.2.3')).toThrow(/unreadable or invalid JSON/);
+  it('fails closed when the lockfile is invalid JSON', () => {
+    expect(() => packageLockWithVersion('{ not valid json', '1.2.3')).toThrow(/unreadable or invalid JSON/);
   });
 });
 
-describe('syncRoadmapVersion', () => {
+describe('roadmapWithVersion', () => {
   it('updates the 目前版本 marker', () => {
-    writeFixture('ROADMAP.md', '# Roadmap\n\n目前版本：**v1.0.0**\n\nbody\n');
-    syncRoadmapVersion(dir, 'v1.2.3');
-    expect(readFileSync(join(dir, 'ROADMAP.md'), 'utf8')).toContain('目前版本：**v1.2.3**');
+    expect(roadmapWithVersion('# Roadmap\n\n目前版本：**v1.0.0**\n\nbody\n', 'v1.2.3')).toContain('目前版本：**v1.2.3**');
   });
 
   it('fails closed when the 目前版本 marker is absent', () => {
-    writeFixture('ROADMAP.md', '# Roadmap\n\nno version marker here\n');
-    expect(() => syncRoadmapVersion(dir, 'v1.2.3')).toThrow(/not found/);
+    expect(() => roadmapWithVersion('# Roadmap\n\nno version marker here\n', 'v1.2.3')).toThrow(/not found/);
   });
 });
 
-describe('replaceInFile', () => {
+describe('replaceMarker', () => {
   it('fails closed when the pattern is absent', () => {
-    const file = join(dir, 'sample.js');
-    writeFixture('sample.js', 'const A = 1;\n');
-    expect(() => replaceInFile(file, /const B = \d;/, 'const B = 2;')).toThrow(/not found/);
+    expect(() => replaceMarker('const A = 1;\n', /const B = \d;/, 'const B = 2;', 'sample.js')).toThrow(/not found in sample\.js/);
+  });
+});
+
+describe('changelogWithStub', () => {
+  it('puts the new entry above the newest one', () => {
+    const next = changelogWithStub('# Changelog\n\n## [1.0.0] - 2026-01-01\n\n- old\n', '1.0.1', '2026-02-02');
+    expect(next.indexOf('## [1.0.1] - 2026-02-02')).toBeLessThan(next.indexOf('## [1.0.0]'));
+  });
+});
+
+describe('npm run bump', () => {
+  // Copies the script into a throwaway repository layout and runs it there.
+  const SCRIPTS = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'scripts');
+  const FILES = {
+    'package.json': `${JSON.stringify({ name: 'orbit', version: '1.0.0' }, null, 2)}\n`,
+    'package-lock.json': `${JSON.stringify({ name: 'orbit', version: '1.0.0', packages: { '': { version: '1.0.0' } } }, null, 2)}\n`,
+    'pwa/js/version.js': "export const APP_VERSION = 'v1.0.0';\n",
+    // An edit the developer has not committed yet must survive any outcome.
+    'pwa/sw.js': "const CACHE = 'orbit-v1.0.0';\nconst SHELL = ['./uncommitted.js'];\n",
+    'ROADMAP.md': '目前版本：**v1.0.0**\n',
+    'CHANGELOG.md': '# Changelog\n\n## [1.0.0] - 2026-01-01\n',
+  };
+  const setUp = files => {
+    mkdirSync(join(dir, 'scripts'));
+    for (const name of ['bump.mjs', 'bumpLib.mjs']) copyFileSync(join(SCRIPTS, name), join(dir, 'scripts', name));
+    for (const [path, content] of Object.entries(files)) {
+      mkdirSync(dirname(join(dir, path)), { recursive: true });
+      writeFileSync(join(dir, path), content);
+    }
+  };
+  const bump = () => {
+    try {
+      execFileSync(process.execPath, [join(dir, 'scripts', 'bump.mjs'), 'patch'], { cwd: dir, stdio: 'pipe' });
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, stderr: String(error.stderr) };
+    }
+  };
+  const contents = () => Object.fromEntries(Object.keys(FILES).map(path => [path, readFileSync(join(dir, path), 'utf8')]));
+
+  it('writes nothing when any marker is missing', () => {
+    setUp({ ...FILES, 'ROADMAP.md': 'no version marker here\n' });
+    const before = contents();
+    const result = bump();
+    expect(result.ok).toBe(false);
+    expect(result.stderr).toContain('Nothing was written.');
+    expect(contents()).toEqual(before);
+  });
+
+  it('bumps every file and keeps other edits', () => {
+    setUp(FILES);
+    expect(bump().ok).toBe(true);
+    const after = contents();
+    expect(JSON.parse(after['package.json']).version).toBe('1.0.1');
+    expect(JSON.parse(after['package-lock.json']).packages[''].version).toBe('1.0.1');
+    expect(after['pwa/js/version.js']).toContain("'v1.0.1'");
+    expect(after['pwa/sw.js']).toBe("const CACHE = 'orbit-v1.0.1';\nconst SHELL = ['./uncommitted.js'];\n");
+    expect(after['ROADMAP.md']).toContain('目前版本：**v1.0.1**');
+    expect(after['CHANGELOG.md']).toMatch(/^## \[1\.0\.1\]/m);
   });
 });
 

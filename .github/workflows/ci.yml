@@ -81,6 +81,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # INFRA-108: the base branch's history, to compare the PR against it;
+          # trees only (the art makes the full pack ~145 MB), blobs on demand.
+          fetch-depth: 0
+          filter: blob:none
 
       - name: Verify critical files exist
         run: |
@@ -103,3 +108,19 @@ jobs:
             fi
           done
           exit $missing
+
+      - name: Setup Node
+        if: github.event_name == 'pull_request'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # INFRA-108: since INFRA-107 the service worker never refreshes a
+      # version's cached HTML and code, so a change to the deployed pwa/ only
+      # reaches installed apps with a new CACHE name (`npm run bump`). Fails a
+      # PR that changes pwa/ without one.
+      - name: Check that a pwa/ change bumps the version
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: node scripts/check-version-bump.mjs "origin/$BASE_REF"

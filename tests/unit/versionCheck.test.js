@@ -1,0 +1,176 @@
+/**
+ * versionCheck.test.js — INFRA-108
+ *
+ * The rule CI applies to every pull request: a change to the deployed pwa/
+ * must bump the version, because since INFRA-107 the service worker never
+ * refreshes a version's cached HTML and code, so only a new CACHE name brings
+ * a change to installed apps.
+ */
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { describe, expect, it } from 'vitest';
+import {
+  cacheName,
+  checkVersionBump,
+  compareVersions,
+  deployedChanges,
+  escapeWorkflowCommand,
+  parseChangedFiles,
+} from '../../scripts/versionCheckLib.mjs';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+const sw = version => `// Service Worker\nconst CACHE = 'orbit-v${version}';\nconst SHELL = [];\n`;
+const at = version => ({ version, swSource: sw(version) });
+
+describe('INFRA-108 version check', () => {
+  it('needs no bump when nothing the app loads changed', () => {
+    for (const changedFiles of [[], ['tasks.md', 'docs/x.md'], ['tests/unit/a.test.js'], ['pwa/server.cjs'], ['pwa/db/014_x.sql']]) {
+      expect(checkVersionBump({ changedFiles, base: at('1.41.1'), head: at('1.41.1') }).ok, changedFiles.join()).toBe(true);
+    }
+  });
+
+  it('fails a pwa/ change that keeps the CACHE name, and says how to fix it', () => {
+    const result = checkVersionBump({ changedFiles: ['pwa/js/app.js', 'tasks.md'], base: at('1.41.1'), head: at('1.41.1') });
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain('pwa/js/app.js');
+    expect(result.message).toContain('orbit-v1.41.1');
+    expect(result.message).toContain('npm run bump');
+  });
+
+  it('passes a pwa/ change with a patch, minor or major bump', () => {
+    for (const next of ['1.41.2', '1.42.0', '2.0.0']) {
+      expect(checkVersionBump({ changedFiles: ['pwa/sw.js'], base: at('1.41.1'), head: at(next) }), next)
+        .toMatchObject({ ok: true });
+    }
+  });
+
+  it('fails a version that went backwards, or a CACHE that disagrees with package.json', () => {
+    expect(checkVersionBump({ changedFiles: ['pwa/index.html'], base: at('1.41.1'), head: at('1.41.0') }).ok).toBe(false);
+    expect(checkVersionBump({
+      changedFiles: ['pwa/index.html'],
+      base: at('1.41.1'),
+      head: { version: '1.41.2', swSource: sw('1.41.3') },
+    })).toMatchObject({ ok: false, message: expect.stringContaining('does not match') });
+  });
+
+  it('treats every deployed file the same, art included', () => {
+    expect(deployedChanges([
+      'pwa/assets/personal-space/v2/workspace/window/exterior-morning.webp',
+      'pwa/server.cjs',
+      'pwa/index.html',
+      'art-pipeline/ps251-window/render_window.py',
+      'README.md',
+    ])).toEqual(['pwa/assets/personal-space/v2/workspace/window/exterior-morning.webp', 'pwa/index.html']);
+  });
+
+  it('reads NUL-separated paths and escapes workflow commands', () => {
+    expect(parseChangedFiles('pwa/js/圖.js\0docs/a.md\0')).toEqual(['pwa/js/圖.js', 'docs/a.md']);
+    expect(escapeWorkflowCommand('a%b\r\n::warning::x')).toBe('a%25b%0D%0A::warning::x');
+  });
+
+  it('compares versions numerically and reads the CACHE name', () => {
+    expect(compareVersions('1.10.0', '1.9.9')).toBeGreaterThan(0);
+    expect(compareVersions('v1.41.1', '1.41.1')).toBe(0);
+    expect(() => compareVersions('1.41', '1.41.1')).toThrow();
+    expect(cacheName(sw('1.41.1'))).toBe('orbit-v1.41.1');
+    expect(cacheName('no cache here')).toBeNull();
+    expect(cacheName(readFileSync(join(ROOT, 'pwa', 'sw.js'), 'utf8')))
+      .toBe(`orbit-v${JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version}`);
+  });
+
+  it('runs against a real git history the way CI does', () => {
+    // A throwaway repository: a base commit, then a branch that changes pwa/.
+    const dir = mkdtempSync(join(tmpdir(), 'infra108-'));
+    const script = join(ROOT, 'scripts', 'check-version-bump.mjs');
+    // Not the developer's git: no inherited GIT_* (as inside a hook), no global
+    // or system config (signing, hooks, default branch).
+    const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')));
+    Object.assign(env, { GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' });
+    const runIn = (cwd, ...args) => execFileSync(args[0], args.slice(1), { cwd, env, encoding: 'utf8', stdio: 'pipe' });
+    const run = (...args) => runIn(dir, ...args);
+    const write = (path, content) => {
+      mkdirSync(dirname(join(dir, path)), { recursive: true });
+      writeFileSync(join(dir, path), content);
+    };
+    const check = (base = 'main', cwd = dir) => {
+      try {
+        return { ok: true, output: runIn(cwd, process.execPath, script, base) };
+      } catch (error) {
+        return { ok: false, output: `${error.stdout}${error.stderr}` };
+      }
+    };
+    try {
+      run('git', 'init', '-q', '-b', 'main');
+      run('git', 'config', 'user.email', 'ci@example.test');
+      run('git', 'config', 'user.name', 'CI');
+      write('package.json', JSON.stringify({ version: '1.41.1' }));
+      write('pwa/sw.js', sw('1.41.1'));
+      write('pwa/js/app.js', 'export {};\n');
+      run('git', 'add', '-A');
+      run('git', 'commit', '-q', '--no-gpg-sign', '-m', 'base');
+      run('git', 'checkout', '-q', '-b', 'feature');
+
+      write('docs.md', 'notes\n');
+      run('git', 'add', '-A');
+      run('git', 'commit', '-q', '--no-gpg-sign', '-m', 'docs only');
+      expect(check().ok).toBe(true);
+
+      write('pwa/js/app.js', 'export const changed = true;\n');
+      run('git', 'add', '-A');
+      run('git', 'commit', '-q', '--no-gpg-sign', '-m', 'code without a bump');
+      const failed = check();
+      expect(failed.ok).toBe(false);
+      expect(failed.output).toContain('pwa/js/app.js');
+
+      write('package.json', JSON.stringify({ version: '1.41.2' }));
+      write('pwa/sw.js', sw('1.41.2'));
+      // Not committed yet: the check reads HEAD, so it still fails.
+      expect(check().ok).toBe(false);
+      run('git', 'add', '-A');
+      run('git', 'commit', '-q', '--no-gpg-sign', '-m', 'bump');
+      expect(check().ok).toBe(true);
+
+      // A file moved out of pwa/, or with a non-ASCII name, is a pwa/ change.
+      run('git', 'checkout', '-q', '-b', 'moved', 'main');
+      run('git', 'mv', 'pwa/js/app.js', 'tools-app.js');
+      run('git', 'commit', '-q', '--no-gpg-sign', '-m', 'move out of pwa');
+      expect(check().ok).toBe(false);
+      run('git', 'checkout', '-q', '-b', 'unicode', 'main');
+      write('pwa/js/圖.js', 'export {};\n');
+      run('git', 'add', '-A');
+      run('git', 'commit', '-q', '--no-gpg-sign', '-m', 'non-ascii name');
+      const unicode = check();
+      expect(unicode.ok).toBe(false);
+      expect(unicode.output).toContain('pwa/js/圖.js');
+      // Paths stay relative to the root when run from pwa/ with diff.relative.
+      run('git', 'config', 'diff.relative', 'true');
+      expect(check('main', join(dir, 'pwa')).ok).toBe(false);
+      run('git', 'config', '--unset', 'diff.relative');
+
+      // A base file git cannot read fails the check instead of counting as an
+      // empty base (version 0.0.0, no CACHE), which would pass any PR.
+      run('git', 'checkout', '-q', '-b', 'no-files', 'main');
+      run('git', 'rm', '-q', 'package.json', 'pwa/sw.js');
+      run('git', 'commit', '-q', '--no-gpg-sign', '-m', 'a base git cannot read the files of');
+      run('git', 'checkout', '-q', 'unicode');
+      const unreadable = check('no-files');
+      expect(unreadable.ok).toBe(false);
+      expect(unreadable.output).toMatch(/^::error::The version check could not run: /m);
+
+      // A version that is not x.y.z is reported, not a stack trace.
+      run('git', 'checkout', '-q', '-b', 'beta', 'main');
+      write('package.json', JSON.stringify({ version: '1.42.0-beta.1' }));
+      write('pwa/sw.js', sw('1.42.0-beta.1'));
+      run('git', 'add', '-A');
+      run('git', 'commit', '-q', '--no-gpg-sign', '-m', 'prerelease');
+      const beta = check();
+      expect(beta.ok).toBe(false);
+      expect(beta.output).toMatch(/^::error::The version check could not run: not an x\.y\.z version/m);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});

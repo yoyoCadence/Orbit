@@ -189,13 +189,17 @@ npm run bump -- minor    # new feature, new page, new setting
 npm run bump -- major    # breaking data format change (rare)
 ```
 
-The script atomically updates all three locations:
+The script updates every versioned marker. It works out every file's new content before writing any, so if a marker is missing it exits non-zero and writes nothing:
 - `package.json` `version` — single source of truth
-- `pwa/js/app.js` `APP_VERSION`
+- `pwa/js/version.js` `APP_VERSION`
 - `pwa/sw.js` `CACHE`
+- `package-lock.json` (root and `packages[""]`)
+- `ROADMAP.md` 「目前版本」
 - Inserts a dated stub into `CHANGELOG.md` (fill in content manually)
 
-Run this once per PR, in the same commit that introduces the feature or fix.
+Run this once per PR that changes anything under `pwa/` the app can load (everything but the dev server `pwa/server.cjs` and the migrations in `pwa/db/`), in the same commit that introduces the feature or fix. Docs-, test- and CI-only PRs do not bump.
+
+This is not optional: since INFRA-107 the service worker serves one version's HTML and code from its cache and never refreshes them, so a new `CACHE` name is the only way a change reaches installed apps. CI enforces it (INFRA-108): the `build-check` job runs `scripts/check-version-bump.mjs`, which fails a PR whose `pwa/` changes keep the base branch's `CACHE` or do not raise the version. `tests/unit/bumpLib.test.js` checks that the committed markers agree and that every CHANGELOG version appears once. When two PRs bump from the same version, the second must merge the new base and bump again after the first merges: its check fails once its CI re-runs, which a push or an update from the base triggers (a merge to the base does not re-run it, so check that the PR's last CI run is against the current base).
 
 ## 15. Task Lifecycle
 
