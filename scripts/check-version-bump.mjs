@@ -19,13 +19,10 @@ if (!baseRef) {
 }
 
 const git = (...args) => execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
-const show = (ref, path) => {
-  try {
-    return git('show', `${ref}:${path}`);
-  } catch {
-    return null;
-  }
-};
+// Both files always exist on both sides. A file git cannot read (with CI's
+// partial clone, a base blob that failed to download) throws into the catch
+// below, so the check fails instead of passing against an empty base.
+const show = (ref, path) => git('show', `${ref}:${path}`);
 const fail = message => {
   console.error(`::error::${escapeWorkflowCommand(message)}`);
   process.exit(1);
@@ -35,22 +32,16 @@ try {
   // Changes this branch makes since it left the base (three dots: the merge
   // base), so commits that landed on the base meanwhile do not count. No rename
   // detection, so a file moved out of pwa/ counts as removed from it; -z keeps
-  // unusual file names unquoted.
-  const changedFiles = parseChangedFiles(git('diff', '--name-only', '--no-renames', '-z', `${baseRef}...HEAD`));
-  const basePackage = show(baseRef, 'package.json');
-  const headPackage = show('HEAD', 'package.json');
-  if (!headPackage) fail('package.json is missing at HEAD.');
-  const result = checkVersionBump({
-    changedFiles,
-    base: {
-      version: basePackage ? JSON.parse(basePackage).version : '0.0.0',
-      swSource: show(baseRef, 'pwa/sw.js'),
-    },
-    head: {
-      version: JSON.parse(headPackage).version,
-      swSource: show('HEAD', 'pwa/sw.js'),
-    },
+  // unusual file names unquoted; --no-relative keeps paths from the repository
+  // root even with `diff.relative` set and run from a subdirectory.
+  const changedFiles = parseChangedFiles(
+    git('diff', '--name-only', '--no-renames', '--no-relative', '-z', `${baseRef}...HEAD`),
+  );
+  const side = ref => ({
+    version: JSON.parse(show(ref, 'package.json')).version,
+    swSource: show(ref, 'pwa/sw.js'),
   });
+  const result = checkVersionBump({ changedFiles, base: side(baseRef), head: side('HEAD') });
   if (!result.ok) fail(result.message);
   console.log(result.message);
 } catch (error) {

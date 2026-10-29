@@ -189,7 +189,7 @@ npm run bump -- minor    # new feature, new page, new setting
 npm run bump -- major    # breaking data format change (rare)
 ```
 
-The script updates every versioned marker. It exits non-zero if any marker is missing; it may already have written some files then, so discard them (`git checkout -- .`) before retrying:
+The script updates every versioned marker. It works out every file's new content before writing any, so if a marker is missing it exits non-zero and writes nothing:
 - `package.json` `version` — single source of truth
 - `pwa/js/version.js` `APP_VERSION`
 - `pwa/sw.js` `CACHE`

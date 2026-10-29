@@ -257,6 +257,10 @@
     - 兩個 PR 從同一個版本 bump：先合併的一個讓 main 前進，另一個的 CI 重新執行時版本不比 main 新而失敗，要再 bump 一次（GitHub 在 base 改變時會重新計算 merge commit；沒有重新執行的舊結果仍可能是綠的，合併前確認 CI 是針對目前的 main）。
     - Unit：`versionCheck.test.js`（不需要 bump 的變更、沒有 bump 時失敗並列出檔案、patch／minor／major、版本倒退、`CACHE` 與 `package.json` 不一致、部署檔案的判斷、版本比較，以及在暫存的 git repo 中照 CI 的方式執行腳本）。
     - 獨立 review（Codex 額度用完）：沒有 P1；P2（rename 移出 `pwa/` 與非 ASCII 檔名會漏掉）以 `--no-renames -z` 修正並補 unit test；P3 都已處理（AGENTS.md 兩處不正確的敘述、訊息加上「先合併最新的 base」、prerelease 版本、測試不受開發者 git 設定影響、從 `HEAD` 讀、`blob:none`、migration 不需 bump）。
+    - 第二輪獨立 review：沒有 P1；P2 兩項已修正並補 unit test：
+      - 讀不到 base 的檔案時（CI 的 partial clone 下載失敗）原本當成「沒有這個檔案」，以版本 0.0.0 比對而讓沒有 bump 的 PR 通過；改為讀不到就以 `::error::` 失敗。
+      - AGENTS.md 寫 bump 失敗時以 `git checkout -- .` 復原，會連同還沒 commit 的修改一起丟掉；改為 `scripts/bump.mjs` 先算出所有檔案的新內容、全部成功才寫入，失敗時什麼都不寫（`bumpLib.test.js` 在暫存目錄執行腳本確認）。
+      - P3：`git diff` 加上 `--no-relative`，本機設定 `diff.relative` 並在 `pwa/` 底下執行時也讀到完整路徑。
     - 回測：對最近 40 個合併的 PR 執行（PR 的 commit 對合併前的 main），全部通過：改到 `pwa/` 的都有 bump，文件與 CI 的 PR 都不需要。
     - 文件：AGENTS.md §14（原本寫 `APP_VERSION` 在 `app.js`、只列三個檔案；改為 bump 的所有位置、什麼 PR 要 bump、CI 的檢查）、INFRA-107 變更說明。
 

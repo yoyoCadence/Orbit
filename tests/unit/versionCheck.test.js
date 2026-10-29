@@ -89,14 +89,15 @@ describe('INFRA-108 version check', () => {
     // or system config (signing, hooks, default branch).
     const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')));
     Object.assign(env, { GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' });
-    const run = (...args) => execFileSync(args[0], args.slice(1), { cwd: dir, env, encoding: 'utf8', stdio: 'pipe' });
+    const runIn = (cwd, ...args) => execFileSync(args[0], args.slice(1), { cwd, env, encoding: 'utf8', stdio: 'pipe' });
+    const run = (...args) => runIn(dir, ...args);
     const write = (path, content) => {
       mkdirSync(dirname(join(dir, path)), { recursive: true });
       writeFileSync(join(dir, path), content);
     };
-    const check = () => {
+    const check = (base = 'main', cwd = dir) => {
       try {
-        return { ok: true, output: run(process.execPath, script, 'main') };
+        return { ok: true, output: runIn(cwd, process.execPath, script, base) };
       } catch (error) {
         return { ok: false, output: `${error.stdout}${error.stderr}` };
       }
@@ -144,6 +145,20 @@ describe('INFRA-108 version check', () => {
       const unicode = check();
       expect(unicode.ok).toBe(false);
       expect(unicode.output).toContain('pwa/js/圖.js');
+      // Paths stay relative to the root when run from pwa/ with diff.relative.
+      run('git', 'config', 'diff.relative', 'true');
+      expect(check('main', join(dir, 'pwa')).ok).toBe(false);
+      run('git', 'config', '--unset', 'diff.relative');
+
+      // A base file git cannot read fails the check instead of counting as an
+      // empty base (version 0.0.0, no CACHE), which would pass any PR.
+      run('git', 'checkout', '-q', '-b', 'no-files', 'main');
+      run('git', 'rm', '-q', 'package.json', 'pwa/sw.js');
+      run('git', 'commit', '-q', '--no-gpg-sign', '-m', 'a base git cannot read the files of');
+      run('git', 'checkout', '-q', 'unicode');
+      const unreadable = check('no-files');
+      expect(unreadable.ok).toBe(false);
+      expect(unreadable.output).toMatch(/^::error::The version check could not run: /m);
 
       // A version that is not x.y.z is reported, not a stack trace.
       run('git', 'checkout', '-q', '-b', 'beta', 'main');
