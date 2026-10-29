@@ -82,8 +82,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # INFRA-108: the base branch's history, to compare the PR against it.
+          # INFRA-108: the base branch's history, to compare the PR against it;
+          # trees only (the art makes the full pack ~145 MB), blobs on demand.
           fetch-depth: 0
+          filter: blob:none
 
       - name: Verify critical files exist
         run: |

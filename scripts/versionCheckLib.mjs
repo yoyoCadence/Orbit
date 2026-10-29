@@ -5,12 +5,26 @@
 // its cache and never refreshes them, so a new CACHE name (`npm run bump`) is
 // the only way a change to the deployed `pwa/` reaches installed apps.
 
-// Files under pwa/ that GitHub Pages serves but no browser ever runs.
-const NOT_SERVED_TO_USERS = new Set(['pwa/server.cjs']);
+// Files under pwa/ that GitHub Pages serves but the app never loads: the dev
+// server and the database migrations (applied by hand, never fetched).
+const NOT_LOADED_BY_THE_APP = [file => file === 'pwa/server.cjs', file => file.startsWith('pwa/db/')];
 
-/** The changed paths that ship to users: everything under pwa/ but the dev server. */
+/** The changed paths that ship to users: everything under pwa/ the app can load. */
 export function deployedChanges(changedFiles) {
-  return changedFiles.filter(file => file.startsWith('pwa/') && !NOT_SERVED_TO_USERS.has(file));
+  return changedFiles.filter(file => file.startsWith('pwa/') && !NOT_LOADED_BY_THE_APP.some(skip => skip(file)));
+}
+
+/** The paths in `git diff --name-only --no-renames -z` output (NUL-separated, unquoted). */
+export function parseChangedFiles(nulSeparated) {
+  return nulSeparated.split('\0').filter(Boolean);
+}
+
+/**
+ * Escape a message for a GitHub Actions workflow command (`::error::…`), as
+ * the Actions toolkit does, so a file name cannot start a command of its own.
+ */
+export function escapeWorkflowCommand(message) {
+  return String(message).replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
 }
 
 /** Compare two `x.y.z` versions: negative, zero or positive like a sort comparator. */
@@ -44,7 +58,7 @@ export function checkVersionBump({ changedFiles, base, head }) {
     return { ok: true, message: 'No deployed file under pwa/ changed: no bump needed.' };
   }
   const listed = deployed.slice(0, 10).join(', ') + (deployed.length > 10 ? `, … (${deployed.length} files)` : '');
-  const fix = 'Run `npm run bump -- patch` (or minor) in this PR, fill in the CHANGELOG, and commit.';
+  const fix = 'Merge the latest base branch into this PR first, then run `npm run bump -- patch` (or minor), fill in the CHANGELOG, and commit.';
   const baseCache = cacheName(base.swSource);
   const headCache = cacheName(head.swSource);
   if (!headCache) {
