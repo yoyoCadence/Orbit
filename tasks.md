@@ -221,13 +221,6 @@
 
 ## In Progress
 
-- [ ] **INFRA-108** CI 檢查改了 `pwa/` 的 PR 有沒有 bump
-  - 問題（TEST-003 獨立 review 發現，2026-10-28）：INFRA-107 之後新的 `CACHE` 名稱是新的 HTML 與程式到達使用者的唯一方式。改了 `pwa/` 卻沒有 `npm run bump`，或兩個 PR 從同一個版本 bump 後在 CHANGELOG 衝突時併成同一個版本，已安裝的使用者都拿不到。`bumpLib.test.js` 只能檢查版本一致與 CHANGELOG 不重複，看不到「沒有 bump」。
-  - 方向：CI 比對 PR 與 base：`pwa/` 有變更時 `sw.js` 的 `CACHE` 必須與 base 不同（純文件、測試的 PR 不受影響）。
-  - **改 CI 設定，實作前需使用者核准**（AGENTS.md §3）。
-  - **2026-10-29 使用者核准**（「INFRA-108 ok 請做」）。
-  - In progress（2026-10-29）：TEST-003（#212）合併後開始（Backlog → In Progress）。
-
 - [ ] **PRO-014Q** 開發者面板的 backup 不應擋住其他帳號或非 Pro 模擬的 entitlement refresh
   - 問題（PR #158 Codex review 指出，2026-10-18 確認）：`storage.refreshProEntitlement()` 只要 `FLAG_DEV_BACKUP` 存在就直接 return。這個 backup 也由等級模擬器建立，且 `storage.clearAll()` 登出時不會清除。開發者登出後換另一個帳號，該帳號的 refresh 會一直被跳過，在 `server` source 下 fail closed，直到手動重設。
   - 影響：只影響使用過開發者面板的裝置。
@@ -250,6 +243,21 @@
 ---
 
 ## Done
+
+- [x] **INFRA-108** CI 檢查改了 `pwa/` 的 PR 有沒有 bump
+  - 問題（TEST-003 獨立 review 發現，2026-10-28）：INFRA-107 之後新的 `CACHE` 名稱是新的 HTML 與程式到達使用者的唯一方式。改了 `pwa/` 卻沒有 `npm run bump`，或兩個 PR 從同一個版本 bump 後在 CHANGELOG 衝突時併成同一個版本，已安裝的使用者都拿不到。`bumpLib.test.js` 只能檢查版本一致與 CHANGELOG 不重複，看不到「沒有 bump」。
+  - 方向：CI 比對 PR 與 base：`pwa/` 有變更時 `sw.js` 的 `CACHE` 必須與 base 不同（純文件、測試的 PR 不受影響）。
+  - **改 CI 設定，實作前需使用者核准**（AGENTS.md §3）。
+  - **2026-10-29 使用者核准**（「INFRA-108 ok 請做」）。
+  - In progress（2026-10-29）：TEST-003（#212）合併後開始（Backlog → In Progress）。
+  - 完成（2026-10-29；CI 與工具，不 bump）：
+    - `scripts/versionCheckLib.mjs`（規則）＋`scripts/check-version-bump.mjs`（讀 git）：PR 相對 base（`origin/<base>...HEAD`）改到 `pwa/`（`pwa/server.cjs` 除外，那是開發用的伺服器）時，`sw.js` 的 `CACHE` 必須與 base 不同、版本必須比 base 新、`CACHE` 必須是 `orbit-v<package.json 版本>`。沒有改到 `pwa/` 的 PR（文件、測試、CI）不受影響。失敗訊息列出改到的檔案與修正方法（`npm run bump`）。
+    - `.github/workflows/ci.yml`：`build-check` job 以 `fetch-depth: 0` checkout，pull request 時執行檢查（base 分支名稱經由環境變數傳入，不直接嵌在指令裡）。仍是原本的四個 CI 項目。
+    - 兩個 PR 從同一個版本 bump：先合併的一個讓 main 前進，另一個的 CI 重新執行時版本不比 main 新而失敗，要再 bump 一次（GitHub 在 base 改變時會重新計算 merge commit；沒有重新執行的舊結果仍可能是綠的，合併前確認 CI 是針對目前的 main）。
+    - Unit：`versionCheck.test.js`（不需要 bump 的變更、沒有 bump 時失敗並列出檔案、patch／minor／major、版本倒退、`CACHE` 與 `package.json` 不一致、部署檔案的判斷、版本比較，以及在暫存的 git repo 中照 CI 的方式執行腳本）。
+    - 回測：對最近 40 個合併的 PR 執行（PR 的 commit 對合併前的 main），全部通過：改到 `pwa/` 的都有 bump，文件與 CI 的 PR 都不需要。
+    - 文件：AGENTS.md §14（原本寫 `APP_VERSION` 在 `app.js`、只列三個檔案；改為 bump 的所有位置、什麼 PR 要 bump、CI 的檢查）、INFRA-107 變更說明。
+
 
 - [x] **TEST-003** 檢視最近的 PR（#207–#211），補上遺漏的測試與測試文件
   - 來源：使用者 2026-10-28 要求檢視最近的 PR、檢查遺漏，必要時更新測試相關程式。
