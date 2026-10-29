@@ -241,6 +241,26 @@ Avoid:
 | `personalSpace/ui/floorMapPanel.js` | 地圖視窗 HTML 渲染（樓層漸進揭露、badge、可點房間） |
 | `pages/personalSpace.js` | 頁面事件處理：場景切換器、地圖視窗點擊、interaction bus |
 
+上表是 legacy runtime（仍保留為 fallback）。預設的是 V2（`v2/config.js` 的 `DEFAULT_PERSONAL_SPACE_RUNTIME`，以 `v2/featureFlag.js` 切換），模組在 `personalSpace/v2/`：
+
+| 模組 | 職責 |
+|------|------|
+| `config.js`、`featureFlag.js` | 版本、ruleset、reward epoch 等常數；V2／legacy runtime 的切換 |
+| `stateSchema.js`、`store.js`、`migrateState.js` | V2 state 的格式與 normalize、以 owner 區分的本機讀寫、legacy state 轉成 V2 |
+| `sessionAdapter.js` | 把 Session 轉成 reward 判斷用的格式（日期、刪除、epoch、有效結果） |
+| `questEngine.js`、`projectEngine.js`、`momentum.js` | 每日 Main Quest（每個日期選出一筆）、Workspace Upgrade 專案進度、有效日的氛圍狀態 |
+| `rewardRules.js`、`rewardLedger.js`、`reconciler.js` | reward 種類與數值、可逆且去重的 ledger（tombstone）、依 Session 重新計算並與遠端合併 |
+| `controller.js` | 載入 → reconcile → 儲存的流程與頁面要的 view model 來源；`consumePersonalSpaceV2Reveal` 等 |
+| `viewModels.js`、`revealSelectors.js` | 時段、天氣、remind 目標等畫面資料；判斷 reveal 是否為進度（撤銷的不算） |
+| `companionEngine.js`、`content/companionDialogue.js` | Companion 的狀態與反應、唯一的台詞表（首頁卡片、toast、完整頁面共用，AI-204） |
+| `content/worldLabels.js` | ledger 項目的顯示名稱與關係階段名稱（AI-202B1） |
+| `content/assetManifest.js`、`content/characterCatalog.js` | 素材路徑與 placement（Blender 輸出、測試檢查）、畫風／房間風格／裝飾／時段的解析、Q 版角色目錄 |
+| `remindWindow.js` | Companion `remind` 的時段與窗外時段邊界的重新 render 計時（AI-203B、PS-251B） |
+| `runtime/pixiSceneRuntime.js` | lazy 載入的 PixiJS 8 場景；失敗時 poster fallback（PS-211B） |
+| `ui/orbitWindow.js` | 首頁與完整頁面的 Orbit Window（poster、reveal、窗外疊層、照片牆） |
+| `ui/appearancePicker.js`、`ui/assetGallery.js` | Edit Mode 的風格／房間／裝飾／角色選擇（PS-250B–G）、開發者用的全部素材一覽（PS-250A） |
+| `telemetry.js` | 事件 schema（欄位只接受列舉值）與本機 telemetry adapter |
+
 ### Key State Fields
 
 - `selectedSceneId` — 玩家選擇的主場景（非 memory scene）

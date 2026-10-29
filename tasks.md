@@ -14,6 +14,29 @@
 
 ## Backlog
 
+- [ ] **INFRA-110** `leaderboard_view` 的權限（AUDIT-001 發現）
+  - 問題：Postgres 的 view 預設以擁有者的權限執行，不受 `profiles`／`sessions` 的 RLS 限制（`005_leaderboard.sql` 的註解「Views inherit table RLS by default」不正確）。view 只靠 `WHERE p.is_public = true` 限制列；migration 只 `GRANT SELECT ... TO authenticated`，但 Supabase 的預設權限（`ALTER DEFAULT PRIVILEGES ... TO anon, authenticated`）可能也讓 `anon` 讀得到，屆時未登入者可讀所有公開使用者的 `user_id`、名稱、XP、連勝、`created_at`、`avatar_url`。
+  - 需要擁有者確認（agent 沒有連線正式資料庫）：在 Supabase SQL editor 執行 `select grantee, privilege_type from information_schema.role_table_grants where table_name = 'leaderboard_view';`，看 `anon` 是否有 `SELECT`。
+  - 方向（改 schema，需核准）：`REVOKE ALL ON leaderboard_view FROM anon, public`；考慮 `security_invoker = true`（需要另一條讓 authenticated 讀公開 profile 的 policy）或改為 `SECURITY DEFINER` RPC；是否還要回傳 `user_id`（目前只用來標示「你」，可改為回傳 `is_me`）。相關：PRO-014E。
+
+- [ ] **INFRA-111** service worker 的圖片分支：下載時不用 HTTP cache 的舊檔（AUDIT-001 發現）
+  - 問題：圖片走 cache-first，快取沒有時直接 `fetch(e.request)`。按需下載的素材（房間風格、裝飾、角色）若瀏覽器的 HTTP cache 還有上一版的同名檔（GitHub Pages `max-age=600`），會把舊圖存進這一版的快取，直到下一次 bump。JS／CSS 已改為 `cache: 'no-cache'`（INFRA-105／107）。
+  - 方向：圖片快取沒有時也以 `cache: 'no-cache'` 取得（代價：每張圖第一次多一次 revalidation，304 時很小）。屬 service worker 的快取行為（部署行為），實作前附變更說明。
+
+- [ ] **INFRA-112** CI 加固與 Node 版本（AUDIT-001 發現）
+  - `ci.yml` 沒有 `permissions:`，`GITHUB_TOKEN` 用 repo 預設權限；改為 `permissions: contents: read`（`deploy.yml` 已有）。
+  - Node 20 → 22：vitest 1.6 有 critical 的 advisory（vitest、tinypool、vite、esbuild，只在開發與 CI，不會部署），修正版 vitest 5 需要 Node ≥ 22.12。升級 vitest 是 major，`environmentMatchGlobs` 等設定要改。
+  - 改 CI 設定，需核准。
+
+- [ ] **INFRA-113** 部署內容與 CSP（AUDIT-001 發現）
+  - `deploy.yml` 上傳整個 `pwa/`，GitHub Pages 也公開 `pwa/db/*.sql`（migration）與 `pwa/server.cjs`。repo 本身是公開的，影響小；可改為上傳前排除。
+  - `index.html` 沒有 Content-Security-Policy。可加 `<meta http-equiv="Content-Security-Policy">`，限制 script 只來自自己與 cdnjs、連線只到 Supabase，作為 XSS 的第二層防護。要先列出 app 用到的所有來源（Supabase、cdnjs、Pixi、data:/blob: 圖片），並以 e2e 確認。
+  - 改部署設定，需核准。
+
+- [ ] **REPO-001** Repo 清理（AUDIT-001 發現，需擁有者決定）
+  - `output/`：30 個 tracked 檔、約 58 MB 的舊 proof 圖，app 與測試都沒有使用（只在 `skills/orbit-idle-window-assets` 的說明中當輸出目錄、eslint 忽略）。可刪除（歷史仍保留在 git）。
+  - 遠端約 160 個已合併或過時的分支、過時的 draft PR #154：可清理。
+
 - [ ] **HW-112** 佐證圖片雲端同步（Supabase Storage）
   - Goal: upload proof photos to Supabase Storage so they persist across devices and app reinstalls.
   - Scope: `platform/badge.js` → new `pwa/js/platform/proofStorage.js` adapter; bucket `orbit-proof`, path `{user_id}/{sessionId}.jpg`; RLS: SELECT/INSERT/DELETE scoped to `auth.uid()`; use existing `compressImage()` output; graceful fallback to localStorage-only for guests.
@@ -243,6 +266,20 @@
 ---
 
 ## Done
+
+- [x] **AUDIT-001** 整體性的完整檢查
+  - 來源：使用者 2026-10-29 要求（「做整體性的完整檢查 token時間不限制」）。
+  - 範圍：安全（XSS、外部 script、Supabase RLS 與 grant、service worker、開發用 server）、依賴套件、測試涵蓋、CI、部署內容、文件與實際程式是否一致。低風險的直接修正；需要核准的（schema／migration、CI、部署、auth）記為 Backlog，不在這裡改。
+  - In progress（2026-10-29）：INFRA-108（#213）合併後開始。
+  - 完成（2026-10-29，v1.41.2）：
+    - XSS：`dayCycle.js` 的昨日報告（任務名稱與 emoji）與 `profile.js` 的稱號主題按鈕（自訂主題的 key、圖示、名稱）沒有 escape，改用 `escHtml`。其他使用者的資料（排行榜的名稱、頭像）原本就有 escape；其餘未 escape 的值是常數或 app 自己產生的（emoji 清單、`iconImg` 的 data URL、數字）。
+    - 外部 script：成長報告 PDF 從 cdnjs 載入的 jsPDF 2.5.1 與 html2canvas 1.4.1 加上 SRI（`integrity` sha512＋`crossorigin`；值與 npm 套件 dist 檔的 hash 相同，也與 cdnjs 公布的 SRI 相同）。載入失敗時移除 `<script>` 並忘掉這次載入，再按一次會重新下載（以前留下的 tag 讓第二次直接 resolve，函式庫卻不存在，要重新開啟 app）；同時進行的兩次只載入一次。
+    - `pwa/server.cjs`（只在本機）：`path.join` 之後檢查仍在 `pwa/` 底下，`GET /../package.json`（curl `--path-as-is`）以前會回傳 repo 的檔案；補上 `.webp`、`.gif` 的 Content-Type（以前是 `text/plain`）。
+    - Supabase：每張表都 `ENABLE ROW LEVEL SECURITY`，四種 policy 都只給 `authenticated`，INSERT 有 `WITH CHECK`、UPDATE 有 `USING`＋`WITH CHECK`；`pro_entitlements` 是 CLAUDE.md 的 server-owned 例外（REVOKE＋只有 SELECT，migration 有註解）；Storage 的 policy 都檢查 `storage.foldername(name)[1]`（排行榜頭像的公開讀取限 `is_public` 的使用者）；沒有 `FOR ALL`；client 只有 publishable key，沒有 `service_role`。發現的問題記為 INFRA-110（需核准）。
+    - 依賴：`npm audit fix --package-lock-only`（不需 major 升級的部分）：@humanfs/node、@xmldom/xmldom、brace-expansion、js-yaml、nanoid、postcss、source-map-js、undici（都是 devDependencies 的間接依賴，不會部署）。剩下的 vitest 1.6 → 5（critical，只在開發與 CI）需要 Node ≥ 22，記為 INFRA-112。
+    - 文件：README（不再寫死版本號、`pwa/db/` 不再列到 009、排行榜「不暴露 `user_id`」不正確、基礎建設加上 E2E 與 INFRA-108）、ROADMAP（「近期（v1.23.x）」、已完成補上 v1.31–v1.41）、AGENTS.md §17 補上 V2 的模組表（原本只有 legacy）、兩份 V2 設計文件的檔案規劃加上「as built」說明。`scripts/bump.mjs` 開頭的說明改正（INFRA-108 review 的 P3）。
+    - 測試：`dayCycle.test.js`、`profile.test.js`（名稱含 markup 時以文字顯示）、`exportPdf.test.js`（SRI 屬性、失敗後重試、產生 PDF）、`devServer.test.js`（不回傳 `pwa/` 以外的檔案、圖片類型）。修改前的程式上新的測試都失敗。Unit 1413、e2e 79 全部通過（e2e 會用修改後的 `server.cjs`）。
+    - 其他觀察（沒有改）：unit 的 coverage 83.5%，較低的是 `header`、`proofSheet`、`tour`、`export`、`theme`、`authFlow`；延後載入的 JS 預算剩 2,223 B（這次的修改不在預算內）；測試輸出中的錯誤堆疊是刻意測試錯誤路徑的預期輸出。
 
 - [x] **INFRA-108** CI 檢查改了 `pwa/` 的 PR 有沒有 bump
   - 問題（TEST-003 獨立 review 發現，2026-10-28）：INFRA-107 之後新的 `CACHE` 名稱是新的 HTML 與程式到達使用者的唯一方式。改了 `pwa/` 卻沒有 `npm run bump`，或兩個 PR 從同一個版本 bump 後在 CHANGELOG 衝突時併成同一個版本，已安裝的使用者都拿不到。`bumpLib.test.js` 只能檢查版本一致與 CHANGELOG 不重複，看不到「沒有 bump」。

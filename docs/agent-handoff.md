@@ -143,7 +143,8 @@
     - 本機開發：service worker 也會回傳快取，改了 HTML／JS 要 Shift＋重新整理或 DevTools 的「Update on reload」（README 本機開發）。
 36. **TEST-003：完成**（2026-10-28，只改測試）：使用者要求檢視 #207–#211。補上 service worker 的邊界情況、房間風格的窗外、版本一致性的 unit test，重寫 `tests/e2e/README.md`（e2e 的執行方式與注意事項都在這裡）。檢查結果與補上的項目見 `tasks.md`。
 37. **INFRA-108：完成**（2026-10-29，使用者核准）：CI 的 `build-check` 執行 `scripts/check-version-bump.mjs`，改了 `pwa/` 卻沒有 bump（或版本沒有比 main 新）的 PR 會失敗。兩個 PR 從同一個版本 bump 時，後合併的要再 bump 一次。AGENTS.md §14 已更新。
-38. **下一步**：Backlog 其餘項目需要核准或屬高風險（HW-112 的 Storage migration、INFRA-101／PS-211D 的部署行為、PRO-014* 的 entitlement）。使用者原則：以「任務確實完成」為準，合併是後話；做不到的先寫進 `tasks.md`。
+38. **AUDIT-001：完成**（2026-10-29，v1.41.2）：整體性的完整檢查。已修：兩處 XSS（昨日報告、稱號主題按鈕）、PDF 函式庫的 SRI 與失敗後重試、本機 `server.cjs` 的路徑檢查、不需 major 的 devDependencies advisory、README／ROADMAP／AGENTS §17 與 V2 設計文件。需核准的記為 Backlog：INFRA-110（`leaderboard_view` 的權限，需擁有者在 Supabase 確認 `anon` 的 grant）、INFRA-111（圖片下載不用 HTTP cache 的舊檔）、INFRA-112（CI `permissions`、Node 22＋vitest 5）、INFRA-113（部署內容、CSP）、REPO-001（`output/`、舊分支）。
+39. **下一步**：Backlog 其餘項目需要核准或屬高風險（HW-112 的 Storage migration、INFRA-101／PS-211D 的部署行為、PRO-014* 的 entitlement）。使用者原則：以「任務確實完成」為準，合併是後話；做不到的先寫進 `tasks.md`。
 
 其他：
 
