@@ -14,11 +14,6 @@
 
 ## Backlog
 
-- [ ] **INFRA-108** CI 檢查改了 `pwa/` 的 PR 有沒有 bump
-  - 問題（TEST-003 獨立 review 發現，2026-10-28）：INFRA-107 之後新的 `CACHE` 名稱是新的 HTML 與程式到達使用者的唯一方式。改了 `pwa/` 卻沒有 `npm run bump`，或兩個 PR 從同一個版本 bump 後在 CHANGELOG 衝突時併成同一個版本，已安裝的使用者都拿不到。`bumpLib.test.js` 只能檢查版本一致與 CHANGELOG 不重複，看不到「沒有 bump」。
-  - 方向：CI 比對 PR 與 base：`pwa/` 有變更時 `sw.js` 的 `CACHE` 必須與 base 不同（純文件、測試的 PR 不受影響）。
-  - **改 CI 設定，實作前需使用者核准**（AGENTS.md §3）。
-
 - [ ] **HW-112** 佐證圖片雲端同步（Supabase Storage）
   - Goal: upload proof photos to Supabase Storage so they persist across devices and app reinstalls.
   - Scope: `platform/badge.js` → new `pwa/js/platform/proofStorage.js` adapter; bucket `orbit-proof`, path `{user_id}/{sessionId}.jpg`; RLS: SELECT/INSERT/DELETE scoped to `auth.uid()`; use existing `compressImage()` output; graceful fallback to localStorage-only for guests.
@@ -225,6 +220,13 @@
 ---
 
 ## In Progress
+
+- [ ] **INFRA-108** CI 檢查改了 `pwa/` 的 PR 有沒有 bump
+  - 問題（TEST-003 獨立 review 發現，2026-10-28）：INFRA-107 之後新的 `CACHE` 名稱是新的 HTML 與程式到達使用者的唯一方式。改了 `pwa/` 卻沒有 `npm run bump`，或兩個 PR 從同一個版本 bump 後在 CHANGELOG 衝突時併成同一個版本，已安裝的使用者都拿不到。`bumpLib.test.js` 只能檢查版本一致與 CHANGELOG 不重複，看不到「沒有 bump」。
+  - 方向：CI 比對 PR 與 base：`pwa/` 有變更時 `sw.js` 的 `CACHE` 必須與 base 不同（純文件、測試的 PR 不受影響）。
+  - **改 CI 設定，實作前需使用者核准**（AGENTS.md §3）。
+  - **2026-10-29 使用者核准**（「INFRA-108 ok 請做」）。
+  - In progress（2026-10-29）：TEST-003（#212）合併後開始（Backlog → In Progress）。
 
 - [ ] **PRO-014Q** 開發者面板的 backup 不應擋住其他帳號或非 Pro 模擬的 entitlement refresh
   - 問題（PR #158 Codex review 指出，2026-10-18 確認）：`storage.refreshProEntitlement()` 只要 `FLAG_DEV_BACKUP` 存在就直接 return。這個 backup 也由等級模擬器建立，且 `storage.clearAll()` 登出時不會清除。開發者登出後換另一個帳號，該帳號的 refresh 會一直被跳過，在 `server` source 下 fail closed，直到手動重設。
