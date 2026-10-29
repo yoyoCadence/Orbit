@@ -11,6 +11,8 @@ const MIME = {
   '.js':   'application/javascript',
   '.json': 'application/json',
   '.png':  'image/png',
+  '.webp': 'image/webp',
+  '.gif':  'image/gif',
   '.svg':  'image/svg+xml',
   '.ico':  'image/x-icon',
 };
@@ -21,6 +23,14 @@ http.createServer((req, res) => {
 
   const filePath = path.join(ROOT, urlPath);
   const ext = path.extname(filePath);
+
+  // Only files under pwa/: a raw request such as `GET /../package.json` (sent
+  // as is by curl --path-as-is or a script) must not read the rest of the disk.
+  if (!filePath.startsWith(ROOT + path.sep)) {
+    res.writeHead(404);
+    res.end('Not found');
+    return;
+  }
 
   fs.readFile(filePath, (err, data) => {
     if (err) {

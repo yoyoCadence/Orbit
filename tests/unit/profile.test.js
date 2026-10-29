@@ -283,6 +283,21 @@ describe('renderProfile: template picker', () => {
     expect(btns.length).toBe(5); // 4 built-in + 1 custom
     expect(Array.from(btns).some(b => b.textContent.includes('我的英雄'))).toBe(true);
   });
+
+  it('shows a custom template name and icon as text, not markup', () => {
+    // Free user too: the locked buttons render the same name.
+    for (const pro of [true, false]) {
+      mockStorage.isProUser.mockReturnValue(pro);
+      mockState.user.customTemplates = {
+        custom_123: { name: '<img src=x onerror="window.__xss=1">英雄', icon: '<b>', tiers: [[1, '見習英雄']] },
+      };
+      const c = makeContainer();
+      renderProfile(c);
+      const btn = c.querySelector('[data-template="custom_123"]');
+      expect(btn.querySelector('img, b'), `pro=${pro}`).toBeNull();
+      expect(btn.textContent).toContain('<b> <img src=x onerror="window.__xss=1">英雄');
+    }
+  });
 });
 
 // ─── Template editor modal: open / add new (#15) ────────────────────────────

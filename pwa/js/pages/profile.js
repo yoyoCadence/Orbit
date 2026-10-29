@@ -83,8 +83,8 @@ export function renderProfile(container) {
     if (!isPro) {
       return `
         <div class="title-tmpl-item">
-          <button class="title-tmpl-btn ${isActive ? 'active' : ''}" data-template="${key}" data-locked="true">
-            ${tmpl.icon} ${tmpl.name}
+          <button class="title-tmpl-btn ${isActive ? 'active' : ''}" data-template="${escHtml(key)}" data-locked="true">
+            ${escHtml(tmpl.icon)} ${escHtml(tmpl.name)}
             <span class="pro-badge--inline" style="margin-left:4px">✦ Pro</span>
           </button>
         </div>
@@ -92,10 +92,10 @@ export function renderProfile(container) {
     }
     return `
       <div class="title-tmpl-item">
-        <button class="title-tmpl-btn ${isActive ? 'active' : ''}" data-template="${key}">
-          ${tmpl.icon} ${tmpl.name}
+        <button class="title-tmpl-btn ${isActive ? 'active' : ''}" data-template="${escHtml(key)}">
+          ${escHtml(tmpl.icon)} ${escHtml(tmpl.name)}
         </button>
-        <button class="title-tmpl-edit-btn" data-edit-template="${key}" title="編輯主題">✏️</button>
+        <button class="title-tmpl-edit-btn" data-edit-template="${escHtml(key)}" title="編輯主題">✏️</button>
       </div>
     `;
   }).join('');

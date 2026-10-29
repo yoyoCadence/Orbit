@@ -4,13 +4,13 @@
 
 > 2026-07-31 HW-105 sync note: v1.23.0 已完成 device-local achievement photo wall；使用者可從本機佐證選一張展示在 Personal Space，共用 poster／Pixi 相框並在圖片不可用時安全 fallback，未新增 auth／schema 依賴。
 
-目前版本：**v1.41.1**
+目前版本：**v1.41.2**
 
 這份文件記錄 Orbit 的公開功能規劃方向。功能依優先順序排列，會隨專案進展持續更新。
 
 ---
 
-## 近期（v1.23.x）
+## 近期
 
 - **Personal Space V2 production acceptance（PS-243）** — PS-242 已在 v1.22.0 交付正式 3:2 背景、主角與 Companion 狀態素材、天氣疊圖、共用 manifest 與資產預算 gate。PS-243 的瀏覽器 baseline、鍵盤／reduced-motion／telemetry 驗證與可重現 asset／perf runner 已進 CI；低階手機實測、installed PWA、雙帳號與螢幕閱讀器等 human gate 仍待人工完成。
 
@@ -36,6 +36,10 @@
 
 ## 已完成
 
+- v1.41.x — **窗外隨時段變化（PS-251B）**：晨間與傍晚的窗外疊層，開著 app 跨過時段時準時更新；service worker 每次開啟都用同一版的 HTML 與程式（INFRA-105、INFRA-107）
+- v1.39.0–v1.40.x — **夥伴關係階段（AI-202B1／B2）**：依完成 Main Quest 的天數成長，到達新階段時有專屬的揭露，重新載入不重播
+- v1.32.0–v1.38.x — **「空間」的風格與房間（PS-250A–G）**：全 Q 版／全像素、夜晚版本、五套房間風格、每個房間 6 件可收起的裝飾、房間縮圖與下載失敗時的預設
+- v1.31.x — **Companion 台詞統一與溫和提醒（AI-203B、AI-204B）**
 - v1.30.0 — **Personal Space Blender 工作站精細化（PS-245）**：家具做出真實構造（抽屜把手、彎曲椅背與腳輪、鍵帽、螢幕 UI、紅線計畫板），房間加入木紋、地毯、壁燈、時鐘、捲簾與窗簾；相機與角色比例不變
 - v1.29.0 — **Personal Space Blender 工作站素材（PS-244）**：房間與 8 件 Workspace Upgrade 家具由同一個程序化 Blender 場景與相機渲染（toon＋輪廓線），接觸陰影隨家具移動、placement 由 3D 投影推得、角色依 1.7 m 校準，素材總量 −29%
 - v1.23.0 — **Personal Space achievement photo wall（HW-105）**：owner-scoped 本機佐證選取、Home／History 44px 控制、poster／Pixi 共用相框、圖片遺失 placeholder 與無 auth／schema 變更的隱私邊界

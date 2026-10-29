@@ -1046,6 +1046,8 @@ Also cover:
 
 ## 16. Exact expected file plan
 
+> **As built (2026-10-29 audit):** the shipped modules differ from this plan (for example there is no `index.js`, `runtimeMode.js` or `state.js`; the flag is `featureFlag.js`, the state is `stateSchema.js`/`store.js`/`migrateState.js`). AGENTS.md §17 lists the current `pwa/js/personalSpace/v2/` modules and what each owns. This section is kept as the original plan.
+
 Only files listed for a task should change in that task. Existing names may be adjusted once during PS-234 if repository inspection finds a smaller equivalent boundary, but responsibility must remain one-to-one.
 
 ### 16.1 New domain and adapter files

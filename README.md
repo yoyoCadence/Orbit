@@ -5,7 +5,7 @@
 Orbit 是一個以「行為分類 × 積分機制」為核心的 PWA。它不只幫你打卡，而是幫你分辨：**哪些行為真正讓你變強，哪些只是讓你「感覺有在做事」。**
 
 **線上版：** https://yoyocadence.github.io/Orbit/  
-**目前版本：** v1.23.1 — [查看版本歷史](CHANGELOG.md)  
+**目前版本：** 見 [版本歷史](CHANGELOG.md) 最上面一筆（`npm run bump` 維護，與 app 設定頁顯示的版本相同）  
 **技術：** 純 Vanilla JS（無框架）+ Supabase + PWA，可安裝到手機主畫面、離線可用  
 **免註冊試用：** 可用「遊客身份」直接開始，資料僅存本機，不需登入或後端
 
@@ -350,17 +350,7 @@ pwa/
 ├── sw.js
 ├── assets/
 │   └── style.css
-├── db/
-│   ├── 001_schema.sql
-│   ├── 002_rls_policies.sql
-│   ├── 003_storage.sql
-│   ├── 004_triggers.sql
-│   ├── 005_profiles_extra_cols.sql
-│   ├── 005_leaderboard.sql
-│   ├── 006_pro_status.sql
-│   ├── 007_streak_shield.sql
-│   ├── 008_streak_unlock.sql
-│   └── 009_focus_timer_pro.sql
+├── db/                 # Supabase migration（001_schema.sql 起，依編號在 Supabase 手動執行；各檔開頭寫明執行狀態）
 └── js/
     ├── config.js
     ├── supabase.js
@@ -406,7 +396,7 @@ pwa/
 
 - 普通模式 / 進階模式分開排名
 - 需主動 opt-in 才顯示在排行榜
-- 排行榜只顯示暱稱與等級，不暴露 email 或 `user_id`
+- 畫面只顯示暱稱、頭像與等級，不含 email；`leaderboard_view` 另外回傳 `user_id`，用來標示「你」那一列。migration 只授權給 `authenticated`；Supabase 的預設權限是否也讓未登入者讀得到，待 INFRA-110 確認
 
 ---
 
@@ -439,6 +429,8 @@ pwa/
 #### 基礎建設
 
 - [x] CI 單元 + 整合測試（Vitest）
+- [x] CI E2E 測試（Playwright，每個 PR 執行，失敗時上傳截圖）
+- [x] CI 檢查改了 `pwa/` 的 PR 有 `npm run bump`（INFRA-108）
 
 ---
 

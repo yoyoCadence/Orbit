@@ -5,7 +5,7 @@
 import { state }   from './state.js';
 import { storage, db } from './storage.js';
 import { calcDailyStats, processStreakForDate } from './engine.js';
-import { effectiveToday } from './utils.js';
+import { effectiveToday, escHtml } from './utils.js';
 import { renderPage, currentHash } from './router.js';
 import { showToast, showXPFloat } from './ui/feedback.js';
 import { updateHeader } from './ui/header.js';
@@ -259,8 +259,8 @@ export function showDailyReport(onDone) {
   const tasksHtml = topTasks.length
     ? topTasks.map(t => `
         <div class="rpt-task-row">
-          <span>${t.emoji}</span>
-          <span class="rpt-task-name">${t.name}</span>
+          <span>${escHtml(t.emoji)}</span>
+          <span class="rpt-task-name">${escHtml(t.name)}</span>
           <span class="rpt-task-xp">+${t.xp} XP</span>
         </div>`).join('')
     : '<p class="rpt-empty">昨天沒有完成的任務</p>';

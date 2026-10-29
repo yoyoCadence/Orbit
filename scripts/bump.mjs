@@ -7,7 +7,8 @@
  * APP_VERSION, pwa/sw.js CACHE, package-lock.json and ROADMAP.md, then prepends
  * a CHANGELOG stub. Fail-closed: every file's new content is worked out before
  * any is written, so if any versioned marker is missing the process exits
- * non-zero with nothing written, and a partial bump is never left behind.
+ * non-zero with nothing written (a write that fails partway, e.g. a full disk,
+ * can still leave some files bumped).
  */
 import { readFileSync, writeFileSync } from 'fs';
 import { resolve, dirname } from 'path';
