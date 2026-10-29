@@ -221,6 +221,11 @@
 
 ## In Progress
 
+- [ ] **AUDIT-001** 整體性的完整檢查
+  - 來源：使用者 2026-10-29 要求（「做整體性的完整檢查 token時間不限制」）。
+  - 範圍：安全（XSS、外部 script、Supabase RLS 與 grant、service worker、開發用 server）、依賴套件、測試涵蓋、CI、部署內容、文件與實際程式是否一致。低風險的直接修正；需要核准的（schema／migration、CI、部署、auth）記為 Backlog，不在這裡改。
+  - In progress（2026-10-29）：INFRA-108（#213）合併後開始。
+
 - [ ] **PRO-014Q** 開發者面板的 backup 不應擋住其他帳號或非 Pro 模擬的 entitlement refresh
   - 問題（PR #158 Codex review 指出，2026-10-18 確認）：`storage.refreshProEntitlement()` 只要 `FLAG_DEV_BACKUP` 存在就直接 return。這個 backup 也由等級模擬器建立，且 `storage.clearAll()` 登出時不會清除。開發者登出後換另一個帳號，該帳號的 refresh 會一直被跳過，在 `server` source 下 fail closed，直到手動重設。
   - 影響：只影響使用過開發者面板的裝置。
