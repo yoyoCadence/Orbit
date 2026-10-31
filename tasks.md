@@ -68,7 +68,15 @@
   - **為什麼 `PRO-014L` 是前置**：SUB-16 連勝解鎖目前在 client 端寫 `state.user.isPro`。切到 `server` source 後那個寫入不再有任何效果，連勝解鎖會靜默失效 —— cutover 不該挾帶一個功能迴歸。
   - 一併移除 `PRO-014C` 建立的 legacy 相容層（client 寫回 `trial_started_at`）—— cutover 後 legacy gate 不再被使用。**移除與旗標切換應在同一次變更內**，rollback 時也一起還原。
   - 依賴：`PRO-014J`、`PRO-014L`、`PRO-014O`（已於 v1.25.5 完成：cached-user 啟動也會 refresh projection）、`PRO-014P`（**擋 cutover**）；`PRO-014Q` 已完成（2026-10-31），實機驗證使用 [`docs/pro-test-accounts.md`](docs/pro-test-accounts.md) 的 5 個測試帳號，測試前先重跑其中的 SQL。
+  - **新增前置 `PRO-014R`（擋 cutover）**：`server` source 下終身付費但試用已過期的帳號被誤判為非 Pro。
   - **切換前要決定核准名單**（2026-10-31 發現）：PRO-014I 套用 011 時核准名單為 0 筆，沒有把 legacy 的 Pro 搬到 `pro_entitlements`。專案擁有者自己的帳號在 `profiles` 是終身 Pro（`is_pro = true`、`pro_expires_at` 為 NULL），但 `pro_entitlements` 沒有資料列；切到 `server` source 當天就會失去 Pro。切換前要由擁有者決定哪些帳號列入核准名單並寫入 `pro_entitlements`。
+
+- [ ] **PRO-014R** `server` source 下，終身付費但試用已過期的帳號被判定為非 Pro
+  - 問題（2026-10-31，PR #216 的獨立 review 以 `+orbit-lifetime` 測試帳號發現）：`my_pro_status()` 對終身帳號回傳 `is_active = true`、`expires_at = NULL`，以及只要曾開始試用就有的 `trial_ends_at`（已過去）。client 的 `entitlementExpiryMs()`（`pwa/js/platform/proEntitlement.js`）取兩者中較晚的日期當上限，只剩過期的試用日，`isProFromSnapshot()` 因此回傳 false。
+  - 影響：切到 `server` source 後，所有「先試用、後買終身方案」的使用者都會失去 Pro。目前 production 是 `legacy`，尚未受影響。
+  - 方向：`PRO-014N`（RPC 回傳 `is_pro`）可從根本消除歧義；或 RPC 對付費帳號不回傳 `trial_ends_at`；或 client 忽略在取得 snapshot 時就已結束的試用。RPC 變更屬 AGENTS.md §3 高風險，需先核准。
+  - 驗證：`docs/pro-test-accounts.md` 的 `+orbit-lifetime` 在 `server` source 下應顯示為付費 Pro。
+  - 擋：`PRO-014H`
 
 - [ ] **PRO-014P** `server` source 下，換日處理只依權威的 entitlement 結果執行
   - 問題（PR #160 Codex review 指出，2026-10-18 對照 `dayCycle.js` 確認）：
@@ -116,7 +124,7 @@
   - 範圍：`my_pro_status()` 增加 `is_pro boolean` 回傳欄位、client 改讀該欄位、移除推斷邏輯與其測試
   - 完成條件：終身付費與試用可明確區分，不需推斷；試用期間購買終身方案顯示為付費
   - **前置：屬 RPC contract 變更，依 AGENTS.md §3 需先取得核准**；建議與 `PRO-014I` 的 production 套用一併規劃
-  - 影響：純呈現層的正確性，不影響授權判定（`isProUser()` 兩種情況都是 true）
+  - 影響：~~純呈現層的正確性，不影響授權判定~~（2026-10-31 更正）：終身付費且試用已過期時，`isProUser()` 在 `server` source 下會是 **false**，見 `PRO-014R`。
   - 依賴：`PRO-014C`
 
 - [ ] **PRO-014G**（可選）為 entitlement projection 加上 server 簽章的 anti-tamper hardening
@@ -244,8 +252,9 @@
   - 完成（2026-10-31，Q6，#216，v1.41.2）：
     - 移除開發者面板的「模擬等級」與「模擬 Pro」（`_devXpForLevel`、`_devBackupOnce`、`_devApplyLevel`、`_devProSnapshot`、`_devApplyPro`）；程式中已沒有任何地方寫入 `orbit_dev_backup`。面板只剩唯讀的會員狀態與 source、指向測試帳號文件，以及 backup 存在時的「清除殘留的模擬資料」（沿用 S0 清理與 B1）。
     - 舊 backup 照舊 fail closed，直到清除殘留。`continueAsGuest` 在有任務、沒有 user 時進入設定頁。
-    - 新增 [`docs/pro-test-accounts.md`](docs/pro-test-accounts.md)：5 個測試帳號的角色、可重複執行的設定 SQL（已在 PostgreSQL 16 以真實 migration 驗證）、建立步驟與注意事項；不含 email 與密碼。
-    - 測試：面板沒有模擬、渲染不寫入；殘留時顯示清除並回到 fail closed；S0／B1 的測試改為直接寫入舊版留下的殘留；`proGateCallSites` 的 client Pro 寫入點只剩 SUB-16；遊客有任務沒有 user 時進入設定頁。
+    - 新增 [`docs/pro-test-accounts.md`](docs/pro-test-accounts.md)：5 個測試帳號的角色、可重複執行的設定 SQL（只依完整 email 比對、剛好 5 個才寫入；已在 PostgreSQL 16 以真實 migration 驗證，含同後綴的外部帳號不受影響）、建立步驟與注意事項；不含 email 與密碼。
+    - 獨立 review 的修正：設定 SQL 原本只比對後綴（公開 repo 下任何人註冊同後綴帳號就會被給 Pro）；遊客設定頁原本會沿用載入失敗帳號的 `_currentSession` id（`showSetup(ownerId)` 改為明確傳入）。終身帳號在 `server` source 被誤判為非 Pro 屬既有 bug，另立 `PRO-014R`。
+    - 測試：面板沒有模擬、渲染不寫入；殘留時顯示清除，`upsertProfile`／`refreshProEntitlement` 照舊 fail closed，清除後回到非 Pro；S0／B1 的測試改為直接寫入舊版留下的殘留；`proGateCallSites` 的 client Pro 寫入點只剩 SUB-16，且沒有任何地方寫入 `orbit_dev_backup`；遊客有任務沒有 user 時進入設定頁，且不沿用載入失敗帳號的 id。
 
 - [x] **BUG-109A** 在 production 套用 013 signup trigger migration
   - 目標：讓 production 的 `handle_new_user()` 截斷超過 30 字元的名稱來源，長 email local-part 與長 Google 顯示名稱都能註冊。

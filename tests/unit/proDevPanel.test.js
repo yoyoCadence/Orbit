@@ -43,6 +43,7 @@ vi.mock('../../pwa/js/theme.js', () => ({
 }));
 vi.mock('../../pwa/js/ui/feedback.js', () => ({ toast: vi.fn(), confirmModal: vi.fn() }));
 
+import { supabase } from '../../pwa/js/supabase.js';
 import { state } from '../../pwa/js/state.js';
 import { FLAG_DEV_BACKUP, FLAG_PRO_ENTITLEMENT } from '../../pwa/js/flags.js';
 import {
@@ -52,7 +53,7 @@ import {
   resetProEntitlementStorageState,
   writeProEntitlementSnapshot,
 } from '../../pwa/js/platform/proEntitlement.js';
-import { storage } from '../../pwa/js/storage.js';
+import { db, storage } from '../../pwa/js/storage.js';
 import { renderSettings } from '../../pwa/js/pages/settings.js';
 
 const OWNER = 'owner-1';
@@ -135,9 +136,24 @@ describe('PRO-014Q Q6：舊版留下的模擬資料', () => {
     enableServerProEntitlementLocally();
   });
 
-  it('殘留的 backup 照舊讓模擬的 projection 不被 refresh 取代（fail closed），並顯示「清除殘留」', () => {
+  it('殘留的 backup 照舊讓 profile 不上傳、模擬的 projection 不被 refresh 取代（fail closed），並顯示「清除殘留」', async () => {
     seedLeftoverServerSimulation();
     expect(storage.isProUser()).toBe(true);
+
+    // A signed-in owner, so only the backup guard can be what stops both calls.
+    const sessionSpy = vi.spyOn(db, '_session').mockResolvedValue({ user: { id: OWNER } });
+    const fromSpy = vi.spyOn(supabase, 'from');
+    try {
+      await expect(db.upsertProfile(storage.getUser(), OWNER)).resolves.toBe(false);
+      await expect(db.refreshProEntitlement(OWNER)).resolves.toBe(false);
+      expect(fromSpy).not.toHaveBeenCalled();
+      expect(supabase.rpc).not.toHaveBeenCalled();
+      expect(storage.isProUser()).toBe(true);         // the leftover projection is still the one on disk
+    } finally {
+      sessionSpy.mockRestore();
+      fromSpy.mockRestore();
+    }
+
     const container = renderPanel();
 
     expect(container.querySelector('#dev-reset').textContent).toContain('清除殘留的模擬資料');

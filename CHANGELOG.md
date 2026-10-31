@@ -13,6 +13,7 @@
 
 ### Fixed
 - 遊客有任務但沒有本機 user 時（例如清除殘留刪掉了無法辨識的本機資料），「以遊客身份繼續」改為進入設定頁，不再開進無法記錄 Session 的畫面。
+- **遊客的設定頁不再沿用已登入帳號的 id**：帳號的遠端載入失敗、回到登入畫面後改選遊客，設定頁原本會沿用該帳號的 id，建出等級 0、沒有 Pro 的空白 profile，下次同步時蓋掉雲端的真實資料。這個問題在沒有任務的裝置上原本就存在。現在只有已登入流程會把帳號傳給設定頁，遊客一律使用新的本機 id。
 
 ### Validation
 - 改寫 `proDevPanel.test.js`：
@@ -21,7 +22,12 @@
   - 殘留時照舊 fail closed，清除後回到非 Pro。
 - `pro014qDevReset.test.js` 改為直接寫入舊版留下的殘留，S0 與 B1 的 14 個情境照舊通過。
 - `proGateCallSites.test.js`：client 端 Pro 寫入點只剩 SUB-16，`settings.js` 不得再寫入。
-- `appBootSequence.test.js` 新增：遊客有任務、沒有 user 時進入設定頁（此測試在修正前的程式碼上會失敗）。
+- `appBootSequence.test.js` 新增兩項，都在修正前的程式碼上會失敗：
+  - 遊客有任務、沒有 user 時進入設定頁；
+  - 帳號載入失敗後改用遊客時，設定頁不沿用該帳號的 id。
+- `proGateCallSites.test.js` 新增：沒有任何地方寫入 `orbit_dev_backup`。
+- `proDevPanel.test.js`：殘留時，`upsertProfile`、`refreshProEntitlement` 在已登入的情況下照舊被擋住（移除 guard 時這項會失敗）。
+- `docs/pro-test-accounts.md` 的設定 SQL 只依完整 email 比對，剛好找到 5 個帳號才寫入；已在 PostgreSQL 16 驗證，同後綴的外部帳號不受影響。
 
 ---
 

@@ -742,4 +742,33 @@ describe('PRO-014Q Q6：遊客有任務但沒有 user', () => {
     expect(document.getElementById('main-app').classList.contains('hidden')).toBe(true);
     expect(dayCycle.showDailyReport).not.toHaveBeenCalled();
   });
+
+  it('帳號載入失敗後改用遊客，設定頁不會沿用該帳號的 id（不得蓋掉雲端 profile）', async () => {
+    // 已登入的帳號按了「清除殘留」：任務還在、本機 user 被刪；重新載入時遠端拉取失敗，
+    // loadAndStart 已記下 session，回到登入畫面。此時選遊客不得建出帶真實 id 的空白 profile。
+    cache.user = null;
+    cache.tasks = [{ id: 'task-1', name: '閱讀' }];
+    auth.getSession.mockImplementation(
+      () => new Promise(resolve => { auth.sessionResolve = resolve; }),
+    );
+    db.loadFromRemote.mockRejectedValueOnce(new Error('offline'));
+    await import('../../pwa/js/app.js');
+    await flush();
+    await auth.callback('SIGNED_IN', sessionFor('owner-a'));
+    await flush();
+    expect(authFlow.showLoginScreen).toHaveBeenCalled();
+
+    window.continueAsGuest();
+    await flush();
+    document.getElementById('setup-name').value = '遊客';
+    document.getElementById('setup-form').dispatchEvent(
+      new Event('submit', { bubbles: true, cancelable: true }),
+    );
+
+    expect(storage.saveUser).toHaveBeenCalled();
+    const saved = storage.saveUser.mock.lastCall[0];
+    expect(saved.name).toBe('遊客');
+    expect(saved.id).toBeTruthy();
+    expect(saved.id).not.toBe('owner-a');
+  });
 });

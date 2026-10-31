@@ -92,7 +92,13 @@ window.signOut = async function () {
 
 // ─── Setup screen ────────────────────────────────────────────────────────────
 
-function showSetup() {
+/**
+ * @param {string|null} ownerId the signed-in account this setup belongs to.
+ *   Only `loadAndStart` passes one. A guest never inherits `_currentSession`:
+ *   it can still hold an account whose remote load failed, and taking that id
+ *   would push a blank profile over the real one on the next sync.
+ */
+function showSetup(ownerId = null) {
   document.getElementById('setup-screen').classList.remove('hidden');
   document.getElementById('main-app').classList.add('hidden');
 
@@ -126,7 +132,7 @@ function showSetup() {
 
     state.user = {
       ...existingProfile,
-      id: _currentSession?.user?.id || existingProfile.id || uid(),
+      id: ownerId || existingProfile.id || uid(),
       name,
       avatar: avatarData ?? existingProfile.avatar ?? null,
       totalXP: existingProfile.totalXP ?? 0,
@@ -284,7 +290,7 @@ async function loadAndStart(session) {
 
   if (!state.tasks.length && remoteLoaded) {
     // New user: no tasks yet — show setup to customise profile + seed defaults
-    showSetup();
+    showSetup(session.user.id);
   } else {
     bootWithLocalState();
   }

@@ -113,7 +113,6 @@ function clickDev(id) {
   return container;
 }
 
-/** Start a Pro simulation on A, then record profile changes while it runs. */
 /**
  * What the "付費 Pro" simulation removed by PRO-014Q Q6 left on a device: the
  * backup of the real user, then fake Pro written over it (profile fields under

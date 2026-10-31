@@ -127,6 +127,15 @@ describe('Pro gate 呼叫點', () => {
       .map(({ path }) => path);
     expect(writers).toEqual([]);
   });
+
+  // PRO-014Q Q6：模擬已移除，舊版留下的 backup 只會被讀取與清除。重新加回任何寫入
+  // （不論按鈕叫什麼）都會讓 upsertProfile／refreshProEntitlement 再次被擋住。
+  it('沒有任何地方寫入 orbit_dev_backup', () => {
+    const writers = files
+      .filter(({ source }) => /setItem\(\s*(FLAG_DEV_BACKUP|['"]orbit_dev_backup['"])/.test(source))
+      .map(({ path }) => path);
+    expect(writers).toEqual([]);
+  });
 });
 
 // ─── 2. 行為：整批入口的共同判定來源 ─────────────────────────────────────────
