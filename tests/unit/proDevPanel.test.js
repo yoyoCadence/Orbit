@@ -2,11 +2,14 @@
  * @vitest-environment jsdom
  */
 /**
- * proDevPanel.test.js — PRO-014M：開發者面板的 Pro 狀態切換在兩種 source 下都有效。
+ * proDevPanel.test.js — PRO-014Q Q6：開發者面板不再模擬等級與 Pro。
  *
- * 用**真實的 storage 與 proEntitlement 模組**渲染設定頁，點擊面板按鈕後以
- * `storage.isProUser()` 等真實判定斷言結果；只 mock supabase、副作用模組與
- * `location.reload()`。
+ * 模擬會把假值寫進真實的 user，經由每一條保存 user 的路徑外流，所以 Q6 移除了
+ * 「模擬等級」與「模擬 Pro」，改用固定的測試帳號（docs/pro-test-accounts.md）。
+ * 面板只剩唯讀的會員狀態，以及舊版留下 backup 時的「清除殘留」。
+ *
+ * 用**真實的 storage 與 proEntitlement 模組**渲染設定頁；只 mock supabase、
+ * 副作用模組與 `location.reload()`。
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -43,16 +46,16 @@ vi.mock('../../pwa/js/ui/feedback.js', () => ({ toast: vi.fn(), confirmModal: vi
 import { state } from '../../pwa/js/state.js';
 import { FLAG_DEV_BACKUP, FLAG_PRO_ENTITLEMENT } from '../../pwa/js/flags.js';
 import {
+  buildProEntitlementSnapshot,
   clearLocalProEntitlementOverride,
   enableServerProEntitlementLocally,
-  readProEntitlementSnapshot,
   resetProEntitlementStorageState,
+  writeProEntitlementSnapshot,
 } from '../../pwa/js/platform/proEntitlement.js';
 import { storage } from '../../pwa/js/storage.js';
 import { renderSettings } from '../../pwa/js/pages/settings.js';
 
 const OWNER = 'owner-1';
-const DAY = 24 * 60 * 60 * 1000;
 
 let reload;
 let showToast;
@@ -66,15 +69,29 @@ function seedUser(extra = {}) {
   return user;
 }
 
-function clickDev(id) {
+function renderPanel() {
   document.body.innerHTML = '';
   const container = document.createElement('div');
   document.body.appendChild(container);
   renderSettings(container);
+  return container;
+}
+
+function clickDev(id) {
+  const container = renderPanel();
   const button = container.querySelector(`#${id}`);
   expect(button, `#${id} should render in dev mode`).not.toBeNull();
   button.click();
   return container;
+}
+
+/** What an older version left behind after a "付費 Pro" simulation under `server`. */
+function seedLeftoverServerSimulation() {
+  seedUser();
+  localStorage.setItem(FLAG_DEV_BACKUP, JSON.stringify({ id: OWNER, name: 'Tester', totalXP: 0 }));
+  writeProEntitlementSnapshot(buildProEntitlementSnapshot(OWNER, {
+    isActive: true, expiresAt: null, trialEndsAt: null,
+  }));
 }
 
 beforeEach(() => {
@@ -91,124 +108,51 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('server source', () => {
+describe('PRO-014Q Q6：沒有模擬', () => {
+  it.each(['legacy', 'server'])('%s source：面板沒有等級與 Pro 模擬，渲染也不寫入任何東西', source => {
+    if (source === 'server') enableServerProEntitlementLocally();
+    seedUser();
+    const before = { ...localStorage };
+    const container = renderPanel();
+
+    for (const id of ['dev-level-input', 'dev-level-apply', 'dev-pro-free', 'dev-pro-trial', 'dev-pro-paid']) {
+      expect(container.querySelector(`#${id}`), id).toBeNull();
+    }
+    expect(container.textContent).toContain(`${source} source`);
+    expect(container.textContent).toContain('docs/pro-test-accounts.md');
+    expect({ ...localStorage }).toEqual(before);
+    expect(localStorage.getItem(FLAG_DEV_BACKUP)).toBeNull();
+  });
+
+  it('沒有殘留時不顯示「清除殘留」', () => {
+    seedUser();
+    expect(renderPanel().querySelector('#dev-reset')).toBeNull();
+  });
+});
+
+describe('PRO-014Q Q6：舊版留下的模擬資料', () => {
   beforeEach(() => {
     enableServerProEntitlementLocally();
   });
 
-  it('付費：寫入 owner-scoped projection，判定為終身付費', () => {
-    seedUser();
-    clickDev('dev-pro-paid');
-
+  it('殘留的 backup 照舊讓模擬的 projection 不被 refresh 取代（fail closed），並顯示「清除殘留」', () => {
+    seedLeftoverServerSimulation();
     expect(storage.isProUser()).toBe(true);
-    expect(storage.isPaidProUser()).toBe(true);
-    expect(storage.isTrialUser()).toBe(false);
-    expect(storage.getProExpiry()).toBeNull();
-    expect(readProEntitlementSnapshot().ownerId).toBe(OWNER);
-    expect(reload).toHaveBeenCalledTimes(1);
+    const container = renderPanel();
+
+    expect(container.querySelector('#dev-reset').textContent).toContain('清除殘留的模擬資料');
+    expect(container.textContent).toContain('同步與 Pro 授權更新已暫停');
   });
 
-  it('試用：projection 帶 trialEndsAt，剩餘 14 天且不算付費', () => {
-    seedUser();
-    clickDev('dev-pro-trial');
-
-    expect(storage.isProUser()).toBe(true);
-    expect(storage.isTrialUser()).toBe(true);
-    expect(storage.isPaidProUser()).toBe(false);
-    expect(storage.getTrialDaysRemaining()).toBe(14);
-  });
-
-  it('免費：覆蓋既有的付費 projection 為非 Pro', () => {
-    seedUser();
-    clickDev('dev-pro-paid');
-    clickDev('dev-pro-free');
-
-    expect(storage.isProUser()).toBe(false);
-    expect(readProEntitlementSnapshot().isActive).toBe(false);
-  });
-
-  it('不寫入 server source 不讀的 profile Pro 欄位', () => {
-    seedUser();
-    clickDev('dev-pro-paid');
-
-    const user = storage.getUser();
-    expect(user.isPro).toBeUndefined();
-    expect(user.proExpiresAt).toBeUndefined();
-    expect(user.trialStartedAt).toBeUndefined();
-  });
-
-  it('建立 dev backup，讓 refresh 與 profile 上雲暫停', () => {
-    seedUser();
-    clickDev('dev-pro-paid');
-
-    expect(JSON.parse(localStorage.getItem(FLAG_DEV_BACKUP)).id).toBe(OWNER);
-  });
-
-  it('切換到其他帳號時不沿用模擬的 projection', () => {
-    seedUser();
-    clickDev('dev-pro-paid');
-    expect(storage.isProUser()).toBe(true);
-
-    seedUser({ id: 'owner-2' });
-    expect(storage.isProUser()).toBe(false);
-  });
-
-  it('沒有 owner id 時不建立覆蓋，也不重新載入', () => {
-    seedUser({ id: undefined });
-    clickDev('dev-pro-paid');
-
-    expect(showToast).toHaveBeenCalled();
-    expect(localStorage.getItem(FLAG_DEV_BACKUP)).toBeNull();
-    expect(localStorage.getItem(FLAG_PRO_ENTITLEMENT)).toBeNull();
-    expect(reload).not.toHaveBeenCalled();
-  });
-
-  it('還原：移除 backup 與模擬的 projection，回到 fail closed', async () => {
-    seedUser();
-    clickDev('dev-pro-paid');
-    expect(localStorage.getItem(FLAG_PRO_ENTITLEMENT)).not.toBeNull();
+  it('清除殘留：移除 backup 與模擬的 projection，回到 fail closed', async () => {
+    seedLeftoverServerSimulation();
     vi.stubGlobal('confirm', vi.fn(() => true));
-    reload.mockClear();
     clickDev('dev-reset');
-    // The reset first checks for a Supabase session (PRO-014Q B1) before confirming.
+    // The cleanup first checks for a Supabase session (PRO-014Q B1) before confirming.
     await vi.waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
 
     expect(localStorage.getItem(FLAG_DEV_BACKUP)).toBeNull();
     expect(localStorage.getItem(FLAG_PRO_ENTITLEMENT)).toBeNull();
-    expect(storage.isProUser()).toBe(false);
-  });
-
-  it('面板顯示目前的 entitlement source', () => {
-    seedUser();
-    const container = clickDev('dev-pro-free');
-    expect(container.textContent).toContain('server source');
-  });
-});
-
-describe('legacy source（預設）', () => {
-  it('付費：沿用 profile 欄位覆蓋，不寫 projection', () => {
-    seedUser();
-    clickDev('dev-pro-paid');
-
-    expect(storage.getUser().isPro).toBe(true);
-    expect(storage.isProUser()).toBe(true);
-    expect(storage.isPaidProUser()).toBe(true);
-    expect(localStorage.getItem(FLAG_PRO_ENTITLEMENT)).toBeNull();
-  });
-
-  it('試用：沿用 trialStartedAt 覆蓋，剩餘 14 天', () => {
-    seedUser();
-    clickDev('dev-pro-trial');
-
-    expect(storage.isTrialUser()).toBe(true);
-    expect(storage.getTrialDaysRemaining()).toBe(14);
-    expect(Date.now() - Date.parse(storage.getUser().trialStartedAt)).toBeLessThan(DAY + 1000);
-  });
-
-  it('免費：清掉 profile Pro 欄位', () => {
-    seedUser({ isPro: true });
-    clickDev('dev-pro-free');
-
     expect(storage.isProUser()).toBe(false);
   });
 });

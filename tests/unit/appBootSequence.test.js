@@ -724,3 +724,22 @@ describe('PRO-014Q S0（A1）：另一個視窗按「還原」', () => {
     expect(reload).not.toHaveBeenCalled();
   });
 });
+
+describe('PRO-014Q Q6：遊客有任務但沒有 user', () => {
+  it('進入設定頁重建 profile，而不是開機到無法記錄 Session 的狀態', async () => {
+    // 「清除殘留」刪掉了遊客的本機 user（backup 屬於另一個帳號，無法分辨），任務還在。
+    cache.user = null;
+    cache.tasks = [{ id: 'task-1', name: '閱讀' }];
+    auth.getSession.mockResolvedValue(null);
+    await import('../../pwa/js/app.js');
+    await flush();
+    expect(authFlow.showLoginScreen).toHaveBeenCalled();
+
+    window.continueAsGuest();
+    await flush();
+
+    expect(document.getElementById('setup-screen').classList.contains('hidden')).toBe(false);
+    expect(document.getElementById('main-app').classList.contains('hidden')).toBe(true);
+    expect(dayCycle.showDailyReport).not.toHaveBeenCalled();
+  });
+});

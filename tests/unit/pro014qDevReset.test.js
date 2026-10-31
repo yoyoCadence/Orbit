@@ -68,9 +68,12 @@ vi.mock('../../pwa/js/ui/feedback.js', () => ({ toast: vi.fn(), confirmModal: vi
 import { state } from '../../pwa/js/state.js';
 import { FLAG_DEV_BACKUP, FLAG_PRO_ENTITLEMENT } from '../../pwa/js/flags.js';
 import {
+  buildProEntitlementSnapshot,
   clearLocalProEntitlementOverride,
   enableServerProEntitlementLocally,
+  isServerProEntitlementEnabled,
   resetProEntitlementStorageState,
+  writeProEntitlementSnapshot,
 } from '../../pwa/js/platform/proEntitlement.js';
 import { db, storage } from '../../pwa/js/storage.js';
 import { DEV_RESET_CONFIRM, DEV_RESET_CONFIRM_GUEST, renderSettings } from '../../pwa/js/pages/settings.js';
@@ -111,9 +114,27 @@ function clickDev(id) {
 }
 
 /** Start a Pro simulation on A, then record profile changes while it runs. */
+/**
+ * What the "付費 Pro" simulation removed by PRO-014Q Q6 left on a device: the
+ * backup of the real user, then fake Pro written over it (profile fields under
+ * `legacy`, a projection under `server`). Q6 no longer writes either, but a
+ * device that ran an older version can still carry them.
+ */
+function seedLeftoverPaidSimulation() {
+  const user = storage.getUser() ?? {};
+  localStorage.setItem(FLAG_DEV_BACKUP, JSON.stringify(user));
+  if (isServerProEntitlementEnabled()) {
+    writeProEntitlementSnapshot(buildProEntitlementSnapshot(user.id, {
+      isActive: true, expiresAt: null, trialEndsAt: null,
+    }));
+    return;
+  }
+  storage.saveUserLocal({ ...user, isPro: true, proExpiresAt: null, trialStartedAt: null });
+}
+
 function simulateAndQueuePending() {
   seedUser();
-  clickDev('dev-pro-paid');
+  seedLeftoverPaidSimulation();
   expect(localStorage.getItem(FLAG_DEV_BACKUP)).not.toBeNull();
   // Another account simulated on this device and left its pending behind; the
   // backup blocks the upsert, so saveUser() only queues it.

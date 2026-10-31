@@ -55,7 +55,7 @@
     8. `PRO-014P` 換日處理只依權威的 entitlement 結果執行（否則 projection 過期的付費使用者會失去保護卡與 offer）
     9. `PRO-014H` 另案核准後執行 cutover（旗標切到 `server`）
   - **為什麼 C 的實作與部署要拆開**：`.github/workflows/deploy.yml` 在每次 push `main` 後自動部署 `pwa/`，所以**合併 = 部署**。`PRO-014C` 的 client 會呼叫 `start_trial()`，若在 `PRO-014I` 之前合併，該 function 在 production 還不存在，trial 會整段失效。舊版寫「I 必須在 C 部署之前或同時完成」既與順序衝突，「同時」也無法保證原子性 —— 因此把合併本身變成一個有前置的具名任務（`PRO-014J`），而不是塞在 C 裡的但書。
-  - `PRO-014E` → `PRO-014F` 為呈現層，接在 `PRO-014D` 之後。`PRO-014G` 為可選 hardening，不在主線上。`PRO-014M`（開發者面板）不擋 cutover，但 `PRO-014H` 的實機驗證會需要它；`PRO-014Q` 同理，實機驗證前要完成。
+  - `PRO-014E` → `PRO-014F` 為呈現層，接在 `PRO-014D` 之後。`PRO-014G` 為可選 hardening，不在主線上。`PRO-014H` 的實機驗證使用 `PRO-014Q` Q6 建立的測試帳號（[`docs/pro-test-accounts.md`](docs/pro-test-accounts.md)）；`PRO-014M` 的開發者面板模擬已由 Q6 移除。
   - 狀態：此項只作為追蹤母項，不直接進入實作；各子任務需各自遵守 `Next → In Progress → Done`
   - 既有 PR：[#132](https://github.com/yoyoCadence/Orbit/pull/132)（Ready for review；開始後續任務前應確認最新 head）
 
@@ -67,7 +67,8 @@
   - **前置：`PRO-014J` 完成（因此 C／D／I 皆已完成且 client 已上線），以及 `PRO-014L`、`PRO-014P` 完成。** 依 AGENTS.md §3 高風險規則，production rollout 需另行取得明確核准
   - **為什麼 `PRO-014L` 是前置**：SUB-16 連勝解鎖目前在 client 端寫 `state.user.isPro`。切到 `server` source 後那個寫入不再有任何效果，連勝解鎖會靜默失效 —— cutover 不該挾帶一個功能迴歸。
   - 一併移除 `PRO-014C` 建立的 legacy 相容層（client 寫回 `trial_started_at`）—— cutover 後 legacy gate 不再被使用。**移除與旗標切換應在同一次變更內**，rollback 時也一起還原。
-  - 依賴：`PRO-014J`、`PRO-014L`、`PRO-014O`（已於 v1.25.5 完成：cached-user 啟動也會 refresh projection）、`PRO-014P`（**擋 cutover**）；實機驗證前也需完成 `PRO-014Q`
+  - 依賴：`PRO-014J`、`PRO-014L`、`PRO-014O`（已於 v1.25.5 完成：cached-user 啟動也會 refresh projection）、`PRO-014P`（**擋 cutover**）；`PRO-014Q` 已完成（2026-10-31），實機驗證使用 [`docs/pro-test-accounts.md`](docs/pro-test-accounts.md) 的 5 個測試帳號，測試前先重跑其中的 SQL。
+  - **切換前要決定核准名單**（2026-10-31 發現）：PRO-014I 套用 011 時核准名單為 0 筆，沒有把 legacy 的 Pro 搬到 `pro_entitlements`。專案擁有者自己的帳號在 `profiles` 是終身 Pro（`is_pro = true`、`pro_expires_at` 為 NULL），但 `pro_entitlements` 沒有資料列；切到 `server` source 當天就會失去 Pro。切換前要由擁有者決定哪些帳號列入核准名單並寫入 `pro_entitlements`。
 
 - [ ] **PRO-014P** `server` source 下，換日處理只依權威的 entitlement 結果執行
   - 問題（PR #160 Codex review 指出，2026-10-18 對照 `dayCycle.js` 確認）：
@@ -215,7 +216,14 @@
 
 ## In Progress
 
-- [ ] **PRO-014Q** 開發者面板的 backup 不應擋住其他帳號或非 Pro 模擬的 entitlement refresh
+- [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
+  - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
+
+---
+
+## Done
+
+- [x] **PRO-014Q** 開發者面板的 backup 不應擋住其他帳號或非 Pro 模擬的 entitlement refresh
   - 問題（PR #158 Codex review 指出，2026-10-18 確認）：`storage.refreshProEntitlement()` 只要 `FLAG_DEV_BACKUP` 存在就直接 return。這個 backup 也由等級模擬器建立，且 `storage.clearAll()` 登出時不會清除。開發者登出後換另一個帳號，該帳號的 refresh 會一直被跳過，在 `server` source 下 fail closed，直到手動重設。
   - 影響：只影響使用過開發者面板的裝置。
   - 同一個旗標也讓 `upsertProfile()` 對新帳號直接 return；`settings.js` 的 `_devReset()` 會把 backup 裡**前一個帳號**的 user 還原回去。
@@ -230,16 +238,14 @@
   - **2026-10-18 使用者核准**：S0＋Q6。先做 S0（patch），再做 Q6（移除開發者面板的等級與 Pro 模擬；舊 backup fail closed 與一次性清理；`docs/` 寫測試帳號說明）。preview 專案的測試帳號需由專案擁有者建立，或授權給 agent。另提醒擁有者自行檢查自己帳號的 `profiles`。
   - S0 完成（2026-10-19，[#178](https://github.com/yoyoCadence/Orbit/pull/178)，v1.31.2）。獨立 review 找到 P1（多視窗外流，main 上原本就有）與 P2（遊客按「還原」會失去唯一的本機 profile）；**2026-10-19 使用者核准 A1＋B1**，同一個 PR 補上：其他視窗移除 backup 或清空 localStorage 時重新載入（A1）；沒有 session 且 backup 屬於本機 user 時視為遊客，把 backup 寫回本機 user（B1）。複查後再修：讀取 session 出錯時不當成遊客（避免舊備份蓋掉雲端資料）、重新載入前的重複點擊不再作用。仍未涵蓋：在別的帳號模擬後才建立的遊客等已知限制，見變更說明 §4 S0「review 後的補充」，Q6 前要決定。實作內容：「↩ 還原原始資料並重啟」先確認，再刪除備份、所有帳號的 pending profile（含無 owner 的舊 key）、本機 user、projection 與所有帳號的 V2 state（保留 legacy claim 與 legacy state）後重新載入。清理函式為 `storage.discardDevSimulation()` 與 `v2/store.removeAllPersonalSpaceV2States()`，Q6 的「清除殘留」沿用。
   - 剩下 Q6：**需先在 preview Supabase 專案建立測試帳號**（免費、試用中、付費、終身、不同等級），由專案擁有者建立或授權給 agent。
-  - Q6 in progress（2026-10-31）：
+  - Q6（2026-10-31）：
     - 測試帳號：preview 專案並不存在（PRO-014D 用的是本機 Docker，app 連線寫死 production），使用者同意改在 production 建立 5 個專屬帳號（免費、試用中、付費、終身、付費已過期，Lv.1／5／10／20／30），2026-10-31 建立並以 SQL 設定完成，`server_pro_active` 與兩張表一致性皆經驗證。
     - 使用者決定（2026-10-31，AskUserQuestion）：在別的帳號模擬後才建立的遊客，「清除殘留」照舊刪除本機 user，`continueAsGuest` 在有任務、沒有 user 時導向設定頁，不再卡住。
-
-- [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
-  - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
-
----
-
-## Done
+  - 完成（2026-10-31，Q6，#216，v1.41.2）：
+    - 移除開發者面板的「模擬等級」與「模擬 Pro」（`_devXpForLevel`、`_devBackupOnce`、`_devApplyLevel`、`_devProSnapshot`、`_devApplyPro`）；程式中已沒有任何地方寫入 `orbit_dev_backup`。面板只剩唯讀的會員狀態與 source、指向測試帳號文件，以及 backup 存在時的「清除殘留的模擬資料」（沿用 S0 清理與 B1）。
+    - 舊 backup 照舊 fail closed，直到清除殘留。`continueAsGuest` 在有任務、沒有 user 時進入設定頁。
+    - 新增 [`docs/pro-test-accounts.md`](docs/pro-test-accounts.md)：5 個測試帳號的角色、可重複執行的設定 SQL（已在 PostgreSQL 16 以真實 migration 驗證）、建立步驟與注意事項；不含 email 與密碼。
+    - 測試：面板沒有模擬、渲染不寫入；殘留時顯示清除並回到 fail closed；S0／B1 的測試改為直接寫入舊版留下的殘留；`proGateCallSites` 的 client Pro 寫入點只剩 SUB-16；遊客有任務沒有 user 時進入設定頁。
 
 - [x] **BUG-109A** 在 production 套用 013 signup trigger migration
   - 目標：讓 production 的 `handle_new_user()` 截斷超過 30 字元的名稱來源，長 email local-part 與長 Google 顯示名稱都能註冊。

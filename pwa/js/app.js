@@ -217,7 +217,11 @@ window.continueAsGuest = function () {
   hideLoading();
   document.getElementById('login-screen').classList.add('hidden');
   loadStateFromStorage();
-  if (!state.tasks.length) {
+  // PRO-014Q Q6: clearing leftover dev data can delete a guest's local user
+  // while its tasks stay (the backup belonged to another account, so the
+  // guest could not be told apart from that account's cached user). Without a
+  // user nothing can be recorded, so the guest sets a profile up again.
+  if (!state.tasks.length || !state.user) {
     showSetup();
   } else {
     bootWithLocalState();
