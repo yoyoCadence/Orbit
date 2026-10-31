@@ -71,13 +71,6 @@
   - **新增前置 `PRO-014R`（擋 cutover）**：`server` source 下終身付費但試用已過期的帳號被誤判為非 Pro。
   - **切換前要決定核准名單**（2026-10-31 發現）：PRO-014I 套用 011 時核准名單為 0 筆，沒有把 legacy 的 Pro 搬到 `pro_entitlements`。專案擁有者自己的帳號在 `profiles` 是終身 Pro（`is_pro = true`、`pro_expires_at` 為 NULL），但 `pro_entitlements` 沒有資料列；切到 `server` source 當天就會失去 Pro。切換前要由擁有者決定哪些帳號列入核准名單並寫入 `pro_entitlements`。
 
-- [ ] **PRO-014R** `server` source 下，終身付費但試用已過期的帳號被判定為非 Pro
-  - 問題（2026-10-31，PR #216 的獨立 review 以 `+orbit-lifetime` 測試帳號發現）：`my_pro_status()` 對終身帳號回傳 `is_active = true`、`expires_at = NULL`，以及只要曾開始試用就有的 `trial_ends_at`（已過去）。client 的 `entitlementExpiryMs()`（`pwa/js/platform/proEntitlement.js`）取兩者中較晚的日期當上限，只剩過期的試用日，`isProFromSnapshot()` 因此回傳 false。
-  - 影響：切到 `server` source 後，所有「先試用、後買終身方案」的使用者都會失去 Pro。目前 production 是 `legacy`，尚未受影響。
-  - 方向：`PRO-014N`（RPC 回傳 `is_pro`）可從根本消除歧義；或 RPC 對付費帳號不回傳 `trial_ends_at`；或 client 忽略在取得 snapshot 時就已結束的試用。RPC 變更屬 AGENTS.md §3 高風險，需先核准。
-  - 驗證：`docs/pro-test-accounts.md` 的 `+orbit-lifetime` 在 `server` source 下應顯示為付費 Pro。
-  - 擋：`PRO-014H`
-
 - [ ] **PRO-014P** `server` source 下，換日處理只依權威的 entitlement 結果執行
   - 問題（PR #160 Codex review 指出，2026-10-18 對照 `dayCycle.js` 確認）：
     - 缺天時的連勝歸零本身與 Pro 無關。
@@ -116,15 +109,6 @@
   - 範圍：新的 `grant_streak_unlock()` RPC（migration 變更）、`dayCycle.js` 的授權路徑、once-per-account 的 server 端強制、相關測試
   - 完成條件：同一帳號無法重複領取；連勝條件由 server 驗證而非 client 傳入；`server` 與 `legacy` 兩種 source 下都正確
   - **前置：屬 RPC／schema 變更，依 AGENTS.md §3 需先取得核准**；建議與 `PRO-014I` 的 production 套用一併規劃，避免第二次 migration 時序問題
-  - 依賴：`PRO-014C`
-
-- [ ] **PRO-014N** `my_pro_status()` 回傳 `is_pro`，消除 `expires_at` 的歧義
-  - 問題（`PRO-014C` 實作時發現）：RPC 的 `CASE WHEN e.is_pro = true THEN e.pro_expires_at ELSE NULL END` 讓 `expires_at = null` 同時代表「沒有付費」與「終身付費」。client 因此無法在「終身付費」與「試用中」之間可靠區分。
-  - 目前的處理：`getPaidProStateFromSnapshot()` 用「還有什麼能解釋這個 active」來推斷 —— 未到期的 `expires_at` ⇒ 付費；沒有 `expires_at` 且沒有生效中的試用 ⇒ 終身付費；沒有 `expires_at` 但試用生效中 ⇒ 算試用。最後一條是保守讀法：在試用期間購買終身方案的人會被顯示成試用中。
-  - 範圍：`my_pro_status()` 增加 `is_pro boolean` 回傳欄位、client 改讀該欄位、移除推斷邏輯與其測試
-  - 完成條件：終身付費與試用可明確區分，不需推斷；試用期間購買終身方案顯示為付費
-  - **前置：屬 RPC contract 變更，依 AGENTS.md §3 需先取得核准**；建議與 `PRO-014I` 的 production 套用一併規劃
-  - 影響：~~純呈現層的正確性，不影響授權判定~~（2026-10-31 更正）：終身付費且試用已過期時，`isProUser()` 在 `server` source 下會是 **false**，見 `PRO-014R`。
   - 依賴：`PRO-014C`
 
 - [ ] **PRO-014G**（可選）為 entitlement projection 加上 server 簽章的 anti-tamper hardening
@@ -220,9 +204,30 @@
 > - INFRA-105 核准：先寫變更說明，PR 合併前讓使用者看過。從 Backlog 移入 Next。
 > - 順序：AI-202B1 → AI-202B2 → PS-251 的提案 → INFRA-105（要等使用者看過才合併，放在最後，避免擋住同一個 branch 的其他 PR）。
 
+> 2026-10-31 排程：使用者要求寫 PRO-014R（擋 PRO-014H）與 PRO-014N 的合併提案。兩者都改 `my_pro_status()`，合併成一份只寫文件的提案，從 Backlog 移入 Next，再移入 In Progress；核准前不改程式碼、不動 production。
+
 ---
 
 ## In Progress
+
+- [ ] **PRO-014R** `server` source 下，終身付費但試用已過期的帳號被判定為非 Pro
+  - 問題（2026-10-31，PR #216 的獨立 review 以 `+orbit-lifetime` 測試帳號發現）：`my_pro_status()` 對終身帳號回傳 `is_active = true`、`expires_at = NULL`，以及只要曾開始試用就有的 `trial_ends_at`（已過去）。client 的 `entitlementExpiryMs()`（`pwa/js/platform/proEntitlement.js`）取兩者中較晚的日期當上限，只剩過期的試用日，`isProFromSnapshot()` 因此回傳 false。
+  - 影響：切到 `server` source 後，所有「先試用、後買終身方案」的使用者都會失去 Pro。目前 production 是 `legacy`，尚未受影響。
+  - 方向：`PRO-014N`（RPC 回傳 `is_pro`）可從根本消除歧義；或 RPC 對付費帳號不回傳 `trial_ends_at`；或 client 忽略在取得 snapshot 時就已結束的試用。RPC 變更屬 AGENTS.md §3 高風險，需先核准。
+  - 驗證：`docs/pro-test-accounts.md` 的 `+orbit-lifetime` 在 `server` source 下應顯示為付費 Pro。
+  - 擋：`PRO-014H`
+  - In progress（2026-10-31）：使用者要求把 PRO-014R 與 PRO-014N 合併成一份提案（只寫文件、不改程式碼、不動 production）。從 Backlog 移入 Next，再移入 In Progress；核准前不實作。
+  - 提案：[`docs/pro-014r-my-pro-status-trial-cap.md`](docs/pro-014r-my-pro-status-trial-cap.md)（#217），**等待使用者核准**。建議方案 A：`my_pro_status()` 在付費已涵蓋整段試用時不回報 `trial_ends_at`（`CREATE OR REPLACE`，回傳欄位不變、client 不需改邏輯）；12 個情境實測全部正確（獨立 review 另驗 19 個邊界情境）；建議以 A 結案 PRO-014N，但這代表重新定義它（推斷保留且精確，原本「不需推斷」改由可選的方案 B 承接），需使用者明確同意。
+
+- [ ] **PRO-014N** `my_pro_status()` 回傳 `is_pro`，消除 `expires_at` 的歧義
+  - 問題（`PRO-014C` 實作時發現）：RPC 的 `CASE WHEN e.is_pro = true THEN e.pro_expires_at ELSE NULL END` 讓 `expires_at = null` 同時代表「沒有付費」與「終身付費」。client 因此無法在「終身付費」與「試用中」之間可靠區分。
+  - 目前的處理：`getPaidProStateFromSnapshot()` 用「還有什麼能解釋這個 active」來推斷 —— 未到期的 `expires_at` ⇒ 付費；沒有 `expires_at` 且沒有生效中的試用 ⇒ 終身付費；沒有 `expires_at` 但試用生效中 ⇒ 算試用。最後一條是保守讀法：在試用期間購買終身方案的人會被顯示成試用中。
+  - 範圍：`my_pro_status()` 增加 `is_pro boolean` 回傳欄位、client 改讀該欄位、移除推斷邏輯與其測試
+  - 完成條件：終身付費與試用可明確區分，不需推斷；試用期間購買終身方案顯示為付費
+  - **前置：屬 RPC contract 變更，依 AGENTS.md §3 需先取得核准**（`PRO-014I` 已於 2026-08-30 完成；改與 `PRO-014R` 合併提案）
+  - 影響：~~純呈現層的正確性，不影響授權判定~~（2026-10-31 更正）：終身付費且試用已過期時，`isProUser()` 在 `server` source 下會是 **false**，見 `PRO-014R`。
+  - 依賴：`PRO-014C`
+  - In progress（2026-10-31）：與 PRO-014R 合併提案（改的是同一個 RPC），見 PRO-014R。核准前不實作。
 
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
