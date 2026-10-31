@@ -215,13 +215,6 @@
 
 ## In Progress
 
-- [ ] **BUG-109A** 在 production 套用 013 signup trigger migration
-  - 目標：讓 production 的 `handle_new_user()` 截斷超過 30 字元的名稱來源，長 email local-part 與長 Google 顯示名稱都能註冊。
-  - 步驟：依 [`docs/bug-109-signup-name-truncation.md`](docs/bug-109-signup-name-truncation.md) 的 runbook：先以 `pg_get_functiondef` 比對 production 函式與 004、記錄回滾來源，在非 production 環境跑 `tests/database/bug109.test.sql`，再套用並驗證。
-  - **需專案擁有者執行**：production 資料庫操作，Claude 不具權限；依 AGENTS.md §3 屬 schema 變更的套用。
-  - 依賴：`BUG-109`
-  - In progress（2026-10-31）：專案擁有者依 runbook 在 production 套用。
-
 - [ ] **PRO-014Q** 開發者面板的 backup 不應擋住其他帳號或非 Pro 模擬的 entitlement refresh
   - 問題（PR #158 Codex review 指出，2026-10-18 確認）：`storage.refreshProEntitlement()` 只要 `FLAG_DEV_BACKUP` 存在就直接 return。這個 backup 也由等級模擬器建立，且 `storage.clearAll()` 登出時不會清除。開發者登出後換另一個帳號，該帳號的 refresh 會一直被跳過，在 `server` source 下 fail closed，直到手動重設。
   - 影響：只影響使用過開發者面板的裝置。
@@ -244,6 +237,17 @@
 ---
 
 ## Done
+
+- [x] **BUG-109A** 在 production 套用 013 signup trigger migration
+  - 目標：讓 production 的 `handle_new_user()` 截斷超過 30 字元的名稱來源，長 email local-part 與長 Google 顯示名稱都能註冊。
+  - 步驟：依 [`docs/bug-109-signup-name-truncation.md`](docs/bug-109-signup-name-truncation.md) 的 runbook：先以 `pg_get_functiondef` 比對 production 函式與 004、記錄回滾來源，在非 production 環境跑 `tests/database/bug109.test.sql`，再套用並驗證。
+  - **需專案擁有者執行**：production 資料庫操作，Claude 不具權限；依 AGENTS.md §3 屬 schema 變更的套用。
+  - 依賴：`BUG-109`
+  - In progress（2026-10-31）：專案擁有者依 runbook 在 production 套用。
+  - 完成（2026-10-31，專案擁有者於 production 套用；紀錄見 PR #214）：
+    - 套用前 `pg_get_functiondef` 的輸出與 `004_triggers.sql` 相同（只差空白與 Postgres 輸出時的格式），沒有未入庫的修改；原版定義保存為回滾來源，與 004 的函式定義等價。
+    - 以 production 乾跑取代 runbook 第 3 步：在同一個 transaction 內套用 013、跑 `tests/database/bug109.test.sql` 的 6 項檢查，最後 ROLLBACK。乾跑通過（此做法事先在 PostgreSQL 16 驗證過：未套 013 會重現 `profiles_name_check`，乾跑後函式與資料都不變）。
+    - 正式套用後重新查詢，函式已含 `left(…, 30)`，驗證成功。
 
 - [x] **INFRA-108** CI 檢查改了 `pwa/` 的 PR 有沒有 bump
   - 問題（TEST-003 獨立 review 發現，2026-10-28）：INFRA-107 之後新的 `CACHE` 名稱是新的 HTML 與程式到達使用者的唯一方式。改了 `pwa/` 卻沒有 `npm run bump`，或兩個 PR 從同一個版本 bump 後在 CHANGELOG 衝突時併成同一個版本，已安裝的使用者都拿不到。`bumpLib.test.js` 只能檢查版本一致與 CHANGELOG 不重複，看不到「沒有 bump」。

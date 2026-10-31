@@ -1,8 +1,8 @@
 # BUG-109 Signup Trigger Name Truncation
 
-- Status: **Migration committed, not applied** (`pwa/db/013_signup_profile_name.sql`)
+- Status: **Applied to production on 2026-10-31** (`pwa/db/013_signup_profile_name.sql`, `BUG-109A`)
 - Applies to: Orbit production Supabase (`public.handle_new_user()`)
-- Owner action required: production apply is done by the project owner (`BUG-109A`)
+- Applied by: the project owner, following the runbook below
 
 ## Problem
 
@@ -71,3 +71,16 @@ stack before production (step 3 below).
    that test account and its rows afterwards.
 6. **Rollback if needed:** re-run the function definition recorded in step 2. No data
    migration is involved, so rollback is the function body only.
+
+## Production apply record (2026-10-31)
+
+| Runbook step | What happened |
+|---|---|
+| 1. Compare with 004 | `pg_get_functiondef` matched `004_triggers.sql` apart from whitespace and Postgres's output formatting (`SET search_path TO 'public'`, `$function$`). No uncommitted production change was overwritten. |
+| 2. Rollback source | The step 1 output was saved. It is equivalent to the 004 definition, so rolling back means re-running the function from `004_triggers.sql`. |
+| 3. Non-production test | Replaced by a dry run in production: one transaction that applies 013, runs the six checks from `tests/database/bug109.test.sql`, then rolls back. Postgres DDL is transactional, so nothing persists. It passed. The script was first checked on PostgreSQL 16: before 013 the test reproduces `profiles_name_check`, and after the dry run the function and the row counts are unchanged. |
+| 4. Apply | 013 applied in the SQL editor. |
+| 5. Verify | Re-running step 1 shows `left(COALESCE(...), 30)`. |
+
+The dry-run pattern (begin; the migration; the checks; rollback;) is reusable for later
+function-only migrations when no non-production stack is available.
