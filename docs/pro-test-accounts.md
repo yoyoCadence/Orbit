@@ -33,7 +33,7 @@ Email 是專案擁有者的 Gmail 加上 `+` 後綴（Gmail 會寄到同一個�
 - **先把 SQL 第 3 行的 `your-name@gmail.com` 換成擁有者的 Gmail 帳號**（在 SQL Editor 裡換，或存成 Supabase 的私人 snippet；換好的版本不要存進 repo）。沒換就執行會直接中止。
 - 只依**完整 email** 比對，而且剛好找到 5 個帳號才寫入，否則整段中止、不改任何資料。repo 是公開的，若只比對 `+orbit-…` 後綴，任何人註冊 `xxx+orbit-lifetime@gmail.com` 就會在下次執行時被給 Pro（2026-10-31 的獨立 review 找到，此版已修正）。
 
-- SQL Editor 可能警告「creates a table without enabling RLS」。這是誤報：它把 `insert into … select` 誤認成會建表的 `SELECT … INTO`。按「Run and enable RLS」即可，多加的那一行對已開啟 RLS 的 `pro_entitlements` 沒有作用。
+- SQL Editor 可能警告「creates a table without enabling RLS」。這指的是 DO 區塊裡的暫存表 `orbit_test_accounts`：它只存在於這次執行，交易結束就刪除，不是 `public` 下的資料表。選「Run without RLS」即可；就算選了「Run and enable RLS」也安全，最壞情況是整段中止、不改任何資料。
 - 執行前，先在所有裝置上登出這些帳號。若某台裝置留有未同步的舊 profile，之後可能把等級蓋回去；登入後數值不對時，重跑 SQL 再重新登入。
 
 ```sql

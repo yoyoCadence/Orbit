@@ -224,6 +224,7 @@
 
 ### 需要使用者決定或執行
 
+- **PRO-014R（擋 PRO-014H）**：`server` source 下，終身付費但試用已過期的帳號被 client 判定為非 Pro（`docs/pro-test-accounts.md` 的 `+orbit-lifetime` 可重現）。修正可能要改 `my_pro_status()` RPC（可與 PRO-014N 一起），屬高風險，實作前需使用者核准。
 - **PRO-014H 的核准名單**：切到 `server` source 前，要決定哪些帳號寫入 `pro_entitlements`。專案擁有者自己的帳號在 `profiles` 是終身 Pro，但 `pro_entitlements` 沒有資料列，不處理的話切換當天會失去 Pro（見 `tasks.md` 的 PRO-014H）。
 - **PRO-014P**：entitlement 流程，實作前需提案與核准，擋 `PRO-014H` cutover。與草稿 PR #154（PRO-014L）改同一段 SUB-16 路徑，寫提案前先問使用者先後順序。
 - **PS-243**：真機、installed PWA、雙帳號、螢幕閱讀器等 human gate。

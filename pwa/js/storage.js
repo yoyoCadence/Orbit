@@ -877,7 +877,7 @@ export const storage = {
       .catch(console.error);
     return saved;
   },
-  /** Local-only write — no Supabase sync（profile 樂觀更新、遊客清除殘留時寫回備份）。 */
+  /** Local-only write — no Supabase sync（profile 樂觀更新）。 */
   saveUserLocal: (u) => {
     try { set('user', u); } catch (err) { console.error('Local user save failed:', err); }
   },

@@ -122,6 +122,10 @@ function showSetup(ownerId = null) {
 
   document.getElementById('setup-form').addEventListener('submit', e => {
     e.preventDefault();
+    // Each showSetup() adds a listener that keeps its own owner. If another tab
+    // switched accounts while setup stayed open, a listener left over from the
+    // earlier account must not save the new account's data under the old id.
+    if (ownerId && _currentSession?.user?.id !== ownerId) return;
     const name = document.getElementById('setup-name').value.trim();
     if (!name) return;
     // Authenticated setup can be reached with an existing profile (for example,

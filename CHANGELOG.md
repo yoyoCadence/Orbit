@@ -22,9 +22,11 @@
   - 殘留時照舊 fail closed，清除後回到非 Pro。
 - `pro014qDevReset.test.js` 改為直接寫入舊版留下的殘留，S0 與 B1 的 14 個情境照舊通過。
 - `proGateCallSites.test.js`：client 端 Pro 寫入點只剩 SUB-16，`settings.js` 不得再寫入。
-- `appBootSequence.test.js` 新增兩項，都在修正前的程式碼上會失敗：
+- `appBootSequence.test.js` 新增四項，都在修正前的程式碼上會失敗：
   - 遊客有任務、沒有 user 時進入設定頁；
-  - 帳號載入失敗後改用遊客時，設定頁不沿用該帳號的 id。
+  - 帳號載入失敗後改用遊客時，設定頁不沿用該帳號的 id；
+  - 已登入的新帳號沒有雲端 profile 時，設定頁使用 session 的 id；
+  - 設定頁開著時另一個分頁換了帳號，舊帳號留下的設定不會把新帳號的資料寫到舊 id。
 - `proGateCallSites.test.js` 新增：沒有任何地方寫入 `orbit_dev_backup`。
 - `proDevPanel.test.js`：殘留時，`upsertProfile`、`refreshProEntitlement` 在已登入的情況下照舊被擋住（移除 guard 時這項會失敗）。
 - `docs/pro-test-accounts.md` 的設定 SQL 只依完整 email 比對，剛好找到 5 個帳號才寫入；已在 PostgreSQL 16 驗證，同後綴的外部帳號不受影響。
