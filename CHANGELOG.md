@@ -3,6 +3,36 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.41.2] - 2026-10-31
+
+### Removed
+- **開發者面板的「模擬等級」與「模擬 Pro」（PRO-014Q Q6）**：只影響開發者模式的裝置。模擬把假值寫進真實的 user，經由每一條保存 user 的路徑（pending profile、換日、Session、換帳號）外流到 `profiles`，在 `legacy` source 下甚至會授予真的 Pro；逐條修補四輪都被找到新的外流路徑，所以改為不模擬。要測試不同等級或 Pro 狀態，改用 5 個固定的測試帳號，見 `docs/pro-test-accounts.md`。
+
+### Changed
+- 開發者面板只剩唯讀的會員狀態與 entitlement source，以及「在空間顯示全部 3D 資產」。舊版留下模擬資料時，面板顯示「清除殘留的模擬資料並重新載入」，沿用 S0 的完整清理；在清除前，profile 同步與 Pro 授權更新照舊暫停（fail closed）。
+
+### Fixed
+- 遊客有任務但沒有本機 user 時（例如清除殘留刪掉了無法辨識的本機資料），「以遊客身份繼續」改為進入設定頁，不再開進無法記錄 Session 的畫面。
+- **遊客的設定頁不再沿用已登入帳號的 id**：帳號的遠端載入失敗、回到登入畫面後改選遊客，設定頁原本會沿用該帳號的 id，建出等級 0、沒有 Pro 的空白 profile，下次同步時蓋掉雲端的真實資料。這個問題在沒有任務的裝置上原本就存在。現在只有已登入流程會把帳號傳給設定頁，遊客一律使用新的本機 id。
+
+### Validation
+- 改寫 `proDevPanel.test.js`：
+  - 兩種 source 下面板都沒有模擬按鈕，渲染也不寫入任何東西；
+  - 沒有殘留時不顯示清除；
+  - 殘留時照舊 fail closed，清除後回到非 Pro。
+- `pro014qDevReset.test.js` 改為直接寫入舊版留下的殘留，S0 與 B1 的 14 個情境照舊通過。
+- `proGateCallSites.test.js`：client 端 Pro 寫入點只剩 SUB-16，`settings.js` 不得再寫入。
+- `appBootSequence.test.js` 新增四項，都在修正前的程式碼上會失敗：
+  - 遊客有任務、沒有 user 時進入設定頁；
+  - 帳號載入失敗後改用遊客時，設定頁不沿用該帳號的 id；
+  - 已登入的新帳號沒有雲端 profile 時，設定頁使用 session 的 id；
+  - 設定頁開著時另一個分頁換了帳號，舊帳號留下的設定不會把新帳號的資料寫到舊 id。
+- `proGateCallSites.test.js` 新增：沒有任何地方寫入 `orbit_dev_backup`。
+- `proDevPanel.test.js`：殘留時，`upsertProfile`、`refreshProEntitlement` 在已登入的情況下照舊被擋住（移除 guard 時這項會失敗）。
+- `docs/pro-test-accounts.md` 的設定 SQL 只依完整 email 比對，剛好找到 5 個帳號才寫入；已在 PostgreSQL 16 驗證，同後綴的外部帳號不受影響。
+
+---
+
 ## [1.41.1] - 2026-10-23
 
 ### Fixed

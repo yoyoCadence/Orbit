@@ -724,3 +724,98 @@ describe('PRO-014Q S0（A1）：另一個視窗按「還原」', () => {
     expect(reload).not.toHaveBeenCalled();
   });
 });
+
+describe('PRO-014Q Q6：遊客有任務但沒有 user', () => {
+  it('進入設定頁重建 profile，而不是開機到無法記錄 Session 的狀態', async () => {
+    // 「清除殘留」刪掉了遊客的本機 user（backup 屬於另一個帳號，無法分辨），任務還在。
+    cache.user = null;
+    cache.tasks = [{ id: 'task-1', name: '閱讀' }];
+    auth.getSession.mockResolvedValue(null);
+    await import('../../pwa/js/app.js');
+    await flush();
+    expect(authFlow.showLoginScreen).toHaveBeenCalled();
+
+    window.continueAsGuest();
+    await flush();
+
+    expect(document.getElementById('setup-screen').classList.contains('hidden')).toBe(false);
+    expect(document.getElementById('main-app').classList.contains('hidden')).toBe(true);
+    expect(dayCycle.showDailyReport).not.toHaveBeenCalled();
+  });
+
+  it('帳號載入失敗後改用遊客，設定頁不會沿用該帳號的 id（不得蓋掉雲端 profile）', async () => {
+    // 已登入的帳號按了「清除殘留」：任務還在、本機 user 被刪；重新載入時遠端拉取失敗，
+    // loadAndStart 已記下 session，回到登入畫面。此時選遊客不得建出帶真實 id 的空白 profile。
+    cache.user = null;
+    cache.tasks = [{ id: 'task-1', name: '閱讀' }];
+    auth.getSession.mockImplementation(
+      () => new Promise(resolve => { auth.sessionResolve = resolve; }),
+    );
+    db.loadFromRemote.mockRejectedValueOnce(new Error('offline'));
+    await import('../../pwa/js/app.js');
+    await flush();
+    await auth.callback('SIGNED_IN', sessionFor('owner-a'));
+    await flush();
+    expect(authFlow.showLoginScreen).toHaveBeenCalled();
+
+    window.continueAsGuest();
+    await flush();
+    document.getElementById('setup-name').value = '遊客';
+    document.getElementById('setup-form').dispatchEvent(
+      new Event('submit', { bubbles: true, cancelable: true }),
+    );
+
+    expect(storage.saveUser).toHaveBeenCalled();
+    const saved = storage.saveUser.mock.lastCall[0];
+    expect(saved.name).toBe('遊客');
+    expect(saved.id).toBeTruthy();
+    expect(saved.id).not.toBe('owner-a');
+  });
+
+  it('已登入的新帳號沒有雲端 profile 時，設定頁使用 session 的 id', async () => {
+    cache.user = null;
+    cache.tasks = [];
+    auth.getSession.mockImplementation(
+      () => new Promise(resolve => { auth.sessionResolve = resolve; }),
+    );
+    db.loadFromRemote.mockImplementationOnce(async () => { cache.user = null; cache.tasks = []; });
+    await import('../../pwa/js/app.js');
+    await flush();
+    await auth.callback('SIGNED_IN', sessionFor('owner-new'));
+    await flush();
+
+    expect(document.getElementById('setup-screen').classList.contains('hidden')).toBe(false);
+    document.getElementById('setup-name').value = '新帳號';
+    document.getElementById('setup-form').dispatchEvent(
+      new Event('submit', { bubbles: true, cancelable: true }),
+    );
+
+    expect(storage.saveUser.mock.lastCall[0].id).toBe('owner-new');
+  });
+
+  it('設定頁開著時另一個分頁換了帳號，舊帳號的設定不會用新帳號的資料寫回舊 id', async () => {
+    cache.user = null;
+    cache.tasks = [];
+    auth.getSession.mockImplementation(
+      () => new Promise(resolve => { auth.sessionResolve = resolve; }),
+    );
+    db.loadFromRemote
+      .mockImplementationOnce(async () => { cache.user = makeUser('owner-a'); cache.tasks = []; })
+      .mockImplementationOnce(async () => { cache.user = makeUser('owner-b'); cache.tasks = []; });
+    await import('../../pwa/js/app.js');
+    await flush();
+    await auth.callback('SIGNED_IN', sessionFor('owner-a'));
+    await flush();
+    await auth.callback('SIGNED_IN', sessionFor('owner-b'));
+    await flush();
+
+    document.getElementById('setup-name').value = 'B';
+    document.getElementById('setup-form').dispatchEvent(
+      new Event('submit', { bubbles: true, cancelable: true }),
+    );
+
+    const savedIds = storage.saveUser.mock.calls.map(([user]) => user.id);
+    expect(savedIds).toContain('owner-b');
+    expect(savedIds).not.toContain('owner-a');
+  });
+});

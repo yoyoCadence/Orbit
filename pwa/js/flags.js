@@ -3,7 +3,7 @@
 
 // localStorage
 export const FLAG_SHIELD_PENDING    = 'orbit_shield_pending';    // {prevStreak} JSON，連勝中斷待用保護卡
-export const FLAG_DEV_BACKUP        = 'orbit_dev_backup';        // dev tools 覆蓋前的 user 備份（存在＝暫停上雲）
+export const FLAG_DEV_BACKUP        = 'orbit_dev_backup';        // 舊版 dev tools 覆蓋前的 user 備份；PRO-014Q Q6 起不再寫入，存在＝暫停上雲直到「清除殘留」
 export const FLAG_DEV_PANEL         = 'orbit_dev_panel';         // '1' = 非 localhost 也顯示開發者面板
 
 export const FLAG_PERSONAL_SPACE_RUNTIME = 'orbit_personal_space_runtime';

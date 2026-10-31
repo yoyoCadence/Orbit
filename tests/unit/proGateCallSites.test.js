@@ -112,19 +112,27 @@ describe('Pro gate 呼叫點', () => {
     expect(offenders).toEqual([]);
   });
 
-  // 這兩處在 server source 下會失效，但修好它們需要 server 端支援，屬 PRO-014C
-  // 範圍外。測試把現況鎖起來，避免它們被誤認為已經處理過。
-  it('已知的 client 端 Pro 寫入點僅剩兩處，且都已立案追蹤', () => {
+  // 這一處在 server source 下會失效，但修好它需要 server 端支援，屬 PRO-014C
+  // 範圍外。測試把現況鎖起來，避免它被誤認為已經處理過。開發者面板的寫入點
+  // 已隨 PRO-014Q Q6 移除模擬而消失，settings.js 也不得再寫入。
+  it('已知的 client 端 Pro 寫入點僅剩一處，且已立案追蹤', () => {
     const dayCycle = files.find(f => f.path === 'dayCycle.js').source;
-    const settings = files.find(f => f.path === 'pages/settings.js').source;
 
     expect(dayCycle).toContain('state.user.isPro           = true;');   // SUB-16 連勝解鎖
-    expect(settings).toContain('function _devApplyPro(status)');        // 開發者面板
 
     // 其餘檔案都不得寫入 Pro 欄位。
     const writers = files
-      .filter(({ path }) => !['storage.js', 'dayCycle.js', 'pages/settings.js'].includes(path))
+      .filter(({ path }) => !['storage.js', 'dayCycle.js'].includes(path))
       .filter(({ source }) => /\.(isPro|proExpiresAt|trialStartedAt)\s*=/.test(source))
+      .map(({ path }) => path);
+    expect(writers).toEqual([]);
+  });
+
+  // PRO-014Q Q6：模擬已移除，舊版留下的 backup 只會被讀取與清除。重新加回任何寫入
+  // （不論按鈕叫什麼）都會讓 upsertProfile／refreshProEntitlement 再次被擋住。
+  it('沒有任何地方寫入 orbit_dev_backup', () => {
+    const writers = files
+      .filter(({ source }) => /setItem\(\s*(FLAG_DEV_BACKUP|['"]orbit_dev_backup['"])/.test(source))
       .map(({ path }) => path);
     expect(writers).toEqual([]);
   });

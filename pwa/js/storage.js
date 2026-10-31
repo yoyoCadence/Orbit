@@ -761,9 +761,10 @@ export const db = {
     if (!isServerProEntitlementEnabled()) return false;
     // PRO-014M dev-tool guard, mirroring upsertProfile(): while a dev override
     // backup exists, the projection on disk is the simulated one and must not
-    // be replaced by the server's. This grants nothing a hand-written snapshot
-    // could not already (see proEntitlement.js), SNAPSHOT_TTL_MS still expires
-    // it, and the panel's reset drops both so the next launch refetches.
+    // be replaced by the server's. Q6 removed the simulations, so only a backup
+    // left by an older version reaches this. It grants nothing a hand-written
+    // snapshot could not already (see proEntitlement.js), SNAPSHOT_TTL_MS still
+    // expires it, and the panel's 清除殘留 drops both so the next launch refetches.
     if (localStorage.getItem(FLAG_DEV_BACKUP)) return false;
 
     const session = await this._session();
@@ -876,7 +877,7 @@ export const storage = {
       .catch(console.error);
     return saved;
   },
-  /** Local-only write — no Supabase sync（profile 樂觀更新、dev tools 用）。 */
+  /** Local-only write — no Supabase sync（profile 樂觀更新）。 */
   saveUserLocal: (u) => {
     try { set('user', u); } catch (err) { console.error('Local user save failed:', err); }
   },
@@ -1145,9 +1146,9 @@ export const storage = {
   },
 
   /**
-   * PRO-014Q S0: the developer panel's simulations write fake values into the
-   * real user, and any pending profile on this device may carry them — the
-   * backup may even belong to another account. Drop the backup, every pending
+   * PRO-014Q S0: the developer panel's simulations (removed in Q6) wrote fake
+   * values into the real user, and any pending profile on a device that ran
+   * them may still carry them — the backup may even belong to another account. Drop the backup, every pending
    * profile, the local user and the projection, so the next launch loads real
    * data from the server. Unsynced Sessions keep their own pending sidecar.
    *

@@ -1,6 +1,6 @@
 # PRO-014Q 變更說明：開發者面板的模擬不可寫進真實資料
 
-> 狀態：使用者於 2026-10-18 核准 **S0＋Q6**。S0 已實作（#178，v1.31.2），2026-10-19 依使用者核准的 A1＋B1 補上 review 找到的兩個情況（見 §4 S0 的「review 後的補充」）；Q6 待 preview 專案的測試帳號建立後實作。
+> 狀態：使用者於 2026-10-18 核准 **S0＋Q6**。S0 已實作（#178，v1.31.2），2026-10-19 依使用者核准的 A1＋B1 補上 review 找到的兩個情況（見 §4 S0 的「review 後的補充」）；Q6 已實作（2026-10-31，v1.41.2）：preview 專案並不存在，測試帳號改在 production 建立（見 Q6 節末的「實作紀錄」與 [`pro-test-accounts.md`](pro-test-accounts.md)）。
 
 ## 1. 結論
 
@@ -157,6 +157,14 @@ S0 實作後的獨立 review 找到兩個本節原本沒涵蓋的情況：
    - 開發者面板只在 backup 存在時顯示「清除殘留的模擬資料」，按下後做 S0 的完整清理。
    - 清除所有 pending 會丟掉這台開發裝置上尚未同步的真實 profile 變動，包括模擬期間記錄 Session 獲得的 XP（見 S0 的說明）。只發生在開發者裝置上，而且只在開發者看過確認對話框、主動按下時。
 4. **登出後回不來**：Q6 之後不會再產生新的 backup。既有 backup 造成的卡住，從任一能登入的帳號（或訪客）按「清除殘留」即可解除。
+
+#### 實作紀錄（2026-10-31）
+
+- **測試帳號在 production**：本節第 2 點寫的 preview 專案並不存在（PRO-014D 用本機 Docker，app 連線寫死 production）。專案擁有者同意在 production 建立 5 個專屬帳號（免費、試用中、付費、終身、付費已過期，Lv.1／5／10／20／30），以 SQL 同時寫入 `profiles` 與 `pro_entitlements`；`legacy` source 與 server 的 `is_pro_active()` 判定一致，但 `server` source 的 client 會把終身帳號誤判為非 Pro（既有 bug，另立 `PRO-014R`）。SQL 只依完整 email 比對、剛好 5 個帳號才寫入（獨立 review 指出只比對後綴時，任何人註冊同後綴的帳號都會被給 Pro）。帳號、SQL 與注意事項見 [`pro-test-accounts.md`](pro-test-accounts.md)。
+- **面板**：移除 `_devXpForLevel()`、`_devBackupOnce()`、`_devApplyLevel()`、`_devProSnapshot()`、`_devApplyPro()` 與對應按鈕。面板改為唯讀的會員狀態與 source，並指向測試帳號文件；只有 backup 存在時顯示「清除殘留的模擬資料」，沿用 S0 的清理（含 B1 遊客判斷）。程式中已沒有任何地方寫入 `orbit_dev_backup`。
+- **舊 backup 照舊 fail closed**：`upsertProfile()` 與 `refreshProEntitlement()` 的 guard 不變，直到「清除殘留」。
+- **遊客邊界（使用者 2026-10-31 決定）**：在別的帳號模擬後才建立的遊客，「清除殘留」照舊刪除本機 user（無法和可能含模擬值的已登入帳號快取區分）；`continueAsGuest` 在有任務、沒有 user 時改進入設定頁，不再卡在無法記錄 Session 的狀態。遊客的舊等級會遺失，但不會外流。
+- **遊客不沿用 session**（獨立 review 的 P1）：已登入帳號遠端載入失敗時，`loadAndStart` 已記下 `_currentSession`；若此時改用遊客，設定頁原本會沿用該帳號的 id，建出空白 profile 並在下次同步蓋掉雲端資料（main 上無任務時就已存在）。`showSetup(ownerId)` 改由呼叫端明確傳入 owner，只有 `loadAndStart` 傳 `session.user.id`，遊客一律使用新的本機 id。
 
 ### 替代：Q5 改良（不建議）
 
