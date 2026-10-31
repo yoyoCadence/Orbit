@@ -15,7 +15,7 @@
 --   REPLACE 會覆蓋未入庫的差異。先執行
 --     SELECT pg_get_functiondef('public.handle_new_user()'::regprocedure);
 --   比對後再套用；回滾即重新執行 004 的函式定義。
--- 執行日期：PENDING（尚未於 Supabase 執行；production 由專案擁有者套用）
+-- 執行日期：2026-10-31（專案擁有者於 production 套用，BUG-109A；套用前確認與 004 相同並以 transaction 乾跑）
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION public.handle_new_user()
