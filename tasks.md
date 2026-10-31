@@ -244,7 +244,7 @@
   - **需專案擁有者執行**：production 資料庫操作，Claude 不具權限；依 AGENTS.md §3 屬 schema 變更的套用。
   - 依賴：`BUG-109`
   - In progress（2026-10-31）：專案擁有者依 runbook 在 production 套用。
-  - 完成（2026-10-31，專案擁有者於 production 套用；紀錄見 PR #214）：
+  - 完成（2026-10-31，專案擁有者於 production 套用；紀錄見 PR #215）：
     - 套用前 `pg_get_functiondef` 的輸出與 `004_triggers.sql` 相同（只差空白與 Postgres 輸出時的格式），沒有未入庫的修改；原版定義保存為回滾來源，與 004 的函式定義等價。
     - 以 production 乾跑取代 runbook 第 3 步：在同一個 transaction 內套用 013、跑 `tests/database/bug109.test.sql` 的 6 項檢查，最後 ROLLBACK。乾跑通過（此做法事先在 PostgreSQL 16 驗證過：未套 013 會重現 `profiles_name_check`，乾跑後函式與資料都不變）。
     - 正式套用後重新查詢，函式已含 `left(…, 30)`，驗證成功。
