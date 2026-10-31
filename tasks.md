@@ -230,6 +230,9 @@
   - **2026-10-18 使用者核准**：S0＋Q6。先做 S0（patch），再做 Q6（移除開發者面板的等級與 Pro 模擬；舊 backup fail closed 與一次性清理；`docs/` 寫測試帳號說明）。preview 專案的測試帳號需由專案擁有者建立，或授權給 agent。另提醒擁有者自行檢查自己帳號的 `profiles`。
   - S0 完成（2026-10-19，[#178](https://github.com/yoyoCadence/Orbit/pull/178)，v1.31.2）。獨立 review 找到 P1（多視窗外流，main 上原本就有）與 P2（遊客按「還原」會失去唯一的本機 profile）；**2026-10-19 使用者核准 A1＋B1**，同一個 PR 補上：其他視窗移除 backup 或清空 localStorage 時重新載入（A1）；沒有 session 且 backup 屬於本機 user 時視為遊客，把 backup 寫回本機 user（B1）。複查後再修：讀取 session 出錯時不當成遊客（避免舊備份蓋掉雲端資料）、重新載入前的重複點擊不再作用。仍未涵蓋：在別的帳號模擬後才建立的遊客等已知限制，見變更說明 §4 S0「review 後的補充」，Q6 前要決定。實作內容：「↩ 還原原始資料並重啟」先確認，再刪除備份、所有帳號的 pending profile（含無 owner 的舊 key）、本機 user、projection 與所有帳號的 V2 state（保留 legacy claim 與 legacy state）後重新載入。清理函式為 `storage.discardDevSimulation()` 與 `v2/store.removeAllPersonalSpaceV2States()`，Q6 的「清除殘留」沿用。
   - 剩下 Q6：**需先在 preview Supabase 專案建立測試帳號**（免費、試用中、付費、終身、不同等級），由專案擁有者建立或授權給 agent。
+  - Q6 in progress（2026-10-31）：
+    - 測試帳號：preview 專案並不存在（PRO-014D 用的是本機 Docker，app 連線寫死 production），使用者同意改在 production 建立 5 個專屬帳號（免費、試用中、付費、終身、付費已過期，Lv.1／5／10／20／30），2026-10-31 建立並以 SQL 設定完成，`server_pro_active` 與兩張表一致性皆經驗證。
+    - 使用者決定（2026-10-31，AskUserQuestion）：在別的帳號模擬後才建立的遊客，「清除殘留」照舊刪除本機 user，`continueAsGuest` 在有任務、沒有 user 時導向設定頁，不再卡住。
 
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
