@@ -6,7 +6,7 @@
 
 - **問題**：
   - 切到 `server` source（`PRO-014H`）之後，「先試用、後買終身」的使用者會被判定為**不是 Pro**（`PRO-014R`）。
-  - 不只這些人：app 啟動時，只要 profile 沒有 `trialStartedAt` 就會呼叫 `start_trial()`（`pwa/js/app.js`），而它的 `ON CONFLICT … COALESCE` 會替已存在的終身資料列補上試用起點。因此**為 `PRO-014H` 寫入核准名單的每一個終身帳號**，都會依序變成第 7 列、再變成第 5 列（§3），最後失去 Pro。
+  - 不只這些人：app 啟動時，只要 profile 沒有 `trialStartedAt` 就會呼叫 `start_trial()`（`pwa/js/app.js`），而它的 `ON CONFLICT … COALESCE` 會替已存在的終身資料列補上試用起點。因此**為 `PRO-014H` 寫入核准名單、而 profile 沒有 `trialStartedAt` 的每一個終身帳號**，都會依序變成第 7 列、再變成第 5 列（§3），最後失去 Pro。profile 已有 `trialStartedAt` 的帳號不會呼叫 `start_trial()`，但若寫入核准名單時把那個舊的試用起點一起寫進 `pro_entitlements`，就直接是第 5 列。
   - 在試用期間買了終身方案的人，會被顯示成「試用中」，試用結束後也一樣失去 Pro（`PRO-014N` 描述的歧義，以及它衍生的授權錯誤）。
 - **原因**：`my_pro_status()` 只要帳號開始過試用，就回傳 `trial_ends_at`，付費帳號也一樣。client 把 `expires_at` 和 `trial_ends_at` 中較晚的一個當成 Pro 的上限；終身付費的 `expires_at` 是 NULL，上限就只剩已經過去的試用結束日。
 - **建議（方案 A）**：只改 RPC 的一個欄位。當付費已經涵蓋整段試用（終身，或到期日不早於試用結束），`trial_ends_at` 回傳 NULL。
@@ -65,9 +65,9 @@ client 端（`pwa/js/platform/proEntitlement.js`）：
 
 `PRO-014N` 原本寫「純呈現層，不影響授權」，這是錯的，2026-10-31 已更正。
 
-**為什麼會擴及所有終身帳號**：`pwa/js/app.js` 在登入後，只要 profile 沒有 `trialStartedAt` 就呼叫 `start_trial()`，付費與否都一樣。`start_trial()` 用 `ON CONFLICT … DO UPDATE SET trial_started_at = COALESCE(e.trial_started_at, EXCLUDED.trial_started_at)`（011），會替已存在、沒有試用起點的終身資料列補上「現在」。
+**為什麼會擴及核准名單上的終身帳號**：`pwa/js/app.js` 在登入後，只要 profile 沒有 `trialStartedAt` 就呼叫 `start_trial()`，付費與否都一樣。`start_trial()` 用 `ON CONFLICT … DO UPDATE SET trial_started_at = COALESCE(e.trial_started_at, EXCLUDED.trial_started_at)`（011），會替已存在、沒有試用起點的終身資料列補上「現在」。
 
-- 寫入核准名單的終身帳號（第 6 列）第一次登入後就變成第 7 列。
+- 寫入核准名單、profile 沒有 `trialStartedAt` 的終身帳號（第 6 列），第一次登入後就變成第 7 列。
 - 15 天後試用結束，變成第 5 列，在 `server` source 下失去 Pro。
 - 已在 PostgreSQL 16 重現：終身資料列加上 `start_trial()` 之後，現行 RPC 回傳 15 天後的 `trial_ends_at`，提案回傳 NULL。
 
@@ -175,7 +175,7 @@ $$;
    - **寫成 `bug109.test.sql` 的樣式（純 SQL 的 `DO` 區塊加 `ASSERT`），不用 pgTAP**。pgTAP 的 `ok()`／`is()` 失敗時只回傳「not ok」列、不會中止；Supabase SQL Editor 只顯示最後一個陳述式的結果（`ROLLBACK`），失敗會看起來像通過。`ASSERT` 失敗會中止 transaction 並顯示錯誤，乾跑才有意義。
    - 以 `authenticated` 與 `request.jwt.claim.sub` 逐一呼叫，涵蓋 §3 的 12 個情境與 `>=` 邊界（付費到期日等於試用結束、早 1 微秒）；
    - 斷言 `is_active`，以及 `expires_at`、`trial_ends_at` 的**實際值**，不只是否為 NULL；
-   - 全部在 transaction 內，結尾 rollback。在 production 乾跑時，`auth.users` 的合成資料列也會被回滾；也可以改用 5 個測試帳號的 UUID。
+   - 全部在 transaction 內，結尾 rollback。在 production 乾跑時，`auth.users` 的合成資料列也會被回滾，因此用合成資料列即可。不要把 5 個測試帳號的 UUID 寫進測試：repo 是公開的，帳號身分不公開；它們的試用日期也是相對於上次重設的時間，無法寫成固定的斷言。
 3. `tests/unit/proEntitlementsSql.test.js`：鎖住 014 的契約：
    - 回傳型別不變；
    - `SECURITY DEFINER` 與 `search_path = ''`；
@@ -207,7 +207,7 @@ $$;
 - **語意耦合**：「`trial_ends_at` 為 NULL」從「沒有試用」變成「沒有會延長存取的試用」。
   - client 現有的 3 個使用點：`entitlementExpiryMs()` 當存取上限、`getTrialEndsAtFromSnapshot()` 當倒數來源、`getPaidProStateFromSnapshot()` 用它區分付費與試用，三者都符合新語意（第 3 個因此變得精確）。
   - 具體的未來風險：`app.js` 決定是否呼叫 `start_trial()` 的判斷，以及 `storage.js` 的 `getTrialProgressPercent()`，目前讀的是 profile 的 `trialStartedAt`；`PRO-014H` 計畫停止寫回這個欄位。屆時的替代來源**不可**把 `trial_ends_at IS NULL` 當成「從未試用」，應讀 `start_trial()` 的回傳或另外的欄位。這點寫進 014 的檔頭。
-- **與 `PRO-014H` 核准名單無關**：擁有者自己的終身 Pro 仍只存在 `profiles`，切換前要另外寫入 `pro_entitlements`。
+- **A 不會寫入核准名單**：擁有者自己的終身 Pro 仍只存在 `profiles`，切換前要另外寫入 `pro_entitlements`。寫入時 `trial_started_at` 的處理見 §1：套用 014 之後，終身資料列不論有沒有試用起點都會被正確判讀。
 
 ## 9. 需要使用者決定
 
