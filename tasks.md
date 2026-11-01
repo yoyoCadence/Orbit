@@ -213,16 +213,17 @@
 
 > 2026-11-01 核准（使用者回覆「可以照你說的建議做」）：PRO-014R 採用方案 A（`my_pro_status()` 在付費已涵蓋整段試用時不回報 `trial_ends_at`）；PRO-014N 以 A 結案並重新定義（推斷保留且在 014 後精確，「不需推斷的明確欄位」改列可選的方案 B）。依提案 §6 實作一個 PR；014 的 production 套用另立擁有者執行的任務。
 
+---
+
+## In Progress
+
 - [ ] **PRO-014RA** 在 production 套用 014（`my_pro_status()` 的試用日期回報條件）
   - 目標：讓 production 的 `my_pro_status()` 在付費已涵蓋整段試用時不回報 `trial_ends_at`，`server` source 下終身付費不再被誤判為非 Pro。
   - 步驟（與 BUG-109A 相同，見 [`docs/pro-014r-my-pro-status-trial-cap.md`](docs/pro-014r-my-pro-status-trial-cap.md) §7）：以 `pg_get_functiondef` 比對 production 與 011 並保存回滾來源；在同一個 transaction 內套用 014、跑 `tests/database/pro014r.test.sql`、`ROLLBACK`（乾跑）；正式套用；檢查權限（anon 不可執行）、`SECURITY DEFINER`、`search_path`、owner；以本機覆寫改用 `server` source，確認 `+orbit-lifetime` 顯示終身付費 Pro、其餘 4 個測試帳號沒有回歸。
   - **需專案擁有者執行**：production 資料庫操作，Claude 不具權限。`legacy` source 下一般使用者不呼叫這個 RPC，套用時機不受 `PRO-014H` 限制。
   - 依賴：`PRO-014R`
   - 擋：`PRO-014H`
-
----
-
-## In Progress
+  - In progress（2026-11-01）：專案擁有者依提案 §7 在 production 套用。
 
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
