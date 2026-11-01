@@ -237,7 +237,8 @@ describe('getProStatusFromSnapshot()', () => {
     } finally {
       Storage.prototype.setItem = setItem;
     }
-    snapshot({});
+    // 沒有 latch 時這份 snapshot 會判為 not-pro；latch 讓它變成 unknown。
+    snapshot({ isActive: false });
     expect(getProStatusFromSnapshot(OWNER, NOW)).toBe('unknown');
   });
 
@@ -359,11 +360,14 @@ describe('server source：狀態不明時的換日', () => {
     expect(readPendingProRollover()?.prevStreak).toBe(10);
 
     state.user.lastStreakDate = daysAgo(1);          // 模擬隔天：昨天（第一天）有啟動
+    state.sessions = [                               // 第一天是有效日
+      { date: daysAgo(1), isProductiveXP: true, finalXP: 60, impactType: 'task', value: 'A', result: 'valid' },
+    ];
     await proRefresh();
     processYesterdayStreak();                       // 「第二天」：先補做，再照常評估昨天
     expect(offer()).toEqual({ ownerId: OWNER, prevStreak: 10 });
     expect(state.user.lastStreakDate).toBe(eToday());
-    expect(state.user.streakDays).toBe(0);          // 昨天沒有 Session，不是有效日
+    expect(state.user.streakDays).toBe(1);          // 第一天的 Sessions 被評估：有效，連勝延續
     expect(readPendingProRollover()).toBeNull();
   });
 });
