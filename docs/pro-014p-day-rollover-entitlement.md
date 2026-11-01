@@ -139,9 +139,10 @@
 
 - 新 key `orbit_pro_rollover_pending`（`pwa/js/flags.js`），內容 `{ ownerId, prevStreak }`。`prevStreak` 是這次換日歸零前的連勝；沒有歸零或小於 2 時為 `null`。
 - **每次 `unknown` 的換日都寫入**（沒有歸零時 `prevStreak` 為 `null`），因為補卡也靠這筆紀錄觸發。
-- 再一次 `unknown` 換日時合併：新的 `prevStreak` 不是 `null` 才取代（與現在 offer 只有一格、後來的覆蓋前面的相同）。
+- 同一個 owner 再一次 `unknown` 換日時合併：新的 `prevStreak` 不是 `null` 才取代（與現在 offer 只有一格、後來的覆蓋前面的相同）。**不同 owner 時整筆取代，`prevStreak` 不繼承**（否則 A 的連勝會交給 B，正是 BUG-115 的問題）。
 - `ownerId` 與目前的 user 不符時忽略、不刪除（與 BUG-115 的方向一致，A 回來時仍可補做）；登出不刪除。只有一格：B 的 `unknown` 換日會覆蓋 A 的紀錄，A 延後的部分遺失，結果與現在相同。
 - 裝置從本機覆寫的 `server` 回到 `legacy` 時，留下的紀錄會以 `legacy` 的判斷補做。
+- 紀錄沒有期限：A 登出後隔了幾週才回來，延後的 offer 仍會補上。與現在 offer 放著不用的行為相同（§9「offer 放著不用」）。
 
 ### 6.3 換日
 
@@ -188,7 +189,7 @@ export function processYesterdayStreak() {
   - `status === 0`：網路失敗、逾時；
   - 408、429；
   - 5xx。
-- 其他帶 `error` 的回應維持清除：401／403、RPC 不存在、契約不符。這些是權威的答案。snapshot 只是 UI 投影、不是安全邊界，所以暫時性錯誤時沿用 `SNAPSHOT_TTL_MS` 的 grace window 是它原本的用途。
+- 其他帶 `error` 的回應維持清除：401／403、RPC 不存在、契約不符。這些是權威的答案。例外：PostgREST 的 JWT 錯誤（`PGRST301`、`PGRST303`，例如 JWT 過期；也是 401）是 token 的問題，不是對 entitlement 的回答。裝置時鐘錯誤時它會每次出現，所以視為暫時性，由 `SNAPSHOT_TTL_MS` 限制保留的時間。snapshot 只是 UI 投影、不是安全邊界，所以暫時性錯誤時沿用 `SNAPSHOT_TTL_MS` 的 grace window 是它原本的用途。
 - `legacy` 下 refresh 在呼叫 RPC 前就返回，所以沒有影響。
 - 已知限制，不在這個 PR：`refreshProEntitlement()` 在 `_session()` 回傳 null 時清除 snapshot。Supabase client 換發 token 時遇到網路失敗也會回傳 null session，此時 UI 會失去 Pro，直到下次 refresh。在 D 之下換日仍安全（沒有 snapshot＝`unknown`）。要區分「已登出」與「換發失敗」需要檢查 auth 錯誤，另案處理。
 
@@ -216,12 +217,12 @@ export function processYesterdayStreak() {
   - `unknown` 時連勝照常歸零、`lastStreakDate` 推進、不補卡、沒有 offer、不做 SUB-16、`streakUnlockUsed` 不變、寫入紀錄；沒有歸零的 `unknown` 換日也寫入紀錄。
 - 補做：
   - `pro` → 補卡＋offer；`not-pro` → 沒有 offer、不補卡；仍是 `unknown` → 保留紀錄。
-  - 補做兩次只給一次；owner 不符 → 忽略且保留；合併規則。
+  - 補做兩次只給一次；owner 不符 → 忽略且保留；同一個 owner 的合併規則；不同 owner 時整筆取代、不繼承 `prevStreak`。
   - `loadAndStart()` 中補做的結果不被 `startTrial()` 的重新讀取蓋掉。
 - 跨日：第一天 `unknown`、第二天才取得權威結果 → 第一天的 Sessions 在第二天的換日照常評估，第一天的待補做也被補上。
 - refresh：
   - `{ status: 0, error }`、408、429、503 保留 snapshot；
-  - 401、403、`PGRST202`（RPC 不存在）清除；
+  - 401、403、`PGRST202`（RPC 不存在）清除；JWT 錯誤的 401（`PGRST301`／`PGRST303`）保留；
   - `proEntitlementGate.test.js` 新增真實形式的案例，保留原本的 throw 案例。
 - 呼叫點：`loadAndStart`、cached-user 背景同步、`_syncAfterReconnect` 在 refresh 之後呼叫補做（`appBootSequence.test.js` 的形式）。
 - `legacy`：永遠不寫紀錄；特性測試不改即通過。
@@ -285,9 +286,13 @@ tasks.md 的 PRO-014P 原本的「完成條件」（全文）：
 
 所以：
 
-- PRO-014L 合併後，SUB-16 不再屬於換日，也不再看 client 的 Pro 狀態。§2.1 的 SUB-16 傷害由 server 解決，與 PRO-014P 無關。
+- PRO-014L 合併後，SUB-16 不再屬於換日，資格與「已是 Pro 就不發放」都由 server 判斷。`requestStreakUnlock()` 仍在 `isProUser()` 為 true 時略過請求，但那只是省一次呼叫；snapshot 過期時多呼叫一次，server 回 `active_entitlement`、不消耗。§2.1 的 SUB-16 傷害由 server 解決，與 PRO-014P 無關。
 - D 對 SUB-16 只做最小的處理（`unknown` 略過、不消耗）。它是 #154 合併前的過渡，#154 rebase 時整段刪除即可，D 沒有任何需要保留的 SUB-16 邏輯。
-- 衝突範圍：`dayCycle.js`（換日函式）、`app.js`（`bootWithLocalState()` 與 `loadAndStart()`）、`storage.js`、`appBootSequence.test.js`、`proGateCallSites.test.js`。
+- 衝突範圍：
+  - `dayCycle.js`（換日函式）；
+  - `app.js`：從 `dayCycle.js` import 的那一段（D 新增 `resolvePendingProRollover`）與 `bootWithLocalState()`；#154 不改 `loadAndStart()`；
+  - `storage.js`、`appBootSequence.test.js`、`proGateCallSites.test.js`。
+- #154 的 `db.grantStreakUnlock()` 在發放後會呼叫 `refreshProEntitlement()`，成為第四個 refresh 呼叫點。它後面不必補做：既有的三個呼叫點仍會補做。
 - #154 的 migration 編號 012 仍未被使用（main 已有 013、014），rebase 後可沿用。
 - 順序：P 先合併、#154 之後 rebase，符合你決定的順序。
 
