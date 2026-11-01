@@ -19,12 +19,12 @@ Email 是專案擁有者的 Gmail 加上 `+` 後綴（Gmail 會寄到同一個�
 | `+orbit-free` | 免費：試用 60 天前開始，已過期 | 1（0） | false |
 | `+orbit-trial` | 試用中：昨天開始，剩 14 天 | 5（142） | true |
 | `+orbit-paid` | 付費，30 天後到期 | 10（477） | true |
-| `+orbit-lifetime` | 終身 Pro（`pro_expires_at` 為 NULL）；**`server` source 下目前誤判為非 Pro**，見下方 | 20（1672） | true |
+| `+orbit-lifetime` | 終身 Pro（`pro_expires_at` 為 NULL）；014 套用到 production 前，**`server` source 下誤判為非 Pro**，見下方 | 20（1672） | true |
 | `+orbit-expired` | 付費已過期：`is_pro = true` 但昨天到期，**不是 Pro** | 30（3655） | false |
 
 所有帳號都設定了 `trial_started_at`，app 不會再為它們呼叫 `start_trial()`。
 
-**`legacy` 與 `server` 的差異（已知 bug，`PRO-014R`）**：`profiles` 與 `pro_entitlements` 寫成一致，`legacy` source 與 server 的 `is_pro_active()` 對 5 個帳號的判定都和上表相同。但 `server` source 的 client 會把終身帳號誤判為非 Pro：`my_pro_status()` 對終身帳號回傳 `expires_at = NULL` 與已過去的 `trial_ends_at`，而 `entitlementExpiryMs()` 取兩者中較晚的日期當上限，結果以過期的試用日當作到期日。這是 `PRO-014H` 切換前必須修好的問題，`+orbit-lifetime` 正好可以用來重現與驗證修正。
+**`legacy` 與 `server` 的差異（`PRO-014R`）**：`profiles` 與 `pro_entitlements` 寫成一致，`legacy` source 與 server 的 `is_pro_active()` 對 5 個帳號的判定都和上表相同。但在 migration 014 套用到 production 之前（`PRO-014RA`），`server` source 的 client 會把終身帳號誤判為非 Pro：011 的 `my_pro_status()` 對終身帳號也回傳已過去的 `trial_ends_at`，而 client 以較晚的日期當上限。014 改為付費已涵蓋整段試用時不回報試用日期；套用後，在 `server` source 下登入 `+orbit-lifetime` 應顯示終身付費 Pro，這也是 `PRO-014RA` 的驗證步驟。
 
 ## 重設（每次測試前）
 

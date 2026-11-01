@@ -127,3 +127,45 @@ describe('PRO-014A entitlement migration contract', () => {
     );
   });
 });
+
+const migration014 = readFileSync(
+  new URL('../../pwa/db/014_my_pro_status_trial_cap.sql', import.meta.url),
+  'utf8',
+);
+const sql014 = migration014.replace(/--.*$/gm, '').replace(/\s+/g, ' ').trim();
+
+describe('PRO-014R 014 migration contract', () => {
+  it('only replaces my_pro_status(), without dropping it or touching tables', () => {
+    expect(sql014.match(/CREATE OR REPLACE FUNCTION public\.\w+/gi)).toEqual([
+      'CREATE OR REPLACE FUNCTION public.my_pro_status',
+    ]);
+    expect(sql014).not.toMatch(/DROP\s+FUNCTION|CREATE\s+TABLE|ALTER\s+TABLE|ON\s+TABLE|CREATE\s+POLICY/i);
+  });
+
+  it('keeps the return signature, SECURITY DEFINER and empty search_path, so clients are unaffected', () => {
+    expect(sql014).toMatch(
+      /RETURNS TABLE \( is_active boolean, expires_at timestamptz, trial_ends_at timestamptz \)/i,
+    );
+    expect(sql014).toMatch(
+      /FUNCTION public\.my_pro_status\(\)[\s\S]*?SECURITY DEFINER SET search_path = ''/i,
+    );
+    expect(sql014).toMatch(
+      /FROM \(SELECT auth\.uid\(\) AS user_id\) AS caller LEFT JOIN public\.pro_entitlements e ON e\.user_id = caller\.user_id/i,
+    );
+    expect(sql014).toMatch(
+      /WHEN e\.is_pro = true THEN e\.pro_expires_at ELSE NULL END AS expires_at/i,
+    );
+  });
+
+  it('reports the trial end only while the trial can extend access beyond payment', () => {
+    expect(sql014).toMatch(
+      /WHEN e\.trial_started_at IS NULL OR e\.trial_started_at > now\(\) THEN NULL WHEN e\.is_pro = true AND \(e\.pro_expires_at IS NULL OR e\.pro_expires_at >= e\.trial_started_at \+ public\.pro_trial_duration\(\)\) THEN NULL ELSE e\.trial_started_at \+ public\.pro_trial_duration\(\) END AS trial_ends_at/i,
+    );
+  });
+
+  it('restates the grants so a re-created function never becomes callable by anon', () => {
+    expect(sql014).toMatch(/REVOKE ALL ON FUNCTION public\.my_pro_status\(\) FROM public, anon;/i);
+    expect(sql014).toMatch(/GRANT EXECUTE ON FUNCTION public\.my_pro_status\(\) TO authenticated;/i);
+    expect(sql014).not.toMatch(/GRANT EXECUTE ON FUNCTION public\.my_pro_status\(\) TO (anon|public)/i);
+  });
+});

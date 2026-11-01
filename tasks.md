@@ -68,8 +68,13 @@
   - **為什麼 `PRO-014L` 是前置**：SUB-16 連勝解鎖目前在 client 端寫 `state.user.isPro`。切到 `server` source 後那個寫入不再有任何效果，連勝解鎖會靜默失效 —— cutover 不該挾帶一個功能迴歸。
   - 一併移除 `PRO-014C` 建立的 legacy 相容層（client 寫回 `trial_started_at`）—— cutover 後 legacy gate 不再被使用。**移除與旗標切換應在同一次變更內**，rollback 時也一起還原。
   - 依賴：`PRO-014J`、`PRO-014L`、`PRO-014O`（已於 v1.25.5 完成：cached-user 啟動也會 refresh projection）、`PRO-014P`（**擋 cutover**）；`PRO-014Q` 已完成（2026-10-31），實機驗證使用 [`docs/pro-test-accounts.md`](docs/pro-test-accounts.md) 的 5 個測試帳號，測試前先重跑其中的 SQL。
-  - **新增前置 `PRO-014R`（擋 cutover）**：`server` source 下終身付費但試用已過期的帳號被誤判為非 Pro。
+  - **新增前置 `PRO-014RA`（擋 cutover）**：migration 014 必須先套用到 production（PRO-014R 的 repo 部分已完成），否則 `server` source 下終身付費但試用已過期的帳號會被誤判為非 Pro。
   - **切換前要決定核准名單**（2026-10-31 發現）：PRO-014I 套用 011 時核准名單為 0 筆，沒有把 legacy 的 Pro 搬到 `pro_entitlements`。專案擁有者自己的帳號在 `profiles` 是終身 Pro（`is_pro = true`、`pro_expires_at` 為 NULL），但 `pro_entitlements` 沒有資料列；切到 `server` source 當天就會失去 Pro。切換前要由擁有者決定哪些帳號列入核准名單並寫入 `pro_entitlements`。
+
+- [ ] **PRO-014S**（可選）`my_pro_status()` 明確回傳 `is_pro`，移除付費／試用的推斷
+  - 來源：PRO-014N 以 PRO-014R 的方案 A 結案時，把原本「不需推斷」的條件改列在這裡（2026-11-01）。
+  - 範圍：RPC 新增回傳欄位（改回傳型別需 `DROP FUNCTION` 再建立並重新 `REVOKE`／`GRANT`，可包在同一個 transaction）；client 改讀新欄位，server 尚未提供時退回推斷；部署順序先 migration 後 client。
+  - 屬 RPC 契約變更，依 AGENTS.md §3 需先核准。014 之後推斷已精確，沒有正確性上的急迫性。
 
 - [ ] **PRO-014P** `server` source 下，換日處理只依權威的 entitlement 結果執行
   - 問題（PR #160 Codex review 指出，2026-10-18 對照 `dayCycle.js` 確認）：
@@ -206,20 +211,38 @@
 
 > 2026-10-31 排程：使用者要求寫 PRO-014R（擋 PRO-014H）與 PRO-014N 的合併提案。兩者都改 `my_pro_status()`，合併成一份只寫文件的提案，從 Backlog 移入 Next，再移入 In Progress；核准前不改程式碼、不動 production。
 
+> 2026-11-01 核准（使用者回覆「可以照你說的建議做」）：PRO-014R 採用方案 A（`my_pro_status()` 在付費已涵蓋整段試用時不回報 `trial_ends_at`）；PRO-014N 以 A 結案並重新定義（推斷保留且在 014 後精確，「不需推斷的明確欄位」改列可選的方案 B）。依提案 §6 實作一個 PR；014 的 production 套用另立擁有者執行的任務。
+
+- [ ] **PRO-014RA** 在 production 套用 014（`my_pro_status()` 的試用日期回報條件）
+  - 目標：讓 production 的 `my_pro_status()` 在付費已涵蓋整段試用時不回報 `trial_ends_at`，`server` source 下終身付費不再被誤判為非 Pro。
+  - 步驟（與 BUG-109A 相同，見 [`docs/pro-014r-my-pro-status-trial-cap.md`](docs/pro-014r-my-pro-status-trial-cap.md) §7）：以 `pg_get_functiondef` 比對 production 與 011 並保存回滾來源；在同一個 transaction 內套用 014、跑 `tests/database/pro014r.test.sql`、`ROLLBACK`（乾跑）；正式套用；檢查權限（anon 不可執行）、`SECURITY DEFINER`、`search_path`、owner；以本機覆寫改用 `server` source，確認 `+orbit-lifetime` 顯示終身付費 Pro、其餘 4 個測試帳號沒有回歸。
+  - **需專案擁有者執行**：production 資料庫操作，Claude 不具權限。`legacy` source 下一般使用者不呼叫這個 RPC，套用時機不受 `PRO-014H` 限制。
+  - 依賴：`PRO-014R`
+  - 擋：`PRO-014H`
+
 ---
 
 ## In Progress
 
-- [ ] **PRO-014R** `server` source 下，終身付費但試用已過期的帳號被判定為非 Pro
+- [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
+  - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
+
+---
+
+## Done
+
+- [x] **PRO-014R** `server` source 下，終身付費但試用已過期的帳號被判定為非 Pro
   - 問題（2026-10-31，PR #216 的獨立 review 以 `+orbit-lifetime` 測試帳號發現）：`my_pro_status()` 對終身帳號回傳 `is_active = true`、`expires_at = NULL`，以及只要曾開始試用就有的 `trial_ends_at`（已過去）。client 的 `entitlementExpiryMs()`（`pwa/js/platform/proEntitlement.js`）取兩者中較晚的日期當上限，只剩過期的試用日，`isProFromSnapshot()` 因此回傳 false。
   - 影響：切到 `server` source 後，所有「先試用、後買終身方案」的使用者都會失去 Pro。目前 production 是 `legacy`，尚未受影響。
   - 方向：`PRO-014N`（RPC 回傳 `is_pro`）可從根本消除歧義；或 RPC 對付費帳號不回傳 `trial_ends_at`；或 client 忽略在取得 snapshot 時就已結束的試用。RPC 變更屬 AGENTS.md §3 高風險，需先核准。
   - 驗證：`docs/pro-test-accounts.md` 的 `+orbit-lifetime` 在 `server` source 下應顯示為付費 Pro。
   - 擋：`PRO-014H`
   - In progress（2026-10-31）：使用者要求把 PRO-014R 與 PRO-014N 合併成一份提案（只寫文件、不改程式碼、不動 production）。從 Backlog 移入 Next，再移入 In Progress；核准前不實作。
-  - 提案：[`docs/pro-014r-my-pro-status-trial-cap.md`](docs/pro-014r-my-pro-status-trial-cap.md)（#217），**等待使用者核准**。建議方案 A：`my_pro_status()` 在付費已涵蓋整段試用時不回報 `trial_ends_at`（`CREATE OR REPLACE`，回傳欄位不變、client 不需改邏輯）；12 個情境實測全部正確（獨立 review 另驗 19 個邊界情境）；建議以 A 結案 PRO-014N，但這代表重新定義它（推斷保留且精確，原本「不需推斷」改由可選的方案 B 承接），需使用者明確同意。
+  - 提案：[`docs/pro-014r-my-pro-status-trial-cap.md`](docs/pro-014r-my-pro-status-trial-cap.md)（#217）。**2026-11-01 使用者核准方案 A**，開始實作。建議方案 A：`my_pro_status()` 在付費已涵蓋整段試用時不回報 `trial_ends_at`（`CREATE OR REPLACE`，回傳欄位不變、client 不需改邏輯）；12 個情境實測全部正確（獨立 review 另驗 19 個邊界情境）；建議以 A 結案 PRO-014N，但這代表重新定義它（推斷保留且精確，原本「不需推斷」改由可選的方案 B 承接），需使用者明確同意。
+  - 完成（2026-11-01，repo 部分，#218）：新增 `pwa/db/014_my_pro_status_trial_cap.sql`（`CREATE OR REPLACE` 只改 `trial_ends_at` 的回報條件，重述 `REVOKE`／`GRANT`）；`tests/database/pro014r.test.sql`（純 SQL `ASSERT`，15 個情境＋`start_trial()` 補試用起點，失敗即中止，可與 014 一起乾跑後 rollback）；client 判讀測試 `pro014rClientDecisions.test.js` 與 SQL 契約測試；`proEntitlement.js` 只更新註解。已在 PostgreSQL 16 驗證：只套 011 時測試在第 4 個情境失敗；乾跑後函式仍是 011；套用 014 後通過、可重複套用、函式不存在時套用也不會讓 anon 取得執行權。
+  - production 套用另立 `PRO-014RA`（專案擁有者執行）。
 
-- [ ] **PRO-014N** `my_pro_status()` 回傳 `is_pro`，消除 `expires_at` 的歧義
+- [x] **PRO-014N** `my_pro_status()` 回傳 `is_pro`，消除 `expires_at` 的歧義
   - 問題（`PRO-014C` 實作時發現）：RPC 的 `CASE WHEN e.is_pro = true THEN e.pro_expires_at ELSE NULL END` 讓 `expires_at = null` 同時代表「沒有付費」與「終身付費」。client 因此無法在「終身付費」與「試用中」之間可靠區分。
   - 目前的處理：`getPaidProStateFromSnapshot()` 用「還有什麼能解釋這個 active」來推斷 —— 未到期的 `expires_at` ⇒ 付費；沒有 `expires_at` 且沒有生效中的試用 ⇒ 終身付費；沒有 `expires_at` 但試用生效中 ⇒ 算試用。最後一條是保守讀法：在試用期間購買終身方案的人會被顯示成試用中。
   - 範圍：`my_pro_status()` 增加 `is_pro boolean` 回傳欄位、client 改讀該欄位、移除推斷邏輯與其測試
@@ -228,13 +251,7 @@
   - 影響：~~純呈現層的正確性，不影響授權判定~~（2026-10-31 更正）：終身付費且試用已過期時，`isProUser()` 在 `server` source 下會是 **false**，見 `PRO-014R`。
   - 依賴：`PRO-014C`
   - In progress（2026-10-31）：與 PRO-014R 合併提案（改的是同一個 RPC），見 PRO-014R。核准前不實作。
-
-- [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
-  - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
-
----
-
-## Done
+  - 結案（2026-11-01，使用者核准，#218）：以 PRO-014R 的方案 A 結案並重新定義。014 之後 `trial_ends_at` 只在試用還能延長存取時回報，終身付費（含試用期間購買）與試用可正確區分，`getPaidProStateFromSnapshot()` 的推斷變得精確；原本「不需推斷、明確回傳 `is_pro`」改列可選的 `PRO-014S`。
 
 - [x] **PRO-014Q** 開發者面板的 backup 不應擋住其他帳號或非 Pro 模擬的 entitlement refresh
   - 問題（PR #158 Codex review 指出，2026-10-18 確認）：`storage.refreshProEntitlement()` 只要 `FLAG_DEV_BACKUP` 存在就直接 return。這個 backup 也由等級模擬器建立，且 `storage.clearAll()` 登出時不會清除。開發者登出後換另一個帳號，該帳號的 refresh 會一直被跳過，在 `server` source 下 fail closed，直到手動重設。

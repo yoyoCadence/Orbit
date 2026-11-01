@@ -3,6 +3,37 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.41.3] - 2026-11-01
+
+### Fixed
+- **終身付費不再被試用日期限制（PRO-014R，repo 部分）**：新增 `pwa/db/014_my_pro_status_trial_cap.sql`。
+  - 問題：`my_pro_status()` 原本只要帳號開始過試用就回傳 `trial_ends_at`，client 以付費到期日與試用結束日中較晚的一個當 Pro 的上限。結果：
+    - 終身付費但試用已過期的帳號，在 `server` source 下被判定為非 Pro；
+    - 試用期間購買終身方案的人被顯示為試用，試用結束後同樣失去 Pro；
+    - app 啟動時會替 profile 沒有試用起點的帳號開始試用，所以終身帳號也會被補上試用起點。
+  - 014 改為付費已涵蓋整段試用時不回報試用日期。回傳欄位、型別、`SECURITY DEFINER` 與 `search_path` 都不變，client 不需改邏輯。
+  - **production 尚未套用**，由專案擁有者執行（`PRO-014RA`）。目前是 `legacy` source，一般使用者不會呼叫這個 RPC，套用前後沒有可見變化。
+- PRO-014N 以同一個修正結案：014 之後終身付費與試用可以正確區分，付費／試用的推斷變得精確。明確回傳 `is_pro` 的版本改列可選的 `PRO-014S`。
+
+### Validation
+- 新增 `tests/database/pro014r.test.sql`：純 SQL `ASSERT`，失敗即中止，可在 production 與 014 一起乾跑後 rollback。內容：
+  - 權限與屬性；
+  - 15 個 entitlement 情境的完整回應，含付費到期日等於試用結束、早 1 微秒等邊界；
+  - `start_trial()` 補試用起點之後，終身帳號仍不回報試用日期。
+- 在 PostgreSQL 16 套用真實 migration 驗證：
+  - 只有 011 時，測試在第 4 個情境失敗；
+  - 乾跑後函式仍是 011；
+  - 套用 014 後通過，可重複套用；
+  - 函式不存在時套用 014，anon 也不會取得執行權。
+- 新增 `tests/unit/pro014rClientDecisions.test.js`：以 014 的回應為 fixture，鎖住 client 對 15 個情境的判讀（取得時與 3 小時後）以及試用倒數。
+- `proEntitlementsSql.test.js` 新增 014 契約：
+  - 只替換 `my_pro_status()`；
+  - 回傳簽章不變；
+  - 新的試用回報條件；
+  - 重述的權限。
+
+---
+
 ## [1.41.2] - 2026-10-31
 
 ### Removed

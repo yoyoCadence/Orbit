@@ -1,6 +1,6 @@
 # PRO-014R＋PRO-014N 提案：`my_pro_status()` 不再用試用日期限制付費帳號
 
-> 狀態：**提案，等待使用者核准**（2026-10-31）。只寫文件，不改程式碼、不動 production。屬 Pro entitlement 路徑與 RPC 變更（AGENTS.md §3 高風險），核准前不實作。
+> 狀態：使用者於 2026-11-01 **核准方案 A**，並同意以 A 結案（重新定義）PRO-014N。repo 部分已實作（#218：`pwa/db/014_my_pro_status_trial_cap.sql`、`tests/database/pro014r.test.sql`、client 判讀與 SQL 契約測試）；production 套用由專案擁有者執行（`PRO-014RA`）。
 
 ## 1. 結論
 

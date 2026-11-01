@@ -100,7 +100,8 @@ export function normalizeProStatusRows(rows) {
 }
 
 // Only an explicit null means "no such date" — that is what the RPC returns for
-// lifetime Pro and for a user who never started a trial. Anything else must
+// lifetime Pro, for a user who never started a trial, and (since migration 014)
+// for a trial that payment already covers. Anything else must
 // parse as a real instant; `undefined` signals "invalid" to the caller, which
 // treats it as a malformed row.
 function normalizeTimestamp(value) {
@@ -224,10 +225,11 @@ export function isProFromSnapshot(ownerId, nowMs = Date.now()) {
  *   - no `expiresAt` and no live trial            → only lifetime paid explains it
  *   - no `expiresAt` and a live trial             → attribute it to the trial
  *
- * The last line is the conservative reading: a lifetime purchase made during an
- * active trial is indistinguishable here and is shown as a trial rather than
- * claiming someone is a paying customer on a guess. Resolving it properly needs
- * `is_pro` in the projection — an RPC contract change, tracked as PRO-014N.
+ * Since migration 014 (PRO-014R) the RPC reports `trial_ends_at` only while the
+ * trial can extend access beyond payment, so the inference is exact: a lifetime
+ * purchase made during a trial arrives with no trial date and reads as lifetime.
+ * PRO-014N was closed on that basis; an explicit `is_pro` column that removes the
+ * inference altogether stays an optional hardening (PRO-014S).
  *
  * @returns {{isPaid: boolean, expiresAt: string|null}|null} null when the
  *   projection cannot grant Pro at all.
@@ -282,7 +284,9 @@ export function getTrialEndsAtFromSnapshot(ownerId, nowMs = Date.now()) {
 
 // The server decides *whether* the entitlement is active; these dates decide
 // *until when*. Both absent on an active entitlement means lifetime Pro, which
-// is the only case that has no ceiling of its own.
+// is the only case that has no ceiling of its own. Taking the later date is only
+// safe because migration 014 never reports a trial that payment covers: before
+// it, a lifetime purchase with an old trial was capped at that trial's end.
 function entitlementExpiryMs(snapshot) {
   const candidates = [snapshot.expiresAt, snapshot.trialEndsAt]
     .map(value => (typeof value === 'string' ? Date.parse(value) : NaN))
