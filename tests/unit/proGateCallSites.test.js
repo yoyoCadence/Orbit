@@ -71,7 +71,8 @@ function countCalls(source, needle) {
 // 每一個既有 Pro 入口，依檔案分組。改動這張表必須是刻意的：新增 gate 要在這裡
 // 登記，移除 gate 要在這裡刪掉。
 const EXPECTED_GATES = {
-  'dayCycle.js': 4,        // streak shield 月配額、消耗、連勝解鎖條件、shield banner
+  'dayCycle.js': 1,        // 使用保護卡（PRO-014P：換日的補卡、offer、SUB-16 改看 proRollover.js 的狀態）
+  'proRollover.js': 1,     // 換日的 Pro 狀態（legacy 分支；server 分支讀 snapshot 的 pro／not-pro／unknown）
   'focusTimer.js': 3,      // 專注音效開關、播放、結算畫面的筆記欄位
   'pages/goals.js': 1,     // 歷史區間
   'pages/home.js': 1,      // 保護卡 pill
@@ -89,7 +90,7 @@ describe('Pro gate 呼叫點', () => {
       if (count > 0) actual[path] = count;
     }
     expect(actual).toEqual(EXPECTED_GATES);
-    expect(Object.values(actual).reduce((a, b) => a + b, 0)).toBe(19);
+    expect(Object.values(actual).reduce((a, b) => a + b, 0)).toBe(17);
   });
 
   // profile 的 Pro 欄位是 client 可寫的，所以「誰在讀它們」就是「誰能被偽造」。

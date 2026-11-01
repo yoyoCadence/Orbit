@@ -1,6 +1,10 @@
 # PRO-014P 提案：`server` source 下，換日處理不再把「Pro 狀態不明」當成「不是 Pro」
 
-> 狀態：提案（2026-11-01），只寫文件、不改程式碼。屬 entitlement 啟動流程，依 AGENTS.md §3 需使用者核准（§10）後才實作。擋 `PRO-014H` cutover。
+> 狀態：使用者 2026-11-01 核准 §10（全部照建議），由 #221（v1.41.5）實作，`BUG-115` 一併修正。與本文的差異：`isProFromSnapshot()` 不改；新的 `getProStatusFromSnapshot()` 放在新模組 `pwa/js/proRollover.js`，其 `pro` 直接沿用 `isProFromSnapshot()`（INFRA-105：不在既有 SHELL 模組新增 export）；§6.2 的 key 也因此定義在 `proRollover.js`（`PRO_ROLLOVER_PENDING_KEY`），不在 `flags.js`。
+> 實作後的已知行為（#221 的獨立 review，接受、不修改）：
+> - 補做時補卡依「補做當下」的月份，offer 又在補卡之後判斷。所以 10/31 保護卡用完時的歸零，若到 11 月才補做，會先補滿再給 offer；當天狀態已知則不會給。這是「以補做當下為準」的一部分，對使用者有利。
+> - 狀態不明時按「使用保護卡」只顯示提示，不會觸發 refresh；要等下次啟動或連線恢復才會再判斷。線上但開機 refresh 遇到 503 的使用者，在重新開啟 app 前都會看到同一句提示。
+> - 裝置時鐘比 server 快時，`isActive` 但兩個到期日都早於取得時間的 snapshot 會判為 `not-pro`（與 `isProFromSnapshot()` 一致）。這段期間 SUB-16 仍可能用掉一次性解鎖；`PRO-014L` 把 SUB-16 移出換日後就不再發生。
 
 ## 1. 結論
 
