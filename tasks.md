@@ -109,6 +109,13 @@
   - **完成條件（server-side enforcement，PR #146 覆驗新增）**：任何有實際價值的 Pro 資料、API 或操作，都必須由 server 自行驗證 `is_pro_active`（RLS policy 或 RPC 內部判斷），**不得**相信 `storage.isProUser()` 或任何由 client 傳入的 Pro 狀態。交付時需逐項列出本次新增的 Pro 入口分別由哪一層強制授權；純顯示／隱藏可只靠 client projection，取得資料或觸發運算則不可。
   - 依賴：`PRO-014E`
 
+- [ ] **BUG-115** 保護卡 offer（`orbit_shield_pending`）沒有 owner，登出也不刪除
+  - 發現：寫 PRO-014P 提案時（2026-11-01），對照 `dayCycle.js`、`pages/home.js`、`pages/profile.js` 與 `storage.clearAll()`。
+  - 問題：offer 只存 `{ prevStreak }`，`clearAll()` 不刪除。同一台裝置上 A 帳號留下的 offer 會出現在 B 帳號的首頁；B 若是 Pro（新帳號都有試用，`legacy` 下試用就是 Pro）按下使用，B 的連勝就變成 A 的 `prevStreak`。連勝會影響 SUB-16 的 45 天解鎖。production（`legacy`）現在就會發生，需要共用裝置。
+  - 方向：offer 加上 `ownerId`，首頁、個人頁與 `useStreakShield()` 在 owner 不符時忽略（不刪除，A 回來時仍可使用）；升級前留下、沒有 `ownerId` 的 offer 無法分辨，仍視為目前 user 的。
+  - 完成條件：A 的 offer 不出現在 B、B 無法使用；A 重新登入後仍看得到自己的 offer；既有 offer 升級後仍可使用；各有測試。
+  - 提案 [`docs/pro-014p-day-rollover-entitlement.md`](docs/pro-014p-day-rollover-entitlement.md) §10 第 4 點：建議併入 PRO-014P 的實作 PR，或單獨一個 PR，等待使用者決定。
+
 - [ ] **PRO-017** 邀請制解鎖 Pro
   - 目標：完成 roadmap 既有 SUB-17
   - 對應 roadmap：中期
@@ -187,6 +194,8 @@
 > - PRO-014P 先於 PRO-014L（草稿 PR #154；兩者改同一段 SUB-16 路徑）。PRO-014P 先寫提案。
 > - PRO-014H 的核准名單：只有專案擁有者的主帳號，授權為終身（`is_pro = true`、`pro_expires_at = NULL`、不搬移 profile 的試用起點）。依 `docs/sub-14-leaderboard-pro.md` 的 cutover 程序由擁有者在 SQL Editor 寫入、agent 覆核並對帳；email 與 UUID 不寫進 repo。
 
+> 2026-11-01：PRO-014P 提案完成（只寫文件），等待使用者決定 §10。寫提案時發現 `BUG-115`（保護卡 offer 沒有 owner），放入 Backlog。
+
 ---
 
 ## In Progress
@@ -222,6 +231,9 @@
   - **擋 `PRO-014H`**
   - 依賴：`PRO-014O`；與 `PRO-014L`（草稿 PR #154）改的是同一段 SUB-16 路徑，需協調先後
   - In progress（2026-11-01）：使用者決定 PRO-014P 先於 PRO-014L（草稿 PR #154）。第一步是提案（只寫文件、不改程式碼）；屬 entitlement 啟動流程，核准前不實作。從 Backlog 移入 Next，再移入 In Progress。
+  - 提案（2026-11-01）：[`docs/pro-014p-day-rollover-entitlement.md`](docs/pro-014p-day-rollover-entitlement.md)，**等待使用者決定 §10**。
+    - 實測：回訪使用者走 cached-user 路徑，漏一天時 snapshot 幾乎一定過期，付費使用者的保護卡 offer 永久遺失（不是邊界情況）。另外發現既有缺陷：Supabase client 的網路失敗回傳 `{ error, status: 0 }` 而不是 throw，`refreshProEntitlement()` 因此刪除 snapshot。
+    - 建議方案 D：連勝照常計算，只有依賴 Pro 的三件事在 `unknown` 時寫入待補做紀錄，取得權威結果後補做一次。**這會改寫上面的「方向」與「完成條件」**（提案 §7 列出原文與改寫）；核准前上面兩段維持原文。
 
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
