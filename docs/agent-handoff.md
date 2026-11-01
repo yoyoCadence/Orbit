@@ -230,8 +230,9 @@
 ### 需要使用者決定或執行
 
 - **PRO-014H 的核准名單**：切到 `server` source 前，要決定哪些帳號寫入 `pro_entitlements`。專案擁有者自己的帳號在 `profiles` 是終身 Pro，但 `pro_entitlements` 沒有資料列，不處理的話切換當天會失去 Pro（見 `tasks.md` 的 PRO-014H）。
-- **PRO-014P**：提案 [`pro-014p-day-rollover-entitlement.md`](pro-014p-day-rollover-entitlement.md)（#220），等待使用者決定 §10（建議方案 D；會改寫 `tasks.md` 的完成條件；網路失敗不刪 snapshot 併入；BUG-115 是否併入）。擋 `PRO-014H` cutover。使用者已決定 PRO-014P 先於草稿 PR #154（PRO-014L），#154 之後 rebase。
+- **PRO-014P**：提案 [`pro-014p-day-rollover-entitlement.md`](pro-014p-day-rollover-entitlement.md)（#220），等待使用者決定 §10（建議方案 D；會改寫 `tasks.md` 的「方向」與「完成條件」；暫時性失敗不刪 snapshot 併入；BUG-115 是否併入）。D 對 SUB-16 只做「`unknown` 略過」，因為 #154 會把 SUB-16 整段移出換日、改由 server 判斷。擋 `PRO-014H` cutover。使用者已決定 PRO-014P 先於草稿 PR #154（PRO-014L），#154 之後 rebase。
   - 寫提案時查證的兩件事，實作時不要再假設：`pwa/vendor/supabase.js` 的 `rpc()` 遇到網路失敗或逾時**不會 throw**，回傳 `{ error, status: 0 }`；cached-user 啟動時換日先於 refresh，漏一天時 snapshot 幾乎一定超過 24 小時。
+  - 目前沒有 unit test 執行 `processYesterdayStreak()` 的補卡、offer、SUB-16（`appBootSequence.test.js` 把它 mock 掉），重構前先寫特性測試；`proGateCallSites.test.js` 會計算 `isProUser()` 的呼叫次數。
 - **PS-243**：真機、installed PWA、雙帳號、螢幕閱讀器等 human gate。
 - 尚未回答：高風險項目（如 entitlement）連變更說明都要不要先問再排程（PRO-014Q 變更說明 §7）。在得到答案前，維持「寫變更說明可以，實作前一定要核准」。
 
