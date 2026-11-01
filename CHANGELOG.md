@@ -3,6 +3,35 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.41.4] - 2026-11-01
+
+### Changed
+- **migration 014 已套用到 production（PRO-014RA，2026-11-01）**：專案擁有者依 `docs/pro-014r-my-pro-status-trial-cap.md` §7 操作：
+  - 比對：production 的函式與 011 相同；
+  - 乾跑：通過；
+  - 套用後檢查：權限、`SECURITY DEFINER`、`search_path` 與 owner 都正確；
+  - 驗證：以 5 個測試帳號的身份呼叫 `my_pro_status()`，終身帳號判為終身，其餘 4 個帳號沒有回歸。
+  - 一般使用者仍走 `legacy` source，看不到變化。
+- `docs/pro-test-accounts.md` 寫明測試帳號的命名規則、在 Supabase 的找法、登入方式，以及 agent 能做與不能做的事；交接文件第 1 節加上指引。完整 email 與密碼不寫進公開的 repo。
+- `proEntitlement.js`：更正過時的註解。011 與 014 都已套用；切換仍待核准名單與其他前置。
+
+### Validation
+- `tests/database/pro014r.test.sql`：
+  - 先確認 `plpgsql.check_asserts` 開啟，否則測試會靜默通過；
+  - 失敗訊息改用 `%L`，NULL 會顯示為 NULL；
+  - 加註為何以 postgres 呼叫。
+- `pro014rClientDecisions.test.js`：新增「兩個時間戳相等」的情境。SQL 差 1 微秒，送到 client 時只剩毫秒精度。
+- `proEntitlementsSql.test.js`：
+  - 014 只允許一個 `CREATE [OR REPLACE] FUNCTION`；
+  - 只允許一個 GRANT（給 authenticated），其他任何授權都會失敗；
+  - 鎖住 `STABLE`。
+- `tasks.md`：
+  - PRO-014RA 移到 Done；
+  - PRO-014 執行順序加入 PRO-014RA；
+  - PRO-014N 原本的範圍與完成條件加上刪除線，並註明重新定義。
+
+---
+
 ## [1.41.3] - 2026-11-01
 
 ### Fixed

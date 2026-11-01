@@ -1,6 +1,6 @@
 # PRO-014R＋PRO-014N 提案：`my_pro_status()` 不再用試用日期限制付費帳號
 
-> 狀態：使用者於 2026-11-01 **核准方案 A**，並同意以 A 結案（重新定義）PRO-014N。repo 部分已實作（#218：`pwa/db/014_my_pro_status_trial_cap.sql`、`tests/database/pro014r.test.sql`、client 判讀與 SQL 契約測試）；production 套用由專案擁有者執行（`PRO-014RA`）。
+> 狀態：使用者於 2026-11-01 **核准方案 A**，並同意以 A 結案（重新定義）PRO-014N。repo 部分由 #218 實作；**2026-11-01 已套用到 production**（`PRO-014RA`，紀錄 #219）。
 
 ## 1. 結論
 
@@ -192,9 +192,10 @@ $$;
 ## 7. 套用到 production（專案擁有者執行，與 BUG-109A 同一套流程）
 
 1. 以 `pg_get_functiondef('public.my_pro_status()'::regprocedure)` 比對 production 與 011，存下回滾來源。
-2. 乾跑：在同一個 transaction 內套用 014，再跑 `tests/database/pro014r.test.sql`，最後 `ROLLBACK`。
+2. 乾跑：一份完整的腳本＝`begin;`＋014 全文＋`tests/database/pro014r.test.sql`（去掉它開頭的 `begin;`，保留結尾的 `rollback;`）。**一定要有開頭的 `begin;`**：在 psql 少了它，014 會被真的套用。SQL Editor 若警告「creates a table without RLS」，選「Run without RLS」（那是測試用的暫存表；選「Run and enable RLS」會在 rollback 之後多出一句而報錯，雖然仍不會留下變更）。測試開頭會確認 `plpgsql.check_asserts` 是開啟的。
 3. 正式套用 014，重新查詢確認：函式定義；`has_function_privilege('anon', 'public.my_pro_status()', 'EXECUTE')` 為 false、`authenticated` 為 true；`pg_proc` 的 `prosecdef` 為 true、`proconfig` 為 `search_path=""`、owner 未變。
-4. 驗證：在一台裝置上暫時改用 `server` source。在瀏覽器 console 執行 `localStorage.setItem('orbit_pro_entitlement_source', 'server')` 後重新整理；只能從 `legacy` 往 `server` 的方向設定。登入 `+orbit-lifetime`，應顯示終身付費 Pro。驗完再清掉這個設定。 另外 4 個測試帳號也要確認沒有回歸（免費、試用中、付費、付費已過期，應與 `docs/pro-test-accounts.md` 的表一致）。
+4. 驗證：先重跑 `docs/pro-test-accounts.md` 的重設 SQL（測試帳號的日期相對於上次重設，過期的重設會看起來像回歸）。再以 SQL 用 5 個測試帳號的身份呼叫 `my_pro_status()`，並以與 client 相同的規則判讀（2026-11-01 實際採用的做法，不需要在裝置上切換 source）；也可以在裝置上暫時執行 `localStorage.setItem('orbit_pro_entitlement_source', 'server')` 後登入檢查，驗完移除。預期：free 非 Pro、trial 試用、paid 付費、**lifetime 終身**、expired 非 Pro。
+5. 紀錄：014 檔頭的執行日期、本文件狀態與 `tasks.md`（同 BUG-109A 的 #215）。
 
 套用時機不受 `PRO-014H` 限制。在 `legacy` 下套用沒有可見影響，可以先套、先驗證。
 
@@ -214,3 +215,12 @@ $$;
 1. 採用 **A**（建議）、B 或 C？
 2. `PRO-014N` 是否以 A 結案？這代表接受**重新定義**：推斷保留且在 014 後精確，原本「不需推斷、移除推斷邏輯」的條件改由可選的方案 B 承接。（建議：是）
 3. 實作 PR 合併後，014 由你在 production 套用（我沒有 Supabase 權限）。時間你決定，不必等 `PRO-014H`。
+
+## 10. 套用紀錄（2026-11-01，`PRO-014RA`）
+
+| 步驟 | 結果 |
+|---|---|
+| 1. 比對 | production 的 `pg_get_functiondef` 與 011 相同（只差 Postgres 輸出格式），owner 為 `postgres`；這份輸出即回滾來源。 |
+| 2. 乾跑 | `begin;`＋014＋`pro014r.test.sql` 本體＋`rollback;`：Success，沒有錯誤。 |
+| 3. 套用 | 套用 014 後檢查：新規則已生效、anon 不可執行、authenticated 可執行、`SECURITY DEFINER`、`search_path=""`、owner `postgres`。 |
+| 4. 驗證 | 重設測試帳號後，以 5 個帳號的身份呼叫 `my_pro_status()`：free 非 Pro、trial 試用（11/15 結束）、paid 付費（不再回報試用日）、**lifetime 終身**、expired 非 Pro。 |

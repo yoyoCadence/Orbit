@@ -10,6 +10,14 @@
 
 begin;
 
+-- 0. ASSERT 必須開啟，否則失敗時不會中止，整份測試會靜默通過
+do $$
+begin
+  if not current_setting('plpgsql.check_asserts')::boolean then
+    raise exception 'plpgsql.check_asserts is off; this test would pass silently';
+  end if;
+end $$;
+
 -- 1. 權限與屬性：014 不得放寬 011 的保護
 do $$
 begin
@@ -68,6 +76,8 @@ select user_id, format('pro014r-%s@example.invalid', n), '{}'::jsonb from pro014
 insert into public.pro_entitlements (user_id, is_pro, pro_expires_at, trial_started_at)
 select user_id, is_pro, pro_expires_at, trial_started_at from pro014r_cases where has_row;
 
+-- 以 postgres 呼叫：my_pro_status() 是 SECURITY DEFINER，結果只取決於 auth.uid()；
+-- authenticated 的執行權限由第 1 節另外斷言。
 do $$
 declare
   c record;
@@ -77,11 +87,11 @@ begin
     perform set_config('request.jwt.claim.sub', c.user_id::text, true);
     select * into r from public.my_pro_status();
     assert r.is_active = c.exp_active,
-      format('case %s (%s): is_active %s, expected %s', c.n, c.label, r.is_active, c.exp_active);
+      format('case %s (%s): is_active %L, expected %L', c.n, c.label, r.is_active, c.exp_active);
     assert r.expires_at is not distinct from c.exp_expires_at,
-      format('case %s (%s): expires_at %s, expected %s', c.n, c.label, r.expires_at, c.exp_expires_at);
+      format('case %s (%s): expires_at %L, expected %L', c.n, c.label, r.expires_at, c.exp_expires_at);
     assert r.trial_ends_at is not distinct from c.exp_trial_ends_at,
-      format('case %s (%s): trial_ends_at %s, expected %s', c.n, c.label, r.trial_ends_at, c.exp_trial_ends_at);
+      format('case %s (%s): trial_ends_at %L, expected %L', c.n, c.label, r.trial_ends_at, c.exp_trial_ends_at);
   end loop;
 end $$;
 
@@ -104,7 +114,7 @@ begin
 
   select * into r from public.my_pro_status();
   assert r.is_active and r.expires_at is null and r.trial_ends_at is null,
-    format('lifetime row after start_trial(): %s / %s / %s, expected true / null / null',
+    format('lifetime row after start_trial(): %L / %L / %L, expected true / null / null',
       r.is_active, r.expires_at, r.trial_ends_at);
 end $$;
 
