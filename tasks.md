@@ -206,6 +206,8 @@
 
 > 2026-10-31 排程：使用者要求寫 PRO-014R（擋 PRO-014H）與 PRO-014N 的合併提案。兩者都改 `my_pro_status()`，合併成一份只寫文件的提案，從 Backlog 移入 Next，再移入 In Progress；核准前不改程式碼、不動 production。
 
+> 2026-11-01 核准（使用者回覆「可以照你說的建議做」）：PRO-014R 採用方案 A（`my_pro_status()` 在付費已涵蓋整段試用時不回報 `trial_ends_at`）；PRO-014N 以 A 結案並重新定義（推斷保留且在 014 後精確，「不需推斷的明確欄位」改列可選的方案 B）。依提案 §6 實作一個 PR；014 的 production 套用另立擁有者執行的任務。
+
 ---
 
 ## In Progress
@@ -217,7 +219,7 @@
   - 驗證：`docs/pro-test-accounts.md` 的 `+orbit-lifetime` 在 `server` source 下應顯示為付費 Pro。
   - 擋：`PRO-014H`
   - In progress（2026-10-31）：使用者要求把 PRO-014R 與 PRO-014N 合併成一份提案（只寫文件、不改程式碼、不動 production）。從 Backlog 移入 Next，再移入 In Progress；核准前不實作。
-  - 提案：[`docs/pro-014r-my-pro-status-trial-cap.md`](docs/pro-014r-my-pro-status-trial-cap.md)（#217），**等待使用者核准**。建議方案 A：`my_pro_status()` 在付費已涵蓋整段試用時不回報 `trial_ends_at`（`CREATE OR REPLACE`，回傳欄位不變、client 不需改邏輯）；12 個情境實測全部正確（獨立 review 另驗 19 個邊界情境）；建議以 A 結案 PRO-014N，但這代表重新定義它（推斷保留且精確，原本「不需推斷」改由可選的方案 B 承接），需使用者明確同意。
+  - 提案：[`docs/pro-014r-my-pro-status-trial-cap.md`](docs/pro-014r-my-pro-status-trial-cap.md)（#217）。**2026-11-01 使用者核准方案 A**，開始實作。建議方案 A：`my_pro_status()` 在付費已涵蓋整段試用時不回報 `trial_ends_at`（`CREATE OR REPLACE`，回傳欄位不變、client 不需改邏輯）；12 個情境實測全部正確（獨立 review 另驗 19 個邊界情境）；建議以 A 結案 PRO-014N，但這代表重新定義它（推斷保留且精確，原本「不需推斷」改由可選的方案 B 承接），需使用者明確同意。
 
 - [ ] **PRO-014N** `my_pro_status()` 回傳 `is_pro`，消除 `expires_at` 的歧義
   - 問題（`PRO-014C` 實作時發現）：RPC 的 `CASE WHEN e.is_pro = true THEN e.pro_expires_at ELSE NULL END` 讓 `expires_at = null` 同時代表「沒有付費」與「終身付費」。client 因此無法在「終身付費」與「試用中」之間可靠區分。
