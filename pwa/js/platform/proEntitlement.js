@@ -33,10 +33,10 @@
 // is inside its offline grace window, and no storage write or clear has been
 // lost. Anything unexpected reads as "not Pro" rather than "assume Pro".
 //
-// NOT ENABLED IN PRODUCTION YET. Migration 011 has not been applied to any
-// database, so the RPC does not exist yet and every call would fail closed —
-// which would strip Pro from current paying users. REPO_PRO_ENTITLEMENT_SOURCE
-// is therefore `legacy`. Flipping it is its own task (PRO-014H) whose sole
+// NOT ENABLED IN PRODUCTION YET. Migration 011 (PRO-014I) and 014 (PRO-014RA)
+// are applied, but the approved-list seed and the remaining prerequisites are
+// not done, so switching now would strip Pro from current paying users.
+// REPO_PRO_ENTITLEMENT_SOURCE is therefore `legacy`. Flipping it is its own task (PRO-014H) whose sole
 // prerequisite is PRO-014J — which itself covers PRO-014C, PRO-014D and
 // PRO-014I, and additionally proves C's client is deployed and passed a
 // production smoke test — plus explicit approval under AGENTS.md §3.

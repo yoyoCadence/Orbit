@@ -136,7 +136,7 @@ const sql014 = migration014.replace(/--.*$/gm, '').replace(/\s+/g, ' ').trim();
 
 describe('PRO-014R 014 migration contract', () => {
   it('only replaces my_pro_status(), without dropping it or touching tables', () => {
-    expect(sql014.match(/CREATE OR REPLACE FUNCTION public\.\w+/gi)).toEqual([
+    expect(sql014.match(/\bCREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+[\w.]+/gi)).toEqual([
       'CREATE OR REPLACE FUNCTION public.my_pro_status',
     ]);
     expect(sql014).not.toMatch(/DROP\s+FUNCTION|CREATE\s+TABLE|ALTER\s+TABLE|ON\s+TABLE|CREATE\s+POLICY/i);
@@ -147,7 +147,7 @@ describe('PRO-014R 014 migration contract', () => {
       /RETURNS TABLE \( is_active boolean, expires_at timestamptz, trial_ends_at timestamptz \)/i,
     );
     expect(sql014).toMatch(
-      /FUNCTION public\.my_pro_status\(\)[\s\S]*?SECURITY DEFINER SET search_path = ''/i,
+      /FUNCTION public\.my_pro_status\(\)[\s\S]*?LANGUAGE sql STABLE SECURITY DEFINER SET search_path = ''/i,
     );
     expect(sql014).toMatch(
       /FROM \(SELECT auth\.uid\(\) AS user_id\) AS caller LEFT JOIN public\.pro_entitlements e ON e\.user_id = caller\.user_id/i,
@@ -166,6 +166,7 @@ describe('PRO-014R 014 migration contract', () => {
   it('restates the grants so a re-created function never becomes callable by anon', () => {
     expect(sql014).toMatch(/REVOKE ALL ON FUNCTION public\.my_pro_status\(\) FROM public, anon;/i);
     expect(sql014).toMatch(/GRANT EXECUTE ON FUNCTION public\.my_pro_status\(\) TO authenticated;/i);
-    expect(sql014).not.toMatch(/GRANT EXECUTE ON FUNCTION public\.my_pro_status\(\) TO (anon|public)/i);
+    const grants = sql014.match(/\bGRANT\b[^;]*;/gi) ?? [];
+    expect(grants).toEqual(['GRANT EXECUTE ON FUNCTION public.my_pro_status() TO authenticated;']);
   });
 });

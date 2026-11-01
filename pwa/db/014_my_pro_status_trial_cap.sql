@@ -18,7 +18,7 @@
 --   回滾即重新執行 011 的 my_pro_status() 定義（只改函式，不涉及資料）。
 -- 測試：tests/database/pro014r.test.sql（ASSERT，失敗即中止；可在同一個 transaction
 --   內與本檔一起乾跑後 ROLLBACK）。
--- 執行日期：PENDING（尚未於 Supabase 執行；production 由專案擁有者套用，PRO-014RA）
+-- 執行日期：2026-11-01（專案擁有者於 production 套用，PRO-014RA；套用前確認與 011 相同、以 transaction 乾跑，套用後檢查權限並以 5 個測試帳號驗證）
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION public.my_pro_status()

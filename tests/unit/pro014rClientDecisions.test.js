@@ -6,8 +6,10 @@
  *
  * client 把 `expires_at` 與 `trial_ends_at` 中較晚的一個當成 Pro 的上限，並用「還有什麼能解釋
  * 這個 active」推斷付費或試用。014 只在試用還能延長付費以外的存取時才回報 `trial_ends_at`，
- * 因此 client 不需改邏輯，推斷也變得精確。這裡以 014 對每個情境的回應為 fixture（與
- * tests/database/pro014r.test.sql 的預期值相同），鎖住 client 的判讀。
+ * 因此 client 不需改邏輯，推斷也變得精確。這裡以 014 對每個情境的回應為 fixture（對應
+ * tests/database/pro014r.test.sql 的情境），鎖住 client 的判讀。情境 14 在 SQL 中差 1 微秒，
+ * 而 `Date.parse` 只到毫秒：fixture 用 1ms 表示「付費比試用早結束」，實際送到 client 時兩個
+ * 時間戳常常相等，另有一個測試涵蓋相等的情況。
  */
 
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -75,6 +77,12 @@ describe('PRO-014R：client 對 014 回應的判讀', () => {
     const withCountdown = cases.filter(([, row]) => countdown(row)).map(([label]) => label.split(' ')[0]);
     // 2、10：試用是存取原因；11、14：付費比試用早結束，試用之後接手。
     expect(withCountdown).toEqual(['2', '10', '11', '14']);
+  });
+
+  it('情境 14 實際送到 client 時兩個時間戳相等（毫秒精度）：仍判為付費，並有試用倒數', () => {
+    const t = iso(NOW - DAY + TRIAL);
+    const row = { is_active: true, expires_at: t, trial_ends_at: t };
+    expect(judge(row, NOW)).toEqual({ kind: 'paid', countdown: true });
   });
 
   it('client 本身照舊以回應中的日期為上限：011 對終身帳號回報過期的試用日時仍會拒絕（這正是 014 在 server 端修正的）', () => {

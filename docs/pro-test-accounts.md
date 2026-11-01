@@ -12,6 +12,14 @@
 
 ## 帳號
 
+**怎麼找到它們（不需要記 email）**
+
+- 規則：`<擁有者的主要 Gmail 帳號名>+orbit-<角色>@gmail.com`。主要 Gmail 就是擁有者自己登入 Orbit 用的那個 Google 帳號；`+` 後綴的信都寄到同一個信箱。
+- 列出全部：Supabase Dashboard → production → **Authentication → Users**，在搜尋框輸入 `+orbit-`，應剛好 5 個。
+- 登入方式：Orbit 登入頁「**或用電子郵件登入**」的表單（不是 Google 按鈕），密碼在擁有者的密碼管理器。
+- 建立與狀態：2026-10-31 由擁有者以 Dashboard「Add user」（Auto Confirm）建立，各自完成設定頁，再以下方 SQL 設定等級與 Pro。2026-11-01 套用 014 後，以 `server` source 的規則驗證 5 個帳號全部正確（見 `docs/pro-014r-my-pro-status-trial-cap.md`）。
+- **agent 能做與不能做**：agent 沒有密碼，也沒有 Supabase 權限，不能登入這些帳號或直接改資料；需要時請擁有者在 SQL Editor 執行本文件的 SQL，或在 app 裡登入測試。
+
 Email 是專案擁有者的 Gmail 加上 `+` 後綴（Gmail 會寄到同一個信箱）。**完整 email 與密碼只存在擁有者的密碼管理器，不寫進 repo，也不要貼給 agent。**
 
 | 後綴 | 狀態 | Lv（`total_xp`） | `server_pro_active` |
@@ -19,12 +27,12 @@ Email 是專案擁有者的 Gmail 加上 `+` 後綴（Gmail 會寄到同一個�
 | `+orbit-free` | 免費：試用 60 天前開始，已過期 | 1（0） | false |
 | `+orbit-trial` | 試用中：昨天開始，剩 14 天 | 5（142） | true |
 | `+orbit-paid` | 付費，30 天後到期 | 10（477） | true |
-| `+orbit-lifetime` | 終身 Pro（`pro_expires_at` 為 NULL）；014 套用到 production 前，**`server` source 下誤判為非 Pro**，見下方 | 20（1672） | true |
+| `+orbit-lifetime` | 終身 Pro（`pro_expires_at` 為 NULL） | 20（1672） | true |
 | `+orbit-expired` | 付費已過期：`is_pro = true` 但昨天到期，**不是 Pro** | 30（3655） | false |
 
 所有帳號都設定了 `trial_started_at`，app 不會再為它們呼叫 `start_trial()`。
 
-**`legacy` 與 `server` 的差異（`PRO-014R`）**：`profiles` 與 `pro_entitlements` 寫成一致，`legacy` source 與 server 的 `is_pro_active()` 對 5 個帳號的判定都和上表相同。但在 migration 014 套用到 production 之前（`PRO-014RA`），`server` source 的 client 會把終身帳號誤判為非 Pro：011 的 `my_pro_status()` 對終身帳號也回傳已過去的 `trial_ends_at`，而 client 以較晚的日期當上限。014 改為付費已涵蓋整段試用時不回報試用日期；套用後，在 `server` source 下登入 `+orbit-lifetime` 應顯示終身付費 Pro，這也是 `PRO-014RA` 的驗證步驟。
+**`legacy` 與 `server` 的判定一致**：`profiles` 與 `pro_entitlements` 寫成一致，`legacy` source、server 的 `is_pro_active()`，以及 `server` source 的 client 規則，對 5 個帳號的判定都和上表相同。終身帳號在 2026-11-01 之前會被 `server` source 誤判為非 Pro（`PRO-014R`）；migration 014 已於該日套用到 production，驗證時 `+orbit-lifetime` 顯示為終身。
 
 ## 重設（每次測試前）
 
