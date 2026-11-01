@@ -11,9 +11,18 @@ import { showToast, showXPFloat } from './ui/feedback.js';
 import { updateHeader } from './ui/header.js';
 import { applyRandomThemeForToday } from './theme.js';
 import {
-  FLAG_SHIELD_PENDING, FLAG_SHIELD_DISMISSED, FLAG_SHIELD_SCROLL_TOP,
+  FLAG_SHIELD_DISMISSED, FLAG_SHIELD_SCROLL_TOP,
   FLAG_STREAK_UNLOCK_NEW,
 } from './flags.js';
+import {
+  PRO_STATUS_UNKNOWN_MESSAGE,
+  applyProOnlyRolloverEffects,
+  clearShieldOffer,
+  getProRolloverStatus,
+  readShieldOffer,
+  recordPendingProRollover,
+  resolvePendingProRollover,
+} from './proRollover.js';
 
 /** Effective date for session recording — respects user's newDayHour threshold. */
 export function eToday() { return effectiveToday(state.user?.newDayHour ?? 5); }
@@ -61,18 +70,24 @@ export function resetEnergyIfNewDay(morningState) {
 
 // ─── Streak end-of-day processing ────────────────────────────────────────────
 
-/** Check yesterday's stats and update streak (called once per day on launch). */
+/**
+ * Check yesterday's stats and update streak (called once per day on launch).
+ *
+ * PRO-014P: the streak never depends on Pro and is always evaluated. The Pro
+ * effects (monthly refill, shield offer) follow the status: while it is
+ * unknown — under the `server` source a cached boot often runs on a stale
+ * snapshot — they are recorded and applied after the next refresh instead of
+ * being lost. SUB-16 runs only for a known non-Pro user.
+ */
 export function processYesterdayStreak() {
   if (!state.user) return;
+  resolvePendingProRollover();
   const todayStr = eToday();
   if (state.user.lastStreakDate === todayStr) return;   // already processed today
 
-  // Monthly reset of streak shields (Pro only)
-  const currentMonth = todayStr.slice(0, 7);
-  if (storage.isProUser() && (state.user.streakShieldResetMonth || '') !== currentMonth) {
-    state.user.streakShieldCount = 2;
-    state.user.streakShieldResetMonth = currentMonth;
-  }
+  const ownerId = state.user.id;
+  const proStatus = getProRolloverStatus(ownerId);
+  let resetFromStreak = null;
 
   const d = new Date();
   if (d.getHours() < (state.user.newDayHour ?? 5)) d.setDate(d.getDate() - 1);
@@ -85,18 +100,23 @@ export function processYesterdayStreak() {
     const stats = calcDailyStats(state.sessions, yStr);
     state.user.streakDays = processStreakForDate(state.user.streakDays || 0, stats.isEffectiveDay);
   } else if (state.user.lastStreakDate && state.user.lastStreakDate < yStr) {
-    // Missed a day(s) — streak resets to 0; offer shield to Pro users
-    const prevStreak = state.user.streakDays || 0;
+    // Missed a day(s) — streak resets to 0; Pro users may get a shield offer
+    resetFromStreak = state.user.streakDays || 0;
     state.user.streakDays = 0;
-    if (storage.isProUser() && (state.user.streakShieldCount || 0) > 0 && prevStreak >= 2) {
-      localStorage.setItem(FLAG_SHIELD_PENDING, JSON.stringify({ prevStreak }));
-    }
   }
 
-  // SUB-16: 45-day streak → 30-day free Pro (granted once per account)
+  if (proStatus === 'unknown') {
+    recordPendingProRollover(ownerId, resetFromStreak);
+  } else {
+    applyProOnlyRolloverEffects(state.user, proStatus, { prevStreak: resetFromStreak, todayStr });
+  }
+
+  // SUB-16: 45-day streak → 30-day free Pro (granted once per account). Only
+  // for a known non-Pro user: an unknown status must not spend the one-time
+  // unlock on a paying user (PRO-014L moves this to the server).
   if (
     state.user.streakDays >= 45 &&
-    !storage.isProUser() &&
+    proStatus === 'not-pro' &&
     !state.user.streakUnlockUsed
   ) {
     state.user.isPro           = true;
@@ -112,13 +132,18 @@ export function processYesterdayStreak() {
 // ─── Streak Shield ────────────────────────────────────────────────────────────
 
 window.useStreakShield = function () {
-  const raw = localStorage.getItem(FLAG_SHIELD_PENDING);
-  if (!raw || !state.user) return;
-  if (!storage.isProUser()) return;
-  const { prevStreak } = JSON.parse(raw);
+  if (!state.user) return;
+  const offer = readShieldOffer(state.user.id);   // BUG-115: never another account's
+  if (!offer) return;
+  if (!storage.isProUser()) {
+    // PRO-014P: a stale snapshot is not a "no"; say so instead of doing nothing.
+    if (getProRolloverStatus(state.user.id) === 'unknown') showToast(PRO_STATUS_UNKNOWN_MESSAGE);
+    return;
+  }
+  const { prevStreak } = offer;
   state.user.streakDays = prevStreak;
   state.user.streakShieldCount = Math.max(0, (state.user.streakShieldCount || 0) - 1);
-  localStorage.removeItem(FLAG_SHIELD_PENDING);
+  clearShieldOffer();
   sessionStorage.removeItem(FLAG_SHIELD_DISMISSED);
   storage.saveUser(state.user);
   db.upsertProfile(state.user);

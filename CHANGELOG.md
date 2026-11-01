@@ -3,6 +3,28 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.41.5] - 2026-11-01
+
+### Fixed
+- **PRO-014P：`server` source 下，換日不再把「Pro 狀態不明」當成「不是 Pro」**（提案 `docs/pro-014p-day-rollover-entitlement.md` 方案 D，使用者 2026-11-01 核准）。
+  - 問題：回訪使用者先換日、後 refresh，漏一天時 snapshot 幾乎一定超過 24 小時，付費使用者的保護卡 offer 永久遺失，SUB-16 還可能用掉一次性解鎖。
+  - 連勝照常計算與推進 `lastStreakDate`。只有補卡與 offer 依 Pro 狀態：狀態不明時記成待補做（`orbit_pro_rollover_pending`，owner-scoped），下一次換日或 refresh 得到答案時補做一次。
+  - SUB-16 只在已知不是 Pro 時執行，狀態不明時略過、不消耗。
+  - 新模組 `pwa/js/proRollover.js`：`getProStatusFromSnapshot()`（`pro` 與 `isProFromSnapshot()` 永遠一致，另分出 `not-pro` 與 `unknown`）、待補做紀錄、補做；`loadAndStart()`、cached-user 背景同步、連線恢復同步在 refresh 之後補做。
+  - 狀態不明時按「使用保護卡」顯示「目前無法確認 Pro 狀態，連線後再試一次」。
+- **`refreshProEntitlement()` 遇到暫時性失敗不再刪除 snapshot**：repo 內的 Supabase client 遇到網路失敗或逾時不會 throw，而是回傳 `{ error, status: 0 }`，原本會被當成權威答案而刪掉付費使用者的 snapshot。`status: 0`、408、429、5xx 與 PostgREST JWT 錯誤（`PGRST301`／`PGRST303`）保留 snapshot（仍受 `SNAPSHOT_TTL_MS` 限制）；401／403、RPC 不存在等仍清除。
+- **BUG-115：保護卡 offer 屬於寫入它的帳號**。原本同一台裝置上 A 留下的 offer 會出現在 B，B 若是 Pro（含試用）按下使用，連勝就變成 A 的。offer 現在記錄 `ownerId`，首頁、個人頁與使用保護卡只讀自己的；登出時刪除升級前留下、沒有 owner 的 offer。**production（`legacy`）也適用。**
+
+### Validation
+- `tests/unit/pro014pRollover.test.js`：
+  - 先在未修改的程式碼上寫好 `legacy` 的 9 個特性測試，重構後不改仍通過；
+  - 狀態判斷的每種情況、狀態不明的換日、補做（一次、owner 不符、合併規則）、跨日、SUB-16、暫時性失敗與權威錯誤、BUG-115。
+- `appBootSequence.test.js`：三個呼叫點都在 refresh 之後補做；BUG-106 時由 `loadAndStart()` 補做；移除任一呼叫點測試會失敗。
+- `proGateCallSites.test.js`：`dayCycle.js` 的 Pro 判定由 4 處減為 1 處，換日的判定改在 `proRollover.js`。
+- `pwa/sw.js`：SHELL 加入 `proRollover.js`（INFRA-105：新的 export 都放在新模組）。
+
+---
+
 ## [1.41.4] - 2026-11-01
 
 ### Changed

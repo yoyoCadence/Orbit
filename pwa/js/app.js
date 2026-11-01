@@ -27,6 +27,7 @@ import { FLAG_DEV_BACKUP, FLAG_STREAK_UNLOCK_NEW } from './flags.js';
 import { refreshCanonicalStateAndReconcilePersonalSpaceV2 } from './personalSpace/v2/controller.js';
 import { createAuthOperationGuard } from './platform/authOperationGuard.js';
 import { createBootSequenceGuard } from './platform/bootSequenceGuard.js';
+import { resolvePendingProRollover } from './proRollover.js';
 import { isOnline, onConnectivityChange } from './platform/network.js';
 import { orbitWindowRuntimeDestroyer } from './personalSpace/v2/runtime/pixiSceneRuntime.js';
 
@@ -289,6 +290,12 @@ async function loadAndStart(session) {
     state.user = storage.getUser() ?? state.user;
   }
 
+  // PRO-014P: Pro effects an earlier rollover deferred, now that the refresh
+  // above may have settled the status. Here rather than relying on the
+  // rollover's own call: when this boot is the second one (BUG-106) the
+  // rollover is skipped, and the cached-user sync is skipped too.
+  resolvePendingProRollover();
+
   hideLoading();
   document.getElementById('login-screen').classList.add('hidden');
 
@@ -455,6 +462,7 @@ async function _syncAfterReconnect() {
       await db.refreshProEntitlement(session.user.id);
       if (_currentSession !== session) return;
       loadStateFromStorage({ authoritative: true });
+      resolvePendingProRollover();   // PRO-014P: deferred Pro effects, now that the status may be known
       updateHeader();
       // Re-rendering under a focused text field would throw away what is being typed.
       if (!isTextInputActive()) renderPage(currentHash());
@@ -560,6 +568,7 @@ async function init() {
           // Quietly refresh canonical state and the V2 projection from the
           // completed remote/local merge without enqueueing a reveal.
           loadStateFromStorage({ authoritative: true });
+          resolvePendingProRollover();   // PRO-014P: deferred Pro effects of this boot's rollover
           updateHeader();
           renderPage(currentHash());
           _updateBadge();

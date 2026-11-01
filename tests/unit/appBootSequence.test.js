@@ -131,6 +131,9 @@ vi.mock('../../pwa/js/platform/network.js', () => ({
 }));
 
 vi.mock('../../pwa/js/authFlow.js', () => authFlow);
+// PRO-014P: the deferred Pro effects of a rollover are applied after each refresh.
+const proRollover = vi.hoisted(() => ({ resolvePendingProRollover: vi.fn(() => false) }));
+vi.mock('../../pwa/js/proRollover.js', () => proRollover);
 vi.mock('../../pwa/js/ui/header.js', () => ({ updateHeader: vi.fn() }));
 vi.mock('../../pwa/js/ui/feedback.js', () => feedback);
 vi.mock('../../pwa/js/sessionFlow.js', () => ({ setBadgeUpdater: vi.fn() }));
@@ -191,6 +194,7 @@ beforeEach(() => {
   db.refreshProEntitlement.mockResolvedValue(false);
   db.startTrial.mockClear();
   db.startTrial.mockResolvedValue({ ok: true, ownerChanged: false, trialStartedAt: null });
+  proRollover.resolvePendingProRollover.mockClear();
   Object.values(authFlow).forEach(fn => fn.mockClear());
   Object.values(feedback).forEach(fn => fn.mockClear());
   storage.saveUser.mockClear();
@@ -495,6 +499,76 @@ describe('PRO-014O：快取分支的 entitlement refresh', () => {
 
     expect(db.refreshProEntitlement).toHaveBeenCalledTimes(1);
     expect(feedback.showSyncBanner).not.toHaveBeenCalledWith('synced');
+  });
+});
+
+// ─── PRO-014P：refresh 之後補做換日延後的 Pro 效果 ────────────────────────────
+//
+// server source 下，cached-user 的換日常在過期的 snapshot 上執行，補卡與 offer
+// 被記成待補做。每個 refresh 之後都要補做，否則要等到下一次換日。
+
+describe('PRO-014P：refresh 之後補做', () => {
+  const resolve = () => proRollover.resolvePendingProRollover;
+
+  it('快取分支：背景 refresh 之後補做', async () => {
+    await bootWithPendingSession('owner-a');
+    auth.sessionResolve(sessionFor('owner-a'));
+    await flush();
+
+    expect(resolve()).toHaveBeenCalledTimes(1);
+    expect(db.refreshProEntitlement.mock.invocationCallOrder[0])
+      .toBeLessThan(resolve().mock.invocationCallOrder[0]);
+  });
+
+  it('SIGNED_IN 先到（BUG-106）：loadAndStart() 在 refresh 之後明確補做，第二次開機不換日', async () => {
+    await bootWithPendingSession('owner-a');
+    expect(dayCycle.processYesterdayStreak).toHaveBeenCalledTimes(1);
+
+    await auth.callback('SIGNED_IN', sessionFor('owner-a'));
+    await flush();
+    auth.sessionResolve(sessionFor('owner-a'));
+    await flush();
+
+    expect(dayCycle.processYesterdayStreak).toHaveBeenCalledTimes(1);   // 換日沒有再跑
+    expect(db.refreshProEntitlement).toHaveBeenCalledTimes(1);          // 背景同步被略過
+    expect(resolve()).toHaveBeenCalledTimes(1);
+    expect(db.refreshProEntitlement.mock.invocationCallOrder[0])
+      .toBeLessThan(resolve().mock.invocationCallOrder[0]);
+  });
+
+  it('沒有快取（loadAndStart）：補做在 startTrial() 之後、換日之前', async () => {
+    cache.user = { ...makeUser('owner-a'), trialStartedAt: null };
+    cache.tasks = [{ id: 't1', name: 'Task' }];
+    storage.getUser.mockImplementation(() => null);
+    auth.getSession.mockImplementation(() => Promise.resolve(sessionFor('owner-a')));
+    db.loadFromRemote.mockImplementationOnce(async () => {
+      storage.getUser.mockImplementation(() => cache.user);
+    });
+    await import('../../pwa/js/app.js');
+    await flush();
+
+    expect(db.startTrial).toHaveBeenCalledWith('owner-a');
+    expect(resolve()).toHaveBeenCalledTimes(1);
+    const order = resolve().mock.invocationCallOrder[0];
+    expect(db.refreshProEntitlement.mock.invocationCallOrder[0]).toBeLessThan(order);
+    expect(db.startTrial.mock.invocationCallOrder[0]).toBeLessThan(order);
+    expect(order).toBeLessThan(dayCycle.processYesterdayStreak.mock.invocationCallOrder[0]);
+  });
+
+  it('連線恢復同步：refresh 之後補做', async () => {
+    network.online = false;
+    db.loadFromRemote.mockRejectedValueOnce(new Error('Failed to fetch'));
+    await bootWithPendingSession('owner-a');
+    auth.sessionResolve(sessionFor('owner-a'));
+    await flush();
+    expect(resolve()).not.toHaveBeenCalled();
+
+    await network.emit(true);
+    await flush();
+
+    expect(resolve()).toHaveBeenCalledTimes(1);
+    expect(db.refreshProEntitlement.mock.invocationCallOrder.at(-1))
+      .toBeLessThan(resolve().mock.invocationCallOrder[0]);
   });
 });
 

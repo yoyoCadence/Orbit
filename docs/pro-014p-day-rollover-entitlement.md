@@ -1,6 +1,6 @@
 # PRO-014P 提案：`server` source 下，換日處理不再把「Pro 狀態不明」當成「不是 Pro」
 
-> 狀態：提案（2026-11-01），只寫文件、不改程式碼。屬 entitlement 啟動流程，依 AGENTS.md §3 需使用者核准（§10）後才實作。擋 `PRO-014H` cutover。
+> 狀態：使用者 2026-11-01 核准 §10（全部照建議），由 #221（v1.41.5）實作，`BUG-115` 一併修正。與本文的差異：`isProFromSnapshot()` 不改；新的 `getProStatusFromSnapshot()` 放在新模組 `pwa/js/proRollover.js`，其 `pro` 直接沿用 `isProFromSnapshot()`（INFRA-105：不在既有 SHELL 模組新增 export）。
 
 ## 1. 結論
 

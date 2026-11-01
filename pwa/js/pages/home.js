@@ -4,7 +4,8 @@ import { calcDailyStats, reorderTasks, previewBaseXP } from '../engine.js';
 import { storage } from '../storage.js';
 import { sessionRowHtml, bindProofThumbs } from '../ui/sessionRow.js';
 import { resolveAchievementPhoto } from '../platform/proofStore.js';
-import { FLAG_SHIELD_PENDING, FLAG_SHIELD_DISMISSED, FLAG_SHIELD_SCROLL_TOP } from '../flags.js';
+import { FLAG_SHIELD_DISMISSED, FLAG_SHIELD_SCROLL_TOP } from '../flags.js';
+import { readShieldOffer } from '../proRollover.js';
 import { showToast } from '../ui/feedback.js';
 import { isPersonalSpaceV2Enabled } from '../personalSpace/v2/featureFlag.js';
 import {
@@ -186,10 +187,7 @@ export function renderHome(container) {
     : `<span class="streak-warn">未達有效日 (${effectiveParts.join(' ')})</span>`;
 
   // Streak shield banner
-  const shieldPending = (() => {
-    try { return JSON.parse(localStorage.getItem(FLAG_SHIELD_PENDING) || 'null'); }
-    catch { return null; }
-  })();
+  const shieldPending = readShieldOffer(state.user?.id);   // BUG-115: only this account's offer
   const shieldDismissed = sessionStorage.getItem(FLAG_SHIELD_DISMISSED) === '1';
   const shieldBanner = (shieldPending && !shieldDismissed) ? `
     <div class="shield-banner">
