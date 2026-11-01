@@ -77,37 +77,6 @@
   - 範圍：RPC 新增回傳欄位（改回傳型別需 `DROP FUNCTION` 再建立並重新 `REVOKE`／`GRANT`，可包在同一個 transaction）；client 改讀新欄位，server 尚未提供時退回推斷；部署順序先 migration 後 client。
   - 屬 RPC 契約變更，依 AGENTS.md §3 需先核准。014 之後推斷已精確，沒有正確性上的急迫性。
 
-- [ ] **PRO-014P** `server` source 下，換日處理只依權威的 entitlement 結果執行
-  - 問題（PR #160 Codex review 指出，2026-10-18 對照 `dayCycle.js` 確認）：
-    - 缺天時的連勝歸零本身與 Pro 無關。
-    - 依賴 `isProUser()` 的是三件事：每月補滿保護卡、歸零後的保護卡 offer、SUB-16 解鎖（非 Pro 且連勝 ≥45 時發放並消耗一次性的 `streakUnlockUsed`）。
-    - cached-user 啟動先跑 `bootWithLocalState()`，`db.refreshProEntitlement()` 在背景同步後才跑；`loadAndStart()` 在 `loadFromRemote()` 失敗時也會跳過 refresh 直接開機。
-    - 結果：projection 過期的付費使用者會被當成非 Pro。他們拿不到保護卡、拿不到 offer，還可能把 `streakUnlockUsed` 用掉。同時 `lastStreakDate` 已推進，之後無法補救。
-  - 影響：`legacy` source（目前 production）下不會發生；只影響已 opt-in `server` 的裝置。cutover 後會直接傷害付費使用者。
-  - 現況（對照 `storage.refreshProEntitlement()` 與 `applyProStatusResponse()`）：所有非 Pro 的情況都回 `false`，目前的呼叫端也都忽略回傳值。各情況的 snapshot 處理：
-    - **網路例外**（`supabase.rpc()` throw）：保留舊 snapshot
-    - **RPC 回傳 `error`、資料格式不符、沒有 session 或 owner 不符**：清除 snapshot
-    - **snapshot 寫入失敗**：`writeProEntitlementSnapshot()` 設定 lost-write latch 並立即 `removeItem()`，所以通常會**刪除**舊 snapshot；只有刪除也失敗時，舊 snapshot 才留在磁碟上（由 `SNAPSHOT_TTL_MS` 兜底）
-    - **`FLAG_DEV_BACKUP` 存在**：直接略過，不呼叫 RPC
-    - **明確非 Pro**：寫入非 Pro 的 snapshot
-  - 方向（實作前需提案與核准，屬 entitlement 啟動流程）：
-    - `refreshProEntitlement()` 改回傳可區分的結果 `{ status: 'pro' | 'not-pro' | 'unknown' }`。
-    - 判定依序為：
-      - RPC 成功且 snapshot 寫入成功，依結果回 `pro` 或 `not-pro`；
-      - 否則若有 `SNAPSHOT_TTL_MS` 內的 snapshot，以它判定（離線 grace window）；
-      - 都沒有才是 `unknown`。
-    - 從未登入過的訪客不會有 server entitlement，視為 `not-pro`。訪客也有本機 `uid()` 產生的 `user.id`，目前沒有訪客標記，實作需新增。曾登入的 owner 只是 session 暫時無法還原時，若也沒有 TTL 內的 snapshot，仍是 `unknown`。
-    - 在 `server` source 下，換日處理（補卡、offer、SUB-16、推進 `lastStreakDate`）只在 `pro` 或 `not-pro` 時執行。
-    - `unknown` 時整個換日處理延後：記錄**確切的待處理日期**（可能不只一天），不推進 `lastStreakDate`。得到權威結果時依序重播這些日期，各自依當天的 Sessions 判定，而不是只處理「新的昨天」。
-  - 完成條件：
-    - `unknown` 的每種來源（snapshot 過期或不存在時的網路例外與 `FLAG_DEV_BACKUP` 略過、RPC error、格式不符、寫入失敗）都不重設連勝、不補保護卡、不消耗 `streakUnlockUsed`，且不推進 `lastStreakDate`
-    - TTL 內的 snapshot 在離線時照常判定
-    - 跨日：第一天 `unknown`、隔天才得到權威結果時，第一天的 Sessions 仍被評估（有效則延續連勝）
-    - `pro` 時補卡並提供保護 offer；`not-pro` 時照常重設，SUB-16 條件照舊
-    - 每個情況各有測試；目前忽略回傳值的呼叫端（`loadAndStart`、cached-user 背景同步、連線恢復同步）行為不變
-  - **擋 `PRO-014H`**
-  - 依賴：`PRO-014O`；與 `PRO-014L`（草稿 PR #154）改的是同一段 SUB-16 路徑，需協調先後
-
 - [ ] **PRO-014L** SUB-16 連勝解鎖改由 server 授權
   - 目標：45 天連勝換 30 天 Pro 的授權由 server 發放，而不是 client 自行寫入
   - 現況（`PRO-014C` 實作時發現）：`pwa/js/dayCycle.js` 直接寫 `state.user.isPro = true` 與 `proExpiresAt`，再經 `saveUser()` 同步上雲。這是 client 決定的 Pro 授權 —— 與 `startTrial()` 原本的問題同一類，只是沒被 `PRO-014C` 的範圍涵蓋。
@@ -214,9 +183,45 @@
 
 > 2026-11-01 核准（使用者回覆「可以照你說的建議做」）：PRO-014R 採用方案 A（`my_pro_status()` 在付費已涵蓋整段試用時不回報 `trial_ends_at`）；PRO-014N 以 A 結案並重新定義（推斷保留且在 014 後精確，「不需推斷的明確欄位」改列可選的方案 B）。依提案 §6 實作一個 PR；014 的 production 套用另立擁有者執行的任務。
 
+> 2026-11-01 決定（使用者回覆）：
+> - PRO-014P 先於 PRO-014L（草稿 PR #154；兩者改同一段 SUB-16 路徑）。PRO-014P 先寫提案。
+> - PRO-014H 的核准名單：只有專案擁有者的主帳號，授權為終身（`is_pro = true`、`pro_expires_at = NULL`、不搬移 profile 的試用起點）。依 `docs/sub-14-leaderboard-pro.md` 的 cutover 程序由擁有者在 SQL Editor 寫入、agent 覆核並對帳；email 與 UUID 不寫進 repo。
+
 ---
 
 ## In Progress
+
+- [ ] **PRO-014P** `server` source 下，換日處理只依權威的 entitlement 結果執行
+  - 問題（PR #160 Codex review 指出，2026-10-18 對照 `dayCycle.js` 確認）：
+    - 缺天時的連勝歸零本身與 Pro 無關。
+    - 依賴 `isProUser()` 的是三件事：每月補滿保護卡、歸零後的保護卡 offer、SUB-16 解鎖（非 Pro 且連勝 ≥45 時發放並消耗一次性的 `streakUnlockUsed`）。
+    - cached-user 啟動先跑 `bootWithLocalState()`，`db.refreshProEntitlement()` 在背景同步後才跑；`loadAndStart()` 在 `loadFromRemote()` 失敗時也會跳過 refresh 直接開機。
+    - 結果：projection 過期的付費使用者會被當成非 Pro。他們拿不到保護卡、拿不到 offer，還可能把 `streakUnlockUsed` 用掉。同時 `lastStreakDate` 已推進，之後無法補救。
+  - 影響：`legacy` source（目前 production）下不會發生；只影響已 opt-in `server` 的裝置。cutover 後會直接傷害付費使用者。
+  - 現況（對照 `storage.refreshProEntitlement()` 與 `applyProStatusResponse()`）：所有非 Pro 的情況都回 `false`，目前的呼叫端也都忽略回傳值。各情況的 snapshot 處理：
+    - **網路例外**（`supabase.rpc()` throw）：保留舊 snapshot
+    - **RPC 回傳 `error`、資料格式不符、沒有 session 或 owner 不符**：清除 snapshot
+    - **snapshot 寫入失敗**：`writeProEntitlementSnapshot()` 設定 lost-write latch 並立即 `removeItem()`，所以通常會**刪除**舊 snapshot；只有刪除也失敗時，舊 snapshot 才留在磁碟上（由 `SNAPSHOT_TTL_MS` 兜底）
+    - **`FLAG_DEV_BACKUP` 存在**：直接略過，不呼叫 RPC
+    - **明確非 Pro**：寫入非 Pro 的 snapshot
+  - 方向（實作前需提案與核准，屬 entitlement 啟動流程）：
+    - `refreshProEntitlement()` 改回傳可區分的結果 `{ status: 'pro' | 'not-pro' | 'unknown' }`。
+    - 判定依序為：
+      - RPC 成功且 snapshot 寫入成功，依結果回 `pro` 或 `not-pro`；
+      - 否則若有 `SNAPSHOT_TTL_MS` 內的 snapshot，以它判定（離線 grace window）；
+      - 都沒有才是 `unknown`。
+    - 從未登入過的訪客不會有 server entitlement，視為 `not-pro`。訪客也有本機 `uid()` 產生的 `user.id`，目前沒有訪客標記，實作需新增。曾登入的 owner 只是 session 暫時無法還原時，若也沒有 TTL 內的 snapshot，仍是 `unknown`。
+    - 在 `server` source 下，換日處理（補卡、offer、SUB-16、推進 `lastStreakDate`）只在 `pro` 或 `not-pro` 時執行。
+    - `unknown` 時整個換日處理延後：記錄**確切的待處理日期**（可能不只一天），不推進 `lastStreakDate`。得到權威結果時依序重播這些日期，各自依當天的 Sessions 判定，而不是只處理「新的昨天」。
+  - 完成條件：
+    - `unknown` 的每種來源（snapshot 過期或不存在時的網路例外與 `FLAG_DEV_BACKUP` 略過、RPC error、格式不符、寫入失敗）都不重設連勝、不補保護卡、不消耗 `streakUnlockUsed`，且不推進 `lastStreakDate`
+    - TTL 內的 snapshot 在離線時照常判定
+    - 跨日：第一天 `unknown`、隔天才得到權威結果時，第一天的 Sessions 仍被評估（有效則延續連勝）
+    - `pro` 時補卡並提供保護 offer；`not-pro` 時照常重設，SUB-16 條件照舊
+    - 每個情況各有測試；目前忽略回傳值的呼叫端（`loadAndStart`、cached-user 背景同步、連線恢復同步）行為不變
+  - **擋 `PRO-014H`**
+  - 依賴：`PRO-014O`；與 `PRO-014L`（草稿 PR #154）改的是同一段 SUB-16 路徑，需協調先後
+  - In progress（2026-11-01）：使用者決定 PRO-014P 先於 PRO-014L（草稿 PR #154）。第一步是提案（只寫文件、不改程式碼）；屬 entitlement 啟動流程，核准前不實作。從 Backlog 移入 Next，再移入 In Progress。
 
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
