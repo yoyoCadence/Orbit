@@ -109,19 +109,6 @@
   - **完成條件（server-side enforcement，PR #146 覆驗新增）**：任何有實際價值的 Pro 資料、API 或操作，都必須由 server 自行驗證 `is_pro_active`（RLS policy 或 RPC 內部判斷），**不得**相信 `storage.isProUser()` 或任何由 client 傳入的 Pro 狀態。交付時需逐項列出本次新增的 Pro 入口分別由哪一層強制授權；純顯示／隱藏可只靠 client projection，取得資料或觸發運算則不可。
   - 依賴：`PRO-014E`
 
-- [ ] **BUG-115** 保護卡 offer（`orbit_shield_pending`）沒有 owner，登出也不刪除
-  - 發現：寫 PRO-014P 提案時（2026-11-01），對照 `dayCycle.js`、`pages/home.js`、`pages/profile.js` 與 `storage.clearAll()`。
-  - 問題：offer 只存 `{ prevStreak }`，`clearAll()` 不刪除。同一台裝置上 A 帳號留下的 offer 會出現在 B 帳號的首頁；B 若是 Pro（新帳號都有試用，`legacy` 下試用就是 Pro）按下使用，B 的連勝就變成 A 的 `prevStreak`。連勝會影響 SUB-16 的 45 天解鎖。production（`legacy`）現在就會發生，需要共用裝置。
-  - 方向：
-    - offer 加上 `ownerId`；首頁、個人頁與 `useStreakShield()` 在 owner 不符時忽略（不刪除，A 回來時仍可使用）。
-    - 升級前留下、沒有 `ownerId` 的 offer 無法分辨屬於誰：登入中照常使用，登出時（`clearAll()`）刪除。這樣可以擋住「A 登出、B 登入」這條主要路徑。
-    - offer 仍只有一格，B 寫入自己的 offer 會覆蓋 A 的。
-  - 完成條件（各有測試）：
-    - 升級後寫入的 A 的 offer 不出現在 B，B 也無法使用；
-    - A 重新登入後仍看得到自己的 offer（期間 B 沒有寫入自己的 offer 時）；
-    - 升級前留下的 offer 在登入中照常使用，登出後被刪除。
-  - 提案 [`docs/pro-014p-day-rollover-entitlement.md`](docs/pro-014p-day-rollover-entitlement.md) §10 第 4 點：建議併入 PRO-014P 的實作 PR，或單獨一個 PR，等待使用者決定。
-
 - [ ] **PRO-017** 邀請制解鎖 Pro
   - 目標：完成 roadmap 既有 SUB-17
   - 對應 roadmap：中期
@@ -200,7 +187,9 @@
 > - PRO-014P 先於 PRO-014L（草稿 PR #154；兩者改同一段 SUB-16 路徑）。PRO-014P 先寫提案。
 > - PRO-014H 的核准名單：只有專案擁有者的主帳號，授權為終身（`is_pro = true`、`pro_expires_at = NULL`、不搬移 profile 的試用起點）。依 `docs/sub-14-leaderboard-pro.md` 的 cutover 程序由擁有者在 SQL Editor 寫入、agent 覆核並對帳；email 與 UUID 不寫進 repo。
 
-> 2026-11-01：PRO-014P 提案完成（只寫文件），等待使用者決定 §10。寫提案時發現 `BUG-115`（保護卡 offer 沒有 owner），放入 Backlog。
+> 2026-11-01：PRO-014P 提案完成（#220，只寫文件）。寫提案時發現 `BUG-115`（保護卡 offer 沒有 owner），放入 Backlog。
+
+> 2026-11-01 核准（使用者回覆「可以全部照建議」）：PRO-014P 提案 §10 全部照建議（方案 D、改寫方向與完成條件、暫時性失敗不刪 snapshot、`BUG-115` 併入、`unknown` 時的提示文字）。PRO-014P 與 BUG-115 一個 PR 實作；BUG-115 移入 In Progress。
 
 ---
 
@@ -220,27 +209,39 @@
     - **snapshot 寫入失敗**：`writeProEntitlementSnapshot()` 設定 lost-write latch 並立即 `removeItem()`，所以通常會**刪除**舊 snapshot；只有刪除也失敗時，舊 snapshot 才留在磁碟上（由 `SNAPSHOT_TTL_MS` 兜底）
     - **`FLAG_DEV_BACKUP` 存在**：直接略過，不呼叫 RPC
     - **明確非 Pro**：寫入非 Pro 的 snapshot
-  - 方向（實作前需提案與核准，屬 entitlement 啟動流程）：
-    - `refreshProEntitlement()` 改回傳可區分的結果 `{ status: 'pro' | 'not-pro' | 'unknown' }`。
-    - 判定依序為：
-      - RPC 成功且 snapshot 寫入成功，依結果回 `pro` 或 `not-pro`；
-      - 否則若有 `SNAPSHOT_TTL_MS` 內的 snapshot，以它判定（離線 grace window）；
-      - 都沒有才是 `unknown`。
-    - 從未登入過的訪客不會有 server entitlement，視為 `not-pro`。訪客也有本機 `uid()` 產生的 `user.id`，目前沒有訪客標記，實作需新增。曾登入的 owner 只是 session 暫時無法還原時，若也沒有 TTL 內的 snapshot，仍是 `unknown`。
-    - 在 `server` source 下，換日處理（補卡、offer、SUB-16、推進 `lastStreakDate`）只在 `pro` 或 `not-pro` 時執行。
-    - `unknown` 時整個換日處理延後：記錄**確切的待處理日期**（可能不只一天），不推進 `lastStreakDate`。得到權威結果時依序重播這些日期，各自依當天的 Sessions 判定，而不是只處理「新的昨天」。
-  - 完成條件：
-    - `unknown` 的每種來源（snapshot 過期或不存在時的網路例外與 `FLAG_DEV_BACKUP` 略過、RPC error、格式不符、寫入失敗）都不重設連勝、不補保護卡、不消耗 `streakUnlockUsed`，且不推進 `lastStreakDate`
+  - 方向（2026-11-01 使用者核准提案 [`docs/pro-014p-day-rollover-entitlement.md`](docs/pro-014p-day-rollover-entitlement.md) 方案 D；原本的方案 T 與改寫的逐條對照見提案 §7.1）：
+    - `getProStatusFromSnapshot()` 由 snapshot 判斷 `pro`／`not-pro`／`unknown`；`isProFromSnapshot()` 改為它 `=== 'pro'`。`refreshProEntitlement()` 的回傳值不變。
+    - `unknown`：沒有 owner、寫入 latch、snapshot 不存在或無法解析、owner 不符、超過 `SNAPSHOT_TTL_MS`、時鐘倒退、`isActive` 但取得後才到期。訪客（本機 `uid()`、沒有 snapshot）是 `unknown`，不新增訪客標記。`legacy` source 永遠已知。
+    - 連勝計算與推進 `lastStreakDate` 一律照常。只有補卡、offer、SUB-16 依狀態：補卡與 offer 在 `unknown` 時寫入 owner-scoped 的待補做紀錄，取得權威結果後補做一次；SUB-16 只在 `not-pro` 時執行，`unknown` 略過、不消耗 `streakUnlockUsed`（`PRO-014L` 之後整段移出換日）。
+    - 暫時性失敗（`status: 0`、408、429、5xx、PostgREST JWT 錯誤）不刪 snapshot。
+  - 完成條件（提案 §7.2）：
+    - `unknown` 的每種來源：連勝照常計算與歸零、`lastStreakDate` 照常推進；不補保護卡、不提供 offer，改寫入待補做紀錄，之後第一次取得權威結果時補做，最多一次；不做 SUB-16、不消耗 `streakUnlockUsed`
     - TTL 內的 snapshot 在離線時照常判定
-    - 跨日：第一天 `unknown`、隔天才得到權威結果時，第一天的 Sessions 仍被評估（有效則延續連勝）
+    - 跨日：第一天 `unknown`、隔天才得到權威結果時，第一天的 Sessions 仍被評估（有效則延續連勝），第一天的待補做也被補上
     - `pro` 時補卡並提供保護 offer；`not-pro` 時照常重設，SUB-16 條件照舊
-    - 每個情況各有測試；目前忽略回傳值的呼叫端（`loadAndStart`、cached-user 背景同步、連線恢復同步）行為不變
+    - 每個情況各有測試；`refreshProEntitlement()` 的回傳值不變，三個呼叫端在 refresh 之後多呼叫一次補做，除此之外行為不變
+    - 暫時性失敗與 throw 相同，保留 snapshot；權威的錯誤維持清除
+    - `legacy` source 下永遠不寫待補做紀錄，換日行為與現在相同；以重構前寫好的特性測試證明
+    - `unknown` 時按「使用保護卡」顯示「目前無法確認 Pro 狀態，連線後再試一次」
+    - 併入 `BUG-115` 的完成條件（見下）
   - **擋 `PRO-014H`**
   - 依賴：`PRO-014O`；與 `PRO-014L`（草稿 PR #154）改的是同一段 SUB-16 路徑，需協調先後
   - In progress（2026-11-01）：使用者決定 PRO-014P 先於 PRO-014L（草稿 PR #154）。第一步是提案（只寫文件、不改程式碼）；屬 entitlement 啟動流程，核准前不實作。從 Backlog 移入 Next，再移入 In Progress。
-  - 提案（2026-11-01）：[`docs/pro-014p-day-rollover-entitlement.md`](docs/pro-014p-day-rollover-entitlement.md)，**等待使用者決定 §10**。
+  - 提案（2026-11-01，#220）：[`docs/pro-014p-day-rollover-entitlement.md`](docs/pro-014p-day-rollover-entitlement.md)。**使用者 2026-11-01 回覆「可以全部照建議」核准 §10**：方案 D、改寫方向與完成條件、暫時性失敗不刪 snapshot 併入、`BUG-115` 併入、提示文字照建議。實作一個 PR。
     - 實測：回訪使用者走 cached-user 路徑，漏一天時 snapshot 幾乎一定過期，付費使用者的保護卡 offer 永久遺失（不是邊界情況）。另外發現既有缺陷：Supabase client 的網路失敗回傳 `{ error, status: 0 }` 而不是 throw，`refreshProEntitlement()` 因此刪除 snapshot。
-    - 建議方案 D：連勝照常計算；補卡與 offer 在 `unknown` 時寫入待補做紀錄，取得權威結果後補做一次；SUB-16 在 `unknown` 時略過、不消耗 `streakUnlockUsed`（`PRO-014L` 會把它移出換日，見提案 §8）。**這會改寫上面的「方向」與「完成條件」**（提案 §7 列出原文與改寫）；核准前上面兩段維持原文。
+
+- [ ] **BUG-115** 保護卡 offer（`orbit_shield_pending`）沒有 owner，登出也不刪除
+  - 發現：寫 PRO-014P 提案時（2026-11-01），對照 `dayCycle.js`、`pages/home.js`、`pages/profile.js` 與 `storage.clearAll()`。
+  - 問題：offer 只存 `{ prevStreak }`，`clearAll()` 不刪除。同一台裝置上 A 帳號留下的 offer 會出現在 B 帳號的首頁；B 若是 Pro（新帳號都有試用，`legacy` 下試用就是 Pro）按下使用，B 的連勝就變成 A 的 `prevStreak`。連勝會影響 SUB-16 的 45 天解鎖。production（`legacy`）現在就會發生，需要共用裝置。
+  - 方向：
+    - offer 加上 `ownerId`；首頁、個人頁與 `useStreakShield()` 在 owner 不符時忽略（不刪除，A 回來時仍可使用）。
+    - 升級前留下、沒有 `ownerId` 的 offer 無法分辨屬於誰：登入中照常使用，登出時（`clearAll()`）刪除。這樣可以擋住「A 登出、B 登入」這條主要路徑。
+    - offer 仍只有一格，B 寫入自己的 offer 會覆蓋 A 的。
+  - 完成條件（各有測試）：
+    - 升級後寫入的 A 的 offer 不出現在 B，B 也無法使用；
+    - A 重新登入後仍看得到自己的 offer（期間 B 沒有寫入自己的 offer 時）；
+    - 升級前留下的 offer 在登入中照常使用，登出後被刪除。
+  - 使用者 2026-11-01 核准併入 PRO-014P 的實作 PR（提案 §10 第 4 點）。從 Backlog 移入 In Progress。
 
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
