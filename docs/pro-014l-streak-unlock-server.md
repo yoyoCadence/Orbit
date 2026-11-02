@@ -92,7 +92,7 @@
    - 以 `git merge-tree` 檢查：
      - 文字衝突在 `dayCycle.js`、`storage.js`、`proGateCallSites.test.js` 與版本相關的檔案；
      - `app.js`、`appBootSequence.test.js` 可以自動合併；
-     - `pro014pRollover.test.js`（#154 的基礎沒有這個檔）不會衝突，但其中 4 個 SUB-16 測試會失敗。
+     - `pro014pRollover.test.js`（#154 的基礎沒有這個檔）不會衝突；刪掉 SUB-16 區塊後其中 2 個測試會失敗，4 個都需要改寫（另外 2 個會變成什麼都沒檢查）。
 2. **違反 INFRA-105**（這條規則在 #154 之後才訂）：
    - `requestStreakUnlock` 是既有 SHELL 模組 `dayCycle.js` 的**新 export**，由同為 SHELL 模組的 `app.js` import。
    - 新的 named export 必須放在新模組。
@@ -111,7 +111,7 @@
 6. **UTC 日期在 L2 下沒有影響**：
    - server 以 UTC 的 `current_date` 排除「未來」的 sessions（上表最後一列）。
    - 但 client 的連勝只在換日時評估「昨天」：第 45 個有效日要等它成為當地的「昨天」，連勝才會到 45。
-   - 當地的昨天不會晚於 UTC 的今天：時區在 UTC+14 以內、`newDayHour` 在 0–8 之間都成立。
+   - 當地的昨天不會晚於 UTC 的今天：時區在 UTC+14 以內都成立，與 `newDayHour` 無關；跨時區的多台裝置也一樣（那一天在處理它的裝置上已是「昨天」）。前提是資料庫的 `TimeZone` 維持 UTC（Supabase 預設）、裝置時鐘正確。
    - 所以 L2 在本機連勝 ≥ 45 才詢問時，第 45 天一定已經算在內，與現在 production 發放的時間相同。
    - 只有 #154「每次開機都問」時才會遇到上表最後一列。**維持 #154 的條件，不改。**
 7. **已用過 SUB-16 的帳號，server 不知道**：
@@ -133,7 +133,7 @@
      - L2 在 `granted` 與 `already_granted` 都依 `paid_active` 寫回：
        - 是付費中：寫 `is_pro = true`、`pro_expires_at = server 的 expires_at`；
        - 不是：只寫 `streak_unlock_used = true`；
-     - 只延長、不縮短、不取消：profile 已是終身，或到期日更晚時不寫；永遠不寫 `is_pro = false`；
+     - 只延長、不縮短、不取消：profile 已是終身（`isPro === true` 且 `proExpiresAt` 為 null），或已是 Pro 且到期日更晚時不寫；永遠不寫 `is_pro = false`。注意免費的 profile 的 `pro_expires_at` 也是 null，只看到期日會讓幾乎所有人都不寫回；
      - 永遠不把 `is_active` 對應到 `is_pro`。
 9. **保護卡造成的缺口**：
    - 保護卡把連勝恢復為中斷前的天數，但那天沒有有效 Session，server 會看到缺口。
@@ -145,14 +145,14 @@
 
 ## 5. 建議方案
 
-### 5.1 L1：migration 012 與測試（repo，一個 PR，不改 client）
+### 5.1 L1：migration 012（回填＋`paid_active`）與測試（repo，一個 PR，不改 client）
 
 - 以 #154 的 012 為基礎，**保留**：
   - 資格條件（含 `date <= current_date`，第 6 點）；
   - 資料列鎖、一次性、30 天、`active_entitlement` 不消耗；
   - 權限與 `search_path`；
   - 「不符合也建立資料列」：它是已驗證的鎖設計的一部分，L2 只讓候選人呼叫。
-- **只加一段回填**（第 7 點），可重複執行：
+- **加一段回填**（第 7 點），可重複執行：
 
   ```sql
   INSERT INTO public.pro_entitlements AS e (user_id, streak_unlock_granted_at)
@@ -178,13 +178,13 @@
     - `SECURITY DEFINER`／`search_path`；
     - 發放後 `my_pro_status()` 的回報；
     - `paid_active`：試用中為 false、發放後為 true、付費到期後為 false、終身為 true。
-  - **回填**：回填在 012 內、測試資料建立之前就執行，所以測試要對一個 fixture 再跑一次回填的 SQL，確認它只寫標記、不改其他欄位，而且之後 RPC 回 `already_granted`。
+  - **回填**：回填在 012 內、測試資料建立之前就執行，所以測試要對一個 fixture 再跑一次回填的 SQL，確認它只寫標記、不改其他欄位，而且之後 RPC 回 `already_granted`。重跑時限定在 fixture 的 `user_id`：LA 第 5 步在 production 跑這個測試時，不應碰到真實帳號（雖然會 rollback，也會讓筆數的檢查失準）。
   - 帶入 #154 的 `tests/database/pro014l.rollback.sql` 作為 LA 的回滾腳本。
   - `tests/unit/` 加 SQL 契約測試（同 `proEntitlementsSql.test.js` 的形式）。
   - 在本機 PostgreSQL 依上面的順序實際執行。
 - `docs/pro-014l-local-validation.md` 移到 main 作為依據，註明：
   - 它驗的是 #154 的版本；
-  - L1 加了回填；
+  - L1 加了回填與 `paid_active`；
   - `scripts/pro014l-data-api-check.mjs` 需要本機 Supabase（Docker），留在 #154 的分支，不帶進 main。
 - 不需要 bump（沒有改 `pwa/js`；`pwa/db/` 不在 INFRA-108 的檢查範圍）。
 
@@ -204,7 +204,7 @@
    - `SECURITY DEFINER`、`search_path`、owner；
    - 新欄位存在；
    - 回填筆數與第 1 步相同；
-   - **你的帳號 `my_pro_status()` 仍是 `true／NULL／NULL`**：核准名單沒有回歸。在 `begin;` 內 `set local request.jwt.claims`，以 `select` 作為最後一個回傳資料的語句，最後 `rollback;`。
+   - **你的帳號 `my_pro_status()` 仍是 `true／NULL／NULL`**：核准名單沒有回歸。在 `begin;` 內 `set local request.jwt.claims`，以 DO block 讀取並檢查，不符就 `RAISE EXCEPTION`，最後 `rollback;`。成功的樣子是沒有錯誤，不依賴 SQL Editor 顯示哪一個結果。
 5. **功能驗證**：再跑一次 L1 的 ASSERT 測試（開頭的 `begin;` 到結尾的 `rollback;` 原樣保留）。
    - 測試用的是自己建立、會被 rollback 的帳號，不會動到真實帳號或測試帳號。
    - 成功的樣子是沒有錯誤。
@@ -223,14 +223,15 @@ L2 上線前回滾不影響任何使用者。
 - **新模組** `pwa/js/streakUnlock.js`（INFRA-105），放入 SHELL：
   - `requestStreakUnlock()`；
   - 同一個 owner 的並行請求合併成一個；
-  - 慶祝 modal 的時機：沿用 #154 的 `setTimeout` 退路，因為詢問發生在 `showMainApp()` 之後。
+  - 慶祝 modal 的時機：沿用 #154 的 `setTimeout` 退路，因為詢問發生在 `showMainApp()` 之後。`granted` 時顯示；`already_granted`、`paid_active` 為 true、而本機原本不知道已領過（`streakUnlockUsed` 是 false）時也顯示，讓回應遺失後補上的人也看得到。
+  - 同一個 owner 在同一個有效日，對 `not_eligible` 與 `active_entitlement` 只問一次（本機記住 owner 與日期）。否則保護卡缺口的人與只有 server 是 Pro 的人每次開機、每次同步都會呼叫。
 - **`db.grantStreakUnlock()`**：
-  - 嚴格驗證回傳（沿用 #154）。
+  - 嚴格驗證回傳（沿用 #154），另加：`paid_active` 是 boolean；`granted` 時 `paid_active` 一定是 true；`paid_active` 為 true 時 `is_active` 一定是 true。
   - **寫回規則**（第 8 點）：
     - `granted`、`already_granted`：
       - 寫 `streak_unlock_used = true`；
-      - `paid_active` 為 true 時，另寫 `is_pro = true`、`pro_expires_at = server 的 expires_at`，但只延長、不縮短（profile 已是終身或到期日更晚時不寫）；
-      - 並更新本機 user。
+      - `paid_active` 為 true 時，另寫 `is_pro = true`、`pro_expires_at = server 的 expires_at`，但只延長、不縮短：profile 已是終身（`isPro === true` 且 `proExpiresAt` 為 null），或已是 Pro 且到期日更晚時不寫；
+      - 並更新本機 user。透過 `saveUser()`，或同時更新 `state.user` 與待同步的 profile snapshot，避免之後以舊的 user 推送蓋掉（重試也能修復，但不要依賴它）。
     - `active_entitlement`、`not_eligible`：不寫。
     - 永遠不寫 `is_pro = false`，永遠不看 `is_active`。
     - 這樣回應遺失、寫回失敗或另一台裝置先問時，重試都能補上。
@@ -238,14 +239,14 @@ L2 上線前回滾不影響任何使用者。
   - 呼叫端以 `typeof db.grantStreakUnlock === 'function'` 檢查（新舊版本混用時）。
 - **何時詢問**：本機 `streakDays >= 45`、`!streakUnlockUsed`、Pro 狀態不是 `pro`（`unknown` 也詢問，由 server 決定）。
 - **在哪裡詢問**：只在遠端資料載入之後，與 PRO-014P 的補做相同的三處：
-  1. `loadAndStart()`：在 `bootWithLocalState()` 之後，換日已更新連勝。BUG-106 時第二次開機不換日，背景同步也會略過，所以這裡必須問。
+  1. `loadAndStart()`：在 `bootWithLocalState()` 之後，換日已更新連勝；並等 `_loadRemote()` 回傳的 `loaded?.backfilled`，離線時記錄的 Sessions 已上傳。BUG-106 時第二次開機不換日，背景同步也會略過，這次開機不會再有別的詢問，所以這裡必須問。
   2. cached-user 背景同步：在 `loadStateFromStorage({ authoritative: true })` 與 `await loaded?.backfilled` 之後，離線時記錄的 Sessions 已上傳。
   3. `_syncAfterReconnect()`：同上。
 - **不在**開機的第一次 `bootWithLocalState()` 詢問。那時遠端資料還沒載入，`_loadRemote()` 推送待同步的 profile 可能蓋掉剛寫回的 Pro：使用者看到慶祝，卻要到下次開機才是 Pro。離線開機要等連線恢復才詢問，反正 sessions 也要先上傳。
 - **刪除** `processYesterdayStreak()` 的 SUB-16 區塊。換日不再有任何 client 端的 Pro 寫入。
 - **訪客**（§10 第 4 點）：
   - 建議接受訪客不再有 SUB-16。
-  - 個人頁與設定頁的「連勝解鎖 Pro x/45」對訪客改為說明「需要登入帳號」，避免顯示拿不到的獎勵。
+  - 個人頁與設定頁的「連勝解鎖 Pro x/45」對訪客改為說明「需要登入帳號」，避免顯示拿不到的獎勵。判斷訪客用「讀取 session 成功且沒有 session」（`db.readGuestDevBackup()` 已用這個判斷）。
 - **測試**：
   - `pro014pRollover.test.js` 的 4 個 SUB-16 測試，照設計改寫為「換日不再發放；改由 RPC 發放並依寫回規則寫入 profile」。
   - `proGateCallSites.test.js`：
@@ -256,7 +257,8 @@ L2 上線前回滾不影響任何使用者。
     - 寫回失敗後重試 → 同上；
     - 試用中、回填過的帳號（`already_granted`、`paid_active = false`）不會變成終身；
     - 付費已到期（`paid_active = false`）不會取消 profile 上仍有效的 Pro；
-    - profile 已是終身或到期日更晚時不縮短。
+    - profile 已是終身或到期日更晚時不縮短；
+    - 免費的 profile（`is_pro = false`、`pro_expires_at = NULL`）在 `granted` 時**會**寫回（不能被誤判為終身）。
   - 三個呼叫點（含 BUG-106）、離線後上傳再詢問、RPC 失敗、並行、`typeof` 檢查、modal、訪客的文字。
   - 版本 bump。
 - **production 影響**：
@@ -285,13 +287,13 @@ L2 上線前回滾不影響任何使用者。
   - L2 之前（以及更新前的舊版 client）用 client 寫入領到的 SUB-16，只存在 profile，`pro_entitlements` 沒有。cutover 時若有人還在 30 天內，他剩下的天數會消失。
   - cutover 前：
     1. 再跑一次回填；
-    2. 找出 profile 顯示 SUB-16 還有效、但 server 沒有有效授權的帳號，由擁有者決定。依規則，profile 欄位不能直接當授權來源。
+    2. 找出 profile 顯示 SUB-16 還有效、但 server 的付費授權沒有涵蓋到同一天的帳號，由擁有者決定。依規則，profile 欄位不能直接當授權來源。這裡比對的是付費（`is_pro`），不是 `is_pro_active()`：試用會讓帳號看起來有效，但試用比 SUB-16 先結束時仍會少掉天數。
 
        ```sql
-       select p.user_id from public.profiles p
+       select p.user_id, p.pro_expires_at from public.profiles p
        left join public.pro_entitlements e on e.user_id = p.user_id
-       where p.streak_unlock_used and p.pro_expires_at > now()
-         and not coalesce(public.is_pro_active(e.is_pro, e.pro_expires_at, e.trial_started_at), false);
+       where p.streak_unlock_used and p.is_pro and p.pro_expires_at > now()
+         and not coalesce(e.is_pro and (e.pro_expires_at is null or e.pro_expires_at >= p.pro_expires_at), false);
        ```
 
   - L2 的 legacy 寫回與 PRO-014C 的相容層一樣，要在 PRO-014H 一起移除。
@@ -321,6 +323,6 @@ L2 上線前回滾不影響任何使用者。
    - 或在 server 加「最近」的條件（連勝要延續到最近一兩天）。
 3. 回填 `streak_unlock_used = true` 的帳號為已領過（建議），並在 PRO-014H 前再跑一次。
 4. **訪客**：
-   - 接受訪客不再有 SUB-16，並把訪客看到的進度條改成「需要登入帳號」（建議）：獎勵在 cutover 後本來就只給有帳號的人；保留訪客的本機路徑需要先做出可靠的訪客判斷（目前沒有訪客標記）。
+   - 接受訪客不再有 SUB-16，並把訪客看到的進度條改成「需要登入帳號」（建議）：cutover 後訪客本來就沒有任何 Pro，保留只是把同一個改變延後，而且要在換日裡多留一處 client 寫入。兩個選項都用同一個訪客判斷（讀取 session 成功且沒有 session）。
    - 或在 PRO-014H 前保留訪客的本機發放。
 5. L1 合併後關閉 #154（建議）。
