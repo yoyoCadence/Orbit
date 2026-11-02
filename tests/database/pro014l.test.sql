@@ -7,8 +7,8 @@
 -- 任一 ASSERT 失敗即中止並回報（純 SQL，不依賴 pgTAP：pgTAP 失敗不會中止，在只顯示最後
 -- 結果的 Supabase SQL Editor 裡會看起來像通過）。成功的樣子是沒有錯誤。
 -- 合成帳號用 example.invalid 網域；在 production 執行時一併被 rollback。
--- 以 postgres 呼叫：grant_streak_unlock() 是 SECURITY DEFINER，結果只取決於 auth.uid()；
--- authenticated／anon 的權限由第 1 節另外斷言。
+-- 第 2–7 節以執行者（postgres）呼叫：grant_streak_unlock() 是 SECURITY DEFINER，結果只取決於
+-- auth.uid()；authenticated／anon 的權限由第 1 節斷言，第 8 節另以 authenticated 實際呼叫一次。
 
 begin;
 
@@ -235,24 +235,39 @@ from pro014l_backfill b
 cross join lateral generate_series(0, 44) as g;
 
 -- 與 012 第 3 節相同的 SQL，只多了 fixture 的限定條件（跑兩次，確認可重複執行；
--- tests/unit/streakUnlockSql.test.js 檢查兩者除了這個條件之外完全相同）
-insert into public.pro_entitlements as e (user_id, streak_unlock_granted_at)
-select p.user_id, now()
-from public.profiles p
-where p.streak_unlock_used = true
-  and p.user_id in (select user_id from pro014l_backfill)
-on conflict (user_id) do update
-  set streak_unlock_granted_at = now()
-  where e.streak_unlock_granted_at is null;
+-- tests/unit/streakUnlockSql.test.js 檢查兩者除了這個條件之外完全相同）。第一次標記 2 筆，第二次 0 筆：
+-- 已標記的不再更新，重跑回報的筆數就是新標記的帳號。
+do $$
+declare
+  n bigint;
+begin
+  insert into public.pro_entitlements as e (user_id, streak_unlock_granted_at)
+  select p.user_id, now()
+  from public.profiles p
+  where p.streak_unlock_used = true
+    and p.user_id in (select user_id from pro014l_backfill)
+  on conflict (user_id) do update
+    set streak_unlock_granted_at = now()
+    where e.streak_unlock_granted_at is null;
+  get diagnostics n = row_count;
+  assert n = 2, format('backfill rerun marked: %s rows, expected 2', n);
+end $$;
 
-insert into public.pro_entitlements as e (user_id, streak_unlock_granted_at)
-select p.user_id, now()
-from public.profiles p
-where p.streak_unlock_used = true
-  and p.user_id in (select user_id from pro014l_backfill)
-on conflict (user_id) do update
-  set streak_unlock_granted_at = now()
-  where e.streak_unlock_granted_at is null;
+do $$
+declare
+  n bigint;
+begin
+  insert into public.pro_entitlements as e (user_id, streak_unlock_granted_at)
+  select p.user_id, now()
+  from public.profiles p
+  where p.streak_unlock_used = true
+    and p.user_id in (select user_id from pro014l_backfill)
+  on conflict (user_id) do update
+    set streak_unlock_granted_at = now()
+    where e.streak_unlock_granted_at is null;
+  get diagnostics n = row_count;
+  assert n = 0, format('second backfill rerun marked: %s rows, expected 0', n);
+end $$;
 
 do $$
 declare
@@ -333,10 +348,12 @@ begin
     format('lifetime with marker: %L', r);
 end $$;
 
--- 8. 以 authenticated 的身份呼叫（真正的權限路徑：EXECUTE 只授予 authenticated）
+-- 8. 以 authenticated 的身份呼叫（真正的權限路徑：EXECUTE 只授予 authenticated）。
+--    呼叫後還原成原本的角色（不用 reset role：SQL Editor 可能是由另一個角色 SET ROLE 而來）。
 do $$
 declare
   v_id uuid := gen_random_uuid();
+  v_prev text := current_user;
   r record;
 begin
   insert into auth.users (id, email, raw_user_meta_data)
@@ -353,7 +370,8 @@ begin
   perform set_config('request.jwt.claim.sub', v_id::text, true);
   execute 'set local role authenticated';
   select * into r from public.grant_streak_unlock();
-  execute 'reset role';
+  execute format('set local role %I', v_prev);
+  assert current_user = v_prev, format('role not restored: %s', current_user);
   assert r.status = 'granted' and r.paid_active,
     format('call as authenticated: %L', r);
 end $$;

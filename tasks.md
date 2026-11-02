@@ -15,7 +15,7 @@
 ## Backlog
 
 - [ ] **PRO-014LA** 在 production 套用 012（專案擁有者執行）
-  - 依提案 §5.2：套用前確認（函式與欄位不存在、trigger 與 011 相同並存下、回填的預期筆數）→ `begin;`＋012＋測試＋`rollback;` 乾跑 → 正式套用 → 檢查權限、`SECURITY DEFINER`、`search_path`、owner、回填筆數、`pro_entitlements` 中 `is_pro` 為 true 與有試用起點的筆數在套用前後不變、擁有者帳號的 `my_pro_status()` 仍為 `true／NULL／NULL`（DO block）→ 再跑一次 ASSERT 測試 → 以只改文件的 PR 記錄。
+  - 依提案 §5.2：套用前確認（函式與欄位不存在、trigger 與 011 相同並存下、回填的預期筆數）→ `begin;`＋012＋測試＋`rollback;` 乾跑 → 正式套用 → 檢查權限、`SECURITY DEFINER`、`search_path`、owner、回填筆數、`pro_entitlements` 中 `is_pro` 為 true 與有試用起點的筆數在套用前後不變（在套用的同一個 transaction 內比對，不同就中止）、擁有者帳號的 `my_pro_status()` 仍為 `true／NULL／NULL`（DO block）→ 再跑一次 ASSERT 測試 → 以只改文件的 PR 記錄。
   - agent 不具 production 權限；每一步提供完整 SQL，擁有者執行並截圖。
   - 依賴：`PRO-014L1`。擋：`PRO-014L2`。
 
@@ -263,7 +263,7 @@
     - 本機 PostgreSQL 16：套用 001、002、004、005_profiles_extra_cols、006–009、011、013、014 後套用 012（先建 2 個已用過 legacy SUB-16 的帳號、終身的擁有者、免費帳號：回填只標記那 2 個，擁有者的 `my_pro_status()` 仍為 `true／NULL／NULL`）；測試通過且沒有留下資料；重套、回滾、回滾後重套再測都通過。
     - 測試涵蓋：權限（含欄位層級）、未登入、17 種資格情境（含 B 任務、A 任務 invalid、非生產 XP、49 XP、整段 B 任務）、已領過與 `my_pro_status()`、付費已到期時 `paid_active` 為 false（已領過已到期、付費到期但試用中、終身＋已領過）、只對 fixture 重跑的回填、trigger、以 `authenticated` 身份呼叫。
     - 突變（DB 測試會失敗）：`already_granted` 或 `active_entitlement` 的 `paid_active` 不看到期日、`already_granted` 回傳含試用的 `paid_active`、門檻 44 天、拿掉 A／S、invalid、生產 XP、日期條件、XP 改 40、trigger 不看新欄位。資料列鎖與回填的語句由 SQL 契約測試鎖住（DB 測試重跑的回填必須與 012 的語句相同；migration 在 RPC 之外只能以這一句寫入 `pro_entitlements`）。
-    - 獨立 review（#226）：沒有 P1；P2（付費到期的 `paid_active` 未測）已補；P3 已處理（回填改為只更新尚未標記的資料列，重跑回報新標記的筆數；檔頭註明不含 BEGIN／COMMIT；回滾留下的資料列；文件）。
+    - 獨立 review（#226，兩輪）：沒有 P1；P2（付費到期的 `paid_active` 未測）已補；P3 已處理（回填改為只更新尚未標記的資料列，重跑回報新標記的筆數，測試以 `GET DIAGNOSTICS` 斷言 2 筆、0 筆；migration 在 RPC 之外對 `pro_entitlements` 的寫入只允許回填這一句，含不寫 `public.`、`ONLY`、`TRUNCATE`、`MERGE` 的寫法；以 authenticated 呼叫後還原原本的角色；檔頭註明不含 BEGIN／COMMIT；回滾留下的資料列；LA 的筆數比對放在套用的 transaction 內；文件）。
     - lint、`npm test`（90 files／1503 tests）通過；不需要 bump。
 
 - [x] **INFRA-111** service worker 的圖片分支：下載時不用 HTTP cache 的舊檔（AUDIT-001 發現）

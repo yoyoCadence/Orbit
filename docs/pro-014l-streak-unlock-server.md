@@ -201,13 +201,13 @@
    - 以 `pg_get_functiondef('public.set_pro_entitlement_updated_at()'::regprocedure)` 比對 production 與 011 相同，並存下來當回滾來源；
    - 記下 `select count(*) from profiles where streak_unlock_used`（回填的預期筆數）。
 2. **乾跑**：`begin;`＋012＋測試＋`rollback;`。**一定要有開頭的 `begin;`**。
-3. **正式套用 012**。
+3. **正式套用 012**，與筆數比對放在同一個 transaction：`begin;` → 把 `pro_entitlements` 中 `is_pro` 為 true 的筆數、有 `trial_started_at` 的筆數存進暫存表 → 012 → DO block 比對兩個筆數，不同就 `RAISE EXCEPTION`（整個套用中止，什麼都不留下）→ `commit;`。放在同一個 transaction，app 開機時剛好呼叫 `start_trial()` 也不會造成誤報。
 4. **套用後檢查**：
    - 權限：anon 不可執行，authenticated 可執行；
    - `SECURITY DEFINER`、`search_path`、owner；
    - 新欄位存在；
    - 回填筆數與第 1 步相同；
-   - `pro_entitlements` 中 `is_pro` 為 true 的筆數、有 `trial_started_at` 的筆數在套用前後相同（第 1 步先記下）；
+   - `is_pro`／`trial_started_at` 的筆數已在第 3 步的同一個 transaction 內比對過（不同時整個套用會中止）；
    - **你的帳號 `my_pro_status()` 仍是 `true／NULL／NULL`**：核准名單沒有回歸。在 `begin;` 內 `set local request.jwt.claims`，以 DO block 讀取並檢查，不符就 `RAISE EXCEPTION`，最後 `rollback;`。成功的樣子是沒有錯誤，不依賴 SQL Editor 顯示哪一個結果。
 5. **功能驗證**：再跑一次 L1 的 ASSERT 測試（開頭的 `begin;` 到結尾的 `rollback;` 原樣保留）。
    - 測試用的是自己建立、會被 rollback 的帳號，不會動到真實帳號或測試帳號。

@@ -92,8 +92,10 @@ describe('PRO-014L1 migration 012', () => {
 
     // Outside the RPC, the migration writes entitlements only through that statement.
     const outsideRpc = sql.replace(rpcBody, '');
-    expect(outsideRpc.match(/INSERT INTO public\.pro_entitlements\b/gi) ?? []).toHaveLength(1);
-    expect(outsideRpc).not.toMatch(/UPDATE public\.pro_entitlements\b|DELETE FROM public\.pro_entitlements\b/i);
+    const writes = outsideRpc.match(
+      /\b(?:UPDATE(?:\s+ONLY)?|DELETE\s+FROM(?:\s+ONLY)?|INSERT\s+INTO|TRUNCATE(?:\s+TABLE)?(?:\s+ONLY)?|MERGE\s+INTO)\s+(?:public\.)?pro_entitlements\b/gi,
+    ) ?? [];
+    expect(writes).toEqual(['INSERT INTO public.pro_entitlements']);
   });
 });
 
