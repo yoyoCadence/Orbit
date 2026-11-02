@@ -109,15 +109,6 @@
   - 範圍：RPC 新增回傳欄位（改回傳型別需 `DROP FUNCTION` 再建立並重新 `REVOKE`／`GRANT`，可包在同一個 transaction）；client 改讀新欄位，server 尚未提供時退回推斷；部署順序先 migration 後 client。
   - 屬 RPC 契約變更，依 AGENTS.md §3 需先核准。014 之後推斷已精確，沒有正確性上的急迫性。
 
-- [ ] **PRO-014L** SUB-16 連勝解鎖改由 server 授權
-  - 目標：45 天連勝換 30 天 Pro 的授權由 server 發放，而不是 client 自行寫入
-  - 現況（`PRO-014C` 實作時發現）：`pwa/js/dayCycle.js` 直接寫 `state.user.isPro = true` 與 `proExpiresAt`，再經 `saveUser()` 同步上雲。這是 client 決定的 Pro 授權 —— 與 `startTrial()` 原本的問題同一類，只是沒被 `PRO-014C` 的範圍涵蓋。
-  - **在 `server` source 下會直接失效**：`isProUser()` 改讀 projection 後，寫 `state.user.isPro` 不再有任何效果，連勝解鎖等於靜默消失。因此這項必須在 `PRO-014H` cutover 前完成，否則就是一個功能迴歸。
-  - 範圍：新的 `grant_streak_unlock()` RPC（migration 變更）、`dayCycle.js` 的授權路徑、once-per-account 的 server 端強制、相關測試
-  - 完成條件：同一帳號無法重複領取；連勝條件由 server 驗證而非 client 傳入；`server` 與 `legacy` 兩種 source 下都正確
-  - **前置：屬 RPC／schema 變更，依 AGENTS.md §3 需先取得核准**；建議與 `PRO-014I` 的 production 套用一併規劃，避免第二次 migration 時序問題
-  - 依賴：`PRO-014C`
-
 - [ ] **PRO-014G**（可選）為 entitlement projection 加上 server 簽章的 anti-tamper hardening
   - **狀態：可選，非任何任務的前置。** PR #146 覆驗定案採「UI entitlement projection ＋ server-side enforcement」，signed receipt 不再是 `PRO-014B` 的必要條件。
   - 何時才做：只有在產品明確需要提高「離線 UI 防竄改」的門檻時才啟動。判斷依據是產品需求，不是安全需求 —— 真正的安全控制在 server 端（見 `PRO-014F`）。
@@ -223,9 +214,21 @@
 
 > 2026-11-01 核准（使用者回覆「可以全部照建議」）：PRO-014P 提案 §10 全部照建議（方案 D、改寫方向與完成條件、暫時性失敗不刪 snapshot、`BUG-115` 併入、`unknown` 時的提示文字）。PRO-014P 與 BUG-115 一個 PR 實作；BUG-115 移入 In Progress。實作完成（#221，v1.41.5），兩者移入 Done。
 
+> 2026-11-02 排程：PRO-014H 的核准名單已寫入並對帳（#222）。使用者同意寫 PRO-014L 的提案（只寫文件），從 Backlog 移入 Next，再移入 In Progress。
+
 ---
 
 ## In Progress
+
+- [ ] **PRO-014L** SUB-16 連勝解鎖改由 server 授權
+  - 目標：45 天連勝換 30 天 Pro 的授權由 server 發放，而不是 client 自行寫入
+  - 現況（`PRO-014C` 實作時發現）：`pwa/js/dayCycle.js` 直接寫 `state.user.isPro = true` 與 `proExpiresAt`，再經 `saveUser()` 同步上雲。這是 client 決定的 Pro 授權 —— 與 `startTrial()` 原本的問題同一類，只是沒被 `PRO-014C` 的範圍涵蓋。
+  - **在 `server` source 下會直接失效**：`isProUser()` 改讀 projection 後，寫 `state.user.isPro` 不再有任何效果，連勝解鎖等於靜默消失。因此這項必須在 `PRO-014H` cutover 前完成，否則就是一個功能迴歸。
+  - 範圍：新的 `grant_streak_unlock()` RPC（migration 變更）、`dayCycle.js` 的授權路徑、once-per-account 的 server 端強制、相關測試
+  - 完成條件：同一帳號無法重複領取；連勝條件由 server 驗證而非 client 傳入；`server` 與 `legacy` 兩種 source 下都正確
+  - **前置：屬 RPC／schema 變更，依 AGENTS.md §3 需先取得核准**；建議與 `PRO-014I` 的 production 套用一併規劃，避免第二次 migration 時序問題
+  - 依賴：`PRO-014C`
+  - In progress（2026-11-02）：使用者同意先寫提案（只寫文件，不改程式碼、不動資料庫）。草稿 PR #154（2026-09-01，另一個工作階段）以 v1.25.2 為基礎，提案對照目前的 main 檢視它的設計。從 Backlog 移入 Next，再移入 In Progress。
 
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
