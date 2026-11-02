@@ -7,7 +7,7 @@ import {
   calculateBreathingProfile, getBreathingTitle,
   loadBreathingFlowState, showBreathingInfoModal,
 } from '../titleBreathing.js';
-import { effectiveToday } from '../utils.js';
+import { effectiveToday, escHtml } from '../utils.js';
 
 export function updateHeader() {
   if (!state.user) return;
@@ -17,7 +17,7 @@ export function updateHeader() {
   const avatarEl = document.getElementById('hdr-avatar');
   if (avatarEl) {
     if (state.user.avatar) {
-      avatarEl.innerHTML = `<img src="${state.user.avatar}" alt="avatar">`;
+      avatarEl.innerHTML = `<img src="${escHtml(state.user.avatar)}" alt="avatar">`;
     } else {
       avatarEl.textContent = (state.user.name?.[0] || '?').toUpperCase();
     }

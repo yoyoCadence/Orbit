@@ -4,9 +4,17 @@ import { state }            from './state.js';
 import { getLevelInfo }     from './leveling.js';
 import { getDisplayTitle }  from './leveling.js';
 
-// Lazy-loaded CDN libs (only when user generates a PDF)
-const JSPDF_URL = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-const H2C_URL   = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+// Lazy-loaded CDN libs (only when user generates a PDF). The integrity hashes
+// are cdnjs's SRI values (the same bytes as the npm packages' dist files): the
+// browser refuses a file that differs, so a compromised CDN cannot run code here.
+const JSPDF = {
+  src: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+  integrity: 'sha512-qZvrmS2ekKPF2mSznTQsxqPgnpkI4DNTlrdUmTzrDgektczlKNRRhy5X5AAOnx5S09ydFYWWNSfcEqDTTHgtNA==',
+};
+const H2C = {
+  src: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
+  integrity: 'sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA==',
+};
 
 const DETAIL_THRESHOLD = 150; // sessions; above this, omit detail table
 const MAX_CHART_WEEKS  = 12;
@@ -85,15 +93,28 @@ function _formatMonth(yyyyMM) {
   return `${y} 年 ${parseInt(m)} 月`;
 }
 
-function _loadScript(src) {
-  return new Promise((resolve, reject) => {
-    if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
-    const s  = document.createElement('script');
-    s.src    = src;
-    s.onload = resolve;
-    s.onerror = () => reject(new Error(`無法載入：${src}`));
-    document.head.appendChild(s);
-  });
+// One load per script. A failed load (offline, or a file that does not match
+// its hash) is forgotten and its tag removed, so the next attempt tries again
+// instead of resolving with the library missing.
+const _scriptLoads = new Map();
+
+function _loadScript({ src, integrity }) {
+  if (!_scriptLoads.has(src)) {
+    _scriptLoads.set(src, new Promise((resolve, reject) => {
+      const s       = document.createElement('script');
+      s.src         = src;
+      s.integrity   = integrity;
+      s.crossOrigin = 'anonymous';
+      s.onload      = resolve;
+      s.onerror     = () => {
+        s.remove();
+        _scriptLoads.delete(src);
+        reject(new Error(`無法載入：${src}`));
+      };
+      document.head.appendChild(s);
+    }));
+  }
+  return _scriptLoads.get(src);
 }
 
 // Return ISO date string (YYYY-MM-DD) of the Monday of the given date's week
@@ -289,8 +310,8 @@ async function _generatePDF(rangeKey, dateLabel) {
   const el = wrap.firstElementChild;
 
   try {
-    await _loadScript(H2C_URL);
-    await _loadScript(JSPDF_URL);
+    await _loadScript(H2C);
+    await _loadScript(JSPDF);
 
     const canvas = await window.html2canvas(el, {
       scale: 2,

@@ -147,7 +147,7 @@ function buildWeekView() {
         const label = confidence >= 60 ? '需留意'    : '建議校準';
         return `
           <div class="calibrate-row">
-            <span class="calibrate-emoji">${task.emoji || '🎯'}</span>
+            <span class="calibrate-emoji">${escHtml(task.emoji || '🎯')}</span>
             <div class="calibrate-info">
               <div class="calibrate-name">${escHtml(task.name)}</div>
               <div class="calibrate-sub">可信度 ${confidence}</div>

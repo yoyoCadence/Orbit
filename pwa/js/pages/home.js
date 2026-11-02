@@ -478,8 +478,8 @@ function planCardHtml(task, countToday) {
       <div class="plan-drag-handle" title="拖曳排序">⠿</div>
       <span class="plan-task-emoji">
         ${task.iconImg
-          ? `<img src="${task.iconImg}" class="plan-icon-img">`
-          : (task.emoji || '🎯')}
+          ? `<img src="${escHtml(task.iconImg)}" class="plan-icon-img">`
+          : escHtml(task.emoji || '🎯')}
       </span>
       <div class="plan-task-info">
         <div class="plan-task-name">${escHtml(task.name)}</div>
@@ -513,8 +513,8 @@ function taskCardHtml(task, countToday, inPlan) {
         <div class="task-card-top">
           <div class="task-icon-wrap${task.isDefault === false ? ' task-icon-custom' : ''}">
             ${task.iconImg
-              ? `<img src="${task.iconImg}" class="task-icon-img">`
-              : `<span class="task-emoji">${task.emoji || '🎯'}</span>`}
+              ? `<img src="${escHtml(task.iconImg)}" class="task-icon-img">`
+              : `<span class="task-emoji">${escHtml(task.emoji || '🎯')}</span>`}
           </div>
           <div class="task-badges">
             ${valueLabel ? `<span class="badge ${valueCls}">${valueLabel}</span>` : ''}
@@ -562,8 +562,8 @@ function showTaskDetail(task) {
   const confidence = task.valueConfidence ?? 100;
   const confColor  = confidence >= 80 ? '#10b981' : confidence >= 60 ? '#f59e0b' : '#ef4444';
   const iconHtml   = task.iconImg
-    ? `<img src="${task.iconImg}" style="width:48px;height:48px;border-radius:50%;object-fit:cover">`
-    : `<span style="font-size:40px;line-height:1">${task.emoji || '🎯'}</span>`;
+    ? `<img src="${escHtml(task.iconImg)}" style="width:48px;height:48px;border-radius:50%;object-fit:cover">`
+    : `<span style="font-size:40px;line-height:1">${escHtml(task.emoji || '🎯')}</span>`;
 
   const modal = document.createElement('div');
   modal.className = 'modal-overlay';

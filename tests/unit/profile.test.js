@@ -132,6 +132,15 @@ describe('renderProfile: basic rendering', () => {
 });
 
 describe('renderProfile: avatar upload', () => {
+  it('keeps a stored avatar URL inside the img src (AUDIT-001)', () => {
+    const avatar = 'https://example.test/a.png" onerror="window.__xss=1';
+    mockState.user.avatar = avatar;
+    const c = makeContainer();
+    renderProfile(c);
+    expect(c.querySelector('[onerror]')).toBeNull();
+    expect(c.querySelector('img[alt="avatar"]').getAttribute('src')).toBe(avatar);
+  });
+
   it('guest avatar upload stays saved locally when Supabase has no session', async () => {
     mockDb.uploadAvatar.mockRejectedValueOnce(new Error('Not authenticated'));
     const originalFileReader = window.FileReader;
@@ -282,6 +291,21 @@ describe('renderProfile: template picker', () => {
     const btns = c.querySelectorAll('.title-tmpl-btn');
     expect(btns.length).toBe(5); // 4 built-in + 1 custom
     expect(Array.from(btns).some(b => b.textContent.includes('我的英雄'))).toBe(true);
+  });
+
+  it('shows a custom template name and icon as text, not markup', () => {
+    // Free user too: the locked buttons render the same name.
+    for (const pro of [true, false]) {
+      mockStorage.isProUser.mockReturnValue(pro);
+      mockState.user.customTemplates = {
+        custom_123: { name: '<img src=x onerror="window.__xss=1">英雄', icon: '<b>', tiers: [[1, '見習英雄']] },
+      };
+      const c = makeContainer();
+      renderProfile(c);
+      const btn = c.querySelector('[data-template="custom_123"]');
+      expect(btn.querySelector('img, b'), `pro=${pro}`).toBeNull();
+      expect(btn.textContent).toContain('<b> <img src=x onerror="window.__xss=1">英雄');
+    }
   });
 });
 

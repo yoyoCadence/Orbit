@@ -296,6 +296,19 @@ describe('renderSettings: task list', () => {
     expect(c.textContent).toContain('深度閱讀');
   });
 
+  it('shows a stored emoji as text and keeps an icon image URL inside src (AUDIT-001)', () => {
+    const iconImg = 'data:image/png;base64,AAAA" onerror="window.__xss=1';
+    mockState.tasks = [
+      makeTask({ id: 'e', emoji: '<img src=x onerror="window.__xss=1">' }),
+      makeTask({ id: 'i', name: '圖示', iconImg }),
+    ];
+    const c = makeContainer();
+    renderSettings(c);
+    expect(c.querySelector('[onerror]')).toBeNull();
+    expect(c.querySelector('.log-emoji').textContent).toBe('<img src=x onerror="window.__xss=1">');
+    expect(c.querySelector('img.log-icon-img').getAttribute('src')).toBe(iconImg);
+  });
+
   it('default tasks show lock icon in normal mode', () => {
     mockState.tasks = [makeTask({ isDefault: true })];
     mockState.user.mode = 'normal';

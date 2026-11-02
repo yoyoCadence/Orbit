@@ -128,6 +128,8 @@ Rules enforced by the architecture:
 
 ## 5. Proposed Module Responsibilities
 
+> **As built (2026-10-29 audit):** the shipped modules differ from this plan (for example there is no `index.js`, `runtimeMode.js` or `state.js`; the flag is `featureFlag.js`, the state is `stateSchema.js`/`store.js`/`migrateState.js`). AGENTS.md §17 lists the current `pwa/js/personalSpace/v2/` modules and what each owns. This section is kept as the original plan.
+
 ```text
 pwa/js/personalSpace/v2/
 ├── index.js                     # Public V2 facade
@@ -671,6 +673,8 @@ left as required missing modules.
   a live local undo may enqueue only the current reversal reveal.
 
 ## 17. Exact Implementation File Plan
+
+> **As built (2026-10-29 audit):** the shipped modules differ from this plan (for example there is no `index.js`, `runtimeMode.js` or `state.js`; the flag is `featureFlag.js`, the state is `stateSchema.js`/`store.js`/`migrateState.js`). AGENTS.md §17 lists the current `pwa/js/personalSpace/v2/` modules and what each owns. This section is kept as the original plan.
 
 This is the intended change surface. Files outside it require a scope update before editing.
 

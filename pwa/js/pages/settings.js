@@ -542,8 +542,8 @@ function _renderView(container) {
     return `
       <div class="log-item">
         ${t.iconImg
-          ? `<img src="${t.iconImg}" class="log-icon-img">`
-          : `<span class="log-emoji">${t.emoji || '🎯'}</span>`}
+          ? `<img src="${escHtml(t.iconImg)}" class="log-icon-img">`
+          : `<span class="log-emoji">${escHtml(t.emoji || '🎯')}</span>`}
         <div class="log-info">
           <div class="log-name">${escHtml(t.name)}${t.isDefault ? ' <span class="badge-default">預設</span>' : ''}</div>
           <div class="log-time">
@@ -621,7 +621,7 @@ function _renderView(container) {
       <div class="bg-preview-row">
         <div class="bg-thumb" id="bg-thumb">
           ${hasBg
-            ? `<img src="${storage.getBgImage()}" style="width:100%;height:100%;object-fit:cover;border-radius:8px;">`
+            ? `<img src="${escHtml(storage.getBgImage())}" style="width:100%;height:100%;object-fit:cover;border-radius:8px;">`
             : '<span style="font-size:28px">🏔️</span>'}
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;flex:1">

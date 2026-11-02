@@ -233,6 +233,23 @@ describe('週視圖 — 待校準任務', () => {
     expect(container.innerHTML).toContain('需校準任務');
   });
 
+  it('待校準任務的 emoji 以文字顯示（AUDIT-001）', () => {
+    mockState.tasks = [makeTask({
+      id: 'task-calib', name: '需校準任務', value: 'S', emoji: '<img src=x onerror="window.__xss=1">',
+      taskNature: 'maintenance', successCriteria: null, resistance: 1.0,
+    })];
+    mockState.sessions = [{
+      id: 's-calib', taskId: 'task-calib', date: localToday(),
+      completedAt: new Date().toISOString(),
+      result: 'complete', durationMinutes: 5,
+      finalXP: 0, energyGain: 0, impactType: 'task',
+      value: 'S', isProductiveXP: true,
+    }];
+    renderReview(container);
+    expect(container.querySelector('[onerror]')).toBeNull();
+    expect(container.querySelector('.calibrate-emoji').textContent).toBe('<img src=x onerror="window.__xss=1">');
+  });
+
   it('所有任務可信 → 顯示「所有任務標籤可信 ✓」', () => {
     mockState.tasks = [makeTask({ value: 'A', successCriteria: '明確標準' })];
     renderReview(container);

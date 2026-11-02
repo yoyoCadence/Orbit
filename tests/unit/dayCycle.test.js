@@ -193,6 +193,21 @@ describe('showDailyReport', () => {
     expect(() => showDailyReport(vi.fn())).not.toThrow();
     expect(document.querySelectorAll('#daily-report-modal')).toHaveLength(1);
   });
+
+  it('shows task names and emoji as text, not markup', () => {
+    // Task names are free text; the rest of the app already escapes them.
+    state.sessions = [{
+      date: YESTERDAY, taskId: 't1', taskName: '<img src=x onerror="window.__xss=1">讀書',
+      taskEmoji: '<b>!</b>', finalXP: 30, result: 'valid', value: 'A',
+    }];
+    showDailyReport(vi.fn());
+
+    const row = document.querySelector('#daily-report-modal .rpt-task-row');
+    expect(row.querySelector('img, b')).toBeNull();
+    expect(row.querySelector('.rpt-task-name').textContent).toBe('<img src=x onerror="window.__xss=1">讀書');
+    expect(row.textContent).toContain('<b>!</b>');
+    expect(row.textContent).toContain('+30 XP');
+  });
 });
 
 // ─── clearDayCycleModals ──────────────────────────────────────────────────────
