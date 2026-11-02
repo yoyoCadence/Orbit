@@ -233,7 +233,8 @@
   - **2026-11-02 使用者核准**（AUDIT-001 後的 AskUserQuestion，INFRA-110～113 全部核准，各自一個 PR）。
   - In progress（2026-11-02）：AUDIT-001（#214）合併後開始（Backlog → In Progress）。
   - 完成（2026-11-02，v1.41.7）：變更說明 [`docs/infra-111-image-revalidate.md`](docs/infra-111-image-revalidate.md)。
-    - `pwa/sw.js` 的圖片分支：快取中沒有時以 `fetch(e.request, { cache: 'no-cache' })` 取得（條件請求，沒變時 304），與 JS／CSS 相同；快取中有的照舊直接回傳。
+    - `pwa/sw.js` 的圖片分支：快取中沒有時以 `fetch(e.request, { cache: 'no-cache' })` 取得（條件請求；GitHub Pages 的 ETag 每次部署都變，所以改版後通常重新下載一次），與 JS／CSS 相同；快取中有的照舊直接回傳。代價（變更說明 §3）：改版後 10 分鐘內、這一版還沒存過的圖，離線時改為顯示預設圖；poster 與 Pixi 同時要同一張圖時多一個請求。
+    - 獨立 review：沒有 P1／P2；`<img>`、CSS 背景、`<img crossorigin>`、Pixi（blob worker 也受 service worker 控制）、`fetch()` 實測都正確，舊的 `sw.js` 上都拿到舊圖。P3（離線行為有改變、304 的說法、同時請求多一次）都寫進變更說明。
     - Unit：`serviceWorkerImageCache.test.js` 檢查 `{ cache: 'no-cache' }`。e2e：`infra111-sw-image.test.js`（這一版看過的圖在伺服器上換掉並部署下一版後，新的 service worker 存的是伺服器上的新圖；之後從快取回傳）。修改前兩項都失敗；e2e 連跑 3 次通過。
 
 - [x] **PRO-014P** `server` source 下，換日處理只依權威的 entitlement 結果執行
