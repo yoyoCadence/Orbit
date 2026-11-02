@@ -1,7 +1,7 @@
 // Service Worker
 // Bump CACHE version on every deploy: since INFRA-107 a new worker is the only
 // way new HTML and code reach users.
-const CACHE = 'orbit-v1.41.6';
+const CACHE = 'orbit-v1.41.7';
 
 const SHELL = [
   './',
@@ -201,7 +201,8 @@ self.addEventListener('activate', e => {
 // Fetch strategy (same-origin requests only):
 //   Pages / HTML     → this version's cached HTML (INFRA-107)
 //   JS / CSS         → this version's cached code (INFRA-107), never refreshed in the background
-//   Images / others  → cache-first   (rarely change, save bandwidth)
+//   Images / others  → cache-first   (rarely change, save bandwidth); a file not
+//                      cached yet is fetched from the server, not the HTTP cache (INFRA-111)
 // So every page load runs the HTML and code of one version: the next version's
 // arrive together with its worker.
 self.addEventListener('fetch', e => {
@@ -256,12 +257,17 @@ self.addEventListener('fetch', e => {
       )
     );
   } else {
-    // Cache-first: images, icons, manifests
+    // Cache-first: images, icons, manifests. Art that is not precached (other
+    // styles, characters, decorations) is kept the first time it is shown and
+    // then served for the rest of this version, so it is fetched from the
+    // server rather than the browser's HTTP cache, which may still hold the
+    // previous version's file for up to 10 minutes (INFRA-111, as INFRA-105
+    // does for the SHELL).
     e.respondWith(
       caches.open(CACHE).then(cache =>
         cache.match(e.request).then(cached => {
           if (cached) return cached;
-          return fetch(e.request).then(response => {
+          return fetch(e.request, { cache: 'no-cache' }).then(response => {
             if (!response.ok) return response;
             return cache.put(e.request, response.clone()).then(
               () => response,

@@ -53,6 +53,8 @@ describe('service worker image cache-first strategy', () => {
     const first = await dispatchFetch(request);
 
     expect(first).toBe(networkResponse);
+    // From the server, not a previous version's copy in the HTTP cache (INFRA-111).
+    expect(fetchMock).toHaveBeenCalledWith(request, { cache: 'no-cache' });
     expect(cache.put).toHaveBeenCalledWith(request, clonedResponse);
 
     const cachedResponse = { ok: true, source: 'cache' };
