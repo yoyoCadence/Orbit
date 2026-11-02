@@ -20,7 +20,7 @@
   - 每個免費使用者每次開機都會呼叫 RPC；
   - 寫回 legacy profile 的方式在「已領過」時會錯誤地授予或取消 Pro。
 - **建議**：
-  - 保留 #154 的 SQL 主體，不重做已驗證的鎖與一次性邏輯。只加一段回填（§5.1），測試改成 ASSERT。
+  - 保留 #154 的 SQL 主體，不重做已驗證的鎖與一次性邏輯。只加一段回填，並在回傳加一個只代表付費、不含試用的 `paid_active`（§5.1）；測試改成 ASSERT。
   - 拆成三步：
     1. **L1**（repo）：migration 012 與 ASSERT 測試，不改 client；
     2. **LA**（擁有者）：在 production 套用 012；
@@ -123,9 +123,17 @@
    - `is_active` 包含試用。一個回填過的帳號開始試用後呼叫，得到 `already_granted`、`is_active = true`、`expires_at = NULL`；寫回後 legacy 把它當成**終身付費**（`isPaidProUser()` 把沒有到期日視為終身）。
    - 沒有試用時 `is_active = false`，寫回 `is_pro = false`，會**取消**還在 30 天內的 legacy SUB-16。
    - 只要本機的 `streakUnlockUsed` 是 false、server 已有紀錄就會發生：例如另一台裝置在同步前先問；或直接呼叫 RPC。
-   - 修正（L2）：
-     - 只有 `granted` 才寫 `is_pro = true` 與 server 的 `pro_expires_at`；
-     - `already_granted` 只寫 `streak_unlock_used = true`；
+   - 但也不能在 `already_granted` 時完全不寫（Codex 指出）：
+     - server 已經發放、但回應遺失或寫回 profile 失敗時，重試得到的是 `already_granted`；
+     - 另一台裝置也可能在第一台寫回之前先拿到 `already_granted`。
+     
+     只寫「已領過」的話，`legacy` 下這個人就永遠不是 Pro。
+   - 修正：
+     - L1 讓 RPC 多回傳 `paid_active`：`is_pro` 且未到期（沒有到期日即終身），**不含試用**；
+     - L2 在 `granted` 與 `already_granted` 都依 `paid_active` 寫回：
+       - 是付費中：寫 `is_pro = true`、`pro_expires_at = server 的 expires_at`；
+       - 不是：只寫 `streak_unlock_used = true`；
+     - 只延長、不縮短、不取消：profile 已是終身，或到期日更晚時不寫；永遠不寫 `is_pro = false`；
      - 永遠不把 `is_active` 對應到 `is_pro`。
 9. **保護卡造成的缺口**：
    - 保護卡把連勝恢復為中斷前的天數，但那天沒有有效 Session，server 會看到缺口。
@@ -156,6 +164,11 @@
   - 只寫 `streak_unlock_granted_at`，不動 `is_pro`、`pro_expires_at`、`trial_started_at`。獨立 review 確認：新列是 `is_pro = false`、日期為 NULL；`my_pro_status()` 與 `start_trial()` 的結果不變；重跑 0 列改變。
   - 回填的 `streak_unlock_granted_at` 是 LA 的時間，不是實際領取的時間。
   - LA 之後、L2 普及前，舊版 client 仍會用 profile 發放。PRO-014H cutover 前要再跑一次。
+- **回傳加 `paid_active`**（第 8 點）：
+  - `RETURNS TABLE` 多一欄 `paid_active boolean`，值是 `e.is_pro AND (e.pro_expires_at IS NULL OR e.pro_expires_at > now())`。
+  - 每個分支都回傳；`granted` 時一定是 true。
+  - 012 還沒套用到任何地方，所以改回傳型別不需要 `DROP FUNCTION`。
+  - `is_active` 保留（含試用），但 client 不用它決定寫回。
 - **資格語意**：維持 #154 的「任何一段 45 天」（§10 第 2 點，建議）。如果你選「目前的連勝」，加一個條件：那一段的最後一天 ≥ `current_date - 1`，這會帶入時區的誤差。
 - **測試**：
   - `tests/database/pro014l.test.sql` 改成 ASSERT 寫法，涵蓋：
@@ -163,7 +176,8 @@
     - 歷史上的一段 45 天、試用中、試用已結束、已領過；
     - 權限（anon 不可執行、authenticated 不可直接 UPDATE）；
     - `SECURITY DEFINER`／`search_path`；
-    - 發放後 `my_pro_status()` 的回報。
+    - 發放後 `my_pro_status()` 的回報；
+    - `paid_active`：試用中為 false、發放後為 true、付費到期後為 false、終身為 true。
   - **回填**：回填在 012 內、測試資料建立之前就執行，所以測試要對一個 fixture 再跑一次回填的 SQL，確認它只寫標記、不改其他欄位，而且之後 RPC 回 `already_granted`。
   - 帶入 #154 的 `tests/database/pro014l.rollback.sql` 作為 LA 的回滾腳本。
   - `tests/unit/` 加 SQL 契約測試（同 `proEntitlementsSql.test.js` 的形式）。
@@ -213,9 +227,13 @@ L2 上線前回滾不影響任何使用者。
 - **`db.grantStreakUnlock()`**：
   - 嚴格驗證回傳（沿用 #154）。
   - **寫回規則**（第 8 點）：
-    - `granted`：寫 `is_pro = true`、`pro_expires_at = server 的 expires_at`、`streak_unlock_used = true`，並更新本機 user；
-    - `already_granted`：只寫 `streak_unlock_used = true`；
+    - `granted`、`already_granted`：
+      - 寫 `streak_unlock_used = true`；
+      - `paid_active` 為 true 時，另寫 `is_pro = true`、`pro_expires_at = server 的 expires_at`，但只延長、不縮短（profile 已是終身或到期日更晚時不寫）；
+      - 並更新本機 user。
     - `active_entitlement`、`not_eligible`：不寫。
+    - 永遠不寫 `is_pro = false`，永遠不看 `is_active`。
+    - 這樣回應遺失、寫回失敗或另一台裝置先問時，重試都能補上。
   - `server` source 下領到後 refresh projection。
   - 呼叫端以 `typeof db.grantStreakUnlock === 'function'` 檢查（新舊版本混用時）。
 - **何時詢問**：本機 `streakDays >= 45`、`!streakUnlockUsed`、Pro 狀態不是 `pro`（`unknown` 也詢問，由 server 決定）。
@@ -233,7 +251,12 @@ L2 上線前回滾不影響任何使用者。
   - `proGateCallSites.test.js`：
     - `EXPECTED_GATES` 與 `ALLOWED` 的 `dayCycle.js` 項目更新；
     - 「僅剩一處 client 寫入」改為 0 處，profile 寫回只在 `storage.js`。
-  - 寫回規則：`already_granted` 不改 `is_pro`；試用中的帳號不會變成終身。
+  - 寫回規則：
+    - 回應遺失後重試（第一次 RPC 已發放但 client 拋出錯誤，第二次 `already_granted`、`paid_active = true`）→ profile 補上 Pro；
+    - 寫回失敗後重試 → 同上；
+    - 試用中、回填過的帳號（`already_granted`、`paid_active = false`）不會變成終身；
+    - 付費已到期（`paid_active = false`）不會取消 profile 上仍有效的 Pro；
+    - profile 已是終身或到期日更晚時不縮短。
   - 三個呼叫點（含 BUG-106）、離線後上傳再詢問、RPC 失敗、並行、`typeof` 檢查、modal、訪客的文字。
   - 版本 bump。
 - **production 影響**：
