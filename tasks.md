@@ -237,7 +237,7 @@
   - In progress（2026-11-02）：INFRA-111（#223）合併後開始（Backlog → In Progress）。
   - 完成（2026-11-02；CI、測試與 devDependencies，不 bump）：
     - `ci.yml`：`permissions: contents: read`（artifact 用 runner 自己的 token）；Node 20 → 22；`actions/checkout@v5`、`actions/setup-node@v5`、`actions/upload-artifact@v6`（都以 Node 24 執行，消除 GitHub Actions 的 Node 20 停用警告；對 GitHub-hosted runner 沒有其他破壞性變更）。`deploy.yml` 的 action 留給 INFRA-113 一起改。
-    - vitest 1.6 → 5.0.5、`@vitest/coverage-v8` 1.6 → 5.0.5：critical 的 advisory（vitest、tinypool、vite、esbuild）全部消失。`package.json` 加上 `engines.node`：`^22.13.0 || ^24.0.0 || >=26.0.0`（vitest 5 與 jsdom 29 兩者的需求；奇數版 Node 不支援）。
+    - vitest 1.6 → 5.0.5、`@vitest/coverage-v8` 1.6 → 5.0.5：critical 的 advisory（vitest、tinypool、vite、esbuild）全部消失。`package.json` 加上 `engines.node`：`^22.13.0 || ^24.0.0 || >=26.0.0`（vitest 5 與 jsdom 29 兩者的需求：22.13 以上的 22.x、24.x，或 26 以上，不含 23、25）。
       - vitest 4 起移除 `environmentMatchGlobs`（vitest 3 已標為 deprecated）：原本列出的 18 個測試檔中 17 個在第一行加上 `// @vitest-environment jsdom`（`proofCapture.test.js` 原本就有），設定檔不再列。
       - vitest 4 起，arrow function 實作的 `vi.fn()` 不能以 `new` 呼叫：`ambientNoise.test.js` 的兩個 `AudioContext` mock 改為一般 function（獨立 review 發現第二個「建立失敗」的測試原本只因 V8 的 TypeError 訊息含有 arrow 的原始碼才通過）。
       - Unit 1493 全部通過，89 個檔案每個的測試數都與升級前相同（獨立 review 以 JSON reporter 逐檔比對）；e2e 80 通過；`npm ci` 從新的 lockfile 安裝成功。coverage 的數字改變（coverage-v8 4 起的量測方式不同，例如全部 Statements 96.7% → 91.9%，`utils.js` 82.4% → 65.9%），範圍與設定不變，也沒有門檻。
