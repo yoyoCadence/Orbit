@@ -96,6 +96,14 @@
   - 依賴：`PRO-014J`、`PRO-014L`、`PRO-014O`（已於 v1.25.5 完成：cached-user 啟動也會 refresh projection）、`PRO-014P`（**擋 cutover**；2026-11-01 完成，#221）；`PRO-014Q` 已完成（2026-10-31），實機驗證使用 [`docs/pro-test-accounts.md`](docs/pro-test-accounts.md) 的 5 個測試帳號，測試前先重跑其中的 SQL。
   - 前置 `PRO-014RA`（014 套用到 production）：**已完成**（2026-11-01）。`server` source 下終身付費不再被試用日期限制。
   - **切換前要決定核准名單**（2026-10-31 發現）：PRO-014I 套用 011 時核准名單為 0 筆，沒有把 legacy 的 Pro 搬到 `pro_entitlements`。專案擁有者自己的帳號在 `profiles` 是終身 Pro（`is_pro = true`、`pro_expires_at` 為 NULL），但 `pro_entitlements` 沒有資料列；切到 `server` source 當天就會失去 Pro。切換前要由擁有者決定哪些帳號列入核准名單並寫入 `pro_entitlements`。
+  - **核准名單已寫入並對帳（2026-11-02）**：
+    - 決定（2026-11-01，使用者）：只有專案擁有者的主帳號，授權為終身。
+    - 覆核：擁有者以只讀查詢確認帳號（1 列，`profiles.is_pro = true`、`pro_expires_at` 為 NULL），agent 覆核 UUID、授權類型與到期日。
+    - 寫入：擁有者在 SQL Editor 執行，寫入前有三道檢查（email 恰好 1 個帳號、UUID 與覆核的一致、`pro_entitlements` 尚無資料列），任一不符就中止且不寫入。
+    - 寫入內容：`is_pro = true`、`pro_expires_at = NULL`、`trial_started_at = NULL`。來源是擁有者的核准，不是 profile 的欄位；profile 的試用起點不搬移。
+    - 對帳：以該帳號身份呼叫 `my_pro_status()`，結果 `is_active = true`、`expires_at = NULL`、`trial_ends_at = NULL`，即終身付費。
+    - 紀錄（依 `docs/sub-14-leaderboard-pro.md` 的對帳規則）：核准 1 筆、成功 1 筆、拒絕／重複 0 筆，執行人為專案擁有者。email 與 UUID 不寫進 repo。
+    - 撤回：刪除該帳號在 `pro_entitlements` 的資料列。`legacy` source 下這筆資料沒有作用，切換到 `server` 後才生效。
 
 - [ ] **PRO-014S**（可選）`my_pro_status()` 明確回傳 `is_pro`，移除付費／試用的推斷
   - 來源：PRO-014N 以 PRO-014R 的方案 A 結案時，把原本「不需推斷」的條件改列在這裡（2026-11-01）。
@@ -210,7 +218,7 @@
 
 > 2026-11-01 決定（使用者回覆）：
 > - PRO-014P 先於 PRO-014L（草稿 PR #154；兩者改同一段 SUB-16 路徑）。PRO-014P 先寫提案。
-> - PRO-014H 的核准名單：只有專案擁有者的主帳號，授權為終身（`is_pro = true`、`pro_expires_at = NULL`、不搬移 profile 的試用起點）。依 `docs/sub-14-leaderboard-pro.md` 的 cutover 程序由擁有者在 SQL Editor 寫入、agent 覆核並對帳；email 與 UUID 不寫進 repo。
+> - PRO-014H 的核准名單：只有專案擁有者的主帳號，授權為終身（`is_pro = true`、`pro_expires_at = NULL`、不搬移 profile 的試用起點）。依 `docs/sub-14-leaderboard-pro.md` 的 cutover 程序由擁有者在 SQL Editor 寫入、agent 覆核並對帳；email 與 UUID 不寫進 repo。已於 2026-11-02 寫入並對帳（見 PRO-014H）。
 
 > 2026-11-01：PRO-014P 提案完成（#220，只寫文件）。寫提案時發現 `BUG-115`（保護卡 offer 沒有 owner），放入 Backlog。
 
