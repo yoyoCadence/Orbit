@@ -18,25 +18,26 @@
   - 問題：Postgres 的 view 預設以擁有者的權限執行，不受 `profiles`／`sessions` 的 RLS 限制（`005_leaderboard.sql` 的註解「Views inherit table RLS by default」不正確）。view 只靠 `WHERE p.is_public = true` 限制列；migration 只 `GRANT SELECT ... TO authenticated`，但 Supabase 的預設權限（`ALTER DEFAULT PRIVILEGES ... TO anon, authenticated`）可能也讓 `anon` 讀得到，屆時未登入者可讀所有公開使用者的 `user_id`、名稱、XP、連勝、`created_at`、`avatar_url`。
   - 需要擁有者確認（agent 沒有連線正式資料庫）：在 Supabase SQL editor 執行 `select grantee, privilege_type from information_schema.role_table_grants where table_name = 'leaderboard_view';`，看 `anon` 是否有 `SELECT`。
   - 方向（改 schema，需核准）：`REVOKE ALL ON leaderboard_view FROM anon, public`；考慮 `security_invoker = true`（需要另一條讓 authenticated 讀公開 profile 的 policy）或改為 `SECURITY DEFINER` RPC；是否還要回傳 `user_id`（目前只用來標示「你」，可改為回傳 `is_me`）。相關：PRO-014E。
-
-- [ ] **INFRA-111** service worker 的圖片分支：下載時不用 HTTP cache 的舊檔（AUDIT-001 發現）
-  - 問題：圖片走 cache-first，快取沒有時直接 `fetch(e.request)`。按需下載的素材（房間風格、裝飾、角色）若瀏覽器的 HTTP cache 還有上一版的同名檔（GitHub Pages `max-age=600`），會把舊圖存進這一版的快取，直到下一次 bump。JS／CSS 已改為 `cache: 'no-cache'`（INFRA-105／107）。
-  - 方向：圖片快取沒有時也以 `cache: 'no-cache'` 取得（代價：每張圖第一次多一次 revalidation，304 時很小）。屬 service worker 的快取行為（部署行為），實作前附變更說明。
+  - **2026-11-02 使用者核准**（AUDIT-001 後的 AskUserQuestion，INFRA-110～113 全部核准，各自一個 PR）。
+  - 順序：最後做；需要擁有者先在 Supabase 執行上面的查詢並提供結果。
 
 - [ ] **INFRA-112** CI 加固與 Node 版本（AUDIT-001 發現）
   - `ci.yml` 沒有 `permissions:`，`GITHUB_TOKEN` 用 repo 預設權限；改為 `permissions: contents: read`（`deploy.yml` 已有）。
   - Node 20 → 22：vitest 1.6 有 critical 的 advisory（vitest、tinypool、vite、esbuild，只在開發與 CI，不會部署），修正版 vitest 5 需要 Node ≥ 22.12。升級 vitest 是 major，`environmentMatchGlobs` 等設定要改。GitHub Actions 也已警告 Node 20 的 action 將停用。
   - eslint 相關的 moderate advisory（minimatch、`@eslint/*`）一併看是否需要升級 eslint。
   - 改 CI 設定，需核准。
+  - **2026-11-02 使用者核准**（AUDIT-001 後的 AskUserQuestion，INFRA-110～113 全部核准，各自一個 PR）。
 
 - [ ] **INFRA-113** 部署內容與 CSP（AUDIT-001 發現）
   - `deploy.yml` 上傳整個 `pwa/`，GitHub Pages 也公開 `pwa/db/*.sql`（migration）與 `pwa/server.cjs`。repo 本身是公開的，影響小；可改為上傳前排除。
   - `index.html` 沒有 Content-Security-Policy。可加 `<meta http-equiv="Content-Security-Policy">`，限制 script 只來自自己與 cdnjs、連線只到 Supabase，作為 XSS 的第二層防護。要先列出 app 用到的所有來源（Supabase、cdnjs、Pixi、data:/blob: 圖片），並以 e2e 確認。
   - 改部署設定，需核准。
+  - **2026-11-02 使用者核准**（AUDIT-001 後的 AskUserQuestion，INFRA-110～113 全部核准，各自一個 PR）。
 
 - [ ] **REPO-001** Repo 清理（AUDIT-001 發現，需擁有者決定）
   - `output/`：30 個 tracked 檔、約 58 MB 的舊 proof 圖，app 與測試都沒有使用（只在 `skills/orbit-idle-window-assets` 的說明中當輸出目錄、eslint 忽略）。可刪除（歷史仍保留在 git）。
   - 遠端約 160 個已合併或過時的分支、過時的 draft PR #154：可清理。
+  - 2026-11-02 使用者決定：先記錄，之後自行處理（agent 不刪除）。
 
 - [ ] **HW-112** 佐證圖片雲端同步（Supabase Storage）
   - Goal: upload proof photos to Supabase Storage so they persist across devices and app reinstalls.
@@ -218,6 +219,12 @@
 ---
 
 ## In Progress
+
+- [ ] **INFRA-111** service worker 的圖片分支：下載時不用 HTTP cache 的舊檔（AUDIT-001 發現）
+  - 問題：圖片走 cache-first，快取沒有時直接 `fetch(e.request)`。按需下載的素材（房間風格、裝飾、角色）若瀏覽器的 HTTP cache 還有上一版的同名檔（GitHub Pages `max-age=600`），會把舊圖存進這一版的快取，直到下一次 bump。JS／CSS 已改為 `cache: 'no-cache'`（INFRA-105／107）。
+  - 方向：圖片快取沒有時也以 `cache: 'no-cache'` 取得（代價：每張圖第一次多一次 revalidation，304 時很小）。屬 service worker 的快取行為（部署行為），實作前附變更說明。
+  - **2026-11-02 使用者核准**（AUDIT-001 後的 AskUserQuestion，INFRA-110～113 全部核准，各自一個 PR）。
+  - In progress（2026-11-02）：AUDIT-001（#214）合併後開始（Backlog → In Progress）。
 
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
