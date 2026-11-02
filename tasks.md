@@ -21,13 +21,6 @@
   - **2026-11-02 使用者核准**（AUDIT-001 後的 AskUserQuestion，INFRA-110～113 全部核准，各自一個 PR）。
   - 順序：最後做；需要擁有者先在 Supabase 執行上面的查詢並提供結果。
 
-- [ ] **INFRA-112** CI 加固與 Node 版本（AUDIT-001 發現）
-  - `ci.yml` 沒有 `permissions:`，`GITHUB_TOKEN` 用 repo 預設權限；改為 `permissions: contents: read`（`deploy.yml` 已有）。
-  - Node 20 → 22：vitest 1.6 有 critical 的 advisory（vitest、tinypool、vite、esbuild，只在開發與 CI，不會部署），修正版 vitest 5 需要 Node ≥ 22.12。升級 vitest 是 major，`environmentMatchGlobs` 等設定要改。GitHub Actions 也已警告 Node 20 的 action 將停用。
-  - eslint 相關的 moderate advisory（minimatch、`@eslint/*`）一併看是否需要升級 eslint。
-  - 改 CI 設定，需核准。
-  - **2026-11-02 使用者核准**（AUDIT-001 後的 AskUserQuestion，INFRA-110～113 全部核准，各自一個 PR）。
-
 - [ ] **INFRA-113** 部署內容與 CSP（AUDIT-001 發現）
   - `deploy.yml` 上傳整個 `pwa/`，GitHub Pages 也公開 `pwa/db/*.sql`（migration）與 `pwa/server.cjs`。repo 本身是公開的，影響小；可改為上傳前排除。
   - `index.html` 沒有 Content-Security-Policy。可加 `<meta http-equiv="Content-Security-Policy">`，限制 script 只來自自己與 cdnjs、連線只到 Supabase，作為 XSS 的第二層防護。要先列出 app 用到的所有來源（Supabase、cdnjs、Pixi、data:/blob: 圖片），並以 e2e 確認。
@@ -240,6 +233,23 @@
 ---
 
 ## Done
+
+- [x] **INFRA-112** CI 加固與 Node 版本（AUDIT-001 發現）
+  - `ci.yml` 沒有 `permissions:`，`GITHUB_TOKEN` 用 repo 預設權限；改為 `permissions: contents: read`（`deploy.yml` 已有）。
+  - Node 20 → 22：vitest 1.6 有 critical 的 advisory（vitest、tinypool、vite、esbuild，只在開發與 CI，不會部署），修正版 vitest 5 需要 Node ≥ 22.12。升級 vitest 是 major，`environmentMatchGlobs` 等設定要改。GitHub Actions 也已警告 Node 20 的 action 將停用。
+  - eslint 相關的 moderate advisory（minimatch、`@eslint/*`）一併看是否需要升級 eslint。
+  - 改 CI 設定，需核准。
+  - **2026-11-02 使用者核准**（AUDIT-001 後的 AskUserQuestion，INFRA-110～113 全部核准，各自一個 PR）。
+  - In progress（2026-11-02）：INFRA-111（#223）合併後開始（Backlog → In Progress）。
+  - 完成（2026-11-02；CI、測試與 devDependencies，不 bump）：
+    - `ci.yml`：`permissions: contents: read`（artifact 用 runner 自己的 token）；Node 20 → 22；`actions/checkout@v5`、`actions/setup-node@v5`、`actions/upload-artifact@v6`（都以 Node 24 執行，消除 GitHub Actions 的 Node 20 停用警告；對 GitHub-hosted runner 沒有其他破壞性變更）。`deploy.yml` 的 action 留給 INFRA-113 一起改。
+    - vitest 1.6 → 5.0.5、`@vitest/coverage-v8` 1.6 → 5.0.5：critical 的 advisory（vitest、tinypool、vite、esbuild）全部消失。`package.json` 加上 `engines.node`：`^22.13.0 || ^24.0.0 || >=26.0.0`（vitest 5 與 jsdom 29 兩者的需求：22.13 以上的 22.x、24.x，或 26 以上，不含 23、25）。
+      - vitest 4 起移除 `environmentMatchGlobs`（vitest 3 已標為 deprecated）：原本列出的 18 個測試檔中 17 個在第一行加上 `// @vitest-environment jsdom`（`proofCapture.test.js` 原本就有），設定檔不再列。
+      - vitest 4 起，arrow function 實作的 `vi.fn()` 不能以 `new` 呼叫：`ambientNoise.test.js` 的兩個 `AudioContext` mock 改為一般 function（獨立 review 發現第二個「建立失敗」的測試原本只因 V8 的 TypeError 訊息含有 arrow 的原始碼才通過）。
+      - Unit 1493 全部通過，89 個檔案每個的測試數都與升級前相同（獨立 review 以 JSON reporter 逐檔比對）；e2e 80 通過；`npm ci` 從新的 lockfile 安裝成功。coverage 的數字改變（coverage-v8 4 起的量測方式不同，例如全部 Statements 96.7% → 91.9%，`utils.js` 82.4% → 65.9%），範圍與設定不變，也沒有門檻。
+      - vitest 5 的預設 `clearMocks: true`：`appBootSequence.test.js` 一個 `toHaveBeenCalledWith` 以前會被前面測試留下的呼叫滿足，現在是真的檢查（獨立 review 發現，仍通過）。
+    - eslint 相關的 moderate advisory（minimatch < 11.0.1，eslint 9 直接依賴，也經 `@eslint/config-array`、`@eslint/eslintrc`）**沒有修正**：最新的 eslint 10 仍用 minimatch 10，沒有可用的修正版；改用 eslint 10 還會帶來新的規則（`no-useless-assignment`、`preserve-caught-error`）要改 app 程式。只在開發與 CI 執行，glob 都是 repo 自己的設定，不受外部輸入影響。等 eslint 改用 minimatch ≥ 11.0.1 後再升級。
+    - 文件：README 本地開發（Node 版本、測試指令、jsdom 的寫法）、`docs/test-plan.md` 的 `environmentMatchGlobs` 說明。
 
 - [x] **INFRA-111** service worker 的圖片分支：下載時不用 HTTP cache 的舊檔（AUDIT-001 發現）
   - 問題：圖片走 cache-first，快取沒有時直接 `fetch(e.request)`。按需下載的素材（房間風格、裝飾、角色）若瀏覽器的 HTTP cache 還有上一版的同名檔（GitHub Pages `max-age=600`），會把舊圖存進這一版的快取，直到下一次 bump。JS／CSS 已改為 `cache: 'no-cache'`（INFRA-105／107）。

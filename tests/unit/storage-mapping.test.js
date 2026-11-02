@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * storage-mapping.test.js — storage.js snake_case ↔ camelCase 映射的
  * characterization tests（handoff Phase 16a）。

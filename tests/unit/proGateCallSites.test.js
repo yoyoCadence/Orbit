@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * proGateCallSites.test.js — PRO-014C：逐一鎖住既有 Pro 入口。
  *

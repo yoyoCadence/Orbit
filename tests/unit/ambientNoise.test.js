@@ -52,14 +52,18 @@ describe('startAmbientNoiseMonitor', () => {
       configurable: true,
       value: { getUserMedia: vi.fn(() => Promise.resolve(stream)) },
     });
-    window.AudioContext = vi.fn(() => ({
-      createAnalyser: () => ({
-        fftSize: 0,
-        getFloatTimeDomainData: frame => frame.fill(sampleValue),
-      }),
-      createMediaStreamSource: () => ({ connect: vi.fn() }),
-      close: closeContext,
-    }));
+    // A function, not an arrow: the code calls `new AudioContext()`, and since
+    // vitest 4 a mock with an arrow implementation cannot be constructed.
+    window.AudioContext = vi.fn(function AudioContext() {
+      return {
+        createAnalyser: () => ({
+          fftSize: 0,
+          getFloatTimeDomainData: frame => frame.fill(sampleValue),
+        }),
+        createMediaStreamSource: () => ({ connect: vi.fn() }),
+        close: closeContext,
+      };
+    });
   });
 
   afterEach(() => {
@@ -103,7 +107,7 @@ describe('startAmbientNoiseMonitor', () => {
   });
 
   it('AudioContext 建立失敗時仍會關閉已取得的麥克風', async () => {
-    window.AudioContext = vi.fn(() => { throw new Error('audio-unavailable'); });
+    window.AudioContext = vi.fn(function AudioContext() { throw new Error('audio-unavailable'); });
     await expect(startAmbientNoiseMonitor({ onLevel: vi.fn() })).rejects.toThrow('audio-unavailable');
     expect(tracks[0].stop).toHaveBeenCalledTimes(1);
   });
