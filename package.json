@@ -19,7 +19,7 @@
     "ps243:perf": "node scripts/ps243-perf-baseline.mjs"
   },
   "engines": {
-    "node": ">=22.12"
+    "node": "^22.13.0 || ^24.0.0 || >=26.0.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",

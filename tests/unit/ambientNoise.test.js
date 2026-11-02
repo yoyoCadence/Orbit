@@ -107,7 +107,7 @@ describe('startAmbientNoiseMonitor', () => {
   });
 
   it('AudioContext 建立失敗時仍會關閉已取得的麥克風', async () => {
-    window.AudioContext = vi.fn(() => { throw new Error('audio-unavailable'); });
+    window.AudioContext = vi.fn(function AudioContext() { throw new Error('audio-unavailable'); });
     await expect(startAmbientNoiseMonitor({ onLevel: vi.fn() })).rejects.toThrow('audio-unavailable');
     expect(tracks[0].stop).toHaveBeenCalledTimes(1);
   });
