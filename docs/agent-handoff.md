@@ -145,7 +145,8 @@
 36. **TEST-003：完成**（2026-10-28，只改測試）：使用者要求檢視 #207–#211。補上 service worker 的邊界情況、房間風格的窗外、版本一致性的 unit test，重寫 `tests/e2e/README.md`（e2e 的執行方式與注意事項都在這裡）。檢查結果與補上的項目見 `tasks.md`。
 37. **INFRA-108：完成**（2026-10-29，使用者核准）：CI 的 `build-check` 執行 `scripts/check-version-bump.mjs`，改了 `pwa/` 卻沒有 bump（或版本沒有比 main 新）的 PR 會失敗。兩個 PR 從同一個版本 bump 時，後合併的要再 bump 一次。AGENTS.md §14 已更新。
 38. **AUDIT-001：完成**（2026-10-29，v1.41.6）：整體性的完整檢查。已修：XSS（昨日報告、稱號主題按鈕，以及任務 emoji、圖示、背景、頭像放進 HTML 前的 escape）、PDF 函式庫的 SRI 與失敗後重試、本機 `server.cjs` 的路徑檢查、不需 major 的 devDependencies advisory、README／ROADMAP／AGENTS §17 與 V2 設計文件。需核准的記為 Backlog：INFRA-110（`leaderboard_view` 的權限，需擁有者在 Supabase 確認 `anon` 的 grant）、INFRA-111（圖片下載不用 HTTP cache 的舊檔）、INFRA-112（CI `permissions`、Node 22＋vitest 5）、INFRA-113（部署內容、CSP）、REPO-001（`output/`、舊分支）。
-39. **下一步**：Backlog 其餘項目需要核准或屬高風險（HW-112 的 Storage migration、INFRA-101／PS-211D 的部署行為、PRO-014* 的 entitlement）。使用者原則：以「任務確實完成」為準，合併是後話；做不到的先寫進 `tasks.md`。
+39. **INFRA-111：完成**（2026-11-02，v1.41.7）：沒有預先快取的圖片，service worker 第一次取得時以 `cache: 'no-cache'` 向伺服器確認，改版後不會把 HTTP cache 裡上一版的圖存進新版本的快取。使用者 2026-11-02 核准 INFRA-110～113（各一個 PR，INFRA-110 需要擁有者先提供 Supabase 的 grant 查詢結果）；REPO-001 使用者之後自行處理。
+40. **下一步**：Backlog 其餘項目需要核准或屬高風險（HW-112 的 Storage migration、INFRA-101／PS-211D 的部署行為、PRO-014* 的 entitlement）。使用者原則：以「任務確實完成」為準，合併是後話；做不到的先寫進 `tasks.md`。
 
 其他：
 
@@ -217,6 +218,9 @@
 | #209 | v1.40.1 | INFRA-105：service worker 安裝時重新驗證 SHELL 的程式碼與樣式（使用者看過後合併） |
 | #210 | v1.41.0 | PS-251B：晨間與傍晚的窗外疊層（Q 版＋像素，五個房間共用），時段邊界準時重新 render |
 | #211 | v1.41.1 | INFRA-107：每次開啟頁面（根目錄與 `index.html`）都用 service worker 快取中同一版的 HTML，JS／CSS 也不在背景更新 |
+| #212 | — | TEST-003：檢視 #207–#211，補上 service worker 邊界、房間風格窗外、版本一致性的 unit test，重寫 `tests/e2e/README.md` |
+| #213 | — | INFRA-108：CI 檢查改了 `pwa/` 的 PR 有沒有 bump（`scripts/check-version-bump.mjs`）；`npm run bump` 失敗時什麼都不寫 |
+| #214 | v1.41.6 | AUDIT-001：整體性檢查（XSS escape、PDF 函式庫 SRI、`server.cjs` 路徑檢查、文件），需核准的記為 INFRA-110～113、REPO-001 |
 | #215 | — | BUG-109A：記錄專案擁有者 2026-10-31 在 production 套用 013（套用前比對、transaction 乾跑、套用後驗證） |
 | #216 | v1.41.2 | PRO-014Q Q6：移除開發者面板的等級與 Pro 模擬，改用 production 的 5 個測試帳號（`docs/pro-test-accounts.md`）；遊客缺 user 時進入設定頁 |
 | #217 | — | PRO-014R＋PRO-014N 合併提案（`my_pro_status()` 不再用試用日期限制付費帳號），使用者核准方案 A |
@@ -225,6 +229,7 @@
 | #220 | — | PRO-014P 提案：`server` source 下換日不把「Pro 狀態不明」當成「不是 Pro」（建議方案 D）；發現網路失敗會刪除 snapshot 與 BUG-115 |
 | #221 | v1.41.5 | PRO-014P＋BUG-115：換日的 Pro 效果在狀態不明時延後補做（`proRollover.js`）、暫時性失敗不刪 snapshot、保護卡 offer 屬於寫入它的帳號 |
 | #222 | — | PRO-014H 核准名單：記錄擁有者主帳號（終身）已寫入 `pro_entitlements` 並對帳（核准 1、成功 1、拒絕／重複 0） |
+| #223 | v1.41.7 | INFRA-111：沒有預先快取的圖片第一次取得時以 `cache: 'no-cache'` 向伺服器確認 |
 
 教訓：#155–#164 在 Codex review 出現前就合併，造成 #165、#166、#167 的回頭修正。這就是 §2 合併條件的由來。獨立 review 在 #167、#168、#169 都找到真正的問題（例如椅子畫在螢幕後面、壁燈在相框下投出暗影），所以複查不能省。
 
