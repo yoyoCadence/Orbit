@@ -249,7 +249,7 @@ Avoid:
 | `stateSchema.js`、`store.js`、`migrateState.js` | V2 state 的格式與 normalize、以 owner 區分的本機讀寫、legacy state 轉成 V2 |
 | `sessionAdapter.js` | 把 Session 轉成 reward 判斷用的格式（日期、刪除、epoch、有效結果） |
 | `questEngine.js`、`projectEngine.js`、`momentum.js` | 每日 Main Quest（每個日期選出一筆）、Workspace Upgrade 專案進度、有效日的氛圍狀態 |
-| `rewardRules.js`、`rewardLedger.js`、`reconciler.js` | reward 種類與數值、可逆且去重的 ledger（tombstone）、依 Session 重新計算並與遠端合併 |
+| `rewardRules.js`、`rewardLedger.js`、`reconciler.js` | reward 種類與數值、可逆且去重的 ledger（tombstone）、依 Session（會同步）重新計算 reward，與本機儲存的 ledger 對帳（新增、撤銷、還原）；V2 state 本身只存在這台裝置 |
 | `controller.js` | 載入 → reconcile → 儲存的流程與頁面要的 view model 來源；`consumePersonalSpaceV2Reveal` 等 |
 | `viewModels.js`、`revealSelectors.js` | 時段、天氣、remind 目標等畫面資料；判斷 reveal 是否為進度（撤銷的不算） |
 | `companionEngine.js`、`content/companionDialogue.js` | Companion 的狀態與反應、唯一的台詞表（首頁卡片、toast、完整頁面共用，AI-204） |

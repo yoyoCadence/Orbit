@@ -289,6 +289,19 @@ describe('renderHome: empty state', () => {
 });
 
 describe('renderHome: task rendering', () => {
+  it('shows a stored emoji as text and keeps an icon image URL inside src (AUDIT-001)', () => {
+    const iconImg = 'data:image/png;base64,AAAA" onerror="window.__xss=1';
+    mockState.tasks = [
+      makeTask({ id: 'e', emoji: '<img src=x onerror="window.__xss=1">' }),
+      makeTask({ id: 'i', name: '圖示', iconImg }),
+    ];
+    const c = makeContainer();
+    renderHome(c);
+    expect(c.querySelector('[onerror]')).toBeNull();
+    expect(c.querySelector('.task-emoji').textContent).toBe('<img src=x onerror="window.__xss=1">');
+    expect(c.querySelector('img.task-icon-img').getAttribute('src')).toBe(iconImg);
+  });
+
   it('renders task cards for growth tasks', () => {
     mockState.tasks = [makeTask({ taskNature: 'growth' })];
     const c = makeContainer();

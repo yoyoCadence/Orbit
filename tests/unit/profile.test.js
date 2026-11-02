@@ -132,6 +132,15 @@ describe('renderProfile: basic rendering', () => {
 });
 
 describe('renderProfile: avatar upload', () => {
+  it('keeps a stored avatar URL inside the img src (AUDIT-001)', () => {
+    const avatar = 'https://example.test/a.png" onerror="window.__xss=1';
+    mockState.user.avatar = avatar;
+    const c = makeContainer();
+    renderProfile(c);
+    expect(c.querySelector('[onerror]')).toBeNull();
+    expect(c.querySelector('img[alt="avatar"]').getAttribute('src')).toBe(avatar);
+  });
+
   it('guest avatar upload stays saved locally when Supabase has no session', async () => {
     mockDb.uploadAvatar.mockRejectedValueOnce(new Error('Not authenticated'));
     const originalFileReader = window.FileReader;

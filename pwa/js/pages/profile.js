@@ -55,7 +55,7 @@ export function renderProfile(container) {
   const todayXP   = todayStats.productiveXP;
 
   const avatarContent = user.avatar
-    ? `<img src="${user.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="avatar">`
+    ? `<img src="${escHtml(user.avatar)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="avatar">`
     : `<span style="font-size:40px">👤</span>`;
 
   // Energy bar

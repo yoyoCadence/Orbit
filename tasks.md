@@ -25,7 +25,8 @@
 
 - [ ] **INFRA-112** CI 加固與 Node 版本（AUDIT-001 發現）
   - `ci.yml` 沒有 `permissions:`，`GITHUB_TOKEN` 用 repo 預設權限；改為 `permissions: contents: read`（`deploy.yml` 已有）。
-  - Node 20 → 22：vitest 1.6 有 critical 的 advisory（vitest、tinypool、vite、esbuild，只在開發與 CI，不會部署），修正版 vitest 5 需要 Node ≥ 22.12。升級 vitest 是 major，`environmentMatchGlobs` 等設定要改。
+  - Node 20 → 22：vitest 1.6 有 critical 的 advisory（vitest、tinypool、vite、esbuild，只在開發與 CI，不會部署），修正版 vitest 5 需要 Node ≥ 22.12。升級 vitest 是 major，`environmentMatchGlobs` 等設定要改。GitHub Actions 也已警告 Node 20 的 action 將停用。
+  - eslint 相關的 moderate advisory（minimatch、`@eslint/*`）一併看是否需要升級 eslint。
   - 改 CI 設定，需核准。
 
 - [ ] **INFRA-113** 部署內容與 CSP（AUDIT-001 發現）
@@ -357,13 +358,13 @@
   - 範圍：安全（XSS、外部 script、Supabase RLS 與 grant、service worker、開發用 server）、依賴套件、測試涵蓋、CI、部署內容、文件與實際程式是否一致。低風險的直接修正；需要核准的（schema／migration、CI、部署、auth）記為 Backlog，不在這裡改。
   - In progress（2026-10-29）：INFRA-108（#213）合併後開始。
   - 完成（2026-10-29，v1.41.6）：
-    - XSS：`dayCycle.js` 的昨日報告（任務名稱與 emoji）與 `profile.js` 的稱號主題按鈕（自訂主題的 key、圖示、名稱）沒有 escape，改用 `escHtml`。其他使用者的資料（排行榜的名稱、頭像）原本就有 escape；其餘未 escape 的值是常數或 app 自己產生的（emoji 清單、`iconImg` 的 data URL、數字）。
+    - XSS：`dayCycle.js` 的昨日報告（任務名稱與 emoji）與 `profile.js` 的稱號主題按鈕（自訂主題的 key、圖示、名稱）沒有 escape，改用 `escHtml`。獨立 review 再找到同類的：任務 emoji（首頁、設定的任務列表、回顧的待校準）、任務圖示 `iconImg`、自訂背景圖、頭像（個人頁、頁首）放進 HTML 前沒有 escape。這些在 UI 上是選單或 app 產生的 data URL，但 localStorage 與資料庫裡是任意文字（`profiles_update` 不限制欄位，使用者可把自己的 `avatar_url` 改成 `https://x" onerror="…`），一併改用 `escHtml`。都只影響使用者自己的帳號與裝置；其他使用者的資料（排行榜的名稱、頭像）原本就有 escape。
     - 外部 script：成長報告 PDF 從 cdnjs 載入的 jsPDF 2.5.1 與 html2canvas 1.4.1 加上 SRI（`integrity` sha512＋`crossorigin`；值與 npm 套件 dist 檔的 hash 相同，也與 cdnjs 公布的 SRI 相同）。載入失敗時移除 `<script>` 並忘掉這次載入，再按一次會重新下載（以前留下的 tag 讓第二次直接 resolve，函式庫卻不存在，要重新開啟 app）；同時進行的兩次只載入一次。
     - `pwa/server.cjs`（只在本機）：`path.join` 之後檢查仍在 `pwa/` 底下，`GET /../package.json`（curl `--path-as-is`）以前會回傳 repo 的檔案；補上 `.webp`、`.gif` 的 Content-Type（以前是 `text/plain`）。
     - Supabase：每張表都 `ENABLE ROW LEVEL SECURITY`，四種 policy 都只給 `authenticated`，INSERT 有 `WITH CHECK`、UPDATE 有 `USING`＋`WITH CHECK`；`pro_entitlements` 是 CLAUDE.md 的 server-owned 例外（REVOKE＋只有 SELECT，migration 有註解）；Storage 的 policy 都檢查 `storage.foldername(name)[1]`（排行榜頭像的公開讀取限 `is_public` 的使用者）；沒有 `FOR ALL`；client 只有 publishable key，沒有 `service_role`。發現的問題記為 INFRA-110（需核准）。
-    - 依賴：`npm audit fix --package-lock-only`（不需 major 升級的部分）：@humanfs/node、@xmldom/xmldom、brace-expansion、js-yaml、nanoid、postcss、source-map-js、undici（都是 devDependencies 的間接依賴，不會部署）。剩下的 vitest 1.6 → 5（critical，只在開發與 CI）需要 Node ≥ 22，記為 INFRA-112。
+    - 依賴：`npm audit fix --package-lock-only`（不需 major 升級的部分）：@humanfs/node、@xmldom/xmldom、brace-expansion、js-yaml、nanoid、postcss、source-map-js、undici。除了 @xmldom/xmldom（`pixi.js` 的依賴）都是 devDependencies 的間接依賴；app 用的是 `pwa/vendor/` 裡打包好的 Pixi（沒有 xmldom，這次沒有改），所以部署的檔案都不變（`npm audit --omit=dev` 為 0）。剩下的：vitest 1.6 → 5（critical，只在開發與 CI）需要 Node ≥ 22，以及 eslint 相關的 moderate（minimatch、`@eslint/*`），記為 INFRA-112。
     - 文件：README（不再寫死版本號、`pwa/db/` 不再列到 009、排行榜「不暴露 `user_id`」不正確、基礎建設加上 E2E 與 INFRA-108）、ROADMAP（「近期（v1.23.x）」、已完成補上 v1.31–v1.41）、AGENTS.md §17 補上 V2 的模組表（原本只有 legacy）、兩份 V2 設計文件的檔案規劃加上「as built」說明。`scripts/bump.mjs` 開頭的說明改正（INFRA-108 review 的 P3）。
-    - 測試：`dayCycle.test.js`、`profile.test.js`（名稱含 markup 時以文字顯示）、`exportPdf.test.js`（SRI 屬性、失敗後重試、產生 PDF）、`devServer.test.js`（不回傳 `pwa/` 以外的檔案、圖片類型）。修改前的程式上新的測試都失敗。Unit 1413、e2e 79 全部通過（e2e 會用修改後的 `server.cjs`）。
+    - 測試：`dayCycle.test.js`、`profile.test.js`、`home.test.js`、`settings.test.js`、`review.test.js`、`headerAvatar.test.js`（名稱、emoji、圖示與頭像含 markup 時以文字顯示或留在 `src` 裡）、`exportPdf.test.js`（SRI 屬性、失敗後重試、產生 PDF）、`devServer.test.js`（不回傳 `pwa/` 以外的檔案、圖片類型）。修改前的程式上新的測試都失敗。Unit 1413、e2e 79 全部通過（e2e 會用修改後的 `server.cjs`）。
     - 其他觀察（沒有改）：unit 的 coverage 83.5%，較低的是 `header`、`proofSheet`、`tour`、`export`、`theme`、`authFlow`；延後載入的 JS 預算剩 2,223 B（這次的修改不在預算內）；測試輸出中的錯誤堆疊是刻意測試錯誤路徑的預期輸出。
 
 - [x] **INFRA-108** CI 檢查改了 `pwa/` 的 PR 有沒有 bump

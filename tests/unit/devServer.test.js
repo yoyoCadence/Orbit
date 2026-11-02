@@ -5,14 +5,24 @@
  * 以 `/../` 開頭時不能讀到 repo 其他檔案或磁碟上的任何檔案。
  */
 import { spawn } from 'node:child_process';
-import { request } from 'node:http';
+import { createServer, request } from 'node:http';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const PORT = 41000 + Math.floor(Math.random() * 1000);
+let PORT;
 let server;
+
+// A port the OS reports as free (server.cjs maps PORT=0 to 3000, so it cannot pick one itself).
+const freePort = () => new Promise((resolve, reject) => {
+  const probe = createServer();
+  probe.on('error', reject);
+  probe.listen(0, '127.0.0.1', () => {
+    const { port } = probe.address();
+    probe.close(() => resolve(port));
+  });
+});
 
 // Sends the path exactly as given (Node's client does not normalize `..`).
 const get = path => new Promise((resolve, reject) => {
@@ -26,15 +36,18 @@ const get = path => new Promise((resolve, reject) => {
   req.end();
 });
 
-beforeAll(() => new Promise((resolve, reject) => {
-  server = spawn(process.execPath, [join(ROOT, 'pwa', 'server.cjs')], {
-    env: { ...process.env, PORT: String(PORT) },
-    stdio: ['ignore', 'pipe', 'pipe'],
+beforeAll(async () => {
+  PORT = await freePort();
+  await new Promise((resolve, reject) => {
+    server = spawn(process.execPath, [join(ROOT, 'pwa', 'server.cjs')], {
+      env: { ...process.env, PORT: String(PORT) },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    server.stdout.on('data', chunk => { if (String(chunk).includes('Server running')) resolve(); });
+    server.on('error', reject);
+    server.on('exit', code => reject(new Error(`server exited (${code})`)));
   });
-  server.stdout.on('data', chunk => { if (String(chunk).includes('Server running')) resolve(); });
-  server.on('error', reject);
-  server.on('exit', code => reject(new Error(`server exited (${code})`)));
-}));
+});
 
 afterAll(() => { server?.kill(); });
 

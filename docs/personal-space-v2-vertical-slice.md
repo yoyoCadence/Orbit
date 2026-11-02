@@ -1046,7 +1046,7 @@ Also cover:
 
 ## 16. Exact expected file plan
 
-> **As built (2026-10-29 audit):** the shipped modules differ from this plan (for example there is no `index.js`, `runtimeMode.js` or `state.js`; the flag is `featureFlag.js`, the state is `stateSchema.js`/`store.js`/`migrateState.js`). AGENTS.md §17 lists the current `pwa/js/personalSpace/v2/` modules and what each owns. This section is kept as the original plan.
+> **As built (2026-10-29 audit):** most files below shipped under these names, but `gameEvents.js`, `worldReducer.js`, `runtime/runtimeManager.js`, `ui/rewardReveal.js`, `ui/worldHud.js`, `ui/projectPanel.js`, `ui/companionPanel.js` and `ui/editorOverlay.js` were never built (their work lives in `controller.js`, `viewModels.js`, `ui/orbitWindow.js` and `pages/personalSpace.js`), and later tasks added `content/`, `remindWindow.js`, `revealSelectors.js`, `ui/appearancePicker.js` and `ui/assetGallery.js`. AGENTS.md §17 lists the current `pwa/js/personalSpace/v2/` modules and what each owns. This section is kept as the original plan.
 
 Only files listed for a task should change in that task. Existing names may be adjusted once during PS-234 if repository inspection finds a smaller equivalent boundary, but responsibility must remain one-to-one.
 
