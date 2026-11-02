@@ -27,6 +27,7 @@ import { FLAG_DEV_BACKUP, FLAG_STREAK_UNLOCK_NEW } from './flags.js';
 import { refreshCanonicalStateAndReconcilePersonalSpaceV2 } from './personalSpace/v2/controller.js';
 import { createAuthOperationGuard } from './platform/authOperationGuard.js';
 import { createBootSequenceGuard } from './platform/bootSequenceGuard.js';
+import { resolvePendingProRollover } from './proRollover.js';
 import { isOnline, onConnectivityChange } from './platform/network.js';
 import { orbitWindowRuntimeDestroyer } from './personalSpace/v2/runtime/pixiSceneRuntime.js';
 
@@ -92,7 +93,13 @@ window.signOut = async function () {
 
 // ─── Setup screen ────────────────────────────────────────────────────────────
 
-function showSetup() {
+/**
+ * @param {string|null} ownerId the signed-in account this setup belongs to.
+ *   Only `loadAndStart` passes one. A guest never inherits `_currentSession`:
+ *   it can still hold an account whose remote load failed, and taking that id
+ *   would push a blank profile over the real one on the next sync.
+ */
+function showSetup(ownerId = null) {
   document.getElementById('setup-screen').classList.remove('hidden');
   document.getElementById('main-app').classList.add('hidden');
 
@@ -116,6 +123,10 @@ function showSetup() {
 
   document.getElementById('setup-form').addEventListener('submit', e => {
     e.preventDefault();
+    // Each showSetup() adds a listener that keeps its own owner. If another tab
+    // switched accounts while setup stayed open, a listener left over from the
+    // earlier account must not save the new account's data under the old id.
+    if (ownerId && _currentSession?.user?.id !== ownerId) return;
     const name = document.getElementById('setup-name').value.trim();
     if (!name) return;
     // Authenticated setup can be reached with an existing profile (for example,
@@ -126,7 +137,7 @@ function showSetup() {
 
     state.user = {
       ...existingProfile,
-      id: _currentSession?.user?.id || existingProfile.id || uid(),
+      id: ownerId || existingProfile.id || uid(),
       name,
       avatar: avatarData ?? existingProfile.avatar ?? null,
       totalXP: existingProfile.totalXP ?? 0,
@@ -217,7 +228,11 @@ window.continueAsGuest = function () {
   hideLoading();
   document.getElementById('login-screen').classList.add('hidden');
   loadStateFromStorage();
-  if (!state.tasks.length) {
+  // PRO-014Q Q6: clearing leftover dev data can delete a guest's local user
+  // while its tasks stay (the backup belonged to another account, so the
+  // guest could not be told apart from that account's cached user). Without a
+  // user nothing can be recorded, so the guest sets a profile up again.
+  if (!state.tasks.length || !state.user) {
     showSetup();
   } else {
     bootWithLocalState();
@@ -275,12 +290,18 @@ async function loadAndStart(session) {
     state.user = storage.getUser() ?? state.user;
   }
 
+  // PRO-014P: Pro effects an earlier rollover deferred, now that the refresh
+  // above may have settled the status. Here rather than relying on the
+  // rollover's own call: when this boot is the second one (BUG-106) the
+  // rollover is skipped, and the cached-user sync is skipped too.
+  resolvePendingProRollover();
+
   hideLoading();
   document.getElementById('login-screen').classList.add('hidden');
 
   if (!state.tasks.length && remoteLoaded) {
     // New user: no tasks yet — show setup to customise profile + seed defaults
-    showSetup();
+    showSetup(session.user.id);
   } else {
     bootWithLocalState();
   }
@@ -441,6 +462,7 @@ async function _syncAfterReconnect() {
       await db.refreshProEntitlement(session.user.id);
       if (_currentSession !== session) return;
       loadStateFromStorage({ authoritative: true });
+      resolvePendingProRollover();   // PRO-014P: deferred Pro effects, now that the status may be known
       updateHeader();
       // Re-rendering under a focused text field would throw away what is being typed.
       if (!isTextInputActive()) renderPage(currentHash());
@@ -546,6 +568,7 @@ async function init() {
           // Quietly refresh canonical state and the V2 projection from the
           // completed remote/local merge without enqueueing a reveal.
           loadStateFromStorage({ authoritative: true });
+          resolvePendingProRollover();   // PRO-014P: deferred Pro effects of this boot's rollover
           updateHeader();
           renderPage(currentHash());
           _updateBadge();

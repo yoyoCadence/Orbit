@@ -3,7 +3,7 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
-## [1.41.2] - 2026-10-29
+## [1.41.6] - 2026-11-02
 
 ### Fixed
 - **任務與稱號主題的名稱一律以文字顯示（AUDIT-001）**：跨日後的「昨日報告」列出的任務名稱與 emoji，以及個人頁「稱號主題」按鈕上自訂主題的名稱與圖示，以前會被當成 HTML 解讀，名稱裡含有 `<`、`>` 等字元時顯示錯誤，也可能執行名稱中的程式碼。現在與 app 其他地方一樣，原樣顯示為文字。
@@ -11,6 +11,118 @@
 
 ### Changed
 - 本機開發用的 `node pwa/server.cjs` 只回傳 `pwa/` 底下的檔案（以前不經瀏覽器的請求可以用 `/../` 讀到 repo 其他檔案），並以正確的類型回傳 `.webp`、`.gif`。只影響本機開發。
+
+---
+
+## [1.41.5] - 2026-11-01
+
+### Fixed
+- **PRO-014P：`server` source 下，換日不再把「Pro 狀態不明」當成「不是 Pro」**（提案 `docs/pro-014p-day-rollover-entitlement.md` 方案 D，使用者 2026-11-01 核准）。
+  - 問題：回訪使用者先換日、後 refresh，漏一天時 snapshot 幾乎一定超過 24 小時，付費使用者的保護卡 offer 永久遺失，SUB-16 還可能用掉一次性解鎖。
+  - 連勝照常計算與推進 `lastStreakDate`。只有補卡與 offer 依 Pro 狀態：狀態不明時記成待補做（`orbit_pro_rollover_pending`，owner-scoped），下一次換日或 refresh 得到答案時補做一次。
+  - SUB-16 只在已知不是 Pro 時執行，狀態不明時略過、不消耗。
+  - 新模組 `pwa/js/proRollover.js`：`getProStatusFromSnapshot()`（`pro` 與 `isProFromSnapshot()` 永遠一致，另分出 `not-pro` 與 `unknown`）、待補做紀錄、補做；`loadAndStart()`、cached-user 背景同步、連線恢復同步在 refresh 之後補做。
+  - 狀態不明時按「使用保護卡」顯示「目前無法確認 Pro 狀態，連線後再試一次」。
+- **`refreshProEntitlement()` 遇到暫時性失敗不再刪除 snapshot**：repo 內的 Supabase client 遇到網路失敗或逾時不會 throw，而是回傳 `{ error, status: 0 }`，原本會被當成權威答案而刪掉付費使用者的 snapshot。`status: 0`、408、429、5xx 與 PostgREST JWT 錯誤（`PGRST301`／`PGRST303`）保留 snapshot（仍受 `SNAPSHOT_TTL_MS` 限制）；401／403、RPC 不存在等仍清除。
+- **BUG-115：保護卡 offer 屬於寫入它的帳號**。原本同一台裝置上 A 留下的 offer 會出現在 B，B 若是 Pro（含試用）按下使用，連勝就變成 A 的。offer 現在記錄 `ownerId`，首頁、個人頁與使用保護卡只讀自己的；登出時刪除升級前留下、沒有 owner 的 offer。**production（`legacy`）也適用。**
+
+### Validation
+- `tests/unit/pro014pRollover.test.js`：
+  - 先在未修改的程式碼上寫好 `legacy` 的 9 個特性測試，重構後不改仍通過；
+  - 狀態判斷的每種情況、狀態不明的換日、補做（一次、owner 不符、合併規則）、跨日、SUB-16、暫時性失敗與權威錯誤、BUG-115。
+- `appBootSequence.test.js`：三個呼叫點都在 refresh 之後補做；BUG-106 時由 `loadAndStart()` 補做；移除任一呼叫點測試會失敗。
+- `proGateCallSites.test.js`：`dayCycle.js` 的 Pro 判定由 4 處減為 1 處，換日的判定改在 `proRollover.js`。
+- `pwa/sw.js`：SHELL 加入 `proRollover.js`（INFRA-105：新的 export 都放在新模組）。
+
+---
+
+## [1.41.4] - 2026-11-01
+
+### Changed
+- **migration 014 已套用到 production（PRO-014RA，2026-11-01）**：專案擁有者依 `docs/pro-014r-my-pro-status-trial-cap.md` §7 操作：
+  - 比對：production 的函式與 011 相同；
+  - 乾跑：通過；
+  - 套用後檢查：權限、`SECURITY DEFINER`、`search_path` 與 owner 都正確；
+  - 驗證：以 5 個測試帳號的身份呼叫 `my_pro_status()`，終身帳號判為終身，其餘 4 個帳號沒有回歸。
+  - 一般使用者仍走 `legacy` source，看不到變化。
+- `docs/pro-test-accounts.md` 寫明測試帳號的命名規則、在 Supabase 的找法、登入方式，以及 agent 能做與不能做的事；交接文件第 1 節加上指引。完整 email 與密碼不寫進公開的 repo。
+- `proEntitlement.js`：更正過時的註解。011 與 014 都已套用；切換仍待核准名單與其他前置。
+
+### Validation
+- `tests/database/pro014r.test.sql`：
+  - 先確認 `plpgsql.check_asserts` 開啟，否則測試會靜默通過；
+  - 失敗訊息改用 `%L`，NULL 會顯示為 NULL；
+  - 加註為何以 postgres 呼叫。
+- `pro014rClientDecisions.test.js`：新增「兩個時間戳相等」的情境。SQL 差 1 微秒，送到 client 時只剩毫秒精度。
+- `proEntitlementsSql.test.js`：
+  - 014 只允許一個 `CREATE [OR REPLACE] FUNCTION`；
+  - 只允許一個 GRANT（給 authenticated），其他任何授權都會失敗；
+  - 鎖住 `STABLE`。
+- `tasks.md`：
+  - PRO-014RA 移到 Done；
+  - PRO-014 執行順序加入 PRO-014RA；
+  - PRO-014N 原本的範圍與完成條件加上刪除線，並註明重新定義。
+
+---
+
+## [1.41.3] - 2026-11-01
+
+### Fixed
+- **終身付費不再被試用日期限制（PRO-014R，repo 部分）**：新增 `pwa/db/014_my_pro_status_trial_cap.sql`。
+  - 問題：`my_pro_status()` 原本只要帳號開始過試用就回傳 `trial_ends_at`，client 以付費到期日與試用結束日中較晚的一個當 Pro 的上限。結果：
+    - 終身付費但試用已過期的帳號，在 `server` source 下被判定為非 Pro；
+    - 試用期間購買終身方案的人被顯示為試用，試用結束後同樣失去 Pro；
+    - app 啟動時會替 profile 沒有試用起點的帳號開始試用，所以終身帳號也會被補上試用起點。
+  - 014 改為付費已涵蓋整段試用時不回報試用日期。回傳欄位、型別、`SECURITY DEFINER` 與 `search_path` 都不變，client 不需改邏輯。
+  - **production 尚未套用**，由專案擁有者執行（`PRO-014RA`）。目前是 `legacy` source，一般使用者不會呼叫這個 RPC，套用前後沒有可見變化。
+- PRO-014N 以同一個修正結案：014 之後終身付費與試用可以正確區分，付費／試用的推斷變得精確。明確回傳 `is_pro` 的版本改列可選的 `PRO-014S`。
+
+### Validation
+- 新增 `tests/database/pro014r.test.sql`：純 SQL `ASSERT`，失敗即中止，可在 production 與 014 一起乾跑後 rollback。內容：
+  - 權限與屬性；
+  - 15 個 entitlement 情境的完整回應，含付費到期日等於試用結束、早 1 微秒等邊界；
+  - `start_trial()` 補試用起點之後，終身帳號仍不回報試用日期。
+- 在 PostgreSQL 16 套用真實 migration 驗證：
+  - 只有 011 時，測試在第 4 個情境失敗；
+  - 乾跑後函式仍是 011；
+  - 套用 014 後通過，可重複套用；
+  - 函式不存在時套用 014，anon 也不會取得執行權。
+- 新增 `tests/unit/pro014rClientDecisions.test.js`：以 014 的回應為 fixture，鎖住 client 對 15 個情境的判讀（取得時與 3 小時後）以及試用倒數。
+- `proEntitlementsSql.test.js` 新增 014 契約：
+  - 只替換 `my_pro_status()`；
+  - 回傳簽章不變；
+  - 新的試用回報條件；
+  - 重述的權限。
+
+---
+
+## [1.41.2] - 2026-10-31
+
+### Removed
+- **開發者面板的「模擬等級」與「模擬 Pro」（PRO-014Q Q6）**：只影響開發者模式的裝置。模擬把假值寫進真實的 user，經由每一條保存 user 的路徑（pending profile、換日、Session、換帳號）外流到 `profiles`，在 `legacy` source 下甚至會授予真的 Pro；逐條修補四輪都被找到新的外流路徑，所以改為不模擬。要測試不同等級或 Pro 狀態，改用 5 個固定的測試帳號，見 `docs/pro-test-accounts.md`。
+
+### Changed
+- 開發者面板只剩唯讀的會員狀態與 entitlement source，以及「在空間顯示全部 3D 資產」。舊版留下模擬資料時，面板顯示「清除殘留的模擬資料並重新載入」，沿用 S0 的完整清理；在清除前，profile 同步與 Pro 授權更新照舊暫停（fail closed）。
+
+### Fixed
+- 遊客有任務但沒有本機 user 時（例如清除殘留刪掉了無法辨識的本機資料），「以遊客身份繼續」改為進入設定頁，不再開進無法記錄 Session 的畫面。
+- **遊客的設定頁不再沿用已登入帳號的 id**：帳號的遠端載入失敗、回到登入畫面後改選遊客，設定頁原本會沿用該帳號的 id，建出等級 0、沒有 Pro 的空白 profile，下次同步時蓋掉雲端的真實資料。這個問題在沒有任務的裝置上原本就存在。現在只有已登入流程會把帳號傳給設定頁，遊客一律使用新的本機 id。
+
+### Validation
+- 改寫 `proDevPanel.test.js`：
+  - 兩種 source 下面板都沒有模擬按鈕，渲染也不寫入任何東西；
+  - 沒有殘留時不顯示清除；
+  - 殘留時照舊 fail closed，清除後回到非 Pro。
+- `pro014qDevReset.test.js` 改為直接寫入舊版留下的殘留，S0 與 B1 的 14 個情境照舊通過。
+- `proGateCallSites.test.js`：client 端 Pro 寫入點只剩 SUB-16，`settings.js` 不得再寫入。
+- `appBootSequence.test.js` 新增四項，都在修正前的程式碼上會失敗：
+  - 遊客有任務、沒有 user 時進入設定頁；
+  - 帳號載入失敗後改用遊客時，設定頁不沿用該帳號的 id；
+  - 已登入的新帳號沒有雲端 profile 時，設定頁使用 session 的 id；
+  - 設定頁開著時另一個分頁換了帳號，舊帳號留下的設定不會把新帳號的資料寫到舊 id。
+- `proGateCallSites.test.js` 新增：沒有任何地方寫入 `orbit_dev_backup`。
+- `proDevPanel.test.js`：殘留時，`upsertProfile`、`refreshProEntitlement` 在已登入的情況下照舊被擋住（移除 guard 時這項會失敗）。
+- `docs/pro-test-accounts.md` 的設定 SQL 只依完整 email 比對，剛好找到 5 個帳號才寫入；已在 PostgreSQL 16 驗證，同後綴的外部帳號不受影響。
 
 ---
 

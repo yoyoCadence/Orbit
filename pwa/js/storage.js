@@ -4,7 +4,7 @@
 
 import { supabase }  from './supabase.js';
 import { effectiveToday, mergeSessionsById } from './utils.js';
-import { FLAG_DEV_BACKUP } from './flags.js';
+import { FLAG_DEV_BACKUP, FLAG_SHIELD_PENDING } from './flags.js';
 import {
   applyProStatusResponse,
   clearProEntitlementSnapshot,
@@ -429,6 +429,20 @@ function _normalizeTrialTimestamp(value) {
   return Number.isNaN(parsed) ? null : new Date(parsed).toISOString();
 }
 
+// PRO-014P: failures that say nothing about the entitlement. `status: 0` is how
+// the bundled client reports a network failure or a timeout (it does not
+// throw); 408, 429 and 5xx are the server or a proxy being unavailable; and
+// PostgREST's JWT errors are about the token (a device with a wrong clock gets
+// them on every call), not about the user. The snapshot outlives these only up
+// to SNAPSHOT_TTL_MS. Everything else (401/403, a missing RPC, a contract
+// mismatch) is an answer and still drops it.
+const TRANSIENT_JWT_ERROR_CODES = new Set(['PGRST301', 'PGRST303']);
+function _isTransientRpcFailure(status, error) {
+  if (status === 0 || status === 408 || status === 429) return true;
+  if (Number.isInteger(status) && status >= 500) return true;
+  return TRANSIENT_JWT_ERROR_CODES.has(error?.code);
+}
+
 export const db = {
 
   async _session() {
@@ -753,17 +767,22 @@ export const db = {
    * Refreshes the owner-scoped Pro entitlement snapshot from the server.
    *
    * No-ops under the legacy source so production never calls an RPC that
-   * does not exist there yet. A response-level error is authoritative and
-   * drops the snapshot; a thrown network failure leaves it in place so the
-   * offline grace window in proEntitlement.js can apply.
+   * does not exist there yet. An authoritative error drops the snapshot. A
+   * transient failure leaves it in place so the offline grace window in
+   * proEntitlement.js can apply.
+   *
+   * PRO-014P: the bundled client does not throw on a network failure or a
+   * timeout; it returns `{ error, status: 0 }`. Treating that as authoritative
+   * dropped a paying user's snapshot on the first network blip.
    */
   async refreshProEntitlement(userId) {
     if (!isServerProEntitlementEnabled()) return false;
     // PRO-014M dev-tool guard, mirroring upsertProfile(): while a dev override
     // backup exists, the projection on disk is the simulated one and must not
-    // be replaced by the server's. This grants nothing a hand-written snapshot
-    // could not already (see proEntitlement.js), SNAPSHOT_TTL_MS still expires
-    // it, and the panel's reset drops both so the next launch refetches.
+    // be replaced by the server's. Q6 removed the simulations, so only a backup
+    // left by an older version reaches this. It grants nothing a hand-written
+    // snapshot could not already (see proEntitlement.js), SNAPSHOT_TTL_MS still
+    // expires it, and the panel's 清除殘留 drops both so the next launch refetches.
     if (localStorage.getItem(FLAG_DEV_BACKUP)) return false;
 
     const session = await this._session();
@@ -773,7 +792,11 @@ export const db = {
     }
 
     try {
-      const { data, error } = await supabase.rpc('my_pro_status');
+      const { data, error, status } = await supabase.rpc('my_pro_status');
+      if (error && _isTransientRpcFailure(status, error)) {
+        console.warn('Pro entitlement refresh failed, keeping cached snapshot:', error);
+        return false;
+      }
       return applyProStatusResponse({ ownerId: userId, rows: data, error });
     } catch (err) {
       console.warn('Pro entitlement refresh failed, keeping cached snapshot:', err);
@@ -876,7 +899,7 @@ export const storage = {
       .catch(console.error);
     return saved;
   },
-  /** Local-only write — no Supabase sync（profile 樂觀更新、dev tools 用）。 */
+  /** Local-only write — no Supabase sync（profile 樂觀更新）。 */
   saveUserLocal: (u) => {
     try { set('user', u); } catch (err) { console.error('Local user save failed:', err); }
   },
@@ -1145,9 +1168,9 @@ export const storage = {
   },
 
   /**
-   * PRO-014Q S0: the developer panel's simulations write fake values into the
-   * real user, and any pending profile on this device may carry them — the
-   * backup may even belong to another account. Drop the backup, every pending
+   * PRO-014Q S0: the developer panel's simulations (removed in Q6) wrote fake
+   * values into the real user, and any pending profile on a device that ran
+   * them may still carry them — the backup may even belong to another account. Drop the backup, every pending
    * profile, the local user and the projection, so the next launch loads real
    * data from the server. Unsynced Sessions keep their own pending sidecar.
    *
@@ -1179,6 +1202,17 @@ export const storage = {
     // The entitlement snapshot must never outlive its owner's session: a
     // leftover snapshot is exactly how the next account would inherit Pro.
     clearProEntitlementSnapshot();
+    // BUG-115: a shield offer from before offers carried their owner cannot be
+    // attributed, so it must not survive into the next account's session. An
+    // owned offer stays for its owner; other accounts never see it.
+    try {
+      const raw = localStorage.getItem(FLAG_SHIELD_PENDING);
+      if (raw !== null) {
+        let ownerId = null;
+        try { ownerId = JSON.parse(raw)?.ownerId; } catch { /* unreadable: drop it */ }
+        if (typeof ownerId !== 'string' || !ownerId) localStorage.removeItem(FLAG_SHIELD_PENDING);
+      }
+    } catch { /* storage unavailable: nothing to clear */ }
   },
 };
 

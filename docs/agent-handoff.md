@@ -4,7 +4,7 @@
 
 任務本身的定義與驗收條件以 [`tasks.md`](../tasks.md) 為準；本檔只記錄進行中的狀態、與使用者約定的工作規則，以及接手需要的操作細節。
 
-> 最後更新：2026-10-29。PS-246（#176，v1.30.1）、AI-203B（#177，v1.31.0）、HW-113（#180，v1.31.1）、PRO-014Q S0（#178，v1.31.2，含使用者核准的 A1＋B1）、AI-204 提案（#181）、PS-247（#182，v1.31.3）、INFRA-102（#183，CI 上傳 e2e artifact）、AI-204B（#184，v1.31.4，Companion 共用文案表）已合併。PS-211 提案（#185）已合併並核准（A3 ＋P、PS-211B 含沿用 Pixi app）。INFRA-103（#186）、PS-211B（#187，v1.31.5）、PS-211A（#188，v1.31.6）已合併。INFRA-104（#189）已合併。AI-202 提案與 INFRA-106（#190，v1.31.7）已合併，等待使用者決定 AI-202 §9。PS-248 提案（#191，Blender 主題與素材）已合併，等待使用者決定 §9（Codex 最後一輪的 P1 經查證不成立，使用者決定合併）。BUG-113（#192，v1.31.8）已合併。BUG-114（#193，v1.31.9）已合併。PS-250A（#194，v1.32.0，開發者的全部 3D 資產總覽）已合併。PS-250C（#195，v1.32.1，Q 版角色素材）已合併。PS-250B（#196，v1.33.0，風格與角色選擇）已合併。PS-250D（#197，v1.34.0，全像素）已合併。PS-250E1（#198，v1.35.0，夜晚版本）已合併。PS-250E2（#199，v1.36.0，房間風格＋明亮北歐）已合併。PS-250E3（#200，v1.37.0，其他三套房間風格）已合併。PS-250F1＋F2（#201，v1.38.0，五個房間的 6 件裝飾與 Edit Mode 開關）已合併。PS-250G（#202，v1.38.1，選擇介面的房間縮圖與離線退回）已合併；PS-250 與被它取代的 PS-248 一併結案。PS-249 提案（#203，只寫文件）已合併，使用者 2026-10-23 決定 §6，實作為 PS-249A。PS-251A（#204，v1.38.2，PS-248 §9.8 的順帶整理）已合併。PS-249A（#205，v1.38.3）已合併。使用者 2026-10-23 決定 AI-202 §9（全部採用建議）、PS-251 §9.3（做，先寫提案）、核准 INFRA-105（先寫變更說明，合併前給使用者看）。AI-202B1（#206，v1.39.0，關係階段的推導與顯示）已合併。AI-202B2（#207，v1.40.0，里程碑的 reveal）已合併。PS-251B 實作提案（#208，窗外依時段變化，只寫文件）已合併，使用者決定 §8（S1、W2、T1）並確認預覽的配色。INFRA-105（#209，v1.40.1）使用者看過後合併。PS-251B（#210，v1.41.0，晨間與傍晚的窗外疊層、時段邊界準時重新 render）已合併。INFRA-107（#211，v1.41.1，每次開啟頁面都用快取中同一版的 HTML 與程式）已合併。
+> 最後更新：2026-11-01。PS-246（#176，v1.30.1）、AI-203B（#177，v1.31.0）、HW-113（#180，v1.31.1）、PRO-014Q S0（#178，v1.31.2，含使用者核准的 A1＋B1）、AI-204 提案（#181）、PS-247（#182，v1.31.3）、INFRA-102（#183，CI 上傳 e2e artifact）、AI-204B（#184，v1.31.4，Companion 共用文案表）已合併。PS-211 提案（#185）已合併並核准（A3 ＋P、PS-211B 含沿用 Pixi app）。INFRA-103（#186）、PS-211B（#187，v1.31.5）、PS-211A（#188，v1.31.6）已合併。INFRA-104（#189）已合併。AI-202 提案與 INFRA-106（#190，v1.31.7）已合併，等待使用者決定 AI-202 §9。PS-248 提案（#191，Blender 主題與素材）已合併，等待使用者決定 §9（Codex 最後一輪的 P1 經查證不成立，使用者決定合併）。BUG-113（#192，v1.31.8）已合併。BUG-114（#193，v1.31.9）已合併。PS-250A（#194，v1.32.0，開發者的全部 3D 資產總覽）已合併。PS-250C（#195，v1.32.1，Q 版角色素材）已合併。PS-250B（#196，v1.33.0，風格與角色選擇）已合併。PS-250D（#197，v1.34.0，全像素）已合併。PS-250E1（#198，v1.35.0，夜晚版本）已合併。PS-250E2（#199，v1.36.0，房間風格＋明亮北歐）已合併。PS-250E3（#200，v1.37.0，其他三套房間風格）已合併。PS-250F1＋F2（#201，v1.38.0，五個房間的 6 件裝飾與 Edit Mode 開關）已合併。PS-250G（#202，v1.38.1，選擇介面的房間縮圖與離線退回）已合併；PS-250 與被它取代的 PS-248 一併結案。PS-249 提案（#203，只寫文件）已合併，使用者 2026-10-23 決定 §6，實作為 PS-249A。PS-251A（#204，v1.38.2，PS-248 §9.8 的順帶整理）已合併。PS-249A（#205，v1.38.3）已合併。使用者 2026-10-23 決定 AI-202 §9（全部採用建議）、PS-251 §9.3（做，先寫提案）、核准 INFRA-105（先寫變更說明，合併前給使用者看）。AI-202B1（#206，v1.39.0，關係階段的推導與顯示）已合併。AI-202B2（#207，v1.40.0，里程碑的 reveal）已合併。PS-251B 實作提案（#208，窗外依時段變化，只寫文件）已合併，使用者決定 §8（S1、W2、T1）並確認預覽的配色。INFRA-105（#209，v1.40.1）使用者看過後合併。PS-251B（#210，v1.41.0，晨間與傍晚的窗外疊層、時段邊界準時重新 render）已合併。INFRA-107（#211，v1.41.1，每次開啟頁面都用快取中同一版的 HTML 與程式）已合併。BUG-109A（2026-10-31，專案擁有者於 production 套用 013，紀錄 #215）已完成。PRO-014Q Q6（#216，v1.41.2，移除開發者面板的模擬，改用 production 的 5 個測試帳號）已完成。PRO-014R＋PRO-014N 合併提案（#217）經使用者核准方案 A，repo 部分由 #218（v1.41.3）實作：migration 014 與測試；014 已於 2026-11-01 由擁有者套用到 production（PRO-014RA，紀錄 #219）。PRO-014P 提案（#220）經使用者核准 §10（全部照建議），PRO-014P＋BUG-115 由 #221（v1.41.5）實作。PRO-014H 的核准名單（擁有者主帳號、終身）已提供寫入與對帳 SQL，等擁有者執行。
 
 ## 1. 接手前先讀
 
@@ -12,6 +12,7 @@
 2. `AGENTS.md`：§3 高風險區、§11 範圍控制、§14 每個 PR 跑一次 `npm run bump`（同一個 commit）、§15 任務生命週期（Backlog → Next → In Progress → Done）。本 repo 的慣例是先單獨提交 In Progress，再在完成的 commit 移到 Done。
 3. `tasks.md`：Next／In Progress／Backlog。
 4. 本檔 §3 的進行中 PR。
+5. **測試帳號**：要測試不同等級或 Pro 狀態時，用 production 的 5 個測試帳號（`+orbit-free`／`trial`／`paid`／`lifetime`／`expired`），角色、怎麼找到它們、重設用的 SQL 都在 [`pro-test-accounts.md`](pro-test-accounts.md)。完整 email 與密碼不寫進 repo（repo 是公開的）；agent 沒有密碼與 Supabase 權限，需要時請擁有者執行。
 
 ## 2. 與使用者約定的工作規則
 
@@ -45,7 +46,7 @@
    - 刻意不處理、記錄在變更說明 §4 S0「review 後的補充」的已知限制：A1 的毫秒級空窗、undo journal 的模擬 XP、在別的帳號模擬後才建立的遊客（Q6 前要決定）。
    - 測試：`tests/unit/pro014qDevReset.test.js`（含「只刪備份會外流」的對照組與遊客情境）、`appBootSequence.test.js` 的 A1 測試；另以 Playwright 開兩個分頁實測 A1＋B1。
    - CI：e2e 在 64b8633 兩次失敗（`flows.test.js:189` 逾時），程式碼與該測試無關；同一天 #180 也在只改版本號的 commit 上失敗一次（`flows.test.js:175`），重跑即通過。判斷為 CI 上 Focus 提前結束流程的間歇性逾時，見下方「其他」。#180 合併後 merge main、改為 v1.31.2 再跑 CI。
-4. **PRO-014Q Q6**（被測試帳號擋住）：移除開發者面板的等級與 Pro 模擬、舊 backup 的一次性清理（沿用 S0 的兩個清理函式與 B1 的遊客判斷；在別的帳號模擬後才建立的遊客，處理方式要先問使用者）、測試帳號說明文件。**preview 專案的測試帳號要由專案擁有者建立**（agent 沒有 Supabase 權限）；實作前先向使用者確認帳號已建立。Q6 上線時更新 `tasks.md` 中「PRO-014H 的實機驗證需要 PRO-014M」的說明。
+4. **PRO-014Q Q6：完成**（#216，v1.41.2）。preview 專案並不存在，使用者同意在 production 建立 5 個測試帳號（免費、試用中、付費、終身、付費已過期），2026-10-31 建立並以 SQL 設定完成；帳號角色、可重複執行的 SQL 與注意事項見 [`pro-test-accounts.md`](pro-test-accounts.md)（不含 email 與密碼）。開發者面板的兩種模擬已移除，只剩唯讀狀態與殘留時的「清除殘留」。使用者決定：在別的帳號模擬後才建立的遊客，清除殘留照舊刪除本機 user，`continueAsGuest` 在有任務、沒有 user 時進入設定頁。
 
 5. **HW-113：完成**（#180，v1.31.1）。今日計畫改用 `effectiveToday(newDayHour)`；新增 `storage.currentDailyPlan()`，app 開著跨過 `newDayHour`、day watcher 尚未重設時，新增、移除與拖曳排序從空的計畫開始。AI-203B 的「00:00 到 `newDayHour` 不提醒」未修改（已核准的驗收條件）。另外發現：Tour 的教學任務只從記憶體的計畫移除，儲存中仍留著 `tour-task`（未建立任務）。
 
@@ -143,7 +144,7 @@
     - 本機開發：service worker 也會回傳快取，改了 HTML／JS 要 Shift＋重新整理或 DevTools 的「Update on reload」（README 本機開發）。
 36. **TEST-003：完成**（2026-10-28，只改測試）：使用者要求檢視 #207–#211。補上 service worker 的邊界情況、房間風格的窗外、版本一致性的 unit test，重寫 `tests/e2e/README.md`（e2e 的執行方式與注意事項都在這裡）。檢查結果與補上的項目見 `tasks.md`。
 37. **INFRA-108：完成**（2026-10-29，使用者核准）：CI 的 `build-check` 執行 `scripts/check-version-bump.mjs`，改了 `pwa/` 卻沒有 bump（或版本沒有比 main 新）的 PR 會失敗。兩個 PR 從同一個版本 bump 時，後合併的要再 bump 一次。AGENTS.md §14 已更新。
-38. **AUDIT-001：完成**（2026-10-29，v1.41.2）：整體性的完整檢查。已修：兩處 XSS（昨日報告、稱號主題按鈕）、PDF 函式庫的 SRI 與失敗後重試、本機 `server.cjs` 的路徑檢查、不需 major 的 devDependencies advisory、README／ROADMAP／AGENTS §17 與 V2 設計文件。需核准的記為 Backlog：INFRA-110（`leaderboard_view` 的權限，需擁有者在 Supabase 確認 `anon` 的 grant）、INFRA-111（圖片下載不用 HTTP cache 的舊檔）、INFRA-112（CI `permissions`、Node 22＋vitest 5）、INFRA-113（部署內容、CSP）、REPO-001（`output/`、舊分支）。
+38. **AUDIT-001：完成**（2026-10-29，v1.41.6）：整體性的完整檢查。已修：兩處 XSS（昨日報告、稱號主題按鈕）、PDF 函式庫的 SRI 與失敗後重試、本機 `server.cjs` 的路徑檢查、不需 major 的 devDependencies advisory、README／ROADMAP／AGENTS §17 與 V2 設計文件。需核准的記為 Backlog：INFRA-110（`leaderboard_view` 的權限，需擁有者在 Supabase 確認 `anon` 的 grant）、INFRA-111（圖片下載不用 HTTP cache 的舊檔）、INFRA-112（CI `permissions`、Node 22＋vitest 5）、INFRA-113（部署內容、CSP）、REPO-001（`output/`、舊分支）。
 39. **下一步**：Backlog 其餘項目需要核准或屬高風險（HW-112 的 Storage migration、INFRA-101／PS-211D 的部署行為、PRO-014* 的 entitlement）。使用者原則：以「任務確實完成」為準，合併是後話；做不到的先寫進 `tasks.md`。
 
 其他：
@@ -166,7 +167,7 @@
 | #158 | v1.25.3 | PRO-014M 開發者面板支援 `server` source |
 | #159 | v1.25.4 | BUG-110 登出後重設登入按鈕 |
 | #160 | v1.25.5 | PRO-014O cached-user 啟動也 refresh entitlement |
-| #161 | — | BUG-109 signup trigger 名稱截斷 migration（只寫入 repo，**未套用 production**） |
+| #161 | — | BUG-109 signup trigger 名稱截斷 migration（只寫入 repo；2026-10-31 由 BUG-109A 套用 production） |
 | #162 | v1.26.0 | HW-110 離線待同步提示與連線恢復同步 |
 | #163 | v1.27.0 | HW-106 Focus 環境音偵測 |
 | #164 | v1.28.0 | HW-107 位置情境 |
@@ -216,6 +217,13 @@
 | #209 | v1.40.1 | INFRA-105：service worker 安裝時重新驗證 SHELL 的程式碼與樣式（使用者看過後合併） |
 | #210 | v1.41.0 | PS-251B：晨間與傍晚的窗外疊層（Q 版＋像素，五個房間共用），時段邊界準時重新 render |
 | #211 | v1.41.1 | INFRA-107：每次開啟頁面（根目錄與 `index.html`）都用 service worker 快取中同一版的 HTML，JS／CSS 也不在背景更新 |
+| #215 | — | BUG-109A：記錄專案擁有者 2026-10-31 在 production 套用 013（套用前比對、transaction 乾跑、套用後驗證） |
+| #216 | v1.41.2 | PRO-014Q Q6：移除開發者面板的等級與 Pro 模擬，改用 production 的 5 個測試帳號（`docs/pro-test-accounts.md`）；遊客缺 user 時進入設定頁 |
+| #217 | — | PRO-014R＋PRO-014N 合併提案（`my_pro_status()` 不再用試用日期限制付費帳號），使用者核准方案 A |
+| #218 | v1.41.3 | PRO-014R：migration 014、`pro014r.test.sql`（ASSERT）、client 判讀與 SQL 契約測試；PRO-014N 以 A 結案；production 套用另立 PRO-014RA |
+| #219 | v1.41.4 | PRO-014RA：記錄 014 已套用到 production 與驗證結果；測試帳號的找法寫進文件；#218 review 的 P3 修正 |
+| #220 | — | PRO-014P 提案：`server` source 下換日不把「Pro 狀態不明」當成「不是 Pro」（建議方案 D）；發現網路失敗會刪除 snapshot 與 BUG-115 |
+| #221 | v1.41.5 | PRO-014P＋BUG-115：換日的 Pro 效果在狀態不明時延後補做（`proRollover.js`）、暫時性失敗不刪 snapshot、保護卡 offer 屬於寫入它的帳號 |
 
 教訓：#155–#164 在 Codex review 出現前就合併，造成 #165、#166、#167 的回頭修正。這就是 §2 合併條件的由來。獨立 review 在 #167、#168、#169 都找到真正的問題（例如椅子畫在螢幕後面、壁燈在相框下投出暗影），所以複查不能省。
 
@@ -223,16 +231,17 @@
 
 ### 需要使用者決定或執行
 
-- **BUG-109A**：在 production 套用 `pwa/db/013_signup_profile_name.sql`，需專案擁有者執行，步驟見 `docs/bug-109-signup-name-truncation.md`。
-- **PRO-014Q Q6 的測試帳號**：在 preview Supabase 專案建立（見 §3 第 4 點）。
-- **PRO-014P**：entitlement 流程，實作前需提案與核准，擋 `PRO-014H` cutover。與草稿 PR #154（PRO-014L）改同一段 SUB-16 路徑，寫提案前先問使用者先後順序。
+- **PRO-014P＋BUG-115：完成**（#221，v1.41.5）。換日的 Pro 效果在狀態不明時記成待補做（`pwa/js/proRollover.js`），refresh 後補做；暫時性失敗不刪 snapshot；保護卡 offer 屬於寫入它的帳號。下一個 PRO-014 項目是 `PRO-014L`（草稿 #154 要 rebase：SUB-16 那一段整段刪除，`app.js` 的 import 會衝突）。
+  - 查證過的事，之後不要再假設：`pwa/vendor/supabase.js` 的 `rpc()` 遇到網路失敗或逾時**不會 throw**，回傳 `{ error, status: 0 }`；cached-user 啟動時換日先於 refresh，漏一天時 snapshot 幾乎一定超過 24 小時。
+  - 新的 named export 一律放在新模組（INFRA-105）；`proRollover.js` 已在 SHELL。
+- **PRO-014H 的核准名單**：使用者決定只有擁有者主帳號（終身）。寫入 SQL（有 email 筆數、UUID、既有資料列三道檢查）與對帳（`set local request.jwt.claims` 後呼叫 `my_pro_status()`，預期 `true／NULL／NULL`）已在對話中提供；擁有者執行後在 `tasks.md` 記錄核准 1、成功 1、拒絕／重複 0、執行人，不寫 email 與 UUID。
 - **PS-243**：真機、installed PWA、雙帳號、螢幕閱讀器等 human gate。
 - 尚未回答：高風險項目（如 entitlement）連變更說明都要不要先問再排程（PRO-014Q 變更說明 §7）。在得到答案前，維持「寫變更說明可以，實作前一定要核准」。
 
 ### 可直接做（已核准）
 
 - PS-211B（#187）、PS-211A（#188）已完成。
-- PRO-014Q Q6（需先有測試帳號）。PS-246、AI-203B、HW-113、PRO-014Q S0 已完成。
+- PS-246、AI-203B、HW-113、PRO-014Q S0＋Q6 已完成。
 
 ## 6. PS-245 精細化：實作計畫
 

@@ -4,17 +4,11 @@ import { applyTheme, applyUiSkin, applyBgImage, removeBgImage, applyRandomThemeF
 import { APP_VERSION } from '../version.js';
 import { uid, today, escHtml }         from '../utils.js';
 import { exportSessionsCSV, showReportPicker } from '../export.js';
-import { xpRequired, getLevelInfo }            from '../leveling.js';
 import { previewBaseXP }                       from '../engine.js';
 import { goToProCard }                         from '../ui/proNav.js';
 import { proofStats, clearAllProofs }          from '../platform/proofStore.js';
 import { FLAG_PRO_HIGHLIGHT, FLAG_DEV_BACKUP, FLAG_DEV_PANEL } from '../flags.js';
-import {
-  buildProEntitlementSnapshot,
-  getProEntitlementSource,
-  isServerProEntitlementEnabled,
-  writeProEntitlementSnapshot,
-} from '../platform/proEntitlement.js';
+import { getProEntitlementSource } from '../platform/proEntitlement.js';
 import { refreshCanonicalStateAndReconcilePersonalSpaceV2 } from '../personalSpace/v2/controller.js';
 import { removeAllPersonalSpaceV2States } from '../personalSpace/v2/store.js';
 import {
@@ -315,80 +309,19 @@ function _devSetAssetGallery(enabled) {
   }
 }
 
-function _devXpForLevel(level) {
-  let xp = 0;
-  for (let l = 1; l < level; l++) xp += xpRequired(l);
-  return xp;
-}
-
-/** Snapshot the current user into the dev backup slot (once) before overriding. */
-function _devBackupOnce() {
-  if (!localStorage.getItem(FLAG_DEV_BACKUP)) {
-    localStorage.setItem(FLAG_DEV_BACKUP, JSON.stringify(storage.getUser() ?? {}));
-  }
-}
-
-function _devApplyLevel(level) {
-  const u = storage.getUser() ?? {};
-  _devBackupOnce();
-  u.totalXP = _devXpForLevel(Math.max(1, Math.min(100, level)));
-  storage.saveUserLocal(u);
-  location.reload();
-}
-
-/**
- * PRO-014M: the dev override for the `server` source. isProUser() reads only
- * the owner-scoped projection there, so the profile fields `_devApplyPro()`
- * writes for `legacy` would have no effect. Shapes mirror the legacy override:
- * paid is lifetime, trial started yesterday with 14 days left.
- */
-function _devProSnapshot(ownerId, status, nowMs = Date.now()) {
-  return buildProEntitlementSnapshot(ownerId, {
-    isActive:    status === 'paid' || status === 'trial',
-    expiresAt:   null,
-    trialEndsAt: status === 'trial' ? new Date(nowMs + 14 * 24 * 60 * 60 * 1000).toISOString() : null,
-  }, nowMs);
-}
-
-function _devApplyPro(status) {
-  const u = storage.getUser() ?? {};
-  if (isServerProEntitlementEnabled()) {
-    const snapshot = _devProSnapshot(u.id, status);
-    if (!snapshot) { window.showToast('需要登入帳號才能模擬 server 授權'); return; }
-    // The backup is what stops refreshProEntitlement() from replacing this
-    // projection on the next launch, so it must exist before the write.
-    _devBackupOnce();
-    if (!writeProEntitlementSnapshot(snapshot)) { window.showToast('無法寫入本機 Pro projection'); return; }
-    location.reload();
-    return;
-  }
-  _devBackupOnce();
-  if (status === 'paid') {
-    u.isPro = true; u.proExpiresAt = null; u.trialStartedAt = null;
-  } else if (status === 'trial') {
-    u.isPro = true;
-    u.trialStartedAt = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(); // started yesterday
-    u.proExpiresAt   = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
-  } else {
-    u.isPro = false; u.proExpiresAt = null; u.trialStartedAt = null;
-  }
-  storage.saveUserLocal(u);
-  location.reload();
-}
-
 export const DEV_RESET_CONFIRM = [
-  '還原會清除這台裝置上的模擬資料，並從雲端重新載入：',
+  '清除這台裝置上殘留的模擬資料，並從雲端重新載入：',
   '・模擬期間獲得的 XP 與連勝變動會被捨棄，已記錄的 Session 會保留。',
   '・個人空間會依雲端資料重新建立，開場 Gold 可能因此偏低；尚未播放的世界變化會遺失。',
   '・清除後若離線，需要等連線後重新登入。',
-  '確定還原？',
+  '確定清除？',
 ].join('\n');
 
 export const DEV_RESET_CONFIRM_GUEST = [
-  '遊客資料只存在這台裝置，還原會把模擬前的備份寫回：',
+  '遊客資料只存在這台裝置，清除殘留時會把模擬前的備份寫回：',
   '・模擬期間獲得的 XP 與連勝變動會被捨棄，已記錄的 Session 會保留。',
   '・個人空間會依本機資料重新建立，開場 Gold 可能因此偏低；尚未播放的世界變化會遺失。',
-  '確定還原？',
+  '確定清除？',
 ].join('\n');
 
 /**
@@ -397,6 +330,10 @@ export const DEV_RESET_CONFIRM_GUEST = [
  * Discard everything the simulation could have touched and reload instead.
  * A guest has nothing on the server to reload, so its own backup is put back
  * as the local user (B1); every other case deletes the local user.
+ *
+ * Q6: the simulations are gone, so this only clears what an older version
+ * left behind. A backup that still exists keeps failing closed (no profile
+ * upload, no entitlement refresh) until this runs.
  */
 let _devResetInFlight = false;
 
@@ -421,48 +358,29 @@ async function _devReset() {
 function _devPanelHtml() {
   if (!_isDevMode()) return '';
 
-  const hasBackup   = !!localStorage.getItem(FLAG_DEV_BACKUP);
-  const { level }   = getLevelInfo(state.user?.totalXP || 0);
-  const isPaid      = storage.isPaidProUser();
-  const isTrial     = storage.isTrialUser();
-  const proStatus   = isPaid ? 'paid' : isTrial ? 'trial' : 'free';
-  const proLabel    = isPaid ? '付費 Pro' : isTrial ? '試用' : '免費';
+  const hasBackup = !!localStorage.getItem(FLAG_DEV_BACKUP);
+  const proLabel  = storage.isPaidProUser() ? '付費 Pro' : storage.isTrialUser() ? '試用' : '免費';
 
-  const activeCls = 'btn btn-primary btn-sm';
-  const inactCls  = 'btn btn-outline btn-sm';
-
+  // PRO-014Q Q6: level and Pro simulations wrote fake values into the real
+  // user and leaked through every path that saves it. Test with the fixed
+  // test accounts instead (docs/pro-test-accounts.md); this panel only reads.
   return `
     <div class="card" style="border:1.5px solid rgba(245,158,11,0.35);background:rgba(245,158,11,0.04)">
       <div class="card-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span style="color:#f59e0b">🛠 開發者工具</span>
         <span style="font-size:11px;color:var(--text-muted);font-weight:400">localhost · 不影響雲端紀錄</span>
-        ${hasBackup ? '<span style="font-size:11px;color:#ef4444;font-weight:600">● 覆蓋中</span>' : ''}
+        ${hasBackup ? '<span style="font-size:11px;color:#ef4444;font-weight:600">● 有殘留的模擬資料</span>' : ''}
       </div>
 
       ${hasBackup ? `
       <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:8px 12px;font-size:12px;color:#ef4444;margin-bottom:14px">
-        ⚠️ 開發者覆蓋模式已啟用，Supabase profile 同步已暫停，避免假資料上傳
+        ⚠️ 這台裝置留有舊版開發者面板的模擬資料，Supabase profile 同步與 Pro 授權更新已暫停。請按下方按鈕清除。
       </div>` : ''}
 
       <div style="display:flex;flex-direction:column;gap:16px">
 
-        <div>
-          <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">等級模擬（目前 Lv.${level}）</div>
-          <div style="display:flex;gap:8px;align-items:center">
-            <input type="number" id="dev-level-input" class="form-input"
-                   min="1" max="100" placeholder="1-100"
-                   style="width:80px;text-align:center;padding:6px 8px">
-            <button class="btn btn-outline btn-sm" id="dev-level-apply">套用並重啟</button>
-          </div>
-        </div>
-
-        <div>
-          <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">會員狀態（目前：${proLabel} · ${getProEntitlementSource()} source）</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="${proStatus === 'free'  ? activeCls : inactCls}" id="dev-pro-free">免費</button>
-            <button class="${proStatus === 'trial' ? activeCls : inactCls}" id="dev-pro-trial">試用（15 天）</button>
-            <button class="${proStatus === 'paid'  ? activeCls : inactCls}" id="dev-pro-paid">付費 Pro</button>
-          </div>
+        <div style="font-size:12px;color:var(--text-muted)">
+          會員狀態：${proLabel} · ${getProEntitlementSource()} source。要測試不同等級或 Pro 狀態，請登入測試帳號（docs/pro-test-accounts.md）。
         </div>
 
         <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-muted)">
@@ -471,7 +389,7 @@ function _devPanelHtml() {
         </label>
 
         ${hasBackup ? `
-        <button class="btn-text-danger" id="dev-reset" style="text-align:left">↩ 還原原始資料並重啟</button>` : ''}
+        <button class="btn-text-danger" id="dev-reset" style="text-align:left">🧹 清除殘留的模擬資料並重新載入</button>` : ''}
 
       </div>
     </div>`;
@@ -1039,14 +957,6 @@ function _setupListeners(container) {
   };
 
   // Dev tools (localhost only)
-  container.querySelector('#dev-level-apply')?.addEventListener('click', () => {
-    const v = parseInt(container.querySelector('#dev-level-input')?.value, 10);
-    if (!v || v < 1 || v > 100) { window.showToast('請輸入 1–100 的等級'); return; }
-    _devApplyLevel(v);
-  });
-  container.querySelector('#dev-pro-free')?.addEventListener('click',  () => _devApplyPro('free'));
-  container.querySelector('#dev-pro-trial')?.addEventListener('click', () => _devApplyPro('trial'));
-  container.querySelector('#dev-pro-paid')?.addEventListener('click',  () => _devApplyPro('paid'));
   container.querySelector('#dev-reset')?.addEventListener('click', _devReset);
   container.querySelector('#dev-asset-gallery')?.addEventListener('change', event => {
     _devSetAssetGallery(event.target.checked);

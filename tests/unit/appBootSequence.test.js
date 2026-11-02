@@ -131,6 +131,9 @@ vi.mock('../../pwa/js/platform/network.js', () => ({
 }));
 
 vi.mock('../../pwa/js/authFlow.js', () => authFlow);
+// PRO-014P: the deferred Pro effects of a rollover are applied after each refresh.
+const proRollover = vi.hoisted(() => ({ resolvePendingProRollover: vi.fn(() => false) }));
+vi.mock('../../pwa/js/proRollover.js', () => proRollover);
 vi.mock('../../pwa/js/ui/header.js', () => ({ updateHeader: vi.fn() }));
 vi.mock('../../pwa/js/ui/feedback.js', () => feedback);
 vi.mock('../../pwa/js/sessionFlow.js', () => ({ setBadgeUpdater: vi.fn() }));
@@ -191,6 +194,7 @@ beforeEach(() => {
   db.refreshProEntitlement.mockResolvedValue(false);
   db.startTrial.mockClear();
   db.startTrial.mockResolvedValue({ ok: true, ownerChanged: false, trialStartedAt: null });
+  proRollover.resolvePendingProRollover.mockClear();
   Object.values(authFlow).forEach(fn => fn.mockClear());
   Object.values(feedback).forEach(fn => fn.mockClear());
   storage.saveUser.mockClear();
@@ -498,6 +502,76 @@ describe('PRO-014O：快取分支的 entitlement refresh', () => {
   });
 });
 
+// ─── PRO-014P：refresh 之後補做換日延後的 Pro 效果 ────────────────────────────
+//
+// server source 下，cached-user 的換日常在過期的 snapshot 上執行，補卡與 offer
+// 被記成待補做。每個 refresh 之後都要補做，否則要等到下一次換日。
+
+describe('PRO-014P：refresh 之後補做', () => {
+  const resolve = () => proRollover.resolvePendingProRollover;
+
+  it('快取分支：背景 refresh 之後補做', async () => {
+    await bootWithPendingSession('owner-a');
+    auth.sessionResolve(sessionFor('owner-a'));
+    await flush();
+
+    expect(resolve()).toHaveBeenCalledTimes(1);
+    expect(db.refreshProEntitlement.mock.invocationCallOrder[0])
+      .toBeLessThan(resolve().mock.invocationCallOrder[0]);
+  });
+
+  it('SIGNED_IN 先到（BUG-106）：loadAndStart() 在 refresh 之後明確補做，第二次開機不換日', async () => {
+    await bootWithPendingSession('owner-a');
+    expect(dayCycle.processYesterdayStreak).toHaveBeenCalledTimes(1);
+
+    await auth.callback('SIGNED_IN', sessionFor('owner-a'));
+    await flush();
+    auth.sessionResolve(sessionFor('owner-a'));
+    await flush();
+
+    expect(dayCycle.processYesterdayStreak).toHaveBeenCalledTimes(1);   // 換日沒有再跑
+    expect(db.refreshProEntitlement).toHaveBeenCalledTimes(1);          // 背景同步被略過
+    expect(resolve()).toHaveBeenCalledTimes(1);
+    expect(db.refreshProEntitlement.mock.invocationCallOrder[0])
+      .toBeLessThan(resolve().mock.invocationCallOrder[0]);
+  });
+
+  it('沒有快取（loadAndStart）：補做在 startTrial() 之後、換日之前', async () => {
+    cache.user = { ...makeUser('owner-a'), trialStartedAt: null };
+    cache.tasks = [{ id: 't1', name: 'Task' }];
+    storage.getUser.mockImplementation(() => null);
+    auth.getSession.mockImplementation(() => Promise.resolve(sessionFor('owner-a')));
+    db.loadFromRemote.mockImplementationOnce(async () => {
+      storage.getUser.mockImplementation(() => cache.user);
+    });
+    await import('../../pwa/js/app.js');
+    await flush();
+
+    expect(db.startTrial).toHaveBeenCalledWith('owner-a');
+    expect(resolve()).toHaveBeenCalledTimes(1);
+    const order = resolve().mock.invocationCallOrder[0];
+    expect(db.refreshProEntitlement.mock.invocationCallOrder[0]).toBeLessThan(order);
+    expect(db.startTrial.mock.invocationCallOrder[0]).toBeLessThan(order);
+    expect(order).toBeLessThan(dayCycle.processYesterdayStreak.mock.invocationCallOrder[0]);
+  });
+
+  it('連線恢復同步：refresh 之後補做', async () => {
+    network.online = false;
+    db.loadFromRemote.mockRejectedValueOnce(new Error('Failed to fetch'));
+    await bootWithPendingSession('owner-a');
+    auth.sessionResolve(sessionFor('owner-a'));
+    await flush();
+    expect(resolve()).not.toHaveBeenCalled();
+
+    await network.emit(true);
+    await flush();
+
+    expect(resolve()).toHaveBeenCalledTimes(1);
+    expect(db.refreshProEntitlement.mock.invocationCallOrder.at(-1))
+      .toBeLessThan(resolve().mock.invocationCallOrder[0]);
+  });
+});
+
 // ─── HW-110：離線時顯示待同步數量，連線恢復後立即推送 ─────────────────────────
 
 describe('HW-110：離線佇列提示與連線恢復同步', () => {
@@ -722,5 +796,100 @@ describe('PRO-014Q S0（A1）：另一個視窗按「還原」', () => {
     fire({ storageArea: sessionStorage, key: null });
     fire({ storageArea: sessionStorage, key: 'orbit_dev_backup', oldValue: '{}', newValue: null });
     expect(reload).not.toHaveBeenCalled();
+  });
+});
+
+describe('PRO-014Q Q6：遊客有任務但沒有 user', () => {
+  it('進入設定頁重建 profile，而不是開機到無法記錄 Session 的狀態', async () => {
+    // 「清除殘留」刪掉了遊客的本機 user（backup 屬於另一個帳號，無法分辨），任務還在。
+    cache.user = null;
+    cache.tasks = [{ id: 'task-1', name: '閱讀' }];
+    auth.getSession.mockResolvedValue(null);
+    await import('../../pwa/js/app.js');
+    await flush();
+    expect(authFlow.showLoginScreen).toHaveBeenCalled();
+
+    window.continueAsGuest();
+    await flush();
+
+    expect(document.getElementById('setup-screen').classList.contains('hidden')).toBe(false);
+    expect(document.getElementById('main-app').classList.contains('hidden')).toBe(true);
+    expect(dayCycle.showDailyReport).not.toHaveBeenCalled();
+  });
+
+  it('帳號載入失敗後改用遊客，設定頁不會沿用該帳號的 id（不得蓋掉雲端 profile）', async () => {
+    // 已登入的帳號按了「清除殘留」：任務還在、本機 user 被刪；重新載入時遠端拉取失敗，
+    // loadAndStart 已記下 session，回到登入畫面。此時選遊客不得建出帶真實 id 的空白 profile。
+    cache.user = null;
+    cache.tasks = [{ id: 'task-1', name: '閱讀' }];
+    auth.getSession.mockImplementation(
+      () => new Promise(resolve => { auth.sessionResolve = resolve; }),
+    );
+    db.loadFromRemote.mockRejectedValueOnce(new Error('offline'));
+    await import('../../pwa/js/app.js');
+    await flush();
+    await auth.callback('SIGNED_IN', sessionFor('owner-a'));
+    await flush();
+    expect(authFlow.showLoginScreen).toHaveBeenCalled();
+
+    window.continueAsGuest();
+    await flush();
+    document.getElementById('setup-name').value = '遊客';
+    document.getElementById('setup-form').dispatchEvent(
+      new Event('submit', { bubbles: true, cancelable: true }),
+    );
+
+    expect(storage.saveUser).toHaveBeenCalled();
+    const saved = storage.saveUser.mock.lastCall[0];
+    expect(saved.name).toBe('遊客');
+    expect(saved.id).toBeTruthy();
+    expect(saved.id).not.toBe('owner-a');
+  });
+
+  it('已登入的新帳號沒有雲端 profile 時，設定頁使用 session 的 id', async () => {
+    cache.user = null;
+    cache.tasks = [];
+    auth.getSession.mockImplementation(
+      () => new Promise(resolve => { auth.sessionResolve = resolve; }),
+    );
+    db.loadFromRemote.mockImplementationOnce(async () => { cache.user = null; cache.tasks = []; });
+    await import('../../pwa/js/app.js');
+    await flush();
+    await auth.callback('SIGNED_IN', sessionFor('owner-new'));
+    await flush();
+
+    expect(document.getElementById('setup-screen').classList.contains('hidden')).toBe(false);
+    document.getElementById('setup-name').value = '新帳號';
+    document.getElementById('setup-form').dispatchEvent(
+      new Event('submit', { bubbles: true, cancelable: true }),
+    );
+
+    expect(storage.saveUser.mock.lastCall[0].id).toBe('owner-new');
+  });
+
+  it('設定頁開著時另一個分頁換了帳號，舊帳號的設定不會用新帳號的資料寫回舊 id', async () => {
+    cache.user = null;
+    cache.tasks = [];
+    auth.getSession.mockImplementation(
+      () => new Promise(resolve => { auth.sessionResolve = resolve; }),
+    );
+    db.loadFromRemote
+      .mockImplementationOnce(async () => { cache.user = makeUser('owner-a'); cache.tasks = []; })
+      .mockImplementationOnce(async () => { cache.user = makeUser('owner-b'); cache.tasks = []; });
+    await import('../../pwa/js/app.js');
+    await flush();
+    await auth.callback('SIGNED_IN', sessionFor('owner-a'));
+    await flush();
+    await auth.callback('SIGNED_IN', sessionFor('owner-b'));
+    await flush();
+
+    document.getElementById('setup-name').value = 'B';
+    document.getElementById('setup-form').dispatchEvent(
+      new Event('submit', { bubbles: true, cancelable: true }),
+    );
+
+    const savedIds = storage.saveUser.mock.calls.map(([user]) => user.id);
+    expect(savedIds).toContain('owner-b');
+    expect(savedIds).not.toContain('owner-a');
   });
 });
