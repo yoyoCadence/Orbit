@@ -324,6 +324,8 @@ node pwa/server.cjs
 
 啟動後開啟 `http://localhost:3000`
 
+測試與 lint 需要 Node 22.12 以上（`package.json` 的 `engines`，與 CI 相同）：`npm ci`、`npm test`（Vitest）、`npm run lint`、`npm run test:e2e`（Playwright，見 `tests/e2e/README.md`）。需要 DOM 的 unit test 在檔案第一行寫 `// @vitest-environment jsdom`。
+
 service worker 在本機也會註冊：頁面、程式與樣式都從它的快取回傳，只有 `pwa/sw.js` 改變（`npm run bump`）後才會換成新的（INFRA-107）。開發時改了 HTML、JS 或 CSS，用 Shift＋重新整理略過 service worker，或在 DevTools → Application → Service workers 勾選「Update on reload」或「Bypass for network」。
 
 環境變數（`.env`）：

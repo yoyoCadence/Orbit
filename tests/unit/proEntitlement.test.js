@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * proEntitlement.test.js — PRO-014B 的 fail-closed 合約。
  *

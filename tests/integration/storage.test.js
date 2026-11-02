@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * storage.test.js
  *

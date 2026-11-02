@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * home.test.js
  *

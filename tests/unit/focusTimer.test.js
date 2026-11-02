@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * focusTimer.test.js — 焦點計時器狀態機（handoff Phase 18b）
  * 環境：jsdom + vi fake timers（同步推進 setInterval 與 Date.now）

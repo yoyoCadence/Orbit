@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * appBootSequence.test.js — 啟動時序：`SIGNED_IN` 早於 `getSession()` resolve（BUG-106）
  * 環境：jsdom

@@ -18,12 +18,15 @@
     "ps243:assets": "node scripts/ps243-asset-baseline.mjs",
     "ps243:perf": "node scripts/ps243-perf-baseline.mjs"
   },
+  "engines": {
+    "node": ">=22.12"
+  },
   "devDependencies": {
     "@playwright/test": "^1.59.1",
-    "@vitest/coverage-v8": "^1.6.0",
+    "@vitest/coverage-v8": "^5.0.5",
     "eslint": "^9.25.0",
     "jsdom": "^29.0.2",
-    "vitest": "^1.6.0"
+    "vitest": "^5.0.5"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.112.4",

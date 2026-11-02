@@ -52,14 +52,18 @@ describe('startAmbientNoiseMonitor', () => {
       configurable: true,
       value: { getUserMedia: vi.fn(() => Promise.resolve(stream)) },
     });
-    window.AudioContext = vi.fn(() => ({
-      createAnalyser: () => ({
-        fftSize: 0,
-        getFloatTimeDomainData: frame => frame.fill(sampleValue),
-      }),
-      createMediaStreamSource: () => ({ connect: vi.fn() }),
-      close: closeContext,
-    }));
+    // A function, not an arrow: the code calls `new AudioContext()`, and since
+    // vitest 4 a mock with an arrow implementation cannot be constructed.
+    window.AudioContext = vi.fn(function AudioContext() {
+      return {
+        createAnalyser: () => ({
+          fftSize: 0,
+          getFloatTimeDomainData: frame => frame.fill(sampleValue),
+        }),
+        createMediaStreamSource: () => ({ connect: vi.fn() }),
+        close: closeContext,
+      };
+    });
   });
 
   afterEach(() => {

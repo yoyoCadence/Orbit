@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * dayCycle.test.js — 跨日啟動 modal 的卡死防護（BUG-105 / BUG-106）
  * 環境：jsdom

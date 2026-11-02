@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * proSettingsProjection.test.js — PRO-014C：設定頁 Pro 區塊在 `server` source
  * 下的真實組合。

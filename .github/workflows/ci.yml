@@ -6,17 +6,22 @@ on:
   # Also allow manual trigger for debugging
   workflow_dispatch:
 
+# INFRA-112: the jobs only read the repository (artifacts use the runner's own
+# token), so the workflow token gets nothing more.
+permissions:
+  contents: read
+
 jobs:
   lint:
     name: lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Install dependencies
@@ -29,12 +34,12 @@ jobs:
     name: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Install dependencies
@@ -47,12 +52,12 @@ jobs:
     name: e2e
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Install dependencies
@@ -69,7 +74,7 @@ jobs:
       # and page state it stopped on.
       - name: Upload Playwright test results
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: playwright-test-results
           path: test-results/
@@ -80,7 +85,7 @@ jobs:
     name: build-check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           # INFRA-108: the base branch's history, to compare the PR against it;
           # trees only (the art makes the full pack ~145 MB), blobs on demand.
@@ -111,9 +116,9 @@ jobs:
 
       - name: Setup Node
         if: github.event_name == 'pull_request'
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '22'
 
       # INFRA-108: since INFRA-107 the service worker never refreshes a
       # version's cached HTML and code, so a change to the deployed pwa/ only

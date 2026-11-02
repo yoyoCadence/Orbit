@@ -221,20 +221,28 @@
 
 ## In Progress
 
-- [ ] **INFRA-112** CI 加固與 Node 版本（AUDIT-001 發現）
-  - `ci.yml` 沒有 `permissions:`，`GITHUB_TOKEN` 用 repo 預設權限；改為 `permissions: contents: read`（`deploy.yml` 已有）。
-  - Node 20 → 22：vitest 1.6 有 critical 的 advisory（vitest、tinypool、vite、esbuild，只在開發與 CI，不會部署），修正版 vitest 5 需要 Node ≥ 22.12。升級 vitest 是 major，`environmentMatchGlobs` 等設定要改。GitHub Actions 也已警告 Node 20 的 action 將停用。
-  - eslint 相關的 moderate advisory（minimatch、`@eslint/*`）一併看是否需要升級 eslint。
-  - 改 CI 設定，需核准。
-  - **2026-11-02 使用者核准**（AUDIT-001 後的 AskUserQuestion，INFRA-110～113 全部核准，各自一個 PR）。
-  - In progress（2026-11-02）：INFRA-111（#223）合併後開始（Backlog → In Progress）。
-
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
 
 ---
 
 ## Done
+
+- [x] **INFRA-112** CI 加固與 Node 版本（AUDIT-001 發現）
+  - `ci.yml` 沒有 `permissions:`，`GITHUB_TOKEN` 用 repo 預設權限；改為 `permissions: contents: read`（`deploy.yml` 已有）。
+  - Node 20 → 22：vitest 1.6 有 critical 的 advisory（vitest、tinypool、vite、esbuild，只在開發與 CI，不會部署），修正版 vitest 5 需要 Node ≥ 22.12。升級 vitest 是 major，`environmentMatchGlobs` 等設定要改。GitHub Actions 也已警告 Node 20 的 action 將停用。
+  - eslint 相關的 moderate advisory（minimatch、`@eslint/*`）一併看是否需要升級 eslint。
+  - 改 CI 設定，需核准。
+  - **2026-11-02 使用者核准**（AUDIT-001 後的 AskUserQuestion，INFRA-110～113 全部核准，各自一個 PR）。
+  - In progress（2026-11-02）：INFRA-111（#223）合併後開始（Backlog → In Progress）。
+  - 完成（2026-11-02；CI、測試與 devDependencies，不 bump）：
+    - `ci.yml`：`permissions: contents: read`（artifact 用 runner 自己的 token）；Node 20 → 22；`actions/checkout@v5`、`actions/setup-node@v5`、`actions/upload-artifact@v6`（都以 Node 24 執行，消除 GitHub Actions 的 Node 20 停用警告；對 GitHub-hosted runner 沒有其他破壞性變更）。`deploy.yml` 的 action 留給 INFRA-113 一起改。
+    - vitest 1.6 → 5.0.5、`@vitest/coverage-v8` 1.6 → 5.0.5：critical 的 advisory（vitest、tinypool、vite、esbuild）全部消失。`package.json` 加上 `engines.node >=22.12`（vitest 5 的需求）。
+      - vitest 3 起移除 `environmentMatchGlobs`：18 個需要 DOM 的測試檔改在第一行寫 `// @vitest-environment jsdom`（另有一個已在檔案中宣告），設定檔不再列。
+      - vitest 4 起，arrow function 實作的 `vi.fn()` 不能以 `new` 呼叫：`ambientNoise.test.js` 的 `AudioContext` mock 改為一般 function。
+      - Unit 1493 全部通過（與升級前相同），coverage 不變；e2e 80 通過；`npm ci` 從新的 lockfile 安裝成功。
+    - eslint 相關的 moderate advisory（minimatch < 11.0.1，經 `@eslint/config-array`、`@eslint/eslintrc`）**沒有修正**：最新的 eslint 10 仍用 minimatch 10，沒有可用的修正版；改用 eslint 10 還會帶來新的規則（`no-useless-assignment`、`preserve-caught-error`）要改 app 程式。只在開發與 CI 執行，glob 都是 repo 自己的設定，不受外部輸入影響。等 eslint 改用 minimatch ≥ 11.0.1 後再升級。
+    - 文件：README 本地開發（Node 22.12、測試指令、jsdom 的寫法）、`docs/test-plan.md` 的 `environmentMatchGlobs` 說明。
 
 - [x] **INFRA-111** service worker 的圖片分支：下載時不用 HTTP cache 的舊檔（AUDIT-001 發現）
   - 問題：圖片走 cache-first，快取沒有時直接 `fetch(e.request)`。按需下載的素材（房間風格、裝飾、角色）若瀏覽器的 HTTP cache 還有上一版的同名檔（GitHub Pages `max-age=600`），會把舊圖存進這一版的快取，直到下一次 bump。JS／CSS 已改為 `cache: 'no-cache'`（INFRA-105／107）。

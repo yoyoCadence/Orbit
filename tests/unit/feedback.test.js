@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * feedback.test.js — ui/feedback.js 提示元件
  * 環境：jsdom

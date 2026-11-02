@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * proTrialRpc.test.js — PRO-014C：trial 改由受控 RPC 授權。
  *

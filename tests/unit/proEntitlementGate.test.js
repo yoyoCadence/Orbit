@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * proEntitlementGate.test.js — PRO-014B 的整合面：`storage.isProUser()` 與
  * `db.refreshProEntitlement()`。

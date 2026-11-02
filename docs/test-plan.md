@@ -133,7 +133,7 @@
 ### 📁 tests/unit/review.test.js
 **新增：** `review.js` 週視圖 + 月視圖渲染
 **目標測試數：** ~25  
-**環境：** jsdom（需加到 vitest.config.js environmentMatchGlobs）
+**環境：** jsdom（檔案第一行 `// @vitest-environment jsdom`；INFRA-112 起 vitest 5 不再支援 `environmentMatchGlobs`）
 
 #### 週視圖
 | # | 情境 | 預期 |
@@ -260,10 +260,10 @@ Phase 3（Bug fix）
 
 ---
 
-## 五、vitest.config.js 需要新增的 environmentMatchGlobs
+## 五、jsdom 環境
 
-```js
-['tests/unit/leaderboard.test.js', 'jsdom'],
-['tests/unit/review.test.js',      'jsdom'],
-['tests/unit/goals.test.js',       'jsdom'],
-```
+> INFRA-112（vitest 5）起不再用 `vitest.config.js` 的 `environmentMatchGlobs`：需要 DOM 的測試檔在第一行寫 `// @vitest-environment jsdom`（以下三個檔案都已加上）。
+
+- `tests/unit/leaderboard.test.js`
+- `tests/unit/review.test.js`
+- `tests/unit/goals.test.js`
