@@ -220,18 +220,21 @@
 
 ## In Progress
 
-- [ ] **INFRA-111** service worker 的圖片分支：下載時不用 HTTP cache 的舊檔（AUDIT-001 發現）
-  - 問題：圖片走 cache-first，快取沒有時直接 `fetch(e.request)`。按需下載的素材（房間風格、裝飾、角色）若瀏覽器的 HTTP cache 還有上一版的同名檔（GitHub Pages `max-age=600`），會把舊圖存進這一版的快取，直到下一次 bump。JS／CSS 已改為 `cache: 'no-cache'`（INFRA-105／107）。
-  - 方向：圖片快取沒有時也以 `cache: 'no-cache'` 取得（代價：每張圖第一次多一次 revalidation，304 時很小）。屬 service worker 的快取行為（部署行為），實作前附變更說明。
-  - **2026-11-02 使用者核准**（AUDIT-001 後的 AskUserQuestion，INFRA-110～113 全部核准，各自一個 PR）。
-  - In progress（2026-11-02）：AUDIT-001（#214）合併後開始（Backlog → In Progress）。
-
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
 
 ---
 
 ## Done
+
+- [x] **INFRA-111** service worker 的圖片分支：下載時不用 HTTP cache 的舊檔（AUDIT-001 發現）
+  - 問題：圖片走 cache-first，快取沒有時直接 `fetch(e.request)`。按需下載的素材（房間風格、裝飾、角色）若瀏覽器的 HTTP cache 還有上一版的同名檔（GitHub Pages `max-age=600`），會把舊圖存進這一版的快取，直到下一次 bump。JS／CSS 已改為 `cache: 'no-cache'`（INFRA-105／107）。
+  - 方向：圖片快取沒有時也以 `cache: 'no-cache'` 取得（代價：每張圖第一次多一次 revalidation，304 時很小）。屬 service worker 的快取行為（部署行為），實作前附變更說明。
+  - **2026-11-02 使用者核准**（AUDIT-001 後的 AskUserQuestion，INFRA-110～113 全部核准，各自一個 PR）。
+  - In progress（2026-11-02）：AUDIT-001（#214）合併後開始（Backlog → In Progress）。
+  - 完成（2026-11-02，v1.41.7）：變更說明 [`docs/infra-111-image-revalidate.md`](docs/infra-111-image-revalidate.md)。
+    - `pwa/sw.js` 的圖片分支：快取中沒有時以 `fetch(e.request, { cache: 'no-cache' })` 取得（條件請求，沒變時 304），與 JS／CSS 相同；快取中有的照舊直接回傳。
+    - Unit：`serviceWorkerImageCache.test.js` 檢查 `{ cache: 'no-cache' }`。e2e：`infra111-sw-image.test.js`（這一版看過的圖在伺服器上換掉並部署下一版後，新的 service worker 存的是伺服器上的新圖；之後從快取回傳）。修改前兩項都失敗；e2e 連跑 3 次通過。
 
 - [x] **PRO-014P** `server` source 下，換日處理只依權威的 entitlement 結果執行
   - 問題（PR #160 Codex review 指出，2026-10-18 對照 `dayCycle.js` 確認）：

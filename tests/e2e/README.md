@@ -31,6 +31,7 @@ npx playwright test --repeat-each=3 <file>                 # 檢查是否穩定
 | `ps251b-window-view.test.js` | 晨間與傍晚的窗外疊層與圖層順序；開著 app 跨過時段邊界時準時重新 render，保留焦點與詳細資訊面板（PS-251B） |
 | `sw-precache.test.js` | service worker 預先快取 poster 的所有圖與 Pixi，四個時段的離線 poster 都完整；頁面只在 runtime 掛載時才取得 Pixi；舊版 idle-window 的圖（PS-211A、PS-250E1、PS-251B） |
 | `infra105-sw-update.test.js` | 改版時新的 service worker 重新驗證 SHELL，不存到 HTTP cache 的舊檔；快取中的模組不在背景更新（INFRA-105、INFRA-107） |
+| `infra111-sw-image.test.js` | 改版後，沒有預先快取的圖片第一次取得時向伺服器確認，不存 HTTP cache 裡上一版的舊檔（INFRA-111） |
 | `infra107-sw-html.test.js` | 每次開啟頁面都用快取中同一版的 HTML 與程式，包括帶查詢字串、離線、下一版裝不起來時（INFRA-107） |
 
 `support/`：
