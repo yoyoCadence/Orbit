@@ -14,6 +14,15 @@
 
 ## Backlog
 
+- [ ] **PRO-014LA** 在 production 套用 012（專案擁有者執行）
+  - 依提案 §5.2：套用前確認（函式與欄位不存在、trigger 與 011 相同並存下、回填的預期筆數）→ `begin;`＋012＋測試＋`rollback;` 乾跑 → 正式套用 → 檢查權限、`SECURITY DEFINER`、`search_path`、owner、回填筆數、擁有者帳號的 `my_pro_status()` 仍為 `true／NULL／NULL`（DO block）→ 再跑一次 ASSERT 測試 → 以只改文件的 PR 記錄。
+  - agent 不具 production 權限；每一步提供完整 SQL，擁有者執行並截圖。
+  - 依賴：`PRO-014L1`。擋：`PRO-014L2`。
+
+- [ ] **PRO-014L2** client 改走 `grant_streak_unlock()`（新模組，INFRA-105）
+  - 依提案 §5.3：只在本機連勝 ≥ 45、遠端載入與 Sessions 上傳之後詢問（`loadAndStart()`、cached-user 背景同步、連線恢復同步）；依 `paid_active` 寫回 legacy profile，只延長、不縮短、不取消；刪除換日裡的 SUB-16；訪客的進度條改為「需要登入帳號」；測試與 bump。
+  - 依賴：`PRO-014LA`（**012 必須先在 production**，否則 legacy 下 SUB-16 失效）。
+
 - [ ] **INFRA-110** `leaderboard_view` 的權限（AUDIT-001 發現）
   - 問題：Postgres 的 view 預設以擁有者的權限執行，不受 `profiles`／`sessions` 的 RLS 限制（`005_leaderboard.sql` 的註解「Views inherit table RLS by default」不正確）。view 只靠 `WHERE p.is_public = true` 限制列；migration 只 `GRANT SELECT ... TO authenticated`，但 Supabase 的預設權限（`ALTER DEFAULT PRIVILEGES ... TO anon, authenticated`）可能也讓 `anon` 讀得到，屆時未登入者可讀所有公開使用者的 `user_id`、名稱、XP、連勝、`created_at`、`avatar_url`。
   - 需要擁有者確認（agent 沒有連線正式資料庫）：在 Supabase SQL editor 執行 `select grantee, privilege_type from information_schema.role_table_grants where table_name = 'leaderboard_view';`，看 `anon` 是否有 `SELECT`。
@@ -217,6 +226,8 @@
 
 > 2026-11-02 排程：PRO-014H 的核准名單已寫入並對帳（#222）。使用者同意寫 PRO-014L 的提案（只寫文件），從 Backlog 移入 Next，再移入 In Progress。
 
+> 2026-11-02 核准（使用者回覆「可以照你建議」）：PRO-014L 提案（#224）§10 全部照建議。拆成 PRO-014L1（repo，In Progress）→ PRO-014LA（擁有者套用，Backlog）→ PRO-014L2（client，Backlog，依賴 LA）。L1 合併後關閉草稿 #154。
+
 ---
 
 ## In Progress
@@ -230,9 +241,16 @@
   - **前置：屬 RPC／schema 變更，依 AGENTS.md §3 需先取得核准**。（原本「與 `PRO-014I` 的 production 套用一併規劃」已過時：011 已套用；改依提案 §5 的 L1／LA／L2。）
   - 依賴：`PRO-014C`
   - In progress（2026-11-02）：使用者同意先寫提案（只寫文件，不改程式碼、不動資料庫）。草稿 PR #154（2026-09-01，另一個工作階段）以 v1.25.2 為基礎，提案對照目前的 main 檢視它的設計。從 Backlog 移入 Next，再移入 In Progress。
-  - 提案（2026-11-02）：[`docs/pro-014l-streak-unlock-server.md`](docs/pro-014l-streak-unlock-server.md)，**等待使用者決定 §10**。
+  - 提案（2026-11-02，#224）：[`docs/pro-014l-streak-unlock-server.md`](docs/pro-014l-streak-unlock-server.md)。**使用者 2026-11-02 回覆「可以照你建議」核准 §10**：拆成 L1／LA／L2；資格維持「任何一段 45 天」、client 只在連勝 ≥ 45 時詢問；回填已用過的帳號；訪客不再有 SUB-16、進度條改為「需要登入帳號」；L1 合併後關閉 #154。依提案拆成下列三項。
     - 實測：#154 的 012 在本機（production 已有的相關 migration，含 013、014）可以套用。另外確認：資格是「歷史上任何一段 45 天」；不符合也會建立資料列；與 014 配合正確。獨立 review 另發現 #154 在「已領過」時把 `is_active`（含試用）寫回 legacy 的 `is_pro`，會授予終身或取消 Pro。
-    - 建議：保留 #154 的 SQL 主體（含 `date <= current_date`），只加回填已用過的帳號；拆成 L1（migration 012＋ASSERT 測試）→ LA（擁有者套用）→ L2（client 改走 RPC，新模組，INFRA-105）；只在本機連勝 ≥ 45 時、遠端載入之後詢問（同 PRO-014P 的三個補做位置）；RPC 多回傳只代表付費的 `paid_active`，`granted`／`already_granted` 依它寫回（只延長、不縮短、不取消，回應遺失後重試可補上）；訪客不再有 SUB-16（待決定）；L1 合併後關閉 #154。
+    - 建議：保留 #154 的 SQL 主體（含 `date <= current_date`），只加回填已用過的帳號；拆成 L1（migration 012＋ASSERT 測試）→ LA（擁有者套用）→ L2（client 改走 RPC，新模組，INFRA-105）；只在本機連勝 ≥ 45 時、遠端載入之後詢問（同 PRO-014P 的三個補做位置）；RPC 多回傳只代表付費的 `paid_active`，`granted`／`already_granted` 依它寫回（只延長、不縮短、不取消，回應遺失後重試可補上）；訪客不再有 SUB-16；L1 合併後關閉 #154。
+
+- [ ] **PRO-014L1** migration 012（`grant_streak_unlock()`、一次性標記、`paid_active`、回填）與 ASSERT 測試，不改 client
+  - 依提案 §5.1。沿用 #154 的資格、鎖、一次性、30 天、試用中不消耗；加 `paid_active` 與回填。
+  - 完成條件：本機 PostgreSQL 依 production 的相關 migration 套用後，012、`tests/database/pro014l.test.sql`、回滾、重套都通過；改壞關鍵條件時測試會失敗；SQL 契約測試鎖住權限、輸入面、`paid_active` 與回填只寫標記。
+  - 不改 `pwa/js`，不需要 bump。屬 schema 變更，已由提案核准實作；production 套用另立 `PRO-014LA`。
+  - In progress（2026-11-02）。
+
 
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
