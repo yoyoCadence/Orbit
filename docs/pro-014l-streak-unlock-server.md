@@ -1,6 +1,6 @@
 # PRO-014L 提案：SUB-16 連勝解鎖改由 server 發放
 
-> 狀態：提案（2026-11-02），只寫文件、不改程式碼、不動資料庫。屬 RPC／schema 變更，依 AGENTS.md §3 需使用者核准（§10）後才實作。擋 `PRO-014H` cutover。
+> 狀態：使用者 2026-11-02 核准 §10（全部照建議）。L1 由 #226 完成（migration 012 與測試，尚未套用到 production）；LA（擁有者在 production 套用）、L2（client）待做。擋 `PRO-014H` cutover。
 
 ## 1. 結論
 

@@ -245,12 +245,6 @@
     - 實測：#154 的 012 在本機（production 已有的相關 migration，含 013、014）可以套用。另外確認：資格是「歷史上任何一段 45 天」；不符合也會建立資料列；與 014 配合正確。獨立 review 另發現 #154 在「已領過」時把 `is_active`（含試用）寫回 legacy 的 `is_pro`，會授予終身或取消 Pro。
     - 建議：保留 #154 的 SQL 主體（含 `date <= current_date`），只加回填已用過的帳號；拆成 L1（migration 012＋ASSERT 測試）→ LA（擁有者套用）→ L2（client 改走 RPC，新模組，INFRA-105）；只在本機連勝 ≥ 45 時、遠端載入之後詢問（同 PRO-014P 的三個補做位置）；RPC 多回傳只代表付費的 `paid_active`，`granted`／`already_granted` 依它寫回（只延長、不縮短、不取消，回應遺失後重試可補上）；訪客不再有 SUB-16；L1 合併後關閉 #154。
 
-- [ ] **PRO-014L1** migration 012（`grant_streak_unlock()`、一次性標記、`paid_active`、回填）與 ASSERT 測試，不改 client
-  - 依提案 §5.1。沿用 #154 的資格、鎖、一次性、30 天、試用中不消耗；加 `paid_active` 與回填。
-  - 完成條件：本機 PostgreSQL 依 production 的相關 migration 套用後，012、`tests/database/pro014l.test.sql`、回滾、重套都通過；改壞關鍵條件時測試會失敗；SQL 契約測試鎖住權限、輸入面、`paid_active` 與回填只寫標記。
-  - 不改 `pwa/js`，不需要 bump。屬 schema 變更，已由提案核准實作；production 套用另立 `PRO-014LA`。
-  - In progress（2026-11-02）。
-
 
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
@@ -258,6 +252,17 @@
 ---
 
 ## Done
+
+- [x] **PRO-014L1** migration 012（`grant_streak_unlock()`、一次性標記、`paid_active`、回填）與 ASSERT 測試，不改 client
+  - 依提案 §5.1。沿用 #154 的資格、鎖、一次性、30 天、試用中不消耗；加 `paid_active` 與回填。
+  - 完成條件：本機 PostgreSQL 依 production 的相關 migration 套用後，012、`tests/database/pro014l.test.sql`、回滾、重套都通過；改壞關鍵條件時測試會失敗；SQL 契約測試鎖住權限、輸入面、`paid_active` 與回填只寫標記。
+  - 不改 `pwa/js`，不需要 bump。屬 schema 變更，已由提案核准實作；production 套用另立 `PRO-014LA`。
+  - In progress（2026-11-02）。
+  - 完成（2026-11-02，#226）：
+    - `pwa/db/012_streak_unlock_server.sql`、`tests/database/pro014l.test.sql`（ASSERT）、`tests/database/pro014l.rollback.sql`、`tests/unit/streakUnlockSql.test.js`、`docs/pro-014l-local-validation.md`（從 #154 帶入並加註記）。
+    - 本機 PostgreSQL 16：套用 001、002、004、005_profiles_extra_cols、006–009、011、013、014 後套用 012（先建 2 個已用過 legacy SUB-16 的帳號、終身的擁有者、免費帳號：回填只標記那 2 個，擁有者的 `my_pro_status()` 仍為 `true／NULL／NULL`）；測試通過且沒有留下資料；重套、回滾、回滾後重套再測都通過。
+    - 突變：`already_granted` 回傳含試用的 `paid_active`、門檻 44 天、trigger 不看新欄位，測試都會失敗。
+    - lint、`npm test`（90 files／1503 tests）通過；不需要 bump。
 
 - [x] **INFRA-111** service worker 的圖片分支：下載時不用 HTTP cache 的舊檔（AUDIT-001 發現）
   - 問題：圖片走 cache-first，快取沒有時直接 `fetch(e.request)`。按需下載的素材（房間風格、裝飾、角色）若瀏覽器的 HTTP cache 還有上一版的同名檔（GitHub Pages `max-age=600`），會把舊圖存進這一版的快取，直到下一次 bump。JS／CSS 已改為 `cache: 'no-cache'`（INFRA-105／107）。
