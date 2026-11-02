@@ -7,7 +7,6 @@
 > - 下文的 client contract 是 #154 的 client；main 的 client（PRO-014L2）依提案 §5.3 重寫，寫回規則不同。
 > - main 上的新版本以本機 PostgreSQL 16 驗證（套用 production 已有的相關 migration 後再套用 012，跑新版測試與回滾腳本），結果記在 `tasks.md` 的 PRO-014L1。
 
-
 ## 範圍與安全邊界
 
 - 執行日期：2026-09-01（Asia/Taipei）。
@@ -37,7 +36,7 @@
 | 一次性與期限 | 首次回 `granted`，重複回 `already_granted`；expiry 約為 server `now() + 30 days`，marker 僅一筆 | Pass |
 | 既有 entitlement | active trial 回 `active_entitlement`，不消耗 streak marker、不覆寫 trial | Pass |
 | 權限邊界 | authenticated 只能執行無參數 RPC，不能直接 UPDATE entitlement；缺少 auth identity fail closed | Pass |
-| 真實 Data API | [`scripts/pro014l-data-api-check.mjs`](../scripts/pro014l-data-api-check.mjs) 透過 local Auth／PostgREST 建立兩帳號與 45 天 sessions | Pass |
+| 真實 Data API | [`scripts/pro014l-data-api-check.mjs`](https://github.com/yoyoCadence/Orbit/blob/feat/pro-014l-streak-unlock-rpc/scripts/pro014l-data-api-check.mjs)（#154 的分支） 透過 local Auth／PostgREST 建立兩帳號與 45 天 sessions | Pass |
 | 並行 claim | 同帳號兩個並行 RPC 恰為一次 `granted`、一次 `already_granted`；expiry 與 granted_at 完全一致 | Pass |
 | 偽造輸入 | anon RPC 回 401；傳入 streak／expiry 偽造參數回 404；直接清除 marker 回 400 | Pass |
 | Rollback | 移除 RPC、還原 011 trigger helper、移除 marker column；檢查無殘留後重套 012，pgTAP 再次 24/24 | Pass |

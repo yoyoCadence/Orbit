@@ -17,6 +17,8 @@
 -- （PRO-014L2）之後才上線；顛倒的話 RPC 不存在，獎勵不會發放。
 -- 測試：tests/database/pro014l.test.sql（ASSERT，單一 transaction，結尾 rollback）。
 -- 回滾：tests/database/pro014l.rollback.sql。
+-- 本檔**不含 BEGIN／COMMIT**：乾跑時要包在外層的 begin; … rollback; 內（檔內若有 COMMIT 會讓乾跑
+-- 真的生效）。SQL Editor 一次送出整份時是單一 transaction；以 psql 套用時用 -1（--single-transaction）。
 -- 執行日期：尚未套用到 production（PRO-014LA）
 -- ============================================================
 
@@ -204,14 +206,15 @@ GRANT EXECUTE ON FUNCTION public.grant_streak_unlock()
 
 -- ── 3. 回填：已用 legacy SUB-16 的帳號標記為已領過 ──────────
 -- 只寫標記，不動 is_pro／pro_expires_at／trial_started_at。標記的時間是套用的時間，
--- 不是實際領取的時間。可重複執行；PRO-014H cutover 前要再跑一次（L2 普及前，
--- 舊版 client 仍以 profile 發放）。
+-- 不是實際領取的時間。可重複執行，回報的筆數就是「這次新標記的帳號」（已標記的不再
+-- 更新）；PRO-014H cutover 前要再跑一次（L2 普及前，舊版 client 仍以 profile 發放）。
 INSERT INTO public.pro_entitlements AS e (user_id, streak_unlock_granted_at)
 SELECT p.user_id, now()
 FROM public.profiles p
 WHERE p.streak_unlock_used = true
 ON CONFLICT (user_id) DO UPDATE
-  SET streak_unlock_granted_at = COALESCE(e.streak_unlock_granted_at, now());
+  SET streak_unlock_granted_at = now()
+  WHERE e.streak_unlock_granted_at IS NULL;
 
 -- ── Rollback（tests/database/pro014l.rollback.sql；production 執行需另行核准）──
 -- 1. DROP FUNCTION public.grant_streak_unlock();

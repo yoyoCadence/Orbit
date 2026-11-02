@@ -158,10 +158,13 @@
   INSERT INTO public.pro_entitlements AS e (user_id, streak_unlock_granted_at)
   SELECT p.user_id, now() FROM public.profiles p WHERE p.streak_unlock_used = true
   ON CONFLICT (user_id) DO UPDATE
-    SET streak_unlock_granted_at = COALESCE(e.streak_unlock_granted_at, now());
+    SET streak_unlock_granted_at = now()
+    WHERE e.streak_unlock_granted_at IS NULL;
   ```
 
-  - 只寫 `streak_unlock_granted_at`，不動 `is_pro`、`pro_expires_at`、`trial_started_at`。獨立 review 確認：新列是 `is_pro = false`、日期為 NULL；`my_pro_status()` 與 `start_trial()` 的結果不變；重跑 0 列改變。
+  （L1 實作時由 `COALESCE` 改為 `WHERE … IS NULL`：結果相同，但重跑時回報的筆數就是新標記的帳號。）
+
+  - 只寫 `streak_unlock_granted_at`，不動 `is_pro`、`pro_expires_at`、`trial_started_at`。獨立 review 確認：新列是 `is_pro = false`、日期為 NULL；`my_pro_status()` 與 `start_trial()` 的結果不變；重跑不改任何值，回報的筆數是新標記的帳號。
   - 回填的 `streak_unlock_granted_at` 是 LA 的時間，不是實際領取的時間。
   - LA 之後、L2 普及前，舊版 client 仍會用 profile 發放。PRO-014H cutover 前要再跑一次。
 - **回傳加 `paid_active`**（第 8 點）：
@@ -204,6 +207,7 @@
    - `SECURITY DEFINER`、`search_path`、owner；
    - 新欄位存在；
    - 回填筆數與第 1 步相同；
+   - `pro_entitlements` 中 `is_pro` 為 true 的筆數、有 `trial_started_at` 的筆數在套用前後相同（第 1 步先記下）；
    - **你的帳號 `my_pro_status()` 仍是 `true／NULL／NULL`**：核准名單沒有回歸。在 `begin;` 內 `set local request.jwt.claims`，以 DO block 讀取並檢查，不符就 `RAISE EXCEPTION`，最後 `rollback;`。成功的樣子是沒有錯誤，不依賴 SQL Editor 顯示哪一個結果。
 5. **功能驗證**：再跑一次 L1 的 ASSERT 測試（開頭的 `begin;` 到結尾的 `rollback;` 原樣保留）。
    - 測試用的是自己建立、會被 rollback 的帳號，不會動到真實帳號或測試帳號。

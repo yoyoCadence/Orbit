@@ -37,10 +37,10 @@ begin
   assert (select proconfig from pg_proc where oid = 'public.grant_streak_unlock()'::regprocedure)
     = array['search_path=""'],
     'grant_streak_unlock() must have an empty search_path';
-  assert not has_table_privilege('authenticated', 'public.pro_entitlements', 'UPDATE'),
-    'authenticated must not update pro_entitlements directly';
-  assert not has_table_privilege('authenticated', 'public.pro_entitlements', 'INSERT'),
-    'authenticated must not insert into pro_entitlements directly';
+  assert not has_any_column_privilege('authenticated', 'public.pro_entitlements', 'UPDATE'),
+    'authenticated must not update pro_entitlements (or any of its columns) directly';
+  assert not has_any_column_privilege('authenticated', 'public.pro_entitlements', 'INSERT'),
+    'authenticated must not insert into pro_entitlements (or any of its columns) directly';
   assert not has_function_privilege('authenticated', 'public.set_pro_entitlement_updated_at()', 'EXECUTE'),
     'the updated_at trigger function must stay revoked from authenticated';
 end $$;
@@ -67,6 +67,8 @@ create temporary table pro014l_cases (
   run_end_offset int not null,    -- 最後一天 = current_date - run_end_offset
   gap_at int,                     -- 從最後一天往回第幾天不放（造成缺口）
   fun_at int,                     -- 從最後一天往回第幾天加 130 分鐘娛樂
+  bad_at int,                     -- 從最後一天往回第幾天的任務改成 bad_kind
+  bad_kind text,                  -- b_value／invalid／unproductive／xp49；b_all = 每天都是 B
   has_row boolean not null,
   is_pro boolean,
   pro_expires_at timestamptz,
@@ -78,21 +80,26 @@ create temporary table pro014l_cases (
 ) on commit drop;
 
 insert into pro014l_cases
-  (n, label, run_days, run_end_offset, gap_at, fun_at, has_row, is_pro, pro_expires_at, trial_started_at,
+  (n, label, run_days, run_end_offset, gap_at, fun_at, bad_at, bad_kind, has_row, is_pro, pro_expires_at, trial_started_at,
    exp_status, exp_active, exp_paid)
 values
-  ( 1, '45 days ending today',            45,    0, null, null, false, null,  null,                          null,                          'granted',            true,  true),
-  ( 2, '44 days',                          44,    0, null, null, false, null,  null,                          null,                          'not_eligible',       false, false),
-  ( 3, '45 dates split by a gap',          46,    0, 23,   null, false, null,  null,                          null,                          'not_eligible',       false, false),
-  ( 4, '45 days, one with 130 min fun',    45,    0, null, 20,   false, null,  null,                          null,                          'not_eligible',       false, false),
-  ( 5, '45th day dated tomorrow',          45,   -1, null, null, false, null,  null,                          null,                          'not_eligible',       false, false),
-  ( 6, '45 days ending 100 days ago',      45,  100, null, null, false, null,  null,                          null,                          'granted',            true,  true),
-  ( 7, 'active trial + 45',                45,    0, null, null, true,  false, null,                          now() - interval '1 day',      'active_entitlement', true,  false),
-  ( 8, 'expired trial + 45',               45,    0, null, null, true,  false, null,                          now() - interval '40 days',    'granted',            true,  true),
-  ( 9, 'lifetime paid + 45',               45,    0, null, null, true,  true,  null,                          null,                          'active_entitlement', true,  true),
-  (10, 'paid +10d + 45',                   45,    0, null, null, true,  true,  now() + interval '10 days',    null,                          'active_entitlement', true,  true),
-  (11, 'paid expired + 45',                45,    0, null, null, true,  true,  now() - interval '1 day',      null,                          'granted',            true,  true),
-  (12, 'no sessions at all',                0,    0, null, null, false, null,  null,                          null,                          'not_eligible',       false, false);
+  ( 1, '45 days ending today',            45,    0, null, null, null, null,           false, null,  null,                          null,                          'granted',            true,  true),
+  ( 2, '44 days',                          44,    0, null, null, null, null,           false, null,  null,                          null,                          'not_eligible',       false, false),
+  ( 3, '45 dates split by a gap',          46,    0, 23,   null, null, null,           false, null,  null,                          null,                          'not_eligible',       false, false),
+  ( 4, '45 days, one with 130 min fun',    45,    0, null, 20,   null, null,           false, null,  null,                          null,                          'not_eligible',       false, false),
+  ( 5, '45th day dated tomorrow',          45,   -1, null, null, null, null,           false, null,  null,                          null,                          'not_eligible',       false, false),
+  ( 6, '45 days ending 100 days ago',      45,  100, null, null, null, null,           false, null,  null,                          null,                          'granted',            true,  true),
+  ( 7, 'active trial + 45',                45,    0, null, null, null, null,           true,  false, null,                          now() - interval '1 day',      'active_entitlement', true,  false),
+  ( 8, 'expired trial + 45',               45,    0, null, null, null, null,           true,  false, null,                          now() - interval '40 days',    'granted',            true,  true),
+  ( 9, 'lifetime paid + 45',               45,    0, null, null, null, null,           true,  true,  null,                          null,                          'active_entitlement', true,  true),
+  (10, 'paid +10d + 45',                   45,    0, null, null, null, null,           true,  true,  now() + interval '10 days',    null,                          'active_entitlement', true,  true),
+  (11, 'paid expired + 45',                45,    0, null, null, null, null,           true,  true,  now() - interval '1 day',      null,                          'granted',            true,  true),
+  (12, 'no sessions at all',                0,    0, null, null, null, null,           false, null,  null,                          null,                          'not_eligible',       false, false),
+  (13, 'one day only a B task',            45,    0, null, null, 20,   'b_value',      false, null,  null,                          null,                          'not_eligible',       false, false),
+  (14, 'one day the A task is invalid',    45,    0, null, null, 20,   'invalid',      false, null,  null,                          null,                          'not_eligible',       false, false),
+  (15, 'one day XP not productive',        45,    0, null, null, 20,   'unproductive', false, null,  null,                          null,                          'not_eligible',       false, false),
+  (16, 'one day 49 XP',                    45,    0, null, null, 20,   'xp49',         false, null,  null,                          null,                          'not_eligible',       false, false),
+  (17, '45 days of B tasks',               45,    0, null, null, null, 'b_all',        false, null,  null,                          null,                          'not_eligible',       false, false);
 
 insert into auth.users (id, email, raw_user_meta_data)
 select user_id, format('pro014l-%s@example.invalid', n), '{}'::jsonb from pro014l_cases;
@@ -113,7 +120,14 @@ insert into public.sessions (
   task_nature, value, resistance, is_productive_xp
 )
 select c.user_id, 'pro014l effective task', (current_date - c.run_end_offset - g)::date,
-       now(), now(), 30, 'complete', 50, 50, 10, 0, 'task', 'growth', 'A', 1.0, true
+       now(), now(), 30,
+       case when coalesce(c.bad_at = g and c.bad_kind = 'invalid', false) then 'invalid' else 'complete' end,
+       50,
+       case when coalesce(c.bad_at = g and c.bad_kind = 'xp49', false) then 49 else 50 end,
+       10, 0, 'task', 'growth',
+       case when c.bad_kind = 'b_all' or coalesce(c.bad_at = g and c.bad_kind = 'b_value', false) then 'B' else 'A' end,
+       1.0,
+       not coalesce(c.bad_at = g and c.bad_kind = 'unproductive', false)
 from pro014l_cases c
 cross join lateral generate_series(0, c.run_days - 1) as g
 where c.run_days > 0 and (c.gap_at is null or g <> c.gap_at);
@@ -220,14 +234,16 @@ select b.user_id, 'pro014l effective task', (current_date - g)::date,
 from pro014l_backfill b
 cross join lateral generate_series(0, 44) as g;
 
--- 與 012 第 3 節相同的 SQL，只多了 fixture 的限定條件（跑兩次，確認可重複執行）
+-- 與 012 第 3 節相同的 SQL，只多了 fixture 的限定條件（跑兩次，確認可重複執行；
+-- tests/unit/streakUnlockSql.test.js 檢查兩者除了這個條件之外完全相同）
 insert into public.pro_entitlements as e (user_id, streak_unlock_granted_at)
 select p.user_id, now()
 from public.profiles p
 where p.streak_unlock_used = true
   and p.user_id in (select user_id from pro014l_backfill)
 on conflict (user_id) do update
-  set streak_unlock_granted_at = coalesce(e.streak_unlock_granted_at, now());
+  set streak_unlock_granted_at = now()
+  where e.streak_unlock_granted_at is null;
 
 insert into public.pro_entitlements as e (user_id, streak_unlock_granted_at)
 select p.user_id, now()
@@ -235,7 +251,8 @@ from public.profiles p
 where p.streak_unlock_used = true
   and p.user_id in (select user_id from pro014l_backfill)
 on conflict (user_id) do update
-  set streak_unlock_granted_at = coalesce(e.streak_unlock_granted_at, now());
+  set streak_unlock_granted_at = now()
+  where e.streak_unlock_granted_at is null;
 
 do $$
 declare
@@ -281,6 +298,64 @@ begin
   assert (select updated_at from public.pro_entitlements where user_id = v_id) = now()
      and before_ts < now(),
     'changing streak_unlock_granted_at must refresh updated_at';
+end $$;
+
+-- 7. 付費已到期時 paid_active 為 false（L2 依它寫回 legacy profile，到期的不能寫成 Pro）
+do $$
+declare
+  v_a uuid := gen_random_uuid();  -- 30 天前領過、已到期
+  v_b uuid := gen_random_uuid();  -- 付費到期、試用中
+  v_c uuid := gen_random_uuid();  -- 終身＋已領過（擁有者回填後的樣子）
+  r record;
+begin
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_a, 'pro014l-expired-grant@example.invalid', '{}'::jsonb),
+    (v_b, 'pro014l-expired-paid-trial@example.invalid', '{}'::jsonb),
+    (v_c, 'pro014l-lifetime-marked@example.invalid', '{}'::jsonb);
+  insert into public.pro_entitlements (user_id, is_pro, pro_expires_at, trial_started_at, streak_unlock_granted_at) values
+    (v_a, true, now() - interval '10 days', null,                     now() - interval '40 days'),
+    (v_b, true, now() - interval '1 day',   now() - interval '1 day', null),
+    (v_c, true, null,                       null,                     now());
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  select * into r from public.grant_streak_unlock();
+  assert r.status = 'already_granted' and not r.is_active and not r.paid_active,
+    format('expired grant: %L', r);
+
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  select * into r from public.grant_streak_unlock();
+  assert r.status = 'active_entitlement' and r.is_active and not r.paid_active,
+    format('expired paid during a trial: %L', r);
+
+  perform set_config('request.jwt.claim.sub', v_c::text, true);
+  select * into r from public.grant_streak_unlock();
+  assert r.status = 'already_granted' and r.is_active and r.paid_active and r.expires_at is null,
+    format('lifetime with marker: %L', r);
+end $$;
+
+-- 8. 以 authenticated 的身份呼叫（真正的權限路徑：EXECUTE 只授予 authenticated）
+do $$
+declare
+  v_id uuid := gen_random_uuid();
+  r record;
+begin
+  insert into auth.users (id, email, raw_user_meta_data)
+  values (v_id, 'pro014l-role@example.invalid', '{}'::jsonb);
+  insert into public.sessions (
+    user_id, task_name, date, started_at, completed_at, duration_minutes,
+    result, base_xp, final_xp, energy_cost, energy_gain, impact_type,
+    task_nature, value, resistance, is_productive_xp
+  )
+  select v_id, 'pro014l effective task', (current_date - g)::date,
+         now(), now(), 30, 'complete', 50, 50, 10, 0, 'task', 'growth', 'A', 1.0, true
+  from generate_series(0, 44) as g;
+
+  perform set_config('request.jwt.claim.sub', v_id::text, true);
+  execute 'set local role authenticated';
+  select * into r from public.grant_streak_unlock();
+  execute 'reset role';
+  assert r.status = 'granted' and r.paid_active,
+    format('call as authenticated: %L', r);
 end $$;
 
 rollback;

@@ -2,7 +2,9 @@
 -- 本機演練用；在 production 執行需另行核准（PRO-014LA）。
 -- 第 2 步還原的是 011 的 set_pro_entitlement_updated_at()；在 production 回滾前，先確認它與
 -- 套用 012 前存下的 production 定義相同。
--- 回填的一次性標記隨欄位一併刪除。
+-- 回填的一次性標記隨欄位一併刪除。回填時新增的資料列（is_pro = false、沒有日期）會留下：它們與
+-- RPC 對不符資格者建立的資料列無法分辨，功能上等同沒有資料列（my_pro_status()、start_trial()
+-- 的結果不變），所以不刪。被標記過的既有資料列，updated_at 維持標記時的時間。
 drop function public.grant_streak_unlock();
 
 create or replace function public.set_pro_entitlement_updated_at()

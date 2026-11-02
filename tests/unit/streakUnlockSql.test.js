@@ -25,7 +25,7 @@ describe('PRO-014L1 migration 012', () => {
       /ALTER TABLE public\.pro_entitlements ADD COLUMN IF NOT EXISTS streak_unlock_granted_at timestamptz/i,
     );
     expect(sql).toMatch(
-      /ROW\( NEW\.is_pro, NEW\.pro_expires_at, NEW\.trial_started_at, NEW\.streak_unlock_granted_at \) IS DISTINCT FROM ROW\( OLD\.is_pro, OLD\.pro_expires_at, OLD\.trial_started_at, OLD\.streak_unlock_granted_at \)/i,
+      /ROW\(\s*NEW\.is_pro,\s*NEW\.pro_expires_at,\s*NEW\.trial_started_at,\s*NEW\.streak_unlock_granted_at\s*\) IS DISTINCT FROM ROW\(\s*OLD\.is_pro,\s*OLD\.pro_expires_at,\s*OLD\.trial_started_at,\s*OLD\.streak_unlock_granted_at\s*\)/i,
     );
     expect(sql).toMatch(
       /REVOKE ALL ON FUNCTION public\.set_pro_entitlement_updated_at\(\) FROM public, anon, authenticated/i,
@@ -40,7 +40,7 @@ describe('PRO-014L1 migration 012', () => {
     expect(sql).toMatch(/IF caller_id IS NULL THEN RAISE EXCEPTION 'authentication required' USING ERRCODE = '42501'/i);
     expect(sql).toMatch(/REVOKE ALL ON FUNCTION public\.grant_streak_unlock\(\) FROM public, anon, authenticated/i);
     expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION public\.grant_streak_unlock\(\) TO authenticated/i);
-    expect(sql).not.toMatch(/GRANT [^;]*grant_streak_unlock[^;]* TO (anon|public)\b/i);
+    expect(sql).not.toMatch(/GRANT [^;]*grant_streak_unlock\(\)[^;]* TO [^;]*\b(anon|public)\b/i);
     // The client cannot hand in a streak, a date or an expiry.
     expect(sql).not.toMatch(/grant_streak_unlock\(\s*[a-z_]/i);
   });
@@ -83,11 +83,17 @@ describe('PRO-014L1 migration 012', () => {
   it('backfills only the marker for accounts that used the legacy unlock', () => {
     const backfill = sql.match(/INSERT INTO public\.pro_entitlements AS e \(user_id, streak_unlock_granted_at\)[^;]*;/i)?.[0] ?? '';
     expect(backfill).toMatch(/SELECT p\.user_id, now\(\) FROM public\.profiles p WHERE p\.streak_unlock_used = true/i);
+    // Already-marked rows are left alone, so a rerun reports only newly marked accounts.
     expect(backfill).toMatch(
-      /ON CONFLICT \(user_id\) DO UPDATE SET streak_unlock_granted_at = COALESCE\(e\.streak_unlock_granted_at, now\(\)\)\s*;$/i,
+      /ON CONFLICT \(user_id\) DO UPDATE SET streak_unlock_granted_at = now\(\) WHERE e\.streak_unlock_granted_at IS NULL\s*;$/i,
     );
     // Denial only: nothing that grants or moves Pro may be written from profiles.
     expect(backfill).not.toMatch(/is_pro|pro_expires_at|trial_started_at/i);
+
+    // Outside the RPC, the migration writes entitlements only through that statement.
+    const outsideRpc = sql.replace(rpcBody, '');
+    expect(outsideRpc.match(/INSERT INTO public\.pro_entitlements\b/gi) ?? []).toHaveLength(1);
+    expect(outsideRpc).not.toMatch(/UPDATE public\.pro_entitlements\b|DELETE FROM public\.pro_entitlements\b/i);
   });
 });
 
@@ -101,17 +107,24 @@ describe('PRO-014L1 database test and rollback', () => {
     expect(body).toMatch(/if not current_setting\('plpgsql\.check_asserts'\)::boolean then raise exception/i);
   });
 
-  it('re-runs the backfill only for its own fixtures', () => {
+  it('re-runs exactly 012’s backfill, scoped to its own fixtures', () => {
+    const scope = /\s*and p\.user_id in \(select user_id from pro014l_backfill\)/i;
+    const backfill = sql.match(/INSERT INTO public\.pro_entitlements AS e \(user_id, streak_unlock_granted_at\)[^;]*;/i)?.[0];
     const reruns = strip(dbTest).match(/insert into public\.pro_entitlements as e \(user_id, streak_unlock_granted_at\)[^;]*;/gi) ?? [];
+    expect(backfill).toBeTruthy();
     expect(reruns).toHaveLength(2);
     for (const rerun of reruns) {
-      expect(rerun).toMatch(/and p\.user_id in \(select user_id from pro014l_backfill\)/i);
+      // Scoped, so running the test in production never touches real accounts…
+      expect(rerun).toMatch(scope);
+      // …and otherwise the very statement 012 runs, so the test checks the real backfill.
+      expect(rerun.replace(scope, '').toLowerCase()).toBe(backfill.toLowerCase());
     }
   });
 
   it('covers paid_active for trial, grant, lifetime and backfilled trial accounts', () => {
-    expect(dbTest).toMatch(/'active trial \+ 45',[^\n]*'active_entitlement', true, {2}false\)/);
-    expect(dbTest).toMatch(/'lifetime paid \+ 45',[^\n]*'active_entitlement', true, {2}true\)/);
+    expect(dbTest).toMatch(/'active trial \+ 45',[^\n]*'active_entitlement',\s*true,\s*false\)/);
+    expect(dbTest).toMatch(/'lifetime paid \+ 45',[^\n]*'active_entitlement',\s*true,\s*true\)/);
+    expect(dbTest).toMatch(/r\.status = 'already_granted' and not r\.is_active and not r\.paid_active/);
     expect(dbTest).toMatch(/r\.status = 'already_granted' and not r\.granted and not r\.paid_active/);
   });
 
