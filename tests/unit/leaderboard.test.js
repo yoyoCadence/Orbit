@@ -29,16 +29,15 @@ const mockFrom   = vi.hoisted(() => vi.fn(() => ({ select: mockSelect })));
 const mockCreateSignedUrl = vi.hoisted(() => vi.fn());
 const mockStorageFrom = vi.hoisted(() => vi.fn(() => ({ createSignedUrl: mockCreateSignedUrl })));
 
-// Signed in unless a test says otherwise (INFRA-110: guests cannot read the view).
-const mockGetSession = vi.hoisted(() => vi.fn());
-
 vi.mock('../../pwa/js/supabase.js', () => ({
-  supabase: { from: mockFrom, storage: { from: mockStorageFrom }, auth: { getSession: mockGetSession } },
+  supabase: { from: mockFrom, storage: { from: mockStorageFrom } },
 }));
 
-beforeEach(() => {
-  mockGetSession.mockResolvedValue({ data: { session: { user: { id: 'me' } } } });
-});
+// INFRA-110: the page treats an account as signed in when the Supabase client
+// has a session stored under its default key (as the real client does).
+import { SUPABASE_URL } from '../../pwa/js/config.js';
+const SESSION_KEY = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`;
+const signIn = () => localStorage.setItem(SESSION_KEY, JSON.stringify({ access_token: 'expired', expires_at: 1 }));
 
 // ─── Import after mocks ───────────────────────────────────────────────────────
 
@@ -159,6 +158,7 @@ describe('renderLeaderboard — Supabase error', () => {
     container = document.createElement('div');
     document.body.appendChild(container);
     localStorage.clear();
+    signIn();
     vi.clearAllMocks();
     mockCreateSignedUrl.mockResolvedValue({ data: { signedUrl: 'signed-avatar-url' }, error: null });
   });
@@ -182,7 +182,6 @@ describe('renderLeaderboard — guest (INFRA-110)', () => {
     document.body.appendChild(container);
     localStorage.clear();
     vi.clearAllMocks();
-    mockGetSession.mockResolvedValue({ data: { session: null } });
   });
 
   afterEach(() => {
@@ -201,21 +200,24 @@ describe('renderLeaderboard — guest (INFRA-110)', () => {
     expect(container.innerHTML).not.toContain('Cached Bob');
   });
 
-  it('does not overwrite content when the user navigates away during the session check', async () => {
-    container.dataset.route = 'leaderboard';
-    const renderPromise = renderLeaderboard(container);
-    container.dataset.route = 'home';
-    container.innerHTML = '<div>Home stays here</div>';
-    await renderPromise;
-    expect(container.innerHTML).toContain('Home stays here');
+  it('keeps a signed-in account whose token expired offline on its cached list', async () => {
+    // getSession() would try to refresh and report no session while offline;
+    // the stored session still says the account is signed in.
+    signIn();
+    localStorage.setItem('yoyo_leaderboardCache', JSON.stringify({
+      rows: [makeRow({ name: 'Cached Bob' })],
+      refreshedAt: new Date().toISOString(),
+      refreshDate: effectiveDateForTest(),
+    }));
+    await renderLeaderboard(container);
+    expect(container.innerHTML).toContain('Cached Bob');
+    expect(container.querySelector('.lb-guest')).toBeNull();
   });
 
-  it('still tries the query when the session cannot be read', async () => {
-    mockGetSession.mockRejectedValueOnce(new Error('storage unavailable'));
-    mockSelect.mockResolvedValueOnce({ data: [makeRow({ name: 'Bob' })], error: null });
-    await renderLeaderboard(container);
-    expect(mockFrom).toHaveBeenCalledWith('leaderboard_view');
-    expect(container.innerHTML).toContain('Bob');
+  it('reads the key the vendored Supabase client stores its session under', async () => {
+    const { createClient } = await import('../../pwa/vendor/supabase.js');
+    const client = createClient(SUPABASE_URL, 'test-key', { auth: { persistSession: false, autoRefreshToken: false } });
+    expect(client.auth.storageKey).toBe(SESSION_KEY);
   });
 });
 
@@ -226,6 +228,7 @@ describe('renderLeaderboard — empty data', () => {
     container = document.createElement('div');
     document.body.appendChild(container);
     localStorage.clear();
+    signIn();
     vi.clearAllMocks();
     mockCreateSignedUrl.mockResolvedValue({ data: { signedUrl: 'signed-avatar-url' }, error: null });
   });
@@ -248,6 +251,7 @@ describe('renderLeaderboard — with data', () => {
     container = document.createElement('div');
     document.body.appendChild(container);
     localStorage.clear();
+    signIn();
     vi.clearAllMocks();
     mockCreateSignedUrl.mockResolvedValue({ data: { signedUrl: 'signed-avatar-url' }, error: null });
     mockState.user = { id: 'me', name: 'Alice', mode: 'normal' };
@@ -288,8 +292,6 @@ describe('renderLeaderboard — with data', () => {
 
     const renderPromise = renderLeaderboard(container);
     expect(container.innerHTML).toContain('排行榜');
-    // The query starts after the session check (INFRA-110).
-    await vi.waitFor(() => expect(mockSelect).toHaveBeenCalled());
 
     container.dataset.route = 'home';
     container.innerHTML = '<div>Home stays here</div>';

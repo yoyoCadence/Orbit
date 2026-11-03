@@ -2,7 +2,7 @@
 --
 -- 前置：已套用 005、010 與 015（Supabase 本機、preview 與 production 乾跑皆可）。
 -- 執行：psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/database/infra110.test.sql
--- 乾跑：begin; ＋ 015 的內容 ＋ 本檔從 do $$ 開始的部分 ＋ rollback;（SQL Editor 也可以）
+-- 乾跑（SQL Editor）：begin; ＋ 015 的內容 ＋ 本檔從第一個 do $$ 到最後的 rollback; 之前 ＋ rollback;
 -- 全部在單一 transaction 內，結尾 rollback，不留下任何變更。
 -- 任一 ASSERT 失敗即中止並回報（純 SQL，不依賴 pgTAP）。
 

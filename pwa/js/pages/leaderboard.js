@@ -1,6 +1,7 @@
 import { state }    from '../state.js';
 import { storage }  from '../storage.js';
 import { supabase } from '../supabase.js';
+import { SUPABASE_URL } from '../config.js';
 import { getLevelInfo } from '../leveling.js';
 import { effectiveToday, escHtml } from '../utils.js';
 
@@ -32,10 +33,17 @@ function isCurrentLeaderboardRender(container) {
 }
 
 // INFRA-110: only signed-in users may read leaderboard_view (migration 015);
-// a guest's data stays on this device. If the session cannot be read, try the
-// query anyway, as before.
-function hasSession() {
-  return supabase.auth.getSession().then(({ data }) => Boolean(data?.session), () => true);
+// a guest's data stays on this device. A guest has no session stored by the
+// Supabase client (its default key). Read the key, not getSession(): that first
+// tries to refresh an expired token, which offline takes ~25 s and then reports
+// no session although the account is still signed in.
+const SESSION_KEY = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`;
+function isGuest() {
+  try {
+    return !localStorage.getItem(SESSION_KEY);
+  } catch {
+    return false;
+  }
 }
 
 export async function renderLeaderboard(container) {
@@ -45,13 +53,7 @@ export async function renderLeaderboard(container) {
   const cachedRows = Array.isArray(cache?.rows) ? cache.rows : null;
   const isFresh = cachedRows && cache.refreshDate === refreshDate;
 
-  container.innerHTML = `
-    <div class="section-title">🏆 排行榜</div>
-    <div class="lb-loading">${cachedRows ? '更新排行榜中…' : '載入排行榜中…'}</div>
-  `;
-  const signedIn = await hasSession();
-  if (!isCurrentLeaderboardRender(container)) return;
-  if (!signedIn) {
+  if (isGuest()) {
     container.innerHTML = `
       <div class="section-title">🏆 排行榜</div>
       <div class="card"><div class="lb-guest" style="color:var(--text-muted);font-size:13px;text-align:center;padding:16px">
@@ -65,6 +67,11 @@ export async function renderLeaderboard(container) {
     _renderRows(container, cachedRows, cache.refreshedAt, false, refreshHour);
     return;
   }
+
+  container.innerHTML = `
+    <div class="section-title">🏆 排行榜</div>
+    <div class="lb-loading">${cachedRows ? '更新排行榜中…' : '載入排行榜中…'}</div>
+  `;
 
   let rows;
   try {

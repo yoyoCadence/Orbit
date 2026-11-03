@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 // INFRA-110: the behavioural proof lives in tests/database/infra110.test.sql (needs
@@ -16,9 +16,12 @@ describe('INFRA-110 leaderboard_view grants migration', () => {
     );
   });
 
-  it('is numbered after every earlier migration', () => {
-    const earlier = ['010_leaderboard_avatars.sql', '011_leaderboard_pro.sql', '014_my_pro_status_trial_cap.sql'];
-    for (const name of earlier) expect(() => read(name), name).not.toThrow();
+  it('is numbered after every earlier migration, with a number of its own', () => {
+    const numbers = readdirSync(new URL('../../pwa/db/', import.meta.url))
+      .filter(name => /^\d{3}_.*\.sql$/.test(name) && !name.startsWith('005_'))
+      .map(name => Number(name.slice(0, 3)));
+    expect(Math.max(...numbers)).toBe(15);
+    expect(numbers.filter(n => n === 15)).toHaveLength(1);
   });
 
   it('matches the columns the client reads (the view definition stays in 010)', () => {
