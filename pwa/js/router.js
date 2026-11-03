@@ -1,6 +1,6 @@
 // Hash router, page slide animation, and swipe navigation.
 // Moved verbatim from app.js. window.navigate keeps its global name —
-// index.html inline onclick and the pages depend on it.
+// the data-action buttons (domActions.js) and the pages depend on it.
 
 import { renderHome }           from './pages/home.js';
 import { renderGoals }          from './pages/goals.js';
@@ -102,12 +102,14 @@ export async function renderPage(hash) {
   content.dataset.route = hash;
   const newIdx = PAGE_ORDER.indexOf(hash);
 
-  const syncFn = SYNC_ROUTES[hash];
+  // Own properties only: `#__proto__` or `navigate('constructor')` must not
+  // reach Object.prototype (INFRA-113 review).
+  const syncFn = Object.hasOwn(SYNC_ROUTES, hash) ? SYNC_ROUTES[hash] : null;
   if (syncFn) {
     const result = syncFn(content);
     const cleanup = isThenable(result) ? await result : result;
     if (!routeRenderLifecycle.commit(renderToken, cleanup)) return;
-  } else if (LAZY_ROUTES[hash]) {
+  } else if (Object.hasOwn(LAZY_ROUTES, hash)) {
     let loadTimer;
     // PS-211B: the route may mount an Orbit Window that takes over the Pixi
     // runtime the previous page released; keep it until this render settles.

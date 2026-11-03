@@ -71,6 +71,7 @@ Do not:
 - mix a feature task with broad unrelated cleanup
 - let 3D or scene code pollute current task, auth, or storage core logic
 - sneak in schema, auth, or deployment edits under an unrelated feature
+- put inline code in the page: no `onclick="…"` (or any `on*=` attribute), no inline `<script>`, no `javascript:` URL. `index.html`'s Content-Security-Policy blocks them (INFRA-113). A clickable element in markup uses `data-action="name"` (plus `data-action-arg`) and the action is added to `pwa/js/domActions.js`; or bind with `addEventListener` after rendering. A new external script, image or API host needs the policy changed too (`tests/unit/csp.test.js`, `docs/infra-113-csp.md`)
 
 ## 7. Expansion Directions
 

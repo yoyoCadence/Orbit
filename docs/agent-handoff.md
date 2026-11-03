@@ -147,7 +147,8 @@
 38. **AUDIT-001：完成**（2026-10-29，v1.41.6）：整體性的完整檢查。已修：XSS（昨日報告、稱號主題按鈕，以及任務 emoji、圖示、背景、頭像放進 HTML 前的 escape）、PDF 函式庫的 SRI 與失敗後重試、本機 `server.cjs` 的路徑檢查、不需 major 的 devDependencies advisory、README／ROADMAP／AGENTS §17 與 V2 設計文件。需核准的記為 Backlog：INFRA-110（`leaderboard_view` 的權限，需擁有者在 Supabase 確認 `anon` 的 grant）、INFRA-111（圖片下載不用 HTTP cache 的舊檔）、INFRA-112（CI `permissions`、Node 22＋vitest 5）、INFRA-113（部署內容、CSP）、REPO-001（`output/`、舊分支）。
 39. **INFRA-111：完成**（2026-11-02，v1.41.7）：沒有預先快取的圖片，service worker 第一次取得時以 `cache: 'no-cache'` 向伺服器確認，改版後不會把 HTTP cache 裡上一版的圖存進新版本的快取。使用者 2026-11-02 核准 INFRA-110～113（各一個 PR，INFRA-110 需要擁有者先提供 Supabase 的 grant 查詢結果）；REPO-001 使用者之後自行處理。
 40. **INFRA-112：完成**（2026-11-02，不 bump）：CI `permissions: contents: read`、Node 22、Node 24 版的 action；vitest 5（需要 DOM 的測試檔第一行寫 `// @vitest-environment jsdom`，不再用 `environmentMatchGlobs`；arrow function 的 `vi.fn()` 不能 `new`）。本機需要 Node 22.13 以上的 22.x、24.x，或 26 以上（不含 23、25；`engines`）。eslint 的 minimatch advisory 等 eslint 改用 minimatch ≥ 11.0.1。
-41. **下一步**：Backlog 其餘項目需要核准或屬高風險（HW-112 的 Storage migration、INFRA-101／PS-211D 的部署行為、PRO-014* 的 entitlement）。使用者原則：以「任務確實完成」為準，合併是後話；做不到的先寫進 `tasks.md`。
+41. **INFRA-113：完成**（2026-11-03，v1.41.8）：頁面加上 CSP，沒有 inline 程式碼（按鈕用 `data-action`，`pwa/js/domActions.js`；**之後新增按鈕不可再寫 `onclick=`**，見 AGENTS.md §6）；部署不含 `pwa/db` 與 `server.cjs`，`deploy.yml` 用 Node 24 的 action。`'unsafe-eval'` 給 Pixi（INFRA-114），jsPDF 2.5.1 的 advisory（INFRA-115）。INFRA-110 等擁有者提供 Supabase 的 grant 查詢結果。
+42. **下一步**：Backlog 其餘項目需要核准或屬高風險（HW-112 的 Storage migration、INFRA-101／PS-211D 的部署行為、PRO-014* 的 entitlement）。使用者原則：以「任務確實完成」為準，合併是後話；做不到的先寫進 `tasks.md`。
 
 其他：
 
@@ -232,6 +233,7 @@
 | #222 | — | PRO-014H 核准名單：記錄擁有者主帳號（終身）已寫入 `pro_entitlements` 並對帳（核准 1、成功 1、拒絕／重複 0） |
 | #223 | v1.41.7 | INFRA-111：沒有預先快取的圖片第一次取得時以 `cache: 'no-cache'` 向伺服器確認 |
 | #224 | — | PRO-014L 提案：SUB-16 改由 server 發放；檢視草稿 #154 對照目前的 main，建議拆成 L1／LA／L2 |
+| #225 | — | INFRA-112：CI `permissions: contents: read`、Node 22、Node 24 版的 action、vitest 5（jsdom 改在各檔宣告） |
 
 教訓：#155–#164 在 Codex review 出現前就合併，造成 #165、#166、#167 的回頭修正。這就是 §2 合併條件的由來。獨立 review 在 #167、#168、#169 都找到真正的問題（例如椅子畫在螢幕後面、壁燈在相框下投出暗影），所以複查不能省。
 
