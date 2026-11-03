@@ -16,12 +16,10 @@ describe('INFRA-110 leaderboard_view grants migration', () => {
     );
   });
 
-  it('is numbered after every earlier migration, with a number of its own', () => {
-    const numbers = readdirSync(new URL('../../pwa/db/', import.meta.url))
-      .filter(name => /^\d{3}_.*\.sql$/.test(name) && !name.startsWith('005_'))
-      .map(name => Number(name.slice(0, 3)));
-    expect(Math.max(...numbers)).toBe(15);
-    expect(numbers.filter(n => n === 15)).toHaveLength(1);
+  it('has a number of its own, after the migrations that define the view and the roles it touches', () => {
+    const names = readdirSync(new URL('../../pwa/db/', import.meta.url)).filter(name => /^\d{3}_.*\.sql$/.test(name));
+    expect(names.filter(name => name.startsWith('015_'))).toEqual(['015_leaderboard_view_grants.sql']);
+    for (const name of ['005_leaderboard.sql', '010_leaderboard_avatars.sql']) expect(names).toContain(name);
   });
 
   it('matches the columns the client reads (the view definition stays in 010)', () => {

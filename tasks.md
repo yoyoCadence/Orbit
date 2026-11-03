@@ -14,6 +14,12 @@
 
 ## Backlog
 
+- [ ] **BUG-116** 離線且 token 過期時登出，Supabase 的 session 留在裝置上（INFRA-110 獨立 review 發現，原本就有）
+  - 現象：`supabase.auth.signOut()` 在 token 過期又離線時約 25 秒後回傳 `AuthRetryableFetchError`，`sb-<project>-auth-token` 沒有被刪除（SDK 讀 session 失敗就提前結束）。app 照樣回到登入畫面，`storage.clearAll()` 只清 `yoyo_*`。之後以遊客繼續時，排行榜（INFRA-110 以這個 key 判斷是否登入）把它當成已登入，連上網後 refresh 成功會以剛登出的帳號查詢；下次啟動也會回到那個帳號。
+  - 影響：只在同一台裝置，裝置上本來就有那個帳號的 refresh token，沒有資料外流；但「登出」沒有真正登出。
+  - 方向：`signOut` 回傳錯誤時改用 `signOut({ scope: 'local' })` 或自行刪除本機的 session key。屬 auth 流程，實作前需核准。
+  - 另：storage 寫入測試失敗時 supabase-js 把 session 只放在記憶體，key 不存在，已登入的使用者在排行榜會看到登入提示（少見，偏向隱藏資料）。
+
 - [ ] **INFRA-114** 去掉 CSP 的 `'unsafe-eval'`（INFRA-113 發現）
   - Pixi 8 以 `new Function` 產生 shader／uniform 程式碼，CSP 沒有 `'unsafe-eval'` 時拒絕啟動（Orbit Window 退回 poster）。Pixi 的 `pixi.js/unsafe-eval` 外掛可取代，但它是給全域 `PIXI` 的 classic script，要改 `scripts/vendor-pixi.mjs` 把它接到 ESM 的 class 上（它只改 class 的 prototype），而且 gzip 後 4,004 B，超過 PS-243 延後載入 JS 預算剩下的 2,223 B。
   - 需要決定：放寬 JS 預算，或接受 `'unsafe-eval'`（沒有 inline 程式碼時風險低）。
@@ -252,7 +258,7 @@
   - 完成（2026-11-03，repo 部分，v1.41.9；production 套用另立 INFRA-110A）：
     - `pwa/db/015_leaderboard_view_grants.sql`：`REVOKE ALL ON TABLE public.leaderboard_view FROM PUBLIC, anon, authenticated;` 後 `GRANT SELECT ... TO authenticated;`。只改權限，view 的定義與欄位不變；`service_role`、`postgres` 不變；可重複執行。
     - client（`pages/leaderboard.js`）：Supabase client 沒有儲存的 session（遊客）時顯示「登入帳號後才能看排行榜」，不查詢、也不顯示舊的快取。直接讀 client 的預設 key（`sb-<project>-auth-token`，測試檢查與 vendored client 一致），不用 `getSession()`：token 過期又離線時 `getSession()` 會先嘗試 refresh（約 25 秒）並回報沒有 session，已登入的帳號會被當成遊客（獨立 review 的 P2）。已登入時與以前相同（新的快取立即顯示）。以前遊客以 anon key 讀得到排行榜，015 之後會被拒絕。
-    - 測試：`tests/database/infra110.test.sql`（ASSERT：authenticated 只有 SELECT、anon 與 PUBLIC 沒有任何權限；以 anon 讀取被拒、以 authenticated 讀取成功；view 的欄位與 010 相同）。在本機 PostgreSQL 16 以 Supabase 的預設權限重現擁有者查到的 grant（anon 讀得到公開的那一列），套用 015 前測試失敗、套用後通過，anon 讀取為 permission denied，authenticated 仍只讀到公開的使用者。Unit：`leaderboardViewGrantsSql.test.js`（migration 內容）、`leaderboard.test.js`（遊客、讀不到 session、檢查 session 期間離開頁面）。
+    - 測試：`tests/database/infra110.test.sql`（ASSERT：authenticated 只有 SELECT、anon 與 PUBLIC 沒有任何權限；以 anon 讀取被拒、以 authenticated 讀取成功；view 的欄位與 010 相同）。在本機 PostgreSQL 16 以 Supabase 的預設權限重現擁有者查到的 grant（anon 讀得到公開的那一列），套用 015 前測試失敗、套用後通過，anon 讀取為 permission denied，authenticated 仍只讀到公開的使用者。Unit：`leaderboardViewGrantsSql.test.js`（migration 內容）、`leaderboard.test.js`（遊客、token 過期又離線的已登入帳號仍顯示快取、讀不到 storage 時照舊查詢、key 與 app 的 Supabase client 一致）。
     - 不在此變更：`user_id` 是否仍回傳（頭像路徑本身以 user_id 開頭）、`security_invoker`／RPC，見 PRO-014E。**PRO-014E 若以 DROP VIEW 重建 view，Supabase 的預設權限會再給 anon，要再執行 015**（015 開頭有註記）。
     - 獨立 review：在模擬 Supabase 角色（`supabase_admin`、`authenticator`、NOINHERIT 的 anon／authenticated、`postgres` 的預設權限）的 PostgreSQL 16 上跑 001–014，重現擁有者查到的權限；015 後 anon 被拒、authenticated 只讀到公開的使用者，乾跑步驟照字面在 SQL Editor 的方式可用。P2（離線過期 token 被當成遊客）已修正；P3 已處理（文件與註解、view 擁有者的檢查、部署順序的說明）。
 

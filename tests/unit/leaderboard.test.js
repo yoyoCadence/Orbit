@@ -214,10 +214,23 @@ describe('renderLeaderboard — guest (INFRA-110)', () => {
     expect(container.querySelector('.lb-guest')).toBeNull();
   });
 
-  it('reads the key the vendored Supabase client stores its session under', async () => {
-    const { createClient } = await import('../../pwa/vendor/supabase.js');
-    const client = createClient(SUPABASE_URL, 'test-key', { auth: { persistSession: false, autoRefreshToken: false } });
-    expect(client.auth.storageKey).toBe(SESSION_KEY);
+  it('reads the key the app Supabase client itself stores its session under', async () => {
+    // The real client (this file mocks it), so a storageKey or storage option
+    // added there later would fail here instead of hiding the board.
+    const { supabase } = await vi.importActual('../../pwa/js/supabase.js');
+    expect(supabase.auth.storageKey).toBe(SESSION_KEY);
+  });
+
+  it('runs the query when storage cannot be read', async () => {
+    const getItem = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('denied'); });
+    mockSelect.mockResolvedValueOnce({ data: [makeRow({ name: 'Bob' })], error: null });
+    try {
+      await renderLeaderboard(container);
+    } finally {
+      getItem.mockRestore();
+    }
+    expect(mockFrom).toHaveBeenCalledWith('leaderboard_view');
+    expect(container.innerHTML).toContain('Bob');
   });
 });
 
