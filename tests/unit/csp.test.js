@@ -49,7 +49,7 @@ describe('INFRA-113 Content-Security-Policy', () => {
     for (const [path, source] of Object.entries(files)) {
       // An event handler attribute in markup or a template: `onclick="…"`,
       // `onclick = '…'`, `<b/onclick=…>`, `onclick=${…}` or unquoted.
-      expect(source.match(/[\s/]on[a-z]+\s*=\s*(?:["'`]|\$\{|[a-z_$][\w.$]*\()/g), path).toBeNull();
+      expect(source.match(/[\s/]on[a-z]+\s*=\s*(?:["'`]|\$\{|[a-z_$][\w.$]*\()/gi), path).toBeNull();
       expect(source.match(/setAttribute\(\s*['"`]on/gi), path).toBeNull();
       expect(source.match(/javascript:/gi), path).toBeNull();
     }

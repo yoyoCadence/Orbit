@@ -250,7 +250,7 @@
     - `deploy.yml`：上傳前排除 `pwa/db/` 與 `pwa/server.cjs`（802 個檔案中上傳 787 個）；action 換成以 Node 24 執行的版本（`checkout@v5`、`configure-pages@v6`、`upload-pages-artifact@v5`、`deploy-pages@v5`）。部署只在合併後執行，合併後要確認 deploy 成功。
     - AGENTS.md §6：不可再加入 inline 程式碼，按鈕用 `data-action`；新的外部來源要一起改 CSP。
     - 獨立 review：沒有 P1／P2。P3 已處理：`app.js` 也 import `domActions.js`、`swUpdate.js` 提前、`child-src`、`router.js` 只查自己的 route（`navigate('__proto__')` 以前會丟錯誤）、測試更嚴格、`deploy.yml` 的複製方式、文件更正。仍在 v1.41.0 以前的 service worker 的使用者第一次開啟可能新 HTML 配舊 JS（部分舊模板按鈕無效），重新整理後正常，寫在變更說明 §3。
-    - 測試：unit `csp.test.js`（9 項）；e2e `infra113-csp.test.js`（各畫面與 Pixi 場景沒有任何 CSP 違規；注入的 `onerror`／`onclick` 與清單外的 `data-action` 不執行，沒有 CSP 時失敗）。成長報告 PDF 以與 cdnjs 相同的檔案在 CSP 下一次性確認成功（SRI 通過、沒有違規）。
+    - 測試：unit `csp.test.js`（10 項）；e2e `infra113-csp.test.js`（各畫面與 Pixi 場景沒有任何 CSP 違規；注入的 `onerror`／`onclick` 與清單外的 `data-action` 不執行，沒有 CSP 時失敗）。成長報告 PDF 以與 cdnjs 相同的檔案在 CSP 下一次性確認成功（SRI 通過、沒有違規）。
 
 - [x] **INFRA-112** CI 加固與 Node 版本（AUDIT-001 發現）
   - `ci.yml` 沒有 `permissions:`，`GITHUB_TOKEN` 用 repo 預設權限；改為 `permissions: contents: read`（`deploy.yml` 已有）。
