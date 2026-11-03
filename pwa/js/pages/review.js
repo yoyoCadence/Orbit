@@ -11,7 +11,7 @@ let _viewMode  = 'week';
 let _viewYear  = new Date().getFullYear();
 let _viewMonth = new Date().getMonth(); // 0-indexed
 
-// Expose navigation handlers on window so inline HTML onclick can reach them
+// Expose navigation handlers on window so the data-action buttons (domActions.js) can reach them
 window._reviewSetMode = (mode) => { _viewMode = mode; _rerender(); };
 window._reviewPrevMonth = () => {
   let m = _viewMonth - 1, y = _viewYear;

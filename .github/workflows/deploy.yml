@@ -31,7 +31,8 @@ jobs:
       # the local dev server (pwa/server.cjs) stay in the repo, off the site.
       - name: Copy the app without the migrations and the dev server
         run: |
-          cp -R pwa _site
+          mkdir _site
+          cp -R pwa/. _site/
           rm -rf _site/db _site/server.cjs
 
       - name: Upload the site as Pages artifact

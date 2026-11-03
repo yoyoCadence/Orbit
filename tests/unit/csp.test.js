@@ -47,7 +47,10 @@ describe('INFRA-113 Content-Security-Policy', () => {
   it('runs no inline code: no handler attributes, no inline <script>, no javascript: URLs', () => {
     const files = { 'index.html': indexHtml, ...Object.fromEntries(appScripts().map(path => [path, read(path)])) };
     for (const [path, source] of Object.entries(files)) {
-      expect(source.match(/\son[a-z]+=["']/gi), path).toBeNull();
+      // An event handler attribute in markup or a template: `onclick="…"`,
+      // `onclick = '…'`, `<b/onclick=…>`, `onclick=${…}` or unquoted.
+      expect(source.match(/[\s/]on[a-z]+\s*=\s*(?:["'`]|\$\{|[a-z_$][\w.$]*\()/g), path).toBeNull();
+      expect(source.match(/setAttribute\(\s*['"`]on/gi), path).toBeNull();
       expect(source.match(/javascript:/gi), path).toBeNull();
     }
     expect(indexHtml.match(/<script(?![^>]*\ssrc=)[^>]*>/g)).toBeNull();
@@ -56,6 +59,14 @@ describe('INFRA-113 Content-Security-Policy', () => {
     expect(directives['default-src']).toEqual(["'self'"]);
     expect(directives['object-src']).toEqual(["'none'"]);
     expect(directives['base-uri']).toEqual(["'none'"]);
+  });
+
+  it('lists only actions whose window function the app defines', () => {
+    const source = read('js/domActions.js');
+    const called = [...source.matchAll(/window\.([A-Za-z_$][\w$]*)\(/g)].map(match => match[1]);
+    expect(called.length).toBe(DOM_ACTION_NAMES.length);
+    const app = appScripts().filter(path => path !== 'js/domActions.js').map(read).join('\n');
+    expect(called.filter(name => !new RegExp(`window\\.${name.replace('$', '\\$')}\\s*=`).test(app))).toEqual([]);
   });
 
   it('names only actions the dispatcher runs', () => {

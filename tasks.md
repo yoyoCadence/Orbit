@@ -244,11 +244,12 @@
   - **2026-11-03 使用者決定**（AskUserQuestion）：嚴格的 CSP，先重構：把 `index.html` 的 22 個 `onclick`、JS 模板中的 10 個 inline handler 與 inline `<script>` 改為 `addEventListener`，CSP 的 `script-src` 只允許自己與 cdnjs，注入的 inline 程式碼不會執行。部署範圍（排除 `pwa/db`、`server.cjs`）與 `deploy.yml` 改用 Node 24 的 action 照原計畫。
   - In progress（2026-11-03）：INFRA-112（#225）合併後開始（Backlog → In Progress）。
   - 完成（2026-11-03，v1.41.8）：變更說明 [`docs/infra-113-csp.md`](docs/infra-113-csp.md)。
-    - 頁面不再有 inline 程式碼：`index.html` 的 20 個 `onclick` 與 JS 模板的 8 個改為 `data-action`（新模組 `pwa/js/domActions.js`，只執行清單中的動作、只執行最內層的）；保護卡確認框的「取消」與重設密碼的顯示密碼改為 `addEventListener`；inline `<script>` 搬到 `pwa/js/swUpdate.js`。兩個新模組加入 SHELL。
-    - CSP（`<meta http-equiv>`）：`default-src 'self'`；`script-src 'self' 'unsafe-eval'` 加上 jsPDF 與 html2canvas 兩個檔案的完整網址（不是整個 cdnjs）；`style-src 'self' 'unsafe-inline'`；`img-src`／`connect-src` 只多 Supabase 主機（與 `config.js` 一致，測試檢查）；`worker-src 'self' blob:`；`object-src 'none'`；`base-uri 'none'`；`form-action 'self'`。
+    - 頁面不再有 inline 程式碼：`index.html` 的 20 個 `onclick` 與 JS 模板的 8 個改為 `data-action`（新模組 `pwa/js/domActions.js`，只執行清單中的動作、只執行最內層的）；保護卡確認框的「取消」改為 `.onclick =`、重設密碼的顯示密碼改為 `addEventListener`；inline `<script>` 搬到 `pwa/js/swUpdate.js`（第一個 module script）。兩個新模組加入 SHELL；`app.js` 也 import `domActions.js`。
+    - CSP（`<meta http-equiv>`）：`default-src 'self'`；`script-src 'self' 'unsafe-eval'` 加上 jsPDF 與 html2canvas 兩個檔案的完整網址（不是整個 cdnjs）；`style-src 'self' 'unsafe-inline'`；`img-src`／`connect-src` 只多 Supabase 主機（與 `config.js` 一致，測試檢查）；`worker-src`／`child-src 'self' blob:`（`child-src` 給 Safari 15.4）；`object-src 'none'`；`base-uri 'none'`；`form-action 'self'`。
     - `'unsafe-eval'`：Pixi 8 需要，去掉時 Orbit Window 退回 poster（已實測）。改用 Pixi 的外掛要超出 JS 預算，記為 INFRA-114。
     - `deploy.yml`：上傳前排除 `pwa/db/` 與 `pwa/server.cjs`（802 個檔案中上傳 787 個）；action 換成以 Node 24 執行的版本（`checkout@v5`、`configure-pages@v6`、`upload-pages-artifact@v5`、`deploy-pages@v5`）。部署只在合併後執行，合併後要確認 deploy 成功。
     - AGENTS.md §6：不可再加入 inline 程式碼，按鈕用 `data-action`；新的外部來源要一起改 CSP。
+    - 獨立 review：沒有 P1／P2。P3 已處理：`app.js` 也 import `domActions.js`、`swUpdate.js` 提前、`child-src`、`router.js` 只查自己的 route（`navigate('__proto__')` 以前會丟錯誤）、測試更嚴格、`deploy.yml` 的複製方式、文件更正。仍在 v1.41.0 以前的 service worker 的使用者第一次開啟可能新 HTML 配舊 JS（部分舊模板按鈕無效），重新整理後正常，寫在變更說明 §3。
     - 測試：unit `csp.test.js`（9 項）；e2e `infra113-csp.test.js`（各畫面與 Pixi 場景沒有任何 CSP 違規；注入的 `onerror`／`onclick` 與清單外的 `data-action` 不執行，沒有 CSP 時失敗）。成長報告 PDF 以與 cdnjs 相同的檔案在 CSP 下一次性確認成功（SRI 通過、沒有違規）。
 
 - [x] **INFRA-112** CI 加固與 Node 版本（AUDIT-001 發現）

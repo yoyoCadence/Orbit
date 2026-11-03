@@ -66,6 +66,17 @@ describe('route renderer lifecycle', () => {
     });
   });
 
+  it('renders home for a name that is not a page, Object.prototype names included', async () => {
+    // INFRA-113 review: `navigate` is reachable from data-action buttons, and
+    // `#__proto__` from the address bar; neither may reach Object.prototype.
+    for (const name of ['__proto__', 'constructor', 'toString', 'valueOf', 'nope']) {
+      routeMocks.renderHome.mockClear();
+      await expect(renderPage(name), name).resolves.toBeUndefined();
+      expect(routeMocks.renderHome, name).toHaveBeenCalledTimes(1);
+      expect(document.getElementById('content').textContent, name).toBe('home');
+    }
+  });
+
   it('calls each renderer cleanup exactly once before the next render', async () => {
     await renderPage('home');
     expect(routeMocks.homeCleanup).not.toHaveBeenCalled();

@@ -1,3 +1,6 @@
+// INFRA-113: also loaded by its own <script> tag; importing it here covers an
+// older cached index.html (no such tag) running this version's modules.
+import './domActions.js';
 import { state }                                              from './state.js';
 import { storage, db, migrateV1toV2, migrateDefaultFlags }    from './storage.js';
 import { signOut as authSignOut, getSession, onAuthStateChange } from './auth.js';
