@@ -1,6 +1,7 @@
 import { state }    from '../state.js';
 import { storage }  from '../storage.js';
 import { supabase } from '../supabase.js';
+import { SUPABASE_URL } from '../config.js';
 import { getLevelInfo } from '../leveling.js';
 import { effectiveToday, escHtml } from '../utils.js';
 
@@ -31,12 +32,36 @@ function isCurrentLeaderboardRender(container) {
   return !container.dataset?.route || container.dataset.route === 'leaderboard';
 }
 
+// INFRA-110: only signed-in users may read leaderboard_view (migration 015);
+// a guest's data stays on this device. A guest has no session stored by the
+// Supabase client (its default key). Read the key, not getSession(): that first
+// tries to refresh an expired token, which offline takes ~25 s and then reports
+// no session although the account is still signed in.
+const SESSION_KEY = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`;
+function isGuest() {
+  try {
+    return !localStorage.getItem(SESSION_KEY);
+  } catch {
+    return false;
+  }
+}
+
 export async function renderLeaderboard(container) {
   const refreshHour = state.user?.newDayHour ?? 5;
   const refreshDate = effectiveToday(refreshHour);
   const cache = storage.getLeaderboardCache?.();
   const cachedRows = Array.isArray(cache?.rows) ? cache.rows : null;
   const isFresh = cachedRows && cache.refreshDate === refreshDate;
+
+  if (isGuest()) {
+    container.innerHTML = `
+      <div class="section-title">🏆 排行榜</div>
+      <div class="card"><div class="lb-guest" style="color:var(--text-muted);font-size:13px;text-align:center;padding:16px">
+        登入帳號後才能看排行榜。遊客的資料只存在這台裝置，不會出現在排行榜上。
+      </div></div>
+    `;
+    return;
+  }
 
   if (isFresh) {
     _renderRows(container, cachedRows, cache.refreshedAt, false, refreshHour);

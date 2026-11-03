@@ -14,6 +14,12 @@
 
 ## Backlog
 
+- [ ] **BUG-116** 離線且 token 過期時登出，Supabase 的 session 留在裝置上（INFRA-110 獨立 review 發現，原本就有）
+  - 現象：`supabase.auth.signOut()` 在 token 過期又離線時約 25 秒後回傳 `AuthRetryableFetchError`，`sb-<project>-auth-token` 沒有被刪除（SDK 讀 session 失敗就提前結束）。app 照樣回到登入畫面，`storage.clearAll()` 只清 `yoyo_*`。之後以遊客繼續時，排行榜（INFRA-110 以這個 key 判斷是否登入）把它當成已登入，連上網後 refresh 成功會以剛登出的帳號查詢；下次啟動也會回到那個帳號。
+  - 影響：只在同一台裝置，裝置上本來就有那個帳號的 refresh token，沒有資料外流；但「登出」沒有真正登出。
+  - 方向：`signOut` 回傳錯誤時改用 `signOut({ scope: 'local' })` 或自行刪除本機的 session key。屬 auth 流程，實作前需核准。
+  - 另：storage 寫入測試失敗時 supabase-js 把 session 只放在記憶體，key 不存在，已登入的使用者在排行榜會看到登入提示（少見，偏向隱藏資料）。
+
 - [ ] **INFRA-114** 去掉 CSP 的 `'unsafe-eval'`（INFRA-113 發現）
   - Pixi 8 以 `new Function` 產生 shader／uniform 程式碼，CSP 沒有 `'unsafe-eval'` 時拒絕啟動（Orbit Window 退回 poster）。Pixi 的 `pixi.js/unsafe-eval` 外掛可取代，但它是給全域 `PIXI` 的 classic script，要改 `scripts/vendor-pixi.mjs` 把它接到 ESM 的 class 上（它只改 class 的 prototype），而且 gzip 後 4,004 B，超過 PS-243 延後載入 JS 預算剩下的 2,223 B。
   - 需要決定：放寬 JS 預算，或接受 `'unsafe-eval'`（沒有 inline 程式碼時風險低）。
@@ -21,13 +27,6 @@
 - [ ] **INFRA-115** 升級成長報告 PDF 的 jsPDF（INFRA-113 發現）
   - `export.js` 從 cdnjs 載入 jsPDF 2.5.1：`npm audit` 列出 critical／high（`addImage` 的 ReDoS 與 DoS、Node.js 才有的檔案讀取、選用的 DOMPurify 的 XSS）。app 只在瀏覽器中把自己的 canvas 截圖交給 `addImage`，沒有用 `html()`，實際風險低。
   - 方向：改用 jsPDF 4.x（cdnjs 網址與 SRI、CSP 的 `script-src` 一起改，`csp.test.js` 會檢查一致），確認 API 變更與 PDF 輸出。
-
-- [ ] **INFRA-110** `leaderboard_view` 的權限（AUDIT-001 發現）
-  - 問題：Postgres 的 view 預設以擁有者的權限執行，不受 `profiles`／`sessions` 的 RLS 限制（`005_leaderboard.sql` 的註解「Views inherit table RLS by default」不正確）。view 只靠 `WHERE p.is_public = true` 限制列；migration 只 `GRANT SELECT ... TO authenticated`，但 Supabase 的預設權限（`ALTER DEFAULT PRIVILEGES ... TO anon, authenticated`）可能也讓 `anon` 讀得到，屆時未登入者可讀所有公開使用者的 `user_id`、名稱、XP、連勝、`created_at`、`avatar_url`。
-  - 需要擁有者確認（agent 沒有連線正式資料庫）：在 Supabase SQL editor 執行 `select grantee, privilege_type from information_schema.role_table_grants where table_name = 'leaderboard_view';`，看 `anon` 是否有 `SELECT`。
-  - 方向（改 schema，需核准）：`REVOKE ALL ON leaderboard_view FROM anon, public`；考慮 `security_invoker = true`（需要另一條讓 authenticated 讀公開 profile 的 policy）或改為 `SECURITY DEFINER` RPC；是否還要回傳 `user_id`（目前只用來標示「你」，可改為回傳 `is_me`）。相關：PRO-014E。
-  - **2026-11-02 使用者核准**（AUDIT-001 後的 AskUserQuestion，INFRA-110～113 全部核准，各自一個 PR）。
-  - 順序：最後做；需要擁有者先在 Supabase 執行上面的查詢並提供結果（2026-11-03 使用者：之後提供）。
 
 - [ ] **REPO-001** Repo 清理（AUDIT-001 發現，需擁有者決定）
   - `output/`：30 個 tracked 檔、約 58 MB 的舊 proof 圖，app 與測試都沒有使用（只在 `skills/orbit-idle-window-assets` 的說明中當輸出目錄、eslint 忽略）。可刪除（歷史仍保留在 git）。
@@ -116,6 +115,7 @@
   - 依賴：`PRO-014B`
 
 - [ ] **PRO-014E** 另案建立 `display_name` 與排行榜安全 read model
+  - INFRA-110（2026-11-03）：`leaderboard_view` 已收回 anon 與 PUBLIC 的權限（015）。若以 `DROP VIEW` 重建 view，Supabase 的預設權限會再給 anon 全部權限，重建後要再執行 015 的 REVOKE／GRANT（`CREATE OR REPLACE VIEW` 則保留權限）。
   - 目標：在 entitlement foundation 穩定後，以新 PR 提出 `display_name` 寫入規則及排行榜可公開欄位，不沿用 PR #132 的混合範圍
   - 範圍：欄位／constraint、owner-scoped update、leaderboard view 或 RPC、明確 `REVOKE`／`GRANT`、資料逃逸測試與 migration 文件
   - 安全閘門：此項是另一個 schema proposal；實作與套用前需個別核准
@@ -212,6 +212,17 @@
 
 > 2026-11-02 排程：PRO-014H 的核准名單已寫入並對帳（#222）。使用者同意寫 PRO-014L 的提案（只寫文件），從 Backlog 移入 Next，再移入 In Progress。
 
+- [ ] **INFRA-110A** 在 production 套用 015（`leaderboard_view` 只給已登入的使用者讀）
+  - **需專案擁有者執行**：production 資料庫操作，Claude 不具權限。先讓 v1.41.9（遊客顯示登入提示）部署，再套用 015。順序相反時遊客會看到「無法載入排行榜」；順序正確時，還沒更新到 v1.41.9 的舊分頁或 PWA（INFRA-107：要等新的 service worker 接手）裡沒有快取的遊客也會暫時看到，更新後即改為登入提示。
+  - 步驟（Supabase SQL Editor）：
+    0. 確認 view 的擁有者：`select pg_get_userbyid(relowner) from pg_class where oid = 'public.leaderboard_view'::regclass;` 預期 `postgres`（若不是，REVOKE 不會生效，先回報）。
+    1. 乾跑：`begin;` ＋ `015_leaderboard_view_grants.sql` 的內容 ＋ `tests/database/infra110.test.sql` 從第一個 `do $$` 到 `rollback;` 之前的內容 ＋ `rollback;`，預期 Success（任何 ASSERT 失敗會中止並顯示原因）。
+    2. 套用 `015_leaderboard_view_grants.sql`。
+    3. 檢查：`select grantee, privilege_type from information_schema.role_table_grants where table_schema = 'public' and table_name = 'leaderboard_view' order by 1, 2;` 預期 `authenticated` 只有 `SELECT`，沒有 `anon`（`postgres`、`service_role` 不變）。
+    4. 在 app 確認：登入的帳號看得到排行榜；遊客看到「登入帳號後才能看排行榜」。
+  - 完成後在本項記錄執行日期與結果，並把 015 開頭的「執行日期」改為實際日期。
+  - 依賴：`INFRA-110`
+
 ---
 
 ## In Progress
@@ -235,6 +246,21 @@
 ---
 
 ## Done
+
+- [x] **INFRA-110** `leaderboard_view` 的權限（AUDIT-001 發現）
+  - 問題：Postgres 的 view 預設以擁有者的權限執行，不受 `profiles`／`sessions` 的 RLS 限制（`005_leaderboard.sql` 的註解「Views inherit table RLS by default」不正確）。view 只靠 `WHERE p.is_public = true` 限制列；migration 只 `GRANT SELECT ... TO authenticated`，但 Supabase 的預設權限（`ALTER DEFAULT PRIVILEGES ... TO anon, authenticated`）可能也讓 `anon` 讀得到，屆時未登入者可讀所有公開使用者的 `user_id`、名稱、XP、連勝、`created_at`、`avatar_url`。
+  - 需要擁有者確認（agent 沒有連線正式資料庫）：在 Supabase SQL editor 執行 `select grantee, privilege_type from information_schema.role_table_grants where table_name = 'leaderboard_view';`，看 `anon` 是否有 `SELECT`。
+  - 方向（改 schema，需核准）：`REVOKE ALL ON leaderboard_view FROM anon, public`；考慮 `security_invoker = true`（需要另一條讓 authenticated 讀公開 profile 的 policy）或改為 `SECURITY DEFINER` RPC；是否還要回傳 `user_id`（目前只用來標示「你」，可改為回傳 `is_me`）。相關：PRO-014E。
+  - **2026-11-02 使用者核准**（AUDIT-001 後的 AskUserQuestion，INFRA-110～113 全部核准，各自一個 PR）。
+  - 順序：最後做；需要擁有者先在 Supabase 執行上面的查詢並提供結果（2026-11-03 使用者：之後提供）。
+  - **2026-11-03 擁有者提供查詢結果**：`anon` 與 `authenticated` 都有 SELECT、INSERT、UPDATE、DELETE、TRUNCATE、REFERENCES、TRIGGER（Supabase 的預設權限），另有 `service_role`、`postgres`。確認未登入者只要有 anon key（公開在 `config.js`）就能以 `GET /rest/v1/leaderboard_view` 讀取。view 有 JOIN 與子查詢，不能被寫入，所以 INSERT 等實際上無效。
+  - In progress（2026-11-03）：INFRA-113（#227）合併後開始（Backlog → In Progress）。
+  - 完成（2026-11-03，repo 部分，v1.41.9；production 套用另立 INFRA-110A）：
+    - `pwa/db/015_leaderboard_view_grants.sql`：`REVOKE ALL ON TABLE public.leaderboard_view FROM PUBLIC, anon, authenticated;` 後 `GRANT SELECT ... TO authenticated;`。只改權限，view 的定義與欄位不變；`service_role`、`postgres` 不變；可重複執行。
+    - client（`pages/leaderboard.js`）：Supabase client 沒有儲存的 session（遊客）時顯示「登入帳號後才能看排行榜」，不查詢、也不顯示舊的快取。直接讀 client 的預設 key（`sb-<project>-auth-token`，測試檢查與 vendored client 一致），不用 `getSession()`：token 過期又離線時 `getSession()` 會先嘗試 refresh（約 25 秒）並回報沒有 session，已登入的帳號會被當成遊客（獨立 review 的 P2）。已登入時與以前相同（新的快取立即顯示）。以前遊客以 anon key 讀得到排行榜，015 之後會被拒絕。
+    - 測試：`tests/database/infra110.test.sql`（ASSERT：authenticated 只有 SELECT、anon 與 PUBLIC 沒有任何權限；以 anon 讀取被拒、以 authenticated 讀取成功；view 的欄位與 010 相同）。在本機 PostgreSQL 16 以 Supabase 的預設權限重現擁有者查到的 grant（anon 讀得到公開的那一列），套用 015 前測試失敗、套用後通過，anon 讀取為 permission denied，authenticated 仍只讀到公開的使用者。Unit：`leaderboardViewGrantsSql.test.js`（migration 內容）、`leaderboard.test.js`（遊客、token 過期又離線的已登入帳號仍顯示快取、讀不到 storage 時照舊查詢、key 與 app 的 Supabase client 一致）。
+    - 不在此變更：`user_id` 是否仍回傳（頭像路徑本身以 user_id 開頭）、`security_invoker`／RPC，見 PRO-014E。**PRO-014E 若以 DROP VIEW 重建 view，Supabase 的預設權限會再給 anon，要再執行 015**（015 開頭有註記）。
+    - 獨立 review：在模擬 Supabase 角色（`supabase_admin`、`authenticator`、NOINHERIT 的 anon／authenticated、`postgres` 的預設權限）的 PostgreSQL 16 上跑 001–014，重現擁有者查到的權限；015 後 anon 被拒、authenticated 只讀到公開的使用者，乾跑步驟照字面在 SQL Editor 的方式可用。P2（離線過期 token 被當成遊客）已修正；P3 已處理（文件與註解、view 擁有者的檢查、部署順序的說明）。
 
 - [x] **INFRA-113** 部署內容與 CSP（AUDIT-001 發現）
   - `deploy.yml` 上傳整個 `pwa/`，GitHub Pages 也公開 `pwa/db/*.sql`（migration）與 `pwa/server.cjs`。repo 本身是公開的，影響小；可改為上傳前排除。

@@ -33,6 +33,12 @@ vi.mock('../../pwa/js/supabase.js', () => ({
   supabase: { from: mockFrom, storage: { from: mockStorageFrom } },
 }));
 
+// INFRA-110: the page treats an account as signed in when the Supabase client
+// has a session stored under its default key (as the real client does).
+import { SUPABASE_URL } from '../../pwa/js/config.js';
+const SESSION_KEY = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`;
+const signIn = () => localStorage.setItem(SESSION_KEY, JSON.stringify({ access_token: 'expired', expires_at: 1 }));
+
 // ─── Import after mocks ───────────────────────────────────────────────────────
 
 import {
@@ -152,6 +158,7 @@ describe('renderLeaderboard — Supabase error', () => {
     container = document.createElement('div');
     document.body.appendChild(container);
     localStorage.clear();
+    signIn();
     vi.clearAllMocks();
     mockCreateSignedUrl.mockResolvedValue({ data: { signedUrl: 'signed-avatar-url' }, error: null });
   });
@@ -167,6 +174,66 @@ describe('renderLeaderboard — Supabase error', () => {
   });
 });
 
+describe('renderLeaderboard — guest (INFRA-110)', () => {
+  let container;
+
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    localStorage.clear();
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    document.body.removeChild(container);
+  });
+
+  it('asks a guest to sign in, without querying the view or showing a cached list', async () => {
+    localStorage.setItem('yoyo_leaderboardCache', JSON.stringify({
+      rows: [makeRow({ name: 'Cached Bob' })],
+      refreshedAt: new Date().toISOString(),
+      refreshDate: effectiveDateForTest(),
+    }));
+    await renderLeaderboard(container);
+    expect(mockFrom).not.toHaveBeenCalled();
+    expect(container.querySelector('.lb-guest').textContent).toContain('登入帳號後才能看排行榜');
+    expect(container.innerHTML).not.toContain('Cached Bob');
+  });
+
+  it('keeps a signed-in account whose token expired offline on its cached list', async () => {
+    // getSession() would try to refresh and report no session while offline;
+    // the stored session still says the account is signed in.
+    signIn();
+    localStorage.setItem('yoyo_leaderboardCache', JSON.stringify({
+      rows: [makeRow({ name: 'Cached Bob' })],
+      refreshedAt: new Date().toISOString(),
+      refreshDate: effectiveDateForTest(),
+    }));
+    await renderLeaderboard(container);
+    expect(container.innerHTML).toContain('Cached Bob');
+    expect(container.querySelector('.lb-guest')).toBeNull();
+  });
+
+  it('reads the key the app Supabase client itself stores its session under', async () => {
+    // The real client (this file mocks it), so a storageKey or storage option
+    // added there later would fail here instead of hiding the board.
+    const { supabase } = await vi.importActual('../../pwa/js/supabase.js');
+    expect(supabase.auth.storageKey).toBe(SESSION_KEY);
+  });
+
+  it('runs the query when storage cannot be read', async () => {
+    const getItem = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('denied'); });
+    mockSelect.mockResolvedValueOnce({ data: [makeRow({ name: 'Bob' })], error: null });
+    try {
+      await renderLeaderboard(container);
+    } finally {
+      getItem.mockRestore();
+    }
+    expect(mockFrom).toHaveBeenCalledWith('leaderboard_view');
+    expect(container.innerHTML).toContain('Bob');
+  });
+});
+
 describe('renderLeaderboard — empty data', () => {
   let container;
 
@@ -174,6 +241,7 @@ describe('renderLeaderboard — empty data', () => {
     container = document.createElement('div');
     document.body.appendChild(container);
     localStorage.clear();
+    signIn();
     vi.clearAllMocks();
     mockCreateSignedUrl.mockResolvedValue({ data: { signedUrl: 'signed-avatar-url' }, error: null });
   });
@@ -196,6 +264,7 @@ describe('renderLeaderboard — with data', () => {
     container = document.createElement('div');
     document.body.appendChild(container);
     localStorage.clear();
+    signIn();
     vi.clearAllMocks();
     mockCreateSignedUrl.mockResolvedValue({ data: { signedUrl: 'signed-avatar-url' }, error: null });
     mockState.user = { id: 'me', name: 'Alice', mode: 'normal' };
