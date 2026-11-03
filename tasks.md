@@ -14,6 +14,14 @@
 
 ## Backlog
 
+- [ ] **INFRA-114** 去掉 CSP 的 `'unsafe-eval'`（INFRA-113 發現）
+  - Pixi 8 以 `new Function` 產生 shader／uniform 程式碼，CSP 沒有 `'unsafe-eval'` 時拒絕啟動（Orbit Window 退回 poster）。Pixi 的 `pixi.js/unsafe-eval` 外掛可取代，但它是給全域 `PIXI` 的 classic script，要改 `scripts/vendor-pixi.mjs` 把它接到 ESM 的 class 上（它只改 class 的 prototype），而且 gzip 後 4,004 B，超過 PS-243 延後載入 JS 預算剩下的 2,223 B。
+  - 需要決定：放寬 JS 預算，或接受 `'unsafe-eval'`（沒有 inline 程式碼時風險低）。
+
+- [ ] **INFRA-115** 升級成長報告 PDF 的 jsPDF（INFRA-113 發現）
+  - `export.js` 從 cdnjs 載入 jsPDF 2.5.1：`npm audit` 列出 critical／high（`addImage` 的 ReDoS 與 DoS、Node.js 才有的檔案讀取、選用的 DOMPurify 的 XSS）。app 只在瀏覽器中把自己的 canvas 截圖交給 `addImage`，沒有用 `html()`，實際風險低。
+  - 方向：改用 jsPDF 4.x（cdnjs 網址與 SRI、CSP 的 `script-src` 一起改，`csp.test.js` 會檢查一致），確認 API 變更與 PDF 輸出。
+
 - [ ] **INFRA-110** `leaderboard_view` 的權限（AUDIT-001 發現）
   - 問題：Postgres 的 view 預設以擁有者的權限執行，不受 `profiles`／`sessions` 的 RLS 限制（`005_leaderboard.sql` 的註解「Views inherit table RLS by default」不正確）。view 只靠 `WHERE p.is_public = true` 限制列；migration 只 `GRANT SELECT ... TO authenticated`，但 Supabase 的預設權限（`ALTER DEFAULT PRIVILEGES ... TO anon, authenticated`）可能也讓 `anon` 讀得到，屆時未登入者可讀所有公開使用者的 `user_id`、名稱、XP、連勝、`created_at`、`avatar_url`。
   - 需要擁有者確認（agent 沒有連線正式資料庫）：在 Supabase SQL editor 執行 `select grantee, privilege_type from information_schema.role_table_grants where table_name = 'leaderboard_view';`，看 `anon` 是否有 `SELECT`。
@@ -208,14 +216,6 @@
 
 ## In Progress
 
-- [ ] **INFRA-113** 部署內容與 CSP（AUDIT-001 發現）
-  - `deploy.yml` 上傳整個 `pwa/`，GitHub Pages 也公開 `pwa/db/*.sql`（migration）與 `pwa/server.cjs`。repo 本身是公開的，影響小；可改為上傳前排除。
-  - `index.html` 沒有 Content-Security-Policy。可加 `<meta http-equiv="Content-Security-Policy">`，限制 script 只來自自己與 cdnjs、連線只到 Supabase，作為 XSS 的第二層防護。要先列出 app 用到的所有來源（Supabase、cdnjs、Pixi、data:/blob: 圖片），並以 e2e 確認。
-  - 改部署設定，需核准。
-  - **2026-11-02 使用者核准**（AUDIT-001 後的 AskUserQuestion，INFRA-110～113 全部核准，各自一個 PR）。
-  - **2026-11-03 使用者決定**（AskUserQuestion）：嚴格的 CSP，先重構：把 `index.html` 的 22 個 `onclick`、JS 模板中的 10 個 inline handler 與 inline `<script>` 改為 `addEventListener`，CSP 的 `script-src` 只允許自己與 cdnjs，注入的 inline 程式碼不會執行。部署範圍（排除 `pwa/db`、`server.cjs`）與 `deploy.yml` 改用 Node 24 的 action 照原計畫。
-  - In progress（2026-11-03）：INFRA-112（#225）合併後開始（Backlog → In Progress）。
-
 - [ ] **PRO-014L** SUB-16 連勝解鎖改由 server 授權
   - 目標：45 天連勝換 30 天 Pro 的授權由 server 發放，而不是 client 自行寫入
   - 現況（`PRO-014C` 實作時發現）：`pwa/js/dayCycle.js` 直接寫 `state.user.isPro = true` 與 `proExpiresAt`，再經 `saveUser()` 同步上雲。這是 client 決定的 Pro 授權 —— 與 `startTrial()` 原本的問題同一類，只是沒被 `PRO-014C` 的範圍涵蓋。
@@ -235,6 +235,21 @@
 ---
 
 ## Done
+
+- [x] **INFRA-113** 部署內容與 CSP（AUDIT-001 發現）
+  - `deploy.yml` 上傳整個 `pwa/`，GitHub Pages 也公開 `pwa/db/*.sql`（migration）與 `pwa/server.cjs`。repo 本身是公開的，影響小；可改為上傳前排除。
+  - `index.html` 沒有 Content-Security-Policy。可加 `<meta http-equiv="Content-Security-Policy">`，限制 script 只來自自己與 cdnjs、連線只到 Supabase，作為 XSS 的第二層防護。要先列出 app 用到的所有來源（Supabase、cdnjs、Pixi、data:/blob: 圖片），並以 e2e 確認。
+  - 改部署設定，需核准。
+  - **2026-11-02 使用者核准**（AUDIT-001 後的 AskUserQuestion，INFRA-110～113 全部核准，各自一個 PR）。
+  - **2026-11-03 使用者決定**（AskUserQuestion）：嚴格的 CSP，先重構：把 `index.html` 的 22 個 `onclick`、JS 模板中的 10 個 inline handler 與 inline `<script>` 改為 `addEventListener`，CSP 的 `script-src` 只允許自己與 cdnjs，注入的 inline 程式碼不會執行。部署範圍（排除 `pwa/db`、`server.cjs`）與 `deploy.yml` 改用 Node 24 的 action 照原計畫。
+  - In progress（2026-11-03）：INFRA-112（#225）合併後開始（Backlog → In Progress）。
+  - 完成（2026-11-03，v1.41.8）：變更說明 [`docs/infra-113-csp.md`](docs/infra-113-csp.md)。
+    - 頁面不再有 inline 程式碼：`index.html` 的 20 個 `onclick` 與 JS 模板的 8 個改為 `data-action`（新模組 `pwa/js/domActions.js`，只執行清單中的動作、只執行最內層的）；保護卡確認框的「取消」與重設密碼的顯示密碼改為 `addEventListener`；inline `<script>` 搬到 `pwa/js/swUpdate.js`。兩個新模組加入 SHELL。
+    - CSP（`<meta http-equiv>`）：`default-src 'self'`；`script-src 'self' 'unsafe-eval'` 加上 jsPDF 與 html2canvas 兩個檔案的完整網址（不是整個 cdnjs）；`style-src 'self' 'unsafe-inline'`；`img-src`／`connect-src` 只多 Supabase 主機（與 `config.js` 一致，測試檢查）；`worker-src 'self' blob:`；`object-src 'none'`；`base-uri 'none'`；`form-action 'self'`。
+    - `'unsafe-eval'`：Pixi 8 需要，去掉時 Orbit Window 退回 poster（已實測）。改用 Pixi 的外掛要超出 JS 預算，記為 INFRA-114。
+    - `deploy.yml`：上傳前排除 `pwa/db/` 與 `pwa/server.cjs`（802 個檔案中上傳 787 個）；action 換成以 Node 24 執行的版本（`checkout@v5`、`configure-pages@v6`、`upload-pages-artifact@v5`、`deploy-pages@v5`）。部署只在合併後執行，合併後要確認 deploy 成功。
+    - AGENTS.md §6：不可再加入 inline 程式碼，按鈕用 `data-action`；新的外部來源要一起改 CSP。
+    - 測試：unit `csp.test.js`（9 項）；e2e `infra113-csp.test.js`（各畫面與 Pixi 場景沒有任何 CSP 違規；注入的 `onerror`／`onclick` 與清單外的 `data-action` 不執行，沒有 CSP 時失敗）。成長報告 PDF 以與 cdnjs 相同的檔案在 CSP 下一次性確認成功（SRI 通過、沒有違規）。
 
 - [x] **INFRA-112** CI 加固與 Node 版本（AUDIT-001 發現）
   - `ci.yml` 沒有 `permissions:`，`GITHUB_TOKEN` 用 repo 預設權限；改為 `permissions: contents: read`（`deploy.yml` 已有）。

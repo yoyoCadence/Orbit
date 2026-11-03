@@ -75,8 +75,8 @@ function _showTrialBanner() {
 
   banner.innerHTML =
     `<span class="trial-banner-text">✦ Pro 試用剩餘 <strong>${daysLeft}</strong> 天</span>` +
-    `<button class="trial-banner-cta" onclick="window.navigate('settings')">升級 Pro</button>` +
-    `<button class="trial-banner-close" onclick="window._dismissTrialBanner()">✕</button>`;
+    `<button class="trial-banner-cta" data-action="navigate" data-action-arg="settings">升級 Pro</button>` +
+    `<button class="trial-banner-close" data-action="dismissTrialBanner">✕</button>`;
   banner.classList.remove('hidden');
 }
 

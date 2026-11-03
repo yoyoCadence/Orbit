@@ -179,9 +179,9 @@ export function renderProfile(container) {
         <div class="streak-lbl">連勝天數</div>
         <div class="streak-hint">連勝 XP 加成：×${(1 + 0.02 * Math.floor(streakDays / 5)).toFixed(2).replace(/\.?0+$/, '')}</div>
         <div class="streak-shield-row ${shieldOffer ? 'shield-pill-pending' : ''}"
-             onclick="${shieldOffer ? 'reshowShieldBanner()' : ''}">
+             ${shieldOffer ? 'data-action="reshowShieldBanner"' : ''}>
           <span class="stat-pill-shield ${storage.isProUser() ? '' : 'stat-pill-shield-locked'}">🛡 ${user.streakShieldCount ?? 0} 張保護卡</span>
-          <button class="stat-pill-shield-info" onclick="event.stopPropagation();showShieldInfo(this)" aria-label="保護卡說明">?</button>
+          <button class="stat-pill-shield-info" data-action="showShieldInfo" aria-label="保護卡說明">?</button>
         </div>
         ${!isPro && !user.streakUnlockUsed ? `
         <div class="streak-unlock-row">

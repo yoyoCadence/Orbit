@@ -40,9 +40,9 @@ export function renderReview(container) {
   const toggleHtml = `
     <div class="review-toggle">
       <button class="review-toggle-btn ${_viewMode === 'week'  ? 'active' : ''}"
-              onclick="window._reviewSetMode('week')">週視圖</button>
+              data-action="reviewSetMode" data-action-arg="week">週視圖</button>
       <button class="review-toggle-btn ${_viewMode === 'month' ? 'active' : ''}"
-              onclick="window._reviewSetMode('month')">月視圖</button>
+              data-action="reviewSetMode" data-action-arg="month">月視圖</button>
     </div>
   `;
 
@@ -240,9 +240,9 @@ function buildMonthView() {
     (year === now.getFullYear() && month >= now.getMonth());
   const navHtml = `
     <div class="month-nav">
-      <button class="month-nav-btn" onclick="window._reviewPrevMonth()">‹</button>
+      <button class="month-nav-btn" data-action="reviewPrevMonth">‹</button>
       <span class="month-nav-label">${monthLabel}</span>
-      <button class="month-nav-btn" onclick="window._reviewNextMonth()"
+      <button class="month-nav-btn" data-action="reviewNextMonth"
               ${isCurrentOrFuture ? 'disabled' : ''}>›</button>
     </div>
   `;

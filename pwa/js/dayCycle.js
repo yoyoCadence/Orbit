@@ -160,12 +160,13 @@ window.dismissStreakShield = function () {
       <div class="shield-confirm-title">確定放棄保護卡？</div>
       <div class="shield-confirm-sub">放棄後仍可點連勝區的 🛡 重新使用</div>
       <div class="shield-confirm-btns">
-        <button class="shield-confirm-cancel" onclick="this.closest('.shield-confirm-overlay').remove()">取消</button>
+        <button class="shield-confirm-cancel">取消</button>
         <button class="shield-confirm-ok" id="shield-confirm-ok-btn">確定放棄</button>
       </div>
     </div>
   `;
   document.body.appendChild(overlay);
+  overlay.querySelector('.shield-confirm-cancel').onclick = () => overlay.remove();
   overlay.querySelector('#shield-confirm-ok-btn').onclick = () => {
     overlay.remove();
     sessionStorage.setItem(FLAG_SHIELD_DISMISSED, '1');

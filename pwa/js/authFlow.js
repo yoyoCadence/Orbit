@@ -105,8 +105,7 @@ window._showResetPasswordModal = function () {
         <div class="password-input-wrap">
           <input class="form-input" id="reset-pw-input" type="password"
                  placeholder="至少 6 個字元" minlength="6" autocomplete="new-password">
-          <button type="button" class="password-toggle-btn" aria-label="顯示或隱藏密碼"
-                  onclick="(()=>{const i=document.getElementById('reset-pw-input');i.type=i.type==='password'?'text':'password';})()">
+          <button type="button" class="password-toggle-btn" id="reset-pw-toggle" aria-label="顯示或隱藏密碼">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
         </div>
@@ -116,6 +115,10 @@ window._showResetPasswordModal = function () {
     </div>
   `;
   document.body.appendChild(modal);
+  modal.querySelector('#reset-pw-toggle').addEventListener('click', () => {
+    const input = modal.querySelector('#reset-pw-input');
+    input.type = input.type === 'password' ? 'text' : 'password';
+  });
 
   modal.querySelector('#reset-pw-submit').addEventListener('click', async () => {
     const pw  = modal.querySelector('#reset-pw-input').value;

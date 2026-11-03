@@ -3,6 +3,14 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.41.8] - 2026-11-03
+
+### Changed
+- **頁面加上 Content-Security-Policy（INFRA-113）**：頁面不再有 inline 程式碼（按鈕改由 `data-action` 指定動作），瀏覽器不會執行注入頁面的程式碼，只允許載入本站、成長報告用的兩個函式庫與 Supabase。畫面與操作沒有改變。
+- **網站不再公開資料庫 migration 與本機開發用的 server**（INFRA-113）。
+
+---
+
 ## [1.41.7] - 2026-11-02
 
 ### Fixed

@@ -2,6 +2,11 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
+  <!-- INFRA-113: no inline code runs (buttons use data-action, js/domActions.js).
+       'unsafe-eval' is for the scene renderer (vendor/), which compiles its shader code;
+       cdnjs serves only the two PDF libraries (export.js, with SRI). The
+       Supabase host must match js/config.js (tests/unit/csp.test.js). -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval' https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://oenuhbjadvpspppaelnz.supabase.co; connect-src 'self' https://oenuhbjadvpspppaelnz.supabase.co; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#0d0d1a">
 
@@ -34,12 +39,12 @@
     <div class="auth-card">
       <!-- Tab switcher -->
       <div class="auth-tabs">
-        <button class="auth-tab active" id="tab-signin" onclick="window.switchAuthTab('signin')">登入</button>
-        <button class="auth-tab" id="tab-signup" onclick="window.switchAuthTab('signup')">註冊</button>
+        <button class="auth-tab active" id="tab-signin" data-action="switchAuthTab" data-action-arg="signin">登入</button>
+        <button class="auth-tab" id="tab-signup" data-action="switchAuthTab" data-action-arg="signup">註冊</button>
       </div>
 
       <!-- Google (primary CTA, shown first) -->
-      <button class="btn btn-google" id="btn-google" onclick="window.loginWithGoogle()">
+      <button class="btn btn-google" id="btn-google" data-action="loginWithGoogle">
         <span class="btn-google-badge">推薦</span>
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
@@ -65,7 +70,7 @@
           <div class="password-input-wrap">
             <input class="form-input" id="auth-password" type="password"
                    placeholder="至少 6 個字元" required autocomplete="current-password" minlength="6">
-            <button type="button" class="password-toggle-btn" id="auth-password-toggle" aria-label="顯示或隱藏密碼" onclick="window.togglePasswordVisibility()">
+            <button type="button" class="password-toggle-btn" id="auth-password-toggle" aria-label="顯示或隱藏密碼" data-action="togglePasswordVisibility">
               <svg id="pw-eye-show" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
               <svg id="pw-eye-hide" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
             </button>
@@ -73,14 +78,14 @@
         </div>
         <div id="auth-error" class="auth-error hidden"></div>
         <div class="forgot-pw-row" id="forgot-pw-row">
-          <button type="button" class="btn-text-muted" onclick="window.showForgotPassword()">忘記密碼？</button>
+          <button type="button" class="btn-text-muted" data-action="showForgotPassword">忘記密碼？</button>
         </div>
         <button type="submit" class="btn btn-primary" id="auth-submit">登入</button>
       </form>
     </div>
 
     <!-- Guest mode -->
-    <button class="btn-guest" onclick="window.continueAsGuest()">以遊客身份繼續（資料僅存本機）</button>
+    <button class="btn-guest" data-action="continueAsGuest">以遊客身份繼續（資料僅存本機）</button>
   </div>
 
   <!-- ── Setup screen (first launch) ── -->
@@ -109,7 +114,7 @@
 
     <!-- Header: level + XP bar -->
     <header id="header">
-      <div class="hdr-avatar-wrap" onclick="window.navigate('profile')">
+      <div class="hdr-avatar-wrap" data-action="navigate" data-action-arg="profile">
         <div class="hdr-avatar" id="hdr-avatar">?</div>
         <span class="hdr-lv-badge" id="hdr-level">Lv.1</span>
       </div>
@@ -146,25 +151,25 @@
 
     <!-- Bottom navigation (5 tabs) -->
     <nav id="nav">
-      <button class="nav-item active" data-page="home" onclick="window.navigate('home')">
+      <button class="nav-item active" data-page="home" data-action="navigate" data-action-arg="home">
         <span class="nav-icon">🏠</span>今日
       </button>
-      <button class="nav-item" data-page="goals" onclick="window.navigate('goals')">
+      <button class="nav-item" data-page="goals" data-action="navigate" data-action-arg="goals">
         <span class="nav-icon">📋</span>紀錄
       </button>
-      <button class="nav-item" data-page="review" onclick="window.navigate('review')">
+      <button class="nav-item" data-page="review" data-action="navigate" data-action-arg="review">
         <span class="nav-icon">📊</span>週回顧
       </button>
-      <button class="nav-item" data-page="profile" onclick="window.navigate('profile')">
+      <button class="nav-item" data-page="profile" data-action="navigate" data-action-arg="profile">
         <span class="nav-icon">👤</span>個人
       </button>
-      <button class="nav-item" data-page="personalSpace" onclick="window.navigate('personalSpace')">
+      <button class="nav-item" data-page="personalSpace" data-action="navigate" data-action-arg="personalSpace">
         <span class="nav-icon">🏠</span>空間
       </button>
-      <button class="nav-item" data-page="leaderboard" onclick="window.navigate('leaderboard')">
+      <button class="nav-item" data-page="leaderboard" data-action="navigate" data-action-arg="leaderboard">
         <span class="nav-icon">🏆</span>排行
       </button>
-      <button class="nav-item" data-page="settings" onclick="window.navigate('settings')">
+      <button class="nav-item" data-page="settings" data-action="navigate" data-action-arg="settings">
         <span class="nav-icon">⚙️</span>設定
       </button>
     </nav>
@@ -197,7 +202,7 @@
   <!-- ── Focus timer overlay ── -->
   <div id="focus-overlay" class="hidden">
     <div class="focus-box">
-      <button class="focus-minimize-btn" onclick="window.minimizeFocus()" title="縮小到背景">⬇ 縮小</button>
+      <button class="focus-minimize-btn" data-action="minimizeFocus" title="縮小到背景">⬇ 縮小</button>
       <div class="focus-task-header">
         <span id="focus-task-emoji" class="focus-task-emoji">🎯</span>
         <span id="focus-task-name" class="focus-task-name">任務名稱</span>
@@ -206,10 +211,10 @@
       <div id="focus-timer-mode" class="focus-timer-mode"></div>
       <div id="focus-min-effective" class="focus-min-pending">最低有效時間計算中…</div>
       <div class="focus-controls">
-        <button id="focus-pause-btn" class="btn btn-outline focus-pause-btn" onclick="window.togglePauseFocus()">⏸ 暫停</button>
-        <button id="focus-end-btn" class="btn btn-primary focus-end-btn" onclick="window.endFocus()">結束專注</button>
+        <button id="focus-pause-btn" class="btn btn-outline focus-pause-btn" data-action="togglePauseFocus">⏸ 暫停</button>
+        <button id="focus-end-btn" class="btn btn-primary focus-end-btn" data-action="endFocus">結束專注</button>
       </div>
-      <button class="focus-skip-btn" onclick="window.skipFocus()">略過（已完成）</button>
+      <button class="focus-skip-btn" data-action="skipFocus">略過（已完成）</button>
     </div>
   </div>
 
@@ -217,7 +222,7 @@
   <div id="focus-pip" class="hidden">
     <span id="focus-pip-emoji" class="focus-pip-emoji">🎯</span>
     <span id="focus-pip-timer" class="focus-pip-timer">00:00</span>
-    <button class="focus-pip-expand" onclick="window.restoreFocus()">展開</button>
+    <button class="focus-pip-expand" data-action="restoreFocus">展開</button>
   </div>
 
   <!-- ── Level-up overlay ── -->
@@ -227,32 +232,14 @@
       <div class="lu-label">LEVEL UP！</div>
       <div class="lu-number" id="lu-level">2</div>
       <div class="lu-title" id="lu-title">探索者</div>
-      <button class="btn btn-primary" onclick="window.closeLevelUp()" style="margin-top:24px;max-width:200px">繼續前進 🚀</button>
+      <button class="btn btn-primary" data-action="closeLevelUp" style="margin-top:24px;max-width:200px">繼續前進 🚀</button>
     </div>
   </div>
 
 </div>
 
+<script type="module" src="js/domActions.js"></script>
 <script type="module" src="js/app.js"></script>
-<script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
-
-    // Show update banner when a new SW takes control (skipWaiting → controllerchange).
-    // prevController guard prevents banner on first install (controller was null).
-    const _prevController = navigator.serviceWorker.controller;
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (!_prevController) return; // first-time install, not an update
-      if (document.getElementById('update-banner')) return; // already shown
-      const banner = document.createElement('div');
-      banner.id = 'update-banner';
-      banner.innerHTML =
-        '<span>🆕 新版本已就緒</span>' +
-        '<button onclick="location.reload()">重新整理</button>' +
-        '<button class="update-banner-close" onclick="this.parentElement.remove()">✕</button>';
-      document.body.prepend(banner);
-    });
-  }
-</script>
+<script type="module" src="js/swUpdate.js"></script>
 </body>
 </html>
