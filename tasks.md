@@ -22,13 +22,6 @@
   - `export.js` 從 cdnjs 載入 jsPDF 2.5.1：`npm audit` 列出 critical／high（`addImage` 的 ReDoS 與 DoS、Node.js 才有的檔案讀取、選用的 DOMPurify 的 XSS）。app 只在瀏覽器中把自己的 canvas 截圖交給 `addImage`，沒有用 `html()`，實際風險低。
   - 方向：改用 jsPDF 4.x（cdnjs 網址與 SRI、CSP 的 `script-src` 一起改，`csp.test.js` 會檢查一致），確認 API 變更與 PDF 輸出。
 
-- [ ] **INFRA-110** `leaderboard_view` 的權限（AUDIT-001 發現）
-  - 問題：Postgres 的 view 預設以擁有者的權限執行，不受 `profiles`／`sessions` 的 RLS 限制（`005_leaderboard.sql` 的註解「Views inherit table RLS by default」不正確）。view 只靠 `WHERE p.is_public = true` 限制列；migration 只 `GRANT SELECT ... TO authenticated`，但 Supabase 的預設權限（`ALTER DEFAULT PRIVILEGES ... TO anon, authenticated`）可能也讓 `anon` 讀得到，屆時未登入者可讀所有公開使用者的 `user_id`、名稱、XP、連勝、`created_at`、`avatar_url`。
-  - 需要擁有者確認（agent 沒有連線正式資料庫）：在 Supabase SQL editor 執行 `select grantee, privilege_type from information_schema.role_table_grants where table_name = 'leaderboard_view';`，看 `anon` 是否有 `SELECT`。
-  - 方向（改 schema，需核准）：`REVOKE ALL ON leaderboard_view FROM anon, public`；考慮 `security_invoker = true`（需要另一條讓 authenticated 讀公開 profile 的 policy）或改為 `SECURITY DEFINER` RPC；是否還要回傳 `user_id`（目前只用來標示「你」，可改為回傳 `is_me`）。相關：PRO-014E。
-  - **2026-11-02 使用者核准**（AUDIT-001 後的 AskUserQuestion，INFRA-110～113 全部核准，各自一個 PR）。
-  - 順序：最後做；需要擁有者先在 Supabase 執行上面的查詢並提供結果（2026-11-03 使用者：之後提供）。
-
 - [ ] **REPO-001** Repo 清理（AUDIT-001 發現，需擁有者決定）
   - `output/`：30 個 tracked 檔、約 58 MB 的舊 proof 圖，app 與測試都沒有使用（只在 `skills/orbit-idle-window-assets` 的說明中當輸出目錄、eslint 忽略）。可刪除（歷史仍保留在 git）。
   - 遠端約 160 個已合併或過時的分支、過時的 draft PR #154：可清理。
@@ -215,6 +208,15 @@
 ---
 
 ## In Progress
+
+- [ ] **INFRA-110** `leaderboard_view` 的權限（AUDIT-001 發現）
+  - 問題：Postgres 的 view 預設以擁有者的權限執行，不受 `profiles`／`sessions` 的 RLS 限制（`005_leaderboard.sql` 的註解「Views inherit table RLS by default」不正確）。view 只靠 `WHERE p.is_public = true` 限制列；migration 只 `GRANT SELECT ... TO authenticated`，但 Supabase 的預設權限（`ALTER DEFAULT PRIVILEGES ... TO anon, authenticated`）可能也讓 `anon` 讀得到，屆時未登入者可讀所有公開使用者的 `user_id`、名稱、XP、連勝、`created_at`、`avatar_url`。
+  - 需要擁有者確認（agent 沒有連線正式資料庫）：在 Supabase SQL editor 執行 `select grantee, privilege_type from information_schema.role_table_grants where table_name = 'leaderboard_view';`，看 `anon` 是否有 `SELECT`。
+  - 方向（改 schema，需核准）：`REVOKE ALL ON leaderboard_view FROM anon, public`；考慮 `security_invoker = true`（需要另一條讓 authenticated 讀公開 profile 的 policy）或改為 `SECURITY DEFINER` RPC；是否還要回傳 `user_id`（目前只用來標示「你」，可改為回傳 `is_me`）。相關：PRO-014E。
+  - **2026-11-02 使用者核准**（AUDIT-001 後的 AskUserQuestion，INFRA-110～113 全部核准，各自一個 PR）。
+  - 順序：最後做；需要擁有者先在 Supabase 執行上面的查詢並提供結果（2026-11-03 使用者：之後提供）。
+  - **2026-11-03 擁有者提供查詢結果**：`anon` 與 `authenticated` 都有 SELECT、INSERT、UPDATE、DELETE、TRUNCATE、REFERENCES、TRIGGER（Supabase 的預設權限），另有 `service_role`、`postgres`。確認未登入者只要有 anon key（公開在 `config.js`）就能以 `GET /rest/v1/leaderboard_view` 讀取。view 有 JOIN 與子查詢，不能被寫入，所以 INSERT 等實際上無效。
+  - In progress（2026-11-03）：INFRA-113（#227）合併後開始（Backlog → In Progress）。
 
 - [ ] **PRO-014L** SUB-16 連勝解鎖改由 server 授權
   - 目標：45 天連勝換 30 天 Pro 的授權由 server 發放，而不是 client 自行寫入
