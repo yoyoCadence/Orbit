@@ -31,6 +31,13 @@ function isCurrentLeaderboardRender(container) {
   return !container.dataset?.route || container.dataset.route === 'leaderboard';
 }
 
+// INFRA-110: only signed-in users may read leaderboard_view (migration 015);
+// a guest's data stays on this device. If the session cannot be read, try the
+// query anyway, as before.
+function hasSession() {
+  return supabase.auth.getSession().then(({ data }) => Boolean(data?.session), () => true);
+}
+
 export async function renderLeaderboard(container) {
   const refreshHour = state.user?.newDayHour ?? 5;
   const refreshDate = effectiveToday(refreshHour);
@@ -38,15 +45,26 @@ export async function renderLeaderboard(container) {
   const cachedRows = Array.isArray(cache?.rows) ? cache.rows : null;
   const isFresh = cachedRows && cache.refreshDate === refreshDate;
 
-  if (isFresh) {
-    _renderRows(container, cachedRows, cache.refreshedAt, false, refreshHour);
-    return;
-  }
-
   container.innerHTML = `
     <div class="section-title">🏆 排行榜</div>
     <div class="lb-loading">${cachedRows ? '更新排行榜中…' : '載入排行榜中…'}</div>
   `;
+  const signedIn = await hasSession();
+  if (!isCurrentLeaderboardRender(container)) return;
+  if (!signedIn) {
+    container.innerHTML = `
+      <div class="section-title">🏆 排行榜</div>
+      <div class="card"><div class="lb-guest" style="color:var(--text-muted);font-size:13px;text-align:center;padding:16px">
+        登入帳號後才能看排行榜。遊客的資料只存在這台裝置，不會出現在排行榜上。
+      </div></div>
+    `;
+    return;
+  }
+
+  if (isFresh) {
+    _renderRows(container, cachedRows, cache.refreshedAt, false, refreshHour);
+    return;
+  }
 
   let rows;
   try {

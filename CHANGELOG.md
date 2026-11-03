@@ -3,6 +3,13 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.41.9] - 2026-11-03
+
+### Changed
+- **排行榜只給已登入的使用者看（INFRA-110）**：以前資料庫的預設權限讓未登入者也能讀取排行榜的資料（公開使用者的名稱、XP、連勝等）。現在只有登入的帳號能讀；遊客打開排行榜時顯示「登入帳號後才能看排行榜」，遊客的資料本來就只存在這台裝置，不會出現在排行榜上。資料庫的變更（`pwa/db/015_leaderboard_view_grants.sql`）由專案擁有者在 Supabase 套用。
+
+---
+
 ## [1.41.8] - 2026-11-03
 
 ### Changed

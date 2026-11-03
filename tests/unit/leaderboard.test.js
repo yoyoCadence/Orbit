@@ -29,9 +29,16 @@ const mockFrom   = vi.hoisted(() => vi.fn(() => ({ select: mockSelect })));
 const mockCreateSignedUrl = vi.hoisted(() => vi.fn());
 const mockStorageFrom = vi.hoisted(() => vi.fn(() => ({ createSignedUrl: mockCreateSignedUrl })));
 
+// Signed in unless a test says otherwise (INFRA-110: guests cannot read the view).
+const mockGetSession = vi.hoisted(() => vi.fn());
+
 vi.mock('../../pwa/js/supabase.js', () => ({
-  supabase: { from: mockFrom, storage: { from: mockStorageFrom } },
+  supabase: { from: mockFrom, storage: { from: mockStorageFrom }, auth: { getSession: mockGetSession } },
 }));
+
+beforeEach(() => {
+  mockGetSession.mockResolvedValue({ data: { session: { user: { id: 'me' } } } });
+});
 
 // ─── Import after mocks ───────────────────────────────────────────────────────
 
@@ -167,6 +174,51 @@ describe('renderLeaderboard — Supabase error', () => {
   });
 });
 
+describe('renderLeaderboard — guest (INFRA-110)', () => {
+  let container;
+
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    localStorage.clear();
+    vi.clearAllMocks();
+    mockGetSession.mockResolvedValue({ data: { session: null } });
+  });
+
+  afterEach(() => {
+    document.body.removeChild(container);
+  });
+
+  it('asks a guest to sign in, without querying the view or showing a cached list', async () => {
+    localStorage.setItem('yoyo_leaderboardCache', JSON.stringify({
+      rows: [makeRow({ name: 'Cached Bob' })],
+      refreshedAt: new Date().toISOString(),
+      refreshDate: effectiveDateForTest(),
+    }));
+    await renderLeaderboard(container);
+    expect(mockFrom).not.toHaveBeenCalled();
+    expect(container.querySelector('.lb-guest').textContent).toContain('登入帳號後才能看排行榜');
+    expect(container.innerHTML).not.toContain('Cached Bob');
+  });
+
+  it('does not overwrite content when the user navigates away during the session check', async () => {
+    container.dataset.route = 'leaderboard';
+    const renderPromise = renderLeaderboard(container);
+    container.dataset.route = 'home';
+    container.innerHTML = '<div>Home stays here</div>';
+    await renderPromise;
+    expect(container.innerHTML).toContain('Home stays here');
+  });
+
+  it('still tries the query when the session cannot be read', async () => {
+    mockGetSession.mockRejectedValueOnce(new Error('storage unavailable'));
+    mockSelect.mockResolvedValueOnce({ data: [makeRow({ name: 'Bob' })], error: null });
+    await renderLeaderboard(container);
+    expect(mockFrom).toHaveBeenCalledWith('leaderboard_view');
+    expect(container.innerHTML).toContain('Bob');
+  });
+});
+
 describe('renderLeaderboard — empty data', () => {
   let container;
 
@@ -236,6 +288,8 @@ describe('renderLeaderboard — with data', () => {
 
     const renderPromise = renderLeaderboard(container);
     expect(container.innerHTML).toContain('排行榜');
+    // The query starts after the session check (INFRA-110).
+    await vi.waitFor(() => expect(mockSelect).toHaveBeenCalled());
 
     container.dataset.route = 'home';
     container.innerHTML = '<div>Home stays here</div>';

@@ -205,18 +205,19 @@
 
 > 2026-11-02 排程：PRO-014H 的核准名單已寫入並對帳（#222）。使用者同意寫 PRO-014L 的提案（只寫文件），從 Backlog 移入 Next，再移入 In Progress。
 
+- [ ] **INFRA-110A** 在 production 套用 015（`leaderboard_view` 只給已登入的使用者讀）
+  - **需專案擁有者執行**：production 資料庫操作，Claude 不具權限。先讓 v1.41.9（遊客顯示登入提示）部署，再套用 015；順序相反時遊客會暫時看到「無法載入排行榜」。
+  - 步驟（Supabase SQL Editor）：
+    1. 乾跑：`begin;` ＋ `015_leaderboard_view_grants.sql` 的內容 ＋ `tests/database/infra110.test.sql` 從第一個 `do $$` 到 `rollback;` 之前的內容 ＋ `rollback;`，預期 Success（任何 ASSERT 失敗會中止並顯示原因）。
+    2. 套用 `015_leaderboard_view_grants.sql`。
+    3. 檢查：`select grantee, privilege_type from information_schema.role_table_grants where table_schema = 'public' and table_name = 'leaderboard_view' order by 1, 2;` 預期 `authenticated` 只有 `SELECT`，沒有 `anon`（`postgres`、`service_role` 不變）。
+    4. 在 app 確認：登入的帳號看得到排行榜；遊客看到「登入帳號後才能看排行榜」。
+  - 完成後在本項記錄執行日期與結果，並把 015 開頭的「執行日期」改為實際日期。
+  - 依賴：`INFRA-110`
+
 ---
 
 ## In Progress
-
-- [ ] **INFRA-110** `leaderboard_view` 的權限（AUDIT-001 發現）
-  - 問題：Postgres 的 view 預設以擁有者的權限執行，不受 `profiles`／`sessions` 的 RLS 限制（`005_leaderboard.sql` 的註解「Views inherit table RLS by default」不正確）。view 只靠 `WHERE p.is_public = true` 限制列；migration 只 `GRANT SELECT ... TO authenticated`，但 Supabase 的預設權限（`ALTER DEFAULT PRIVILEGES ... TO anon, authenticated`）可能也讓 `anon` 讀得到，屆時未登入者可讀所有公開使用者的 `user_id`、名稱、XP、連勝、`created_at`、`avatar_url`。
-  - 需要擁有者確認（agent 沒有連線正式資料庫）：在 Supabase SQL editor 執行 `select grantee, privilege_type from information_schema.role_table_grants where table_name = 'leaderboard_view';`，看 `anon` 是否有 `SELECT`。
-  - 方向（改 schema，需核准）：`REVOKE ALL ON leaderboard_view FROM anon, public`；考慮 `security_invoker = true`（需要另一條讓 authenticated 讀公開 profile 的 policy）或改為 `SECURITY DEFINER` RPC；是否還要回傳 `user_id`（目前只用來標示「你」，可改為回傳 `is_me`）。相關：PRO-014E。
-  - **2026-11-02 使用者核准**（AUDIT-001 後的 AskUserQuestion，INFRA-110～113 全部核准，各自一個 PR）。
-  - 順序：最後做；需要擁有者先在 Supabase 執行上面的查詢並提供結果（2026-11-03 使用者：之後提供）。
-  - **2026-11-03 擁有者提供查詢結果**：`anon` 與 `authenticated` 都有 SELECT、INSERT、UPDATE、DELETE、TRUNCATE、REFERENCES、TRIGGER（Supabase 的預設權限），另有 `service_role`、`postgres`。確認未登入者只要有 anon key（公開在 `config.js`）就能以 `GET /rest/v1/leaderboard_view` 讀取。view 有 JOIN 與子查詢，不能被寫入，所以 INSERT 等實際上無效。
-  - In progress（2026-11-03）：INFRA-113（#227）合併後開始（Backlog → In Progress）。
 
 - [ ] **PRO-014L** SUB-16 連勝解鎖改由 server 授權
   - 目標：45 天連勝換 30 天 Pro 的授權由 server 發放，而不是 client 自行寫入
@@ -237,6 +238,20 @@
 ---
 
 ## Done
+
+- [x] **INFRA-110** `leaderboard_view` 的權限（AUDIT-001 發現）
+  - 問題：Postgres 的 view 預設以擁有者的權限執行，不受 `profiles`／`sessions` 的 RLS 限制（`005_leaderboard.sql` 的註解「Views inherit table RLS by default」不正確）。view 只靠 `WHERE p.is_public = true` 限制列；migration 只 `GRANT SELECT ... TO authenticated`，但 Supabase 的預設權限（`ALTER DEFAULT PRIVILEGES ... TO anon, authenticated`）可能也讓 `anon` 讀得到，屆時未登入者可讀所有公開使用者的 `user_id`、名稱、XP、連勝、`created_at`、`avatar_url`。
+  - 需要擁有者確認（agent 沒有連線正式資料庫）：在 Supabase SQL editor 執行 `select grantee, privilege_type from information_schema.role_table_grants where table_name = 'leaderboard_view';`，看 `anon` 是否有 `SELECT`。
+  - 方向（改 schema，需核准）：`REVOKE ALL ON leaderboard_view FROM anon, public`；考慮 `security_invoker = true`（需要另一條讓 authenticated 讀公開 profile 的 policy）或改為 `SECURITY DEFINER` RPC；是否還要回傳 `user_id`（目前只用來標示「你」，可改為回傳 `is_me`）。相關：PRO-014E。
+  - **2026-11-02 使用者核准**（AUDIT-001 後的 AskUserQuestion，INFRA-110～113 全部核准，各自一個 PR）。
+  - 順序：最後做；需要擁有者先在 Supabase 執行上面的查詢並提供結果（2026-11-03 使用者：之後提供）。
+  - **2026-11-03 擁有者提供查詢結果**：`anon` 與 `authenticated` 都有 SELECT、INSERT、UPDATE、DELETE、TRUNCATE、REFERENCES、TRIGGER（Supabase 的預設權限），另有 `service_role`、`postgres`。確認未登入者只要有 anon key（公開在 `config.js`）就能以 `GET /rest/v1/leaderboard_view` 讀取。view 有 JOIN 與子查詢，不能被寫入，所以 INSERT 等實際上無效。
+  - In progress（2026-11-03）：INFRA-113（#227）合併後開始（Backlog → In Progress）。
+  - 完成（2026-11-03，repo 部分，v1.41.9；production 套用另立 INFRA-110A）：
+    - `pwa/db/015_leaderboard_view_grants.sql`：`REVOKE ALL ON TABLE public.leaderboard_view FROM PUBLIC, anon, authenticated;` 後 `GRANT SELECT ... TO authenticated;`。只改權限，view 的定義與欄位不變；`service_role`、`postgres` 不變；可重複執行。
+    - client（`pages/leaderboard.js`）：沒有 session（遊客）時顯示「登入帳號後才能看排行榜」，不查詢、也不顯示舊的快取；讀不到 session 時照舊查詢。以前遊客以 anon key 讀得到排行榜，015 之後會被拒絕。
+    - 測試：`tests/database/infra110.test.sql`（ASSERT：authenticated 只有 SELECT、anon 與 PUBLIC 沒有任何權限；以 anon 讀取被拒、以 authenticated 讀取成功；view 的欄位與 010 相同）。在本機 PostgreSQL 16 以 Supabase 的預設權限重現擁有者查到的 grant（anon 讀得到公開的那一列），套用 015 前測試失敗、套用後通過，anon 讀取為 permission denied，authenticated 仍只讀到公開的使用者。Unit：`leaderboardViewGrantsSql.test.js`（migration 內容）、`leaderboard.test.js`（遊客、讀不到 session、檢查 session 期間離開頁面）。
+    - 不在此變更：`user_id` 是否仍回傳（頭像路徑本身以 user_id 開頭）、`security_invoker`／RPC，見 PRO-014E。
 
 - [x] **INFRA-113** 部署內容與 CSP（AUDIT-001 發現）
   - `deploy.yml` 上傳整個 `pwa/`，GitHub Pages 也公開 `pwa/db/*.sql`（migration）與 `pwa/server.cjs`。repo 本身是公開的，影響小；可改為上傳前排除。

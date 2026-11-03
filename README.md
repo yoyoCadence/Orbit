@@ -398,7 +398,7 @@ pwa/
 
 - 普通模式 / 進階模式分開排名
 - 需主動 opt-in 才顯示在排行榜
-- 畫面顯示暱稱、頭像、等級、連勝天數與分數（本週 XP、成長率或累積 XP），不含 email；`leaderboard_view` 另外回傳 `user_id`，用來標示「你」那一列。migration 只授權給 `authenticated`；Supabase 的預設權限是否也讓未登入者讀得到，待 INFRA-110 確認
+- 畫面顯示暱稱、頭像、等級、連勝天數與分數（本週 XP、成長率或累積 XP），不含 email；`leaderboard_view` 另外回傳 `user_id`，用來標示「你」那一列。只有已登入的使用者能讀（`015_leaderboard_view_grants.sql`，INFRA-110）；遊客看不到排行榜
 
 ---
 
