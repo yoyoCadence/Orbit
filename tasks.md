@@ -19,13 +19,7 @@
   - 需要擁有者確認（agent 沒有連線正式資料庫）：在 Supabase SQL editor 執行 `select grantee, privilege_type from information_schema.role_table_grants where table_name = 'leaderboard_view';`，看 `anon` 是否有 `SELECT`。
   - 方向（改 schema，需核准）：`REVOKE ALL ON leaderboard_view FROM anon, public`；考慮 `security_invoker = true`（需要另一條讓 authenticated 讀公開 profile 的 policy）或改為 `SECURITY DEFINER` RPC；是否還要回傳 `user_id`（目前只用來標示「你」，可改為回傳 `is_me`）。相關：PRO-014E。
   - **2026-11-02 使用者核准**（AUDIT-001 後的 AskUserQuestion，INFRA-110～113 全部核准，各自一個 PR）。
-  - 順序：最後做；需要擁有者先在 Supabase 執行上面的查詢並提供結果。
-
-- [ ] **INFRA-113** 部署內容與 CSP（AUDIT-001 發現）
-  - `deploy.yml` 上傳整個 `pwa/`，GitHub Pages 也公開 `pwa/db/*.sql`（migration）與 `pwa/server.cjs`。repo 本身是公開的，影響小；可改為上傳前排除。
-  - `index.html` 沒有 Content-Security-Policy。可加 `<meta http-equiv="Content-Security-Policy">`，限制 script 只來自自己與 cdnjs、連線只到 Supabase，作為 XSS 的第二層防護。要先列出 app 用到的所有來源（Supabase、cdnjs、Pixi、data:/blob: 圖片），並以 e2e 確認。
-  - 改部署設定，需核准。
-  - **2026-11-02 使用者核准**（AUDIT-001 後的 AskUserQuestion，INFRA-110～113 全部核准，各自一個 PR）。
+  - 順序：最後做；需要擁有者先在 Supabase 執行上面的查詢並提供結果（2026-11-03 使用者：之後提供）。
 
 - [ ] **REPO-001** Repo 清理（AUDIT-001 發現，需擁有者決定）
   - `output/`：30 個 tracked 檔、約 58 MB 的舊 proof 圖，app 與測試都沒有使用（只在 `skills/orbit-idle-window-assets` 的說明中當輸出目錄、eslint 忽略）。可刪除（歷史仍保留在 git）。
@@ -213,6 +207,14 @@
 ---
 
 ## In Progress
+
+- [ ] **INFRA-113** 部署內容與 CSP（AUDIT-001 發現）
+  - `deploy.yml` 上傳整個 `pwa/`，GitHub Pages 也公開 `pwa/db/*.sql`（migration）與 `pwa/server.cjs`。repo 本身是公開的，影響小；可改為上傳前排除。
+  - `index.html` 沒有 Content-Security-Policy。可加 `<meta http-equiv="Content-Security-Policy">`，限制 script 只來自自己與 cdnjs、連線只到 Supabase，作為 XSS 的第二層防護。要先列出 app 用到的所有來源（Supabase、cdnjs、Pixi、data:/blob: 圖片），並以 e2e 確認。
+  - 改部署設定，需核准。
+  - **2026-11-02 使用者核准**（AUDIT-001 後的 AskUserQuestion，INFRA-110～113 全部核准，各自一個 PR）。
+  - **2026-11-03 使用者決定**（AskUserQuestion）：嚴格的 CSP，先重構：把 `index.html` 的 22 個 `onclick`、JS 模板中的 10 個 inline handler 與 inline `<script>` 改為 `addEventListener`，CSP 的 `script-src` 只允許自己與 cdnjs，注入的 inline 程式碼不會執行。部署範圍（排除 `pwa/db`、`server.cjs`）與 `deploy.yml` 改用 Node 24 的 action 照原計畫。
+  - In progress（2026-11-03）：INFRA-112（#225）合併後開始（Backlog → In Progress）。
 
 - [ ] **PRO-014L** SUB-16 連勝解鎖改由 server 授權
   - 目標：45 天連勝換 30 天 Pro 的授權由 server 發放，而不是 client 自行寫入
