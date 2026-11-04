@@ -1,8 +1,6 @@
 # PRO-014L 提案：SUB-16 連勝解鎖改由 server 發放
 
-> 狀態：提案（2026-11-02），只寫文件、不改程式碼、不動資料庫。屬 RPC／schema 變更，依 AGENTS.md §3 需使用者核准（§10）後才實作。擋 `PRO-014H` cutover。
->
-> 2026-11-04：使用者核准 §10，全部照建議（L1 → LA → L2、資格為歷史上任何一段 45 天、回填、訪客不再有 SUB-16、L1 合併後關閉 #154）。
+> 狀態：使用者核准 §10（全部照建議；#226 的工作階段記錄 2026-11-02 的回覆，2026-11-04 在另一個工作階段再次確認）。L1 由 #226 實作、#233 帶到目前的 main（migration 012 與測試，尚未套用到 production）；LA（擁有者在 production 套用）、L2（client）待做。擋 `PRO-014H` cutover。
 
 ## 1. 結論
 
@@ -113,7 +111,7 @@
 6. **UTC 日期在 L2 下沒有影響**：
    - server 以 UTC 的 `current_date` 排除「未來」的 sessions（上表最後一列）。
    - 但 client 的連勝只在換日時評估「昨天」：第 45 個有效日要等它成為當地的「昨天」，連勝才會到 45。
-   - 當地的昨天不會晚於 UTC 的今天：時區在 UTC+14 以內都成立，與 `newDayHour` 無關；跨時區的多台裝置也一樣（那一天在處理它的裝置上已是「昨天」）。前提是資料庫的 `TimeZone` 維持 UTC（Supabase 預設）、裝置時鐘正確。
+   - 當地的昨天不會晚於 UTC 的今天：時區在 UTC+14 以內都成立，與 `newDayHour` 無關；跨時區的多台裝置也一樣（那一天在處理它的裝置上已是「昨天」）。前提是裝置時鐘正確。012 以 `(now() AT TIME ZONE 'UTC')::date` 為界，不用 `current_date`：`current_date` 跟著呼叫者的 `TimeZone`（PostgREST 可由 `Prefer: timezone` 改變），在 UTC+14 會多算一天（#233 的獨立 review 實測）。
    - 所以 L2 在本機連勝 ≥ 45 才詢問時，第 45 天一定已經算在內，與現在 production 發放的時間相同。
    - 只有 #154「每次開機都問」時才會遇到上表最後一列。**維持 #154 的條件，不改。**
 7. **已用過 SUB-16 的帳號，server 不知道**：
@@ -160,10 +158,13 @@
   INSERT INTO public.pro_entitlements AS e (user_id, streak_unlock_granted_at)
   SELECT p.user_id, now() FROM public.profiles p WHERE p.streak_unlock_used = true
   ON CONFLICT (user_id) DO UPDATE
-    SET streak_unlock_granted_at = COALESCE(e.streak_unlock_granted_at, now());
+    SET streak_unlock_granted_at = now()
+    WHERE e.streak_unlock_granted_at IS NULL;
   ```
 
-  - 只寫 `streak_unlock_granted_at`，不動 `is_pro`、`pro_expires_at`、`trial_started_at`。獨立 review 確認：新列是 `is_pro = false`、日期為 NULL；`my_pro_status()` 與 `start_trial()` 的結果不變；重跑 0 列改變。
+  （L1 實作時由 `COALESCE` 改為 `WHERE … IS NULL`：結果相同，但重跑時回報的筆數就是新標記的帳號。）
+
+  - 只寫 `streak_unlock_granted_at`，不動 `is_pro`、`pro_expires_at`、`trial_started_at`。獨立 review 確認：新列是 `is_pro = false`、日期為 NULL；`my_pro_status()` 與 `start_trial()` 的結果不變；重跑不改任何值，回報的筆數是新標記的帳號。
   - 回填的 `streak_unlock_granted_at` 是 LA 的時間，不是實際領取的時間。
   - LA 之後、L2 普及前，舊版 client 仍會用 profile 發放。PRO-014H cutover 前要再跑一次。
 - **回傳加 `paid_active`**（第 8 點）：
@@ -200,12 +201,13 @@
    - 以 `pg_get_functiondef('public.set_pro_entitlement_updated_at()'::regprocedure)` 比對 production 與 011 相同，並存下來當回滾來源；
    - 記下 `select count(*) from profiles where streak_unlock_used`（回填的預期筆數）。
 2. **乾跑**：`begin;`＋012＋測試＋`rollback;`。**一定要有開頭的 `begin;`**。
-3. **正式套用 012**。
+3. **正式套用 012**，與筆數比對放在同一個 transaction：`begin;` → `LOCK TABLE public.pro_entitlements IN EXCLUSIVE MODE;`（可先 `SET LOCAL lock_timeout = '10s'`）→ 把 `pro_entitlements` 中 `is_pro` 為 true 的筆數、有 `trial_started_at` 的筆數存進暫存表 → 012 → DO block 比對兩個筆數，不同就 `RAISE EXCEPTION`（整個套用中止，什麼都不留下）→ `commit;`。先鎖表：READ COMMITTED 下同一個 transaction 並不能擋住別的連線在計數與 012 的 `ALTER TABLE` 之間 commit 的 `start_trial()`（獨立 review 實測會讓筆數改變而誤報中止）；鎖住後讀取照常、寫入等到 commit。
 4. **套用後檢查**：
    - 權限：anon 不可執行，authenticated 可執行；
    - `SECURITY DEFINER`、`search_path`、owner；
    - 新欄位存在；
    - 回填筆數與第 1 步相同；
+   - `is_pro`／`trial_started_at` 的筆數已在第 3 步的同一個 transaction 內比對過（不同時整個套用會中止）；
    - **你的帳號 `my_pro_status()` 仍是 `true／NULL／NULL`**：核准名單沒有回歸。在 `begin;` 內 `set local request.jwt.claims`，以 DO block 讀取並檢查，不符就 `RAISE EXCEPTION`，最後 `rollback;`。成功的樣子是沒有錯誤，不依賴 SQL Editor 顯示哪一個結果。
 5. **功能驗證**：再跑一次 L1 的 ASSERT 測試（開頭的 `begin;` 到結尾的 `rollback;` 原樣保留）。
    - 測試用的是自己建立、會被 rollback 的帳號，不會動到真實帳號或測試帳號。

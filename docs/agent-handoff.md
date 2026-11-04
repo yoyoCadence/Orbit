@@ -153,7 +153,8 @@
 44. **INFRA-115：完成**（2026-11-04，v1.41.11）：成長報告 PDF 改用 jsPDF 4.2.1（cdnjs＋SRI，CSP 同步）。`jspdf`、`html2canvas` 以精確版本列為 devDependencies：unit test 以 npm dist 檔的 sha512 檢查 `export.js` 的 SRI 與網址版本，e2e 以這些檔案回應 cdnjs 網址、產生真的 PDF。之後升級時三者（devDependency、網址＋SRI、CSP）一起改。這個工作環境連不到 cdnjs（`cdnjs.cloudflare.com`、`api.cdnjs.com` 都被網路政策擋下），SRI 以 npm 檔計算（2.5.1 與 html2canvas 1.4.1 用同一方法與 cdnjs 公布的值相同），cdnjs 的實際檔案由只在 CI 執行的 e2e 比對；部署後實際產生一次 PDF 為 INFRA-115A。教訓：push 遇到 GitHub 500 時 branch 可能已更新但 PR 沒有同步（`refs/pull/N/head` 仍是舊的、CI 沒跑），要以 `git ls-remote origin refs/pull/N/head` 確認。
 45. **INFRA-110A、INFRA-115A：完成**（2026-11-04，#231）。INFRA-115A 由 #230 的 CI 以網路比對 cdnjs 的實際檔案確認。擁有者回報 BUG-117（iPhone 上 header 被模糊蓋住），等擁有者回答環境資訊。使用者 2026-11-04 核准 PRO-014L §10（全部照建議），INFRA-114 之後做 L1。
 46. **INFRA-114：完成**（2026-11-04，v1.41.12）：CSP 拿掉 `'unsafe-eval'`；Pixi 的 unsafe-eval 外掛由 `scripts/vendor-pixi.mjs` 包成 `pwa/vendor/pixi-unsafe-eval.js`（ESM，以 vendored pixi 的 export 當作它的 `PIXI`），runtime 與 Pixi 一起載入、SHELL 預先快取。PS-243 延後載入 JS 預算 304 KB，**只剩 1,808 B**：下一個加大 V2 JS 的任務要先看預算。升級 Pixi 時執行 `npm run vendor:pixi` 會一併重新產生外掛（`pixiUnsafeEval.test.js` 檢查一致）。
-47. **下一步**：Backlog 其餘項目需要核准或屬高風險（HW-112 的 Storage migration、INFRA-101／PS-211D 的部署行為、PRO-014* 的 entitlement）。使用者原則：以「任務確實完成」為準，合併是後話；做不到的先寫進 `tasks.md`。
+47. **PRO-014L1：完成**（2026-11-04，#233）：另一個工作階段 2026-11-02 已在 #226 實作 L1（之後沒有再更新、以舊的 main 為基礎）；使用者選擇由本工作階段把它合併到目前的 main、重新驗證後以新的 PR 合併，並關閉 #226。下一步 **PRO-014LA**（擁有者在 production 套用 012）。
+48. **下一步**：Backlog 其餘項目需要核准或屬高風險（HW-112 的 Storage migration、INFRA-101／PS-211D 的部署行為、PRO-014* 的 entitlement）。使用者原則：以「任務確實完成」為準，合併是後話；做不到的先寫進 `tasks.md`。
 
 其他：
 
@@ -245,6 +246,8 @@
 | #230 | v1.41.11 | INFRA-115：成長報告 PDF 改用 jsPDF 4.2.1（SRI、CSP），`jspdf`／`html2canvas` 列為 devDependencies 供測試驗證 |
 | #231 | — | INFRA-110A（015 已套用）與 INFRA-115A（CI 確認 cdnjs 的檔案）結案、記錄 BUG-117 |
 | #232 | v1.41.12 | INFRA-114：CSP 拿掉 `'unsafe-eval'`（Pixi 的 unsafe-eval 外掛），延後載入 JS 預算 304 KB |
+| #226 | — | （未合併；內容由 #233 帶入）PRO-014L1：migration 012 `grant_streak_unlock()`（`paid_active`、回填）、ASSERT 測試、回滾腳本、SQL 契約測試；尚未套用到 production |
+| #233 | — | PRO-014L1：把 #226 帶到目前的 main，migration 012 `grant_streak_unlock()`（`paid_active`、回填）、ASSERT 測試、回滾腳本、SQL 契約測試；尚未套用到 production |
 
 教訓：#155–#164 在 Codex review 出現前就合併，造成 #165、#166、#167 的回頭修正。這就是 §2 合併條件的由來。獨立 review 在 #167、#168、#169 都找到真正的問題（例如椅子畫在螢幕後面、壁燈在相框下投出暗影），所以複查不能省。
 
@@ -255,7 +258,7 @@
 - **PRO-014P＋BUG-115：完成**（#221，v1.41.5）。換日的 Pro 效果在狀態不明時記成待補做（`pwa/js/proRollover.js`），refresh 後補做；暫時性失敗不刪 snapshot；保護卡 offer 屬於寫入它的帳號。下一個 PRO-014 項目是 `PRO-014L`。
   - 查證過的事，之後不要再假設：`pwa/vendor/supabase.js` 的 `rpc()` 遇到網路失敗或逾時**不會 throw**，回傳 `{ error, status: 0 }`；cached-user 啟動時換日先於 refresh，漏一天時 snapshot 幾乎一定超過 24 小時。
   - 新的 named export 一律放在新模組（INFRA-105）；`proRollover.js` 已在 SHELL。
-- **PRO-014L：提案已核准**（#224，[`pro-014l-streak-unlock-server.md`](pro-014l-streak-unlock-server.md)；2026-11-04 使用者核准 §10，全部照建議）。下一步 L1（migration 012＋ASSERT 測試，不改 client）。建議保留草稿 #154 的 SQL 核心，拆成 L1（migration 012＋ASSERT 測試）→ LA（擁有者在 production 套用）→ L2（client 改走 RPC）。
+- **PRO-014L**：提案（#224，[`pro-014l-streak-unlock-server.md`](pro-014l-streak-unlock-server.md)）使用者核准 §10（2026-11-02，#226 的工作階段；2026-11-04 再次確認）。**L1 完成（#226 實作，#233 帶到目前的 main）**：`pwa/db/012_streak_unlock_server.sql`（沿用 #154，加 `paid_active` 與回填）與 ASSERT 測試。下一步 **PRO-014LA**：擁有者在 production 套用 012（提案 §5.2；每一步給完整 SQL，結果截圖核對）；之後 **PRO-014L2**（client）。#233 合併後關閉 #226 與草稿 #154（使用者同意）。
   - #154 不能直接 rebase：以 v1.25.2 為基礎、與 PRO-014P 衝突、`requestStreakUnlock` 是 `dayCycle.js` 的新 export（違反 INFRA-105）、資料庫測試是 pgTAP、寫回規則會授予或取消 Pro。
   - 本機驗證的做法：PostgreSQL 16 套用 production 已有、與 `pro_entitlements`／sessions 相關的 migration（001、002、004、005_profiles_extra_cols、006–009、011、013、014），再套用新的 migration；以 `set_config('request.jwt.claims', …)` 模擬呼叫者。
   - 獨立 review 的教訓：沿用舊草稿時要檢查它的寫回規則與呼叫時機，不只檢查 SQL。#154 把 `is_active`（含試用）寫回 legacy 的 `is_pro`；呼叫點要在遠端載入之後（BUG-106 路徑只有 `loadAndStart()`）。

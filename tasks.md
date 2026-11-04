@@ -20,6 +20,10 @@
   - 待擁有者回答：從主畫面圖示開（standalone）還是 Safari；iOS 版本；以前就這樣還是最近才出現；其他頁是否一樣、捲動時是否改變。
   - 依回答再決定：例如 header 依實際的 safe area 下移、或調整 `apple-mobile-web-app-status-bar-style`／`theme-color`。
 
+- [ ] **PRO-014L2** client 改走 `grant_streak_unlock()`（新模組，INFRA-105）
+  - 依提案 §5.3：只在本機連勝 ≥ 45、遠端載入與 Sessions 上傳之後詢問（`loadAndStart()`、cached-user 背景同步、連線恢復同步）；依 `paid_active` 寫回 legacy profile，只延長、不縮短、不取消；刪除換日裡的 SUB-16；訪客的進度條改為「需要登入帳號」；測試與 bump。
+  - 依賴：`PRO-014LA`（**012 必須先在 production**，否則 legacy 下 SUB-16 失效）。
+
 - [ ] **REPO-001** Repo 清理（AUDIT-001 發現，需擁有者決定）
   - `output/`：30 個 tracked 檔、約 58 MB 的舊 proof 圖，app 與測試都沒有使用（只在 `skills/orbit-idle-window-assets` 的說明中當輸出目錄、eslint 忽略）。可刪除（歷史仍保留在 git）。
   - 遠端約 160 個已合併或過時的分支、過時的 draft PR #154：可清理。
@@ -81,6 +85,7 @@
   - 一併移除 `PRO-014C` 建立的 legacy 相容層（client 寫回 `trial_started_at`）—— cutover 後 legacy gate 不再被使用。**移除與旗標切換應在同一次變更內**，rollback 時也一起還原。
   - 依賴：`PRO-014J`、`PRO-014L`、`PRO-014O`（已於 v1.25.5 完成：cached-user 啟動也會 refresh projection）、`PRO-014P`（**擋 cutover**；2026-11-01 完成，#221）；`PRO-014Q` 已完成（2026-10-31），實機驗證使用 [`docs/pro-test-accounts.md`](docs/pro-test-accounts.md) 的 5 個測試帳號，測試前先重跑其中的 SQL。
   - 前置 `PRO-014RA`（014 套用到 production）：**已完成**（2026-11-01）。`server` source 下終身付費不再被試用日期限制。
+  - **cutover 前（PRO-014L）**：再跑一次 012 的回填（L2 普及前舊版 client 仍以 profile 發放 SUB-16，回報的筆數是新標記的帳號）；並查 profile 顯示 SUB-16 還有效、但 server 的付費授權沒有涵蓋到同一天的帳號（查詢見 `docs/pro-014l-streak-unlock-server.md` §7），由擁有者決定。L2 的 legacy 寫回與 PRO-014C 的相容層一起移除。
   - **切換前要決定核准名單**（2026-10-31 發現）：PRO-014I 套用 011 時核准名單為 0 筆，沒有把 legacy 的 Pro 搬到 `pro_entitlements`。專案擁有者自己的帳號在 `profiles` 是終身 Pro（`is_pro = true`、`pro_expires_at` 為 NULL），但 `pro_entitlements` 沒有資料列；切到 `server` source 當天就會失去 Pro。切換前要由擁有者決定哪些帳號列入核准名單並寫入 `pro_entitlements`。
   - **核准名單已寫入並對帳（2026-11-02）**：
     - 決定（2026-11-01，使用者）：只有專案擁有者的主帳號，授權為終身。
@@ -208,6 +213,14 @@
 
 > 2026-11-04 核准（使用者回覆「後三個可以做」）：`BUG-116`（auth 流程）、`INFRA-115`（jsPDF 升到 4.x）、`INFRA-114`（放寬 JS 預算，去掉 `'unsafe-eval'`）。順序：BUG-116 → INFRA-115 → INFRA-114，每項一個 PR。BUG-116 移入 In Progress，另兩項移入 Next。PRO-014L 的提案 §10 等使用者回覆。
 
+> 2026-11-02 核准（#226 的工作階段記錄；使用者回覆「可以照你建議」）：PRO-014L 提案（#224）§10 全部照建議。拆成 PRO-014L1（repo，In Progress）→ PRO-014LA（擁有者套用，Backlog）→ PRO-014L2（client，Backlog，依賴 LA）。L1 合併後關閉草稿 #154。
+
+- [ ] **PRO-014LA** 在 production 套用 012（專案擁有者執行）
+  - 依提案 §5.2：套用前確認（函式與欄位不存在、trigger 與 011 相同並存下、回填的預期筆數）→ `begin;`＋012＋測試＋`rollback;` 乾跑 → 正式套用（`begin;` 後先 `LOCK TABLE public.pro_entitlements IN EXCLUSIVE MODE;` 再計數）→ 檢查權限、`SECURITY DEFINER`、`search_path`、owner、回填筆數、`pro_entitlements` 中 `is_pro` 為 true 與有試用起點的筆數在套用前後不變（在套用的同一個 transaction 內比對，不同就中止）、擁有者帳號的 `my_pro_status()` 仍為 `true／NULL／NULL`（DO block）→ 再跑一次 ASSERT 測試 → 以只改文件的 PR 記錄。
+  - agent 不具 production 權限；每一步提供完整 SQL，擁有者執行並截圖。
+  - 依賴：`PRO-014L1`。擋：`PRO-014L2`。
+  - 2026-11-04：L1（#233）合併後即可執行，移入 Next。
+
 ---
 
 ## In Progress
@@ -221,10 +234,10 @@
   - **前置：屬 RPC／schema 變更，依 AGENTS.md §3 需先取得核准**。（原本「與 `PRO-014I` 的 production 套用一併規劃」已過時：011 已套用；改依提案 §5 的 L1／LA／L2。）
   - 依賴：`PRO-014C`
   - In progress（2026-11-02）：使用者同意先寫提案（只寫文件，不改程式碼、不動資料庫）。草稿 PR #154（2026-09-01，另一個工作階段）以 v1.25.2 為基礎，提案對照目前的 main 檢視它的設計。從 Backlog 移入 Next，再移入 In Progress。
-  - 提案（2026-11-02）：[`docs/pro-014l-streak-unlock-server.md`](docs/pro-014l-streak-unlock-server.md)，**等待使用者決定 §10**。
+  - 提案（2026-11-02，#224）：[`docs/pro-014l-streak-unlock-server.md`](docs/pro-014l-streak-unlock-server.md)。**使用者核准 §10**（#226 的工作階段記錄 2026-11-02 的回覆「可以照你建議」；2026-11-04 在本工作階段再次確認「PRO-014L 可以照建議」）：拆成 L1／LA／L2；資格維持「任何一段 45 天」、client 只在連勝 ≥ 45 時詢問；回填已用過的帳號；訪客不再有 SUB-16、進度條改為「需要登入帳號」；L1 合併後關閉 #154。拆成 PRO-014L1（Done，#226 實作、#233 合併）、PRO-014LA（Next）、PRO-014L2（Backlog）。
     - 實測：#154 的 012 在本機（production 已有的相關 migration，含 013、014）可以套用。另外確認：資格是「歷史上任何一段 45 天」；不符合也會建立資料列；與 014 配合正確。獨立 review 另發現 #154 在「已領過」時把 `is_active`（含試用）寫回 legacy 的 `is_pro`，會授予終身或取消 Pro。
     - **2026-11-04 使用者核准 §10（全部照建議）**，見 Next 的 2026-11-04 核准。
-    - 建議：保留 #154 的 SQL 主體（含 `date <= current_date`），只加回填已用過的帳號；拆成 L1（migration 012＋ASSERT 測試）→ LA（擁有者套用）→ L2（client 改走 RPC，新模組，INFRA-105）；只在本機連勝 ≥ 45 時、遠端載入之後詢問（同 PRO-014P 的三個補做位置）；RPC 多回傳只代表付費的 `paid_active`，`granted`／`already_granted` 依它寫回（只延長、不縮短、不取消，回應遺失後重試可補上）；訪客不再有 SUB-16（待決定）；L1 合併後關閉 #154。
+    - 建議：保留 #154 的 SQL 主體（含 `date <= current_date`），只加回填已用過的帳號；拆成 L1（migration 012＋ASSERT 測試）→ LA（擁有者套用）→ L2（client 改走 RPC，新模組，INFRA-105）；只在本機連勝 ≥ 45 時、遠端載入之後詢問（同 PRO-014P 的三個補做位置）；RPC 多回傳只代表付費的 `paid_active`，`granted`／`already_granted` 依它寫回（只延長、不縮短、不取消，回應遺失後重試可補上）；訪客不再有 SUB-16；L1 合併後關閉 #154。
 
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
@@ -232,6 +245,31 @@
 ---
 
 ## Done
+
+- [x] **PRO-014L1** migration 012（`grant_streak_unlock()`、一次性標記、`paid_active`、回填）與 ASSERT 測試，不改 client
+  - 依提案 §5.1。沿用 #154 的資格、鎖、一次性、30 天、試用中不消耗；加 `paid_active` 與回填。
+  - 完成條件：本機 PostgreSQL 依 production 的相關 migration 套用後，012、`tests/database/pro014l.test.sql`、回滾、重套都通過；改壞關鍵條件時測試會失敗；SQL 契約測試鎖住權限、輸入面、`paid_active` 與回填只寫標記。
+  - 不改 `pwa/js`，不需要 bump。屬 schema 變更，已由提案核准實作；production 套用另立 `PRO-014LA`。
+  - In progress（2026-11-02）。
+  - 完成（2026-11-02，#226；2026-11-04 由本工作階段帶到目前的 main，#233）：
+    - `pwa/db/012_streak_unlock_server.sql`、`tests/database/pro014l.test.sql`（ASSERT）、`tests/database/pro014l.rollback.sql`、`tests/unit/streakUnlockSql.test.js`、`docs/pro-014l-local-validation.md`（從 #154 帶入並加註記）。
+    - 本機 PostgreSQL 16：套用 001、002、004、005_profiles_extra_cols、006–009、011、013、014 後套用 012（先建 2 個已用過 legacy SUB-16 的帳號、終身的擁有者、免費帳號：回填只標記那 2 個，擁有者的 `my_pro_status()` 仍為 `true／NULL／NULL`）；測試通過且沒有留下資料；重套、回滾、回滾後重套再測都通過。
+    - 測試涵蓋：權限（含欄位層級）、未登入、17 種資格情境（含 B 任務、A 任務 invalid、非生產 XP、49 XP、整段 B 任務）、已領過與 `my_pro_status()`、付費已到期時 `paid_active` 為 false（已領過已到期、付費到期但試用中、終身＋已領過）、只對 fixture 重跑的回填、trigger、以 `authenticated` 身份呼叫。
+    - 突變（DB 測試會失敗）：`already_granted` 或 `active_entitlement` 的 `paid_active` 不看到期日、`already_granted` 回傳含試用的 `paid_active`、門檻 44 天、拿掉 A／S、invalid、生產 XP、日期條件、XP 改 40、trigger 不看新欄位。資料列鎖與回填的語句由 SQL 契約測試鎖住（DB 測試重跑的回填必須與 012 的語句相同；migration 在 RPC 之外只能以這一句寫入 `pro_entitlements`）。
+    - 獨立 review（#226，兩輪）：沒有 P1；P2（付費到期的 `paid_active` 未測）已補；P3 已處理（回填改為只更新尚未標記的資料列，重跑回報新標記的筆數，測試以 `GET DIAGNOSTICS` 斷言 2 筆、0 筆；migration 在 RPC 之外對 `pro_entitlements` 的寫入只允許回填這一句，含不寫 `public.`、`ONLY`、`TRUNCATE`、`MERGE` 的寫法；以 authenticated 呼叫後還原原本的角色；檔頭註明不含 BEGIN／COMMIT；回滾留下的資料列；LA 的筆數比對放在套用的 transaction 內；文件）。
+    - lint、`npm test`（90 files／1503 tests）通過；不需要 bump。
+  - 2026-11-04 重新驗證（#233，合併到目前的 main 之後；#226 的工作階段已不存在，使用者選擇由本工作階段接手）：
+    - 本機 PostgreSQL 16（以最小的 Supabase 替身：`anon`／`authenticated`／`service_role` 角色、`auth.users`、從 `request.jwt.claim(s)` 讀取的 `auth.uid()`、Supabase 式的預設權限）依序套用 001、002、004、005_profiles_extra_cols、006–009、011、013、014。
+    - 套用 012 之前建立 4 個帳號（2 個已用過 legacy SUB-16、其中 1 個有試用；終身的擁有者；免費）。套用後只有那 2 個被標記，`is_pro`、`pro_expires_at`、`trial_started_at` 不變；擁有者的 `my_pro_status()` 前後都是 `true／NULL／NULL`。
+    - `pro014l.test.sql` 通過，前後 `auth.users`／`pro_entitlements`／`sessions` 筆數相同；重套 012、回滾（函式與欄位都已移除）、回滾後重套再測都通過。
+    - 突變（測試都會失敗）：門檻改 44 天、`already_granted` 的 `paid_active` 改用含試用的 `is_pro_active()`、拿掉 `date <= current_date`。
+    - lint、`npm test`（95 files／1536 tests）通過；`check-version-bump` 不需要 bump。
+  - 獨立 review（#233）：沒有 P1。P2（核准日期寫成事實、PRO-014L 一行過時）已修。P3 也在套用前一併處理（012 尚未套用到任何地方）：
+    - 資格以 `(now() AT TIME ZONE 'UTC')::date` 為界，不再用 `current_date`（跟著呼叫者的 `TimeZone`；review 實測 `Pacific/Kiritimati` 下 UTC 明天的第 45 天被發放）。
+    - 發放的 `UPDATE` 加 `AND e.streak_unlock_granted_at IS NULL`，`NOT FOUND` 時回 `already_granted`：`FOR UPDATE` 之外的第二道防線。本機並行實測：拿掉 `FOR UPDATE`（並在 `UPDATE` 前 `pg_sleep`）時，有這個條件只發放一次，沒有時兩次都 `granted`。
+    - DB 測試加 4 個情境（共 21）：某天只有 S 任務（發放）、某天的 A 是 recovery 不是 task（不發放）、娛樂剛好 120 分鐘（發放）、以 UTC+14 的 `TimeZone` 呼叫時 UTC 明天的第 45 天（不發放）；測試開頭 `set local timezone = 'UTC'`。突變（DB 測試都會失敗）：門檻 44、`already_granted` 的 `paid_active` 含試用、拿掉日期條件、改回 `current_date`（UTC 10:00 之後執行時）、`IN ('A')`、拿掉 `impact_type = 'task'`、`< 120`。
+    - 回滾腳本：011 的函式本文逐字複製（prosrc 的 md5 與 011 相同），整份包在 `begin;`／`commit;` 內。
+    - 提案 §5.2 第 3 步、PRO-014LA：套用前先 `LOCK TABLE … IN EXCLUSIVE MODE` 再計數（READ COMMITTED 下同一個 transaction 擋不住並行的 `start_trial()`）。
 
 - [x] **INFRA-114** 去掉 CSP 的 `'unsafe-eval'`（INFRA-113 發現）
   - Pixi 8 以 `new Function` 產生 shader／uniform 程式碼，CSP 沒有 `'unsafe-eval'` 時拒絕啟動（Orbit Window 退回 poster）。Pixi 的 `pixi.js/unsafe-eval` 外掛可取代，但它是給全域 `PIXI` 的 classic script，要改 `scripts/vendor-pixi.mjs` 把它接到 ESM 的 class 上（它只改 class 的 prototype），而且 gzip 後 4,004 B，超過 PS-243 延後載入 JS 預算剩下的 2,223 B。
