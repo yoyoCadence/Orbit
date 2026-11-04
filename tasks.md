@@ -211,11 +211,6 @@
   - 完成後在本項記錄執行日期與結果，並把 015 開頭的「執行日期」改為實際日期。
   - 依賴：`INFRA-110`
 
-- [ ] **INFRA-115** 升級成長報告 PDF 的 jsPDF（INFRA-113 發現）
-  - `export.js` 從 cdnjs 載入 jsPDF 2.5.1：`npm audit` 列出 critical／high（`addImage` 的 ReDoS 與 DoS、Node.js 才有的檔案讀取、選用的 DOMPurify 的 XSS）。app 只在瀏覽器中把自己的 canvas 截圖交給 `addImage`，沒有用 `html()`，實際風險低。
-  - 方向：改用 jsPDF 4.x（cdnjs 網址與 SRI、CSP 的 `script-src` 一起改，`csp.test.js` 會檢查一致），確認 API 變更與 PDF 輸出。
-  - 2026-11-04 核准。
-
 - [ ] **INFRA-114** 去掉 CSP 的 `'unsafe-eval'`（INFRA-113 發現）
   - Pixi 8 以 `new Function` 產生 shader／uniform 程式碼，CSP 沒有 `'unsafe-eval'` 時拒絕啟動（Orbit Window 退回 poster）。Pixi 的 `pixi.js/unsafe-eval` 外掛可取代，但它是給全域 `PIXI` 的 classic script，要改 `scripts/vendor-pixi.mjs` 把它接到 ESM 的 class 上（它只改 class 的 prototype），而且 gzip 後 4,004 B，超過 PS-243 延後載入 JS 預算剩下的 2,223 B。
   - 2026-11-04 決定：放寬 JS 預算，去掉 `'unsafe-eval'`。
@@ -223,6 +218,12 @@
 ---
 
 ## In Progress
+
+- [ ] **INFRA-115** 升級成長報告 PDF 的 jsPDF（INFRA-113 發現）
+  - `export.js` 從 cdnjs 載入 jsPDF 2.5.1：`npm audit` 列出 critical／high（`addImage` 的 ReDoS 與 DoS、Node.js 才有的檔案讀取、選用的 DOMPurify 的 XSS）。app 只在瀏覽器中把自己的 canvas 截圖交給 `addImage`，沒有用 `html()`，實際風險低。
+  - 方向：改用 jsPDF 4.x（cdnjs 網址與 SRI、CSP 的 `script-src` 一起改，`csp.test.js` 會檢查一致），確認 API 變更與 PDF 輸出。
+  - 2026-11-04 核准。
+  - In progress（2026-11-04）：BUG-116（#229）合併後開始（Next → In Progress）。目標 jsPDF 4.2.1（npm 最新）。這個工作環境連不到 cdnjs，SRI 以 npm 套件的 dist 檔計算；同一方法算出的 2.5.1 與 html2canvas 1.4.1 的 hash 與 cdnjs 公布的 SRI 相同。
 
 - [ ] **PRO-014L** SUB-16 連勝解鎖改由 server 授權
   - 目標：45 天連勝換 30 天 Pro 的授權由 server 發放，而不是 client 自行寫入
