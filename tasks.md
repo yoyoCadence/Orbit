@@ -216,7 +216,7 @@
   - 2026-11-04 決定：放寬 JS 預算，去掉 `'unsafe-eval'`。
 
 - [ ] **INFRA-115A** 部署 v1.41.11 後確認成長報告 PDF（jsPDF 4.2.1 從 cdnjs 載入）
-  - 需要能連到 cdnjs 的環境：Claude 的工作環境連不到（環境的網路設定允許 `cdnjs.cloudflare.com` 後 agent 也能做）。
+  - cdnjs 的檔案與 SRI 相符由 CI 的 e2e 確認（見 INFRA-115）；這一項是部署後在真的瀏覽器走一次完整流程。需要能連到 cdnjs 的環境：Claude 的工作環境連不到。
   - 步驟：以 Pro 帳號（或 `+orbit-paid` 測試帳號）在設定頁按「產生 PDF 報告」→「產生 PDF」，預期下載 PDF、沒有「PDF 產生失敗」。若失敗，瀏覽器 Console 會顯示 SRI 或 404 的錯誤，回報給 agent。
   - 或（不需部署）：`curl -fsS https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.2.1/jspdf.umd.min.js | openssl dgst -sha512 -binary | openssl base64 -A` 應等於 `export.js` 中 `integrity` 的 `sha512-` 之後的部分。只看檔案開頭的版本註解不夠：重新壓縮的檔案也會保留它。
   - 依賴：`INFRA-115`
@@ -254,7 +254,7 @@
     - API：app 只用 `new jsPDF('p', 'mm', 'a4')`、`internal.pageSize`、`addImage(JPEG)`、`addPage()`、`save()`，4.x 都沒有變更；UMD 仍是 `window.jspdf.jsPDF`。jsPDF 4.2.1 與 html2canvas 1.4.1 都不使用 `eval`／`new Function`（INFRA-114 拿掉 `'unsafe-eval'` 不影響 PDF）。
     - `jspdf`、`html2canvas` 以精確版本列為 devDependencies，`npm audit` 只剩 INFRA-112 記錄的 eslint／minimatch（moderate）。
     - 測試：`tests/unit/exportPdfLibs.test.js`（`export.js` 的網址版本＝devDependency、SRI＝npm dist 檔的 sha512、用到的 API 在 4.x 存在）；`tests/e2e/infra115-pdf.test.js`（以 devDependency 的檔案回應 cdnjs 網址：60 筆打卡的報告下載為多頁的 A4 PDF（實測 3 頁）、`/Producer (jsPDF 4.2.1)`、沒有 CSP 違規；檔案與 SRI 不符時瀏覽器拒絕〔Console 的 integrity 錯誤〕、顯示「PDF 產生失敗」、不下載；只在 CI 執行的一項以網路取得 cdnjs 上的兩個檔案，比對 sha512 與 SRI、CORS header）。PDF 轉成圖片看過：統計卡、圖表、明細表正常。
-    - 未確認：這個工作環境連不到 cdnjs，沒有直接確認 cdnjs 上 4.2.1 的檔案。依據：cdnjs 從 npm 複製檔案，2.5.1 與 html2canvas 1.4.1 的 npm 檔 hash 都與 cdnjs 公布的 SRI 相同；4.2.1 在 npm 發布已約 7 個月（2026-03-17）。部署後的確認另立 INFRA-115A。
+    - cdnjs 上的檔案：這個工作環境連不到 cdnjs，改由 CI 確認：e2e 的 `cdnjs serves the bytes the SRI names` 只在 CI（`process.env.CI`）執行，以網路取得兩個網址，比對 sha512 與 SRI、`Access-Control-Allow-Origin: *`；之後每個 PR 也會檢查。在此之前的依據：cdnjs 從 npm 複製檔案，2.5.1 與 html2canvas 1.4.1 的 npm 檔 hash 都與 cdnjs 公布的 SRI 相同；4.2.1 在 npm 發布已約 7 個月（2026-03-17）。部署後實際產生一次 PDF 的確認另立 INFRA-115A。
 
 - [x] **BUG-116** 離線且 token 過期時登出，Supabase 的 session 留在裝置上（INFRA-110 獨立 review 發現，原本就有）
   - 現象：`supabase.auth.signOut()` 在 token 過期又離線時約 25 秒後回傳 `AuthRetryableFetchError`，`sb-<project>-auth-token` 沒有被刪除（SDK 讀 session 失敗就提前結束）。app 照樣回到登入畫面，`storage.clearAll()` 只清 `yoyo_*`。之後以遊客繼續時，排行榜（INFRA-110 以這個 key 判斷是否登入）把它當成已登入，連上網後 refresh 成功會以剛登出的帳號查詢；下次啟動也會回到那個帳號。
