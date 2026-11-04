@@ -148,10 +148,11 @@
 39. **INFRA-111：完成**（2026-11-02，v1.41.7）：沒有預先快取的圖片，service worker 第一次取得時以 `cache: 'no-cache'` 向伺服器確認，改版後不會把 HTTP cache 裡上一版的圖存進新版本的快取。使用者 2026-11-02 核准 INFRA-110～113（各一個 PR，INFRA-110 需要擁有者先提供 Supabase 的 grant 查詢結果）；REPO-001 使用者之後自行處理。
 40. **INFRA-112：完成**（2026-11-02，不 bump）：CI `permissions: contents: read`、Node 22、Node 24 版的 action；vitest 5（需要 DOM 的測試檔第一行寫 `// @vitest-environment jsdom`，不再用 `environmentMatchGlobs`；arrow function 的 `vi.fn()` 不能 `new`）。本機需要 Node 22.13 以上的 22.x、24.x，或 26 以上（不含 23、25；`engines`）。eslint 的 minimatch advisory 等 eslint 改用 minimatch ≥ 11.0.1。
 41. **INFRA-113：完成**（2026-11-03，v1.41.8）：頁面加上 CSP，沒有 inline 程式碼（按鈕用 `data-action`，`pwa/js/domActions.js`；**之後新增按鈕不可再寫 `onclick=`**，見 AGENTS.md §6）；部署不含 `pwa/db` 與 `server.cjs`，`deploy.yml` 用 Node 24 的 action。`'unsafe-eval'` 給 Pixi（INFRA-114），jsPDF 2.5.1 的 advisory（INFRA-115）。INFRA-110 等擁有者提供 Supabase 的 grant 查詢結果。
-42. **INFRA-110：完成（repo 部分）**（2026-11-03，v1.41.9）：擁有者查到 `leaderboard_view` 有 Supabase 預設給 `anon` 的全部權限，未登入就讀得到公開使用者的資料。`015` 只收回權限（authenticated 只剩 SELECT），遊客在排行榜看到登入提示。**INFRA-110A：等擁有者在 production 套用 015**（步驟在 tasks.md）。
+42. **INFRA-110：完成（repo 部分）**（2026-11-03，v1.41.9）：擁有者查到 `leaderboard_view` 有 Supabase 預設給 `anon` 的全部權限，未登入就讀得到公開使用者的資料。`015` 只收回權限（authenticated 只剩 SELECT），遊客在排行榜看到登入提示。**INFRA-110A：完成**（2026-11-04 擁有者套用；乾跑通過，套用後未登入讀取回 401／42501，已登入照常）。
 43. **BUG-116：完成**（2026-11-04，v1.41.10）：使用者 2026-11-04 核准 BUG-116、INFRA-115、INFRA-114（放寬 JS 預算，去掉 `'unsafe-eval'`），順序 BUG-116 → INFRA-115 → INFRA-114。`signOut()` 一定刪除裝置上的 Supabase session：SDK 讀不到 session（token 過期又離線）時不論 `scope` 都在刪除前就結束，所以先從 `supabase.auth.storage` 刪掉 key，再以 `signOut({ scope: 'local' })` 讓 SDK 做自己的清理；`navigator.onLine === false` 時不呼叫會等網路的那一次（但每個 SDK 呼叫都等 `initializePromise`：離線打開 app、token 已過期時，啟動的 refresh 重試約 25 秒，期間登出要等它，key 先刪除）。查證過的事：vendored 2.112.4 預設**不使用 lock**；進行中的 refresh 發現 storage 被清掉時會丟棄新的 token（commit guard）。PRO-014L §10 等使用者回覆（已說明建議）；INFRA-110A 等擁有者套用 015（已給 SQL Editor 的逐步做法）。
 44. **INFRA-115：完成**（2026-11-04，v1.41.11）：成長報告 PDF 改用 jsPDF 4.2.1（cdnjs＋SRI，CSP 同步）。`jspdf`、`html2canvas` 以精確版本列為 devDependencies：unit test 以 npm dist 檔的 sha512 檢查 `export.js` 的 SRI 與網址版本，e2e 以這些檔案回應 cdnjs 網址、產生真的 PDF。之後升級時三者（devDependency、網址＋SRI、CSP）一起改。這個工作環境連不到 cdnjs（`cdnjs.cloudflare.com`、`api.cdnjs.com` 都被網路政策擋下），SRI 以 npm 檔計算（2.5.1 與 html2canvas 1.4.1 用同一方法與 cdnjs 公布的值相同），cdnjs 的實際檔案由只在 CI 執行的 e2e 比對；部署後實際產生一次 PDF 為 INFRA-115A。教訓：push 遇到 GitHub 500 時 branch 可能已更新但 PR 沒有同步（`refs/pull/N/head` 仍是舊的、CI 沒跑），要以 `git ls-remote origin refs/pull/N/head` 確認。
-45. **下一步**：Backlog 其餘項目需要核准或屬高風險（HW-112 的 Storage migration、INFRA-101／PS-211D 的部署行為、PRO-014* 的 entitlement）。使用者原則：以「任務確實完成」為準，合併是後話；做不到的先寫進 `tasks.md`。
+45. **INFRA-110A、INFRA-115A：完成**（2026-11-04，#231）。INFRA-115A 由 #230 的 CI 以網路比對 cdnjs 的實際檔案確認。擁有者回報 BUG-117（iPhone 上 header 被模糊蓋住），等擁有者回答環境資訊。PRO-014L §10 已再說明建議，等回覆。
+46. **下一步**：Backlog 其餘項目需要核准或屬高風險（HW-112 的 Storage migration、INFRA-101／PS-211D 的部署行為、PRO-014* 的 entitlement）。使用者原則：以「任務確實完成」為準，合併是後話；做不到的先寫進 `tasks.md`。
 
 其他：
 
@@ -241,6 +242,7 @@
 | #228 | v1.41.9 | INFRA-110：`015` 收回 `leaderboard_view` 給 `anon` 的權限（authenticated 只剩 SELECT）、遊客的排行榜顯示登入提示；production 套用為 INFRA-110A |
 | #229 | v1.41.10 | BUG-116：離線登出立即完成，並一定刪除裝置上的 Supabase session |
 | #230 | v1.41.11 | INFRA-115：成長報告 PDF 改用 jsPDF 4.2.1（SRI、CSP），`jspdf`／`html2canvas` 列為 devDependencies 供測試驗證 |
+| #231 | — | INFRA-110A（015 已套用）與 INFRA-115A（CI 確認 cdnjs 的檔案）結案、記錄 BUG-117 |
 
 教訓：#155–#164 在 Codex review 出現前就合併，造成 #165、#166、#167 的回頭修正。這就是 §2 合併條件的由來。獨立 review 在 #167、#168、#169 都找到真正的問題（例如椅子畫在螢幕後面、壁燈在相框下投出暗影），所以複查不能省。
 

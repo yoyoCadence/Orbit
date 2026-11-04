@@ -14,6 +14,12 @@
 
 ## Backlog
 
+- [ ] **BUG-117** iPhone 上 header（頭像、名稱、XP／能量條）被模糊蓋住（擁有者 2026-11-04 回報，附截圖）
+  - 現象：排行榜頁最上方從狀態列往下約到 header 底部，內容被由上而下漸弱的模糊蓋住；下面的內容清楚。主題為 `modern` 的深色畫面。
+  - 已查（2026-11-04）：`#header`（`modern` skin：`padding: calc(env(safe-area-inset-top) + var(--space-3)) …`）的 `backdrop-filter` 只會模糊它後面的東西，不會模糊 header 自己的內容；app 沒有其他蓋在 header 上的模糊層。推測是 iOS 在狀態列底下的模糊（scroll edge effect），而 header 的一部分在那個範圍內，尚未確認。
+  - 待擁有者回答：從主畫面圖示開（standalone）還是 Safari；iOS 版本；以前就這樣還是最近才出現；其他頁是否一樣、捲動時是否改變。
+  - 依回答再決定：例如 header 依實際的 safe area 下移、或調整 `apple-mobile-web-app-status-bar-style`／`theme-color`。
+
 - [ ] **REPO-001** Repo 清理（AUDIT-001 發現，需擁有者決定）
   - `output/`：30 個 tracked 檔、約 58 MB 的舊 proof 圖，app 與測試都沒有使用（只在 `skills/orbit-idle-window-assets` 的說明中當輸出目錄、eslint 忽略）。可刪除（歷史仍保留在 git）。
   - 遠端約 160 個已合併或過時的分支、過時的 draft PR #154：可清理。
@@ -200,26 +206,9 @@
 
 > 2026-11-04 核准（使用者回覆「後三個可以做」）：`BUG-116`（auth 流程）、`INFRA-115`（jsPDF 升到 4.x）、`INFRA-114`（放寬 JS 預算，去掉 `'unsafe-eval'`）。順序：BUG-116 → INFRA-115 → INFRA-114，每項一個 PR。BUG-116 移入 In Progress，另兩項移入 Next。PRO-014L 的提案 §10 等使用者回覆。
 
-- [ ] **INFRA-110A** 在 production 套用 015（`leaderboard_view` 只給已登入的使用者讀）
-  - **需專案擁有者執行**：production 資料庫操作，Claude 不具權限。先讓 v1.41.9（遊客顯示登入提示）部署，再套用 015。順序相反時遊客會看到「無法載入排行榜」；順序正確時，還沒更新到 v1.41.9 的舊分頁或 PWA（INFRA-107：要等新的 service worker 接手）裡沒有快取的遊客也會暫時看到，更新後即改為登入提示。
-  - 步驟（Supabase SQL Editor）：
-    0. 確認 view 的擁有者：`select pg_get_userbyid(relowner) from pg_class where oid = 'public.leaderboard_view'::regclass;` 預期 `postgres`（若不是，REVOKE 不會生效，先回報）。
-    1. 乾跑：`begin;` ＋ `015_leaderboard_view_grants.sql` 的內容 ＋ `tests/database/infra110.test.sql` 從第一個 `do $$` 到 `rollback;` 之前的內容 ＋ `rollback;`，預期 Success（任何 ASSERT 失敗會中止並顯示原因）。
-    2. 套用 `015_leaderboard_view_grants.sql`。
-    3. 檢查：`select grantee, privilege_type from information_schema.role_table_grants where table_schema = 'public' and table_name = 'leaderboard_view' order by 1, 2;` 預期 `authenticated` 只有 `SELECT`，沒有 `anon`（`postgres`、`service_role` 不變）。
-    4. 在 app 確認：登入的帳號看得到排行榜；遊客看到「登入帳號後才能看排行榜」。
-  - 完成後在本項記錄執行日期與結果，並把 015 開頭的「執行日期」改為實際日期。
-  - 依賴：`INFRA-110`
-
 - [ ] **INFRA-114** 去掉 CSP 的 `'unsafe-eval'`（INFRA-113 發現）
   - Pixi 8 以 `new Function` 產生 shader／uniform 程式碼，CSP 沒有 `'unsafe-eval'` 時拒絕啟動（Orbit Window 退回 poster）。Pixi 的 `pixi.js/unsafe-eval` 外掛可取代，但它是給全域 `PIXI` 的 classic script，要改 `scripts/vendor-pixi.mjs` 把它接到 ESM 的 class 上（它只改 class 的 prototype），而且 gzip 後 4,004 B，超過 PS-243 延後載入 JS 預算剩下的 2,223 B。
   - 2026-11-04 決定：放寬 JS 預算，去掉 `'unsafe-eval'`。
-
-- [ ] **INFRA-115A** 部署 v1.41.11 後確認成長報告 PDF（jsPDF 4.2.1 從 cdnjs 載入）
-  - cdnjs 的檔案與 SRI 相符由 CI 的 e2e 確認（見 INFRA-115）；這一項是部署後在真的瀏覽器走一次完整流程。需要能連到 cdnjs 的環境：Claude 的工作環境連不到。
-  - 步驟：以 Pro 帳號（或 `+orbit-paid` 測試帳號）在設定頁按「產生 PDF 報告」→「產生 PDF」，預期下載 PDF、沒有「PDF 產生失敗」。若失敗，瀏覽器 Console 會顯示 SRI 或 404 的錯誤，回報給 agent。
-  - 或（不需部署）：`curl -fsS https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.2.1/jspdf.umd.min.js | openssl dgst -sha512 -binary | openssl base64 -A` 應等於 `export.js` 中 `integrity` 的 `sha512-` 之後的部分。只看檔案開頭的版本註解不夠：重新壓縮的檔案也會保留它。
-  - 依賴：`INFRA-115`
 
 ---
 
@@ -245,6 +234,33 @@
 
 ## Done
 
+- [x] **INFRA-110A** 在 production 套用 015（`leaderboard_view` 只給已登入的使用者讀）
+  - **需專案擁有者執行**：production 資料庫操作，Claude 不具權限。先讓 v1.41.9（遊客顯示登入提示）部署，再套用 015。順序相反時遊客會看到「無法載入排行榜」；順序正確時，還沒更新到 v1.41.9 的舊分頁或 PWA（INFRA-107：要等新的 service worker 接手）裡沒有快取的遊客也會暫時看到，更新後即改為登入提示。
+  - 步驟（Supabase SQL Editor）：
+    0. 確認 view 的擁有者：`select pg_get_userbyid(relowner) from pg_class where oid = 'public.leaderboard_view'::regclass;` 預期 `postgres`（若不是，REVOKE 不會生效，先回報）。
+    1. 乾跑：`begin;` ＋ `015_leaderboard_view_grants.sql` 的內容 ＋ `tests/database/infra110.test.sql` 從第一個 `do $$` 到 `rollback;` 之前的內容 ＋ `rollback;`，預期 Success（任何 ASSERT 失敗會中止並顯示原因）。
+    2. 套用 `015_leaderboard_view_grants.sql`。
+    3. 檢查：`select grantee, privilege_type from information_schema.role_table_grants where table_schema = 'public' and table_name = 'leaderboard_view' order by 1, 2;` 預期 `authenticated` 只有 `SELECT`，沒有 `anon`（`postgres`、`service_role` 不變）。
+    4. 在 app 確認：登入的帳號看得到排行榜；遊客看到「登入帳號後才能看排行榜」。
+  - 完成後在本項記錄執行日期與結果，並把 015 開頭的「執行日期」改為實際日期。
+  - 依賴：`INFRA-110`
+  - 完成（2026-11-04，擁有者在 Supabase SQL Editor 執行；v1.41.10 已部署）：
+    - 步驟 1（乾跑：015＋`tests/database/infra110.test.sql` 的 ASSERT，最後 rollback）：Success，ASSERT 全部通過（authenticated 只有 SELECT、anon 沒有任何權限；以 anon 讀取被拒、以 authenticated 讀取成功）。REVOKE 在 transaction 內生效，代表 view 的擁有者可以收回權限（步驟 0 的擁有者檢查因此不必另外執行）。
+    - 步驟 2（套用）：Success。
+    - 步驟 3 未另外執行：步驟 1 的 ASSERT 與步驟 4 已涵蓋。
+    - 步驟 4：未登入時在網站的 Console 以 anon key `GET /rest/v1/leaderboard_view?select=user_id&limit=1` → `401`，`{"code":"42501",…,"message":"permission denied for view leaderboard_view"}`。
+    - 步驟 5：擁有者的帳號在 iPhone 上登入後照常看到排行榜。
+    - `015` 開頭的「執行日期」已改為 2026-11-04。
+
+
+- [x] **INFRA-115A** 部署 v1.41.11 後確認成長報告 PDF（jsPDF 4.2.1 從 cdnjs 載入）
+  - cdnjs 的檔案與 SRI 相符由 CI 的 e2e 確認（見 INFRA-115）；這一項是部署後在真的瀏覽器走一次完整流程。需要能連到 cdnjs 的環境：Claude 的工作環境連不到。
+  - 步驟：以 Pro 帳號（或 `+orbit-paid` 測試帳號）在設定頁按「產生 PDF 報告」→「產生 PDF」，預期下載 PDF、沒有「PDF 產生失敗」。若失敗，瀏覽器 Console 會顯示 SRI 或 404 的錯誤，回報給 agent。
+  - 或（不需部署）：`curl -fsS https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.2.1/jspdf.umd.min.js | openssl dgst -sha512 -binary | openssl base64 -A` 應等於 `export.js` 中 `integrity` 的 `sha512-` 之後的部分。只看檔案開頭的版本註解不夠：重新壓縮的檔案也會保留它。
+  - 依賴：`INFRA-115`
+  - 完成（2026-11-04，由 CI 確認，不需擁有者操作）：#230 的 CI（head `a00ad05`）e2e 86 passed、沒有 skipped，其中只在 CI 執行的 `cdnjs serves the bytes the SRI names` 以網路取得 cdnjs 上的 jsPDF 4.2.1 與 html2canvas 1.4.1：都是 200、`Access-Control-Allow-Origin: *`、sha512 與 SRI 相同。瀏覽器中的完整流程（CSP、SRI、下載 PDF）由同一檔案的 e2e 以相同的檔案驗證。之後若實際產生 PDF 失敗，再回報。
+
+
 - [x] **INFRA-115** 升級成長報告 PDF 的 jsPDF（INFRA-113 發現）
   - `export.js` 從 cdnjs 載入 jsPDF 2.5.1：`npm audit` 列出 critical／high（`addImage` 的 ReDoS 與 DoS、Node.js 才有的檔案讀取、選用的 DOMPurify 的 XSS）。app 只在瀏覽器中把自己的 canvas 截圖交給 `addImage`，沒有用 `html()`，實際風險低。
   - 方向：改用 jsPDF 4.x（cdnjs 網址與 SRI、CSP 的 `script-src` 一起改，`csp.test.js` 會檢查一致），確認 API 變更與 PDF 輸出。
@@ -254,7 +270,7 @@
     - API：app 只用 `new jsPDF('p', 'mm', 'a4')`、`internal.pageSize`、`addImage(JPEG)`、`addPage()`、`save()`，4.x 都沒有變更；UMD 仍是 `window.jspdf.jsPDF`。jsPDF 4.2.1 與 html2canvas 1.4.1 都不使用 `eval`／`new Function`（INFRA-114 拿掉 `'unsafe-eval'` 不影響 PDF）。
     - `jspdf`、`html2canvas` 以精確版本列為 devDependencies，`npm audit` 只剩 INFRA-112 記錄的 eslint／minimatch（moderate）。
     - 測試：`tests/unit/exportPdfLibs.test.js`（`export.js` 的網址版本＝devDependency、SRI＝npm dist 檔的 sha512、用到的 API 在 4.x 存在）；`tests/e2e/infra115-pdf.test.js`（以 devDependency 的檔案回應 cdnjs 網址：60 筆打卡的報告下載為多頁的 A4 PDF（實測 3 頁）、`/Producer (jsPDF 4.2.1)`、沒有 CSP 違規；檔案與 SRI 不符時瀏覽器拒絕〔Console 的 integrity 錯誤〕、顯示「PDF 產生失敗」、不下載；只在 CI 執行的一項以網路取得 cdnjs 上的兩個檔案，比對 sha512 與 SRI、CORS header）。PDF 轉成圖片看過：統計卡、圖表、明細表正常。
-    - cdnjs 上的檔案：這個工作環境連不到 cdnjs，改由 CI 確認：e2e 的 `cdnjs serves the bytes the SRI names` 只在 CI（`process.env.CI`）執行，以網路取得兩個網址，比對 sha512 與 SRI、`Access-Control-Allow-Origin: *`；之後每個 PR 也會檢查。在此之前的依據：cdnjs 從 npm 複製檔案，2.5.1 與 html2canvas 1.4.1 的 npm 檔 hash 都與 cdnjs 公布的 SRI 相同；4.2.1 在 npm 發布已約 7 個月（2026-03-17）。部署後實際產生一次 PDF 的確認另立 INFRA-115A。
+    - cdnjs 上的檔案：這個工作環境連不到 cdnjs，改由 CI 確認：e2e 的 `cdnjs serves the bytes the SRI names` 只在 CI（`process.env.CI`）執行，以網路取得兩個網址，比對 sha512 與 SRI、`Access-Control-Allow-Origin: *`；之後每個 PR 也會檢查。在此之前的依據：cdnjs 從 npm 複製檔案，2.5.1 與 html2canvas 1.4.1 的 npm 檔 hash 都與 cdnjs 公布的 SRI 相同；4.2.1 在 npm 發布已約 7 個月（2026-03-17）。部署後實際產生一次 PDF 的確認另立 INFRA-115A（由 #230 的 CI 確認後結案）。
 
 - [x] **BUG-116** 離線且 token 過期時登出，Supabase 的 session 留在裝置上（INFRA-110 獨立 review 發現，原本就有）
   - 現象：`supabase.auth.signOut()` 在 token 過期又離線時約 25 秒後回傳 `AuthRetryableFetchError`，`sb-<project>-auth-token` 沒有被刪除（SDK 讀 session 失敗就提前結束）。app 照樣回到登入畫面，`storage.clearAll()` 只清 `yoyo_*`。之後以遊客繼續時，排行榜（INFRA-110 以這個 key 判斷是否登入）把它當成已登入，連上網後 refresh 成功會以剛登出的帳號查詢；下次啟動也會回到那個帳號。
