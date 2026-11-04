@@ -224,13 +224,6 @@
 
 ## In Progress
 
-- [ ] **BUG-116** 離線且 token 過期時登出，Supabase 的 session 留在裝置上（INFRA-110 獨立 review 發現，原本就有）
-  - 現象：`supabase.auth.signOut()` 在 token 過期又離線時約 25 秒後回傳 `AuthRetryableFetchError`，`sb-<project>-auth-token` 沒有被刪除（SDK 讀 session 失敗就提前結束）。app 照樣回到登入畫面，`storage.clearAll()` 只清 `yoyo_*`。之後以遊客繼續時，排行榜（INFRA-110 以這個 key 判斷是否登入）把它當成已登入，連上網後 refresh 成功會以剛登出的帳號查詢；下次啟動也會回到那個帳號。
-  - 影響：只在同一台裝置，裝置上本來就有那個帳號的 refresh token，沒有資料外流；但「登出」沒有真正登出。
-  - 方向：`signOut` 回傳錯誤時改用 `signOut({ scope: 'local' })` 或自行刪除本機的 session key。屬 auth 流程，實作前需核准。
-  - 另：storage 寫入測試失敗時 supabase-js 把 session 只放在記憶體，key 不存在，已登入的使用者在排行榜會看到登入提示（少見，偏向隱藏資料）。
-  - In progress（2026-11-04）：使用者核准（見 Next 的 2026-11-04 核准）。supabase-js 2.112.4 的原始碼：讀 session 失敗時 `signOut()` 不論 `scope` 都在刪除前就結束，所以 `scope: 'local'` 本身不夠，要先刪掉本機的 session key。
-
 - [ ] **PRO-014L** SUB-16 連勝解鎖改由 server 授權
   - 目標：45 天連勝換 30 天 Pro 的授權由 server 發放，而不是 client 自行寫入
   - 現況（`PRO-014C` 實作時發現）：`pwa/js/dayCycle.js` 直接寫 `state.user.isPro = true` 與 `proExpiresAt`，再經 `saveUser()` 同步上雲。這是 client 決定的 Pro 授權 —— 與 `startTrial()` 原本的問題同一類，只是沒被 `PRO-014C` 的範圍涵蓋。
@@ -250,6 +243,19 @@
 ---
 
 ## Done
+
+- [x] **BUG-116** 離線且 token 過期時登出，Supabase 的 session 留在裝置上（INFRA-110 獨立 review 發現，原本就有）
+  - 現象：`supabase.auth.signOut()` 在 token 過期又離線時約 25 秒後回傳 `AuthRetryableFetchError`，`sb-<project>-auth-token` 沒有被刪除（SDK 讀 session 失敗就提前結束）。app 照樣回到登入畫面，`storage.clearAll()` 只清 `yoyo_*`。之後以遊客繼續時，排行榜（INFRA-110 以這個 key 判斷是否登入）把它當成已登入，連上網後 refresh 成功會以剛登出的帳號查詢；下次啟動也會回到那個帳號。
+  - 影響：只在同一台裝置，裝置上本來就有那個帳號的 refresh token，沒有資料外流；但「登出」沒有真正登出。
+  - 方向：`signOut` 回傳錯誤時改用 `signOut({ scope: 'local' })` 或自行刪除本機的 session key。屬 auth 流程，實作前需核准。
+  - 另：storage 寫入測試失敗時 supabase-js 把 session 只放在記憶體，key 不存在，已登入的使用者在排行榜會看到登入提示（少見，偏向隱藏資料）。
+  - In progress（2026-11-04）：使用者核准（見 Next 的 2026-11-04 核准）。supabase-js 2.112.4 的原始碼：讀 session 失敗時 `signOut()` 不論 `scope` 都在刪除前就結束，所以 `scope: 'local'` 本身不夠，要先刪掉本機的 session key。
+  - 完成（2026-11-04，v1.41.10）：`pwa/js/auth.js` 的 `signOut()`。
+    - 連線時照舊呼叫 SDK 的 `signOut()`（同時在 server 撤銷 session）；回傳錯誤或 throw 時，從 SDK 自己的 storage（`supabase.auth.storage`，localStorage 不能用時是記憶體）刪除 `supabase.auth.storageKey`，再呼叫 `signOut({ scope: 'local' })`：沒有儲存的 session 時 SDK 不發 request，執行自己的清理（`-user` 與 PKCE 的 key、快取的 refresh 失敗、遞增 `_sessionRemovalEpoch` 讓同時進行中的 refresh 不會把 session 寫回）並發出 `SIGNED_OUT`。
+    - `navigator.onLine === false`（`platform/network.js` 的 `isOnline()`）時不呼叫會等網路的那一次，直接走上面的本機清理：離線登出立即回到登入畫面，不再等約 25 秒。2.112.4 預設不使用 lock，背景的 refresh 不會擋住它。
+    - 只在 `onLine` 為 true 但連不到伺服器時，仍要等 SDK 的 refresh 重試（約 25 秒）才登出；之後一樣刪除本機的 session。
+    - 測試：`tests/unit/bug116SignOut.test.js`（真的 vendored client＋mock fetch：離線、連線但連不到伺服器〔fake timers 走完 SDK 的重試〕、連線成功、SDK throw）；`tests/e2e/bug116-signout.test.js`（Chromium、真的 client、Supabase host 全部擋下：過期的 token、`context.setOffline(true)`，3 秒內回到登入畫面、key 被刪除、沒有任何 request）。兩者在修正前的 `auth.js` 上都會失敗。
+    - 未變更：上面「另」的情況（storage 寫入測試失敗時 session 只在記憶體）排行榜仍以 localStorage 的 key 判斷，已登入者會看到登入提示；登出本身已涵蓋記憶體的 storage。
 
 - [x] **INFRA-110** `leaderboard_view` 的權限（AUDIT-001 發現）
   - 問題：Postgres 的 view 預設以擁有者的權限執行，不受 `profiles`／`sessions` 的 RLS 限制（`005_leaderboard.sql` 的註解「Views inherit table RLS by default」不正確）。view 只靠 `WHERE p.is_public = true` 限制列；migration 只 `GRANT SELECT ... TO authenticated`，但 Supabase 的預設權限（`ALTER DEFAULT PRIVILEGES ... TO anon, authenticated`）可能也讓 `anon` 讀得到，屆時未登入者可讀所有公開使用者的 `user_id`、名稱、XP、連勝、`created_at`、`avatar_url`。
