@@ -25,7 +25,9 @@
 -- 回滾（恢復原本的狀態，不建議）：GRANT ALL ON public.leaderboard_view TO anon, authenticated;
 -- 測試：tests/database/infra110.test.sql（ASSERT，失敗即中止；可在同一個 transaction 內
 --   與本檔一起乾跑後 ROLLBACK）。
--- 執行日期：PENDING（專案擁有者於 production 套用後填寫，INFRA-110A）
+-- 執行日期：2026-11-04（專案擁有者於 production 套用，INFRA-110A：乾跑 015＋infra110.test.sql 的權限與
+--   讀取 ASSERT 通過；套用後未登入以 anon key GET /rest/v1/leaderboard_view 回 401／42501，
+--   已登入的帳號照常看到排行榜）
 -- ============================================================
 
 REVOKE ALL ON TABLE public.leaderboard_view FROM PUBLIC, anon, authenticated;
