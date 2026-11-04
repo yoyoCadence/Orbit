@@ -40,6 +40,62 @@ test.describe('INFRA-114 scene without unsafe-eval', () => {
     expect(await page.evaluate(() => typeof window.PIXI)).toBe('undefined');
   });
 
+  test('Pixi features beyond the current scene also run without eval', async ({ page }) => {
+    // Not used by the scene today; kept so that adding them (e.g. particles for
+    // weather) or upgrading Pixi cannot quietly need eval again. The add-on
+    // patches only its own ParticleBuffer copy; the wrapper patches the real one.
+    const host = await openHome(page);
+    await expect(host).toHaveAttribute('data-runtime-status', 'ready', { timeout: 10_000 });
+    const results = await page.evaluate(async () => {
+      const pixi = await import('/vendor/pixi.js');
+      await import('/vendor/pixi-unsafe-eval.js');
+      const app = new pixi.Application();
+      await app.init({ width: 64, height: 64, preference: 'webgl' });
+      const cases = {
+        text: () => app.stage.addChild(new pixi.Text({ text: 'Orbit' })),
+        bitmapText: () => app.stage.addChild(new pixi.BitmapText({ text: 'x' })),
+        blurFilter: () => {
+          const shape = new pixi.Graphics().rect(0, 0, 10, 10).fill(0xff0000);
+          shape.filters = [new pixi.BlurFilter()];
+          app.stage.addChild(shape);
+        },
+        colorMatrixFilter: () => {
+          const sprite = new pixi.Sprite(pixi.Texture.WHITE);
+          sprite.filters = [new pixi.ColorMatrixFilter()];
+          app.stage.addChild(sprite);
+        },
+        mesh: () => app.stage.addChild(new pixi.MeshPlane({ texture: pixi.Texture.WHITE })),
+        renderTexture: () => {
+          const target = pixi.RenderTexture.create({ width: 8, height: 8 });
+          app.renderer.render({ container: new pixi.Graphics().rect(0, 0, 4, 4).fill(0xffffff), target });
+        },
+        particles: () => {
+          const container = new pixi.ParticleContainer();
+          container.addParticle(new pixi.Particle(pixi.Texture.WHITE));
+          app.stage.addChild(container);
+        },
+      };
+      const out = {};
+      for (const [name, run] of Object.entries(cases)) {
+        try {
+          app.stage.removeChildren();
+          run();
+          app.render();
+          out[name] = 'ok';
+        } catch (error) {
+          out[name] = `${error.name}: ${error.message}`;
+        }
+      }
+      app.destroy(true);
+      return out;
+    });
+    expect(results).toEqual({
+      text: 'ok', bitmapText: 'ok', blurFilter: 'ok', colorMatrixFilter: 'ok',
+      mesh: 'ok', renderTexture: 'ok', particles: 'ok',
+    });
+    expect(await page.evaluate(() => window.__violations)).toEqual([]);
+  });
+
   test('without the add-on the eval is refused and the poster stays', async ({ page }) => {
     await page.route('**/vendor/pixi-unsafe-eval.js', route => route.fulfill({
       status: 200, contentType: 'application/javascript; charset=utf-8', body: 'export {};\n',

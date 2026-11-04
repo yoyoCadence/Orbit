@@ -238,12 +238,11 @@
   - 2026-11-04 決定：放寬 JS 預算，去掉 `'unsafe-eval'`。
   - In progress（2026-11-04）：#231 合併後開始（Next → In Progress）。做法：`scripts/vendor-pixi.mjs` 另外產生 `pwa/vendor/pixi-unsafe-eval.js`（ESM：import vendored pixi，把外掛的 classic script 包在函式裡、以 pixi 的 export 作為它的 `PIXI`），runtime 載入 Pixi 時一起載入；PS-243 延後載入 JS 預算 300 → 304 KB；CSP 拿掉 `'unsafe-eval'`。
   - 完成（2026-11-04，v1.41.12）：CSP 的 `script-src` 只剩 `'self'` 與 PDF 的兩個 cdnjs 網址。
-    - `scripts/vendor-pixi.mjs`（純函式在 `scripts/vendorPixiLib.mjs`）另外產生 `pwa/vendor/pixi-unsafe-eval.js`：`import * as pixi from './pixi.js'`，把 `pixi.js/dist/packages/unsafe-eval.min.js` 包在函式裡、以 `{ ...pixi }` 作為它的 `PIXI` 執行一次，不設全域。外掛用到的 17 個名稱都是 vendored pixi.js 的 export，修改的是同一批 class 的 prototype（shader、uniform、UBO 的 sync 產生器，`_unsafeEvalCheck` 改為不檢查）；它自己的 particle buffer 副本 app 沒有使用。外掛的格式改變時腳本拒絕產生。
+    - `scripts/vendor-pixi.mjs`（純函式在 `scripts/vendorPixiLib.mjs`）另外產生 `pwa/vendor/pixi-unsafe-eval.js`：`import * as pixi from './pixi.js'`，把 `pixi.js/dist/packages/unsafe-eval.min.js` 包在函式裡、以 `{ ...pixi }` 作為它的 `PIXI` 執行一次，不設全域。外掛用到的 17 個名稱都是 vendored pixi.js 的 export，修改的是同一批 class 的 prototype（shader、uniform、UBO 的 sync 產生器，`_unsafeEvalCheck` 改為不檢查）；外掛只修改它自己打包的 ParticleBuffer 副本，所以包裝後再把 vendored pixi 的 `ParticleBuffer.prototype.generateParticleUpdate` 換成外掛的 `generateParticleUpdatePolyfill`（與套件的 ESM 入口 `pixi.js/unsafe-eval` 相同；獨立 review 在瀏覽器實測：不換時 `ParticleContainer` 會被 CSP 擋下，換了之後正常）。app 目前沒有用 particle。外掛的格式改變時腳本拒絕產生。
     - `pixiSceneRuntime.js` 載入 Pixi 時一起載入外掛（`Promise.all`），外掛在任何 renderer 建立前執行；`sw.js` 的 SHELL 預先快取它（與 `pixi.js` 同一處）。
-    - PS-243 延後載入 JS 預算 300 → 304 KB（311,296 B），baseline 另列外掛：V2 JS 79,728＋Pixi 225,428＋外掛 4,260＝309,416 B，剩 1,880 B。
+    - PS-243 延後載入 JS 預算 300 → 304 KB（311,296 B），baseline 另列外掛：V2 JS 79,728＋Pixi 225,428＋外掛 4,332＝309,488 B，剩 1,808 B。
     - 畫面：同一時段下，舊版（有 `'unsafe-eval'`）與新版的 Orbit Window canvas 截圖逐像素相同。
-    - 測試：`tests/unit/pixiUnsafeEval.test.js`（vendored 檔＝腳本從已安裝的 pixi.js 產生的結果、格式改變時拒絕、外掛用到的名稱都有 export、import 後 prototype 被替換且沒有全域、runtime 與 SHELL 都載入它）、`csp.test.js`（`script-src` 沒有 `'unsafe-eval'`／`'wasm-unsafe-eval'`）、`tests/e2e/infra114-no-eval.test.js`（有外掛：場景 `ready`、沒有違規；外掛換成空的模組：違規 `script-src`／`eval`、場景退回 poster）、`infra113-csp.test.js`（各畫面與場景沒有違規）。
-
+    - 測試：`tests/unit/pixiUnsafeEval.test.js`（vendored 檔＝腳本從已安裝的 pixi.js 產生的結果、格式改變時拒絕、外掛用到的名稱都有 export、import 後 prototype 被替換且沒有全域、runtime 與 SHELL 都載入它）、`csp.test.js`（`script-src` 沒有 `'unsafe-eval'`／`'wasm-unsafe-eval'`）、`tests/e2e/infra114-no-eval.test.js`（有外掛：場景 `ready`、沒有違規；場景以外的 Pixi 功能〔Text、BitmapText、Blur／ColorMatrix filter、MeshPlane、RenderTexture、ParticleContainer〕在 CSP 下都能 render、沒有違規，不換真的 ParticleBuffer 時 particle 這項失敗；外掛換成空的模組：違規 `script-src`／`eval`、場景退回 poster）、`infra113-csp.test.js`（各畫面與場景沒有違規）。
 
 - [x] **INFRA-110A** 在 production 套用 015（`leaderboard_view` 只給已登入的使用者讀）
   - **需專案擁有者執行**：production 資料庫操作，Claude 不具權限。先讓 v1.41.9（遊客顯示登入提示）部署，再套用 015。順序相反時遊客會看到「無法載入排行榜」；順序正確時，還沒更新到 v1.41.9 的舊分頁或 PWA（INFRA-107：要等新的 service worker 接手）裡沒有快取的遊客也會暫時看到，更新後即改為登入提示。

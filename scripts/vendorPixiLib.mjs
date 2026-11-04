@@ -11,11 +11,14 @@ export function normalizeVendoredText(content) {
 // Pixi ships it only as a classic script that reads a global `PIXI`, so it is
 // wrapped here: it runs once, with the vendored ES module's exports as its
 // `PIXI` (the same class objects, so the patches reach the classes the app
-// uses), and sets no global. Its own copy of the particle buffer (unused
-// here) is the only thing it patches that the app never sees.
+// uses), and sets no global. It patches only its own bundled copy of
+// ParticleBuffer, so the real one gets the same replacement afterwards (as the
+// package's ESM entry `pixi.js/unsafe-eval` does); otherwise ParticleContainer
+// would still eval.
 export function wrapUnsafeEval(source, version) {
   const body = normalizeVendoredText(source).replace(/\n\/\/# sourceMappingURL=\S+\n$/, '\n');
-  if (!body.includes('this.PIXI=this.PIXI||{}') || !body.includes('Object.assign(this.PIXI,unsafe_eval_js)')) {
+  const expected = ['this.PIXI=this.PIXI||{}', 'Object.assign(this.PIXI,unsafe_eval_js)', 'h.generateParticleUpdatePolyfill='];
+  if (!expected.every(part => body.includes(part))) {
     throw new Error('pixi.js unsafe-eval build changed shape; review the wrapper in scripts/vendor-pixi.mjs');
   }
   return [
@@ -29,6 +32,8 @@ export function wrapUnsafeEval(source, version) {
     '(function () {',
     body.trimEnd(),
     '}).call({ PIXI });',
+    '// Its own ParticleBuffer copy is patched above; patch the one the app would use.',
+    'Object.assign(pixi.ParticleBuffer.prototype, { generateParticleUpdate: PIXI.generateParticleUpdatePolyfill });',
     '',
   ].join('\n');
 }

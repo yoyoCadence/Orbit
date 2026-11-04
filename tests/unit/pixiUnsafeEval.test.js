@@ -40,13 +40,23 @@ describe('INFRA-114 vendored Pixi unsafe-eval add-on', () => {
       shader: pixi.GlShaderSystem.prototype._generateShaderSync,
       uniforms: pixi.GlUniformGroupSystem.prototype._generateUniformsSync,
       ubo: pixi.GlUboSystem.prototype._generateUboSync,
+      gpuUbo: pixi.GpuUboSystem.prototype._generateUboSync,
+      evalCheck: pixi.AbstractRenderer.prototype._unsafeEvalCheck,
+      uboCheck: pixi.UboSystem.prototype._systemCheck,
+      particles: pixi.ParticleBuffer.prototype.generateParticleUpdate,
     };
     await import('../../pwa/vendor/pixi-unsafe-eval.js');
     expect(pixi.GlShaderSystem.prototype._generateShaderSync).not.toBe(before.shader);
     expect(pixi.GlUniformGroupSystem.prototype._generateUniformsSync).not.toBe(before.uniforms);
     expect(pixi.GlUboSystem.prototype._generateUboSync).not.toBe(before.ubo);
-    // Its own check for eval support is switched off.
-    expect(() => pixi.AbstractRenderer.prototype._unsafeEvalCheck.call({})).not.toThrow();
+    expect(pixi.GpuUboSystem.prototype._generateUboSync).not.toBe(before.gpuUbo);
+    // Its checks for eval support are switched off (Node allows eval, so
+    // compare the methods rather than whether they throw).
+    expect(pixi.AbstractRenderer.prototype._unsafeEvalCheck).not.toBe(before.evalCheck);
+    expect(pixi.UboSystem.prototype._systemCheck).not.toBe(before.uboCheck);
+    // The real ParticleBuffer, not only the add-on's own copy.
+    expect(pixi.ParticleBuffer.prototype.generateParticleUpdate).not.toBe(before.particles);
+    expect(pixi.ParticleBuffer.prototype.generateParticleUpdate.toString()).not.toMatch(/new Function/);
     expect(globalThis.PIXI).toBeUndefined();
   });
 

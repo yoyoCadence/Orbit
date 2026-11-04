@@ -33,7 +33,7 @@ npx playwright test --repeat-each=3 <file>                 # 檢查是否穩定
 | `infra105-sw-update.test.js` | 改版時新的 service worker 重新驗證 SHELL，不存到 HTTP cache 的舊檔；快取中的模組不在背景更新（INFRA-105、INFRA-107） |
 | `infra111-sw-image.test.js` | 改版後，沒有預先快取的圖片第一次取得時向伺服器確認，不存 HTTP cache 裡上一版的舊檔（INFRA-111） |
 | `infra107-sw-html.test.js` | 每次開啟頁面都用快取中同一版的 HTML 與程式，包括帶查詢字串、離線、下一版裝不起來時（INFRA-107） |
-| `infra114-no-eval.test.js` | CSP 沒有 `'unsafe-eval'`：有 Pixi 的 unsafe-eval 外掛時場景 `ready`、沒有違規、沒有全域 `PIXI`；把外掛換成空的模組時瀏覽器擋下 eval、場景退回 poster（INFRA-114） |
+| `infra114-no-eval.test.js` | CSP 沒有 `'unsafe-eval'`：有 Pixi 的 unsafe-eval 外掛時場景 `ready`、沒有違規、沒有全域 `PIXI`，場景以外的 Pixi 功能（文字、filter、mesh、RenderTexture、ParticleContainer）也不需要 eval；把外掛換成空的模組時瀏覽器擋下 eval、場景退回 poster（INFRA-114） |
 | `infra115-pdf.test.js` | 成長報告 PDF：以 devDependency 的 jsPDF／html2canvas 回應 cdnjs 網址，下載多頁 PDF（jsPDF 4.2.1）、沒有 CSP 違規；檔案與 SRI 不符時拒絕並提示；**只在 CI**（`process.env.CI`）以網路取得 cdnjs 上的檔案，比對 SRI（INFRA-115） |
 | `bug116-signout.test.js` | 離線且 token 過期時登出：立即回到登入畫面、刪除裝置上的 Supabase session、不發任何 request。用真的 Supabase client（不 `mockSupabase`），Supabase host 全部以 routing 擋下（BUG-116） |
 

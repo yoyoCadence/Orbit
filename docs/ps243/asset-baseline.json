@@ -410,10 +410,10 @@
     },
     "vendoredPixiUnsafeEval": {
       "path": "pwa/vendor/pixi-unsafe-eval.js",
-      "rawBytes": 16105,
-      "gzipBytes": 4260
+      "rawBytes": 16298,
+      "gzipBytes": 4332
     },
-    "combinedGzipBytes": 309416,
+    "combinedGzipBytes": 309488,
     "budgetBytes": 311296,
     "result": "PASS"
   }

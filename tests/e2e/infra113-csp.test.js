@@ -44,7 +44,7 @@ test.describe('INFRA-113 Content-Security-Policy', () => {
     await page.click('#auth-password-toggle');
     await expect(page.locator('#auth-password')).toHaveAttribute('type', 'text');
 
-    // Home with the Pixi scene (compiles shaders: needs 'unsafe-eval'). The
+    // Home with the Pixi scene (no eval since INFRA-114: Pixi's add-on). The
     // signed-out load stored empty defaults, which seeding does not replace.
     await page.evaluate(() => localStorage.clear());
     await seedStorage(page, [FOCUS_TASK], [], GUEST_USER);
