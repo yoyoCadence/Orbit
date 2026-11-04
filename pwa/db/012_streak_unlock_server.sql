@@ -1,14 +1,17 @@
 -- ============================================================
 -- 012_streak_unlock_server.sql（PRO-014L：SUB-16 連勝解鎖改由 server 發放）
 --
--- 提案：docs/pro-014l-streak-unlock-server.md（使用者 2026-11-02 核准 §10）。
+-- 提案：docs/pro-014l-streak-unlock-server.md（使用者核准 §10：#226 的工作階段記錄 2026-11-02 的回覆，
+--   2026-11-04 再次確認）。
 -- 以草稿 PR #154 的 012 為基礎，資格條件、資料列鎖、一次性、30 天、試用中不消耗
--- 都沿用（驗證紀錄見 docs/pro-014l-local-validation.md）。與 #154 的差異只有兩項：
+-- 都沿用（驗證紀錄見 docs/pro-014l-local-validation.md）。與 #154 的差異：
 --   1. 回傳多一欄 paid_active：is_pro 且未到期（沒有到期日即終身），不含試用。
 --      client 依它把付費寫回 legacy profile；is_active 含試用，不能拿來寫 is_pro。
 --   2. 一次性回填：profiles.streak_unlock_used = true 的帳號標記為已領過。只寫
 --      streak_unlock_granted_at，不授予任何東西，所以不違反「不得從 client 可寫
 --      欄位匯入授權」的規則（011 的註解）。
+--   3. 資格以 UTC 的今天為界（(now() AT TIME ZONE 'UTC')::date），不跟著呼叫者的 TimeZone。
+--   4. 發放的 UPDATE 只在標記仍是 NULL 時生效（FOR UPDATE 之外的第二道防線）。
 --
 -- client 只「詢問」：不傳入連勝、日期或期限。RPC 依 caller 自己的 sessions 計算。
 -- sessions 仍是使用者可寫的產品資料，這裡移除的是「client 直接寫 Pro」，不是防作弊。
@@ -78,8 +81,10 @@ BEGIN
 
   -- 與 calcDailyStats() 相同：生產 XP ≥ 50、至少一個有效的 A／S 任務、娛樂 ≤ 120
   -- 分鐘。「日期減列號」把相鄰的有效日分成同一段；任何一段 ≥ 45 天即符合。
-  -- 只計到 server 的今天：client 只在本機連勝 ≥ 45 時才詢問，那時第 45 天已是
-  -- 當地的「昨天」，不會晚於 UTC 的今天（提案 §4 第 6 點）。
+  -- 只計到 UTC 的今天：client 只在本機連勝 ≥ 45 時才詢問，那時第 45 天已是
+  -- 當地的「昨天」，不會晚於 UTC 的今天（提案 §4 第 6 點）。以 now() 換算 UTC，
+  -- 不用 current_date：current_date 跟著呼叫者的 TimeZone（PostgREST 可由
+  -- `Prefer: timezone` 改變），在 UTC+14 會多算一天。
   SELECT EXISTS (
     WITH daily_stats AS (
       SELECT
@@ -102,7 +107,7 @@ BEGIN
         ) AS entertainment_minutes
       FROM public.sessions s
       WHERE s.user_id = caller_id
-        AND s.date <= current_date
+        AND s.date <= (now() AT TIME ZONE 'UTC')::date
       GROUP BY s.date
     ),
     effective_dates AS (
@@ -187,7 +192,31 @@ BEGIN
     pro_expires_at = now() + interval '30 days',
     streak_unlock_granted_at = now()
   WHERE e.user_id = caller_id
+    AND e.streak_unlock_granted_at IS NULL
   RETURNING e.* INTO entitlement;
+
+  -- 上面的 FOR UPDATE 已讓同一帳號的呼叫排隊，所以這裡不會發生；第二道防線：
+  -- 標記已存在時不再發放，也不延長期限。
+  IF NOT FOUND THEN
+    SELECT e.*
+    INTO entitlement
+    FROM public.pro_entitlements e
+    WHERE e.user_id = caller_id;
+
+    RETURN QUERY SELECT
+      'already_granted'::text,
+      false,
+      public.is_pro_active(
+        entitlement.is_pro,
+        entitlement.pro_expires_at,
+        entitlement.trial_started_at
+      ),
+      entitlement.pro_expires_at,
+      entitlement.streak_unlock_granted_at,
+      entitlement.is_pro
+        AND (entitlement.pro_expires_at IS NULL OR entitlement.pro_expires_at > now());
+    RETURN;
+  END IF;
 
   RETURN QUERY SELECT
     'granted'::text,

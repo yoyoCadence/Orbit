@@ -46,7 +46,9 @@ describe('PRO-014L1 migration 012', () => {
   });
 
   it('recomputes the effective-day rules from the caller’s own sessions, up to the server date', () => {
-    expect(rpcBody).toMatch(/FROM public\.sessions s WHERE s\.user_id = caller_id AND s\.date <= current_date/i);
+    // UTC's today, whatever TimeZone the caller set (current_date would follow it).
+    expect(rpcBody).toMatch(/FROM public\.sessions s WHERE s\.user_id = caller_id AND s\.date <= \(now\(\) AT TIME ZONE 'UTC'\)::date/i);
+    expect(rpcBody).not.toMatch(/current_date/i);
     expect(rpcBody).toMatch(/SUM\(s\.final_xp\) FILTER \(WHERE s\.is_productive_xp = true\)/i);
     expect(rpcBody).toMatch(/s\.impact_type = 'task' AND s\.value IN \('A', 'S'\) AND s\.result <> 'invalid'/i);
     expect(rpcBody).toMatch(/SUM\(s\.duration_minutes\) FILTER \(WHERE s\.impact_type = 'entertainment'\)/i);
@@ -60,20 +62,25 @@ describe('PRO-014L1 migration 012', () => {
     expect(rpcBody).toMatch(/IF entitlement\.streak_unlock_granted_at IS NOT NULL THEN RETURN QUERY SELECT 'already_granted'::text/i);
     expect(rpcBody).toMatch(/IF public\.is_pro_active\([^)]*\) THEN RETURN QUERY SELECT 'active_entitlement'::text/i);
     expect(rpcBody).toMatch(/is_pro = true, pro_expires_at = now\(\) \+ interval '30 days', streak_unlock_granted_at = now\(\)/i);
+    // Second line of defence behind FOR UPDATE: never grant over an existing marker.
+    expect(rpcBody).toMatch(/WHERE e\.user_id = caller_id AND e\.streak_unlock_granted_at IS NULL RETURNING e\.\* INTO entitlement; IF NOT FOUND THEN/i);
   });
 
   // paid_active is what the client writes back as legacy Pro. It must never be
   // the trial-inclusive is_active (a trialling account would become lifetime).
   it('returns a paid-only paid_active in every branch', () => {
     const branches = rpcBody.split(/RETURN QUERY SELECT/i).slice(1);
-    expect(branches).toHaveLength(4);
+    expect(branches).toHaveLength(5);
     const paidExpr = /entitlement\.is_pro AND \(entitlement\.pro_expires_at IS NULL OR entitlement\.pro_expires_at > now\(\)\)\s*;/i;
     expect(branches[0]).toMatch(/^ 'already_granted'::text/);
     expect(branches[0]).toMatch(paidExpr);
     expect(branches[1]).toMatch(/^ 'active_entitlement'::text/);
     expect(branches[1]).toMatch(paidExpr);
     expect(branches[2]).toMatch(/^ 'not_eligible'::text, false, false, entitlement\.pro_expires_at, NULL::timestamptz, false\s*;/i);
-    expect(branches[3]).toMatch(/^ 'granted'::text, true, true, entitlement\.pro_expires_at, entitlement\.streak_unlock_granted_at, true\s*;/i);
+    // The guard after the UPDATE (marker already set) answers like the first branch.
+    expect(branches[3]).toMatch(/^ 'already_granted'::text/);
+    expect(branches[3]).toMatch(paidExpr);
+    expect(branches[4]).toMatch(/^ 'granted'::text, true, true, entitlement\.pro_expires_at, entitlement\.streak_unlock_granted_at, true\s*;/i);
     for (const branch of branches) {
       const lastColumn = branch.split(/;/)[0].split(/,(?![^(]*\))/).at(-1);
       expect(lastColumn).not.toMatch(/is_pro_active/i);

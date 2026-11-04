@@ -1,6 +1,6 @@
 # PRO-014L local Supabase validation
 
-> **2026-11-02 帶進 main（PRO-014L1）的註記**：這份紀錄是草稿 PR #154 在 2026-09-01 的驗證，對象是 #154 版本的 012 與 client。帶進 main 時：
+> **帶進 main（PRO-014L1：#226 於 2026-11-02 實作，#233 於 2026-11-04 合併）的註記**：這份紀錄是草稿 PR #154 在 2026-09-01 的驗證，對象是 #154 版本的 012 與 client。帶進 main 時：
 > - 012 依提案 [`pro-014l-streak-unlock-server.md`](pro-014l-streak-unlock-server.md) 多了兩項：回傳 `paid_active`、回填 `streak_unlock_used = true` 的帳號。資格、鎖、一次性與 30 天沒有改。
 > - `tests/database/pro014l.test.sql` 已改寫成 ASSERT 寫法（pgTAP 在 SQL Editor 失敗時不會中止）。下文的「pgTAP 24/24」指的是 #154 的舊版測試。
 > - `scripts/pro014l-data-api-check.mjs` 需要本機 Supabase（Docker），留在 #154 的分支（`feat/pro-014l-streak-unlock-rpc`），沒有帶進 main；下文的連結指向該分支上的檔案。

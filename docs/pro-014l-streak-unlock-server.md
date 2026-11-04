@@ -111,7 +111,7 @@
 6. **UTC 日期在 L2 下沒有影響**：
    - server 以 UTC 的 `current_date` 排除「未來」的 sessions（上表最後一列）。
    - 但 client 的連勝只在換日時評估「昨天」：第 45 個有效日要等它成為當地的「昨天」，連勝才會到 45。
-   - 當地的昨天不會晚於 UTC 的今天：時區在 UTC+14 以內都成立，與 `newDayHour` 無關；跨時區的多台裝置也一樣（那一天在處理它的裝置上已是「昨天」）。前提是資料庫的 `TimeZone` 維持 UTC（Supabase 預設）、裝置時鐘正確。
+   - 當地的昨天不會晚於 UTC 的今天：時區在 UTC+14 以內都成立，與 `newDayHour` 無關；跨時區的多台裝置也一樣（那一天在處理它的裝置上已是「昨天」）。前提是裝置時鐘正確。012 以 `(now() AT TIME ZONE 'UTC')::date` 為界，不用 `current_date`：`current_date` 跟著呼叫者的 `TimeZone`（PostgREST 可由 `Prefer: timezone` 改變），在 UTC+14 會多算一天（#233 的獨立 review 實測）。
    - 所以 L2 在本機連勝 ≥ 45 才詢問時，第 45 天一定已經算在內，與現在 production 發放的時間相同。
    - 只有 #154「每次開機都問」時才會遇到上表最後一列。**維持 #154 的條件，不改。**
 7. **已用過 SUB-16 的帳號，server 不知道**：
@@ -201,7 +201,7 @@
    - 以 `pg_get_functiondef('public.set_pro_entitlement_updated_at()'::regprocedure)` 比對 production 與 011 相同，並存下來當回滾來源；
    - 記下 `select count(*) from profiles where streak_unlock_used`（回填的預期筆數）。
 2. **乾跑**：`begin;`＋012＋測試＋`rollback;`。**一定要有開頭的 `begin;`**。
-3. **正式套用 012**，與筆數比對放在同一個 transaction：`begin;` → 把 `pro_entitlements` 中 `is_pro` 為 true 的筆數、有 `trial_started_at` 的筆數存進暫存表 → 012 → DO block 比對兩個筆數，不同就 `RAISE EXCEPTION`（整個套用中止，什麼都不留下）→ `commit;`。放在同一個 transaction，app 開機時剛好呼叫 `start_trial()` 也不會造成誤報。
+3. **正式套用 012**，與筆數比對放在同一個 transaction：`begin;` → `LOCK TABLE public.pro_entitlements IN EXCLUSIVE MODE;`（可先 `SET LOCAL lock_timeout = '10s'`）→ 把 `pro_entitlements` 中 `is_pro` 為 true 的筆數、有 `trial_started_at` 的筆數存進暫存表 → 012 → DO block 比對兩個筆數，不同就 `RAISE EXCEPTION`（整個套用中止，什麼都不留下）→ `commit;`。先鎖表：READ COMMITTED 下同一個 transaction 並不能擋住別的連線在計數與 012 的 `ALTER TABLE` 之間 commit 的 `start_trial()`（獨立 review 實測會讓筆數改變而誤報中止）；鎖住後讀取照常、寫入等到 commit。
 4. **套用後檢查**：
    - 權限：anon 不可執行，authenticated 可執行；
    - `SECURITY DEFINER`、`search_path`、owner；

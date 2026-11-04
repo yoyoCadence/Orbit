@@ -5,22 +5,26 @@
 -- 回填的一次性標記隨欄位一併刪除。回填時新增的資料列（is_pro = false、沒有日期）會留下：它們與
 -- RPC 對不符資格者建立的資料列無法分辨，功能上等同沒有資料列（my_pro_status()、start_trial()
 -- 的結果不變），所以不刪。被標記過的既有資料列，updated_at 維持標記時的時間。
+-- 單一 transaction：任何一步失敗時整份都不生效（SQL Editor 也一樣）。
+-- 第 2 步的函式本文與 011 逐字相同，回滾後 pg_get_functiondef() 與套用 012 前存下的定義一致。
+begin;
+
 drop function public.grant_streak_unlock();
 
-create or replace function public.set_pro_entitlement_updated_at()
-returns trigger
-language plpgsql
-set search_path = ''
-as $$
-begin
-  if row(new.is_pro, new.pro_expires_at, new.trial_started_at)
-     is distinct from row(old.is_pro, old.pro_expires_at, old.trial_started_at) then
-    new.updated_at = now();
-  else
-    new.updated_at = old.updated_at;
-  end if;
-  return new;
-end;
+CREATE OR REPLACE FUNCTION public.set_pro_entitlement_updated_at()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+BEGIN
+  IF ROW(NEW.is_pro, NEW.pro_expires_at, NEW.trial_started_at)
+     IS DISTINCT FROM ROW(OLD.is_pro, OLD.pro_expires_at, OLD.trial_started_at) THEN
+    NEW.updated_at = now();
+  ELSE
+    NEW.updated_at = OLD.updated_at;
+  END IF;
+  RETURN NEW;
+END;
 $$;
 revoke all on function public.set_pro_entitlement_updated_at()
   from public, anon, authenticated;
@@ -42,3 +46,5 @@ begin
   end if;
 end;
 $$;
+
+commit;

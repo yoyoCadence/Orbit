@@ -12,6 +12,10 @@
 
 begin;
 
+-- fixture 的日期以 current_date 計算；012 以 UTC 的今天為界，所以這份測試在 UTC 下建立 fixture
+-- （Supabase 預設就是 UTC）。個別情境再改呼叫者的 TimeZone。
+set local timezone = 'UTC';
+
 -- 0. ASSERT 必須開啟，否則失敗時不會中止，整份測試會靜默通過
 do $$
 begin
@@ -68,7 +72,9 @@ create temporary table pro014l_cases (
   gap_at int,                     -- 從最後一天往回第幾天不放（造成缺口）
   fun_at int,                     -- 從最後一天往回第幾天加 130 分鐘娛樂
   bad_at int,                     -- 從最後一天往回第幾天的任務改成 bad_kind
-  bad_kind text,                  -- b_value／invalid／unproductive／xp49；b_all = 每天都是 B
+  bad_kind text,                  -- b_value／s_value／a_recovery／invalid／unproductive／xp49；b_all = 每天都是 B
+  fun_minutes int,                -- fun_at 那天的娛樂分鐘數（預設 130）
+  caller_tz text,                 -- 呼叫時的 TimeZone（預設 UTC）
   has_row boolean not null,
   is_pro boolean,
   pro_expires_at timestamptz,
@@ -99,7 +105,16 @@ values
   (14, 'one day the A task is invalid',    45,    0, null, null, 20,   'invalid',      false, null,  null,                          null,                          'not_eligible',       false, false),
   (15, 'one day XP not productive',        45,    0, null, null, 20,   'unproductive', false, null,  null,                          null,                          'not_eligible',       false, false),
   (16, 'one day 49 XP',                    45,    0, null, null, 20,   'xp49',         false, null,  null,                          null,                          'not_eligible',       false, false),
-  (17, '45 days of B tasks',               45,    0, null, null, null, 'b_all',        false, null,  null,                          null,                          'not_eligible',       false, false);
+  (17, '45 days of B tasks',               45,    0, null, null, null, 'b_all',        false, null,  null,                          null,                          'not_eligible',       false, false),
+  (18, 'one day only an S task',           45,    0, null, null, 20,   's_value',      false, null,  null,                          null,                          'granted',            true,  true),
+  (19, 'one day the A session is recovery',45,    0, null, null, 20,   'a_recovery',   false, null,  null,                          null,                          'not_eligible',       false, false),
+  (20, '45 days, one with exactly 120 min fun', 45, 0, null, 20,  null, null,           false, null,  null,                          null,                          'granted',            true,  true),
+  (21, '45th day UTC-tomorrow, caller in UTC+14', 45, -1, null, null, null, null,       false, null,  null,                          null,                          'not_eligible',       false, false);
+
+-- 情境 20 的娛樂剛好 120 分鐘（上限內）；情境 21 以 UTC+14 的 TimeZone 呼叫，那時
+-- current_date 已是 UTC 的明天，012 仍以 UTC 的今天為界。
+update pro014l_cases set fun_minutes = 120 where n = 20;
+update pro014l_cases set caller_tz = 'Pacific/Kiritimati' where n = 21;
 
 insert into auth.users (id, email, raw_user_meta_data)
 select user_id, format('pro014l-%s@example.invalid', n), '{}'::jsonb from pro014l_cases;
@@ -124,8 +139,12 @@ select c.user_id, 'pro014l effective task', (current_date - c.run_end_offset - g
        case when coalesce(c.bad_at = g and c.bad_kind = 'invalid', false) then 'invalid' else 'complete' end,
        50,
        case when coalesce(c.bad_at = g and c.bad_kind = 'xp49', false) then 49 else 50 end,
-       10, 0, 'task', 'growth',
-       case when c.bad_kind = 'b_all' or coalesce(c.bad_at = g and c.bad_kind = 'b_value', false) then 'B' else 'A' end,
+       10, 0,
+       case when coalesce(c.bad_at = g and c.bad_kind = 'a_recovery', false) then 'recovery' else 'task' end,
+       case when coalesce(c.bad_at = g and c.bad_kind = 'a_recovery', false) then 'recovery' else 'growth' end,
+       case when c.bad_kind = 'b_all' or coalesce(c.bad_at = g and c.bad_kind = 'b_value', false) then 'B'
+            when coalesce(c.bad_at = g and c.bad_kind = 's_value', false) then 'S'
+            else 'A' end,
        1.0,
        not coalesce(c.bad_at = g and c.bad_kind = 'unproductive', false)
 from pro014l_cases c
@@ -138,7 +157,7 @@ insert into public.sessions (
   task_nature, value, resistance, is_productive_xp
 )
 select c.user_id, 'pro014l entertainment', (current_date - c.run_end_offset - c.fun_at)::date,
-       now(), now(), 130, 'complete', 0, 0, 0, 0, 'entertainment', 'entertainment', 'D', 1.0, false
+       now(), now(), coalesce(c.fun_minutes, 130), 'complete', 0, 0, 0, 0, 'entertainment', 'entertainment', 'D', 1.0, false
 from pro014l_cases c
 where c.fun_at is not null;
 
@@ -150,7 +169,9 @@ declare
 begin
   for c in select * from pro014l_cases order by n loop
     perform set_config('request.jwt.claim.sub', c.user_id::text, true);
+    perform set_config('timezone', coalesce(c.caller_tz, 'UTC'), true);
     select * into r from public.grant_streak_unlock();
+    perform set_config('timezone', 'UTC', true);
     assert r.status = c.exp_status,
       format('case %s (%s): status %L, expected %L', c.n, c.label, r.status, c.exp_status);
     assert r.granted = (c.exp_status = 'granted'),

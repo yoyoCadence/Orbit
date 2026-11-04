@@ -216,7 +216,7 @@
 > 2026-11-02 核准（#226 的工作階段記錄；使用者回覆「可以照你建議」）：PRO-014L 提案（#224）§10 全部照建議。拆成 PRO-014L1（repo，In Progress）→ PRO-014LA（擁有者套用，Backlog）→ PRO-014L2（client，Backlog，依賴 LA）。L1 合併後關閉草稿 #154。
 
 - [ ] **PRO-014LA** 在 production 套用 012（專案擁有者執行）
-  - 依提案 §5.2：套用前確認（函式與欄位不存在、trigger 與 011 相同並存下、回填的預期筆數）→ `begin;`＋012＋測試＋`rollback;` 乾跑 → 正式套用 → 檢查權限、`SECURITY DEFINER`、`search_path`、owner、回填筆數、`pro_entitlements` 中 `is_pro` 為 true 與有試用起點的筆數在套用前後不變（在套用的同一個 transaction 內比對，不同就中止）、擁有者帳號的 `my_pro_status()` 仍為 `true／NULL／NULL`（DO block）→ 再跑一次 ASSERT 測試 → 以只改文件的 PR 記錄。
+  - 依提案 §5.2：套用前確認（函式與欄位不存在、trigger 與 011 相同並存下、回填的預期筆數）→ `begin;`＋012＋測試＋`rollback;` 乾跑 → 正式套用（`begin;` 後先 `LOCK TABLE public.pro_entitlements IN EXCLUSIVE MODE;` 再計數）→ 檢查權限、`SECURITY DEFINER`、`search_path`、owner、回填筆數、`pro_entitlements` 中 `is_pro` 為 true 與有試用起點的筆數在套用前後不變（在套用的同一個 transaction 內比對，不同就中止）、擁有者帳號的 `my_pro_status()` 仍為 `true／NULL／NULL`（DO block）→ 再跑一次 ASSERT 測試 → 以只改文件的 PR 記錄。
   - agent 不具 production 權限；每一步提供完整 SQL，擁有者執行並截圖。
   - 依賴：`PRO-014L1`。擋：`PRO-014L2`。
   - 2026-11-04：L1（#233）合併後即可執行，移入 Next。
@@ -234,7 +234,7 @@
   - **前置：屬 RPC／schema 變更，依 AGENTS.md §3 需先取得核准**。（原本「與 `PRO-014I` 的 production 套用一併規劃」已過時：011 已套用；改依提案 §5 的 L1／LA／L2。）
   - 依賴：`PRO-014C`
   - In progress（2026-11-02）：使用者同意先寫提案（只寫文件，不改程式碼、不動資料庫）。草稿 PR #154（2026-09-01，另一個工作階段）以 v1.25.2 為基礎，提案對照目前的 main 檢視它的設計。從 Backlog 移入 Next，再移入 In Progress。
-  - 提案（2026-11-02，#224）：[`docs/pro-014l-streak-unlock-server.md`](docs/pro-014l-streak-unlock-server.md)。**使用者 2026-11-02 回覆「可以照你建議」核准 §10**：拆成 L1／LA／L2；資格維持「任何一段 45 天」、client 只在連勝 ≥ 45 時詢問；回填已用過的帳號；訪客不再有 SUB-16、進度條改為「需要登入帳號」；L1 合併後關閉 #154。拆成 PRO-014L1（Done，#226）、PRO-014LA 與 PRO-014L2（Backlog）。
+  - 提案（2026-11-02，#224）：[`docs/pro-014l-streak-unlock-server.md`](docs/pro-014l-streak-unlock-server.md)。**使用者核准 §10**（#226 的工作階段記錄 2026-11-02 的回覆「可以照你建議」；2026-11-04 在本工作階段再次確認「PRO-014L 可以照建議」）：拆成 L1／LA／L2；資格維持「任何一段 45 天」、client 只在連勝 ≥ 45 時詢問；回填已用過的帳號；訪客不再有 SUB-16、進度條改為「需要登入帳號」；L1 合併後關閉 #154。拆成 PRO-014L1（Done，#226 實作、#233 合併）、PRO-014LA（Next）、PRO-014L2（Backlog）。
     - 實測：#154 的 012 在本機（production 已有的相關 migration，含 013、014）可以套用。另外確認：資格是「歷史上任何一段 45 天」；不符合也會建立資料列；與 014 配合正確。獨立 review 另發現 #154 在「已領過」時把 `is_active`（含試用）寫回 legacy 的 `is_pro`，會授予終身或取消 Pro。
     - **2026-11-04 使用者核准 §10（全部照建議）**，見 Next 的 2026-11-04 核准。
     - 建議：保留 #154 的 SQL 主體（含 `date <= current_date`），只加回填已用過的帳號；拆成 L1（migration 012＋ASSERT 測試）→ LA（擁有者套用）→ L2（client 改走 RPC，新模組，INFRA-105）；只在本機連勝 ≥ 45 時、遠端載入之後詢問（同 PRO-014P 的三個補做位置）；RPC 多回傳只代表付費的 `paid_active`，`granted`／`already_granted` 依它寫回（只延長、不縮短、不取消，回應遺失後重試可補上）；訪客不再有 SUB-16；L1 合併後關閉 #154。
@@ -264,6 +264,12 @@
     - `pro014l.test.sql` 通過，前後 `auth.users`／`pro_entitlements`／`sessions` 筆數相同；重套 012、回滾（函式與欄位都已移除）、回滾後重套再測都通過。
     - 突變（測試都會失敗）：門檻改 44 天、`already_granted` 的 `paid_active` 改用含試用的 `is_pro_active()`、拿掉 `date <= current_date`。
     - lint、`npm test`（95 files／1536 tests）通過；`check-version-bump` 不需要 bump。
+  - 獨立 review（#233）：沒有 P1。P2（核准日期寫成事實、PRO-014L 一行過時）已修。P3 也在套用前一併處理（012 尚未套用到任何地方）：
+    - 資格以 `(now() AT TIME ZONE 'UTC')::date` 為界，不再用 `current_date`（跟著呼叫者的 `TimeZone`；review 實測 `Pacific/Kiritimati` 下 UTC 明天的第 45 天被發放）。
+    - 發放的 `UPDATE` 加 `AND e.streak_unlock_granted_at IS NULL`，`NOT FOUND` 時回 `already_granted`：`FOR UPDATE` 之外的第二道防線。本機並行實測：拿掉 `FOR UPDATE`（並在 `UPDATE` 前 `pg_sleep`）時，有這個條件只發放一次，沒有時兩次都 `granted`。
+    - DB 測試加 4 個情境（共 21）：某天只有 S 任務（發放）、某天的 A 是 recovery 不是 task（不發放）、娛樂剛好 120 分鐘（發放）、以 UTC+14 的 `TimeZone` 呼叫時 UTC 明天的第 45 天（不發放）；測試開頭 `set local timezone = 'UTC'`。突變（DB 測試都會失敗）：門檻 44、`already_granted` 的 `paid_active` 含試用、拿掉日期條件、改回 `current_date`（UTC 10:00 之後執行時）、`IN ('A')`、拿掉 `impact_type = 'task'`、`< 120`。
+    - 回滾腳本：011 的函式本文逐字複製（prosrc 的 md5 與 011 相同），整份包在 `begin;`／`commit;` 內。
+    - 提案 §5.2 第 3 步、PRO-014LA：套用前先 `LOCK TABLE … IN EXCLUSIVE MODE` 再計數（READ COMMITTED 下同一個 transaction 擋不住並行的 `start_trial()`）。
 
 - [x] **INFRA-114** 去掉 CSP 的 `'unsafe-eval'`（INFRA-113 發現）
   - Pixi 8 以 `new Function` 產生 shader／uniform 程式碼，CSP 沒有 `'unsafe-eval'` 時拒絕啟動（Orbit Window 退回 poster）。Pixi 的 `pixi.js/unsafe-eval` 外掛可取代，但它是給全域 `PIXI` 的 classic script，要改 `scripts/vendor-pixi.mjs` 把它接到 ESM 的 class 上（它只改 class 的 prototype），而且 gzip 後 4,004 B，超過 PS-243 延後載入 JS 預算剩下的 2,223 B。
