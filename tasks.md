@@ -258,6 +258,12 @@
     - 突變（DB 測試會失敗）：`already_granted` 或 `active_entitlement` 的 `paid_active` 不看到期日、`already_granted` 回傳含試用的 `paid_active`、門檻 44 天、拿掉 A／S、invalid、生產 XP、日期條件、XP 改 40、trigger 不看新欄位。資料列鎖與回填的語句由 SQL 契約測試鎖住（DB 測試重跑的回填必須與 012 的語句相同；migration 在 RPC 之外只能以這一句寫入 `pro_entitlements`）。
     - 獨立 review（#226，兩輪）：沒有 P1；P2（付費到期的 `paid_active` 未測）已補；P3 已處理（回填改為只更新尚未標記的資料列，重跑回報新標記的筆數，測試以 `GET DIAGNOSTICS` 斷言 2 筆、0 筆；migration 在 RPC 之外對 `pro_entitlements` 的寫入只允許回填這一句，含不寫 `public.`、`ONLY`、`TRUNCATE`、`MERGE` 的寫法；以 authenticated 呼叫後還原原本的角色；檔頭註明不含 BEGIN／COMMIT；回滾留下的資料列；LA 的筆數比對放在套用的 transaction 內；文件）。
     - lint、`npm test`（90 files／1503 tests）通過；不需要 bump。
+  - 2026-11-04 重新驗證（#233，合併到目前的 main 之後；#226 的工作階段已不存在，使用者選擇由本工作階段接手）：
+    - 本機 PostgreSQL 16（以最小的 Supabase 替身：`anon`／`authenticated`／`service_role` 角色、`auth.users`、從 `request.jwt.claim(s)` 讀取的 `auth.uid()`、Supabase 式的預設權限）依序套用 001、002、004、005_profiles_extra_cols、006–009、011、013、014。
+    - 套用 012 之前建立 4 個帳號（2 個已用過 legacy SUB-16、其中 1 個有試用；終身的擁有者；免費）。套用後只有那 2 個被標記，`is_pro`、`pro_expires_at`、`trial_started_at` 不變；擁有者的 `my_pro_status()` 前後都是 `true／NULL／NULL`。
+    - `pro014l.test.sql` 通過，前後 `auth.users`／`pro_entitlements`／`sessions` 筆數相同；重套 012、回滾（函式與欄位都已移除）、回滾後重套再測都通過。
+    - 突變（測試都會失敗）：門檻改 44 天、`already_granted` 的 `paid_active` 改用含試用的 `is_pro_active()`、拿掉 `date <= current_date`。
+    - lint、`npm test`（95 files／1536 tests）通過；`check-version-bump` 不需要 bump。
 
 - [x] **INFRA-114** 去掉 CSP 的 `'unsafe-eval'`（INFRA-113 發現）
   - Pixi 8 以 `new Function` 產生 shader／uniform 程式碼，CSP 沒有 `'unsafe-eval'` 時拒絕啟動（Orbit Window 退回 poster）。Pixi 的 `pixi.js/unsafe-eval` 外掛可取代，但它是給全域 `PIXI` 的 classic script，要改 `scripts/vendor-pixi.mjs` 把它接到 ESM 的 class 上（它只改 class 的 prototype），而且 gzip 後 4,004 B，超過 PS-243 延後載入 JS 預算剩下的 2,223 B。
