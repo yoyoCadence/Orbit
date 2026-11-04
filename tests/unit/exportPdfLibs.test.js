@@ -49,7 +49,8 @@ describe('INFRA-115 PDF libraries loaded from cdnjs', () => {
 
   it('keeps to the jsPDF API that 4.x still has', () => {
     // A future major could drop these; the e2e test builds a real PDF with them.
-    const { jsPDF } = require('jspdf');
+    // The browser build the SRI covers, not the package's Node entry.
+    const { jsPDF } = require('jspdf/dist/jspdf.umd.min.js');
     const pdf = new jsPDF('p', 'mm', 'a4');
     expect(pdf.internal.pageSize.getWidth()).toBeCloseTo(210, 0);
     expect(pdf.internal.pageSize.getHeight()).toBeCloseTo(297, 0);

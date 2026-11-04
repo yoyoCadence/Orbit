@@ -2,15 +2,18 @@
  * infra115-pdf.test.js — INFRA-115
  *
  * The growth report PDF is built with jsPDF 4.x and html2canvas, loaded from
- * cdnjs with SRI when the user asks for a report. The cdnjs URLs are answered
- * with the devDependencies' dist files (the same bytes cdnjs serves, which
- * tests/unit/exportPdfLibs.test.js hashes), so this runs offline and checks:
+ * cdnjs with SRI when the user asks for a report. The SRI is computed from the
+ * devDependencies' npm dist files (tests/unit/exportPdfLibs.test.js), and the
+ * cdnjs URLs are answered with those files, so this runs offline and checks:
  *   - the report downloads as a multi-page PDF written by that jsPDF;
  *   - the page's CSP and the SRI accept both files;
  *   - a file that differs from the SRI is refused, and the user is told.
+ * In CI only (it needs the network), one more test fetches the real cdnjs
+ * files and checks that they are the bytes the SRI names.
  */
 
 import { Buffer } from 'node:buffer';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { test, expect } from '@playwright/test';
@@ -19,6 +22,8 @@ import { FOCUS_TASK, GUEST_USER, TODAY, mockSupabase, seedStorage } from './supp
 const require = createRequire(import.meta.url);
 const exportJs = readFileSync(new URL('../../pwa/js/export.js', import.meta.url), 'utf8');
 const [JSPDF_URL, H2C_URL] = [...exportJs.matchAll(/src:\s*'(https:[^']+)'/g)].map(match => match[1]);
+const INTEGRITY = Object.fromEntries([...exportJs.matchAll(/src:\s*'(https:[^']+)',\s*integrity:\s*'([^']+)'/g)]
+  .map(match => [match[1], match[2]]));
 const JSPDF_VERSION = require('jspdf/package.json').version;
 const LIBS = {
   [JSPDF_URL]: readFileSync(require.resolve('jspdf/dist/jspdf.umd.min.js')),
@@ -63,10 +68,10 @@ async function openReportPicker(page) {
   await page.waitForSelector('#report-picker-modal');
 }
 
-function cspViolations(page) {
+function consoleMessages(page, pattern) {
   const seen = [];
   page.on('console', message => {
-    if (/Content Security Policy/i.test(message.text())) seen.push(message.text());
+    if (pattern.test(message.text())) seen.push(message.text());
   });
   return seen;
 }
@@ -75,7 +80,7 @@ test.describe('INFRA-115 growth report PDF', () => {
   test('downloads a multi-page PDF written by the upgraded jsPDF', async ({ page }) => {
     test.setTimeout(45_000);
     const served = await serveLibs(page);
-    const violations = cspViolations(page);
+    const violations = consoleMessages(page, /Content Security Policy/i);
     await openReportPicker(page);
 
     const download = page.waitForEvent('download', { timeout: 30_000 });
@@ -94,7 +99,8 @@ test.describe('INFRA-115 growth report PDF', () => {
   });
 
   test('refuses a jsPDF that differs from its SRI, and says so', async ({ page }) => {
-    await serveLibs(page, { tamper: JSPDF_URL });
+    const served = await serveLibs(page, { tamper: JSPDF_URL });
+    const refused = consoleMessages(page, /integrity/i);
     await openReportPicker(page);
     const downloads = [];
     page.on('download', download => downloads.push(download));
@@ -105,5 +111,21 @@ test.describe('INFRA-115 growth report PDF', () => {
     await expect(page.locator('#rp-generate')).toBeEnabled();
     expect(await page.evaluate(() => typeof window.jspdf)).toBe('undefined');
     expect(downloads).toEqual([]);
+    // Refused for its SRI, not for failing to arrive.
+    expect(served).toContain(JSPDF_URL);
+    expect(refused.join('\n')).toContain(JSPDF_URL);
+  });
+
+  test('cdnjs serves the bytes the SRI names (CI only: needs the network)', async ({ request }) => {
+    test.skip(!process.env.CI, 'needs cdnjs, which the local sandbox may not reach');
+    expect(Object.keys(INTEGRITY).sort()).toEqual(Object.keys(LIBS).sort());
+    for (const [url, integrity] of Object.entries(INTEGRITY)) {
+      const response = await request.get(url, { timeout: 20_000 });
+      expect(response.status(), url).toBe(200);
+      // crossorigin="anonymous": without this header the browser refuses the script.
+      expect(response.headers()['access-control-allow-origin'], url).toBe('*');
+      const body = await response.body();
+      expect(`sha512-${createHash('sha512').update(body).digest('base64')}`, url).toBe(integrity);
+    }
   });
 });

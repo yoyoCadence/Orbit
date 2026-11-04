@@ -5,8 +5,9 @@ import { getLevelInfo }     from './leveling.js';
 import { getDisplayTitle }  from './leveling.js';
 
 // Lazy-loaded CDN libs (only when user generates a PDF). The integrity hashes
-// are cdnjs's SRI values (the same bytes as the npm packages' dist files): the
-// browser refuses a file that differs, so a compromised CDN cannot run code here.
+// are the sha512 of the npm packages' dist files, which cdnjs serves byte for
+// byte (CI checks the live files: tests/e2e/infra115-pdf.test.js): the browser
+// refuses a file that differs, so a compromised CDN cannot run code here.
 // The versions match the devDependencies, which tests/unit/exportPdfLibs.test.js
 // hashes; to upgrade, change both (and the CSP in index.html).
 const JSPDF = {
