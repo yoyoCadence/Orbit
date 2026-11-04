@@ -16,7 +16,7 @@ import { FOCUS_TASK, GUEST_USER, TODAY, mockSupabase, seedStorage } from './supp
 const SW_SOURCE = readFileSync(new URL('../../pwa/sw.js', import.meta.url), 'utf8');
 const PRECACHED = [...SW_SOURCE.match(/const SHELL = \[([\s\S]*?)\];/)[1].matchAll(/'\.\/([^']*)'/g)]
   .map(match => match[1])
-  .filter(path => path.startsWith('assets/personal-space/') || path === 'vendor/pixi.js');
+  .filter(path => path.startsWith('assets/personal-space/') || /^vendor\/pixi(-unsafe-eval)?\.js$/.test(path));
 const V2_STATE_KEY = 'orbit_platform_bridge_v1:personal-space-state-v2:e2e-user';
 
 const RECOVERY_TASK = {
@@ -82,8 +82,8 @@ test.describe('PS-211A service worker precache', () => {
     test(`precaches the poster art and Pixi, and an offline reload shows a complete poster (${band})`, async ({ page, context }) => {
       // 22 day images, the night room with 8 night props, the 6 decorations
       // by day and by night (PS-250F), the two Q-style window views (PS-251B)
-      // and Pixi.
-      expect(PRECACHED).toHaveLength(46);
+      // and Pixi with its unsafe-eval add-on (INFRA-114).
+      expect(PRECACHED).toHaveLength(47);
       const now = todayAt(hour);
       await page.clock.setFixedTime(now);
       await seedStorage(page, [FOCUS_TASK, RECOVERY_TASK], sessionsBefore(now), { ...GUEST_USER, totalXP: 5000 });
@@ -107,7 +107,7 @@ test.describe('PS-211A service worker precache', () => {
       // also sees the service worker's own fetches (setOffline alone does not),
       // so only files already in the precache can load.
       await context.setOffline(true);
-      await context.route(/\/assets\/personal-space\/|\/vendor\/pixi\.js$/, route => route.abort());
+      await context.route(/\/assets\/personal-space\/|\/vendor\/pixi(-unsafe-eval)?\.js$/, route => route.abort());
       try {
         await page.reload();
         await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
@@ -211,6 +211,6 @@ test.describe('PS-211A service worker precache', () => {
     await expect(page.locator('[data-orbit-window]')).toHaveCount(0);
     // The service worker downloads Pixi for its precache; the page does not.
     await waitForPrecache(page);
-    expect(pageRequests.filter(path => path.endsWith('/vendor/pixi.js'))).toEqual([]);
+    expect(pageRequests.filter(path => /\/vendor\/pixi(-unsafe-eval)?\.js$/.test(path))).toEqual([]);
   });
 });

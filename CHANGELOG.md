@@ -3,6 +3,13 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.41.12] - 2026-11-04
+
+### Security
+- **頁面的安全政策不再允許 eval（INFRA-114）**：工作空間場景改用 Pixi 的外掛，不需要在瀏覽器中即時產生程式碼，Content-Security-Policy 因此拿掉 `'unsafe-eval'`。場景的畫面不變。
+
+---
+
 ## [1.41.11] - 2026-11-04
 
 ### Security

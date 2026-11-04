@@ -1,9 +1,18 @@
 import { getWorkspaceSceneAssets, ORBIT_WINDOW_LOGICAL_SIZE } from '../content/assetManifest.js';
 
 const PIXI_MODULE_PATH = '../../../../vendor/pixi.js';
+// INFRA-114: the page's CSP has no 'unsafe-eval'. This add-on (it imports
+// ./pixi.js itself) replaces the code Pixi would generate with new Function,
+// so it has to run before any renderer is created.
+const PIXI_UNSAFE_EVAL_PATH = '../../../../vendor/pixi-unsafe-eval.js';
+
+async function loadVendoredPixi() {
+  const [pixi] = await Promise.all([import(PIXI_MODULE_PATH), import(PIXI_UNSAFE_EVAL_PATH)]);
+  return pixi;
+}
 
 export function createPixiSceneRuntime(options = {}) {
-  const loadPixi = options.loadPixi || (() => import(PIXI_MODULE_PATH));
+  const loadPixi = options.loadPixi || loadVendoredPixi;
   let pixi = null;
   let pixiLoadPromise = null;
   let app = null;

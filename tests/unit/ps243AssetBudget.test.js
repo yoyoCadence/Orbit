@@ -43,7 +43,7 @@ describe('PS-243 asset baseline', () => {
     expect(completeProofScene.result).toBe('PASS');
   });
 
-  it('keeps the deferred V2 + Pixi bundle under the 300 KB gzip budget', () => {
+  it('keeps the deferred V2 + Pixi (+ unsafe-eval add-on) bundle under the 304 KB gzip budget', () => {
     const { deferredJsBundles } = baseline;
     expect(deferredJsBundles.combinedGzipBytes).toBeLessThan(BUDGETS.deferredBundle.budgetBytes);
     expect(deferredJsBundles.result).toBe('PASS');

@@ -30,7 +30,9 @@ const KB = 1024;
 export const BUDGETS = Object.freeze({
   initialPaint: { targetBytes: 1.5 * MB, hardThresholdBytes: 2.5 * MB },
   completeProofScene: { targetBytes: 4 * MB, hardThresholdBytes: 6 * MB },
-  deferredBundle: { budgetBytes: 300 * KB },
+  // INFRA-114 (approved 2026-11-04): 300 → 304 KB for Pixi's unsafe-eval add-on
+  // (about 4.2 KB gzip), so the CSP needs no 'unsafe-eval'.
+  deferredBundle: { budgetBytes: 304 * KB },
 });
 
 // Deterministic gzip estimate. Level 6 is Node's default; it is an estimate, not
@@ -170,7 +172,10 @@ export function computeAssetBaseline() {
 
   const pixiBuffer = readCanonicalText('vendor/pixi.js');
   const pixiGzipBytes = gzipSync(pixiBuffer, { level: GZIP_LEVEL }).length;
-  const combinedGzipBytes = v2GzipBytes + pixiGzipBytes;
+  // INFRA-114: loaded with pixi.js whenever the runtime mounts.
+  const unsafeEvalBuffer = readCanonicalText('vendor/pixi-unsafe-eval.js');
+  const unsafeEvalGzipBytes = gzipSync(unsafeEvalBuffer, { level: GZIP_LEVEL }).length;
+  const combinedGzipBytes = v2GzipBytes + pixiGzipBytes + unsafeEvalGzipBytes;
 
   return {
     artifact: 'ps243-asset-baseline',
@@ -215,6 +220,11 @@ export function computeAssetBaseline() {
         path: 'pwa/vendor/pixi.js',
         rawBytes: pixiBuffer.length,
         gzipBytes: pixiGzipBytes,
+      },
+      vendoredPixiUnsafeEval: {
+        path: 'pwa/vendor/pixi-unsafe-eval.js',
+        rawBytes: unsafeEvalBuffer.length,
+        gzipBytes: unsafeEvalGzipBytes,
       },
       combinedGzipBytes,
       budgetBytes: BUDGETS.deferredBundle.budgetBytes,

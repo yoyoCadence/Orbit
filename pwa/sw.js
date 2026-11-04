@@ -1,7 +1,7 @@
 // Service Worker
 // Bump CACHE version on every deploy: since INFRA-107 a new worker is the only
 // way new HTML and code reach users.
-const CACHE = 'orbit-v1.41.11';
+const CACHE = 'orbit-v1.41.12';
 
 const SHELL = [
   './',
@@ -176,6 +176,7 @@ const SHELL = [
   './assets/personal-space/v2/workspace/window/exterior-morning.webp',
   './assets/personal-space/v2/workspace/window/exterior-evening.webp',
   './vendor/pixi.js',
+  './vendor/pixi-unsafe-eval.js',
 ];
 
 // Precache on install. Every entry is revalidated with the server (INFRA-105):

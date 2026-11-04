@@ -710,7 +710,7 @@ Performance acceptance is measured on a defined mid-tier Android Chrome profile 
 | Home poster/text visible after `renderHome()` receives local state | <= 100 ms | 250 ms |
 | Additional blocking work on Home critical path | no task > 50 ms | any repeatable > 100 ms fails |
 | Lazy runtime ready after trigger, warm cache | <= 800 ms p75 | 2 s then retain fallback |
-| Home V2 deferred JS, gzip estimate | <= 300 KB | review before merge |
+| Home V2 deferred JS, gzip estimate | <= 304 KB（INFRA-114 起，含 Pixi 的 unsafe-eval 外掛；原為 300 KB） | review before merge |
 | Initial Home scene compressed assets | <= 1.5 MB | 2.5 MB |
 | Full first scene compressed assets | <= 4 MB | 6 MB |
 | Active Home incremental memory | <= 64 MB | 96 MB |
