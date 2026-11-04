@@ -211,14 +211,15 @@
   - 完成後在本項記錄執行日期與結果，並把 015 開頭的「執行日期」改為實際日期。
   - 依賴：`INFRA-110`
 
-- [ ] **INFRA-115** 升級成長報告 PDF 的 jsPDF（INFRA-113 發現）
-  - `export.js` 從 cdnjs 載入 jsPDF 2.5.1：`npm audit` 列出 critical／high（`addImage` 的 ReDoS 與 DoS、Node.js 才有的檔案讀取、選用的 DOMPurify 的 XSS）。app 只在瀏覽器中把自己的 canvas 截圖交給 `addImage`，沒有用 `html()`，實際風險低。
-  - 方向：改用 jsPDF 4.x（cdnjs 網址與 SRI、CSP 的 `script-src` 一起改，`csp.test.js` 會檢查一致），確認 API 變更與 PDF 輸出。
-  - 2026-11-04 核准。
-
 - [ ] **INFRA-114** 去掉 CSP 的 `'unsafe-eval'`（INFRA-113 發現）
   - Pixi 8 以 `new Function` 產生 shader／uniform 程式碼，CSP 沒有 `'unsafe-eval'` 時拒絕啟動（Orbit Window 退回 poster）。Pixi 的 `pixi.js/unsafe-eval` 外掛可取代，但它是給全域 `PIXI` 的 classic script，要改 `scripts/vendor-pixi.mjs` 把它接到 ESM 的 class 上（它只改 class 的 prototype），而且 gzip 後 4,004 B，超過 PS-243 延後載入 JS 預算剩下的 2,223 B。
   - 2026-11-04 決定：放寬 JS 預算，去掉 `'unsafe-eval'`。
+
+- [ ] **INFRA-115A** 部署 v1.41.11 後確認成長報告 PDF（jsPDF 4.2.1 從 cdnjs 載入）
+  - cdnjs 的檔案與 SRI 相符由 CI 的 e2e 確認（見 INFRA-115）；這一項是部署後在真的瀏覽器走一次完整流程。需要能連到 cdnjs 的環境：Claude 的工作環境連不到。
+  - 步驟：以 Pro 帳號（或 `+orbit-paid` 測試帳號）在設定頁按「產生 PDF 報告」→「產生 PDF」，預期下載 PDF、沒有「PDF 產生失敗」。若失敗，瀏覽器 Console 會顯示 SRI 或 404 的錯誤，回報給 agent。
+  - 或（不需部署）：`curl -fsS https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.2.1/jspdf.umd.min.js | openssl dgst -sha512 -binary | openssl base64 -A` 應等於 `export.js` 中 `integrity` 的 `sha512-` 之後的部分。只看檔案開頭的版本註解不夠：重新壓縮的檔案也會保留它。
+  - 依賴：`INFRA-115`
 
 ---
 
@@ -243,6 +244,17 @@
 ---
 
 ## Done
+
+- [x] **INFRA-115** 升級成長報告 PDF 的 jsPDF（INFRA-113 發現）
+  - `export.js` 從 cdnjs 載入 jsPDF 2.5.1：`npm audit` 列出 critical／high（`addImage` 的 ReDoS 與 DoS、Node.js 才有的檔案讀取、選用的 DOMPurify 的 XSS）。app 只在瀏覽器中把自己的 canvas 截圖交給 `addImage`，沒有用 `html()`，實際風險低。
+  - 方向：改用 jsPDF 4.x（cdnjs 網址與 SRI、CSP 的 `script-src` 一起改，`csp.test.js` 會檢查一致），確認 API 變更與 PDF 輸出。
+  - 2026-11-04 核准。
+  - In progress（2026-11-04）：BUG-116（#229）合併後開始（Next → In Progress）。目標 jsPDF 4.2.1（npm 最新）。這個工作環境連不到 cdnjs，SRI 以 npm 套件的 dist 檔計算；同一方法算出的 2.5.1 與 html2canvas 1.4.1 的 hash 與 cdnjs 公布的 SRI 相同。
+  - 完成（2026-11-04，v1.41.11）：`export.js` 改載入 `https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.2.1/jspdf.umd.min.js`（SRI `sha512-plOdvi…`），`index.html` 的 CSP `script-src` 同步改；html2canvas 1.4.1 不變。
+    - API：app 只用 `new jsPDF('p', 'mm', 'a4')`、`internal.pageSize`、`addImage(JPEG)`、`addPage()`、`save()`，4.x 都沒有變更；UMD 仍是 `window.jspdf.jsPDF`。jsPDF 4.2.1 與 html2canvas 1.4.1 都不使用 `eval`／`new Function`（INFRA-114 拿掉 `'unsafe-eval'` 不影響 PDF）。
+    - `jspdf`、`html2canvas` 以精確版本列為 devDependencies，`npm audit` 只剩 INFRA-112 記錄的 eslint／minimatch（moderate）。
+    - 測試：`tests/unit/exportPdfLibs.test.js`（`export.js` 的網址版本＝devDependency、SRI＝npm dist 檔的 sha512、用到的 API 在 4.x 存在）；`tests/e2e/infra115-pdf.test.js`（以 devDependency 的檔案回應 cdnjs 網址：60 筆打卡的報告下載為多頁的 A4 PDF（實測 3 頁）、`/Producer (jsPDF 4.2.1)`、沒有 CSP 違規；檔案與 SRI 不符時瀏覽器拒絕〔Console 的 integrity 錯誤〕、顯示「PDF 產生失敗」、不下載；只在 CI 執行的一項以網路取得 cdnjs 上的兩個檔案，比對 sha512 與 SRI、CORS header）。PDF 轉成圖片看過：統計卡、圖表、明細表正常。
+    - cdnjs 上的檔案：這個工作環境連不到 cdnjs，改由 CI 確認：e2e 的 `cdnjs serves the bytes the SRI names` 只在 CI（`process.env.CI`）執行，以網路取得兩個網址，比對 sha512 與 SRI、`Access-Control-Allow-Origin: *`；之後每個 PR 也會檢查。在此之前的依據：cdnjs 從 npm 複製檔案，2.5.1 與 html2canvas 1.4.1 的 npm 檔 hash 都與 cdnjs 公布的 SRI 相同；4.2.1 在 npm 發布已約 7 個月（2026-03-17）。部署後實際產生一次 PDF 的確認另立 INFRA-115A。
 
 - [x] **BUG-116** 離線且 token 過期時登出，Supabase 的 session 留在裝置上（INFRA-110 獨立 review 發現，原本就有）
   - 現象：`supabase.auth.signOut()` 在 token 過期又離線時約 25 秒後回傳 `AuthRetryableFetchError`，`sb-<project>-auth-token` 沒有被刪除（SDK 讀 session 失敗就提前結束）。app 照樣回到登入畫面，`storage.clearAll()` 只清 `yoyo_*`。之後以遊客繼續時，排行榜（INFRA-110 以這個 key 判斷是否登入）把它當成已登入，連上網後 refresh 成功會以剛登出的帳號查詢；下次啟動也會回到那個帳號。
