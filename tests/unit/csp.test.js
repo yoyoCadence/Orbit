@@ -56,6 +56,9 @@ describe('INFRA-113 Content-Security-Policy', () => {
     expect(indexHtml.match(/<script(?![^>]*\ssrc=)[^>]*>/g)).toBeNull();
     const directives = policy();
     expect(directives['script-src']).not.toContain("'unsafe-inline'");
+    // INFRA-114: no eval; the scene renderer loads Pixi's unsafe-eval add-on.
+    expect(directives['script-src']).not.toContain("'unsafe-eval'");
+    expect(directives['script-src']).not.toContain("'wasm-unsafe-eval'");
     expect(directives['default-src']).toEqual(["'self'"]);
     expect(directives['object-src']).toEqual(["'none'"]);
     expect(directives['base-uri']).toEqual(["'none'"]);
@@ -90,7 +93,7 @@ describe('INFRA-113 Content-Security-Policy', () => {
     const exportJs = read('js/export.js');
     const sources = [...exportJs.matchAll(/src:\s*'(https:[^']+)'/g)].map(match => match[1]);
     expect(sources).toHaveLength(2);
-    expect(policy()['script-src']).toEqual(["'self'", "'unsafe-eval'", ...sources]);
+    expect(policy()['script-src']).toEqual(["'self'", ...sources]);
   });
 });
 

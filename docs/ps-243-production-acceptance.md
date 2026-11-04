@@ -121,6 +121,12 @@ default characters and added the night room and the decorations, and the V2
 module set grew to 29 files. The combined deferred JS is now 295,581 of
 307,200 bytes (300 KiB), so about 11.3 KB (11,619 bytes) of headroom is left.
 
+Updated 2026-11-04 (INFRA-114, v1.41.12): the owner approved raising the
+deferred budget to 304 KiB (311,296 bytes) for Pixi's unsafe-eval add-on
+(`pwa/vendor/pixi-unsafe-eval.js`, 4,260 bytes gzip), which lets the page's
+CSP drop `'unsafe-eval'`. The baseline now counts it as its own row: V2 JS
+79,728 + Pixi 225,428 + add-on 4,260 = 309,416 of 311,296 bytes (1,880 left).
+
 The scene is authored art throughout: a 3:2 background by day and by night,
 12 protagonist state/facing poses, six Companion states, clear/rain overlays,
 and the props and decorations, all through the same runtime manifest contract.
