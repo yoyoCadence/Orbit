@@ -14,20 +14,6 @@
 
 ## Backlog
 
-- [ ] **BUG-116** 離線且 token 過期時登出，Supabase 的 session 留在裝置上（INFRA-110 獨立 review 發現，原本就有）
-  - 現象：`supabase.auth.signOut()` 在 token 過期又離線時約 25 秒後回傳 `AuthRetryableFetchError`，`sb-<project>-auth-token` 沒有被刪除（SDK 讀 session 失敗就提前結束）。app 照樣回到登入畫面，`storage.clearAll()` 只清 `yoyo_*`。之後以遊客繼續時，排行榜（INFRA-110 以這個 key 判斷是否登入）把它當成已登入，連上網後 refresh 成功會以剛登出的帳號查詢；下次啟動也會回到那個帳號。
-  - 影響：只在同一台裝置，裝置上本來就有那個帳號的 refresh token，沒有資料外流；但「登出」沒有真正登出。
-  - 方向：`signOut` 回傳錯誤時改用 `signOut({ scope: 'local' })` 或自行刪除本機的 session key。屬 auth 流程，實作前需核准。
-  - 另：storage 寫入測試失敗時 supabase-js 把 session 只放在記憶體，key 不存在，已登入的使用者在排行榜會看到登入提示（少見，偏向隱藏資料）。
-
-- [ ] **INFRA-114** 去掉 CSP 的 `'unsafe-eval'`（INFRA-113 發現）
-  - Pixi 8 以 `new Function` 產生 shader／uniform 程式碼，CSP 沒有 `'unsafe-eval'` 時拒絕啟動（Orbit Window 退回 poster）。Pixi 的 `pixi.js/unsafe-eval` 外掛可取代，但它是給全域 `PIXI` 的 classic script，要改 `scripts/vendor-pixi.mjs` 把它接到 ESM 的 class 上（它只改 class 的 prototype），而且 gzip 後 4,004 B，超過 PS-243 延後載入 JS 預算剩下的 2,223 B。
-  - 需要決定：放寬 JS 預算，或接受 `'unsafe-eval'`（沒有 inline 程式碼時風險低）。
-
-- [ ] **INFRA-115** 升級成長報告 PDF 的 jsPDF（INFRA-113 發現）
-  - `export.js` 從 cdnjs 載入 jsPDF 2.5.1：`npm audit` 列出 critical／high（`addImage` 的 ReDoS 與 DoS、Node.js 才有的檔案讀取、選用的 DOMPurify 的 XSS）。app 只在瀏覽器中把自己的 canvas 截圖交給 `addImage`，沒有用 `html()`，實際風險低。
-  - 方向：改用 jsPDF 4.x（cdnjs 網址與 SRI、CSP 的 `script-src` 一起改，`csp.test.js` 會檢查一致），確認 API 變更與 PDF 輸出。
-
 - [ ] **REPO-001** Repo 清理（AUDIT-001 發現，需擁有者決定）
   - `output/`：30 個 tracked 檔、約 58 MB 的舊 proof 圖，app 與測試都沒有使用（只在 `skills/orbit-idle-window-assets` 的說明中當輸出目錄、eslint 忽略）。可刪除（歷史仍保留在 git）。
   - 遠端約 160 個已合併或過時的分支、過時的 draft PR #154：可清理。
@@ -212,6 +198,8 @@
 
 > 2026-11-02 排程：PRO-014H 的核准名單已寫入並對帳（#222）。使用者同意寫 PRO-014L 的提案（只寫文件），從 Backlog 移入 Next，再移入 In Progress。
 
+> 2026-11-04 核准（使用者回覆「後三個可以做」）：`BUG-116`（auth 流程）、`INFRA-115`（jsPDF 升到 4.x）、`INFRA-114`（放寬 JS 預算，去掉 `'unsafe-eval'`）。順序：BUG-116 → INFRA-115 → INFRA-114，每項一個 PR。BUG-116 移入 In Progress，另兩項移入 Next。PRO-014L 的提案 §10 等使用者回覆。
+
 - [ ] **INFRA-110A** 在 production 套用 015（`leaderboard_view` 只給已登入的使用者讀）
   - **需專案擁有者執行**：production 資料庫操作，Claude 不具權限。先讓 v1.41.9（遊客顯示登入提示）部署，再套用 015。順序相反時遊客會看到「無法載入排行榜」；順序正確時，還沒更新到 v1.41.9 的舊分頁或 PWA（INFRA-107：要等新的 service worker 接手）裡沒有快取的遊客也會暫時看到，更新後即改為登入提示。
   - 步驟（Supabase SQL Editor）：
@@ -223,9 +211,25 @@
   - 完成後在本項記錄執行日期與結果，並把 015 開頭的「執行日期」改為實際日期。
   - 依賴：`INFRA-110`
 
+- [ ] **INFRA-115** 升級成長報告 PDF 的 jsPDF（INFRA-113 發現）
+  - `export.js` 從 cdnjs 載入 jsPDF 2.5.1：`npm audit` 列出 critical／high（`addImage` 的 ReDoS 與 DoS、Node.js 才有的檔案讀取、選用的 DOMPurify 的 XSS）。app 只在瀏覽器中把自己的 canvas 截圖交給 `addImage`，沒有用 `html()`，實際風險低。
+  - 方向：改用 jsPDF 4.x（cdnjs 網址與 SRI、CSP 的 `script-src` 一起改，`csp.test.js` 會檢查一致），確認 API 變更與 PDF 輸出。
+  - 2026-11-04 核准。
+
+- [ ] **INFRA-114** 去掉 CSP 的 `'unsafe-eval'`（INFRA-113 發現）
+  - Pixi 8 以 `new Function` 產生 shader／uniform 程式碼，CSP 沒有 `'unsafe-eval'` 時拒絕啟動（Orbit Window 退回 poster）。Pixi 的 `pixi.js/unsafe-eval` 外掛可取代，但它是給全域 `PIXI` 的 classic script，要改 `scripts/vendor-pixi.mjs` 把它接到 ESM 的 class 上（它只改 class 的 prototype），而且 gzip 後 4,004 B，超過 PS-243 延後載入 JS 預算剩下的 2,223 B。
+  - 2026-11-04 決定：放寬 JS 預算，去掉 `'unsafe-eval'`。
+
 ---
 
 ## In Progress
+
+- [ ] **BUG-116** 離線且 token 過期時登出，Supabase 的 session 留在裝置上（INFRA-110 獨立 review 發現，原本就有）
+  - 現象：`supabase.auth.signOut()` 在 token 過期又離線時約 25 秒後回傳 `AuthRetryableFetchError`，`sb-<project>-auth-token` 沒有被刪除（SDK 讀 session 失敗就提前結束）。app 照樣回到登入畫面，`storage.clearAll()` 只清 `yoyo_*`。之後以遊客繼續時，排行榜（INFRA-110 以這個 key 判斷是否登入）把它當成已登入，連上網後 refresh 成功會以剛登出的帳號查詢；下次啟動也會回到那個帳號。
+  - 影響：只在同一台裝置，裝置上本來就有那個帳號的 refresh token，沒有資料外流；但「登出」沒有真正登出。
+  - 方向：`signOut` 回傳錯誤時改用 `signOut({ scope: 'local' })` 或自行刪除本機的 session key。屬 auth 流程，實作前需核准。
+  - 另：storage 寫入測試失敗時 supabase-js 把 session 只放在記憶體，key 不存在，已登入的使用者在排行榜會看到登入提示（少見，偏向隱藏資料）。
+  - In progress（2026-11-04）：使用者核准（見 Next 的 2026-11-04 核准）。supabase-js 2.112.4 的原始碼：讀 session 失敗時 `signOut()` 不論 `scope` 都在刪除前就結束，所以 `scope: 'local'` 本身不夠，要先刪掉本機的 session key。
 
 - [ ] **PRO-014L** SUB-16 連勝解鎖改由 server 授權
   - 目標：45 天連勝換 30 天 Pro 的授權由 server 發放，而不是 client 自行寫入
