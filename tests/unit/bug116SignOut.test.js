@@ -11,7 +11,7 @@
  */
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-// supabase-js keeps the fetch it finds when the client is created.
+// In place before any client exists (auth-js reads the global on every call).
 const fetchMock = vi.hoisted(() => {
   const mock = vi.fn();
   globalThis.fetch = mock;
@@ -67,8 +67,10 @@ afterEach(() => {
 });
 
 describe('BUG-116 signOut removes the session on this device', () => {
-  it('is the SDK key the app and the leaderboard read', () => {
-    expect(key()).toMatch(/^sb-[a-z0-9]+-auth-token$/);
+  it('removes the key the leaderboard reads, from the SDK storage', async () => {
+    const { SUPABASE_URL } = await import('../../pwa/js/config.js');
+    // pages/leaderboard.js builds the key itself; it must stay the SDK's.
+    expect(key()).toBe(`sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`);
     expect(supabase.auth.storage).toBe(window.localStorage);
   });
 
@@ -127,5 +129,36 @@ describe('BUG-116 signOut removes the session on this device', () => {
 
     expect(localStorage.getItem(key())).toBeNull();
     expect(events).toContain('SIGNED_OUT');
+  });
+
+  it('right after an offline launch: removes the key at once, then waits for the launch refresh', async () => {
+    // Opening the app offline with an expired token: the new client's own
+    // initialize() spends about 25 s retrying the refresh, and every SDK call
+    // waits for it. The session must be gone before that, not after.
+    vi.useFakeTimers();
+    network.online = false;
+    storeSession({ expired: true });
+    vi.resetModules();
+    const { supabase: launched } = await import('../../pwa/js/supabase.js');
+    const { signOut: launchSignOut } = await import('../../pwa/js/auth.js');
+    const seen = [];
+    launched.auth.onAuthStateChange(event => { seen.push(event); });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(requested()).toContain('/auth/v1/token?grant_type=refresh_token');
+
+    let settled = false;
+    const pending = launchSignOut().finally(() => { settled = true; });
+    expect(localStorage.getItem(key())).toBeNull();
+
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(settled).toBe(false);
+    expect(seen).not.toContain('SIGNED_OUT');
+
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(settled).toBe(true);
+    await expect(pending).resolves.toBeNull();
+    expect(seen).toContain('SIGNED_OUT');
+    expect(localStorage.getItem(key())).toBeNull();
+    await launched.auth.stopAutoRefresh();
   });
 });

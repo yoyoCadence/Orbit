@@ -252,9 +252,12 @@
   - In progress（2026-11-04）：使用者核准（見 Next 的 2026-11-04 核准）。supabase-js 2.112.4 的原始碼：讀 session 失敗時 `signOut()` 不論 `scope` 都在刪除前就結束，所以 `scope: 'local'` 本身不夠，要先刪掉本機的 session key。
   - 完成（2026-11-04，v1.41.10）：`pwa/js/auth.js` 的 `signOut()`。
     - 連線時照舊呼叫 SDK 的 `signOut()`（同時在 server 撤銷 session）；回傳錯誤或 throw 時，從 SDK 自己的 storage（`supabase.auth.storage`，localStorage 不能用時是記憶體）刪除 `supabase.auth.storageKey`，再呼叫 `signOut({ scope: 'local' })`：沒有儲存的 session 時 SDK 不發 request，執行自己的清理（`-user` 與 PKCE 的 key、快取的 refresh 失敗、遞增 `_sessionRemovalEpoch` 讓同時進行中的 refresh 不會把 session 寫回）並發出 `SIGNED_OUT`。
-    - `navigator.onLine === false`（`platform/network.js` 的 `isOnline()`）時不呼叫會等網路的那一次，直接走上面的本機清理：離線登出立即回到登入畫面，不再等約 25 秒。2.112.4 預設不使用 lock，背景的 refresh 不會擋住它。
-    - 只在 `onLine` 為 true 但連不到伺服器時，仍要等 SDK 的 refresh 重試（約 25 秒）才登出；之後一樣刪除本機的 session。
-    - 測試：`tests/unit/bug116SignOut.test.js`（真的 vendored client＋mock fetch：離線、連線但連不到伺服器〔fake timers 走完 SDK 的重試〕、連線成功、SDK throw）；`tests/e2e/bug116-signout.test.js`（Chromium、真的 client、Supabase host 全部擋下：過期的 token、`context.setOffline(true)`，3 秒內回到登入畫面、key 被刪除、沒有任何 request）。兩者在修正前的 `auth.js` 上都會失敗。
+    - `navigator.onLine === false`（`platform/network.js` 的 `isOnline()`）時不呼叫會等網路的那一次，直接走上面的本機清理：key 立即刪除；開著 app 時 token 才過期的情況，立即回到登入畫面（以前約 25 秒）。2.112.4 預設不使用 lock，進行中的 refresh 不會擋住它。
+    - 例外：每個 SDK 呼叫都先等 `initializePromise`。離線打開 app、token 已過期時，client 啟動時的 refresh 也要重試約 25 秒，這段期間登出要等它結束才回到登入畫面（key 已先刪除，進行中的 refresh 不會寫回）。要不等它，得在 SDK 還沒發出 `SIGNED_OUT` 前就顯示登入畫面，之後再到的 `SIGNED_OUT` 會讓 `handleSignOut()` 清掉期間建立的遊客資料，所以不做。
+    - 離線登出只結束這台裝置的 session（server 上的 refresh token 沒有撤銷，裝置上已刪除）；連線時照舊以 `scope: global` 結束所有裝置的 session。
+    - `onLine` 為 true 但連不到伺服器時，仍要等 SDK 的 refresh 重試（約 25 秒）才登出；之後一樣刪除本機的 session。
+    - 已知的窄窗（獨立 review）：離線登出時若有進行中的 refresh（啟動的遠端載入、自動 refresh），它會在登入畫面出現後繼續重試最多約 25 秒；期間恢復連線而 server **拒絕**這個 refresh token（400／500）時，SDK 會發出 `SIGNED_OUT`，若使用者已以遊客完成設定，`handleSignOut()` 會清掉這個新的遊客資料。需要同時發生數個條件（token 沒被撤銷，server 通常會接受，接受時 commit guard 丟棄新 token、不發事件），不另外處理。
+    - 測試：`tests/unit/bug116SignOut.test.js`（真的 vendored client＋mock fetch：離線、連線但連不到伺服器〔fake timers 走完 SDK 的重試〕、連線成功、SDK throw、離線打開 app 後立即登出〔key 立即刪除，登出等啟動的 refresh 結束〕）；`tests/e2e/bug116-signout.test.js`（Chromium、真的 client；資料庫回 PostgREST 不重試的 500、其他 Supabase 請求擋下，等啟動的遠端載入失敗後 token 才過期、`context.setOffline(true)`：3 秒內回到登入畫面、key 被刪除、沒有任何 request）。兩者在修正前的 `auth.js` 上都會失敗。教訓：e2e 在遠端載入還在重試時讓 token 過期，重試會自己發出 refresh，2 個 worker 時約一半失敗；要先等遠端載入結束。
     - 未變更：上面「另」的情況（storage 寫入測試失敗時 session 只在記憶體）排行榜仍以 localStorage 的 key 判斷，已登入者會看到登入提示；登出本身已涵蓋記憶體的 storage。
 
 - [x] **INFRA-110** `leaderboard_view` 的權限（AUDIT-001 發現）

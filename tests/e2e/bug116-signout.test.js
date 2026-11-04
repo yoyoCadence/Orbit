@@ -7,9 +7,11 @@
  * removing `sb-<project>-auth-token`: the next launch, or the leaderboard's
  * signed-in check, brought the account back.
  *
- * Runs the real vendored client (no mockSupabase); every request to the
- * Supabase host is refused, so the remote load fails and the app keeps the
- * cached user.
+ * Runs the real vendored client (no mockSupabase). The Supabase host answers
+ * the database with an error the client does not retry (500), and refuses the
+ * rest, so the remote load fails at once and the app keeps the cached user.
+ * The token expires only after that load: its retries would otherwise ask
+ * for a refresh of their own while the test signs out.
  */
 
 import { readFileSync } from 'node:fs';
@@ -25,6 +27,10 @@ test.describe('BUG-116 sign out offline', () => {
   test('removes the expired session at once, without a request', async ({ page, context }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.route(`${SUPABASE_URL}/**`, route => route.abort('internetdisconnected'));
+    // Registered last, so it is tried first (PostgREST retries only 503 and 520).
+    await page.route(`${SUPABASE_URL}/rest/**`, route => route.fulfill({
+      status: 500, contentType: 'application/json', body: '{"message":"e2e"}',
+    }));
     await seedStorage(page, [FOCUS_TASK], [], { ...GUEST_USER, id: USER_ID });
     await page.addInitScript(([key, userId]) => {
       if (localStorage.getItem(key)) return;
@@ -37,6 +43,8 @@ test.describe('BUG-116 sign out offline', () => {
 
     await page.goto('/');
     await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
+    // The cached-user boot's remote load (and Pro refresh) has given up.
+    await page.waitForSelector('#sync-banner.sync-error', { timeout: 8000 });
     await page.click('.nav-item[data-page="settings"]');
     await page.waitForSelector('#signout-btn');
 

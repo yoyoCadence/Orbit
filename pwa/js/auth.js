@@ -29,7 +29,9 @@ export async function signInWithGoogle() {
  * in, and the leaderboard treats a guest as signed in.
  *
  * Online, the SDK call also revokes the session on the server. Offline it
- * cannot, so it is skipped rather than waited for.
+ * cannot, so it is skipped rather than waited for. Every SDK call still waits
+ * for the client's start-up — after an offline launch with an expired token
+ * that is its own ~25 s of refresh retries — but the key is removed first.
  *
  * @returns {Promise<Error|null>} the SDK's error, after the local session is gone
  */
