@@ -208,13 +208,14 @@
 
 > 2026-11-04 核准（使用者回覆「後三個可以做」）：`BUG-116`（auth 流程）、`INFRA-115`（jsPDF 升到 4.x）、`INFRA-114`（放寬 JS 預算，去掉 `'unsafe-eval'`）。順序：BUG-116 → INFRA-115 → INFRA-114，每項一個 PR。BUG-116 移入 In Progress，另兩項移入 Next。PRO-014L 的提案 §10 等使用者回覆。
 
-- [ ] **INFRA-114** 去掉 CSP 的 `'unsafe-eval'`（INFRA-113 發現）
-  - Pixi 8 以 `new Function` 產生 shader／uniform 程式碼，CSP 沒有 `'unsafe-eval'` 時拒絕啟動（Orbit Window 退回 poster）。Pixi 的 `pixi.js/unsafe-eval` 外掛可取代，但它是給全域 `PIXI` 的 classic script，要改 `scripts/vendor-pixi.mjs` 把它接到 ESM 的 class 上（它只改 class 的 prototype），而且 gzip 後 4,004 B，超過 PS-243 延後載入 JS 預算剩下的 2,223 B。
-  - 2026-11-04 決定：放寬 JS 預算，去掉 `'unsafe-eval'`。
-
 ---
 
 ## In Progress
+
+- [ ] **INFRA-114** 去掉 CSP 的 `'unsafe-eval'`（INFRA-113 發現）
+  - Pixi 8 以 `new Function` 產生 shader／uniform 程式碼，CSP 沒有 `'unsafe-eval'` 時拒絕啟動（Orbit Window 退回 poster）。Pixi 的 `pixi.js/unsafe-eval` 外掛可取代，但它是給全域 `PIXI` 的 classic script，要改 `scripts/vendor-pixi.mjs` 把它接到 ESM 的 class 上（它只改 class 的 prototype），而且 gzip 後 4,004 B，超過 PS-243 延後載入 JS 預算剩下的 2,223 B。
+  - 2026-11-04 決定：放寬 JS 預算，去掉 `'unsafe-eval'`。
+  - In progress（2026-11-04）：#231 合併後開始（Next → In Progress）。做法：`scripts/vendor-pixi.mjs` 另外產生 `pwa/vendor/pixi-unsafe-eval.js`（ESM：import vendored pixi，把外掛的 classic script 包在函式裡、以 pixi 的 export 作為它的 `PIXI`），runtime 載入 Pixi 時一起載入；PS-243 延後載入 JS 預算 300 → 304 KB；CSP 拿掉 `'unsafe-eval'`。
 
 - [ ] **PRO-014L** SUB-16 連勝解鎖改由 server 授權
   - 目標：45 天連勝換 30 天 Pro 的授權由 server 發放，而不是 client 自行寫入
