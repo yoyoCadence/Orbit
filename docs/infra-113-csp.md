@@ -27,7 +27,7 @@
 | Directive | 值 | 原因 |
 |---|---|---|
 | `default-src` | `'self'` | 其他一律只允許自己 |
-| `script-src` | `'self'` `'unsafe-eval'` 兩個 cdnjs 檔案的完整網址 | 不允許 inline。cdnjs 只允許成長報告 PDF 用的 jsPDF 2.5.1 與 html2canvas 1.4.1 這兩個檔案（不是整個 cdnjs，否則可以載入 cdnjs 上的其他函式庫繞過 CSP），兩者另有 SRI。`'unsafe-eval'` 見 §3 |
+| `script-src` | `'self'` `'unsafe-eval'` 兩個 cdnjs 檔案的完整網址 | 不允許 inline。cdnjs 只允許成長報告 PDF 用的 jsPDF（INFRA-115 起 4.2.1）與 html2canvas 1.4.1 這兩個檔案（不是整個 cdnjs，否則可以載入 cdnjs 上的其他函式庫繞過 CSP），兩者另有 SRI。`'unsafe-eval'` 見 §3 |
 | `style-src` | `'self'` `'unsafe-inline'` | 模板大量使用 `style=""`，html2canvas 也會插入 style。style 不能執行程式碼 |
 | `img-src` | `'self'` `data:` `blob:` Supabase 主機 | 頭像（data URL、Supabase 的 signed URL）、佐證照片、Pixi 載入的貼圖、PDF 的截圖 |
 | `connect-src` | `'self'` Supabase 主機 | Supabase 的 REST／Auth／Storage；Pixi 的 worker 取得同源的圖 |
@@ -63,5 +63,5 @@
   - 登入畫面、底部導覽、回顧頁的週／月切換與上個月、個人頁的保護卡說明、頁首頭像、Focus 的暫停／繼續／縮小／展開都可用，Pixi 場景 `ready`，過程中沒有任何 CSP 違規。
   - 注入的 `<img onerror>`、`<button onclick>` 不執行，`data-action` 指向清單外的函式也不執行。沒有 CSP 時這一項失敗。
 - 完整 e2e 82 項、unit 全部通過。獨立 review 另以記錄所有違規的設定跑完整 e2e（只有注入測試中刻意的違規），並逐一試過登入畫面、試用橫幅、升級畫面、CSV／PDF 匯出、頭像與背景上傳、佐證壓縮、排行榜、空間、導覽、環境音（假的麥克風），都沒有違規；`infra113-csp` 連跑 32 次通過。
-- 一次性確認（沒有留下測試，因為需要 jsPDF 與 html2canvas 的檔案）：以 npm 套件中與 cdnjs 相同的檔案取代 cdnjs，成長報告 PDF 在 CSP 下產生成功、SRI 通過、沒有違規。
+- 一次性確認（沒有留下測試，因為需要 jsPDF 與 html2canvas 的檔案）：以 npm 套件中與 cdnjs 相同的檔案取代 cdnjs，成長報告 PDF 在 CSP 下產生成功、SRI 通過、沒有違規。INFRA-115 把兩者列為 devDependencies，這項確認改由 `tests/e2e/infra115-pdf.test.js` 持續執行。
 - 去掉 `'unsafe-eval'` 時 Pixi 退回 poster（`data-runtime-status="fallback"`）。

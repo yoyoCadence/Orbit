@@ -7,9 +7,11 @@ import { getDisplayTitle }  from './leveling.js';
 // Lazy-loaded CDN libs (only when user generates a PDF). The integrity hashes
 // are cdnjs's SRI values (the same bytes as the npm packages' dist files): the
 // browser refuses a file that differs, so a compromised CDN cannot run code here.
+// The versions match the devDependencies, which tests/unit/exportPdfLibs.test.js
+// hashes; to upgrade, change both (and the CSP in index.html).
 const JSPDF = {
-  src: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
-  integrity: 'sha512-qZvrmS2ekKPF2mSznTQsxqPgnpkI4DNTlrdUmTzrDgektczlKNRRhy5X5AAOnx5S09ydFYWWNSfcEqDTTHgtNA==',
+  src: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.2.1/jspdf.umd.min.js',
+  integrity: 'sha512-plOdviVmws4Y3JAvbnpfKb2hVxKM1lCwsi3vmElYRj+tiDLffZ4FVUj5a8vyKJ9pIgl8JCAHEJ4D1iUKBecswg==',
 };
 const H2C = {
   src: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',

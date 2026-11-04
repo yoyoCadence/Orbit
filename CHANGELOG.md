@@ -3,6 +3,13 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.41.11] - 2026-11-04
+
+### Changed
+- **成長報告 PDF 改用 jsPDF 4.2.1（INFRA-115）**：舊的 2.5.1 有已公開的安全性問題。報告的內容與版面不變。
+
+---
+
 ## [1.41.10] - 2026-11-04
 
 ### Fixed
