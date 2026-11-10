@@ -102,7 +102,6 @@ describe('Pro gate 呼叫點', () => {
       'platform/proEntitlement.js': '註解中引用欄位名以說明取代了什麼',
       'app.js': '讀 trialStartedAt 只為決定要不要啟動試用，不是 Pro 判定',
       'pages/settings.js': '_devApplyPro() 開發者面板；見下方單獨的測試',
-      'dayCycle.js': 'SUB-16 連勝解鎖仍在 client 端寫入 Pro 欄位；見下方單獨的測試',
     };
 
     const offenders = files
@@ -114,20 +113,19 @@ describe('Pro gate 呼叫點', () => {
     expect(offenders).toEqual([]);
   });
 
-  // 這一處在 server source 下會失效，但修好它需要 server 端支援，屬 PRO-014C
-  // 範圍外。測試把現況鎖起來，避免它被誤認為已經處理過。開發者面板的寫入點
-  // 已隨 PRO-014Q Q6 移除模擬而消失，settings.js 也不得再寫入。
-  it('已知的 client 端 Pro 寫入點僅剩一處，且已立案追蹤', () => {
-    const dayCycle = files.find(f => f.path === 'dayCycle.js').source;
-
-    expect(dayCycle).toContain('state.user.isPro           = true;');   // SUB-16 連勝解鎖
-
-    // 其餘檔案都不得寫入 Pro 欄位。
+  // PRO-014L2：最後一處 client 端的 Pro 寫入（換日的 SUB-16）已移除，改由
+  // server 的 grant_streak_unlock() 發放；寫回 legacy profile 只在 storage.js
+  // 的 db.grantStreakUnlock()（值來自 server）。開發者面板的寫入點已隨 PRO-014Q
+  // Q6 移除模擬而消失。
+  it('除 storage.js 外沒有任何 client 端 Pro 寫入點', () => {
     const writers = files
-      .filter(({ path }) => !['storage.js', 'dayCycle.js'].includes(path))
+      .filter(({ path }) => path !== 'storage.js')
       .filter(({ source }) => /\.(isPro|proExpiresAt|trialStartedAt)\s*=/.test(source))
       .map(({ path }) => path);
     expect(writers).toEqual([]);
+
+    const dayCycle = files.find(f => f.path === 'dayCycle.js').source;
+    expect(dayCycle).not.toMatch(/\.isPro\s*=|proExpiresAt\s*=|streakUnlockUsed\s*=/);
   });
 
   // PRO-014Q Q6：模擬已移除，舊版留下的 backup 只會被讀取與清除。重新加回任何寫入

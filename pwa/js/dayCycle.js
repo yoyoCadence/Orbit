@@ -12,7 +12,6 @@ import { updateHeader } from './ui/header.js';
 import { applyRandomThemeForToday } from './theme.js';
 import {
   FLAG_SHIELD_DISMISSED, FLAG_SHIELD_SCROLL_TOP,
-  FLAG_STREAK_UNLOCK_NEW,
 } from './flags.js';
 import {
   PRO_STATUS_UNKNOWN_MESSAGE,
@@ -111,19 +110,8 @@ export function processYesterdayStreak() {
     applyProOnlyRolloverEffects(state.user, proStatus, { prevStreak: resetFromStreak, todayStr });
   }
 
-  // SUB-16: 45-day streak → 30-day free Pro (granted once per account). Only
-  // for a known non-Pro user: an unknown status must not spend the one-time
-  // unlock on a paying user (PRO-014L moves this to the server).
-  if (
-    state.user.streakDays >= 45 &&
-    proStatus === 'not-pro' &&
-    !state.user.streakUnlockUsed
-  ) {
-    state.user.isPro           = true;
-    state.user.proExpiresAt    = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-    state.user.streakUnlockUsed = true;
-    sessionStorage.setItem(FLAG_STREAK_UNLOCK_NEW, '1');
-  }
+  // SUB-16 (45-day streak → 30 days of Pro) is no longer granted here: the
+  // server grants it (PRO-014L, streakUnlock.js), after the remote load.
 
   state.user.lastStreakDate = todayStr;
   storage.saveUser(state.user);

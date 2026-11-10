@@ -215,13 +215,28 @@
 
 ## In Progress
 
-- [ ] **PRO-014L2** client 改走 `grant_streak_unlock()`（新模組，INFRA-105）
+- [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
+  - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
+
+---
+
+## Done
+
+- [x] **PRO-014L2** client 改走 `grant_streak_unlock()`（新模組，INFRA-105）
   - 依提案 §5.3：只在本機連勝 ≥ 45、遠端載入與 Sessions 上傳之後詢問（`loadAndStart()`、cached-user 背景同步、連線恢復同步）；依 `paid_active` 寫回 legacy profile，只延長、不縮短、不取消；刪除換日裡的 SUB-16；訪客的進度條改為「需要登入帳號」；測試與 bump。
   - 依賴：`PRO-014LA`（**012 必須先在 production**，否則 legacy 下 SUB-16 失效）。
   - 2026-11-10：PRO-014LA 完成（012 已在 production），可以開始，移入 Next。
   - In progress（2026-11-10）：#234 合併後開始（Next → In Progress）。依提案 §5.3（使用者核准 §10，全部照建議）。
+  - 完成（2026-11-10，v1.41.13，#235）：
+    - `db.grantStreakUnlock(userId, user)`（`storage.js`，既有物件的新方法）：呼叫 `grant_streak_unlock()`，嚴格驗證回傳（只接受一列；status 在四種之內；`granted` 與 status 一致；`paid_active` 為 true 時 `is_active` 必為 true；`granted` 必為付費且有期限與時間；`already_granted` 必有標記時間；時間欄位必須能解析），不符合就不採用。`granted`／`already_granted` 時寫 `streakUnlockUsed = true`；`paid_active` 為 true 時把 legacy profile 的 Pro 延長到 server 的期限（profile 已是終身、或已是 Pro 且期限更晚時不寫；免費 profile 的 `proExpiresAt` 也是 null，只有 `isPro === true` 時沒有期限才算終身；server 是終身時寫終身），永遠不寫 `isPro = false`、永遠不看 `is_active`。直接修改傳入的 `state.user` 再 `storage.saveUser()`，記憶體與儲存一致。之後 `refreshProEntitlement()`（legacy 下 no-op）。回報 `recovered`：付費的 `already_granted` 而本機原本不知道。
+    - 新模組 `pwa/js/streakUnlock.js`（INFRA-105，加入 SHELL）：只在已登入、本機連勝 ≥ 45、`streakUnlockUsed` 為 false、Pro 狀態不是 `pro`（`unknown` 也問）時詢問；`not_eligible`／`active_entitlement` 依 owner 記住當天（`orbit_streak_unlock_asked`），隔天才再問；失敗不記住；同一 owner 的並行詢問共用一個請求；`granted` 或 `recovered` 時更新畫面並顯示原本的慶祝視窗；`db.grantStreakUnlock` 不存在（新舊版本混用）時不做事。
+    - `app.js` 的三個位置（遠端載入與 Session 補傳之後）：`loadAndStart()`（`bootWithLocalState()` 之後、等 `loaded.backfilled`；BUG-106 的第二次開機只有這裡）、cached-user 背景同步（`_reportSyncResult()` 之後）、連線恢復同步（同上）。不在開機的第一次 `bootWithLocalState()` 詢問。
+    - 刪除 `processYesterdayStreak()` 的 SUB-16 區塊：換日不再有任何 client 端的 Pro 寫入。`FLAG_STREAK_UNLOCK_NEW` 與 `showStreakUnlockModal` 保留 export（INFRA-105：移除既有 export 也會讓混用的舊模組載入失敗）。
+    - 訪客：新模組 `pwa/js/sessionPresence.js` 的 `hasStoredSession()`（讀 Supabase client 的 session key，同排行榜；只 import supabase.js，避免 router → 頁面 → dayCycle 的循環）。設定頁與個人頁的「連勝解鎖 Pro」對沒有 session 的人顯示「需要登入帳號」。
+    - 測試：`tests/unit/streakUnlock.test.js`（34 項：寫回規則〔免費 profile 發放、回應遺失後補上並 `recovered`、試用中回填的帳號不變終身、付費到期不取消、終身不縮短、期限更晚不縮短／較早延長、server 終身寫終身〕、拒絕與錯誤不寫、9 種不合規回傳、多列、別的帳號、詢問條件、當天記住與隔天再問、並行合併、登出時不更新、混用版本、訪客判斷）；`appBootSequence.test.js` 4 項（補傳完成後才詢問、BUG-106 路徑在換日之後、離線不問而連線恢復後才問、補傳前登出不問；把詢問移到補傳之前的突變會失敗）；`pro014pRollover.test.js` 的 SUB-16 項目改寫為換日不發放、不消耗；`proGateCallSites.test.js` 改為除 `storage.js` 外沒有 client 端 Pro 寫入；`profile.test.js`／`settings.test.js` 加訪客情境。
 
-- [ ] **PRO-014L** SUB-16 連勝解鎖改由 server 授權
+
+- [x] **PRO-014L** SUB-16 連勝解鎖改由 server 授權
   - 目標：45 天連勝換 30 天 Pro 的授權由 server 發放，而不是 client 自行寫入
   - 現況（`PRO-014C` 實作時發現）：`pwa/js/dayCycle.js` 直接寫 `state.user.isPro = true` 與 `proExpiresAt`，再經 `saveUser()` 同步上雲。這是 client 決定的 Pro 授權 —— 與 `startTrial()` 原本的問題同一類，只是沒被 `PRO-014C` 的範圍涵蓋。
   - **在 `server` source 下會直接失效**：`isProUser()` 改讀 projection 後，寫 `state.user.isPro` 不再有任何效果，連勝解鎖等於靜默消失。因此這項必須在 `PRO-014H` cutover 前完成，否則就是一個功能迴歸。
@@ -234,13 +249,8 @@
     - 實測：#154 的 012 在本機（production 已有的相關 migration，含 013、014）可以套用。另外確認：資格是「歷史上任何一段 45 天」；不符合也會建立資料列；與 014 配合正確。獨立 review 另發現 #154 在「已領過」時把 `is_active`（含試用）寫回 legacy 的 `is_pro`，會授予終身或取消 Pro。
     - **2026-11-04 使用者核准 §10（全部照建議）**，見 Next 的 2026-11-04 核准。
     - 建議：保留 #154 的 SQL 主體（含 `date <= current_date`），只加回填已用過的帳號；拆成 L1（migration 012＋ASSERT 測試）→ LA（擁有者套用）→ L2（client 改走 RPC，新模組，INFRA-105）；只在本機連勝 ≥ 45 時、遠端載入之後詢問（同 PRO-014P 的三個補做位置）；RPC 多回傳只代表付費的 `paid_active`，`granted`／`already_granted` 依它寫回（只延長、不縮短、不取消，回應遺失後重試可補上）；訪客不再有 SUB-16；L1 合併後關閉 #154。
+  - 完成（2026-11-10）：L1（#233）、LA（2026-11-10 擁有者套用，#234）、L2（#235，v1.41.13）。PRO-014H cutover 前仍要再跑一次 012 的回填並比對 profile 與 server 的付費（見 PRO-014H 與提案 §7）。
 
-- [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
-  - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
-
----
-
-## Done
 
 - [x] **PRO-014LA** 在 production 套用 012（專案擁有者執行）
   - 依提案 §5.2：套用前確認（函式與欄位不存在、trigger 與 011 相同並存下、回填的預期筆數）→ `begin;`＋012＋測試＋`rollback;` 乾跑 → 正式套用（`begin;` 後先 `LOCK TABLE public.pro_entitlements IN EXCLUSIVE MODE;` 再計數）→ 檢查權限、`SECURITY DEFINER`、`search_path`、owner、回填筆數、`pro_entitlements` 中 `is_pro` 為 true 與有試用起點的筆數在套用前後不變（在套用的同一個 transaction 內比對，不同就中止）、擁有者帳號的 `my_pro_status()` 仍為 `true／NULL／NULL`（DO block）→ 再跑一次 ASSERT 測試 → 以只改文件的 PR 記錄。

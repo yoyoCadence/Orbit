@@ -9,6 +9,7 @@ import { goToProCard }                         from '../ui/proNav.js';
 import { proofStats, clearAllProofs }          from '../platform/proofStore.js';
 import { FLAG_PRO_HIGHLIGHT, FLAG_DEV_BACKUP, FLAG_DEV_PANEL } from '../flags.js';
 import { getProEntitlementSource } from '../platform/proEntitlement.js';
+import { hasStoredSession } from '../sessionPresence.js';
 import { refreshCanonicalStateAndReconcilePersonalSpaceV2 } from '../personalSpace/v2/controller.js';
 import { removeAllPersonalSpaceV2States } from '../personalSpace/v2/store.js';
 import {
@@ -169,8 +170,19 @@ function _proSectionHtml() {
     <div class="pro-notice">升級後立即生效 · 試用期間資料全部保留</div>`;
 
   // ── Streak unlock progress (free, non-trial, not yet unlocked) ──────────────
+  // PRO-014L2: the server grants it, so a guest (no account) cannot get it.
   const streakDays = state.user?.streakDays || 0;
-  const streakUnlockHtml = (!isPro && !state.user?.streakUnlockUsed) ? `
+  const streakUnlockGuestHtml = `
+    <div class="streak-unlock-row streak-unlock-guest" style="margin-bottom:16px">
+      <div class="streak-unlock-label">
+        <span>🔓 連勝解鎖 Pro</span>
+        <span class="streak-unlock-count">需要登入帳號</span>
+      </div>
+      <div class="streak-unlock-hint">登入帳號後，達成 45 天連勝可獲得 30 天免費 Pro。</div>
+    </div>
+    <div class="pro-section-divider"></div>`;
+  const streakUnlockHtml = (isPro || state.user?.streakUnlockUsed) ? ''
+    : !hasStoredSession() ? streakUnlockGuestHtml : `
     <div class="streak-unlock-row" style="margin-bottom:16px">
       <div class="streak-unlock-label">
         <span>🔓 連勝解鎖 Pro</span>
@@ -181,7 +193,7 @@ function _proSectionHtml() {
       </div>
       <div class="streak-unlock-hint">達成 45 天連勝，自動解鎖 30 天免費 Pro！</div>
     </div>
-    <div class="pro-section-divider"></div>` : '';
+    <div class="pro-section-divider"></div>`;
 
   return `${trialHtml}${streakUnlockHtml}${featGrid}${anchorHtml}`;
 }

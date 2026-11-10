@@ -443,6 +443,41 @@ function _isTransientRpcFailure(status, error) {
   return TRANSIENT_JWT_ERROR_CODES.has(error?.code);
 }
 
+// PRO-014L2: grant_streak_unlock() answers one row. Anything that does not fit
+// the contract is not acted on: a misread answer could write Pro into the
+// legacy profile or spend the local "already used" flag.
+const STREAK_UNLOCK_STATUSES = new Set(['granted', 'already_granted', 'active_entitlement', 'not_eligible']);
+function _parseStreakUnlockResponse(data) {
+  const row = Array.isArray(data) ? (data.length === 1 ? data[0] : null) : data;
+  if (!row || typeof row !== 'object') return null;
+  const { status, granted, is_active: isActive, paid_active: paidActive } = row;
+  if (!STREAK_UNLOCK_STATUSES.has(status)) return null;
+  if (typeof granted !== 'boolean' || granted !== (status === 'granted')) return null;
+  if (typeof isActive !== 'boolean' || typeof paidActive !== 'boolean') return null;
+  if (paidActive && !isActive) return null;                       // paid is always active
+  if (status === 'granted' && !paidActive) return null;           // a grant is paid
+  const timestamp = value => (value === null || value === undefined ? null : _normalizeTrialTimestamp(value));
+  const expiresAt = timestamp(row.expires_at);
+  const grantedAt = timestamp(row.granted_at);
+  if (row.expires_at != null && expiresAt === null) return null;  // present but not a time
+  if (row.granted_at != null && grantedAt === null) return null;
+  if (status === 'granted' && (expiresAt === null || grantedAt === null)) return null;
+  if (status === 'already_granted' && grantedAt === null) return null;
+  return { status, granted, isActive, paidActive, expiresAt, grantedAt };
+}
+
+// The legacy profile's paid Pro may only grow: a lifetime profile, or one that
+// already runs past the server's end, stays as it is. A free profile also has
+// no end date, so "no date" only means lifetime when isPro is true.
+function _extendsLegacyPro(user, expiresAt) {
+  if (user.isPro === true && !user.proExpiresAt) return false;
+  if (user.isPro === true && expiresAt !== null) {
+    const current = Date.parse(user.proExpiresAt);
+    if (!Number.isNaN(current) && current >= Date.parse(expiresAt)) return false;
+  }
+  return true;
+}
+
 export const db = {
 
   async _session() {
@@ -861,6 +896,63 @@ export const db = {
       set('user', user);
     }
     return { ok: true, ownerChanged: false, trialStartedAt: startedAt };
+  },
+
+  /**
+   * PRO-014L2: ask the server for SUB-16 (45-day streak → 30 days of Pro).
+   *
+   * The server decides eligibility from the caller's own sessions and records
+   * the one-time grant (migration 012). The answer is written back to `user`
+   * (the caller's state.user, mutated in place so state and storage agree):
+   *   - granted / already_granted: streakUnlockUsed = true; and, when the server
+   *     says the account is paid now (`paid_active`, never the trial-inclusive
+   *     is_active), the legacy profile's Pro is extended to the server's end —
+   *     never shortened, never cancelled. Retries after a lost answer or a
+   *     failed write-back therefore heal on `already_granted`.
+   *   - active_entitlement / not_eligible: nothing is written.
+   *
+   * @returns {Promise<{ok: boolean, ownerChanged: boolean, result?: object, recovered?: boolean}>}
+   *   `recovered`: a paid already_granted that this device had not recorded.
+   */
+  async grantStreakUnlock(userId, user) {
+    const session = await this._session();
+    if (!session || session.user.id !== userId) return { ok: false, ownerChanged: true };
+
+    let result;
+    try {
+      const { data, error } = await supabase.rpc('grant_streak_unlock');
+      if (error) throw error;
+      result = _parseStreakUnlockResponse(data);
+    } catch (err) {
+      console.warn('grant_streak_unlock RPC failed:', err);
+      return { ok: false, ownerChanged: false };
+    }
+    if (!result) {
+      console.warn('grant_streak_unlock returned an unexpected answer');
+      return { ok: false, ownerChanged: false };
+    }
+    if (result.status !== 'granted' && result.status !== 'already_granted') {
+      return { ok: true, ownerChanged: false, result };
+    }
+
+    const current = await this._session();
+    if (!current || current.user.id !== userId || !user || user.id !== userId) {
+      return { ok: false, ownerChanged: true, result };
+    }
+
+    // ── LEGACY COMPATIBILITY LAYER — remove together with PRO-014H ──────────
+    // The legacy source reads Pro from the profile, so the server's paid grant
+    // is mirrored there. The values written are the server's.
+    const recovered = result.status === 'already_granted' && result.paidActive && !user.streakUnlockUsed;
+    user.streakUnlockUsed = true;
+    if (result.paidActive && _extendsLegacyPro(user, result.expiresAt)) {
+      user.isPro = true;
+      user.proExpiresAt = result.expiresAt;
+    }
+    storage.saveUser(user);
+
+    await this.refreshProEntitlement(userId);   // server source; no-op on legacy
+    return { ok: true, ownerChanged: false, result, recovered };
   },
 
   async upsertEnergy(energy, expectedOwnerId = null) {

@@ -31,6 +31,7 @@ import { refreshCanonicalStateAndReconcilePersonalSpaceV2 } from './personalSpac
 import { createAuthOperationGuard } from './platform/authOperationGuard.js';
 import { createBootSequenceGuard } from './platform/bootSequenceGuard.js';
 import { resolvePendingProRollover } from './proRollover.js';
+import { requestStreakUnlock } from './streakUnlock.js';
 import { isOnline, onConnectivityChange } from './platform/network.js';
 import { orbitWindowRuntimeDestroyer } from './personalSpace/v2/runtime/pixiSceneRuntime.js';
 
@@ -246,10 +247,11 @@ async function loadAndStart(session) {
   const operation = authOperationGuard.begin(session);
   _currentSession = session;
   let remoteLoaded = false;
+  let loaded = null;
 
   // Pull fresh data from Supabase; fall back to localStorage cache if offline
   try {
-    await _loadRemote(session.user.id);
+    loaded = await _loadRemote(session.user.id);
     if (!authOperationGuard.isCurrent(operation)) return;
     remoteLoaded = true;
     // PRO-014B: refresh the owner-scoped entitlement projection from the
@@ -308,6 +310,28 @@ async function loadAndStart(session) {
   } else {
     bootWithLocalState();
   }
+
+  // PRO-014L2: after the rollover above has updated the streak. Here because a
+  // second boot (BUG-106) skips the rollover and the cached-user sync.
+  if (remoteLoaded) {
+    const isCurrent = () => authOperationGuard.isCurrent(operation);
+    Promise.resolve(loaded?.backfilled).then(() => {
+      if (isCurrent()) _askStreakUnlock(session.user.id, isCurrent);
+    }, () => {});
+  }
+}
+
+// PRO-014L2: SUB-16 is granted by the server (streakUnlock.js). Asked only
+// after the remote load and its Session backfills, so the server sees the days
+// this device recorded offline. Not awaited: nothing waits for the answer.
+function _askStreakUnlock(ownerId, isCurrent) {
+  requestStreakUnlock(ownerId, {
+    isCurrent,
+    onChange: () => {
+      updateHeader();
+      if (!isTextInputActive()) renderPage(currentHash());
+    },
+  });
 }
 
 function handleSignOut() {
@@ -471,6 +495,7 @@ async function _syncAfterReconnect() {
       if (!isTextInputActive()) renderPage(currentHash());
       _updateBadge();
       await _reportSyncResult(loaded, () => _currentSession === session);
+      if (_currentSession === session) _askStreakUnlock(session.user.id, () => _currentSession === session);
     } catch (error) {
       if (_currentSession !== session || error?.name === 'OwnerSessionChangedError') return;
       console.warn('Reconnect sync failed; pending changes stay queued:', error);
@@ -576,6 +601,9 @@ async function init() {
           renderPage(currentHash());
           _updateBadge();
           await _reportSyncResult(loaded, () => authOperationGuard.isCurrent(operation));
+          if (authOperationGuard.isCurrent(operation)) {
+            _askStreakUnlock(session.user.id, () => authOperationGuard.isCurrent(operation));
+          }
         }).catch(error => {
           if (!authOperationGuard.isCurrent(operation)) return;
           if (error?.name === 'OwnerSessionChangedError') return;

@@ -13,6 +13,7 @@ import { calcHourDistribution, calcStreakMilestone,
 import { shareGrowthCard, supportsNativeShare }           from '../platform/share.js';
 import { goToProCard }                                    from '../ui/proNav.js';
 import { readShieldOffer }                                from '../proRollover.js';
+import { hasStoredSession }                               from '../sessionPresence.js';
 import { updateHeader }                                   from '../ui/header.js';
 import { showToast }                                      from '../ui/feedback.js';
 
@@ -183,7 +184,15 @@ export function renderProfile(container) {
           <span class="stat-pill-shield ${storage.isProUser() ? '' : 'stat-pill-shield-locked'}">🛡 ${user.streakShieldCount ?? 0} 張保護卡</span>
           <button class="stat-pill-shield-info" data-action="showShieldInfo" aria-label="保護卡說明">?</button>
         </div>
-        ${!isPro && !user.streakUnlockUsed ? `
+        ${!isPro && !user.streakUnlockUsed && !hasStoredSession() ? `
+        <div class="streak-unlock-row streak-unlock-guest">
+          <div class="streak-unlock-label">
+            <span>🔓 連勝解鎖 Pro</span>
+            <span class="streak-unlock-count">需要登入帳號</span>
+          </div>
+          <div class="streak-unlock-hint">登入帳號後，達到 45 天連勝可免費獲得 30 天 Pro</div>
+        </div>` : ''}
+        ${!isPro && !user.streakUnlockUsed && hasStoredSession() ? `
         <div class="streak-unlock-row">
           <div class="streak-unlock-label">
             <span>🔓 連勝解鎖 Pro</span>

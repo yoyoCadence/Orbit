@@ -59,6 +59,9 @@ vi.mock('../../pwa/js/supabase.js', () => ({
 
 vi.mock('../../pwa/js/state.js',   () => ({ state: mockState }));
 vi.mock('../../pwa/js/storage.js', () => ({ storage: mockStorage, db: mockDb }));
+// PRO-014L2: SUB-16 needs an account; tests default to signed in.
+const presence = vi.hoisted(() => ({ signedIn: true }));
+vi.mock('../../pwa/js/sessionPresence.js', () => ({ hasStoredSession: () => presence.signedIn }));
 
 // Dynamic import in profile.js: import('../app.js').then(({ updateHeader }) => updateHeader())
 vi.mock('../../pwa/js/ui/header.js', () => ({ updateHeader: vi.fn() }));
@@ -689,6 +692,22 @@ describe('renderProfile: streak unlock progress', () => {
     expect(c.textContent).toContain('45/45');
     const fill = c.querySelector('.streak-unlock-fill');
     expect(fill.style.width).toBe('100%');
+  });
+
+  it('guest sees that the streak unlock needs an account, not a progress bar', () => {
+    presence.signedIn = false;
+    try {
+      mockStorage.isProUser.mockReturnValue(false);
+      mockStorage.isTrialUser.mockReturnValue(false);
+      mockState.user = freshUser({ streakDays: 50, streakUnlockUsed: false });
+      const c = makeContainer();
+      renderProfile(c);
+      expect(c.querySelector('.streak-unlock-guest')).not.toBeNull();
+      expect(c.textContent).toContain('需要登入帳號');
+      expect(c.querySelector('.streak-unlock-fill')).toBeNull();
+    } finally {
+      presence.signedIn = true;
+    }
   });
 
   it('user who already received streak unlock does not see progress bar', () => {

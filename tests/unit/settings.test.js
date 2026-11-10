@@ -73,6 +73,9 @@ vi.mock('../../pwa/js/supabase.js', () => ({
 
 vi.mock('../../pwa/js/state.js',   () => ({ state: mockState }));
 vi.mock('../../pwa/js/storage.js', () => ({ storage: mockStorage, db: {} }));
+// PRO-014L2: SUB-16 needs an account; tests default to signed in.
+const presence = vi.hoisted(() => ({ signedIn: true }));
+vi.mock('../../pwa/js/sessionPresence.js', () => ({ hasStoredSession: () => presence.signedIn }));
 vi.mock('../../pwa/js/theme.js', () => ({
   applyTheme:              mockApplyTheme,
   applyUiSkin:             mockApplyUiSkin,
@@ -548,6 +551,23 @@ describe('renderSettings: streak unlock progress in Pro section', () => {
     renderSettings(c);
     expect(c.querySelector('.streak-unlock-row')).not.toBeNull();
     expect(c.textContent).toContain('20/45');
+  });
+
+  it('guest sees that the streak unlock needs an account, not a progress bar', () => {
+    presence.signedIn = false;
+    try {
+      mockStorage.isProUser.mockReturnValue(false);
+      mockStorage.isTrialUser.mockReturnValue(false);
+      mockState.user = { name: 'T', mode: 'normal', isPublic: false, streakDays: 50, streakUnlockUsed: false };
+      const c = makeContainer();
+      renderSettings(c);
+      expect(c.querySelector('.streak-unlock-guest')).not.toBeNull();
+      expect(c.textContent).toContain('需要登入帳號');
+      expect(c.querySelector('.streak-unlock-fill')).toBeNull();
+      expect(c.textContent).not.toContain('45/45');
+    } finally {
+      presence.signedIn = true;
+    }
   });
 
   it('free user with streakUnlockUsed=true does not see the bar', () => {
