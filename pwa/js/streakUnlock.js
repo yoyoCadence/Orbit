@@ -13,6 +13,8 @@
 // threshold does not call on every sync. A not_eligible answered while this
 // device still has Sessions waiting to upload is not remembered: the server
 // has not seen those days yet, and the sync that uploads them asks again.
+// (A Session that can never upload makes this ask on every boot and
+// reconnect: one small request each, accepted.)
 //
 // INFRA-105: a new module. The existing SHELL modules import only its new
 // exports; it imports only existing exports of the others.

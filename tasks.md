@@ -81,7 +81,7 @@
   - 一併移除 `PRO-014C` 建立的 legacy 相容層（client 寫回 `trial_started_at`）—— cutover 後 legacy gate 不再被使用。**移除與旗標切換應在同一次變更內**，rollback 時也一起還原。
   - 依賴：`PRO-014J`、`PRO-014L`、`PRO-014O`（已於 v1.25.5 完成：cached-user 啟動也會 refresh projection）、`PRO-014P`（**擋 cutover**；2026-11-01 完成，#221）；`PRO-014Q` 已完成（2026-10-31），實機驗證使用 [`docs/pro-test-accounts.md`](docs/pro-test-accounts.md) 的 5 個測試帳號，測試前先重跑其中的 SQL。
   - 前置 `PRO-014RA`（014 套用到 production）：**已完成**（2026-11-01）。`server` source 下終身付費不再被試用日期限制。
-  - **cutover 前（PRO-014L）**：再跑一次 012 的回填（L2 普及前舊版 client 仍以 profile 發放 SUB-16，回報的筆數是新標記的帳號）；並查 profile 顯示 SUB-16 還有效、但 server 的付費授權沒有涵蓋到同一天的帳號（查詢見 `docs/pro-014l-streak-unlock-server.md` §7），由擁有者決定。L2 的 legacy 寫回與 PRO-014C 的相容層一起移除。
+  - **cutover 前（PRO-014L）**：再跑一次 012 的回填（L2 普及前舊版 client 仍以 profile 發放 SUB-16，回報的筆數是新標記的帳號）；並查 profile 顯示 SUB-16 還有效、但 server 的付費授權沒有涵蓋到同一天的帳號（查詢見 `docs/pro-014l-streak-unlock-server.md` §7），由擁有者決定。L2 的 legacy 寫回與 PRO-014C 的相容層一起移除；`showMainApp()` 處理 `FLAG_STREAK_UNLOCK_NEW` 的舊版相容（只有 1.41.13 以前快取的 `dayCycle.js` 會設這個旗標）也一起移除。
   - **切換前要決定核准名單**（2026-10-31 發現）：PRO-014I 套用 011 時核准名單為 0 筆，沒有把 legacy 的 Pro 搬到 `pro_entitlements`。專案擁有者自己的帳號在 `profiles` 是終身 Pro（`is_pro = true`、`pro_expires_at` 為 NULL），但 `pro_entitlements` 沒有資料列；切到 `server` source 當天就會失去 Pro。切換前要由擁有者決定哪些帳號列入核准名單並寫入 `pro_entitlements`。
   - **核准名單已寫入並對帳（2026-11-02）**：
     - 決定（2026-11-01，使用者）：只有專案擁有者的主帳號，授權為終身。

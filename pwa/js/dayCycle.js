@@ -76,7 +76,8 @@ export function resetEnergyIfNewDay(morningState) {
  * effects (monthly refill, shield offer) follow the status: while it is
  * unknown — under the `server` source a cached boot often runs on a stale
  * snapshot — they are recorded and applied after the next refresh instead of
- * being lost. SUB-16 runs only for a known non-Pro user.
+ * being lost. SUB-16 is no longer part of the rollover: the server grants it
+ * (PRO-014L2, streakUnlock.js).
  */
 export function processYesterdayStreak() {
   if (!state.user) return;

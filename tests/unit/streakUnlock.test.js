@@ -217,6 +217,69 @@ describe('db.grantStreakUnlock(): write-back to the legacy profile', () => {
     expect(rpc).not.toHaveBeenCalled();
   });
 
+  /** Holds the RPC open so the test can change accounts while it is out. */
+  async function askAndHold() {
+    let reply;
+    rpc.mockReturnValueOnce(new Promise(resolve => { reply = resolve; }));
+    const pending = db.grantStreakUnlock(OWNER, () => state.user);
+    await vi.waitFor(() => expect(rpc).toHaveBeenCalledTimes(1));
+    return { pending, grant: () => reply({ data: [row({})], error: null }) };
+  }
+
+  it('switched to another account while the request was out: the grant is not written to it', async () => {
+    seedUser();
+    const other = { id: 'owner-2', streakDays: 3, streakUnlockUsed: false, isPro: false, proExpiresAt: null };
+    const { pending, grant } = await askAndHold();
+    session.ownerId = 'owner-2';
+    state.user = { ...other };
+    localStorage.setItem('yoyo_user', JSON.stringify(other));
+
+    grant();
+    await expect(pending).resolves.toMatchObject({ ok: false, ownerChanged: true });
+    expect(state.user).toEqual(other);
+    expect(JSON.parse(localStorage.getItem('yoyo_user'))).toEqual(other);
+    expect(upsert).not.toHaveBeenCalled();
+  });
+
+  it('another account signed in before the profile was swapped: the old profile is not saved over it', async () => {
+    const user = seedUser();
+    const stored = localStorage.getItem('yoyo_user');
+    const { pending, grant } = await askAndHold();
+    session.ownerId = 'owner-2';
+
+    grant();
+    await expect(pending).resolves.toMatchObject({ ok: false, ownerChanged: true });
+    expect(user).toMatchObject({ isPro: false, streakUnlockUsed: false });
+    expect(localStorage.getItem('yoyo_user')).toBe(stored);
+    expect(upsert).not.toHaveBeenCalled();
+  });
+
+  it('the profile in memory belongs to someone else (session unchanged): nothing written', async () => {
+    seedUser();
+    const other = { id: 'owner-2', streakDays: 3, streakUnlockUsed: false, isPro: false, proExpiresAt: null };
+    const { pending, grant } = await askAndHold();
+    state.user = { ...other };
+
+    grant();
+    await expect(pending).resolves.toMatchObject({ ok: false, ownerChanged: true });
+    expect(state.user).toEqual(other);
+    expect(upsert).not.toHaveBeenCalled();
+  });
+
+  it('signed out while the request was out: nothing written, no error', async () => {
+    seedUser();
+    const stored = localStorage.getItem('yoyo_user');
+    const { pending, grant } = await askAndHold();
+    session.ownerId = null;
+    state.user = null;
+
+    grant();
+    await expect(pending).resolves.toMatchObject({ ok: false, ownerChanged: true });
+    expect(state.user).toBeNull();
+    expect(localStorage.getItem('yoyo_user')).toBe(stored);
+    expect(upsert).not.toHaveBeenCalled();
+  });
+
   it('refreshes the entitlement projection after a grant (no-op on legacy)', async () => {
     const user = seedUser();
     const refresh = vi.spyOn(db, 'refreshProEntitlement');

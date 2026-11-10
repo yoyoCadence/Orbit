@@ -6,8 +6,8 @@
 // evaluated. Only the Pro effects of the rollover (the monthly shield refill
 // and the shield offer) wait for an answer: while the status is unknown they
 // are recorded here, and the first rollover or refresh that knows the status
-// applies them once. SUB-16 is skipped while unknown (dayCycle.js); PRO-014L
-// moves it out of the rollover entirely.
+// applies them once. SUB-16 is no longer part of the rollover: the server
+// grants it (PRO-014L2, streakUnlock.js).
 //
 // INFRA-105: a new module, so the existing SHELL modules import only these new
 // exports and never a new export of one another.
