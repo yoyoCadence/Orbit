@@ -5,8 +5,9 @@
  * 提案：docs/pro-014p-day-rollover-entitlement.md（方案 D，2026-11-01 核准）。
  *
  * 第一段是 `legacy` source 的特性測試：在重構前的程式碼上寫好、通過，重構後
- * 不改一字仍須通過。它鎖住 production 目前的換日結果（補卡、offer、SUB-16、
- * 連勝、`lastStreakDate`）。
+ * 不改一字仍須通過。它鎖住 production 目前的換日結果（補卡、offer、連勝、
+ * `lastStreakDate`）。SUB-16 的兩項在 PRO-014L2 依設計改寫：換日不再發放，改由
+ * server 發放（tests/unit/streakUnlock.test.js）。
  *
  * 環境：jsdom；真實的 storage／proEntitlement／dayCycle，只 mock 網路與畫面。
  */
@@ -150,17 +151,17 @@ describe('legacy source：換日結果與重構前相同', () => {
     expect(state.user.streakShieldResetMonth).toBe('2000-01');
   });
 
-  it('SUB-16：非 Pro、連勝 45 天、未用過 → 發放並消耗', () => {
+  it('SUB-16（PRO-014L2）：換日不再發放，也不消耗——改由 server 發放', () => {
     seedUser({ ...legacyFree, streakDays: 45, streakUnlockUsed: false });
-    const before = Date.now();
     processYesterdayStreak();
-    expect(state.user.isPro).toBe(true);
-    expect(Date.parse(state.user.proExpiresAt)).toBeGreaterThanOrEqual(before + 30 * DAY - 1000);
-    expect(state.user.streakUnlockUsed).toBe(true);
-    expect(sessionStorage.getItem(FLAG_STREAK_UNLOCK_NEW)).toBe('1');
+    expect(state.user.isPro).toBe(false);
+    expect(state.user.proExpiresAt).toBeNull();
+    expect(state.user.streakUnlockUsed).toBe(false);
+    expect(sessionStorage.getItem(FLAG_STREAK_UNLOCK_NEW)).toBeNull();
+    expect(rpcMock).not.toHaveBeenCalledWith('grant_streak_unlock');
   });
 
-  it('SUB-16：已是 Pro 或已用過 → 不發放', () => {
+  it('SUB-16：已是 Pro 或已用過 → 換日也不改', () => {
     seedUser({ ...legacyPro, streakDays: 45, streakUnlockUsed: false });
     processYesterdayStreak();
     expect(state.user.streakUnlockUsed).toBe(false);
@@ -331,7 +332,7 @@ describe('server source：狀態不明時的換日', () => {
     expect(readPendingProRollover()).toEqual({ ownerId: OWNER, prevStreak: 10 });
   });
 
-  it('SUB-16：狀態不明時不發放、不消耗；狀態已知為非 Pro 時照常', async () => {
+  it('SUB-16（PRO-014L2）：不論狀態是否已知，換日都不發放、不消耗', async () => {
     seedUser({ streakDays: 45, streakUnlockUsed: false });
     staleSnapshot();
     processYesterdayStreak();
@@ -342,7 +343,8 @@ describe('server source：狀態不明時的換日', () => {
     await notProRefresh();
     state.user.lastStreakDate = undefined;           // 下一次換日，狀態已知為非 Pro
     processYesterdayStreak();
-    expect(state.user.streakUnlockUsed).toBe(true);
+    expect(state.user.streakUnlockUsed).toBe(false);
+    expect(state.user.isPro).toBeUndefined();
   });
 
   it('SUB-16：snapshot 過期的付費使用者不會用掉一次性解鎖', () => {

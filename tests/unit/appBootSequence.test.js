@@ -135,6 +135,9 @@ vi.mock('../../pwa/js/authFlow.js', () => authFlow);
 // PRO-014P: the deferred Pro effects of a rollover are applied after each refresh.
 const proRollover = vi.hoisted(() => ({ resolvePendingProRollover: vi.fn(() => false) }));
 vi.mock('../../pwa/js/proRollover.js', () => proRollover);
+// PRO-014L2: SUB-16 is asked for after each remote load and its backfills.
+const streakUnlock = vi.hoisted(() => ({ requestStreakUnlock: vi.fn(() => Promise.resolve(null)) }));
+vi.mock('../../pwa/js/streakUnlock.js', () => streakUnlock);
 vi.mock('../../pwa/js/ui/header.js', () => ({ updateHeader: vi.fn() }));
 vi.mock('../../pwa/js/ui/feedback.js', () => feedback);
 vi.mock('../../pwa/js/sessionFlow.js', () => ({ setBadgeUpdater: vi.fn() }));
@@ -196,6 +199,7 @@ beforeEach(() => {
   db.startTrial.mockClear();
   db.startTrial.mockResolvedValue({ ok: true, ownerChanged: false, trialStartedAt: null });
   proRollover.resolvePendingProRollover.mockClear();
+  streakUnlock.requestStreakUnlock.mockClear();
   Object.values(authFlow).forEach(fn => fn.mockClear());
   Object.values(feedback).forEach(fn => fn.mockClear());
   storage.saveUser.mockClear();
@@ -570,6 +574,72 @@ describe('PRO-014P：refresh 之後補做', () => {
     expect(resolve()).toHaveBeenCalledTimes(1);
     expect(db.refreshProEntitlement.mock.invocationCallOrder.at(-1))
       .toBeLessThan(resolve().mock.invocationCallOrder[0]);
+  });
+});
+
+describe('PRO-014L2：遠端載入與 Session 補傳之後才向 server 詢問 SUB-16', () => {
+  const ask = () => streakUnlock.requestStreakUnlock;
+
+  /** A remote load whose Session backfills settle only when `finish()` is called. */
+  function pendingBackfills() {
+    let finish;
+    const backfilled = new Promise(resolve => { finish = resolve; });
+    db.loadFromRemote.mockImplementationOnce(() => Promise.resolve({ backfilled }));
+    return () => finish();
+  }
+
+  it('快取分支：補傳完成後才詢問，並以目前的 owner', async () => {
+    const finish = pendingBackfills();
+    await bootWithPendingSession('owner-a');
+    auth.sessionResolve(sessionFor('owner-a'));
+    await flush();
+    expect(ask()).not.toHaveBeenCalled();
+
+    finish();
+    await flush();
+    expect(ask()).toHaveBeenCalledTimes(1);
+    expect(ask().mock.calls[0][0]).toBe('owner-a');
+    expect(ask().mock.calls[0][1].isCurrent()).toBe(true);
+  });
+
+  it('SIGNED_IN 先到（BUG-106）：loadAndStart() 在換日之後、補傳完成後詢問', async () => {
+    await bootWithPendingSession('owner-a');
+    const finish = pendingBackfills();
+    await auth.callback('SIGNED_IN', sessionFor('owner-a'));
+    await flush();
+    expect(ask()).not.toHaveBeenCalled();
+
+    finish();
+    await flush();
+    expect(ask()).toHaveBeenCalledTimes(1);
+    expect(dayCycle.processYesterdayStreak.mock.invocationCallOrder[0])
+      .toBeLessThan(ask().mock.invocationCallOrder[0]);
+  });
+
+  it('遠端載入失敗（離線）時不詢問；連線恢復同步完成後才詢問', async () => {
+    network.online = false;
+    db.loadFromRemote.mockRejectedValueOnce(new Error('Failed to fetch'));
+    await bootWithPendingSession('owner-a');
+    auth.sessionResolve(sessionFor('owner-a'));
+    await flush();
+    expect(ask()).not.toHaveBeenCalled();
+
+    await network.emit(true);
+    await flush();
+    expect(ask()).toHaveBeenCalledTimes(1);
+    expect(db.refreshProEntitlement.mock.invocationCallOrder.at(-1))
+      .toBeLessThan(ask().mock.invocationCallOrder[0]);
+  });
+
+  it('補傳完成前已登出：不詢問', async () => {
+    const finish = pendingBackfills();
+    await bootWithPendingSession('owner-a');
+    auth.sessionResolve(sessionFor('owner-a'));
+    await flush();
+    await auth.callback('SIGNED_OUT', null);
+    finish();
+    await flush();
+    expect(ask()).not.toHaveBeenCalled();
   });
 });
 

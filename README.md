@@ -276,7 +276,7 @@ energyCost = round(8 × difficultyEnergy × resistanceEnergy × valueEnergyFacto
 - **排行榜**：本週 XP 與成長率雙排名
 - **PWA**：可加入主畫面、離線可用
 - **手機適配**：支援 safe-area-inset、Dynamic Island / notch
-- **Pro 訂閱系統**：月費 NT$99 / 年費 NT$699 / 終身 NT$1,999；15 天試用；Streak Shield；45 天連勝解鎖 30 天 Pro
+- **Pro 訂閱系統**：月費 NT$99 / 年費 NT$699 / 終身 NT$1,999；15 天試用；Streak Shield；45 天連勝解鎖 30 天 Pro（伺服器發放，需要帳號；PRO-014L）
 
 ---
 

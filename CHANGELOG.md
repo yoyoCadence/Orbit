@@ -3,6 +3,13 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.41.13] - 2026-11-10
+
+### Changed
+- **45 天連勝解鎖 Pro 改由伺服器發放（PRO-014L2）**：達成 45 天連勝後，app 在與雲端同步（包含離線時記錄的打卡上傳）之後向伺服器領取 30 天 Pro，由伺服器依你的打卡紀錄確認並記錄，每個帳號一次。換日時不再由 app 自己寫入 Pro。遊客沒有帳號、無法領取，設定頁與個人頁的「連勝解鎖 Pro」改為顯示「需要登入帳號」。
+
+---
+
 ## [1.41.12] - 2026-11-04
 
 ### Security
