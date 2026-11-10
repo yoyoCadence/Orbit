@@ -20,10 +20,6 @@
   - 待擁有者回答：從主畫面圖示開（standalone）還是 Safari；iOS 版本；以前就這樣還是最近才出現；其他頁是否一樣、捲動時是否改變。
   - 依回答再決定：例如 header 依實際的 safe area 下移、或調整 `apple-mobile-web-app-status-bar-style`／`theme-color`。
 
-- [ ] **PRO-014L2** client 改走 `grant_streak_unlock()`（新模組，INFRA-105）
-  - 依提案 §5.3：只在本機連勝 ≥ 45、遠端載入與 Sessions 上傳之後詢問（`loadAndStart()`、cached-user 背景同步、連線恢復同步）；依 `paid_active` 寫回 legacy profile，只延長、不縮短、不取消；刪除換日裡的 SUB-16；訪客的進度條改為「需要登入帳號」；測試與 bump。
-  - 依賴：`PRO-014LA`（**012 必須先在 production**，否則 legacy 下 SUB-16 失效）。
-
 - [ ] **REPO-001** Repo 清理（AUDIT-001 發現，需擁有者決定）
   - `output/`：30 個 tracked 檔、約 58 MB 的舊 proof 圖，app 與測試都沒有使用（只在 `skills/orbit-idle-window-assets` 的說明中當輸出目錄、eslint 忽略）。可刪除（歷史仍保留在 git）。
   - 遠端約 160 個已合併或過時的分支、過時的 draft PR #154：可清理。
@@ -215,11 +211,10 @@
 
 > 2026-11-02 核准（#226 的工作階段記錄；使用者回覆「可以照你建議」）：PRO-014L 提案（#224）§10 全部照建議。拆成 PRO-014L1（repo，In Progress）→ PRO-014LA（擁有者套用，Backlog）→ PRO-014L2（client，Backlog，依賴 LA）。L1 合併後關閉草稿 #154。
 
-- [ ] **PRO-014LA** 在 production 套用 012（專案擁有者執行）
-  - 依提案 §5.2：套用前確認（函式與欄位不存在、trigger 與 011 相同並存下、回填的預期筆數）→ `begin;`＋012＋測試＋`rollback;` 乾跑 → 正式套用（`begin;` 後先 `LOCK TABLE public.pro_entitlements IN EXCLUSIVE MODE;` 再計數）→ 檢查權限、`SECURITY DEFINER`、`search_path`、owner、回填筆數、`pro_entitlements` 中 `is_pro` 為 true 與有試用起點的筆數在套用前後不變（在套用的同一個 transaction 內比對，不同就中止）、擁有者帳號的 `my_pro_status()` 仍為 `true／NULL／NULL`（DO block）→ 再跑一次 ASSERT 測試 → 以只改文件的 PR 記錄。
-  - agent 不具 production 權限；每一步提供完整 SQL，擁有者執行並截圖。
-  - 依賴：`PRO-014L1`。擋：`PRO-014L2`。
-  - 2026-11-04：L1（#233）合併後即可執行，移入 Next。
+- [ ] **PRO-014L2** client 改走 `grant_streak_unlock()`（新模組，INFRA-105）
+  - 依提案 §5.3：只在本機連勝 ≥ 45、遠端載入與 Sessions 上傳之後詢問（`loadAndStart()`、cached-user 背景同步、連線恢復同步）；依 `paid_active` 寫回 legacy profile，只延長、不縮短、不取消；刪除換日裡的 SUB-16；訪客的進度條改為「需要登入帳號」；測試與 bump。
+  - 依賴：`PRO-014LA`（**012 必須先在 production**，否則 legacy 下 SUB-16 失效）。
+  - 2026-11-10：PRO-014LA 完成（012 已在 production），可以開始，移入 Next。
 
 ---
 
@@ -234,7 +229,7 @@
   - **前置：屬 RPC／schema 變更，依 AGENTS.md §3 需先取得核准**。（原本「與 `PRO-014I` 的 production 套用一併規劃」已過時：011 已套用；改依提案 §5 的 L1／LA／L2。）
   - 依賴：`PRO-014C`
   - In progress（2026-11-02）：使用者同意先寫提案（只寫文件，不改程式碼、不動資料庫）。草稿 PR #154（2026-09-01，另一個工作階段）以 v1.25.2 為基礎，提案對照目前的 main 檢視它的設計。從 Backlog 移入 Next，再移入 In Progress。
-  - 提案（2026-11-02，#224）：[`docs/pro-014l-streak-unlock-server.md`](docs/pro-014l-streak-unlock-server.md)。**使用者核准 §10**（#226 的工作階段記錄 2026-11-02 的回覆「可以照你建議」；2026-11-04 在本工作階段再次確認「PRO-014L 可以照建議」）：拆成 L1／LA／L2；資格維持「任何一段 45 天」、client 只在連勝 ≥ 45 時詢問；回填已用過的帳號；訪客不再有 SUB-16、進度條改為「需要登入帳號」；L1 合併後關閉 #154。拆成 PRO-014L1（Done，#226 實作、#233 合併）、PRO-014LA（Next）、PRO-014L2（Backlog）。
+  - 提案（2026-11-02，#224）：[`docs/pro-014l-streak-unlock-server.md`](docs/pro-014l-streak-unlock-server.md)。**使用者核准 §10**（#226 的工作階段記錄 2026-11-02 的回覆「可以照你建議」；2026-11-04 在本工作階段再次確認「PRO-014L 可以照建議」）：拆成 L1／LA／L2；資格維持「任何一段 45 天」、client 只在連勝 ≥ 45 時詢問；回填已用過的帳號；訪客不再有 SUB-16、進度條改為「需要登入帳號」；L1 合併後關閉 #154。拆成 PRO-014L1（Done，#226 實作、#233 合併）、PRO-014LA（Done，2026-11-10，#234）、PRO-014L2（Next）。
     - 實測：#154 的 012 在本機（production 已有的相關 migration，含 013、014）可以套用。另外確認：資格是「歷史上任何一段 45 天」；不符合也會建立資料列；與 014 配合正確。獨立 review 另發現 #154 在「已領過」時把 `is_active`（含試用）寫回 legacy 的 `is_pro`，會授予終身或取消 Pro。
     - **2026-11-04 使用者核准 §10（全部照建議）**，見 Next 的 2026-11-04 核准。
     - 建議：保留 #154 的 SQL 主體（含 `date <= current_date`），只加回填已用過的帳號；拆成 L1（migration 012＋ASSERT 測試）→ LA（擁有者套用）→ L2（client 改走 RPC，新模組，INFRA-105）；只在本機連勝 ≥ 45 時、遠端載入之後詢問（同 PRO-014P 的三個補做位置）；RPC 多回傳只代表付費的 `paid_active`，`granted`／`already_granted` 依它寫回（只延長、不縮短、不取消，回應遺失後重試可補上）；訪客不再有 SUB-16；L1 合併後關閉 #154。
@@ -245,6 +240,22 @@
 ---
 
 ## Done
+
+- [x] **PRO-014LA** 在 production 套用 012（專案擁有者執行）
+  - 依提案 §5.2：套用前確認（函式與欄位不存在、trigger 與 011 相同並存下、回填的預期筆數）→ `begin;`＋012＋測試＋`rollback;` 乾跑 → 正式套用（`begin;` 後先 `LOCK TABLE public.pro_entitlements IN EXCLUSIVE MODE;` 再計數）→ 檢查權限、`SECURITY DEFINER`、`search_path`、owner、回填筆數、`pro_entitlements` 中 `is_pro` 為 true 與有試用起點的筆數在套用前後不變（在套用的同一個 transaction 內比對，不同就中止）、擁有者帳號的 `my_pro_status()` 仍為 `true／NULL／NULL`（DO block）→ 再跑一次 ASSERT 測試 → 以只改文件的 PR 記錄。
+  - agent 不具 production 權限；每一步提供完整 SQL，擁有者執行並截圖。
+  - 依賴：`PRO-014L1`。擋：`PRO-014L2`。
+  - 2026-11-04：L1（#233）合併後即可執行，移入 Next。
+  - 完成（2026-11-10，擁有者在 Supabase SQL Editor 執行；agent 提供每一步的 SQL，並先在本機 PostgreSQL 16 完整演練）：
+    - 步驟 0（套用前確認）：`grant_streak_unlock()` 不存在、`streak_unlock_granted_at` 不存在；`profiles.streak_unlock_used = true` 0 筆（回填預期 0）；`pro_entitlements` 中 `is_pro` 4 筆、有試用起點 5 筆。
+      - `set_pro_entitlement_updated_at()` 的 `md5(prosrc)` 是 `bb45d52b0e23f6e3d6ddce483699877c`，不是 repo 011 的 `e25d391b8488c3ca1022a27f28bfadaa`：正好是 011 那段本文改成 CRLF 換行的 md5（推測是當初貼上時帶入 CRLF），內容一字不差。012 以 `CREATE OR REPLACE` 換掉它；之後若以 `pro014l.rollback.sql` 回滾，還原後的換行取決於貼上的來源（repo 檔是 LF），行為相同；比對 md5 前先把 `\r\n` 換成 `\n`。
+    - 步驟 1（`begin;`＋012＋`pro014l.test.sql`，測試結尾的 rollback 一併還原）：Success。SQL Editor 因測試的暫存表跳出「建表沒有開 RLS」的確認，選 Run without RLS（暫存表只存在該連線、rollback 時消失；012 本身不建表）。
+    - 步驟 2（`begin;` → `lock table public.pro_entitlements in exclusive mode` → 存下 `is_pro`／試用筆數與回填預期 → 012 → DO block 比對 → `commit;`）：Success。
+    - 步驟 3（套用後）：anon 不可執行、authenticated 可執行；`SECURITY DEFINER`；`search_path=""`；owner `postgres`；authenticated 不能 UPDATE `streak_unlock_granted_at`；已標記 0 筆（與回填預期相同）。
+    - 步驟 4（rollback）：每個 `is_pro` 且沒有到期日的帳號（擁有者主帳號依 PRO-014H 為終身，因此在內）以本人身分呼叫 `my_pro_status()` 仍為 `true／NULL／NULL`：Success。
+    - 步驟 5（`pro014l.test.sql` 原樣，結尾 rollback）：Success。
+    - `012` 開頭的「執行日期」已改為 2026-11-10。PRO-014L2 移入 Next。
+    - agent 另以 Supabase connector（2026-11-10 起可用）唯讀查詢 production 覆核：步驟 3 的七項全部相同；套用後 `set_pro_entitlement_updated_at()` 的 `md5(prosrc)` 是 `ea7112f4e63d6d8b85620457c785baf8`，即 012 那段本文的 CRLF 版本（內容與 012 相同）。
 
 - [x] **PRO-014L1** migration 012（`grant_streak_unlock()`、一次性標記、`paid_active`、回填）與 ASSERT 測試，不改 client
   - 依提案 §5.1。沿用 #154 的資格、鎖、一次性、30 天、試用中不消耗；加 `paid_active` 與回填。
