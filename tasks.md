@@ -255,6 +255,7 @@
     - 步驟 4（rollback）：每個 `is_pro` 且沒有到期日的帳號（含擁有者主帳號）以本人身分呼叫 `my_pro_status()` 仍為 `true／NULL／NULL`：Success。
     - 步驟 5（`pro014l.test.sql` 原樣，結尾 rollback）：Success。
     - `012` 開頭的「執行日期」已改為 2026-11-10。PRO-014L2 移入 Next。
+    - agent 另以 Supabase connector（2026-11-10 起可用）唯讀查詢 production 覆核：步驟 3 的七項全部相同；套用後 `set_pro_entitlement_updated_at()` 的 `md5(prosrc)` 是 `ea7112f4e63d6d8b85620457c785baf8`，即 012 那段本文的 CRLF 版本（內容與 012 相同）。
 
 
 - [x] **PRO-014L1** migration 012（`grant_streak_unlock()`、一次性標記、`paid_active`、回填）與 ASSERT 測試，不改 client
