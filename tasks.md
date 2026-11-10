@@ -211,14 +211,15 @@
 
 > 2026-11-02 核准（#226 的工作階段記錄；使用者回覆「可以照你建議」）：PRO-014L 提案（#224）§10 全部照建議。拆成 PRO-014L1（repo，In Progress）→ PRO-014LA（擁有者套用，Backlog）→ PRO-014L2（client，Backlog，依賴 LA）。L1 合併後關閉草稿 #154。
 
+---
+
+## In Progress
+
 - [ ] **PRO-014L2** client 改走 `grant_streak_unlock()`（新模組，INFRA-105）
   - 依提案 §5.3：只在本機連勝 ≥ 45、遠端載入與 Sessions 上傳之後詢問（`loadAndStart()`、cached-user 背景同步、連線恢復同步）；依 `paid_active` 寫回 legacy profile，只延長、不縮短、不取消；刪除換日裡的 SUB-16；訪客的進度條改為「需要登入帳號」；測試與 bump。
   - 依賴：`PRO-014LA`（**012 必須先在 production**，否則 legacy 下 SUB-16 失效）。
   - 2026-11-10：PRO-014LA 完成（012 已在 production），可以開始，移入 Next。
-
----
-
-## In Progress
+  - In progress（2026-11-10）：#234 合併後開始（Next → In Progress）。依提案 §5.3（使用者核准 §10，全部照建議）。
 
 - [ ] **PRO-014L** SUB-16 連勝解鎖改由 server 授權
   - 目標：45 天連勝換 30 天 Pro 的授權由 server 發放，而不是 client 自行寫入
