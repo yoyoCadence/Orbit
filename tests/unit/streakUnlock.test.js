@@ -98,7 +98,7 @@ describe('db.grantStreakUnlock(): write-back to the legacy profile', () => {
   it('granted on a free profile: paid Pro until the server’s end, unlock recorded, profile pushed', async () => {
     const user = seedUser();
     answer({});
-    const out = await db.grantStreakUnlock(OWNER, user);
+    const out = await db.grantStreakUnlock(OWNER, () => user);
     expect(rpc).toHaveBeenCalledWith('grant_streak_unlock');
     expect(out).toMatchObject({ ok: true, ownerChanged: false, recovered: false });
     expect(user).toMatchObject({ isPro: true, proExpiresAt: SERVER_END, streakUnlockUsed: true });
@@ -110,7 +110,7 @@ describe('db.grantStreakUnlock(): write-back to the legacy profile', () => {
   it('a free profile (isPro false, no date) is not mistaken for lifetime', async () => {
     const user = seedUser({ isPro: false, proExpiresAt: null });
     answer({});
-    await db.grantStreakUnlock(OWNER, user);
+    await db.grantStreakUnlock(OWNER, () => user);
     expect(user.isPro).toBe(true);
     expect(user.proExpiresAt).toBe(SERVER_END);
   });
@@ -118,7 +118,7 @@ describe('db.grantStreakUnlock(): write-back to the legacy profile', () => {
   it('answer lost, retried: already_granted + paid_active writes the Pro back and reports recovered', async () => {
     const user = seedUser();
     answer({ status: 'already_granted', granted: false });
-    const out = await db.grantStreakUnlock(OWNER, user);
+    const out = await db.grantStreakUnlock(OWNER, () => user);
     expect(out.recovered).toBe(true);
     expect(user).toMatchObject({ isPro: true, proExpiresAt: SERVER_END, streakUnlockUsed: true });
   });
@@ -126,7 +126,7 @@ describe('db.grantStreakUnlock(): write-back to the legacy profile', () => {
   it('a backfilled account in its trial (paid_active false) does not become lifetime', async () => {
     const user = seedUser({ trialStartedAt: '2026-11-05T00:00:00.000Z' });
     answer({ status: 'already_granted', granted: false, is_active: true, paid_active: false, expires_at: null });
-    const out = await db.grantStreakUnlock(OWNER, user);
+    const out = await db.grantStreakUnlock(OWNER, () => user);
     expect(out.recovered).toBe(false);
     expect(user).toMatchObject({ isPro: false, proExpiresAt: null, streakUnlockUsed: true });
   });
@@ -134,33 +134,33 @@ describe('db.grantStreakUnlock(): write-back to the legacy profile', () => {
   it('paid expired on the server does not cancel Pro still valid in the profile', async () => {
     const user = seedUser({ isPro: true, proExpiresAt: '2026-11-20T00:00:00.000Z' });
     answer({ status: 'already_granted', granted: false, is_active: false, paid_active: false, expires_at: '2026-11-01T00:00:00.000Z' });
-    await db.grantStreakUnlock(OWNER, user);
+    await db.grantStreakUnlock(OWNER, () => user);
     expect(user).toMatchObject({ isPro: true, proExpiresAt: '2026-11-20T00:00:00.000Z', streakUnlockUsed: true });
   });
 
   it('a lifetime profile is never shortened', async () => {
     const user = seedUser({ isPro: true, proExpiresAt: null });
     answer({ status: 'already_granted', granted: false });
-    await db.grantStreakUnlock(OWNER, user);
+    await db.grantStreakUnlock(OWNER, () => user);
     expect(user).toMatchObject({ isPro: true, proExpiresAt: null });
   });
 
   it('a profile that already runs later is not shortened; an earlier one is extended', async () => {
     const later = seedUser({ isPro: true, proExpiresAt: '2027-01-01T00:00:00.000Z' });
     answer({ status: 'already_granted', granted: false });
-    await db.grantStreakUnlock(OWNER, later);
+    await db.grantStreakUnlock(OWNER, () => later);
     expect(later.proExpiresAt).toBe('2027-01-01T00:00:00.000Z');
 
     const earlier = seedUser({ isPro: true, proExpiresAt: '2026-11-15T00:00:00.000Z' });
     answer({ status: 'already_granted', granted: false });
-    await db.grantStreakUnlock(OWNER, earlier);
+    await db.grantStreakUnlock(OWNER, () => earlier);
     expect(earlier.proExpiresAt).toBe(SERVER_END);
   });
 
   it('a lifetime server account (expires_at null, paid) mirrors lifetime', async () => {
     const user = seedUser({ isPro: true, proExpiresAt: '2026-11-15T00:00:00.000Z' });
     answer({ status: 'already_granted', granted: false, expires_at: null });
-    await db.grantStreakUnlock(OWNER, user);
+    await db.grantStreakUnlock(OWNER, () => user);
     expect(user).toMatchObject({ isPro: true, proExpiresAt: null });
   });
 
@@ -170,7 +170,7 @@ describe('db.grantStreakUnlock(): write-back to the legacy profile', () => {
   ])('%s writes nothing', async (_, fields) => {
     const user = seedUser();
     answer(fields);
-    const out = await db.grantStreakUnlock(OWNER, user);
+    const out = await db.grantStreakUnlock(OWNER, () => user);
     expect(out.ok).toBe(true);
     expect(out.result.status).toBe(fields.status);
     expect(user).toMatchObject({ isPro: false, proExpiresAt: null, streakUnlockUsed: false });
@@ -190,7 +190,7 @@ describe('db.grantStreakUnlock(): write-back to the legacy profile', () => {
   ])('rejects %s and writes nothing', async (_, fields) => {
     const user = seedUser();
     answer(fields);
-    const out = await db.grantStreakUnlock(OWNER, user);
+    const out = await db.grantStreakUnlock(OWNER, () => user);
     expect(out).toEqual({ ok: false, ownerChanged: false });
     expect(user).toMatchObject({ isPro: false, streakUnlockUsed: false });
   });
@@ -198,22 +198,22 @@ describe('db.grantStreakUnlock(): write-back to the legacy profile', () => {
   it('rejects more than one row', async () => {
     const user = seedUser();
     rpc.mockResolvedValueOnce({ data: [row({}), row({})], error: null });
-    expect(await db.grantStreakUnlock(OWNER, user)).toEqual({ ok: false, ownerChanged: false });
+    expect(await db.grantStreakUnlock(OWNER, () => user)).toEqual({ ok: false, ownerChanged: false });
   });
 
   it('an RPC error or a network failure writes nothing', async () => {
     const user = seedUser();
     rpc.mockResolvedValueOnce({ data: null, error: { message: 'boom' }, status: 0 });
-    expect(await db.grantStreakUnlock(OWNER, user)).toEqual({ ok: false, ownerChanged: false });
+    expect(await db.grantStreakUnlock(OWNER, () => user)).toEqual({ ok: false, ownerChanged: false });
     rpc.mockRejectedValueOnce(new TypeError('Failed to fetch'));
-    expect(await db.grantStreakUnlock(OWNER, user)).toEqual({ ok: false, ownerChanged: false });
+    expect(await db.grantStreakUnlock(OWNER, () => user)).toEqual({ ok: false, ownerChanged: false });
     expect(user.streakUnlockUsed).toBe(false);
   });
 
   it('another account signed in: no request, nothing written', async () => {
     const user = seedUser();
     session.ownerId = 'someone-else';
-    expect(await db.grantStreakUnlock(OWNER, user)).toEqual({ ok: false, ownerChanged: true });
+    expect(await db.grantStreakUnlock(OWNER, () => user)).toEqual({ ok: false, ownerChanged: true });
     expect(rpc).not.toHaveBeenCalled();
   });
 
@@ -221,7 +221,7 @@ describe('db.grantStreakUnlock(): write-back to the legacy profile', () => {
     const user = seedUser();
     const refresh = vi.spyOn(db, 'refreshProEntitlement');
     answer({});
-    await db.grantStreakUnlock(OWNER, user);
+    await db.grantStreakUnlock(OWNER, () => user);
     expect(refresh).toHaveBeenCalledWith(OWNER);
     refresh.mockRestore();
   });
@@ -296,6 +296,53 @@ describe('requestStreakUnlock(): when to ask', () => {
     await expect(requestStreakUnlock(OWNER)).resolves.toBeNull();
     expect(localStorage.getItem(STREAK_UNLOCK_ASKED_KEY)).toBeNull();
     expect(shouldAskStreakUnlock(OWNER)).toBe(true);
+  });
+
+  it('not_eligible while Sessions wait to upload is not remembered: the sync that uploads them asks again', async () => {
+    seedUser();
+    const pendingKey = `yoyo_sessionSyncPending:${OWNER}`;
+    localStorage.setItem(pendingKey, JSON.stringify({ ownerId: OWNER, value: [{ id: 'offline-day' }] }));
+    const notEligible = { status: 'not_eligible', granted: false, is_active: false, paid_active: false, expires_at: null, granted_at: null };
+
+    answer(notEligible);
+    await expect(requestStreakUnlock(OWNER)).resolves.toBe('not_eligible');
+    expect(localStorage.getItem(STREAK_UNLOCK_ASKED_KEY)).toBeNull();
+    expect(shouldAskStreakUnlock(OWNER)).toBe(true);
+
+    // Uploaded (queue empty): now the server has seen every day, so a refusal holds for the day.
+    localStorage.removeItem(pendingKey);
+    answer(notEligible);
+    await expect(requestStreakUnlock(OWNER)).resolves.toBe('not_eligible');
+    expect(shouldAskStreakUnlock(OWNER)).toBe(false);
+    expect(rpc).toHaveBeenCalledTimes(2);
+  });
+
+  it('active_entitlement does not depend on Sessions: remembered even with uploads pending', async () => {
+    seedUser();
+    localStorage.setItem(`yoyo_sessionSyncPending:${OWNER}`, JSON.stringify({ ownerId: OWNER, value: [{ id: 'offline-day' }] }));
+    answer({ status: 'active_entitlement', granted: false, is_active: true, paid_active: false, expires_at: null, granted_at: null });
+    await expect(requestStreakUnlock(OWNER)).resolves.toBe('active_entitlement');
+    expect(shouldAskStreakUnlock(OWNER)).toBe(false);
+  });
+
+  it('a sync that replaced the profile during the request keeps its changes and gets the grant', async () => {
+    const before = seedUser({ xp: 100 });
+    let reply;
+    rpc.mockReturnValueOnce(new Promise(resolve => { reply = resolve; }));
+    const ask = requestStreakUnlock(OWNER, { delayMs: 0 });
+    await vi.waitFor(() => expect(rpc).toHaveBeenCalledTimes(1));
+
+    // loadStateFromStorage() after a reconnect sync: a new object with newer fields.
+    const synced = { ...before, xp: 250, name: 'renamed' };
+    localStorage.setItem('yoyo_user', JSON.stringify(synced));
+    state.user = synced;
+
+    reply({ data: [row({})], error: null });
+    await expect(ask).resolves.toBe('granted');
+    expect(state.user).toBe(synced);
+    expect(state.user).toMatchObject({ xp: 250, name: 'renamed', isPro: true, proExpiresAt: SERVER_END, streakUnlockUsed: true });
+    expect(JSON.parse(localStorage.getItem('yoyo_user'))).toMatchObject({ xp: 250, name: 'renamed', isPro: true, streakUnlockUsed: true });
+    expect(before).toMatchObject({ xp: 100, isPro: false, streakUnlockUsed: false });   // the old object is left alone
   });
 
   it('concurrent asks for one owner share one request', async () => {

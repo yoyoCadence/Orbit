@@ -902,8 +902,11 @@ export const db = {
    * PRO-014L2: ask the server for SUB-16 (45-day streak → 30 days of Pro).
    *
    * The server decides eligibility from the caller's own sessions and records
-   * the one-time grant (migration 012). The answer is written back to `user`
-   * (the caller's state.user, mutated in place so state and storage agree):
+   * the one-time grant (migration 012). The answer is written back to the
+   * profile `getUser()` returns once the answer is in (the caller's current
+   * state.user, mutated in place so state and storage agree). It is read after
+   * the request, not before: a sync that finished meanwhile may have replaced
+   * the profile, and saving the object held from before would revert it:
    *   - granted / already_granted: streakUnlockUsed = true; and, when the server
    *     says the account is paid now (`paid_active`, never the trial-inclusive
    *     is_active), the legacy profile's Pro is extended to the server's end —
@@ -911,10 +914,12 @@ export const db = {
    *     failed write-back therefore heal on `already_granted`.
    *   - active_entitlement / not_eligible: nothing is written.
    *
+   * @param {string} userId
+   * @param {() => object|null} getUser  the current profile (state.user)
    * @returns {Promise<{ok: boolean, ownerChanged: boolean, result?: object, recovered?: boolean}>}
    *   `recovered`: a paid already_granted that this device had not recorded.
    */
-  async grantStreakUnlock(userId, user) {
+  async grantStreakUnlock(userId, getUser) {
     const session = await this._session();
     if (!session || session.user.id !== userId) return { ok: false, ownerChanged: true };
 
@@ -936,6 +941,7 @@ export const db = {
     }
 
     const current = await this._session();
+    const user = typeof getUser === 'function' ? getUser() : null;
     if (!current || current.user.id !== userId || !user || user.id !== userId) {
       return { ok: false, ownerChanged: true, result };
     }

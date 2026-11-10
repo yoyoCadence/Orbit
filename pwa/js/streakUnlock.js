@@ -10,13 +10,15 @@
 // streak is at least 45 days, the unlock is not recorded here, and the account
 // is not known to be Pro. A refusal (not_eligible, active_entitlement) is
 // remembered for the owner's current day, so a device that keeps reaching the
-// threshold does not call on every sync.
+// threshold does not call on every sync. A not_eligible answered while this
+// device still has Sessions waiting to upload is not remembered: the server
+// has not seen those days yet, and the sync that uploads them asks again.
 //
 // INFRA-105: a new module. The existing SHELL modules import only its new
 // exports; it imports only existing exports of the others.
 
 import { state } from './state.js';
-import { db } from './storage.js';
+import { db, getPendingSyncSummary } from './storage.js';
 import { eToday, showStreakUnlockModal } from './dayCycle.js';
 import { getProRolloverStatus } from './proRollover.js';
 
@@ -37,6 +39,15 @@ function readAsked() {
 
 function writeAsked(ownerId, day) {
   try { localStorage.setItem(STREAK_UNLOCK_ASKED_KEY, JSON.stringify({ ownerId, day })); } catch { /* best effort */ }
+}
+
+/** Sessions recorded here that the server has not received yet. */
+function hasPendingSessions(ownerId) {
+  try {
+    return getPendingSyncSummary(ownerId).sessions > 0;
+  } catch {
+    return true;   // unknown: do not remember the refusal
+  }
 }
 
 /** Whether this device should ask the server now (no network involved). */
@@ -67,11 +78,11 @@ export function requestStreakUnlock(ownerId, { isCurrent = () => true, onChange 
 
   const ask = (async () => {
     const day = eToday();
-    const answer = await db.grantStreakUnlock(ownerId, state.user);
+    const answer = await db.grantStreakUnlock(ownerId, () => state.user);
     if (!answer.ok || !answer.result || !isCurrent() || state.user?.id !== ownerId) return null;
     const { status } = answer.result;
     if (status === 'not_eligible' || status === 'active_entitlement') {
-      writeAsked(ownerId, day);
+      if (status === 'active_entitlement' || !hasPendingSessions(ownerId)) writeAsked(ownerId, day);
       return status;
     }
     onChange();
