@@ -22,7 +22,9 @@
 -- 回滾：tests/database/pro014l.rollback.sql。
 -- 本檔**不含 BEGIN／COMMIT**：乾跑時要包在外層的 begin; … rollback; 內（檔內若有 COMMIT 會讓乾跑
 -- 真的生效）。SQL Editor 一次送出整份時是單一 transaction；以 psql 套用時用 -1（--single-transaction）。
--- 執行日期：尚未套用到 production（PRO-014LA）
+-- 執行日期：2026-11-10（專案擁有者於 production 套用，PRO-014LA：套用前確認、乾跑、在鎖住
+--   pro_entitlements 的 transaction 內套用並比對筆數、權限檢查、終身帳號的 my_pro_status()、
+--   再跑一次測試都通過；回填 0 筆）
 -- ============================================================
 
 -- ── 1. 一次性標記 ─────────────────────────────────────────────
