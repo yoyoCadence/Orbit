@@ -211,6 +211,14 @@
 
 > 2026-11-02 核准（#226 的工作階段記錄；使用者回覆「可以照你建議」）：PRO-014L 提案（#224）§10 全部照建議。拆成 PRO-014L1（repo，In Progress）→ PRO-014LA（擁有者套用，Backlog）→ PRO-014L2（client，Backlog，依賴 LA）。L1 合併後關閉草稿 #154。
 
+> 2026-11-10 排程：PRO-014L 完成（#235）。Next 與 In Progress 只剩 PS-243 的 human-device gate；Backlog 其餘項目都要先有擁有者的回答或核准，agent 不自行排入：
+> - `BUG-117`：等擁有者回答四個問題（standalone 或 Safari、iOS 版本、何時開始、其他頁與捲動）。
+> - `PRO-014H`：cutover 需另行核准；之前要在 L2 普及後再跑一次 012 的回填，並依提案 §7 查 profile 與 server 授權不一致的帳號（只讀查詢可先做，寫入要核准）。
+> - `HW-112`、`PRO-014E`、`PRO-014S`、`PRO-014G`：schema／RPC 變更，需先提案並核准。
+> - `INFRA-101`：需要擁有者的 Resend 帳號與 Supabase 設定。
+> - `PS-211D`、`PS-227`：使用者決定暫緩。`REPO-001`：使用者自行處理。
+> - `PRO-017`、`AI-015`：還沒有提案；要不要先寫提案（只寫文件）由擁有者決定。
+
 ---
 
 ## In Progress
@@ -228,12 +236,13 @@
   - 2026-11-10：PRO-014LA 完成（012 已在 production），可以開始，移入 Next。
   - In progress（2026-11-10）：#234 合併後開始（Next → In Progress）。依提案 §5.3（使用者核准 §10，全部照建議）。
   - 完成（2026-11-10，v1.41.13，#235）：
-    - `db.grantStreakUnlock(userId, user)`（`storage.js`，既有物件的新方法）：呼叫 `grant_streak_unlock()`，嚴格驗證回傳（只接受一列；status 在四種之內；`granted` 與 status 一致；`paid_active` 為 true 時 `is_active` 必為 true；`granted` 必為付費且有期限與時間；`already_granted` 必有標記時間；時間欄位必須能解析），不符合就不採用。`granted`／`already_granted` 時寫 `streakUnlockUsed = true`；`paid_active` 為 true 時把 legacy profile 的 Pro 延長到 server 的期限（profile 已是終身、或已是 Pro 且期限更晚時不寫；免費 profile 的 `proExpiresAt` 也是 null，只有 `isPro === true` 時沒有期限才算終身；server 是終身時寫終身），永遠不寫 `isPro = false`、永遠不看 `is_active`。直接修改傳入的 `state.user` 再 `storage.saveUser()`，記憶體與儲存一致。之後 `refreshProEntitlement()`（legacy 下 no-op）。回報 `recovered`：付費的 `already_granted` 而本機原本不知道。
-    - 新模組 `pwa/js/streakUnlock.js`（INFRA-105，加入 SHELL）：只在已登入、本機連勝 ≥ 45、`streakUnlockUsed` 為 false、Pro 狀態不是 `pro`（`unknown` 也問）時詢問；`not_eligible`／`active_entitlement` 依 owner 記住當天（`orbit_streak_unlock_asked`），隔天才再問；失敗不記住；同一 owner 的並行詢問共用一個請求；`granted` 或 `recovered` 時更新畫面並顯示原本的慶祝視窗；`db.grantStreakUnlock` 不存在（新舊版本混用）時不做事。
+    - `db.grantStreakUnlock(userId, getUser)`（`storage.js`，既有物件的新方法）：呼叫 `grant_streak_unlock()`，嚴格驗證回傳（只接受一列；status 在四種之內；`granted` 與 status 一致；`paid_active` 為 true 時 `is_active` 必為 true；`granted` 必為付費且有期限與時間；`already_granted` 必有標記時間；時間欄位必須能解析），不符合就不採用。`granted`／`already_granted` 時寫 `streakUnlockUsed = true`；`paid_active` 為 true 時把 legacy profile 的 Pro 延長到 server 的期限（profile 已是終身、或已是 Pro 且期限更晚時不寫；免費 profile 的 `proExpiresAt` 也是 null，只有 `isPro === true` 時沒有期限才算終身；server 是終身時寫終身），永遠不寫 `isPro = false`、永遠不看 `is_active`。回應回來之後才以 `getUser()` 取目前的 `state.user`、直接修改再 `storage.saveUser()`，記憶體與儲存一致（請求期間同步換掉了 profile 時，寫到新的 profile、保留同步的變更；改了帳號或登出時不寫）。之後 `refreshProEntitlement()`（legacy 下 no-op）。回報 `recovered`：付費的 `already_granted` 而本機原本不知道。
+    - 新模組 `pwa/js/streakUnlock.js`（INFRA-105，加入 SHELL）：只在已登入、本機連勝 ≥ 45、`streakUnlockUsed` 為 false、Pro 狀態不是 `pro`（`unknown` 也問）時詢問；`not_eligible`／`active_entitlement` 依 owner 記住當天（`orbit_streak_unlock_asked`），隔天才再問；但還有 Session 等著上傳時不記住 `not_eligible`（server 還沒看到那幾天，上傳的那次同步會再問；`active_entitlement` 與 Session 無關，照樣記住）；失敗不記住；同一 owner 的並行詢問共用一個請求；`granted` 或 `recovered` 時更新畫面並顯示原本的慶祝視窗；`db.grantStreakUnlock` 不存在（新舊版本混用）時不做事。
     - `app.js` 的三個位置（遠端載入與 Session 補傳之後）：`loadAndStart()`（`bootWithLocalState()` 之後、等 `loaded.backfilled`；BUG-106 的第二次開機只有這裡）、cached-user 背景同步（`_reportSyncResult()` 之後）、連線恢復同步（同上）。不在開機的第一次 `bootWithLocalState()` 詢問。
     - 刪除 `processYesterdayStreak()` 的 SUB-16 區塊：換日不再有任何 client 端的 Pro 寫入。`FLAG_STREAK_UNLOCK_NEW` 與 `showStreakUnlockModal` 保留 export（INFRA-105：移除既有 export 也會讓混用的舊模組載入失敗）。
     - 訪客：新模組 `pwa/js/sessionPresence.js` 的 `hasStoredSession()`（讀 Supabase client 的 session key，同排行榜；只 import supabase.js，避免 router → 頁面 → dayCycle 的循環）。設定頁與個人頁的「連勝解鎖 Pro」對沒有 session 的人顯示「需要登入帳號」。
-    - 測試：`tests/unit/streakUnlock.test.js`（34 項：寫回規則〔免費 profile 發放、回應遺失後補上並 `recovered`、試用中回填的帳號不變終身、付費到期不取消、終身不縮短、期限更晚不縮短／較早延長、server 終身寫終身〕、拒絕與錯誤不寫、9 種不合規回傳、多列、別的帳號、詢問條件、當天記住與隔天再問、並行合併、登出時不更新、混用版本、訪客判斷）；`appBootSequence.test.js` 4 項（補傳完成後才詢問、BUG-106 路徑在換日之後、離線不問而連線恢復後才問、補傳前登出不問；把詢問移到補傳之前的突變會失敗）；`pro014pRollover.test.js` 的 SUB-16 項目改寫為換日不發放、不消耗；`proGateCallSites.test.js` 改為除 `storage.js` 外沒有 client 端 Pro 寫入；`profile.test.js`／`settings.test.js` 加訪客情境。
+    - 測試：`tests/unit/streakUnlock.test.js`（41 項：寫回規則〔免費 profile 發放、回應遺失後補上並 `recovered`、試用中回填的帳號不變終身、付費到期不取消、終身不縮短、期限更晚不縮短／較早延長、server 終身寫終身〕、拒絕與錯誤不寫、9 種不合規回傳、多列、別的帳號、詢問條件、當天記住與隔天再問、並行合併、登出時不更新、混用版本、訪客判斷；審查後加上：有 Session 待上傳時不記住 `not_eligible`、請求期間 profile 被換掉、回應後換帳號〔profile 已換／未換〕、記憶體中是別人的 profile、回應後登出；每項都在拿掉對應的修正或檢查時失敗）；`appBootSequence.test.js` 4 項（補傳完成後才詢問、BUG-106 路徑在換日之後、離線不問而連線恢復後才問、補傳前登出不問；把詢問移到補傳之前的突變會失敗）；`pro014pRollover.test.js` 的 SUB-16 項目改寫為換日不發放、不消耗；`proGateCallSites.test.js` 改為除 `storage.js` 外沒有 client 端 Pro 寫入；`profile.test.js`／`settings.test.js` 加訪客情境。
+    - 審查（#235）：Codex 2 項 P2（待上傳時記住拒絕、寫回到舊的 profile 物件）於 ee304a5 修正；獨立審查沒有 P1，P2（回應後換帳號的測試）與註解於 1ada380 補上（`dayCycle.js`／`proRollover.js` 的 SUB-16 說明、`showMainApp()` 的 `FLAG_STREAK_UNLOCK_NEW` 標為舊版相容、隨 PRO-014H 移除）。Codex 複審沒有問題。
 
 
 - [x] **PRO-014L** SUB-16 連勝解鎖改由 server 授權
