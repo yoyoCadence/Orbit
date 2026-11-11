@@ -235,7 +235,7 @@
 > 2026-11-11 核准與回報（使用者回覆，六份提案合併後）：
 > - `BUG-117A`：更新到最新版後頂部仍模糊，刪掉主畫面圖示重新加入後才正常。使用者認為要重新加入是 bug，要修正 → 建立 `BUG-118`（In Progress → Done，v1.41.16）。iOS 把狀態列設定存在圖示裡、更新改不到；app 改為偵測舊圖示並引導（先完全關閉重開，仍模糊再說明重新加入與資料安全）。
 > - `PRO-014HA`：「你已經有 supabase 的 MCP 了，請你直接測試」→ agent 以只讀查詢驗證 server 端，結果見該項。
-> - 主畫面的圖示太醜，要重新設計 → 建立 `UI-001`（Done，v1.41.17；預覽圖已給擁有者看，不喜歡再改）。
+> - 主畫面的圖示太醜，要重新設計 → 建立 `UI-203`（Done，v1.41.17；預覽圖已給擁有者看，不喜歡再改。原本寫成 UI-001，與既有的個人空間任務撞號，#244 審查後改名）。
 > - 六份提案「可以照你的建議」，除了 `PRO-014E` 的排行榜公開名稱「就直接公開」：
 >   - `HW-112`：§9 全部照建議（拆成 HW-112A → HW-112B → HW-112C；320px／品質 0.5；所有已登入的人；設定頁分成兩個刪除按鈕；登出時刪掉已上傳的本機照片；既有照片自動補傳；成就照片這次不同步；雲端先不設上限；資料庫測試先試 Supabase CLI 的本機環境）。
 >   - `PRO-014E`：§9 照建議，但第 2 點改為 **B**：把現在的 `name` 複製成 `display_name`，既有的公開使用者繼續出現在排行榜（沒改過名稱的人，email 前段或 Google 的真名繼續公開，使用者接受）。其餘照建議（輸入框預設空白、舊 view 改為 `COALESCE(display_name, '匿名')`、Pro 標記包含試用、1–20 字、不限重複與保留字與改名頻率、不當名稱由擁有者在 SQL Editor 清除、E3 在 E2 上線一個月後、不限前 N 名）。
@@ -243,7 +243,7 @@
 >   - `PRO-014G`：維持「可選、現在不做」。
 >   - `PRO-017`：§9 全部照建議（R1 → RA → R2；3 位各 7 個有效日 → 30 天 Pro；被邀請者第一版不給額外獎勵；邀請者只看已達成的人數；開啟 Supabase Auth 的「確認 email」〔RA 時一起做，會影響所有新使用者〕；一生一次；帳號建立後 7 天內可綁定；邀請者已是 Pro 時先不發、不消耗）。
 >   - `AI-015`：照建議排在其他項目之後（§9 第 1 點 A）。架構建議的 Edge Function 需要 Anthropic API key，使用者目前沒有 API 方案，問能不能用 GPT 或 Claude 的訂閱額度、或 OAuth（Claude 可能被鎖就不要）。回覆：訂閱額度與 OAuth 不能用（見該項）；API key 由擁有者決定，在那之前 AI-015 擋住。
-> - 順序：`BUG-118` → `UI-001` → `HW-112A` → `PRO-014E` E1 → `PRO-017` R1，每項一個 PR。migration 的套用（HW-112B、EA、RA）是 production 寫入：agent 可以用 Supabase MCP 依寫入流程（本機演練 → dry run → 鎖定套用 → 事後檢查）執行，每一次寫入前取得擁有者明確核准。
+> - 順序：`BUG-118` → `UI-203` → `HW-112A` → `PRO-014E` E1 → `PRO-017` R1，每項一個 PR。migration 的套用（HW-112B、EA、RA）是 production 寫入：agent 可以用 Supabase MCP 依寫入流程（本機演練 → dry run → 鎖定套用 → 事後檢查）執行，每一次寫入前取得擁有者明確核准。
 
 ---
 
@@ -256,14 +256,15 @@
 
 ## Done
 
-- [x] **UI-001** 重新設計主畫面的 app 圖示（擁有者 2026-11-11：「加入主畫面的 LOGO 太醜 請你重新設計」）
+- [x] **UI-203** 重新設計主畫面的 app 圖示（擁有者 2026-11-11：「加入主畫面的 LOGO 太醜 請你重新設計」）
   - 舊圖示：紫橘漸層加白色「O」與圓環；PNG 的四角是透明的圓角，iOS 會把透明處補成黑色；manifest 只有兩個 `any maskable` 圖示，沒有 `apple-touch-icon`。
-  - 完成（2026-11-11，v1.41.17）：
-    - 來源 `pwa/assets/icon.svg`：紫色漸層的背景、行星、環（環的前半段在行星前面）與軌道上的金色衛星、幾顆星；不透明的滿版方形。
-    - `npm run icons`（`scripts/make-icons.mjs`，用 Playwright 的 Chromium 輸出；找不到 Playwright 預期的瀏覽器時以 `CHROMIUM_PATH` 指定）產生 `icon-192.png`、`icon-512.png`（`purpose: any`）、`icon-maskable-512.png`（主體 `<g id="art">` 縮到 80% 的安全範圍）、`apple-touch-icon.png`（180×180，`index.html` 以 `<link rel="apple-touch-icon">` 提供）。
+  - 完成（2026-11-11，v1.41.17，#244）：
+    - 來源 `art-pipeline/app-icon/icon.svg`（放在 `pwa/` 以外，網站上不多一個沒有 CSP 的 SVG 文件）：紫色漸層的背景、行星、環（環的前半段在行星前面）與軌道上的金色衛星、三顆星；不透明的滿版方形。
+    - `npm run icons`（`scripts/make-icons.mjs`，共用 `scripts/appIconLib.mjs`；用 Playwright 的 Chromium 輸出，找不到 Playwright 預期的瀏覽器時以 `CHROMIUM_PATH` 指定；同一個 Chromium 輸出完全相同，換版本可能有反鋸齒的差異，所以只在 SVG 改了才重新產生）產生 `pwa/assets/` 的 `icon-192.png`、`icon-512.png`（`purpose: any`）、`icon-maskable-512.png`（主體 `<g id="art">` 縮到 80%）、`apple-touch-icon.png`（180×180，`index.html` 以 `<link rel="apple-touch-icon">` 提供）。
     - 刪除舊的產生器 `pwa/make-icons.html`（部署在網站上、沒有 CSP 的開發頁面；`docs/infra-113-csp.md`、`docs/infra-107-html-cache.md` 已更新）。
-    - 測試：`tests/e2e/ui001-app-icon.test.js`：manifest 的圖示與 `apple-touch-icon` 的尺寸、用途，四角與中心都不透明（舊圖示的角是透明的，會失敗）。
-    - iPhone 沿用加入主畫面當時的圖示：要看到新圖示必須重新加入（BUG-118 的步驟：先加新的、確認後再移除舊的）。Android 的 Chrome 會在檢查 manifest 時更新。
+    - 測試：`tests/e2e/ui203-app-icon.test.js`：manifest 的圖示與 `apple-touch-icon` 的尺寸、用途，四角與中心都不透明（舊圖示的角是透明的，會失敗）；maskable 的主體不超出 Android 的安全範圍（中心 40% 半徑的圓，量得約 0.37；縮放改成 1 會失敗），滿版的主體不碰到 iOS 裁掉的角。
+    - iPhone 沿用加入主畫面當時的圖示：要看到新圖示必須重新加入（BUG-118 的步驟：先加新的、確認後再移除舊的）。Android 只有從 Chrome 安裝的 app 會更新，在 Chrome 之後檢查 app 時（可能會請使用者確認）。
+    - 審查（#244）：Codex 沒有問題。獨立審查沒有 P1／P2；P3：UI-001 與既有任務撞號 → 改為 UI-203；Android 更新的說法太肯定；沒有東西守住安全範圍 → 加測試；不同 Chromium 版本的輸出差異 → 寫在腳本開頭；`icon.svg` 部署在網站上 → 移到 `art-pipeline/`；單元測試的範例網址仍是 `make-icons.html` → 改名；深色桌布上圖示的邊緣看不出來 → 背景最暗處調亮（`#120a2e` → `#26135a`），星星改成三顆較大的。
 
 - [x] **BUG-118** 1.41.14 之前加入的主畫面圖示，更新後頂部仍模糊（擁有者 2026-11-11 回報）
   - 現象：BUG-117A 時，擁有者更新到最新版後頂部仍模糊；刪掉主畫面圖示、從 Safari 重新加入後才正常。擁有者：要使用者重新加入才會好，是程式的 bug，要修正。

@@ -148,7 +148,7 @@ describe('service worker page loads (INFRA-107)', () => {
   });
 
   it('fetches a page that is not cached and keeps it under its URL without the query', async () => {
-    const request = { method: 'GET', mode: 'navigate', url: 'https://orbit.test/Orbit/make-icons.html?size=192' };
+    const request = { method: 'GET', mode: 'navigate', url: 'https://orbit.test/Orbit/other.html?size=192' };
     const clonedResponse = { ok: true, source: 'clone' };
     const networkResponse = { ok: true, redirected: false, clone: vi.fn(() => clonedResponse) };
     cache.match.mockResolvedValueOnce(undefined);
@@ -156,7 +156,7 @@ describe('service worker page loads (INFRA-107)', () => {
 
     expect(await dispatchFetch(request)).toBe(networkResponse);
     expect(fetchMock).toHaveBeenCalledWith(request);
-    expect(cache.put).toHaveBeenCalledWith('https://orbit.test/Orbit/make-icons.html', clonedResponse);
+    expect(cache.put).toHaveBeenCalledWith('https://orbit.test/Orbit/other.html', clonedResponse);
   });
 
   it('does not keep an error, a redirect or a redirected page', async () => {
@@ -197,7 +197,7 @@ describe('service worker page loads (INFRA-107)', () => {
   });
 
   it('still opens a page it could not keep (e.g. storage full)', async () => {
-    const request = { method: 'GET', mode: 'navigate', url: 'https://orbit.test/Orbit/make-icons.html' };
+    const request = { method: 'GET', mode: 'navigate', url: 'https://orbit.test/Orbit/other.html' };
     const networkResponse = { ok: true, redirected: false, clone: vi.fn(() => ({ ok: true })) };
     cache.match.mockResolvedValueOnce(undefined);
     fetchMock.mockResolvedValueOnce(networkResponse);

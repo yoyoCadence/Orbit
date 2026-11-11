@@ -1,4 +1,4 @@
-// UI-001: render the app icons from pwa/assets/icon.svg.
+// UI-203: render the app icons from art-pipeline/app-icon/icon.svg.
 //
 //   npm run icons
 //
@@ -8,31 +8,27 @@
 //                               (<g id="art">) shrunk into the 80% safe zone
 //   apple-touch-icon.png        180×180, what iOS puts on the home screen
 // All are opaque squares: iOS and Android cut their own shape, and a
-// transparent corner would show up black on iOS.
+// transparent corner would show up black on iOS. The source stays outside
+// pwa/ so the site serves no SVG document of its own (INFRA-113).
 //
 // Needs Chromium through Playwright. Where the browser Playwright expects is
-// not installed, set CHROMIUM_PATH to a Chromium binary.
+// not installed, set CHROMIUM_PATH to a Chromium binary. The same binary gives
+// byte-identical files; another Chromium build may differ in anti-aliasing, so
+// commit the PNGs only when the SVG changed. tests/e2e/ui203-app-icon.test.js
+// checks the sizes, the opaque corners and the maskable safe zone.
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
+import { ICON_SOURCE, maskableSvg } from './appIconLib.mjs';
 
 const ASSETS = fileURLToPath(new URL('../pwa/assets/', import.meta.url));
-const SOURCE = readFileSync(`${ASSETS}icon.svg`, 'utf8');
-const MASKABLE_SCALE = 0.8;
-
-const ART_OPEN = '<g id="art">';
-if (!SOURCE.includes(ART_OPEN)) throw new Error('icon.svg needs a <g id="art"> group');
-
-function maskable(svg) {
-  const offset = (1024 * (1 - MASKABLE_SCALE)) / 2;
-  return svg.replace(ART_OPEN, `<g id="art" transform="translate(${offset} ${offset}) scale(${MASKABLE_SCALE})">`);
-}
+const SOURCE = readFileSync(ICON_SOURCE, 'utf8');
 
 const OUTPUTS = [
   { file: 'icon-192.png', size: 192, svg: SOURCE },
   { file: 'icon-512.png', size: 512, svg: SOURCE },
-  { file: 'icon-maskable-512.png', size: 512, svg: maskable(SOURCE) },
+  { file: 'icon-maskable-512.png', size: 512, svg: maskableSvg(SOURCE) },
   { file: 'apple-touch-icon.png', size: 180, svg: SOURCE },
 ];
 

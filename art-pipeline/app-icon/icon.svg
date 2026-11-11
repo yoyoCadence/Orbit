@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
-  <!-- UI-001: Orbit app icon. A planet with a ring and a small gold moon on
+  <!-- UI-203: Orbit app icon. A planet with a ring and a small gold moon on
        its orbit. Full-bleed square (iOS and Android add their own mask);
-       `npm run icons` (scripts/make-icons.mjs) renders the PNGs from this file. -->
+       `npm run icons` (scripts/make-icons.mjs) renders pwa/assets/*icon*.png from it. -->
   <defs>
     <radialGradient id="bg" cx="30%" cy="20%" r="110%">
       <stop offset="0" stop-color="#4c1d95"/>
-      <stop offset="0.5" stop-color="#2e1065"/>
-      <stop offset="1" stop-color="#120a2e"/>
+      <stop offset="0.5" stop-color="#33137a"/>
+      <stop offset="1" stop-color="#26135a"/>
     </radialGradient>
     <radialGradient id="planet" cx="36%" cy="30%" r="78%">
       <stop offset="0" stop-color="#f3e8ff"/>
@@ -33,13 +33,11 @@
   <!-- everything but the background; the maskable icon shrinks this group
        into the 80% safe zone (scripts/make-icons.mjs) -->
   <g id="art">
+  <!-- stars: few and large enough to survive a 40px icon -->
   <g fill="#fff">
-    <circle cx="214" cy="236" r="7" opacity=".85"/>
-    <circle cx="790" cy="190" r="5" opacity=".7"/>
-    <circle cx="300" cy="820" r="5" opacity=".55"/>
-    <circle cx="842" cy="760" r="6" opacity=".6"/>
-    <circle cx="150" cy="560" r="4" opacity=".5"/>
-    <circle cx="640" cy="150" r="4" opacity=".5"/>
+    <circle cx="214" cy="236" r="12" opacity=".9"/>
+    <circle cx="790" cy="190" r="9" opacity=".75"/>
+    <circle cx="842" cy="760" r="10" opacity=".7"/>
   </g>
   <circle cx="512" cy="540" r="330" fill="url(#halo)"/>
   <g transform="rotate(-22 512 540)">
