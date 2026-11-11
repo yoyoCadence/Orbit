@@ -14,12 +14,6 @@
 
 ## Backlog
 
-- [ ] **BUG-117** iPhone 上 header（頭像、名稱、XP／能量條）被模糊蓋住（擁有者 2026-11-04 回報，附截圖）
-  - 現象：排行榜頁最上方從狀態列往下約到 header 底部，內容被由上而下漸弱的模糊蓋住；下面的內容清楚。`modern` skin（`data-ui-skin`）的深色畫面。
-  - 已查（2026-11-04）：`#header`（`modern` skin：`padding: calc(env(safe-area-inset-top) + var(--space-3)) …`）預設沒有 `backdrop-filter`（只有設定背景圖〔`html.has-bg`〕或 liquid-glass 主題時才有），而且 `backdrop-filter` 只模糊元素後面的東西，不會模糊 header 自己的內容；app 沒有其他蓋在 header 上的模糊層。推測是 iOS 在狀態列底下的模糊（scroll edge effect），而 header 的一部分在那個範圍內，尚未確認。
-  - 待擁有者回答：從主畫面圖示開（standalone）還是 Safari；iOS 版本；以前就這樣還是最近才出現；其他頁是否一樣、捲動時是否改變。
-  - 依回答再決定：例如 header 依實際的 safe area 下移、或調整 `apple-mobile-web-app-status-bar-style`／`theme-color`。
-
 - [ ] **REPO-001** Repo 清理（AUDIT-001 發現，需擁有者決定）
   - `output/`：30 個 tracked 檔、約 58 MB 的舊 proof 圖，app 與測試都沒有使用（只在 `skills/orbit-idle-window-assets` 的說明中當輸出目錄、eslint 忽略）。可刪除（歷史仍保留在 git）。
   - 遠端約 160 個已合併或過時的分支、過時的 draft PR #154：可清理。
@@ -134,6 +128,14 @@
 
 ## Next
 
+- [ ] **BUG-117A**（擁有者）真機確認 BUG-117 的修正
+  - 步驟：v1.41.14 部署後，從主畫面圖示開 Orbit，完全關掉再開（出現更新提示就按更新，確認設定頁顯示 v1.41.14）；看頂部的頭像、名稱、XP／能量條是否還被模糊蓋住，狀態列是否是不透明的深色或跟 header 同色。
+  - 還是模糊：iOS 可能記住加入主畫面當時的 `black-translucent`。先確認資料已同步（已登入、沒有「待同步」），再刪掉主畫面圖示、從 Safari 重新加入；訪客模式的資料會跟著刪掉。
+  - 重加之後仍模糊：回報（截圖），改用備案：在 iOS 主畫面 app 裡把 header 的內容往下移到模糊範圍（約 40pt）之外。
+  - 另外看：
+    - 底部導覽列：圖示要在 home indicator（底部橫條）上方約 34px，不能貼著底邊或被切掉，下方也不能多出一條空白。不對的話，調整的地方是 `pwa/js/appHeight.js`（是否加上 `--sab`）。
+    - 狀態列的顏色：應該與 header 同色（WebKit 延伸 header 的顏色）或是 `theme-color`（`#0d0d1a`）。淺色主題若出現深色的狀態列，回報後再依主題更新 `theme-color`。
+
 > 2026-10-17 排程：Next 為空且 PS-243 只剩 human-device gate，依 Backlog 中不涉及 auth／schema／部署的低風險項目排入 Next；高風險項目仍待個別核准。
 
 > 2026-10-17 核准：使用者明確核准 `BUG-110`（auth flow 表單 UI）、`PRO-014O`（entitlement 啟動流程）、`BUG-109`（只撰寫 migration 與測試，production 套用由使用者執行），並排定 `HW-110`、`HW-106`、`HW-107`。
@@ -219,6 +221,11 @@
 > - `PS-211D`、`PS-227`：使用者決定暫緩。`REPO-001`：使用者自行處理。
 > - `PRO-017`、`AI-015`：還沒有提案；要不要先寫提案（只寫文件）由擁有者決定。
 
+> 2026-11-11 核准與回答（使用者回覆）：
+> - `BUG-117`：回答了四個問題（見該項），Backlog → In Progress。
+> - `PRO-014H`：「ok 核准」。依該項的順序：先做只讀檢查（012 回填的差異、提案 §7 的不一致帳號），再依 Supabase 寫入流程（本機演練 → dry run → 鎖定套用 → 事後檢查）重跑回填，然後 cutover PR；真機驗證由擁有者用測試帳號做。BUG-117 之後開始。
+> - `HW-112`、`PRO-014E`、`PRO-014S`、`PRO-014G`、`PRO-017`、`AI-015`：「好你寫提案我看看」——各寫一份提案（只寫文件），擁有者看過再決定是否核准實作。PRO-014H 之後依序寫。
+
 ---
 
 ## In Progress
@@ -229,6 +236,20 @@
 ---
 
 ## Done
+
+- [x] **BUG-117** iPhone 上 header（頭像、名稱、XP／能量條）被模糊蓋住（擁有者 2026-11-04 回報，附截圖）
+  - 現象：排行榜頁最上方從狀態列往下約到 header 底部，內容被由上而下漸弱的模糊蓋住；下面的內容清楚。`modern` skin（`data-ui-skin`）的深色畫面。
+  - 已查（2026-11-04）：`#header`（`modern` skin：`padding: calc(env(safe-area-inset-top) + var(--space-3)) …`）預設沒有 `backdrop-filter`（只有設定背景圖〔`html.has-bg`〕或 liquid-glass 主題時才有），而且 `backdrop-filter` 只模糊元素後面的東西，不會模糊 header 自己的內容；app 沒有其他蓋在 header 上的模糊層。推測是 iOS 在狀態列底下的模糊（scroll edge effect），而 header 的一部分在那個範圍內，尚未確認。
+  - 擁有者回答（2026-11-11）：從主畫面圖示開（standalone）；iOS 已更新到最新仍一樣；不確定何時開始；每一頁都一樣（最上面是同一個置頂的狀態列），捲動也一樣。
+  - 原因（2026-11-11 查）：iOS 26.1 起，主畫面 web app 用 `apple-mobile-web-app-status-bar-style=black-translucent` 時，系統會在頁面最上方約 40pt 疊一層由上而下漸弱的模糊（Liquid Glass 的 scroll edge effect），頁面無法關掉；`black-translucent` 會讓 WebKit 不做頂部的顏色延伸（顏色延伸就是 WebKit 跳過這層模糊的條件）。沒有 Apple 文件，依據是多個專案的回報與一個真機確認（nesquena/hermes-webui#8365：改成 `default`、把不透明的標題列設為 sticky 後，從主畫面重開不再模糊）。
+  - In progress（2026-11-11）：擁有者回答後開始（Backlog → In Progress）。做法：狀態列改為 `default`（頁面從不透明的狀態列下方開始）；在 iOS 的主畫面 app 裡讓 `#header` 為 sticky、不透明、沒有 `backdrop-filter`，當作頂部的顏色來源。需要擁有者在真機確認；iOS 可能在加入主畫面時記住狀態列樣式，舊的圖示也許要刪掉重加。
+  - 完成（2026-11-11，v1.41.14，#237）：
+    - `pwa/index.html`：`apple-mobile-web-app-status-bar-style` 由 `black-translucent` 改為 `default`。app 從不透明的狀態列下方開始，`env(safe-area-inset-top)` 變成 0，header 的上方留白自動縮回；`viewport-fit=cover` 保留（橫向的左右 safe area）。
+    - `pwa/assets/style.css` 最後的 BUG-117 區塊，只在 iOS 的主畫面 app（`@media (display-mode: standalone)` 加 `@supports (-webkit-touch-callout: none)`）生效：`#header` 為 `position: sticky; top: 0`（`#main-app` 不捲動、`<main>` 才捲動，所以版面不變）、`z-index: 2`（WebKit 以忽略 pointer-events 的點擊測試在頂端找固定／sticky 的元素；一直存在的時段色調 `body::after` 是全螢幕 fixed、z-index 1，沒有這一行會先被找到）、背景不透明（modern 用 `--modern-bg`、liquid-glass 用 `--bg`、其他主題用 `--surface`）、沒有 `backdrop-filter`、隱藏 `::before`／`::after` 的光澤。header 因此不再有 3–13% 的時段色調。WebKit 接受寬度達 90% 的元素，430px 的欄寬在約 475px 以下的手機都夠；iPad 上 header 較窄，模糊可能還在。瀏覽器、Android 與桌面不變。
+    - 新模組 `pwa/js/appHeight.js`（INFRA-105，加入 SHELL）：`--app-height` 原本是可視高度加上底部 safe area（`--sab`，舊的 `black-translucent` 下 iOS 主畫面 app 量到的高度少了這一段）。狀態列改為 `default` 後，其他專案量到 `innerHeight` 就是螢幕減狀態列、已到底部，再加 `--sab` 會把底部導覽列的 home indicator 留白推出畫面（body 隱藏溢出）。所以 iOS 主畫面 app（`navigator.standalone`）且上方 safe area 為 0 時不加；其他情況（瀏覽器、Android、仍以 translucent 開啟的舊圖示）不變。沒有真機量測，是依其他專案的回報推定，BUG-117A 要確認。
+    - 測試：`tests/e2e/bug117-ios-header.test.js`：狀態列只有一個 `default`；iOS 以外 header 維持 static；以 iOS 主畫面 app 的條件提供 `style.css`（規則留在檔案中的原位置），14 個主題 × 兩種 skin × 有無背景圖 × 四個時段全部是 sticky、不透明、沒有背景圖、沒有 backdrop filter、沒有 `::after`，而且頂端的點擊測試（強制 pointer-events）找到的是 header（拿掉 `z-index: 2` 時 224 種組合都找到 `BODY`）。`tests/unit/appHeight.test.js`：三種情況的高度與接線。Chromium 不會畫 iOS 的模糊，是否真的消失要真機確認（BUG-117A）。
+    - 審查（#237）：Codex 沒有問題；CI 的 lint 失敗（e2e 在頁面中的 `getComputedStyle` 被當成 Node 全域）以 `window.getComputedStyle` 修正。獨立審查 P1：時段色調層讓 WebKit 找不到 header → `z-index: 2`；P2：`--app-height` 加 `--sab` 在 `default` 下可能溢出 → `appHeight.js`；P2：測試改為原位置的規則與點擊測試；P3：拿掉 `#app` 的滿版（90% 已足夠），`theme-color` 列入 BUG-117A 檢查。
+
 
 - [x] **PRO-014L2** client 改走 `grant_streak_unlock()`（新模組，INFRA-105）
   - 依提案 §5.3：只在本機連勝 ≥ 45、遠端載入與 Sessions 上傳之後詢問（`loadAndStart()`、cached-user 背景同步、連線恢復同步）；依 `paid_active` 寫回 legacy profile，只延長、不縮短、不取消；刪除換日裡的 SUB-16；訪客的進度條改為「需要登入帳號」；測試與 bump。

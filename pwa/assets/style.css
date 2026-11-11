@@ -5,6 +5,7 @@
 /* 1. 暗夜紫 — default */
 :root {
   --sab: env(safe-area-inset-bottom, 0px);
+  --sat: env(safe-area-inset-top, 0px);   /* BUG-117: read by js/appHeight.js */
 }
 
 /* ─── Personal Space V2 · Home Orbit Window ─────────────────────────────── */
@@ -6719,4 +6720,39 @@ html.has-bg[data-ui-skin="modern"] .levelup-box {
   .personal-space-v2-scene { margin-inline: -4px; }
   .personal-space-v2 .orbit-window { padding: 10px; border-radius: 16px; }
   .personal-space-v2-dock { bottom: calc(62px + var(--sab)); }
+}
+
+/* ── BUG-117: iOS home-screen app — keep the system blur off the header ──────
+   iOS 26.1+ draws a progressive blur over the top of a home-screen web app.
+   WebKit skips it when a fixed or sticky box spanning the top edge (90% of the
+   width or more) paints one solid colour, found by hit-testing the top edge
+   (pointer-events ignored); under a black-translucent status bar it cannot,
+   hence `default` in index.html. In the installed app on iOS only, the header
+   is that box: sticky (layout-neutral: #main-app does not scroll, <main> does),
+   above the time tint (a full-screen fixed body::after at z-index 1 that the
+   hit test would otherwise find first), opaque, with no backdrop blur and no
+   glass sheen. The 430px column spans phones up to about 475px; on an iPad
+   the header is narrower and the blur may stay.
+   ─────────────────────────────────────────────────────────────────────────── */
+@media (display-mode: standalone) {
+  @supports (-webkit-touch-callout: none) {
+    [data-ui-skin="modern"] { --orbit-header-solid: var(--modern-bg); }
+    [data-theme="liquid-galss"] { --orbit-header-solid: var(--bg); }
+
+    #header,
+    html.has-bg #header,
+    [data-theme] #header,
+    [data-ui-skin="modern"] #header,
+    html.has-bg[data-ui-skin="modern"] #header {
+      position: sticky;
+      top: 0;
+      z-index: 2;   /* above the time tint (body::after, z-index 1) */
+      background: var(--orbit-header-solid, var(--surface)) !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+
+    #header::before,
+    #header::after { display: none !important; }
+  }
 }
