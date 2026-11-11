@@ -35,7 +35,7 @@ import { requestStreakUnlock } from './streakUnlock.js';
 import { appShellHeight } from './appHeight.js';
 import { needsProRefreshOnResume } from './proResume.js';
 import {
-  statusBarNoticeStep, statusBarNoticeText, dismissStatusBarNotice,
+  statusBarNoticeStep, statusBarNoticeText, statusBarSyncCheckText, dismissStatusBarNotice,
   readStatusBarNoticeState, writeStatusBarNoticeState,
 } from './statusBarNotice.js';
 import { hasStoredSession } from './sessionPresence.js';
@@ -177,6 +177,16 @@ function _showStatusBarNotice() {
     warning.className = 'sbn-warning';
     warning.textContent = text.warning;
     details.append(toggle, list, warning);
+    if (signedIn) {
+      const check = document.createElement('button');
+      check.className = 'sbn-check';
+      check.dataset.action = 'checkStatusBarSync';
+      check.textContent = '檢查同步';
+      const result = document.createElement('p');
+      result.className = 'sbn-check-result';
+      result.setAttribute('role', 'status');
+      details.append(check, result);
+    }
     body.append(details);
   }
   const close = document.createElement('button');
@@ -189,6 +199,21 @@ function _showStatusBarNotice() {
   el.dataset.key = key;
   el.classList.remove('hidden');
 }
+
+// BUG-118: whether the old icon still holds writes the server has not
+// confirmed, read when the button is pressed (never a stale count).
+window._checkStatusBarSync = function () {
+  const result = document.querySelector('#status-bar-notice .sbn-check-result');
+  if (!result) return;
+  const ownerId = _currentSession?.user?.id
+    ?? (hasStoredSession() ? storage.getUser()?.id ?? null : null);
+  const check = statusBarSyncCheckText({
+    online: isOnline(),
+    pending: ownerId ? storage.getPendingSyncSummary(ownerId).total : 0,
+  });
+  result.textContent = check.text;
+  result.dataset.ok = String(check.ok);
+};
 
 window._dismissStatusBarNotice = function () {
   const step = _statusBarNotice?.step;

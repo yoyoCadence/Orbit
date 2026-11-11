@@ -79,6 +79,7 @@ test('an old icon is asked to relaunch, then to add a new icon; each banner stay
   await expect(steps.nth(1)).toContainText('加入主畫面');
   await expect(steps.nth(3)).toContainText('移除');
   await expect(notice(page).locator('.sbn-warning')).toContainText('訪客模式的所有資料');
+  await expect(notice(page).locator('.sbn-check')).toHaveCount(0);   // a guest has nothing to sync
 
   // Reloads keep the step this icon has reached.
   await open(page, 'reload');
@@ -122,6 +123,23 @@ test('a signed-in old icon gets the account text even before (or without) getSes
   await expect(notice(page)).not.toContainText('訪客模式');
   await page.waitForTimeout(1500);
   await expect(notice(page)).not.toContainText('訪客模式');
+
+  // 「檢查同步」 reads the pending queue when pressed.
+  await notice(page).locator('summary').click();
+  const result = notice(page).locator('.sbn-check-result');
+  await page.evaluate(([ownerId]) => {
+    localStorage.setItem(`yoyo_sessionSyncPending:${encodeURIComponent(ownerId)}`,
+      JSON.stringify({ ownerId, value: [{ id: 'bug118-pending' }] }));
+  }, [user.id]);
+  await notice(page).locator('.sbn-check').click();
+  await expect(result).toContainText('還有 1 筆資料還沒同步');
+  await expect(result).toHaveAttribute('data-ok', 'false');
+  await page.evaluate(([ownerId]) => {
+    localStorage.removeItem(`yoyo_sessionSyncPending:${encodeURIComponent(ownerId)}`);
+  }, [user.id]);
+  await notice(page).locator('.sbn-check').click();
+  await expect(result).toContainText('可以移除了');
+  await expect(result).toHaveAttribute('data-ok', 'true');
 });
 
 test('an icon with the opaque status bar sees nothing and keeps what was closed', async ({ page }) => {

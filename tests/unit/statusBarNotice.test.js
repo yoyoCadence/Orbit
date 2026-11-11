@@ -8,6 +8,7 @@ import {
   readStatusBarNoticeState,
   writeStatusBarNoticeState,
   statusBarNoticeText,
+  statusBarSyncCheckText,
 } from '../../pwa/js/statusBarNotice.js';
 
 const NOW = 1_800_000_000_000;
@@ -158,10 +159,10 @@ describe('statusBarNoticeText', () => {
     expect(steps[3]).toContain('打開後還會出現這個提示的那個');
   });
 
-  it('has a signed-in user sync the old icon before removing it (records made offline live only there)', () => {
+  it('has a signed-in user check the old icon\'s sync before removing it (records made offline live only there)', () => {
     const account = statusBarNoticeText('readd', { signedIn: true, appUrl: URL_ }).steps[3];
-    expect(account).toContain('先在舊圖示連上網路打開一次');
-    expect(account).toContain('「離線中」或「同步暫停」');
+    expect(account).toContain('先在舊圖示連上網路打開');
+    expect(account).toContain('「檢查同步」');
     expect(statusBarNoticeText('readd', { signedIn: false, appUrl: URL_ }).steps[3]).not.toContain('同步');
   });
 
@@ -180,5 +181,29 @@ describe('statusBarNoticeText', () => {
     const guest = statusBarNoticeText('readd', { signedIn: false, appUrl: URL_ });
     expect(guest.warning).toContain('訪客模式的所有資料');
     expect(guest.steps[2]).not.toContain('登入');
+  });
+});
+
+describe('statusBarSyncCheckText', () => {
+  it('says the old icon can go only with an empty queue read online', () => {
+    expect(statusBarSyncCheckText({ online: true, pending: 0 })).toEqual({
+      ok: true, text: expect.stringContaining('可以移除了'),
+    });
+  });
+
+  it('says to wait while anything is queued, online or not', () => {
+    for (const online of [true, false]) {
+      const check = statusBarSyncCheckText({ online, pending: 2 });
+      expect(check.ok).toBe(false);
+      expect(check.text).toContain('還有 2 筆資料還沒同步，先不要移除舊圖示');
+      expect(check.text).toContain('完全關閉 Orbit 再打開');
+    }
+    expect(statusBarSyncCheckText({ online: false, pending: 2 }).text).toContain('目前離線');
+  });
+
+  it('does not clear an empty queue read offline (queued writes may still be coming)', () => {
+    expect(statusBarSyncCheckText({ online: false, pending: 0 })).toEqual({
+      ok: false, text: expect.stringContaining('目前離線'),
+    });
   });
 });

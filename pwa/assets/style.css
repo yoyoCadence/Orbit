@@ -5003,6 +5003,13 @@ nav {
 .sbn-text ol { margin: 4px 0 0; padding-left: 18px; color: var(--text-muted); }
 .sbn-text li + li { margin-top: 2px; }
 .sbn-text .sbn-warning { margin-top: 6px; color: var(--text); }
+.sbn-check {
+  margin-top: 8px; min-height: 36px; padding: 6px 14px;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.sbn-text .sbn-check-result { margin-top: 6px; color: #d97706; }
+.sbn-text .sbn-check-result[data-ok="true"] { color: #10b981; }
 #content:focus { outline: none; }   /* focused by code after the notice closes */
 .sbn-close {
   flex-shrink: 0;

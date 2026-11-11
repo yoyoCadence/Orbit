@@ -133,7 +133,7 @@ export function statusBarNoticeText(step, { signedIn, appUrl }) {
         : '打開新的圖示，確認頂部不再模糊。')
         + '如果仍然模糊，移除新的那個，在 Safari 重新整理後再加入一次。',
       (signedIn
-        ? '移除舊圖示前，先在舊圖示連上網路打開一次，確認上方沒有「離線中」或「同步暫停」（還沒同步的紀錄只在舊圖示裡）。'
+        ? '移除舊圖示前，先在舊圖示連上網路打開，按下方的「檢查同步」，確認沒有還沒同步的資料（還沒同步的紀錄只在舊圖示裡）。'
         : '')
         + '最後移除舊的圖示（打開後還會出現這個提示的那個）：長按它，從主畫面移除。',
     ],
@@ -141,4 +141,26 @@ export function statusBarNoticeText(step, { signedIn, appUrl }) {
       ? `注意：佐證照片、背景圖片、主題、今天的計畫與個人空間只存在這台裝置的舊圖示裡，移除舊圖示時可能一起被刪除。${keep}`
       : `注意：訪客模式的所有資料都只存在這台裝置的舊圖示裡，移除舊圖示時可能一起被刪除。${keep}`,
   };
+}
+
+/**
+ * BUG-118: what 「檢查同步」 says, from the pending queue read when it is
+ * pressed (storage.getPendingSyncSummary(): a write stays queued until the
+ * server confirms it, a failed upload included). Only an empty queue, read
+ * online, says the old icon can go.
+ *
+ * @param {{ online: boolean, pending: number }} state
+ * @returns {{ ok: boolean, text: string }}
+ */
+export function statusBarSyncCheckText({ online, pending }) {
+  if (pending > 0) {
+    return {
+      ok: false,
+      text: `還有 ${pending} 筆資料還沒同步，先不要移除舊圖示。${online ? '' : '目前離線：'}連上網路、讓 Orbit 開著一會兒再按一次；一直沒有減少就完全關閉 Orbit 再打開（連線時會自動同步）。`,
+    };
+  }
+  if (!online) {
+    return { ok: false, text: '目前離線：連上網路後再按一次。' };
+  }
+  return { ok: true, text: '這個圖示沒有還沒同步的資料，可以移除了（佐證照片等只存在這台裝置的資料除外）。' };
 }
