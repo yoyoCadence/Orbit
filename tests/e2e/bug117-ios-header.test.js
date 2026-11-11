@@ -46,14 +46,14 @@ async function openApp(page) {
 function readHeader(page) {
   return page.evaluate(() => {
     const header = document.getElementById('header');
-    const style = getComputedStyle(header);
+    const style = window.getComputedStyle(header);
     return {
       position: style.position,
       top: style.top,
       background: style.backgroundColor,
       image: style.backgroundImage,
       backdrop: style.backdropFilter,
-      after: getComputedStyle(header, '::after').display,
+      after: window.getComputedStyle(header, '::after').display,
       width: header.getBoundingClientRect().width,
     };
   });
