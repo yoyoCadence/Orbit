@@ -30,6 +30,8 @@
   - Acceptance: logged-in user completes a task, attaches proof, photo survives sign-out and re-login on a different device; guest mode still works with localStorage only; no service_role key in client code.
   - Note: requires Supabase Storage RLS policy and a bucket — propose SQL migration before implementation.
   - 提案（2026-11-11，使用者要求寫提案）：[`docs/hw-112-proof-photo-sync-proposal.md`](docs/hw-112-proof-photo-sync-proposal.md)。建議私有 bucket `proofs`、路徑 `{user_id}/{session_id}.jpg`、四個 policy；拆成 HW-112A（migration 016＋測試）→ HW-112B（擁有者套用）→ HW-112C（client）。等擁有者決定 §9（9 點；Codex 與獨立審查後修訂：下載不用 list、不放 localStorage）。
+  - **核准（2026-11-11）**：§9 全部照建議。下一步 HW-112A（migration 016 與測試）。
+  - HW-112C 上線後，`pwa/js/statusBarNotice.js`（BUG-118）的「佐證照片只存在這台裝置」要改成只提醒還沒上傳的照片。
 
 - [ ] **INFRA-101** 設定 Custom SMTP（Resend）並自訂 email 寄件人名稱與模板
   - 目標：讓 auth email（重設密碼等）以「Orbit」名義寄出，而非「Supabase Auth」；並把 email 內容換成品牌模板
@@ -76,6 +78,7 @@
   - 範圍：RPC 新增回傳欄位（改回傳型別需 `DROP FUNCTION` 再建立並重新 `REVOKE`／`GRANT`，可包在同一個 transaction）；client 改讀新欄位，server 尚未提供時退回推斷；部署順序先 migration 後 client。
   - 屬 RPC 契約變更，依 AGENTS.md §3 需先核准。014 之後推斷已精確，沒有正確性上的急迫性。
   - 提案（2026-11-11，使用者要求寫提案）：[`docs/pro-014s-explicit-paid-active-proposal.md`](docs/pro-014s-explicit-paid-active-proposal.md)。欄位名稱 `paid_active`（與 012 一致）；授權的到期時間也不再依賴 014 的規則（終身付費不受試用日期限制）；建議等下一次改 `my_pro_status()` 時（PRO-014G、接上付款或 PRO-017）一起做；新版 client 沒有 `paid_active` 時照舊推斷。等擁有者決定 §7。
+  - **決定（2026-11-11）**：照建議，等下一次改 `my_pro_status()` 時一起做；送的 Pro（SUB-16、PRO-017）也算付費。
 
 - [ ] **PRO-014G**（可選）為 entitlement projection 加上 server 簽章的 anti-tamper hardening
   - **狀態：可選，非任何任務的前置。** PR #146 覆驗定案採「UI entitlement projection ＋ server-side enforcement」，signed receipt 不再是 `PRO-014B` 的必要條件。
@@ -87,6 +90,7 @@
   - 提案文件：[`docs/pro-014-entitlement-integrity.md`](docs/pro-014-entitlement-integrity.md)
   - 2026-11-11 重新評估（使用者要求寫提案）：同文件 §7。cutover 後所有 Pro 功能仍只在 client、不花 server 資源，建議維持「可選、現在不做」；會花 server 資源的 Pro 功能由 server 檢查。等擁有者決定。
   - 依賴：`PRO-014B`
+  - **決定（2026-11-11）**：維持「可選、現在不做」。
 
 - [ ] **PRO-014E** 另案建立 `display_name` 與排行榜安全 read model
   - INFRA-110（2026-11-03）：`leaderboard_view` 已收回 anon 與 PUBLIC 的權限（015）。若以 `DROP VIEW` 重建 view，Supabase 的預設權限會再給 anon 全部權限，重建後要再執行 015 的 REVOKE／GRANT（`CREATE OR REPLACE VIEW` 則保留權限）。
@@ -95,6 +99,7 @@
   - 安全閘門：此項是另一個 schema proposal；實作與套用前需個別核准
   - 依賴：`PRO-014D`
   - 提案（2026-11-11，使用者要求寫提案）：[`docs/pro-014e-leaderboard-read-model-proposal.md`](docs/pro-014e-leaderboard-read-model-proposal.md)。主要問題：排行榜顯示的 `name` 預設是 email 的 @ 前段。建議 `profiles.display_name`（開啟排行榜時自己設定）＋ RPC `get_leaderboard()`（固定欄位、`is_me` 取代 `user_id`、server 判定的 `is_pro`）；公開名稱與排行榜開關改為單獨的寫入（不隨整份 profile 同步）；拆成 E1（migration＋測試）→ EA（擁有者套用）→ E2（client）→ E3（移除舊 view）。等擁有者決定 §9（12 點）。
+  - **核准（2026-11-11）**：§9 照建議，但第 2 點改為 B（既有公開使用者的 `name` 複製成 `display_name`，繼續公開）。下一步 E1（migration 與測試）。
 
 - [ ] **PRO-014F** 交付 SUB-14 排行榜 glow 與 Personal Space Pro 呈現
   - 目標：只使用安全 read model 與 entitlement snapshot 呈現 Pro 身分，不讓視覺功能回寫 entitlement
@@ -107,28 +112,35 @@
   - 目標：完成 roadmap 既有 SUB-17
   - 對應 roadmap：中期
   - 提案（2026-11-11，使用者要求寫提案）：[`docs/pro-017-invite-unlock-proposal.md`](docs/pro-017-invite-unlock-proposal.md)。原構想的「雙方各得 15 天試用」與現況不合（新帳號本來就有 15 天試用、試用每帳號一次），「完成 onboarding」容易造假。建議：3 位被邀請者各有 7 個有效日（只算帳號建立之後的日期）後邀請者得 30 天 Pro（server 依 sessions 判定、一生一次）；被邀請者第一版不給額外獎勵（延長試用要改 `is_pro_active()`／`my_pro_status()`，與 PRO-014S 一起做）；拆成 R1→RA→R2。等擁有者決定 §9（9 點）。
+  - **核准（2026-11-11）**：§9 全部照建議。下一步 R1（migration 與測試）；RA 時擁有者在 Supabase Auth 開啟「確認 email」。
 
 - [ ] **AI-015** AI 晨間報告
   - 目標：完成 roadmap 既有 SUB-15
   - 對應 roadmap：長期（v2.x）
   - 提案（2026-11-11，使用者要求寫提案）：[`docs/ai-015-morning-report-proposal.md`](docs/ai-015-morning-report-proposal.md)。建議改由 Supabase Edge Function 呼叫 Claude API（key 只在 server、server 檢查 Pro 與一天一次、資料由 server 讀取），以使用者身分呼叫 `my_pro_status()` 檢查 Pro、先佔一天的名額再呼叫 Claude，預設只送統計不送任務名稱；模型與費用由擁有者決定。等擁有者決定 §9（8 點）。
+  - **決定（2026-11-11）**：排在其他項目之後。**擋住：沒有 API key。** 使用者目前沒有 Anthropic API 方案。
+    - 訂閱額度不能用：Claude Pro／Max 與 ChatGPT Plus 是給本人在官方 app 使用的，不提供給其他 app 的 server 呼叫。Anthropic 明文禁止第三方產品使用 Claude.ai 登入或訂閱額度（Agent SDK 文件），違反可能被停權；ChatGPT 的訂閱也不含 API，OpenAI API 另外按用量計費。
+    - OAuth：Anthropic 與 OpenAI 都沒有讓其他 app 以使用者的訂閱呼叫模型的 OAuth。
+    - 可行的路：擁有者開 API 帳號、預付小額（例如 $5）並設定每月上限；`claude-haiku-5-5` 每人每月約 $0.03。或維持現在的規則版建議，不做 AI。等擁有者決定。
 
 
 ---
 
 ## Next
 
-- [ ] **PRO-014HA**（擁有者）真機驗證 PRO-014H 的 cutover
-  - v1.41.15 部署後依 `docs/pro-014h-cutover.md` §5：先跑 `docs/pro-test-accounts.md` 的重設 SQL，再分別登入 5 個測試帳號確認 Pro 狀態與 Pro 功能、主帳號仍是終身 Pro、離線 24 小時內維持。
-  - 有問題：依同文件 §4 回退（先以只讀查詢對帳，再改回旗標並 bump 版本），並回報帳號與現象。
+- [ ] **BUG-118A**（擁有者，v1.41.16 部署後就做）確認重新加入的主畫面圖示
+  - 擁有者的圖示已在 2026-11-11 重新加入（狀態列為 `default`）。v1.41.16 之後打開**不應出現** BUG-118 的橫幅（「頂部如果被模糊蓋住…」）。這是在確認偵測的前提（`default` 下頂部 safe area 為 0）：若出現，所有 iOS 主畫面的使用者都會被誤提示，回報後要立刻修正。
+  - 順便看：底部導覽列的圖示在 home indicator（底部橫條）上方，沒有被切掉、下方沒有多一條空白（`pwa/js/appHeight.js`）；狀態列與 header 同色或是 `theme-color`（`#0d0d1a`），淺色主題若出現深色狀態列就回報。
+  - 橫幅本身要有 v1.41.14 之前加入的圖示才看得到；沒有這種裝置就不用測（流程由 `tests/e2e/bug118-status-bar-notice.test.js` 涵蓋）。
 
-- [ ] **BUG-117A**（擁有者）真機確認 BUG-117 的修正
-  - 步驟：v1.41.14 部署後，從主畫面圖示開 Orbit，完全關掉再開（出現更新提示就按更新，確認設定頁顯示 v1.41.14）；看頂部的頭像、名稱、XP／能量條是否還被模糊蓋住，狀態列是否是不透明的深色或跟 header 同色。
-  - 還是模糊：iOS 可能記住加入主畫面當時的 `black-translucent`。先確認資料已同步（已登入、沒有「待同步」），再刪掉主畫面圖示、從 Safari 重新加入；訪客模式的資料會跟著刪掉。
-  - 重加之後仍模糊：回報（截圖），改用備案：在 iOS 主畫面 app 裡把 header 的內容往下移到模糊範圍（約 40pt）之外。
-  - 另外看：
-    - 底部導覽列：圖示要在 home indicator（底部橫條）上方約 34px，不能貼著底邊或被切掉，下方也不能多出一條空白。不對的話，調整的地方是 `pwa/js/appHeight.js`（是否加上 `--sab`）。
-    - 狀態列的顏色：應該與 header 同色（WebKit 延伸 header 的顏色）或是 `theme-color`（`#0d0d1a`）。淺色主題若出現深色的狀態列，回報後再依主題更新 `theme-color`。
+- [ ] **PRO-014HA**（擁有者，只剩真機畫面）真機驗證 PRO-014H 的 cutover
+  - 2026-11-11 擁有者要求 agent 以 Supabase MCP 直接測試。agent 以只讀查詢（DO 區塊最後 `RAISE EXCEPTION`，整段回滾、沒有寫入）逐一以 5 個測試帳號與擁有者主帳號的身分（`request.jwt.claims` 加 `SET LOCAL ROLE authenticated`）呼叫 `my_pro_status()`：
+    - `+orbit-free` 非 Pro（試用 55 天前結束）、`+orbit-trial` Pro（試用剩 3.8 天）、`+orbit-paid` Pro（付費剩 19.8 天）、`+orbit-lifetime` 與主帳號為終身 Pro、`+orbit-expired` 非 Pro（11 天前到期）：與 `docs/pro-test-accounts.md` 的表一致，不需要先跑重設 SQL。
+    - 權限：`anon` 不能執行 `my_pro_status()`、`authenticated` 可以；`authenticated` 不能執行 `is_pro_active()`。
+    - v1.41.15 已部署（GitHub Actions 的 Deploy 成功；這個雲端環境連不到 github.io，沒有直接讀網站）。
+  - client 端（依 server 結果顯示 Pro、離線 24 小時、回到前景重新確認）由單元與 e2e 測試涵蓋；agent 沒有測試帳號的密碼，不能在 app 裡登入。
+  - 剩下（擁有者，順手即可）：用主帳號打開 app，設定頁顯示終身 Pro、隨機主題與成長報告 PDF 可用。要測其他帳號時先跑重設 SQL（試用帳號約 4 天後到期）。
+  - 有問題：依 `docs/pro-014h-cutover.md` §4 回退，並回報帳號與現象。
 
 > 2026-10-17 排程：Next 為空且 PS-243 只剩 human-device gate，依 Backlog 中不涉及 auth／schema／部署的低風險項目排入 Next；高風險項目仍待個別核准。
 
@@ -220,6 +232,19 @@
 > - `PRO-014H`：「ok 核准」。依該項的順序：先做只讀檢查（012 回填的差異、提案 §7 的不一致帳號），再依 Supabase 寫入流程（本機演練 → dry run → 鎖定套用 → 事後檢查）重跑回填，然後 cutover PR；真機驗證由擁有者用測試帳號做。BUG-117 之後開始。
 > - `HW-112`、`PRO-014E`、`PRO-014S`、`PRO-014G`、`PRO-017`、`AI-015`：「好你寫提案我看看」——各寫一份提案（只寫文件），擁有者看過再決定是否核准實作。PRO-014H 之後依序寫。
 
+> 2026-11-11 核准與回報（使用者回覆，六份提案合併後）：
+> - `BUG-117A`：更新到最新版後頂部仍模糊，刪掉主畫面圖示重新加入後才正常。使用者認為要重新加入是 bug，要修正 → 建立 `BUG-118`（In Progress → Done，v1.41.16）。iOS 把狀態列設定存在圖示裡、更新改不到；app 改為偵測舊圖示並引導（先完全關閉重開，仍模糊再說明重新加入與資料安全）。
+> - `PRO-014HA`：「你已經有 supabase 的 MCP 了，請你直接測試」→ agent 以只讀查詢驗證 server 端，結果見該項。
+> - 主畫面的圖示太醜，要重新設計 → 建立 `UI-001`（下一個 PR）。
+> - 六份提案「可以照你的建議」，除了 `PRO-014E` 的排行榜公開名稱「就直接公開」：
+>   - `HW-112`：§9 全部照建議（拆成 HW-112A → HW-112B → HW-112C；320px／品質 0.5；所有已登入的人；設定頁分成兩個刪除按鈕；登出時刪掉已上傳的本機照片；既有照片自動補傳；成就照片這次不同步；雲端先不設上限；資料庫測試先試 Supabase CLI 的本機環境）。
+>   - `PRO-014E`：§9 照建議，但第 2 點改為 **B**：把現在的 `name` 複製成 `display_name`，既有的公開使用者繼續出現在排行榜（沒改過名稱的人，email 前段或 Google 的真名繼續公開，使用者接受）。其餘照建議（輸入框預設空白、舊 view 改為 `COALESCE(display_name, '匿名')`、Pro 標記包含試用、1–20 字、不限重複與保留字與改名頻率、不當名稱由擁有者在 SQL Editor 清除、E3 在 E2 上線一個月後、不限前 N 名）。
+>   - `PRO-014S`：§7 照建議（A：等下一次改 `my_pro_status()` 時一起做；送的 Pro 也算付費）。
+>   - `PRO-014G`：維持「可選、現在不做」。
+>   - `PRO-017`：§9 全部照建議（R1 → RA → R2；3 位各 7 個有效日 → 30 天 Pro；被邀請者第一版不給額外獎勵；邀請者只看已達成的人數；開啟 Supabase Auth 的「確認 email」〔RA 時一起做，會影響所有新使用者〕；一生一次；帳號建立後 7 天內可綁定；邀請者已是 Pro 時先不發、不消耗）。
+>   - `AI-015`：照建議排在其他項目之後（§9 第 1 點 A）。架構建議的 Edge Function 需要 Anthropic API key，使用者目前沒有 API 方案，問能不能用 GPT 或 Claude 的訂閱額度、或 OAuth（Claude 可能被鎖就不要）。回覆：訂閱額度與 OAuth 不能用（見該項）；API key 由擁有者決定，在那之前 AI-015 擋住。
+> - 順序：`BUG-118` → `UI-001` → `HW-112A` → `PRO-014E` E1 → `PRO-017` R1，每項一個 PR。migration 的套用（HW-112B、EA、RA）是 production 寫入：agent 可以用 Supabase MCP 依寫入流程（本機演練 → dry run → 鎖定套用 → 事後檢查）執行，每一次寫入前取得擁有者明確核准。
+
 ---
 
 ## In Progress
@@ -230,6 +255,25 @@
 ---
 
 ## Done
+
+- [x] **BUG-118** 1.41.14 之前加入的主畫面圖示，更新後頂部仍模糊（擁有者 2026-11-11 回報）
+  - 現象：BUG-117A 時，擁有者更新到最新版後頂部仍模糊；刪掉主畫面圖示、從 Safari 重新加入後才正常。擁有者：要使用者重新加入才會好，是程式的 bug，要修正。
+  - 原因：iOS 把 `apple-mobile-web-app-status-bar-style` 存在主畫面圖示裡（加入當時的值）。BUG-117 把 index.html 改成 `default`，但舊圖示仍以 `black-translucent` 開啟，而 BUG-117 的 CSS 只在不透明狀態列下有效（style.css 的註解已寫明）。頁面裡沒有任何 CSS 或程式能改這個設定：其他專案在 header 下方加留白，真機上只多了一條空白，模糊仍在狀態列（Folio #999 被 #1003 還原）。有一份 iOS 27 的回報說更新後完全關閉再開就會套用，多數回報則說只能重新加入。我們的 BUG-117A 步驟也把「完全關閉再開」放在更新之前，可能從沒在更新後重開過。
+  - 完成（2026-11-11，v1.41.16）：
+    - 新模組 `pwa/js/statusBarNotice.js`（INFRA-105，加入 SHELL）：以 `navigator.standalone` 與頂部 safe area（`--sat`；`default` 下為 0，BUG-118A 在真機確認）判斷仍是半透明狀態列的舊圖示（只看直向、螢幕短邊 475px 以下〔看螢幕不看視窗：iPad 的分割畫面可能很窄〕：BUG-117 的 header 蓋不滿 iPad，新圖示在 iPad 上不一定有效）。
+      - 第一次：請使用者完全關閉再打開（含有 Home 鍵的 iPhone）；app 內的重新載入（更新橫幅）不算啟動，關閉前每次都提示。
+      - 之後的啟動仍是半透明：請使用者重新加入主畫面，順序是「Safari 打開網址（出現「新版本已就緒」先重新整理，否則舊快取的頁面會再加入一個舊設定的圖示）→ 加入主畫面 → 打開新圖示確認頂部正常（已登入時確認紀錄都在；仍模糊就移除新的、在 Safari 重新整理後再加）→ 已登入時先在舊圖示連網打開、按「檢查同步」確認沒有還沒同步的資料（離線時新增的紀錄只在舊圖示裡；按下時讀待同步佇列，上傳失敗的也還在佇列裡，只有連線時佇列是空的才說可以移除）→ 最後才移除舊圖示（打開後還會出現提示的那個）」。橫幅只顯示標題與一行說明，步驟與舊圖示裡只存在這台裝置的資料（訪客的所有資料；已登入時的佐證照片、背景圖片、主題、今天的計畫與個人空間）在「怎麼做」裡。不依賴可能變動的同步狀態：使用者在新圖示裡確認。
+      - 到了重新加入這一步，之後的重新載入也維持這一步（`readdShownAtMs`）；每一步按 ✕ 後不再出現；狀態列不透明時不顯示、也不清除記錄（單次讀到 0 不會讓關掉的提示重來）。標題以「頂部如果…」開頭（iOS 26.1 之前沒有模糊）。狀態存在 `orbit_status_bar_notice`。
+    - `app.js`：`showMainApp()` 在 header 下方顯示（`#status-bar-notice`，`role="region"`，文字以 `textContent` 放入，✕ 44px）；是否登入看 `_currentSession` 或裝置上存的 session（`sessionPresence.js` 的 `hasStoredSession()`：快取開機時 `getSession()` 還沒回來，離線且 token 過期時 BUG-116 的 `getSession()` 約 25 秒後回傳沒有 session）；`_applyProDependentUi()` 時重畫，文字不變就不重建（不重唸、不丟失焦點）。`domActions.js` 加上 `dismissStatusBarNotice`。
+    - 測試：`tests/unit/statusBarNotice.test.js`（22 個）；`tests/e2e/bug118-status-bar-notice.test.js`（7 個：舊圖示依序看到重開與重新加入、重新載入維持所在的步驟、關閉後不再出現；已登入的舊圖示在離線且 token 過期時仍顯示帳號的文字〔拿掉 `hasStoredSession()` 會失敗〕；不透明狀態列保留記錄；瀏覽器分頁、窄視窗的 iPad 看不到；用鍵盤關閉後焦點移到頁面；「檢查同步」依按下時的佇列回答，訪客沒有這個按鈕；320×568 打開「怎麼做」時橫幅自己捲動，按鈕與回答都拿得到〔拿掉高度限制會失敗〕）。
+    - 審查（#243）：
+      - Codex：P1 已同步的帳號仍有只存在裝置上的資料 → 一律提醒；P2 快取開機時先以訪客的文字顯示 → 重畫；P2 橫幅開著時新增的紀錄會讓「都已同步」變成錯的 → 不再聲稱同步狀態，改在新圖示裡確認。
+      - 獨立審查：P1 離線且 token 過期時整段都是訪客的文字 → 以裝置上存的 session 判斷；P2 重新加入之後的重新載入回到「完全關閉」→ `readdShownAtMs`；P2 先刪後加可能刪了資料又加回舊設定的圖示（舊的 service worker 仍提供舊 HTML）→ 先加新圖示、確認後再移除舊的；P2 `app.js` 的接線沒有測試 → 已登入的 e2e。P3：橫幅太長 → 標題加一行、細節收在「怎麼做」；`role="status"` 重唸 → `region`；✕ 太小；iPad；iOS 26.1 之前；有 Home 鍵的 iPhone；只存在裝置上的資料列得更完整；單次讀到 0 清掉記錄 → 保留。
+      - 獨立審查第二輪（bae6be5，前一輪全部修正）：P2 新的步驟少了「舊圖示裡還沒同步的紀錄」的保護（離線新增後直接去 Safari）→ 移除前先在舊圖示連網打開、確認沒有「離線中」或「同步暫停」；Codex 再指出 P2：只看沒有錯誤提示不夠（慢速連線時還在「同步中」）→ 改成「檢查同步」按鈕，依按下時的待同步佇列回答；P2：小 iPhone 上打開「怎麼做」會超出畫面且無法捲動 → 橫幅最高 55% 畫面、內容自己捲動。P3：App 切換器的開法；兩個同名圖示怎麼分；新圖示仍模糊時怎麼辦；iPad 改看螢幕短邊；關閉後焦點移到頁面。
+    - BUG-117A 的步驟改寫為 BUG-118A（Next）。
+
+- [x] **BUG-117A**（擁有者）真機確認 BUG-117 的修正
+  - 結果（2026-11-11）：更新到最新版後頂部仍模糊，重新加入主畫面後正常 → BUG-118。底部導覽列與狀態列顏色的檢查移到 BUG-118A。
 
 - [x] **PRO-014H** Production Pro entitlement client cutover
   - 目標：把 `REPO_PRO_ENTITLEMENT_SOURCE` 由 `legacy` 切到 `server`，讓 production 的 `isProUser()` 實際改用 server-derived UI projection

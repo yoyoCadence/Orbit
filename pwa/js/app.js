@@ -34,6 +34,11 @@ import { resolvePendingProRollover } from './proRollover.js';
 import { requestStreakUnlock } from './streakUnlock.js';
 import { appShellHeight } from './appHeight.js';
 import { needsProRefreshOnResume } from './proResume.js';
+import {
+  statusBarNoticeStep, statusBarNoticeText, statusBarSyncCheckText, dismissStatusBarNotice,
+  readStatusBarNoticeState, writeStatusBarNoticeState,
+} from './statusBarNotice.js';
+import { hasStoredSession } from './sessionPresence.js';
 import { isOnline, onConnectivityChange } from './platform/network.js';
 import { orbitWindowRuntimeDestroyer } from './personalSpace/v2/runtime/pixiSceneRuntime.js';
 
@@ -92,6 +97,7 @@ function _applyProDependentUi() {
   resolvePendingProRollover();     // PRO-014P: deferred Pro effects
   applyRandomThemeForToday();      // Pro-only; once a day
   _showTrialBanner();
+  _showStatusBarNotice();          // BUG-118: signed in or out since the boot
   updateHeader();
   // Re-rendering under a focused text field would throw away what is being typed.
   if (!isTextInputActive()) renderPage(currentHash());
@@ -112,6 +118,119 @@ function _refreshProOnResume() {
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') _refreshProOnResume();
 });
+
+// BUG-118: an icon added before v1.41.14 keeps the old translucent status bar
+// (js/statusBarNotice.js). The step is decided once per page load. Whether
+// the device is signed in comes from the stored session as well: a cached boot
+// shows the main app before getSession() resolves, and offline with an expired
+// token it never does (BUG-116). The banner is rebuilt only when its text
+// changes, so a redraw neither re-announces it nor drops focus.
+let _statusBarNotice = null;
+function _showStatusBarNotice() {
+  const el = document.getElementById('status-bar-notice');
+  if (!el) return;
+  if (!_statusBarNotice) {
+    const rootStyle = window.getComputedStyle(document.documentElement);
+    const decision = statusBarNoticeStep({
+      iosHomeScreen: window.navigator.standalone === true,
+      safeTop: parseFloat(rootStyle.getPropertyValue('--sat')) || 0,
+      portrait: window.innerHeight >= window.innerWidth,
+      screenShortSide: Math.min(window.screen?.width ?? Infinity, window.screen?.height ?? Infinity),
+      navigationType: window.performance?.getEntriesByType?.('navigation')?.[0]?.type ?? 'navigate',
+      saved: readStatusBarNoticeState(window.localStorage),
+      nowMs: Date.now(),
+    });
+    writeStatusBarNoticeState(window.localStorage, decision.next);
+    _statusBarNotice = { step: decision.step };
+  }
+  const { step } = _statusBarNotice;
+  if (step === 'none') {
+    el.classList.add('hidden');
+    el.replaceChildren();
+    delete el.dataset.key;
+    return;
+  }
+  const signedIn = Boolean(_currentSession) || hasStoredSession();
+  const key = `${step}:${signedIn ? 'account' : 'guest'}`;
+  if (el.dataset.key === key && !el.classList.contains('hidden')) return;
+  const appUrl = window.location.origin + window.location.pathname.replace(/index\.html$/, '');
+  const text = statusBarNoticeText(step, { signedIn, appUrl });
+
+  const body = document.createElement('div');
+  body.className = 'sbn-text';
+  const title = document.createElement('strong');
+  title.textContent = text.title;
+  const summary = document.createElement('p');
+  summary.textContent = text.summary;
+  body.append(title, summary);
+  if (text.steps.length) {
+    const details = document.createElement('details');
+    const toggle = document.createElement('summary');
+    toggle.textContent = '怎麼做';
+    const list = document.createElement('ol');
+    for (const line of text.steps) {
+      const item = document.createElement('li');
+      item.textContent = line;
+      list.append(item);
+    }
+    const warning = document.createElement('p');
+    warning.className = 'sbn-warning';
+    warning.textContent = text.warning;
+    details.append(toggle, list, warning);
+    if (signedIn) {
+      const check = document.createElement('button');
+      check.className = 'sbn-check';
+      check.dataset.action = 'checkStatusBarSync';
+      check.textContent = '檢查同步';
+      const result = document.createElement('p');
+      result.className = 'sbn-check-result';
+      result.setAttribute('role', 'status');
+      details.append(check, result);
+    }
+    body.append(details);
+  }
+  const close = document.createElement('button');
+  close.className = 'sbn-close';
+  close.dataset.action = 'dismissStatusBarNotice';
+  close.setAttribute('aria-label', '關閉這個提示');
+  close.textContent = '✕';
+  el.replaceChildren(body, close);
+  el.dataset.step = step;
+  el.dataset.key = key;
+  el.classList.remove('hidden');
+}
+
+// BUG-118: whether the old icon still holds writes the server has not
+// confirmed, read when the button is pressed (never a stale count).
+window._checkStatusBarSync = function () {
+  const result = document.querySelector('#status-bar-notice .sbn-check-result');
+  if (!result) return;
+  const ownerId = _currentSession?.user?.id
+    ?? (hasStoredSession() ? storage.getUser()?.id ?? null : null);
+  const check = statusBarSyncCheckText({
+    online: isOnline(),
+    pending: ownerId ? storage.getPendingSyncSummary(ownerId).total : 0,
+  });
+  result.textContent = check.text;
+  result.dataset.ok = String(check.ok);
+};
+
+window._dismissStatusBarNotice = function () {
+  const step = _statusBarNotice?.step;
+  if (!step || step === 'none') return;
+  const hadFocus = Boolean(document.activeElement?.closest?.('#status-bar-notice'));
+  const storageArea = window.localStorage;
+  const next = dismissStatusBarNotice(readStatusBarNoticeState(storageArea), step, Date.now());
+  writeStatusBarNoticeState(storageArea, next);
+  _statusBarNotice = { step: 'none' };
+  _showStatusBarNotice();
+  // The focused ✕ is gone: move focus to the page instead of the document body.
+  if (hadFocus) {
+    const content = document.getElementById('content');
+    content?.setAttribute('tabindex', '-1');
+    content?.focus({ preventScroll: true });
+  }
+};
 
 window._dismissTrialBanner = function () {
   storage.saveTrialBannerDismissDate(today());
@@ -203,6 +322,7 @@ function showMainApp() {
   renderPage(currentHash());
   startDayWatcher();
   _showTrialBanner();
+  _showStatusBarNotice();
   // Mixed versions (INFRA-105): only a dayCycle.js cached from before 1.41.13
   // still sets this flag; streakUnlock.js shows the celebration itself now.
   // Remove with the legacy write-backs in PRO-014HB (docs/pro-014h-cutover.md).

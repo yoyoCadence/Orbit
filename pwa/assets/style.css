@@ -4988,6 +4988,44 @@ nav {
   color: #f59e0b; font-size: 14px; cursor: pointer; padding: 2px 4px;
 }
 
+/* ── BUG-118: old home-screen icon notice (js/statusBarNotice.js) ─────────── */
+#status-bar-notice {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 10px 12px; font-size: 12px; line-height: 1.5;
+  background: var(--surface-2); color: var(--text);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  /* Outside the scrolling <main>, and #main-app hides overflow: with 「怎麼做」
+     open on a small phone the banner scrolls on its own instead of clipping. */
+  max-height: 55vh;
+  max-height: 55dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+#status-bar-notice.hidden { display: none; }
+.sbn-text { flex: 1; min-width: 0; }
+.sbn-text strong { display: block; font-weight: 700; margin-bottom: 2px; }
+.sbn-text p { margin: 2px 0 0; color: var(--text-muted); }
+.sbn-text summary { margin-top: 4px; color: var(--primary-lt); font-weight: 600; cursor: pointer; }
+.sbn-text ol { margin: 4px 0 0; padding-left: 18px; color: var(--text-muted); }
+.sbn-text li + li { margin-top: 2px; }
+.sbn-text .sbn-warning { margin-top: 6px; color: var(--text); }
+.sbn-check {
+  margin-top: 8px; min-height: 36px; padding: 6px 14px;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.sbn-text .sbn-check-result { margin-top: 6px; color: #d97706; }
+.sbn-text .sbn-check-result[data-ok="true"] { color: #10b981; }
+#content:focus { outline: none; }   /* focused by code after the notice closes */
+.sbn-close {
+  flex-shrink: 0;
+  min-width: 44px; min-height: 44px; margin: -10px -10px -10px 0;
+  background: transparent; border: none;
+  color: var(--text-muted); font-size: 14px; cursor: pointer;
+}
+
 /* count badge on task card */
 .count-badge {
   position: absolute; top: 8px; right: 8px;
