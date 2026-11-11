@@ -98,20 +98,26 @@ export function statusBarNoticeText(step, { signedIn, pendingSync }) {
       ],
     };
   }
-  let data;
+  // Only the account's profile, tasks and records are on the server. Proof
+  // photos (platform/proofStore.js) and the Personal Space items, layout and
+  // looks (docs/personal-space-state-flow.md §6) live only in this app's
+  // storage, which iOS deletes with the icon, synced or not.
+  const keep = '頂部的模糊不影響使用，要保留就先不要刪除圖示。';
+  const data = [];
   if (!signedIn) {
-    data = '注意：訪客模式的資料只存在這個主畫面 app 裡，刪除圖示會一起刪掉。要保留這些資料，就先不要刪除圖示（頂部的模糊不影響使用）。';
-  } else if (pendingSync > 0) {
-    data = `還有 ${pendingSync} 筆資料等待同步。請先連上網路，等同步完成再刪除圖示。`;
+    data.push(`注意：訪客模式的所有資料都只存在這個主畫面 app 裡，刪除圖示會一起刪掉。${keep}`);
   } else {
-    data = '你的資料都已同步，重新加入後用同一個帳號登入即可。';
+    data.push(pendingSync > 0
+      ? `還有 ${pendingSync} 筆資料等待同步：請先連上網路，等同步完成再刪除圖示。`
+      : '帳號、任務與紀錄都已同步，重新加入後用同一個帳號登入就會回來。');
+    data.push(`注意：佐證照片，以及個人空間的物品、擺放與外觀選擇只存在這台裝置，刪除圖示會一起刪掉。${keep}`);
   }
   return {
     title: '這個主畫面圖示要重新加入一次',
     body: [
       '這個圖示是在修正之前加入的，iOS 會一直沿用當時的狀態列設定，所以頂部仍會模糊，更新 app 也改不了。',
       '修正方式：長按主畫面上的 Orbit →「移除 App」→「刪除 App」；再用 Safari 打開 Orbit，點「分享」→「加入主畫面」。',
-      data,
+      ...data,
     ],
   };
 }

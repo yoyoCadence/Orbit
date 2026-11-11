@@ -31,6 +31,7 @@
   - Note: requires Supabase Storage RLS policy and a bucket — propose SQL migration before implementation.
   - 提案（2026-11-11，使用者要求寫提案）：[`docs/hw-112-proof-photo-sync-proposal.md`](docs/hw-112-proof-photo-sync-proposal.md)。建議私有 bucket `proofs`、路徑 `{user_id}/{session_id}.jpg`、四個 policy；拆成 HW-112A（migration 016＋測試）→ HW-112B（擁有者套用）→ HW-112C（client）。等擁有者決定 §9（9 點；Codex 與獨立審查後修訂：下載不用 list、不放 localStorage）。
   - **核准（2026-11-11）**：§9 全部照建議。下一步 HW-112A（migration 016 與測試）。
+  - HW-112C 上線後，`pwa/js/statusBarNotice.js`（BUG-118）的「佐證照片只存在這台裝置」要改成只提醒還沒上傳的照片。
 
 - [ ] **INFRA-101** 設定 Custom SMTP（Resend）並自訂 email 寄件人名稱與模板
   - 目標：讓 auth email（重設密碼等）以「Orbit」名義寄出，而非「Supabase Auth」；並把 email 內容換成品牌模板
@@ -259,8 +260,9 @@
   - 現象：BUG-117A 時，擁有者更新到最新版後頂部仍模糊；刪掉主畫面圖示、從 Safari 重新加入後才正常。擁有者：要使用者重新加入才會好，是程式的 bug，要修正。
   - 原因：iOS 把 `apple-mobile-web-app-status-bar-style` 存在主畫面圖示裡（加入當時的值）。BUG-117 把 index.html 改成 `default`，但舊圖示仍以 `black-translucent` 開啟，而 BUG-117 的 CSS 只在不透明狀態列下有效（style.css 的註解已寫明）。頁面裡沒有任何 CSS 或程式能改這個設定：其他專案在 header 下方加留白，真機上只多了一條空白，模糊仍在狀態列（Folio #999 被 #1003 還原）。有一份 iOS 27 的回報說更新後完全關閉再開就會套用，多數回報則說只能重新加入。我們的 BUG-117A 步驟也把「完全關閉再開」放在更新之前，可能從沒在更新後重開過。
   - 完成（2026-11-11，v1.41.16）：
-    - 新模組 `pwa/js/statusBarNotice.js`（INFRA-105，加入 SHELL）：以 `navigator.standalone` 與頂部 safe area（`--sat`；`default` 下為 0）判斷仍是半透明狀態列的舊圖示（橫向不判斷）。第一次：請使用者完全關閉再打開（app 內的重新載入〔更新橫幅〕不算啟動，關閉前每次都提示）；之後的啟動仍是半透明：說明怎麼重新加入主畫面，並依狀態提醒資料（訪客的資料會跟著圖示刪除、已登入時先等同步完成），每次啟動都顯示到按 ✕ 為止；狀態列變成不透明就清除記錄。狀態存在 `orbit_status_bar_notice`。
-    - `app.js`：`showMainApp()` 在 header 下方顯示橫幅（`#status-bar-notice`，文字以 `textContent` 放入）；`domActions.js` 加上 `dismissStatusBarNotice`。
+    - 新模組 `pwa/js/statusBarNotice.js`（INFRA-105，加入 SHELL）：以 `navigator.standalone` 與頂部 safe area（`--sat`；`default` 下為 0）判斷仍是半透明狀態列的舊圖示（橫向不判斷）。第一次：請使用者完全關閉再打開（app 內的重新載入〔更新橫幅〕不算啟動，關閉前每次都提示）；之後的啟動仍是半透明：說明怎麼重新加入主畫面，並提醒哪些資料會跟著圖示刪除（訪客的所有資料；已登入時帳號、任務與紀錄同步後會回來〔有待同步就先等〕，但佐證照片與個人空間的物品、擺放和外觀只存在這台裝置），每次啟動都顯示到按 ✕ 為止；狀態列變成不透明就清除記錄。狀態存在 `orbit_status_bar_notice`。
+    - `app.js`：`showMainApp()` 在 header 下方顯示橫幅（`#status-bar-notice`，文字以 `textContent` 放入）；session 恢復與同步結果出來後（`_applyProDependentUi()`、`_reportSyncResult()`、`_showSyncFailure()`）重畫文字，因為快取開機時 main app 先顯示、`getSession()` 之後才有 session。`domActions.js` 加上 `dismissStatusBarNotice`。
+    - 審查（#243）：Codex P1：已同步的帳號仍有只存在裝置上的資料（佐證照片、個人空間）→ 文字一律提醒；P2：快取開機時先以訪客的文字顯示 → 重畫。
     - 測試：`tests/unit/statusBarNotice.test.js`（13 個）；`tests/e2e/bug118-status-bar-notice.test.js`（舊圖示依序看到重開與重新加入、關閉後不再出現；不透明狀態列與瀏覽器分頁看不到，並清除記錄）。
     - BUG-117A 的步驟改寫為 BUG-118A（Next）。
 

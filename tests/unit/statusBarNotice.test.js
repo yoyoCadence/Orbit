@@ -110,11 +110,20 @@ describe('statusBarNoticeText', () => {
 
   it('warns a guest that removing the icon removes the data', () => {
     const text = statusBarNoticeText('readd', { signedIn: false, pendingSync: 0 });
-    expect(text.body.at(-1)).toContain('訪客模式的資料');
+    expect(text.body.at(-1)).toContain('訪客模式的所有資料');
   });
 
   it('asks a signed-in user to wait for pending sync', () => {
-    expect(statusBarNoticeText('readd', { signedIn: true, pendingSync: 3 }).body.at(-1)).toContain('還有 3 筆資料等待同步');
-    expect(statusBarNoticeText('readd', { signedIn: true, pendingSync: 0 }).body.at(-1)).toContain('都已同步');
+    expect(statusBarNoticeText('readd', { signedIn: true, pendingSync: 3 }).body.join('\n')).toContain('還有 3 筆資料等待同步');
+    expect(statusBarNoticeText('readd', { signedIn: true, pendingSync: 0 }).body.join('\n')).toContain('都已同步');
+  });
+
+  it('warns a signed-in user that device-only data goes with the icon, synced or not', () => {
+    for (const pendingSync of [0, 2]) {
+      const last = statusBarNoticeText('readd', { signedIn: true, pendingSync }).body.at(-1);
+      expect(last).toContain('佐證照片');
+      expect(last).toContain('個人空間');
+      expect(last).toContain('只存在這台裝置');
+    }
   });
 });

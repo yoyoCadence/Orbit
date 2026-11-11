@@ -68,7 +68,7 @@ test('an old icon is asked to relaunch, then to re-add, each until closed', asyn
   await open(page);
   await expect(notice(page)).toHaveAttribute('data-step', 'readd');
   await expect(notice(page)).toContainText('加入主畫面');
-  await expect(notice(page)).toContainText('訪客模式的資料');
+  await expect(notice(page)).toContainText('訪客模式的所有資料');
   await open(page);
   await expect(notice(page)).toHaveAttribute('data-step', 'readd');
   await notice(page).locator('.sbn-close').click();

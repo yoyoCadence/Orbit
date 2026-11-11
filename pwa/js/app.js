@@ -96,6 +96,7 @@ function _applyProDependentUi() {
   resolvePendingProRollover();     // PRO-014P: deferred Pro effects
   applyRandomThemeForToday();      // Pro-only; once a day
   _showTrialBanner();
+  _showStatusBarNotice();          // BUG-118: the session may have been restored
   updateHeader();
   // Re-rendering under a focused text field would throw away what is being typed.
   if (!isTextInputActive()) renderPage(currentHash());
@@ -118,7 +119,9 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // BUG-118: an icon added before v1.41.14 keeps the old translucent status bar
-// (js/statusBarNotice.js). Decided once per page load, shown under the header.
+// (js/statusBarNotice.js). The step is decided once per page load; the text is
+// redrawn when the session or the sync queue settles (a cached boot shows the
+// main app before getSession() restores the session).
 let _statusBarNotice = null;
 function _showStatusBarNotice() {
   const el = document.getElementById('status-bar-notice');
@@ -559,6 +562,7 @@ async function _reportSyncResult(loaded, isCurrent) {
   }
   _needsResync = false;
   showSyncBanner('synced');
+  _showStatusBarNotice();          // BUG-118: what it says depends on pending sync
 }
 
 function _pendingSyncCount() {
@@ -568,6 +572,7 @@ function _pendingSyncCount() {
 function _showSyncFailure() {
   _needsResync = true;
   showSyncBanner(isOnline() ? 'error' : 'offline', { pending: _pendingSyncCount() });
+  _showStatusBarNotice();          // BUG-118: what it says depends on pending sync
 }
 
 /** Keeps the offline banner's pending count current after local writes. */
