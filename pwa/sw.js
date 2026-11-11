@@ -1,7 +1,7 @@
 // Service Worker
 // Bump CACHE version on every deploy: since INFRA-107 a new worker is the only
 // way new HTML and code reach users.
-const CACHE = 'orbit-v1.41.15';
+const CACHE = 'orbit-v1.41.16';
 
 const SHELL = [
   './',
@@ -32,6 +32,7 @@ const SHELL = [
   './js/sessionPresence.js',
   './js/appHeight.js',
   './js/proResume.js',
+  './js/statusBarNotice.js',
   './js/sessionFlow.js',
   './js/focusTimer.js',
   './js/authFlow.js',

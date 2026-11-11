@@ -16,8 +16,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <!-- BUG-117: not black-translucent. iOS 26.1+ blurs the top of a home-screen
        app with a translucent status bar and the page cannot turn it off; with
-       `default` the app starts below an opaque status bar. iOS may keep the
-       style it saw when the icon was added (re-add the icon if it still blurs). -->
+       `default` the app starts below an opaque status bar. iOS keeps the style
+       it saw when the icon was added; an older icon gets a notice (BUG-118). -->
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Orbit">
 
@@ -149,6 +149,9 @@
 
     <!-- Trial reminder banner (shown day 10–15 of Pro trial) -->
     <div id="trial-banner" class="hidden"></div>
+
+    <!-- BUG-118: an old home-screen icon that iOS still opens translucent -->
+    <div id="status-bar-notice" class="hidden" role="status"></div>
 
     <!-- Page content -->
     <main id="content"></main>

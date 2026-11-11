@@ -18,6 +18,7 @@ const ACTIONS = Object.freeze({
   // Navigation (bottom bar, header avatar, trial banner)
   navigate: page => window.navigate(page),
   dismissTrialBanner: () => window._dismissTrialBanner(),
+  dismissStatusBarNotice: () => window._dismissStatusBarNotice(),
   // Focus timer
   minimizeFocus: () => window.minimizeFocus(),
   togglePauseFocus: () => window.togglePauseFocus(),

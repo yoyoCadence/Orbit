@@ -34,6 +34,10 @@ import { resolvePendingProRollover } from './proRollover.js';
 import { requestStreakUnlock } from './streakUnlock.js';
 import { appShellHeight } from './appHeight.js';
 import { needsProRefreshOnResume } from './proResume.js';
+import {
+  statusBarNoticeStep, statusBarNoticeText, dismissStatusBarNotice,
+  readStatusBarNoticeState, writeStatusBarNoticeState,
+} from './statusBarNotice.js';
 import { isOnline, onConnectivityChange } from './platform/network.js';
 import { orbitWindowRuntimeDestroyer } from './personalSpace/v2/runtime/pixiSceneRuntime.js';
 
@@ -112,6 +116,66 @@ function _refreshProOnResume() {
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') _refreshProOnResume();
 });
+
+// BUG-118: an icon added before v1.41.14 keeps the old translucent status bar
+// (js/statusBarNotice.js). Decided once per page load, shown under the header.
+let _statusBarNotice = null;
+function _showStatusBarNotice() {
+  const el = document.getElementById('status-bar-notice');
+  if (!el) return;
+  if (!_statusBarNotice) {
+    const rootStyle = window.getComputedStyle(document.documentElement);
+    const decision = statusBarNoticeStep({
+      iosHomeScreen: window.navigator.standalone === true,
+      safeTop: parseFloat(rootStyle.getPropertyValue('--sat')) || 0,
+      portrait: window.innerHeight >= window.innerWidth,
+      navigationType: window.performance?.getEntriesByType?.('navigation')?.[0]?.type ?? 'navigate',
+      saved: readStatusBarNoticeState(window.localStorage),
+      nowMs: Date.now(),
+    });
+    writeStatusBarNoticeState(window.localStorage, decision.next);
+    _statusBarNotice = { step: decision.step };
+  }
+  const { step } = _statusBarNotice;
+  if (step === 'none') {
+    el.classList.add('hidden');
+    el.replaceChildren();
+    return;
+  }
+  const ownerId = _currentSession?.user?.id ?? null;
+  const text = statusBarNoticeText(step, {
+    signedIn: Boolean(ownerId),
+    pendingSync: ownerId ? storage.getPendingSyncSummary(ownerId).total : 0,
+  });
+  const body = document.createElement('div');
+  body.className = 'sbn-text';
+  const title = document.createElement('strong');
+  title.textContent = text.title;
+  body.append(title);
+  for (const line of text.body) {
+    const p = document.createElement('p');
+    p.textContent = line;
+    body.append(p);
+  }
+  const close = document.createElement('button');
+  close.className = 'sbn-close';
+  close.dataset.action = 'dismissStatusBarNotice';
+  close.setAttribute('aria-label', '關閉');
+  close.textContent = '✕';
+  el.replaceChildren(body, close);
+  el.dataset.step = step;
+  el.classList.remove('hidden');
+}
+
+window._dismissStatusBarNotice = function () {
+  const step = _statusBarNotice?.step;
+  if (!step || step === 'none') return;
+  const storageArea = window.localStorage;
+  writeStatusBarNoticeState(storageArea,
+    dismissStatusBarNotice(readStatusBarNoticeState(storageArea), step, Date.now()));
+  _statusBarNotice = { step: 'none' };
+  _showStatusBarNotice();
+};
 
 window._dismissTrialBanner = function () {
   storage.saveTrialBannerDismissDate(today());
@@ -203,6 +267,7 @@ function showMainApp() {
   renderPage(currentHash());
   startDayWatcher();
   _showTrialBanner();
+  _showStatusBarNotice();
   // Mixed versions (INFRA-105): only a dayCycle.js cached from before 1.41.13
   // still sets this flag; streakUnlock.js shows the celebration itself now.
   // Remove with the legacy write-backs in PRO-014HB (docs/pro-014h-cutover.md).
