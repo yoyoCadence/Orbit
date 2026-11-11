@@ -14,7 +14,11 @@
   <link rel="manifest" href="manifest.json">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <!-- BUG-117: not black-translucent. iOS 26.1+ blurs the top of a home-screen
+       app with a translucent status bar and the page cannot turn it off; with
+       `default` the app starts below an opaque status bar. iOS may keep the
+       style it saw when the icon was added (re-add the icon if it still blurs). -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Orbit">
 
   <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">

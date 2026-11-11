@@ -6720,3 +6720,40 @@ html.has-bg[data-ui-skin="modern"] .levelup-box {
   .personal-space-v2 .orbit-window { padding: 10px; border-radius: 16px; }
   .personal-space-v2-dock { bottom: calc(62px + var(--sab)); }
 }
+
+/* ── BUG-117: iOS home-screen app — keep the system blur off the header ──────
+   iOS 26.1+ draws a progressive blur over the top of a home-screen web app.
+   WebKit skips it when a full-width fixed or sticky box at the top edge paints
+   one solid colour (and it cannot when the status bar is black-translucent,
+   hence `default` in index.html). In the installed app on iOS only, the header
+   is that box: sticky (layout-neutral: #main-app does not scroll, <main> does),
+   opaque, with no backdrop blur and no glass sheen. Phones wider than the
+   430px column (e.g. 440px) get a full-width column so the header spans it.
+   ─────────────────────────────────────────────────────────────────────────── */
+@media (display-mode: standalone) {
+  @supports (-webkit-touch-callout: none) {
+    [data-ui-skin="modern"] { --orbit-header-solid: var(--modern-bg); }
+    [data-theme="liquid-galss"] { --orbit-header-solid: var(--bg); }
+
+    #header,
+    html.has-bg #header,
+    [data-theme] #header,
+    [data-ui-skin="modern"] #header,
+    html.has-bg[data-ui-skin="modern"] #header {
+      position: sticky;
+      top: 0;
+      background: var(--orbit-header-solid, var(--surface)) !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+
+    #header::before,
+    #header::after { display: none !important; }
+  }
+}
+
+@media (display-mode: standalone) and (max-width: 480px) {
+  @supports (-webkit-touch-callout: none) {
+    #app { max-width: none; }
+  }
+}

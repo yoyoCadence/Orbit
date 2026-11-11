@@ -128,6 +128,12 @@
 
 ## Next
 
+- [ ] **BUG-117A**（擁有者）真機確認 BUG-117 的修正
+  - 步驟：v1.41.14 部署後，從主畫面圖示開 Orbit，完全關掉再開（出現更新提示就按更新，確認設定頁顯示 v1.41.14）；看頂部的頭像、名稱、XP／能量條是否還被模糊蓋住，狀態列是否是不透明的深色或跟 header 同色。
+  - 還是模糊：iOS 可能記住加入主畫面當時的 `black-translucent`。先確認資料已同步（已登入、沒有「待同步」），再刪掉主畫面圖示、從 Safari 重新加入；訪客模式的資料會跟著刪掉。
+  - 重加之後仍模糊：回報（截圖），改用備案：在 iOS 主畫面 app 裡把 header 的內容往下移到模糊範圍（約 40pt）之外。
+  - 另外看：底部導覽列是否完整（沒有被切掉、下方沒有多出一條空白）。WebKit 有「改用 `default` 後版面短少狀態列高度」的回報。
+
 > 2026-10-17 排程：Next 為空且 PS-243 只剩 human-device gate，依 Backlog 中不涉及 auth／schema／部署的低風險項目排入 Next；高風險項目仍待個別核准。
 
 > 2026-10-17 核准：使用者明確核准 `BUG-110`（auth flow 表單 UI）、`PRO-014O`（entitlement 啟動流程）、`BUG-109`（只撰寫 migration 與測試，production 套用由使用者執行），並排定 `HW-110`、`HW-106`、`HW-107`。
@@ -222,19 +228,24 @@
 
 ## In Progress
 
-- [ ] **BUG-117** iPhone 上 header（頭像、名稱、XP／能量條）被模糊蓋住（擁有者 2026-11-04 回報，附截圖）
-  - 現象：排行榜頁最上方從狀態列往下約到 header 底部，內容被由上而下漸弱的模糊蓋住；下面的內容清楚。`modern` skin（`data-ui-skin`）的深色畫面。
-  - 已查（2026-11-04）：`#header`（`modern` skin：`padding: calc(env(safe-area-inset-top) + var(--space-3)) …`）預設沒有 `backdrop-filter`（只有設定背景圖〔`html.has-bg`〕或 liquid-glass 主題時才有），而且 `backdrop-filter` 只模糊元素後面的東西，不會模糊 header 自己的內容；app 沒有其他蓋在 header 上的模糊層。推測是 iOS 在狀態列底下的模糊（scroll edge effect），而 header 的一部分在那個範圍內，尚未確認。
-  - 擁有者回答（2026-11-11）：從主畫面圖示開（standalone）；iOS 已更新到最新仍一樣；不確定何時開始；每一頁都一樣（最上面是同一個置頂的狀態列），捲動也一樣。
-  - 原因（2026-11-11 查）：iOS 26.1 起，主畫面 web app 用 `apple-mobile-web-app-status-bar-style=black-translucent` 時，系統會在頁面最上方約 40pt 疊一層由上而下漸弱的模糊（Liquid Glass 的 scroll edge effect），頁面無法關掉；`black-translucent` 會讓 WebKit 不做頂部的顏色延伸（顏色延伸就是 WebKit 跳過這層模糊的條件）。沒有 Apple 文件，依據是多個專案的回報與一個真機確認（nesquena/hermes-webui#8365：改成 `default`、把不透明的標題列設為 sticky 後，從主畫面重開不再模糊）。
-  - In progress（2026-11-11）：擁有者回答後開始（Backlog → In Progress）。做法：狀態列改為 `default`（頁面從不透明的狀態列下方開始）；在 iOS 的主畫面 app 裡讓 `#header` 為 sticky、不透明、沒有 `backdrop-filter`，當作頂部的顏色來源。需要擁有者在真機確認；iOS 可能在加入主畫面時記住狀態列樣式，舊的圖示也許要刪掉重加。
-
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
 
 ---
 
 ## Done
+
+- [x] **BUG-117** iPhone 上 header（頭像、名稱、XP／能量條）被模糊蓋住（擁有者 2026-11-04 回報，附截圖）
+  - 現象：排行榜頁最上方從狀態列往下約到 header 底部，內容被由上而下漸弱的模糊蓋住；下面的內容清楚。`modern` skin（`data-ui-skin`）的深色畫面。
+  - 已查（2026-11-04）：`#header`（`modern` skin：`padding: calc(env(safe-area-inset-top) + var(--space-3)) …`）預設沒有 `backdrop-filter`（只有設定背景圖〔`html.has-bg`〕或 liquid-glass 主題時才有），而且 `backdrop-filter` 只模糊元素後面的東西，不會模糊 header 自己的內容；app 沒有其他蓋在 header 上的模糊層。推測是 iOS 在狀態列底下的模糊（scroll edge effect），而 header 的一部分在那個範圍內，尚未確認。
+  - 擁有者回答（2026-11-11）：從主畫面圖示開（standalone）；iOS 已更新到最新仍一樣；不確定何時開始；每一頁都一樣（最上面是同一個置頂的狀態列），捲動也一樣。
+  - 原因（2026-11-11 查）：iOS 26.1 起，主畫面 web app 用 `apple-mobile-web-app-status-bar-style=black-translucent` 時，系統會在頁面最上方約 40pt 疊一層由上而下漸弱的模糊（Liquid Glass 的 scroll edge effect），頁面無法關掉；`black-translucent` 會讓 WebKit 不做頂部的顏色延伸（顏色延伸就是 WebKit 跳過這層模糊的條件）。沒有 Apple 文件，依據是多個專案的回報與一個真機確認（nesquena/hermes-webui#8365：改成 `default`、把不透明的標題列設為 sticky 後，從主畫面重開不再模糊）。
+  - In progress（2026-11-11）：擁有者回答後開始（Backlog → In Progress）。做法：狀態列改為 `default`（頁面從不透明的狀態列下方開始）；在 iOS 的主畫面 app 裡讓 `#header` 為 sticky、不透明、沒有 `backdrop-filter`，當作頂部的顏色來源。需要擁有者在真機確認；iOS 可能在加入主畫面時記住狀態列樣式，舊的圖示也許要刪掉重加。
+  - 完成（2026-11-11，v1.41.14，#237）：
+    - `pwa/index.html`：`apple-mobile-web-app-status-bar-style` 由 `black-translucent` 改為 `default`。app 從不透明的狀態列下方開始，`env(safe-area-inset-top)` 變成 0，header 的上方留白自動縮回；`viewport-fit=cover` 保留（橫向的左右 safe area）。`--app-height` 本來就以 `visualViewport`／`innerHeight` 計算，不受影響。
+    - `pwa/assets/style.css` 最後的 BUG-117 區塊，只在 iOS 的主畫面 app（`@media (display-mode: standalone)` 加 `@supports (-webkit-touch-callout: none)`）生效：`#header` 為 `position: sticky; top: 0`（`#main-app` 不捲動、`<main>` 才捲動，所以版面不變）、背景不透明（modern 用 `--modern-bg`、liquid-glass 用 `--bg`、其他主題用 `--surface`）、沒有 `backdrop-filter`、隱藏 `::before`／`::after` 的光澤；寬度超過 430px 的手機（例如 440px 的 Pro Max）欄寬改為滿版，header 才是滿寬。瀏覽器、Android 與桌面不變。
+    - 測試：`tests/e2e/bug117-ios-header.test.js`：狀態列只有一個 `default`；iOS 以外 header 維持 static；把區塊的規則直接套用時，14 個主題 × 兩種 skin × 有無背景圖全部是 sticky、不透明、沒有背景圖、沒有 backdrop filter、沒有 `::after`（拿掉規則時會失敗）。Chromium 不會畫 iOS 的模糊，是否真的消失要真機確認（BUG-117A）。
+
 
 - [x] **PRO-014L2** client 改走 `grant_streak_unlock()`（新模組，INFRA-105）
   - 依提案 §5.3：只在本機連勝 ≥ 45、遠端載入與 Sessions 上傳之後詢問（`loadAndStart()`、cached-user 背景同步、連線恢復同步）；依 `paid_active` 寫回 legacy profile，只延長、不縮短、不取消；刪除換日裡的 SUB-16；訪客的進度條改為「需要登入帳號」；測試與 bump。
