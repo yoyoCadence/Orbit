@@ -142,6 +142,45 @@ test('a signed-in old icon gets the account text even before (or without) getSes
   await expect(result).toHaveAttribute('data-ok', 'true');
 });
 
+test.describe('on a small iPhone', () => {
+  test.use({ viewport: { width: 320, height: 568 } });
+
+  test('the opened steps scroll inside the banner; 「檢查同步」 and its answer can be reached', async ({ page }) => {
+    const user = { ...GUEST_USER, id: '00000000-0000-4000-8000-000000000119' };
+    await setUp(page, { supabase: 'offline', user });
+    await page.route(`${SUPABASE_URL}/**`, route => route.abort('internetdisconnected'));
+    await page.addInitScript(([key, userId, noticeKey]) => {
+      if (!localStorage.getItem(key)) {
+        localStorage.setItem(key, JSON.stringify({
+          access_token: 'access-token', refresh_token: 'refresh-token', token_type: 'bearer',
+          expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) - 60,
+          user: { id: userId, aud: 'authenticated', role: 'authenticated', email: 'bug118@example.test' },
+        }));
+      }
+      localStorage.setItem(`yoyo_sessionSyncPending:${encodeURIComponent(userId)}`,
+        JSON.stringify({ ownerId: userId, value: [{ id: 'bug118-pending' }] }));
+      if (!localStorage.getItem(noticeKey)) localStorage.setItem(noticeKey, JSON.stringify({ relaunchAskedAtMs: 1 }));
+    }, [SESSION_KEY, user.id, KEY]);
+
+    await open(page);
+    await notice(page).locator('summary').click();
+    const box = await notice(page).boundingBox();
+    expect(box.height).toBeLessThanOrEqual(568 * 0.55 + 1);
+    expect(await notice(page).evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true);
+
+    const check = notice(page).locator('.sbn-check');
+    await check.scrollIntoViewIfNeeded();
+    await expect(check).toBeInViewport();
+    await check.click();
+    const result = notice(page).locator('.sbn-check-result');
+    await result.scrollIntoViewIfNeeded();
+    await expect(result).toBeInViewport();
+    await expect(result).toContainText('還沒同步');
+    // The page below still has room and the bottom nav stays on screen.
+    await expect(page.locator('#nav')).toBeInViewport();
+  });
+});
+
 test('an icon with the opaque status bar sees nothing and keeps what was closed', async ({ page }) => {
   await setUp(page, { safeTop: 0 });
   const closed = { relaunchAskedAtMs: 1, readdShownAtMs: 2, readdDismissedAtMs: 3 };

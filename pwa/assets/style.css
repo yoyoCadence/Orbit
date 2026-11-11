@@ -4994,6 +4994,14 @@ nav {
   padding: 10px 12px; font-size: 12px; line-height: 1.5;
   background: var(--surface-2); color: var(--text);
   border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  /* Outside the scrolling <main>, and #main-app hides overflow: with 「怎麼做」
+     open on a small phone the banner scrolls on its own instead of clipping. */
+  max-height: 55vh;
+  max-height: 55dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 #status-bar-notice.hidden { display: none; }
 .sbn-text { flex: 1; min-width: 0; }
