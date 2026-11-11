@@ -14,6 +14,14 @@
 
 ## Backlog
 
+- [ ] **BUG-119** 排行榜頭像的 Storage policy 讀錯欄位：功能從來沒生效，而且可以被用來公開所有頭像（2026-11-11 寫 HW-112A 時發現，等擁有者核准）
+  - 位置：`pwa/db/010_leaderboard_avatars.sql` 的 `avatars_select_public_leaderboard_profiles`。子查詢 `from profiles p where p.user_id::text = (storage.foldername(name))[1]` 裡沒加表名的 `name` 會先找最內層的 `profiles.name`（顯示名稱），不是 `storage.objects.name`（檔案路徑）。production 的 `pg_policies` 也顯示為 `storage.foldername(p.name)`（2026-11-11 只讀查詢）。
+  - 影響：
+    - 原本的功能（已登入的人看得到公開排行榜使用者的頭像）從來沒生效：顯示名稱通常沒有 `/`，條件永遠不成立。
+    - 可被利用：任何已登入的人把自己的名稱改成「自己的 user_id/任意字」並設為公開（`profiles_update` 允許本人改這兩欄），條件就對 `avatars` bucket 的**每一個**檔案成立，所有已登入的人都讀得到所有人的頭像（包括沒公開的人）。只影響頭像，不影響其他資料與 `proofs`（HW-112A 的測試確認其他 policy 都限定自己的 bucket）。
+  - 修正（提案，需核准：schema 變更）：migration 017 以 `drop policy` ＋ `create policy` 改成 `storage.foldername(objects.name)`（明確指定表），加上 ASSERT 測試（公開的人的頭像別人讀得到、不公開的讀不到、改名稱打不開別人的頭像）；先在本機替身（`tests/database/support/storage-standin.sql`）演練，再以 production 乾跑，最後依寫入流程套用。
+  - 套用前先以只讀查詢確認是否已有人觸發（計數：公開且名稱的第一段等於自己 user_id 的 profile）。2026-11-11 送出的查詢因工作階段重啟沒有被核准，需要再送。
+
 - [ ] **PRO-014HB** 移除 PRO-014H 保留的 legacy 相容層
   - 時機：PRO-014HA 通過、`server` 穩定一段時間（例如兩週沒有回退）之後。
   - 範圍：`startTrial()` 寫回 `trial_started_at`、`grantStreakUnlock()` 寫回 `is_pro`／`pro_expires_at`、`showMainApp()` 的 `FLAG_STREAK_UNLOCK_NEW` 處理（`flags.js` 的 export 保留，INFRA-105）；開機的「要不要開始試用」改依 projection（例如已知 Pro 就不呼叫），設定頁試用進度條的開始時間改用別的來源或隱藏。
@@ -30,7 +38,7 @@
   - Acceptance: logged-in user completes a task, attaches proof, photo survives sign-out and re-login on a different device; guest mode still works with localStorage only; no service_role key in client code.
   - Note: requires Supabase Storage RLS policy and a bucket — propose SQL migration before implementation.
   - 提案（2026-11-11，使用者要求寫提案）：[`docs/hw-112-proof-photo-sync-proposal.md`](docs/hw-112-proof-photo-sync-proposal.md)。建議私有 bucket `proofs`、路徑 `{user_id}/{session_id}.jpg`、四個 policy；拆成 HW-112A（migration 016＋測試）→ HW-112B（擁有者套用）→ HW-112C（client）。等擁有者決定 §9（9 點；Codex 與獨立審查後修訂：下載不用 list、不放 localStorage）。
-  - **核准（2026-11-11）**：§9 全部照建議。下一步 HW-112A（migration 016 與測試）。
+  - **核准（2026-11-11）**：§9 全部照建議。HW-112A 完成（見 Done）；HW-112B（production 套用 016）在 Next；之後 HW-112C（client）。
   - HW-112C 上線後，`pwa/js/statusBarNotice.js`（BUG-118）的「佐證照片只存在這台裝置」要改成只提醒還沒上傳的照片。
 
 - [ ] **INFRA-101** 設定 Custom SMTP（Resend）並自訂 email 寄件人名稱與模板
@@ -127,6 +135,11 @@
 ---
 
 ## Next
+
+- [ ] **HW-112B** 在 production 套用 016（佐證照片的 bucket 與 policy；production 寫入，需擁有者核准）
+  - 依寫入流程：本機演練（HW-112A 已做）→ production 乾跑：`begin;` ＋ 016 ＋ `tests/database/hw112.test.sql` 的內容 ＋ `rollback;`（真的 Storage schema；第一次在真的 Storage 上跑這份測試，替身與實際不同時會在這裡發現）→ 核准後鎖定套用 016 → 事後檢查（bucket 設定、四個 policy、再跑一次測試）。
+  - 套用後以兩個測試帳號實測 Storage API：本人可以上傳、讀、刪自己的檔案；不能碰別人的資料夾；超過 200 KB 或不是 JPEG 被拒（大小與類型由 API 檢查，資料庫測不到）。
+  - 套用不影響現在的 app：client 要到 HW-112C 才會上傳。
 
 - [ ] **BUG-118A**（擁有者，v1.41.16 部署後就做）確認重新加入的主畫面圖示
   - 擁有者的圖示已在 2026-11-11 重新加入（狀態列為 `default`）。v1.41.16 之後打開**不應出現** BUG-118 的橫幅（「頂部如果被模糊蓋住…」）。這是在確認偵測的前提（`default` 下頂部 safe area 為 0）：若出現，所有 iOS 主畫面的使用者都會被誤提示，回報後要立刻修正。
@@ -255,6 +268,14 @@
 ---
 
 ## Done
+
+- [x] **HW-112A** migration 016：佐證照片的私有 bucket `proofs` 與四個 policy，加上資料庫測試
+  - 完成（2026-11-11，#245）：
+    - `pwa/db/016_proof_storage.sql`：bucket `proofs`（私有、每個檔案 200 KB、只收 `image/jpeg`）；`proofs_select`／`proofs_insert`／`proofs_update`／`proofs_delete` 都只給 `authenticated`，以 `storage.foldername(name)[1]` 限定自己的資料夾；INSERT 與 UPDATE 的 WITH CHECK 另外要求名稱剛好是 `{user_id}/{小寫 UUID}.jpg`。可重複執行（bucket `on conflict`、policy 先 drop）。回滾步驟寫在檔案開頭（HW-112C 前後不同）。
+    - `tests/database/hw112.test.sql`：bucket 設定；四個 policy 的指令、角色與子句；其他 policy 都限定自己的 bucket（permissive policy 是 OR 起來的）；以兩個合成帳號與 anon 模擬 Storage API：上傳（別人的資料夾、大寫、別的副檔名、子資料夾、不是 UUID、只有前綴相同的資料夾都被拒）、讀取、修改（別人改不到、不能搬到別人的資料夾或不合規則的名稱）、刪除（需 `storage.allow_delete_query`，別人與 anon 刪不到）。單一 transaction，結尾 rollback。
+    - 本機演練：這個雲端環境的 Docker daemon 可以啟動，但拉 Supabase 的 image 被網路政策擋下（public.ecr.aws 的 blob 403、Docker Hub 429），`supabase start` 不能用；直接執行下載的 Supabase Storage migration 也被環境的安全規則擋下。改用自己寫的最小替身 `tests/database/support/storage-standin.sql`（依 production 的 Storage 版本 0079 照抄 `storage.foldername()`、兩張表的欄位與 RLS、權限、`protect_delete`，加上 003 與 010 的頭像 policy）。本機 PG16：替身 → 003 → 016 → 測試，全部通過；故意改壞 016 的五種情況（拿掉名稱規則、SELECT 不看資料夾、UPDATE 的 WITH CHECK 改成 true、DELETE 不看資料夾、加一個不限 bucket 的 policy）都會失敗。
+    - 替身與真的 Storage 的差異由 HW-112B 的 production 乾跑補上（同一份測試）。
+    - 寫測試時發現 BUG-119（010 的頭像 policy 讀錯欄位），記在 Backlog，等擁有者核准。
 
 - [x] **UI-203** 重新設計主畫面的 app 圖示（擁有者 2026-11-11：「加入主畫面的 LOGO 太醜 請你重新設計」）
   - 舊圖示：紫橘漸層加白色「O」與圓環；PNG 的四角是透明的圓角，iOS 會把透明處補成黑色；manifest 只有兩個 `any maskable` 圖示，沒有 `apple-touch-icon`。
