@@ -71,11 +71,11 @@
   - 狀態：此項只作為追蹤母項，不直接進入實作；各子任務需各自遵守 `Next → In Progress → Done`
   - 既有 PR：[#132](https://github.com/yoyoCadence/Orbit/pull/132)（Ready for review；開始後續任務前應確認最新 head）
 
-- [ ] **PRO-014S**（可選）`my_pro_status()` 明確回傳 `is_pro`，移除付費／試用的推斷
+- [ ] **PRO-014S**（可選）`my_pro_status()` 明確回傳是否付費（提案改名為 `paid_active`，與 012 一致），移除付費／試用的推斷
   - 來源：PRO-014N 以 PRO-014R 的方案 A 結案時，把原本「不需推斷」的條件改列在這裡（2026-11-01）。
   - 範圍：RPC 新增回傳欄位（改回傳型別需 `DROP FUNCTION` 再建立並重新 `REVOKE`／`GRANT`，可包在同一個 transaction）；client 改讀新欄位，server 尚未提供時退回推斷；部署順序先 migration 後 client。
   - 屬 RPC 契約變更，依 AGENTS.md §3 需先核准。014 之後推斷已精確，沒有正確性上的急迫性。
-  - 提案（2026-11-11，使用者要求寫提案）：[`docs/pro-014s-explicit-is-paid-proposal.md`](docs/pro-014s-explicit-is-paid-proposal.md)。建議等下一次改 `my_pro_status()` 時（PRO-014G、接上付款或 PRO-017）一起做；新版 client 沒有 `is_paid` 時照舊推斷。等擁有者決定 §7。
+  - 提案（2026-11-11，使用者要求寫提案）：[`docs/pro-014s-explicit-paid-active-proposal.md`](docs/pro-014s-explicit-paid-active-proposal.md)。欄位名稱 `paid_active`（與 012 一致）；授權的到期時間也不再依賴 014 的規則（終身付費不受試用日期限制）；建議等下一次改 `my_pro_status()` 時（PRO-014G、接上付款或 PRO-017）一起做；新版 client 沒有 `paid_active` 時照舊推斷。等擁有者決定 §7。
 
 - [ ] **PRO-014G**（可選）為 entitlement projection 加上 server 簽章的 anti-tamper hardening
   - **狀態：可選，非任何任務的前置。** PR #146 覆驗定案採「UI entitlement projection ＋ server-side enforcement」，signed receipt 不再是 `PRO-014B` 的必要條件。
