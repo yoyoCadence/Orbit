@@ -146,3 +146,23 @@ payload 至少包含：
 - **2026-11-11 起 `REPO_PRO_ENTITLEMENT_SOURCE` 為 `server`**（`PRO-014H`，見 [`pro-014h-cutover.md`](pro-014h-cutover.md)）。以下是切換前的紀錄：切到 `server` 是 `PRO-014H`，**前置為 `PRO-014J`**（J 已涵蓋 `PRO-014C`／`PRO-014D`／`PRO-014I`，並額外保證 C 的 client 已實際部署且通過 production 煙霧測試），並需依 AGENTS.md §3 另行核准。
 - `PRO-014B` 已依第 0 節重新定義為 UI entitlement projection，**不再以 PRO-014G 為完成前置**。
 - `pwa/js/platform/proEntitlement.js` 檔頭寫明它不是安全邊界，避免後續有人把真正有價值的能力掛上去。
+
+## 7. 2026-11-11 重新評估（使用者要求寫提案）
+
+> 狀態：等擁有者決定本節最後的問題。只寫文件，不改程式。
+
+- **cutover 之後的現況**：production 自 2026-11-11（PRO-014H）起以 server 的 `my_pro_status()` 決定 Pro。client 存的 projection（`orbit_pro_entitlement`）仍是一份本機 JSON，會改 localStorage 的人可以寫一份「有效」的 projection 給自己。
+- **被保護的東西**：目前所有 Pro 功能都在 client，資料也只在使用者自己的帳號裡：
+  - 專注計時的音效（`focusTimer.js`）、回顧的月份上限（`review.js`）、目標數量（`goals.js`）、保護卡的使用（`dayCycle.js`／首頁與個人頁）、每日隨機主題（`theme.js`）、成長報告 PDF 與設定頁的 Pro 區塊。
+  - 沒有任何 Pro 功能會讓 server 花錢或給出別人的資料。偽造 projection 的人只是在自己的裝置上解鎖畫面，與改 `isProUser()` 的程式碼效果相同；簽章擋得住前者，擋不住後者（§2）。
+- **建議**：**仍然不做**。§1 的判斷沒有改變：
+  - 付出（資料庫端的簽章金鑰、公鑰佈署與輪替、client 驗章、RPC 契約變更）遠大於收益；
+  - 真正需要保護的是會花 server 資源或取得資料的 Pro 功能，那些必須由 server 自己檢查 `is_pro_active`（PRO-014F 的完成條件）。
+- **什麼時候該重新考慮**：
+  - 出現「Pro 才能用、而且 client 自己就能完成」又有實際價值的功能（例如可離線匯出、付費素材包）；
+  - 或付款上線後，發現偽造 projection 的情況影響營收。
+  - AI-015（AI 晨間報告）這類功能會在 server 執行，應在 server 檢查 Pro，不需要簽章。
+- **若之後要做**：與 PRO-014S（`my_pro_status()` 加 `is_paid`）一起改 RPC，只 DROP＋CREATE 一次。
+
+**需要擁有者決定**：維持「可選、現在不做」（建議），或現在就排入（依 §3 的設計另寫實作計畫）。
+
