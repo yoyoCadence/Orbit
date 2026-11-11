@@ -92,7 +92,7 @@
   - 範圍：欄位／constraint、owner-scoped update、leaderboard view 或 RPC、明確 `REVOKE`／`GRANT`、資料逃逸測試與 migration 文件
   - 安全閘門：此項是另一個 schema proposal；實作與套用前需個別核准
   - 依賴：`PRO-014D`
-  - 提案（2026-11-11，使用者要求寫提案）：[`docs/pro-014e-leaderboard-read-model-proposal.md`](docs/pro-014e-leaderboard-read-model-proposal.md)。主要問題：排行榜顯示的 `name` 預設是 email 的 @ 前段。建議 `profiles.display_name`（開啟排行榜時自己設定）＋ RPC `get_leaderboard()`（固定欄位、`is_me` 取代 `user_id`、server 判定的 `is_pro`）；拆成 E1（migration＋測試）→ EA（擁有者套用）→ E2（client）→ E3（移除舊 view）。等擁有者決定 §9。
+  - 提案（2026-11-11，使用者要求寫提案）：[`docs/pro-014e-leaderboard-read-model-proposal.md`](docs/pro-014e-leaderboard-read-model-proposal.md)。主要問題：排行榜顯示的 `name` 預設是 email 的 @ 前段。建議 `profiles.display_name`（開啟排行榜時自己設定）＋ RPC `get_leaderboard()`（固定欄位、`is_me` 取代 `user_id`、server 判定的 `is_pro`）；公開名稱與排行榜開關改為單獨的寫入（不隨整份 profile 同步）；拆成 E1（migration＋測試）→ EA（擁有者套用）→ E2（client）→ E3（移除舊 view）。等擁有者決定 §9（12 點）。
 
 - [ ] **PRO-014F** 交付 SUB-14 排行榜 glow 與 Personal Space Pro 呈現
   - 目標：只使用安全 read model 與 entitlement snapshot 呈現 Pro 身分，不讓視覺功能回寫 entitlement
