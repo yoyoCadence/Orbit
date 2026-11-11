@@ -106,12 +106,12 @@
 - [ ] **PRO-017** 邀請制解鎖 Pro
   - 目標：完成 roadmap 既有 SUB-17
   - 對應 roadmap：中期
-  - 提案（2026-11-11，使用者要求寫提案）：[`docs/pro-017-invite-unlock-proposal.md`](docs/pro-017-invite-unlock-proposal.md)。原構想的「雙方各得 15 天試用」與現況不合（新帳號本來就有 15 天試用、試用每帳號一次），「完成 onboarding」容易造假。建議：3 位被邀請者各有 7 個有效日後邀請者得 30 天 Pro（server 依 sessions 判定、一生一次），被邀請者試用延長為 30 天；拆成 R1→RA→R2。等擁有者決定 §9。
+  - 提案（2026-11-11，使用者要求寫提案）：[`docs/pro-017-invite-unlock-proposal.md`](docs/pro-017-invite-unlock-proposal.md)。原構想的「雙方各得 15 天試用」與現況不合（新帳號本來就有 15 天試用、試用每帳號一次），「完成 onboarding」容易造假。建議：3 位被邀請者各有 7 個有效日（只算帳號建立之後的日期）後邀請者得 30 天 Pro（server 依 sessions 判定、一生一次）；被邀請者第一版不給額外獎勵（延長試用要改 `is_pro_active()`／`my_pro_status()`，與 PRO-014S 一起做）；拆成 R1→RA→R2。等擁有者決定 §9（9 點）。
 
 - [ ] **AI-015** AI 晨間報告
   - 目標：完成 roadmap 既有 SUB-15
   - 對應 roadmap：長期（v2.x）
-  - 提案（2026-11-11，使用者要求寫提案）：[`docs/ai-015-morning-report-proposal.md`](docs/ai-015-morning-report-proposal.md)。建議改由 Supabase Edge Function 呼叫 Claude API（key 只在 server、server 檢查 Pro 與一天一次、資料由 server 讀取），預設只送統計不送任務名稱；模型與費用由擁有者決定。等擁有者決定 §9。
+  - 提案（2026-11-11，使用者要求寫提案）：[`docs/ai-015-morning-report-proposal.md`](docs/ai-015-morning-report-proposal.md)。建議改由 Supabase Edge Function 呼叫 Claude API（key 只在 server、server 檢查 Pro 與一天一次、資料由 server 讀取），以使用者身分呼叫 `my_pro_status()` 檢查 Pro、先佔一天的名額再呼叫 Claude，預設只送統計不送任務名稱；模型與費用由擁有者決定。等擁有者決定 §9（8 點）。
 
 
 ---
