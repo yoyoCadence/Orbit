@@ -135,17 +135,36 @@ test('an icon with the opaque status bar sees nothing and keeps what was closed'
   expect(await stored(page)).toEqual(closed);
 });
 
-test('a browser tab and an iPad see nothing, even with a top inset', async ({ page }) => {
+test('a browser tab sees nothing, even with a top inset', async ({ page }) => {
   await setUp(page, { standalone: false });
   await open(page);
   await expect(notice(page)).toBeHidden();
   expect(await stored(page)).toBeNull();
+});
 
-  await page.setViewportSize({ width: 820, height: 1180 });
-  await page.addInitScript(() => {
-    Object.defineProperty(window.navigator, 'standalone', { configurable: true, get: () => true });
+test.describe('on an iPad', () => {
+  // Decided by the screen, not the window (a split-view window can be narrow).
+  // Chromium reports the window as the screen, so the iPad's is set here.
+  test.use({ viewport: { width: 400, height: 1100 } });
+
+  test('sees nothing, even in a narrow window with a top inset', async ({ page }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(window.screen, 'width', { configurable: true, get: () => 820 });
+      Object.defineProperty(window.screen, 'height', { configurable: true, get: () => 1180 });
+    });
+    await setUp(page);
+    await open(page);
+    expect(await page.evaluate(() => [window.innerWidth, Math.min(window.screen.width, window.screen.height)])).toEqual([400, 820]);
+    await expect(notice(page)).toBeHidden();
+    expect(await stored(page)).toBeNull();
   });
+});
+
+test('closing the banner from the keyboard moves focus to the page', async ({ page }) => {
+  await setUp(page);
   await open(page);
+  await notice(page).locator('.sbn-close').focus();
+  await page.keyboard.press('Enter');
   await expect(notice(page)).toBeHidden();
-  expect(await stored(page)).toBeNull();
+  expect(await page.evaluate(() => document.activeElement?.id)).toBe('content');
 });

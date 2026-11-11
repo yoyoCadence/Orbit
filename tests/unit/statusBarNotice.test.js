@@ -12,7 +12,7 @@ import {
 
 const NOW = 1_800_000_000_000;
 const base = {
-  iosHomeScreen: true, safeTop: 59, portrait: true, viewportWidth: 390,
+  iosHomeScreen: true, safeTop: 59, portrait: true, screenShortSide: 390,
   navigationType: 'navigate', saved: null, nowMs: NOW,
 };
 const URL_ = 'https://example.test/Orbit/';
@@ -39,12 +39,12 @@ describe('statusBarNoticeStep', () => {
     expect(statusBarNoticeStep({ ...base, portrait: false, safeTop: 0, saved })).toEqual({ step: 'none', next: saved });
   });
 
-  it('leaves iPads out: a new icon may not clear the blur there (BUG-117)', () => {
+  it('leaves iPads out by screen size, also in a narrow split-view window (BUG-117)', () => {
     expect(STATUS_BAR_NOTICE_MAX_WIDTH).toBe(475);
-    expect(statusBarNoticeStep({ ...base, viewportWidth: 476 }).step).toBe('none');
-    expect(statusBarNoticeStep({ ...base, viewportWidth: 820 }).step).toBe('none');
-    expect(statusBarNoticeStep({ ...base, viewportWidth: Number.NaN }).step).toBe('none');
-    expect(statusBarNoticeStep({ ...base, viewportWidth: 475 }).step).toBe('relaunch');
+    expect(statusBarNoticeStep({ ...base, screenShortSide: 476 }).step).toBe('none');
+    expect(statusBarNoticeStep({ ...base, screenShortSide: 820 }).step).toBe('none');
+    expect(statusBarNoticeStep({ ...base, screenShortSide: Number.NaN }).step).toBe('none');
+    expect(statusBarNoticeStep({ ...base, screenShortSide: 475 }).step).toBe('relaunch');
   });
 
   it('shows nothing under an opaque status bar and keeps what was closed', () => {
@@ -150,6 +150,25 @@ describe('statusBarNoticeText', () => {
       expect(steps[3]).toContain('移除');
     }
     expect(statusBarNoticeText('readd', { signedIn: true, appUrl: URL_ }).steps[2]).toContain('紀錄都在');
+  });
+
+  it('says how to tell the icons apart and what to do if the new one is still blurred', () => {
+    const { steps } = statusBarNoticeText('readd', { signedIn: false, appUrl: URL_ });
+    expect(steps[2]).toContain('移除新的那個，在 Safari 重新整理後再加入一次');
+    expect(steps[3]).toContain('打開後還會出現這個提示的那個');
+  });
+
+  it('has a signed-in user sync the old icon before removing it (records made offline live only there)', () => {
+    const account = statusBarNoticeText('readd', { signedIn: true, appUrl: URL_ }).steps[3];
+    expect(account).toContain('先在舊圖示連上網路打開一次');
+    expect(account).toContain('「離線中」或「同步暫停」');
+    expect(statusBarNoticeText('readd', { signedIn: false, appUrl: URL_ }).steps[3]).not.toContain('同步');
+  });
+
+  it('opens the App Switcher on both kinds of iPhone', () => {
+    const { summary } = statusBarNoticeText('relaunch', { signedIn: false, appUrl: URL_ });
+    expect(summary).toContain('從螢幕底部往上滑並停住');
+    expect(summary).toContain('按兩下 Home 鍵');
   });
 
   it('never claims anything is synced; says what only this device holds', () => {

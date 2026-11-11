@@ -135,7 +135,7 @@ function _showStatusBarNotice() {
       iosHomeScreen: window.navigator.standalone === true,
       safeTop: parseFloat(rootStyle.getPropertyValue('--sat')) || 0,
       portrait: window.innerHeight >= window.innerWidth,
-      viewportWidth: window.innerWidth,
+      screenShortSide: Math.min(window.screen?.width ?? Infinity, window.screen?.height ?? Infinity),
       navigationType: window.performance?.getEntriesByType?.('navigation')?.[0]?.type ?? 'navigate',
       saved: readStatusBarNoticeState(window.localStorage),
       nowMs: Date.now(),
@@ -193,11 +193,18 @@ function _showStatusBarNotice() {
 window._dismissStatusBarNotice = function () {
   const step = _statusBarNotice?.step;
   if (!step || step === 'none') return;
+  const hadFocus = Boolean(document.activeElement?.closest?.('#status-bar-notice'));
   const storageArea = window.localStorage;
   const next = dismissStatusBarNotice(readStatusBarNoticeState(storageArea), step, Date.now());
   writeStatusBarNoticeState(storageArea, next);
   _statusBarNotice = { step: 'none' };
   _showStatusBarNotice();
+  // The focused ✕ is gone: move focus to the page instead of the document body.
+  if (hadFocus) {
+    const content = document.getElementById('content');
+    content?.setAttribute('tabindex', '-1');
+    content?.focus({ preventScroll: true });
+  }
 };
 
 window._dismissTrialBanner = function () {

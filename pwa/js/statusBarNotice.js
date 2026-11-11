@@ -26,7 +26,7 @@
 
 export const STATUS_BAR_NOTICE_KEY = 'orbit_status_bar_notice';
 
-/** Wider than this is not a phone (BUG-117: the header column covers phones up to about 475px). */
+/** A screen whose short side is wider than this is not a phone (BUG-117: the header column covers phones up to about 475px). */
 export const STATUS_BAR_NOTICE_MAX_WIDTH = 475;
 
 function isTime(value) {
@@ -40,7 +40,7 @@ function isTime(value) {
  *   iosHomeScreen: boolean,     // navigator.standalone === true
  *   safeTop: number,            // top safe-area inset in CSS px
  *   portrait: boolean,
- *   viewportWidth: number,      // CSS px
+ *   screenShortSide: number,    // the screen's shorter side in CSS px (not the window: iPad split view)
  *   navigationType: string,     // performance navigation entry type
  *   saved: null | { relaunchAskedAtMs?: number, relaunchDismissedAtMs?: number,
  *                   readdShownAtMs?: number, readdDismissedAtMs?: number },
@@ -49,10 +49,10 @@ function isTime(value) {
  * @returns {{ step: 'none' | 'relaunch' | 'readd', next: object | null }}
  *   `next` is the state to store (null: nothing stored).
  */
-export function statusBarNoticeStep({ iosHomeScreen, safeTop, portrait, viewportWidth, navigationType, saved, nowMs }) {
+export function statusBarNoticeStep({ iosHomeScreen, safeTop, portrait, screenShortSide, navigationType, saved, nowMs }) {
   const state = saved && typeof saved === 'object' ? saved : null;
   const none = { step: 'none', next: state };
-  if (!iosHomeScreen || !portrait || !(viewportWidth <= STATUS_BAR_NOTICE_MAX_WIDTH)) return none;
+  if (!iosHomeScreen || !portrait || !(screenShortSide <= STATUS_BAR_NOTICE_MAX_WIDTH)) return none;
   if (!(safeTop > 0)) return none;
 
   if (!isTime(state?.relaunchAskedAtMs)) {
@@ -116,7 +116,7 @@ export function statusBarNoticeText(step, { signedIn, appUrl }) {
   if (step === 'relaunch') {
     return {
       title: '頂部如果被模糊蓋住：請完全關閉 Orbit 再打開',
-      summary: '從 App 切換器把 Orbit 往上滑掉（有 Home 鍵的 iPhone：按兩下 Home 鍵），再從主畫面打開。',
+      summary: '打開 App 切換器（從螢幕底部往上滑並停住；有 Home 鍵的 iPhone 按兩下 Home 鍵），把 Orbit 往上滑掉，再從主畫面打開。',
       steps: [],
       warning: '',
     };
@@ -128,10 +128,14 @@ export function statusBarNoticeText(step, { signedIn, appUrl }) {
     steps: [
       `用 Safari 打開 ${appUrl}；如果出現「新版本已就緒」，先點「重新整理」。`,
       '在 Safari 的分享選單（iOS 26 在網址列旁的「⋯」裡）選「加入主畫面」。',
-      signedIn
+      (signedIn
         ? '打開新的圖示，用同一個帳號登入，確認頂部不再模糊、紀錄都在。'
-        : '打開新的圖示，確認頂部不再模糊。',
-      '最後長按舊的 Orbit 圖示，把它從主畫面移除。',
+        : '打開新的圖示，確認頂部不再模糊。')
+        + '如果仍然模糊，移除新的那個，在 Safari 重新整理後再加入一次。',
+      (signedIn
+        ? '移除舊圖示前，先在舊圖示連上網路打開一次，確認上方沒有「離線中」或「同步暫停」（還沒同步的紀錄只在舊圖示裡）。'
+        : '')
+        + '最後移除舊的圖示（打開後還會出現這個提示的那個）：長按它，從主畫面移除。',
     ],
     warning: signedIn
       ? `注意：佐證照片、背景圖片、主題、今天的計畫與個人空間只存在這台裝置的舊圖示裡，移除舊圖示時可能一起被刪除。${keep}`
