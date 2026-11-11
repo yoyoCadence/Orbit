@@ -17,7 +17,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { test, expect } from '@playwright/test';
-import { FOCUS_TASK, GUEST_USER, TODAY, mockSupabase, seedStorage } from './support/seed.js';
+import { FOCUS_TASK, GUEST_USER, TODAY, mockSupabase, seedProSnapshot, seedStorage } from './support/seed.js';
 
 const require = createRequire(import.meta.url);
 const exportJs = readFileSync(new URL('../../pwa/js/export.js', import.meta.url), 'utf8');
@@ -30,7 +30,6 @@ const LIBS = {
   [H2C_URL]: readFileSync(require.resolve('html2canvas/dist/html2canvas.min.js')),
 };
 
-const PRO_GUEST = { ...GUEST_USER, isPro: true, proExpiresAt: null };
 // Enough rows in the detail table for the report to run past one A4 page.
 const SESSIONS = Array.from({ length: 60 }, (_, index) => ({
   id: `session-pdf-${index}`, taskId: FOCUS_TASK.id, date: TODAY,
@@ -60,7 +59,8 @@ async function serveLibs(page, { tamper = null } = {}) {
 async function openReportPicker(page) {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await mockSupabase(page);
-  await seedStorage(page, [FOCUS_TASK], SESSIONS, PRO_GUEST);
+  await seedStorage(page, [FOCUS_TASK], SESSIONS, GUEST_USER);
+  await seedProSnapshot(page);   // the report is Pro-only (PRO-014H: server projection)
   await page.goto('/');
   await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
   await page.click('.nav-item[data-page="settings"]');

@@ -30,6 +30,14 @@ vi.mock('../../pwa/js/supabase.js', () => ({
   },
 }));
 
+// PRO-014H: production reads Pro from the server. The legacy (profile-field)
+// path stays for a rollback, so its tests force it here.
+const proSource = vi.hoisted(() => ({ legacy: false }));
+vi.mock('../../pwa/js/platform/proEntitlement.js', async importOriginal => {
+  const actual = await importOriginal();
+  return { ...actual, isServerProEntitlementEnabled: () => !proSource.legacy && actual.isServerProEntitlementEnabled() };
+});
+
 // ─── 被測模組（mock 完成後才 import）─────────────────────────────────────────
 
 import {
@@ -1523,141 +1531,158 @@ describe('migrateV1toV2()', () => {
 // storage.isPaidProUser() / storage.isProUser() / storage.getProExpiry()
 // ═══════════════════════════════════════════════════════════════════════════════
 
-describe('storage.isPaidProUser()', () => {
-  beforeEach(() => localStorage.clear());
+describe('legacy source (the rollback path, PRO-014H)', () => {
+  beforeEach(() => { proSource.legacy = true; });
+  afterEach(() => { proSource.legacy = false; });
 
-  it('returns false when no user in localStorage', () => {
-    expect(storage.isPaidProUser()).toBe(false);
+  describe('storage.isPaidProUser()', () => {
+    beforeEach(() => localStorage.clear());
+
+    it('returns false when no user in localStorage', () => {
+      expect(storage.isPaidProUser()).toBe(false);
+    });
+
+    it('returns false when isPro is false', () => {
+      localStorage.setItem('yoyo_user', JSON.stringify({ isPro: false }));
+      expect(storage.isPaidProUser()).toBe(false);
+    });
+
+    it('returns true when isPro is true and proExpiresAt is null (lifetime)', () => {
+      localStorage.setItem('yoyo_user', JSON.stringify({ isPro: true, proExpiresAt: null }));
+      expect(storage.isPaidProUser()).toBe(true);
+    });
+
+    it('returns true when isPro is true and proExpiresAt is in the future', () => {
+      const future = new Date(Date.now() + 86400_000).toISOString();
+      localStorage.setItem('yoyo_user', JSON.stringify({ isPro: true, proExpiresAt: future }));
+      expect(storage.isPaidProUser()).toBe(true);
+    });
+
+    it('returns false when isPro is true but proExpiresAt is in the past', () => {
+      const past = new Date(Date.now() - 86400_000).toISOString();
+      localStorage.setItem('yoyo_user', JSON.stringify({ isPro: true, proExpiresAt: past }));
+      expect(storage.isPaidProUser()).toBe(false);
+    });
+
+    it('returns false for trial-only user', () => {
+      const start = new Date(Date.now() - 86400_000).toISOString();
+      localStorage.setItem('yoyo_user', JSON.stringify({ trialStartedAt: start }));
+      expect(storage.isPaidProUser()).toBe(false);
+    });
   });
 
-  it('returns false when isPro is false', () => {
-    localStorage.setItem('yoyo_user', JSON.stringify({ isPro: false }));
-    expect(storage.isPaidProUser()).toBe(false);
+  describe('storage.isProUser() — includes trial', () => {
+    beforeEach(() => localStorage.clear());
+
+    it('returns false for free user', () => {
+      localStorage.setItem('yoyo_user', JSON.stringify({ isPro: false }));
+      expect(storage.isProUser()).toBe(false);
+    });
+
+    it('returns true for paid Pro', () => {
+      localStorage.setItem('yoyo_user', JSON.stringify({ isPro: true, proExpiresAt: null }));
+      expect(storage.isProUser()).toBe(true);
+    });
+
+    it('returns true for active trial user', () => {
+      const start = new Date(Date.now() - 86400_000).toISOString();
+      localStorage.setItem('yoyo_user', JSON.stringify({ trialStartedAt: start }));
+      expect(storage.isProUser()).toBe(true);
+    });
+
+    it('returns false for expired trial user', () => {
+      const start = new Date(Date.now() - 20 * 86400_000).toISOString();
+      localStorage.setItem('yoyo_user', JSON.stringify({ trialStartedAt: start }));
+      expect(storage.isProUser()).toBe(false);
+    });
   });
 
-  it('returns true when isPro is true and proExpiresAt is null (lifetime)', () => {
-    localStorage.setItem('yoyo_user', JSON.stringify({ isPro: true, proExpiresAt: null }));
-    expect(storage.isPaidProUser()).toBe(true);
+  describe('storage.getProExpiry()', () => {
+    beforeEach(() => localStorage.clear());
+
+    it('returns null when no user stored', () => {
+      expect(storage.getProExpiry()).toBeNull();
+    });
+
+    it('returns null when proExpiresAt is not set', () => {
+      localStorage.setItem('yoyo_user', JSON.stringify({ isPro: true }));
+      expect(storage.getProExpiry()).toBeNull();
+    });
+
+    it('returns the stored proExpiresAt string', () => {
+      const expiry = '2027-01-01T00:00:00.000Z';
+      localStorage.setItem('yoyo_user', JSON.stringify({ isPro: true, proExpiresAt: expiry }));
+      expect(storage.getProExpiry()).toBe(expiry);
+    });
   });
 
-  it('returns true when isPro is true and proExpiresAt is in the future', () => {
-    const future = new Date(Date.now() + 86400_000).toISOString();
-    localStorage.setItem('yoyo_user', JSON.stringify({ isPro: true, proExpiresAt: future }));
-    expect(storage.isPaidProUser()).toBe(true);
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // storage.isTrialUser() / storage.getTrialDaysRemaining()
+  // ═══════════════════════════════════════════════════════════════════════════════
+
+  describe('storage.isTrialUser()', () => {
+    beforeEach(() => localStorage.clear());
+
+    it('returns false when no user stored', () => {
+      expect(storage.isTrialUser()).toBe(false);
+    });
+
+    it('returns false when trialStartedAt is null', () => {
+      localStorage.setItem('yoyo_user', JSON.stringify({ trialStartedAt: null }));
+      expect(storage.isTrialUser()).toBe(false);
+    });
+
+    it('returns true when trial started recently (day 1)', () => {
+      const now = new Date().toISOString();
+      localStorage.setItem('yoyo_user', JSON.stringify({ trialStartedAt: now }));
+      expect(storage.isTrialUser()).toBe(true);
+    });
+
+    it('returns false when trial started more than 15 days ago', () => {
+      const past = new Date(Date.now() - 16 * 24 * 60 * 60 * 1000).toISOString();
+      localStorage.setItem('yoyo_user', JSON.stringify({ trialStartedAt: past }));
+      expect(storage.isTrialUser()).toBe(false);
+    });
   });
 
-  it('returns false when isPro is true but proExpiresAt is in the past', () => {
-    const past = new Date(Date.now() - 86400_000).toISOString();
-    localStorage.setItem('yoyo_user', JSON.stringify({ isPro: true, proExpiresAt: past }));
-    expect(storage.isPaidProUser()).toBe(false);
-  });
+  describe('storage.getTrialDaysRemaining()', () => {
+    beforeEach(() => localStorage.clear());
 
-  it('returns false for trial-only user', () => {
-    const start = new Date(Date.now() - 86400_000).toISOString();
-    localStorage.setItem('yoyo_user', JSON.stringify({ trialStartedAt: start }));
-    expect(storage.isPaidProUser()).toBe(false);
+    it('returns 0 when no trialStartedAt', () => {
+      expect(storage.getTrialDaysRemaining()).toBe(0);
+    });
+
+    it('returns ~15 on day 1 of trial', () => {
+      const now = new Date().toISOString();
+      localStorage.setItem('yoyo_user', JSON.stringify({ trialStartedAt: now }));
+      expect(storage.getTrialDaysRemaining()).toBeGreaterThanOrEqual(14);
+      expect(storage.getTrialDaysRemaining()).toBeLessThanOrEqual(15);
+    });
+
+    it('returns 0 when trial has expired', () => {
+      const past = new Date(Date.now() - 16 * 24 * 60 * 60 * 1000).toISOString();
+      localStorage.setItem('yoyo_user', JSON.stringify({ trialStartedAt: past }));
+      expect(storage.getTrialDaysRemaining()).toBe(0);
+    });
+
+    it('returns ~5 when 10 days into trial', () => {
+      const tenDaysAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString();
+      localStorage.setItem('yoyo_user', JSON.stringify({ trialStartedAt: tenDaysAgo }));
+      const remaining = storage.getTrialDaysRemaining();
+      expect(remaining).toBeGreaterThanOrEqual(4);
+      expect(remaining).toBeLessThanOrEqual(5);
+    });
   });
 });
 
-describe('storage.isProUser() — includes trial', () => {
+describe('server source (production since PRO-014H)', () => {
   beforeEach(() => localStorage.clear());
 
-  it('returns false for free user', () => {
-    localStorage.setItem('yoyo_user', JSON.stringify({ isPro: false }));
+  it('ignores Pro and trial written in the profile fields', () => {
+    const soon = new Date(Date.now() + 86_400_000).toISOString();
+    localStorage.setItem('yoyo_user', JSON.stringify({ id: 'u1', isPro: true, proExpiresAt: soon, trialStartedAt: new Date().toISOString() }));
+    expect(storage.isPaidProUser()).toBe(false);
+    expect(storage.isTrialUser()).toBe(false);
     expect(storage.isProUser()).toBe(false);
-  });
-
-  it('returns true for paid Pro', () => {
-    localStorage.setItem('yoyo_user', JSON.stringify({ isPro: true, proExpiresAt: null }));
-    expect(storage.isProUser()).toBe(true);
-  });
-
-  it('returns true for active trial user', () => {
-    const start = new Date(Date.now() - 86400_000).toISOString();
-    localStorage.setItem('yoyo_user', JSON.stringify({ trialStartedAt: start }));
-    expect(storage.isProUser()).toBe(true);
-  });
-
-  it('returns false for expired trial user', () => {
-    const start = new Date(Date.now() - 20 * 86400_000).toISOString();
-    localStorage.setItem('yoyo_user', JSON.stringify({ trialStartedAt: start }));
-    expect(storage.isProUser()).toBe(false);
-  });
-});
-
-describe('storage.getProExpiry()', () => {
-  beforeEach(() => localStorage.clear());
-
-  it('returns null when no user stored', () => {
-    expect(storage.getProExpiry()).toBeNull();
-  });
-
-  it('returns null when proExpiresAt is not set', () => {
-    localStorage.setItem('yoyo_user', JSON.stringify({ isPro: true }));
-    expect(storage.getProExpiry()).toBeNull();
-  });
-
-  it('returns the stored proExpiresAt string', () => {
-    const expiry = '2027-01-01T00:00:00.000Z';
-    localStorage.setItem('yoyo_user', JSON.stringify({ isPro: true, proExpiresAt: expiry }));
-    expect(storage.getProExpiry()).toBe(expiry);
-  });
-});
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// storage.isTrialUser() / storage.getTrialDaysRemaining()
-// ═══════════════════════════════════════════════════════════════════════════════
-
-describe('storage.isTrialUser()', () => {
-  beforeEach(() => localStorage.clear());
-
-  it('returns false when no user stored', () => {
-    expect(storage.isTrialUser()).toBe(false);
-  });
-
-  it('returns false when trialStartedAt is null', () => {
-    localStorage.setItem('yoyo_user', JSON.stringify({ trialStartedAt: null }));
-    expect(storage.isTrialUser()).toBe(false);
-  });
-
-  it('returns true when trial started recently (day 1)', () => {
-    const now = new Date().toISOString();
-    localStorage.setItem('yoyo_user', JSON.stringify({ trialStartedAt: now }));
-    expect(storage.isTrialUser()).toBe(true);
-  });
-
-  it('returns false when trial started more than 15 days ago', () => {
-    const past = new Date(Date.now() - 16 * 24 * 60 * 60 * 1000).toISOString();
-    localStorage.setItem('yoyo_user', JSON.stringify({ trialStartedAt: past }));
-    expect(storage.isTrialUser()).toBe(false);
-  });
-});
-
-describe('storage.getTrialDaysRemaining()', () => {
-  beforeEach(() => localStorage.clear());
-
-  it('returns 0 when no trialStartedAt', () => {
-    expect(storage.getTrialDaysRemaining()).toBe(0);
-  });
-
-  it('returns ~15 on day 1 of trial', () => {
-    const now = new Date().toISOString();
-    localStorage.setItem('yoyo_user', JSON.stringify({ trialStartedAt: now }));
-    expect(storage.getTrialDaysRemaining()).toBeGreaterThanOrEqual(14);
-    expect(storage.getTrialDaysRemaining()).toBeLessThanOrEqual(15);
-  });
-
-  it('returns 0 when trial has expired', () => {
-    const past = new Date(Date.now() - 16 * 24 * 60 * 60 * 1000).toISOString();
-    localStorage.setItem('yoyo_user', JSON.stringify({ trialStartedAt: past }));
-    expect(storage.getTrialDaysRemaining()).toBe(0);
-  });
-
-  it('returns ~5 when 10 days into trial', () => {
-    const tenDaysAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString();
-    localStorage.setItem('yoyo_user', JSON.stringify({ trialStartedAt: tenDaysAgo }));
-    const remaining = storage.getTrialDaysRemaining();
-    expect(remaining).toBeGreaterThanOrEqual(4);
-    expect(remaining).toBeLessThanOrEqual(5);
   });
 });

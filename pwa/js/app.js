@@ -177,7 +177,7 @@ function showMainApp() {
   _showTrialBanner();
   // Mixed versions (INFRA-105): only a dayCycle.js cached from before 1.41.13
   // still sets this flag; streakUnlock.js shows the celebration itself now.
-  // Remove with the PRO-014H cleanup of the legacy layer (tasks.md).
+  // Remove with the legacy write-backs in PRO-014HB (docs/pro-014h-cutover.md).
   if (sessionStorage.getItem(FLAG_STREAK_UNLOCK_NEW)) {
     sessionStorage.removeItem(FLAG_STREAK_UNLOCK_NEW);
     setTimeout(showStreakUnlockModal, 800);

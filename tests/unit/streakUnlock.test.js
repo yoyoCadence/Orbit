@@ -47,7 +47,7 @@ vi.mock('../../pwa/js/dayCycle.js', () => ({
 
 import { state } from '../../pwa/js/state.js';
 import { db, storage } from '../../pwa/js/storage.js';
-import { resetProEntitlementStorageState } from '../../pwa/js/platform/proEntitlement.js';
+import { resetProEntitlementStorageState, writeProEntitlementSnapshot } from '../../pwa/js/platform/proEntitlement.js';
 import {
   STREAK_UNLOCK_ASKED_KEY,
   requestStreakUnlock,
@@ -82,12 +82,19 @@ function seedUser(fields = {}) {
 }
 
 const flush = () => new Promise(resolve => setTimeout(resolve, 0));
+/** grant_streak_unlock() calls (PRO-014H: a grant also refreshes my_pro_status()). */
+const grantCalls = () => rpc.mock.calls.filter(call => call[0] === 'grant_streak_unlock').length;
 
 beforeEach(() => {
   localStorage.clear();
   sessionStorage.clear();
   resetProEntitlementStorageState();
   rpc.mockReset();
+  // PRO-014H: production is on the `server` source, so a grant refreshes the
+  // projection; unless a test says otherwise the server reports no Pro.
+  rpc.mockImplementation(name => Promise.resolve(name === 'my_pro_status'
+    ? { data: [{ is_active: false, expires_at: null, trial_ends_at: null }], error: null }
+    : { data: null, error: { message: `unexpected rpc ${name}` } }));
   upsert.mockClear();
   modal.mockReset();
   session.ownerId = OWNER;
@@ -222,7 +229,7 @@ describe('db.grantStreakUnlock(): write-back to the legacy profile', () => {
     let reply;
     rpc.mockReturnValueOnce(new Promise(resolve => { reply = resolve; }));
     const pending = db.grantStreakUnlock(OWNER, () => state.user);
-    await vi.waitFor(() => expect(rpc).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() => expect(grantCalls()).toBe(1));
     return { pending, grant: () => reply({ data: [row({})], error: null }) };
   }
 
@@ -299,8 +306,11 @@ describe('requestStreakUnlock(): when to ask', () => {
     expect(shouldAskStreakUnlock(OWNER)).toBe(false);
     seedUser({ streakUnlockUsed: true });
     expect(shouldAskStreakUnlock(OWNER)).toBe(false);
-    seedUser({ isPro: true, proExpiresAt: null });                    // legacy: known Pro
-    expect(shouldAskStreakUnlock(OWNER)).toBe(false);
+    seedUser({ isPro: true, proExpiresAt: null });                    // profile fields: not Pro on `server`
+    expect(shouldAskStreakUnlock(OWNER)).toBe(true);
+    writeProEntitlementSnapshot({ ownerId: OWNER, isActive: true, expiresAt: null, trialEndsAt: null, fetchedAtMs: Date.now() });
+    expect(shouldAskStreakUnlock(OWNER)).toBe(false);                 // server: known Pro
+    resetProEntitlementStorageState();
     state.user = null;
     expect(shouldAskStreakUnlock(OWNER)).toBe(false);
   });
@@ -316,7 +326,7 @@ describe('requestStreakUnlock(): when to ask', () => {
     expect(state.user).toMatchObject({ isPro: true, streakUnlockUsed: true });
     // Recorded now: the next sync does not ask again.
     await expect(requestStreakUnlock(OWNER)).resolves.toBeNull();
-    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(grantCalls()).toBe(1);
   });
 
   it('recovered after a lost answer: celebrates too', async () => {
@@ -342,12 +352,12 @@ describe('requestStreakUnlock(): when to ask', () => {
     await expect(requestStreakUnlock(OWNER)).resolves.toBe('not_eligible');
     expect(JSON.parse(localStorage.getItem(STREAK_UNLOCK_ASKED_KEY))).toEqual({ ownerId: OWNER, day: '2026-11-10' });
     await expect(requestStreakUnlock(OWNER)).resolves.toBeNull();
-    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(grantCalls()).toBe(1);
 
     day.value = '2026-11-11';
     answer({ status: 'active_entitlement', granted: false, is_active: true, paid_active: false, expires_at: null, granted_at: null });
     await expect(requestStreakUnlock(OWNER)).resolves.toBe('active_entitlement');
-    expect(rpc).toHaveBeenCalledTimes(2);
+    expect(grantCalls()).toBe(2);
 
     localStorage.setItem(STREAK_UNLOCK_ASKED_KEY, JSON.stringify({ ownerId: 'someone-else', day: '2026-11-11' }));
     expect(shouldAskStreakUnlock(OWNER)).toBe(true);
@@ -377,7 +387,7 @@ describe('requestStreakUnlock(): when to ask', () => {
     answer(notEligible);
     await expect(requestStreakUnlock(OWNER)).resolves.toBe('not_eligible');
     expect(shouldAskStreakUnlock(OWNER)).toBe(false);
-    expect(rpc).toHaveBeenCalledTimes(2);
+    expect(grantCalls()).toBe(2);
   });
 
   it('active_entitlement does not depend on Sessions: remembered even with uploads pending', async () => {
@@ -393,7 +403,7 @@ describe('requestStreakUnlock(): when to ask', () => {
     let reply;
     rpc.mockReturnValueOnce(new Promise(resolve => { reply = resolve; }));
     const ask = requestStreakUnlock(OWNER, { delayMs: 0 });
-    await vi.waitFor(() => expect(rpc).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() => expect(grantCalls()).toBe(1));
 
     // loadStateFromStorage() after a reconnect sync: a new object with newer fields.
     const synced = { ...before, xp: 250, name: 'renamed' };
@@ -416,7 +426,7 @@ describe('requestStreakUnlock(): when to ask', () => {
       requestStreakUnlock(OWNER, { delayMs: 0 }),
     ]);
     expect([a, b]).toEqual(['granted', 'granted']);
-    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(grantCalls()).toBe(1);
   });
 
   it('signed out or switched meanwhile: no screen update, no celebration', async () => {

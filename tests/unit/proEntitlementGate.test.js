@@ -43,6 +43,13 @@ vi.mock('../../pwa/js/supabase.js', () => ({
     },
   },
 }));
+// PRO-014H: production reads Pro from the server. The legacy (profile-field)
+// path stays for a rollback; tests of it force it with proSource.legacy.
+const proSource = vi.hoisted(() => ({ legacy: false }));
+vi.mock('../../pwa/js/platform/proEntitlement.js', async importOriginal => {
+  const actual = await importOriginal();
+  return { ...actual, isServerProEntitlementEnabled: () => !proSource.legacy && actual.isServerProEntitlementEnabled() };
+});
 
 import { FLAG_PRO_ENTITLEMENT } from '../../pwa/js/flags.js';
 import {
@@ -73,19 +80,33 @@ const activeRow = () => [{
 }];
 
 beforeEach(() => {
+  proSource.legacy = false;
   localStorage.clear();
   resetProEntitlementStorageState();
   rpcMock.mockReset();
   sessionUserId.current = OWNER;
 });
 
-describe('legacy source（預設）', () => {
+describe('server source 是預設（PRO-014H）', () => {
+  it('不需要裝置上的設定，profile 的 Pro 欄位也不算數', async () => {
+    seedLegacyProUser();
+    expect(storage.isProUser()).toBe(false);
+    rpcMock.mockResolvedValueOnce({ data: activeRow(), error: null });
+    await expect(db.refreshProEntitlement(OWNER)).resolves.toBe(true);
+    expect(rpcMock).toHaveBeenCalledWith('my_pro_status');
+    expect(storage.isProUser()).toBe(true);
+  });
+});
+
+describe('legacy source（回退路徑）', () => {
+  beforeEach(() => { proSource.legacy = true; });
+
   it('沿用 profile 欄位判定，行為與 cutover 前相同', () => {
     seedLegacyProUser();
     expect(storage.isProUser()).toBe(true);
   });
 
-  it('不呼叫 RPC —— migration 011 尚未套用，production 不該打不存在的 function', async () => {
+  it('不呼叫 RPC（refresh 在 legacy 下 no-op）', async () => {
     seedLegacyProUser();
     await expect(db.refreshProEntitlement(OWNER)).resolves.toBe(false);
     expect(rpcMock).not.toHaveBeenCalled();

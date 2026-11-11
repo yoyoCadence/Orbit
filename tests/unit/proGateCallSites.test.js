@@ -36,6 +36,13 @@ vi.mock('../../pwa/js/supabase.js', () => ({
     auth: { getSession: () => Promise.resolve({ data: { session: null } }) },
   },
 }));
+// PRO-014H: production reads Pro from the server. The legacy (profile-field)
+// path stays for a rollback; tests of it force it with proSource.legacy.
+const proSource = vi.hoisted(() => ({ legacy: false }));
+vi.mock('../../pwa/js/platform/proEntitlement.js', async importOriginal => {
+  const actual = await importOriginal();
+  return { ...actual, isServerProEntitlementEnabled: () => !proSource.legacy && actual.isServerProEntitlementEnabled() };
+});
 
 import {
   enableServerProEntitlementLocally,
@@ -144,6 +151,7 @@ const OWNER = 'owner-1';
 const DAY = 24 * 60 * 60 * 1000;
 
 beforeEach(() => {
+  proSource.legacy = false;
   localStorage.clear();
   resetProEntitlementStorageState();
 });
@@ -185,7 +193,8 @@ describe('server source 下的 gate 行為', () => {
     expect(storage.isTrialUser()).toBe(true);
   });
 
-  it('legacy source 維持原判定 —— production 行為不變', () => {
+  it('legacy source（回退路徑）維持原判定', () => {
+    proSource.legacy = true;
     seed({ isPro: true, proExpiresAt: new Date(Date.now() + 30 * DAY).toISOString() });
     expect(storage.isProUser()).toBe(true);
   });

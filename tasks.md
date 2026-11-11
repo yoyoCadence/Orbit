@@ -14,6 +14,11 @@
 
 ## Backlog
 
+- [ ] **PRO-014HB** 移除 PRO-014H 保留的 legacy 相容層
+  - 時機：PRO-014HA 通過、`server` 穩定一段時間（例如兩週沒有回退）之後。
+  - 範圍：`startTrial()` 寫回 `trial_started_at`、`grantStreakUnlock()` 寫回 `is_pro`／`pro_expires_at`、`showMainApp()` 的 `FLAG_STREAK_UNLOCK_NEW` 處理（`flags.js` 的 export 保留，INFRA-105）；開機的「要不要開始試用」改依 projection（例如已知 Pro 就不呼叫），設定頁試用進度條的開始時間改用別的來源或隱藏。
+  - 移除後回退不再只是改旗標：要先把 server 的試用與付費寫回 profile（production 寫入，需核准）；查詢與步驟寫進本任務的文件。
+
 - [ ] **REPO-001** Repo 清理（AUDIT-001 發現，需擁有者決定）
   - `output/`：30 個 tracked 檔、約 58 MB 的舊 proof 圖，app 與測試都沒有使用（只在 `skills/orbit-idle-window-assets` 的說明中當輸出目錄、eslint 忽略）。可刪除（歷史仍保留在 git）。
   - 遠端約 160 個已合併或過時的分支、過時的 draft PR #154：可清理。
@@ -59,7 +64,7 @@
     7. `PRO-014L` 讓 SUB-16 連勝解鎖改由 server 授權（否則 cutover 會讓它靜默失效）
     8. `PRO-014P` 換日處理只依權威的 entitlement 結果執行（否則 projection 過期的付費使用者會失去保護卡與 offer）— **完成**（#221，v1.41.5）
     9. `PRO-014RA` 在 production 套用 014，讓終身付費不被試用日期限制（**完成**，2026-11-01）
-    10. `PRO-014H` 另案核准後執行 cutover（旗標切到 `server`）
+    10. `PRO-014H` 另案核准後執行 cutover（旗標切到 `server`）（**完成**，2026-11-11，v1.41.15；真機驗證 `PRO-014HA`、相容層移除 `PRO-014HB`）
   - **為什麼 C 的實作與部署要拆開**：`.github/workflows/deploy.yml` 在每次 push `main` 後自動部署 `pwa/`，所以**合併 = 部署**。`PRO-014C` 的 client 會呼叫 `start_trial()`，若在 `PRO-014I` 之前合併，該 function 在 production 還不存在，trial 會整段失效。舊版寫「I 必須在 C 部署之前或同時完成」既與順序衝突，「同時」也無法保證原子性 —— 因此把合併本身變成一個有前置的具名任務（`PRO-014J`），而不是塞在 C 裡的但書。
   - `PRO-014E` → `PRO-014F` 為呈現層，接在 `PRO-014D` 之後。`PRO-014G` 為可選 hardening，不在主線上。`PRO-014H` 的實機驗證使用 `PRO-014Q` Q6 建立的測試帳號（[`docs/pro-test-accounts.md`](docs/pro-test-accounts.md)）；`PRO-014M` 的開發者面板模擬已由 Q6 移除。
   - 狀態：此項只作為追蹤母項，不直接進入實作；各子任務需各自遵守 `Next → In Progress → Done`
@@ -106,6 +111,10 @@
 ---
 
 ## Next
+
+- [ ] **PRO-014HA**（擁有者）真機驗證 PRO-014H 的 cutover
+  - v1.41.15 部署後依 `docs/pro-014h-cutover.md` §5：先跑 `docs/pro-test-accounts.md` 的重設 SQL，再分別登入 5 個測試帳號確認 Pro 狀態與 Pro 功能、主帳號仍是終身 Pro、離線 24 小時內維持。
+  - 有問題：依同文件 §4 回退（改回旗標即可，不需改資料），並回報帳號與現象。
 
 - [ ] **BUG-117A**（擁有者）真機確認 BUG-117 的修正
   - 步驟：v1.41.14 部署後，從主畫面圖示開 Orbit，完全關掉再開（出現更新提示就按更新，確認設定頁顯示 v1.41.14）；看頂部的頭像、名稱、XP／能量條是否還被模糊蓋住，狀態列是否是不透明的深色或跟 header 同色。
@@ -209,7 +218,14 @@
 
 ## In Progress
 
-- [ ] **PRO-014H** Production Pro entitlement client cutover
+- [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
+  - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
+
+---
+
+## Done
+
+- [x] **PRO-014H** Production Pro entitlement client cutover
   - 目標：把 `REPO_PRO_ENTITLEMENT_SOURCE` 由 `legacy` 切到 `server`，讓 production 的 `isProUser()` 實際改用 server-derived UI projection
   - 範圍：repo 常數變更、付費／非付費／trial／離線／切換帳號的實機驗證、rollback 程序；不含新功能
   - 完成條件：切換後付費使用者維持 Pro、非付費不會誤授權、離線在 grace window 內維持、超出後 fail closed
@@ -231,15 +247,15 @@
     - 撤回：刪除該帳號在 `pro_entitlements` 的資料列。`legacy` source 下這筆資料沒有作用，切換到 `server` 後才生效。
   - In progress（2026-11-11）：使用者回覆「ok 核准」，BUG-117（#237）合併後開始（Backlog → In Progress）。
     - 只讀檢查（2026-11-11，Supabase connector，只看筆數）：`profiles.streak_unlock_used` 0 筆，012 回填重跑會新標記 0 筆、提案 §7 的不一致帳號 0 筆——這次不需要任何寫入（cutover 前若有變再跑一次）。8 個 profile 中，legacy 規則（`is_pro_active()` 套在 profile 欄位上，client 的試用也是 15 天）與 server 規則各有 4 個有效；切換後失去權限 0、多出權限 0。`profiles.is_pro` 6 筆與 server 4 筆的差是已過期的 Pro。
-    - 做法（同一個 PR）：`REPO_PRO_ENTITLEMENT_SOURCE` 改為 `server`；移除兩個 legacy 相容層（`startTrial()` 寫回 `profiles.trial_started_at`、`grantStreakUnlock()` 把 SUB-16 寫回 profile 的 `isPro`／`proExpiresAt`）與 `showMainApp()` 的 `FLAG_STREAK_UNLOCK_NEW` 處理；測試改為以 `server` 為預設；rollback 程序（旗標、相容層與期間資料一起還原）寫進文件。
+    - 做法（同一個 PR）：`REPO_PRO_ENTITLEMENT_SOURCE` 改為 `server`；移除兩個 legacy 相容層（`startTrial()` 寫回 `profiles.trial_started_at`、`grantStreakUnlock()` 把 SUB-16 寫回 profile 的 `isPro`／`proExpiresAt`）與 `showMainApp()` 的 `FLAG_STREAK_UNLOCK_NEW` 處理（實作時改為保留，見下方「完成」）；測試改為以 `server` 為預設；rollback 程序（旗標、相容層與期間資料一起還原）寫進文件。
     - 部署後：擁有者以 `docs/pro-test-accounts.md` 的 5 個測試帳號做真機驗證（先重跑該文件的 SQL）。
+  - 完成（2026-11-11，v1.41.15，#238）：
+    - `REPO_PRO_ENTITLEMENT_SOURCE` 改為 `server`：Pro 與試用的判定都讀 `my_pro_status()` 的 projection，profile 的 `is_pro`／`pro_expires_at`／`trial_started_at` 不再決定 Pro；裝置無法降回 `legacy`。
+    - `db.startTrial()` 成功後立刻 `refreshProEntitlement()`：開機是先 refresh 再開始試用，沒有這一步新帳號要到下一次 refresh 才看得到試用（`legacy` 下由相容層掩蓋）。
+    - **與原計畫不同：兩個 legacy 相容層與 `FLAG_STREAK_UNLOCK_NEW` 的處理先保留**（`docs/pro-014h-cutover.md` §3）。它們寫的是 server 的值，`server` 下不參與判定；開機「profile 沒有試用開始時間才呼叫 `start_trial()`」與設定頁的試用進度條還在用試用開始時間；保留後回退只需改回旗標、不會遺失期間的試用與 SUB-16。移除改列 `PRO-014HB`。
+    - 回退程序與真機驗證步驟：`docs/pro-014h-cutover.md`。
+    - 測試：預設改為 `server`；legacy 的測試保留為「回退路徑」，以 mock `isServerProEntitlementEnabled()` 強制（`storage.test.js`、`pro014pRollover`、`proEntitlementGate`、`proGateCallSites`、`proSettingsProjection`、`proTrialRpc`）；新增「profile 欄位在 server 下不算 Pro」「預設不需裝置設定」「開始試用後立刻是 Pro」「start_trial 失敗不 refresh」（拿掉 refresh 時兩項失敗）；`streakUnlock.test.js` 的已知 Pro 改由 snapshot 決定；e2e 的 Pro 使用者改以 `seedProSnapshot()` 寫入 projection（隨機主題、成長報告 PDF）。
 
-- [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
-  - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
-
----
-
-## Done
 
 - [x] **BUG-117** iPhone 上 header（頭像、名稱、XP／能量條）被模糊蓋住（擁有者 2026-11-04 回報，附截圖）
   - 現象：排行榜頁最上方從狀態列往下約到 header 底部，內容被由上而下漸弱的模糊蓋住；下面的內容清楚。`modern` skin（`data-ui-skin`）的深色畫面。

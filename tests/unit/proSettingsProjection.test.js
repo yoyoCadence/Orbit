@@ -36,6 +36,13 @@ vi.mock('../../pwa/js/supabase.js', () => ({
     },
   },
 }));
+// PRO-014H: production reads Pro from the server. The legacy (profile-field)
+// path stays for a rollback; tests of it force it with proSource.legacy.
+const proSource = vi.hoisted(() => ({ legacy: false }));
+vi.mock('../../pwa/js/platform/proEntitlement.js', async importOriginal => {
+  const actual = await importOriginal();
+  return { ...actual, isServerProEntitlementEnabled: () => !proSource.legacy && actual.isServerProEntitlementEnabled() };
+});
 
 vi.mock('../../pwa/js/theme.js', () => ({
   applyTheme: vi.fn(),
@@ -92,6 +99,7 @@ function render() {
 }
 
 beforeEach(() => {
+  proSource.legacy = false;
   localStorage.clear();
   resetProEntitlementStorageState();
   document.body.innerHTML = '';
@@ -219,10 +227,11 @@ describe('付費與試用資料同時存在時的顯示優先序', () => {
   });
 });
 
-describe('legacy source 不受影響', () => {
+describe('legacy source（回退路徑）', () => {
   it('沿用 profile 欄位，付費使用者仍看到 active banner', () => {
     localStorage.clear();
-    resetProEntitlementStorageState();          // 不啟用 server source
+    resetProEntitlementStorageState();
+    proSource.legacy = true;
     seedNonProProfile({ isPro: true, proExpiresAt: iso(Date.now() + 30 * DAY) });
 
     expect(storage.isPaidProUser()).toBe(true);

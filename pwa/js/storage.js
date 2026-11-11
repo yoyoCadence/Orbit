@@ -873,11 +873,13 @@ export const db = {
     }
     if (!startedAt) return { ok: false, ownerChanged: false, trialStartedAt: null };
 
-    // ── LEGACY COMPATIBILITY LAYER — remove together with PRO-014H ──────────
-    // Production still runs the `legacy` source, whose isTrialUser() reads
-    // user.trialStartedAt; refreshProEntitlement() no-ops under `legacy`, so
-    // the projection is never populated there and cannot back the trial. The
-    // value written is always the server's — the client never computes it.
+    // ── LEGACY COMPATIBILITY LAYER — kept after the cutover (PRO-014H) ──────
+    // The `legacy` source's isTrialUser() reads user.trialStartedAt. Production
+    // runs `server` since PRO-014H, where this is not read for Pro; it stays so
+    // that a rollback is the source flag alone, with no trial lost, and so the
+    // boot (app.js: start a trial only while the profile has none) and the
+    // settings trial bar still know the start. Removal is PRO-014HB. The value
+    // written is always the server's — the client never computes it.
     try {
       const { error } = await supabase
         .from('profiles')
@@ -895,6 +897,10 @@ export const db = {
       user.trialStartedAt = startedAt;
       set('user', user);
     }
+    // PRO-014H: under `server` the trial is Pro only once the projection knows
+    // it. The boot refreshed before starting the trial, so without this a new
+    // account would see its trial only at the next refresh. No-op on legacy.
+    await this.refreshProEntitlement(userId);
     return { ok: true, ownerChanged: false, trialStartedAt: startedAt };
   },
 
@@ -946,9 +952,12 @@ export const db = {
       return { ok: false, ownerChanged: true, result };
     }
 
-    // ── LEGACY COMPATIBILITY LAYER — remove together with PRO-014H ──────────
+    // ── LEGACY COMPATIBILITY LAYER — kept after the cutover (PRO-014H) ──────
     // The legacy source reads Pro from the profile, so the server's paid grant
-    // is mirrored there. The values written are the server's.
+    // is mirrored there. Production runs `server` since PRO-014H, where these
+    // fields are not read for Pro; the mirror stays so that a rollback is the
+    // source flag alone, with no grant lost. Removal is PRO-014HB. The values
+    // written are the server's.
     const recovered = result.status === 'already_granted' && result.paidActive && !user.streakUnlockUsed;
     user.streakUnlockUsed = true;
     if (result.paidActive && _extendsLegacyPro(user, result.expiresAt)) {

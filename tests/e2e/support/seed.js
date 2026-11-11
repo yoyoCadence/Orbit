@@ -75,6 +75,19 @@ export async function mockSupabase(page) {
   );
 }
 
+/**
+ * PRO-014H: Pro comes from the server's projection (`orbit_pro_entitlement`),
+ * not the profile fields. Seeds an active, fresh projection for `ownerId`, as
+ * a successful my_pro_status() refresh would leave it (lifetime paid).
+ */
+export async function seedProSnapshot(page, ownerId = GUEST_USER.id) {
+  await page.addInitScript(owner => {
+    localStorage.setItem('orbit_pro_entitlement', JSON.stringify({
+      ownerId: owner, isActive: true, expiresAt: null, trialEndsAt: null, fetchedAtMs: Date.now(),
+    }));
+  }, ownerId);
+}
+
 /** Inject guest-mode localStorage before any page script runs. */
 export async function seedStorage(page, tasks, sessions = [], user = GUEST_USER) {
   await page.addInitScript(({ user, tasks, sessions, energy }) => {

@@ -221,10 +221,10 @@ describe('applyProStatusResponse', () => {
 });
 
 describe('entitlement source —— 由 repo 控制，使用者端不得降級', () => {
-  it('目前部署的來源是 legacy —— 未經 PRO-014D 驗證前不得改用 server 判定', () => {
-    expect(REPO_PRO_ENTITLEMENT_SOURCE).toBe(PRO_ENTITLEMENT_SOURCE.LEGACY);
-    expect(getProEntitlementSource()).toBe(PRO_ENTITLEMENT_SOURCE.LEGACY);
-    expect(isServerProEntitlementEnabled()).toBe(false);
+  it('目前部署的來源是 server（PRO-014H，2026-11-11 擁有者核准）', () => {
+    expect(REPO_PRO_ENTITLEMENT_SOURCE).toBe(PRO_ENTITLEMENT_SOURCE.SERVER);
+    expect(getProEntitlementSource()).toBe(PRO_ENTITLEMENT_SOURCE.SERVER);
+    expect(isServerProEntitlementEnabled()).toBe(true);
   });
 
   // 直接跑 resolver 的兩種 repo source。只透過模組常數測，等於只覆蓋今天部署的
