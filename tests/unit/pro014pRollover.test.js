@@ -37,6 +37,13 @@ vi.mock('../../pwa/js/supabase.js', () => ({
     },
   },
 }));
+// PRO-014H: production reads Pro from the server; the legacy path stays for a
+// rollback, and the tests written with profile fields force it.
+const proSource = vi.hoisted(() => ({ legacy: false }));
+vi.mock('../../pwa/js/platform/proEntitlement.js', async importOriginal => {
+  const actual = await importOriginal();
+  return { ...actual, isServerProEntitlementEnabled: () => !proSource.legacy && actual.isServerProEntitlementEnabled() };
+});
 vi.mock('../../pwa/js/router.js', () => ({ renderPage: vi.fn(), currentHash: () => 'home' }));
 vi.mock('../../pwa/js/ui/feedback.js', () => ({
   showToast: toastMock,
@@ -83,11 +90,14 @@ beforeEach(() => {
   resetProEntitlementStorageState();
   rpcMock.mockReset();
   toastMock.mockReset();
+  proSource.legacy = false;
 });
 
 // ─── 1. legacy 特性測試（重構前寫好） ─────────────────────────────────────────
 
 describe('legacy source：換日結果與重構前相同', () => {
+  beforeEach(() => { proSource.legacy = true; });
+
   it('Pro、漏一天：連勝歸零、提供 offer、推進 lastStreakDate', () => {
     seedUser({ ...legacyPro, streakDays: 10, lastStreakDate: daysAgo(2),
       streakShieldCount: 2, streakShieldResetMonth: thisMonth() });
@@ -244,6 +254,7 @@ describe('getProStatusFromSnapshot()', () => {
   });
 
   it('legacy source 永遠已知：依 isProUser()', () => {
+    proSource.legacy = true;
     seedUser(legacyPro);
     expect(getProRolloverStatus(OWNER)).toBe('pro');
     seedUser(legacyFree);
@@ -409,7 +420,7 @@ describe('待補做紀錄', () => {
   });
 
   it('legacy source 永遠不寫紀錄', () => {
-    localStorage.removeItem('orbit_pro_entitlement_source');
+    proSource.legacy = true;
     seedUser({ ...legacyFree, streakDays: 10, lastStreakDate: daysAgo(2) });
     processYesterdayStreak();
     expect(localStorage.getItem(PRO_ROLLOVER_PENDING_KEY)).toBeNull();
@@ -454,6 +465,8 @@ describe('refreshProEntitlement()：暫時性失敗保留 snapshot', () => {
 // ─── 5. BUG-115：保護卡 offer 屬於寫入它的帳號 ────────────────────────────────
 
 describe('BUG-115：保護卡 offer 屬於寫入它的帳號', () => {
+  beforeEach(() => { proSource.legacy = true; });   // Pro from the profile fields below
+
   it('另一個帳號看不到、也用不了', () => {
     localStorage.setItem(FLAG_SHIELD_PENDING, JSON.stringify({ ownerId: 'owner-a', prevStreak: 30 }));
     seedUser({ ...legacyPro, id: 'owner-b', streakDays: 2, streakShieldCount: 2 });
@@ -510,6 +523,7 @@ describe('useStreakShield()：狀態不明時顯示提示', () => {
   });
 
   it('已知不是 Pro：維持沒有提示', () => {
+    proSource.legacy = true;
     localStorage.setItem(FLAG_SHIELD_PENDING, JSON.stringify({ ownerId: OWNER, prevStreak: 12 }));
     seedUser({ ...legacyFree, streakDays: 0, streakShieldCount: 2 });
     window.useStreakShield();

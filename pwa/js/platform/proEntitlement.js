@@ -33,14 +33,14 @@
 // is inside its offline grace window, and no storage write or clear has been
 // lost. Anything unexpected reads as "not Pro" rather than "assume Pro".
 //
-// NOT ENABLED IN PRODUCTION YET. Migration 011 (PRO-014I) and 014 (PRO-014RA)
-// are applied, but the approved-list seed and the remaining prerequisites are
-// not done, so switching now would strip Pro from current paying users.
-// REPO_PRO_ENTITLEMENT_SOURCE is therefore `legacy`. Flipping it is its own task (PRO-014H) whose sole
-// prerequisite is PRO-014J — which itself covers PRO-014C, PRO-014D and
-// PRO-014I, and additionally proves C's client is deployed and passed a
-// production smoke test — plus explicit approval under AGENTS.md §3.
-// Finishing any earlier task alone does not license the change.
+// ENABLED IN PRODUCTION SINCE PRO-014H (2026-11-11, approved by the owner).
+// Migrations 011 (PRO-014I), 014 (PRO-014RA) and 012 (PRO-014LA) are applied
+// and the approved list is seeded (#222). Before the switch a read-only check
+// found the same 4 of 8 accounts active under both rules, so nobody's access
+// changed. ROLLBACK is setting this back to `legacy` and deploying: the legacy
+// write-backs in storage.js (trial start, SUB-16 grant) are kept until
+// PRO-014HB precisely so that the flag alone restores the old behaviour, with
+// nothing granted in between lost (docs/pro-014h-cutover.md).
 
 import { FLAG_PRO_ENTITLEMENT, FLAG_PRO_ENTITLEMENT_SOURCE } from '../flags.js';
 
@@ -59,7 +59,7 @@ export const PRO_ENTITLEMENT_SOURCE = Object.freeze({
  * editing a key. The only override a device may apply is the strictly stricter
  * direction (legacy → server, for local verification), never the reverse.
  */
-export const REPO_PRO_ENTITLEMENT_SOURCE = PRO_ENTITLEMENT_SOURCE.LEGACY;
+export const REPO_PRO_ENTITLEMENT_SOURCE = PRO_ENTITLEMENT_SOURCE.SERVER;
 
 // How long a snapshot stays usable without a successful refresh. This is the
 // offline grace window: a subscriber who opens the app on a plane keeps Pro for

@@ -300,7 +300,7 @@ L2 上線前回滾不影響任何使用者。
          and not coalesce(e.is_pro and (e.pro_expires_at is null or e.pro_expires_at >= p.pro_expires_at), false);
        ```
 
-  - L2 的 legacy 寫回與 PRO-014C 的相容層一樣，要在 PRO-014H 一起移除。
+  - L2 的 legacy 寫回與 PRO-014C 的相容層一樣，原定在 PRO-014H 一起移除；PRO-014H 決定先保留，讓回退只需改旗標，移除改在 PRO-014HB（見 `pro-014h-cutover.md` §3）。
 - **核准名單**：LA 第 4 步確認你的帳號沒有回歸。
 
 ## 8. 風險與已接受的限制

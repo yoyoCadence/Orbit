@@ -20,6 +20,7 @@ import {
   INSTANT_TASK,
   mockSupabase,
   seedStorage,
+  seedProSnapshot,
 } from './support/seed.js';
 
 // ─── 登入畫面 ─────────────────────────────────────────────────────────────────
@@ -526,11 +527,9 @@ test.describe('設定頁隨機主題 toggle', () => {
   test('開啟 toggle 後 localStorage 寫入 randomThemeEnabled=true 與清空 randomThemeDate', async ({ page }) => {
     await mockSupabase(page);
     await seedStorage(page, [INSTANT_TASK]);
-    // Pro user required — random theme toggle is Pro-only
+    // Pro user required — random theme toggle is Pro-only (PRO-014H: from the server projection)
+    await seedProSnapshot(page);
     await page.addInitScript(() => {
-      const u = JSON.parse(localStorage.getItem('yoyo_user') || '{}');
-      u.isPro = true;
-      localStorage.setItem('yoyo_user', JSON.stringify(u));
       localStorage.setItem('yoyo_randomThemeEnabled', 'false');
       localStorage.setItem('yoyo_randomThemeDate', '');
     });

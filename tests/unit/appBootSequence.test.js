@@ -577,6 +577,58 @@ describe('PRO-014P：refresh 之後補做', () => {
   });
 });
 
+describe('PRO-014H：Pro 狀態更新後重新套用相依的畫面', () => {
+  const STALE = () => Date.now() - 2 * 60 * 60 * 1000;
+
+  function writeSnapshot(ownerId, fetchedAtMs) {
+    localStorage.setItem('orbit_pro_entitlement', JSON.stringify({
+      ownerId, isActive: true, expiresAt: null, trialEndsAt: null, fetchedAtMs,
+    }));
+  }
+
+  afterEach(() => localStorage.removeItem('orbit_pro_entitlement'));
+
+  it('快取分支：refresh 之後才套用隨機主題（開機時狀態還不明）', async () => {
+    await bootWithPendingSession('owner-a');
+    const theme = await import('../../pwa/js/theme.js');
+    auth.sessionResolve(sessionFor('owner-a'));
+    await flush();
+
+    const refreshAt = db.refreshProEntitlement.mock.invocationCallOrder.at(-1);
+    expect(theme.applyRandomThemeForToday.mock.invocationCallOrder.some(order => order > refreshAt)).toBe(true);
+  });
+
+  it('回到前景：上次的結果超過一小時就 refresh，之後套用相依的畫面', async () => {
+    await bootWithPendingSession('owner-a');
+    const theme = await import('../../pwa/js/theme.js');
+    auth.sessionResolve(sessionFor('owner-a'));
+    await flush();
+    writeSnapshot('owner-a', STALE());
+    const before = db.refreshProEntitlement.mock.calls.length;
+
+    document.dispatchEvent(new Event('visibilitychange'));
+    await flush();
+
+    expect(db.refreshProEntitlement.mock.calls.slice(before)).toContainEqual(['owner-a']);
+    const refreshAt = db.refreshProEntitlement.mock.invocationCallOrder.at(-1);
+    expect(theme.applyRandomThemeForToday.mock.invocationCallOrder.some(order => order > refreshAt)).toBe(true);
+    expect(proRollover.resolvePendingProRollover.mock.invocationCallOrder.some(order => order > refreshAt)).toBe(true);
+  });
+
+  it('回到前景：一小時內的結果不再 refresh', async () => {
+    await bootWithPendingSession('owner-a');
+    auth.sessionResolve(sessionFor('owner-a'));
+    await flush();
+    writeSnapshot('owner-a', Date.now());
+    const before = db.refreshProEntitlement.mock.calls.length;
+
+    document.dispatchEvent(new Event('visibilitychange'));
+    await flush();
+
+    expect(db.refreshProEntitlement.mock.calls.slice(before)).not.toContainEqual(['owner-a']);
+  });
+});
+
 describe('PRO-014L2：遠端載入與 Session 補傳之後才向 server 詢問 SUB-16', () => {
   const ask = () => streakUnlock.requestStreakUnlock;
 

@@ -48,6 +48,13 @@ vi.mock('../../pwa/js/supabase.js', () => ({
     },
   },
 }));
+// PRO-014H: production reads Pro from the server. The legacy (profile-field)
+// path stays for a rollback; tests of it force it with proSource.legacy.
+const proSource = vi.hoisted(() => ({ legacy: false }));
+vi.mock('../../pwa/js/platform/proEntitlement.js', async importOriginal => {
+  const actual = await importOriginal();
+  return { ...actual, isServerProEntitlementEnabled: () => !proSource.legacy && actual.isServerProEntitlementEnabled() };
+});
 
 import {
   enableServerProEntitlementLocally,
@@ -65,6 +72,7 @@ function seedUser(id = OWNER, extra = {}) {
 }
 
 beforeEach(() => {
+  proSource.legacy = false;
   localStorage.clear();
   resetProEntitlementStorageState();
   rpcMock.mockReset();
@@ -94,12 +102,14 @@ describe('startTrial —— 授權來源是 server', () => {
 
   it('冪等：重複呼叫回傳同一個時間戳，不是錯誤路徑', async () => {
     seedUser();
-    rpcMock
-      .mockResolvedValueOnce({ data: SERVER_STARTED_AT, error: null })
-      .mockResolvedValueOnce({ data: SERVER_STARTED_AT, error: null });
+    // PRO-014H: each successful start also refreshes the projection.
+    rpcMock.mockImplementation(name => Promise.resolve(name === 'start_trial'
+      ? { data: SERVER_STARTED_AT, error: null }
+      : { data: [{ is_active: false, expires_at: null, trial_ends_at: null }], error: null }));
 
     const first = await db.startTrial(OWNER);
     const second = await db.startTrial(OWNER);
+    expect(rpcMock.mock.calls.map(call => call[0])).toEqual(['start_trial', 'my_pro_status', 'start_trial', 'my_pro_status']);
 
     expect(first.trialStartedAt).toBe(SERVER_STARTED_AT);
     expect(second).toEqual(first);
@@ -180,7 +190,8 @@ describe('trial 顯示面在兩種 source 下一致', () => {
   const startedAt = new Date(Date.now() - 5 * DAY).toISOString();
   const trialEndsAt = new Date(Date.now() + 10 * DAY).toISOString();
 
-  it('legacy：由 profile 的 trialStartedAt ＋ 15 天推導', () => {
+  it('legacy（回退路徑）：由 profile 的 trialStartedAt ＋ 15 天推導', () => {
+    proSource.legacy = true;
     seedUser(OWNER, { trialStartedAt: startedAt });
     expect(storage.isTrialUser()).toBe(true);
     expect(storage.getTrialDaysRemaining()).toBe(10);
@@ -199,9 +210,10 @@ describe('trial 顯示面在兩種 source 下一致', () => {
 
   it('同一位使用者在兩種 source 下顯示相同天數', () => {
     seedUser(OWNER, { trialStartedAt: startedAt });
+    proSource.legacy = true;
     const legacyDays = storage.getTrialDaysRemaining();
 
-    enableServerProEntitlementLocally();
+    proSource.legacy = false;
     writeProEntitlementSnapshot({
       ownerId: OWNER, isActive: true, expiresAt: null, trialEndsAt, fetchedAtMs: Date.now(),
     });
@@ -236,9 +248,10 @@ describe('trial 顯示面在兩種 source 下一致', () => {
   it('已結束的 trial 在兩種 source 下都是 false', () => {
     const expired = new Date(Date.now() - 20 * DAY).toISOString();
     seedUser(OWNER, { trialStartedAt: expired });
+    proSource.legacy = true;
     expect(storage.isTrialUser()).toBe(false);
 
-    enableServerProEntitlementLocally();
+    proSource.legacy = false;
     writeProEntitlementSnapshot({
       ownerId: OWNER,
       isActive: true,
@@ -250,7 +263,55 @@ describe('trial 顯示面在兩種 source 下一致', () => {
   });
 });
 
-describe('legacy 迴歸：相容層讓 production 行為不變', () => {
+describe('server source（PRO-014H）：開始試用後立刻是 Pro', () => {
+  it('start_trial 之後重新取得 projection，不必等到下一次 refresh', async () => {
+    seedUser();
+    expect(storage.isProUser()).toBe(false);
+    const trialEndsAt = new Date(Date.now() + 15 * DAY).toISOString();
+    rpcMock
+      .mockResolvedValueOnce({ data: new Date().toISOString(), error: null })
+      .mockResolvedValueOnce({ data: [{ is_active: true, expires_at: null, trial_ends_at: trialEndsAt }], error: null });
+
+    await expect(db.startTrial(OWNER)).resolves.toMatchObject({ ok: true });
+    expect(rpcMock.mock.calls.map(call => call[0])).toEqual(['start_trial', 'my_pro_status']);
+    expect(storage.isProUser()).toBe(true);
+    expect(storage.isTrialUser()).toBe(true);
+    expect(storage.isPaidProUser()).toBe(false);
+  });
+
+  it('開始試用時換了帳號：不替另一個帳號 refresh（那會清掉它的 snapshot）', async () => {
+    seedUser();
+    let reply;
+    rpcMock.mockReturnValueOnce(new Promise(resolve => { reply = resolve; }));
+    const pending = db.startTrial(OWNER);
+    await vi.waitFor(() => expect(rpcMock).toHaveBeenCalledTimes(1));
+    sessionUserId.current = 'owner-2';
+    reply({ data: new Date().toISOString(), error: null });
+
+    await expect(pending).resolves.toMatchObject({ ok: true });
+    expect(rpcMock.mock.calls.map(call => call[0])).toEqual(['start_trial']);
+  });
+
+  it('refresh 本身拋錯：試用已開始，結果仍是 ok', async () => {
+    seedUser();
+    rpcMock
+      .mockResolvedValueOnce({ data: new Date().toISOString(), error: null })
+      .mockImplementationOnce(() => { throw new TypeError('boom'); });
+    await expect(db.startTrial(OWNER)).resolves.toMatchObject({ ok: true, ownerChanged: false });
+  });
+
+  it('start_trial 失敗：不重新取得，維持原狀', async () => {
+    seedUser();
+    rpcMock.mockResolvedValueOnce({ data: null, error: { message: 'offline' } });
+    await expect(db.startTrial(OWNER)).resolves.toMatchObject({ ok: false });
+    expect(rpcMock).toHaveBeenCalledTimes(1);
+    expect(storage.isProUser()).toBe(false);
+  });
+});
+
+describe('legacy 迴歸（回退路徑）：相容層讓回退後的行為不變', () => {
+  beforeEach(() => { proSource.legacy = true; });
+
   it('trial 開始後 isProUser() 仍為 true —— 這正是相容層存在的理由', async () => {
     seedUser();
     expect(storage.isProUser()).toBe(false);

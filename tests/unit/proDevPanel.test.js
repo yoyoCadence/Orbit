@@ -33,6 +33,13 @@ vi.mock('../../pwa/js/supabase.js', () => ({
     },
   },
 }));
+// PRO-014H: production reads Pro from the server. The legacy (profile-field)
+// path stays for a rollback; tests of it force it with proSource.legacy.
+const proSource = vi.hoisted(() => ({ legacy: false }));
+vi.mock('../../pwa/js/platform/proEntitlement.js', async importOriginal => {
+  const actual = await importOriginal();
+  return { ...actual, isServerProEntitlementEnabled: () => !proSource.legacy && actual.isServerProEntitlementEnabled() };
+});
 
 vi.mock('../../pwa/js/theme.js', () => ({
   applyTheme: vi.fn(),
@@ -96,6 +103,7 @@ function seedLeftoverServerSimulation() {
 }
 
 beforeEach(() => {
+  proSource.legacy = false;
   localStorage.clear();
   resetProEntitlementStorageState();
   clearLocalProEntitlementOverride();
@@ -110,8 +118,8 @@ afterEach(() => {
 });
 
 describe('PRO-014Q Q6：沒有模擬', () => {
-  it.each(['legacy', 'server'])('%s source：面板沒有等級與 Pro 模擬，渲染也不寫入任何東西', source => {
-    if (source === 'server') enableServerProEntitlementLocally();
+  // PRO-014H: the repo deploys `server`, and a device cannot select `legacy`.
+  it.each(['server'])('%s source：面板沒有等級與 Pro 模擬，渲染也不寫入任何東西', source => {
     seedUser();
     const before = { ...localStorage };
     const container = renderPanel();
