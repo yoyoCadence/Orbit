@@ -14,12 +14,6 @@
 
 ## Backlog
 
-- [ ] **BUG-117** iPhone 上 header（頭像、名稱、XP／能量條）被模糊蓋住（擁有者 2026-11-04 回報，附截圖）
-  - 現象：排行榜頁最上方從狀態列往下約到 header 底部，內容被由上而下漸弱的模糊蓋住；下面的內容清楚。`modern` skin（`data-ui-skin`）的深色畫面。
-  - 已查（2026-11-04）：`#header`（`modern` skin：`padding: calc(env(safe-area-inset-top) + var(--space-3)) …`）預設沒有 `backdrop-filter`（只有設定背景圖〔`html.has-bg`〕或 liquid-glass 主題時才有），而且 `backdrop-filter` 只模糊元素後面的東西，不會模糊 header 自己的內容；app 沒有其他蓋在 header 上的模糊層。推測是 iOS 在狀態列底下的模糊（scroll edge effect），而 header 的一部分在那個範圍內，尚未確認。
-  - 待擁有者回答：從主畫面圖示開（standalone）還是 Safari；iOS 版本；以前就這樣還是最近才出現；其他頁是否一樣、捲動時是否改變。
-  - 依回答再決定：例如 header 依實際的 safe area 下移、或調整 `apple-mobile-web-app-status-bar-style`／`theme-color`。
-
 - [ ] **REPO-001** Repo 清理（AUDIT-001 發現，需擁有者決定）
   - `output/`：30 個 tracked 檔、約 58 MB 的舊 proof 圖，app 與測試都沒有使用（只在 `skills/orbit-idle-window-assets` 的說明中當輸出目錄、eslint 忽略）。可刪除（歷史仍保留在 git）。
   - 遠端約 160 個已合併或過時的分支、過時的 draft PR #154：可清理。
@@ -219,9 +213,21 @@
 > - `PS-211D`、`PS-227`：使用者決定暫緩。`REPO-001`：使用者自行處理。
 > - `PRO-017`、`AI-015`：還沒有提案；要不要先寫提案（只寫文件）由擁有者決定。
 
+> 2026-11-11 核准與回答（使用者回覆）：
+> - `BUG-117`：回答了四個問題（見該項），Backlog → In Progress。
+> - `PRO-014H`：「ok 核准」。依該項的順序：先做只讀檢查（012 回填的差異、提案 §7 的不一致帳號），再依 Supabase 寫入流程（本機演練 → dry run → 鎖定套用 → 事後檢查）重跑回填，然後 cutover PR；真機驗證由擁有者用測試帳號做。BUG-117 之後開始。
+> - `HW-112`、`PRO-014E`、`PRO-014S`、`PRO-014G`、`PRO-017`、`AI-015`：「好你寫提案我看看」——各寫一份提案（只寫文件），擁有者看過再決定是否核准實作。PRO-014H 之後依序寫。
+
 ---
 
 ## In Progress
+
+- [ ] **BUG-117** iPhone 上 header（頭像、名稱、XP／能量條）被模糊蓋住（擁有者 2026-11-04 回報，附截圖）
+  - 現象：排行榜頁最上方從狀態列往下約到 header 底部，內容被由上而下漸弱的模糊蓋住；下面的內容清楚。`modern` skin（`data-ui-skin`）的深色畫面。
+  - 已查（2026-11-04）：`#header`（`modern` skin：`padding: calc(env(safe-area-inset-top) + var(--space-3)) …`）預設沒有 `backdrop-filter`（只有設定背景圖〔`html.has-bg`〕或 liquid-glass 主題時才有），而且 `backdrop-filter` 只模糊元素後面的東西，不會模糊 header 自己的內容；app 沒有其他蓋在 header 上的模糊層。推測是 iOS 在狀態列底下的模糊（scroll edge effect），而 header 的一部分在那個範圍內，尚未確認。
+  - 擁有者回答（2026-11-11）：從主畫面圖示開（standalone）；iOS 已更新到最新仍一樣；不確定何時開始；每一頁都一樣（最上面是同一個置頂的狀態列），捲動也一樣。
+  - 原因（2026-11-11 查）：iOS 26.1 起，主畫面 web app 用 `apple-mobile-web-app-status-bar-style=black-translucent` 時，系統會在頁面最上方約 40pt 疊一層由上而下漸弱的模糊（Liquid Glass 的 scroll edge effect），頁面無法關掉；`black-translucent` 會讓 WebKit 不做頂部的顏色延伸（顏色延伸就是 WebKit 跳過這層模糊的條件）。沒有 Apple 文件，依據是多個專案的回報與一個真機確認（nesquena/hermes-webui#8365：改成 `default`、把不透明的標題列設為 sticky 後，從主畫面重開不再模糊）。
+  - In progress（2026-11-11）：擁有者回答後開始（Backlog → In Progress）。做法：狀態列改為 `default`（頁面從不透明的狀態列下方開始）；在 iOS 的主畫面 app 裡讓 `#header` 為 sticky、不透明、沒有 `backdrop-filter`，當作頂部的顏色來源。需要擁有者在真機確認；iOS 可能在加入主畫面時記住狀態列樣式，舊的圖示也許要刪掉重加。
 
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
