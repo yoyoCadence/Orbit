@@ -259,6 +259,7 @@
 | #237 | v1.41.14 | BUG-117：iOS 主畫面 app 狀態列改 `default`，header 在 iOS 主畫面 app 裡 sticky、不透明（系統不再模糊頂部；真機確認 BUG-117A） |
 | #238 | v1.41.15 | PRO-014H：Pro 判定切到 `server`；開始試用後立刻 refresh；legacy 寫回先保留（PRO-014HB 移除）；回退與真機驗證 `docs/pro-014h-cutover.md` |
 | #239 | — | HW-112 提案：佐證照片雲端同步（私有 bucket `proofs`、四個 policy 加檔名限制、下載放有上限的快取、HW-112A→B→C），等擁有者決定 §9（9 點） |
+| #240 | — | PRO-014E 提案：排行榜的公開名稱（`display_name`）與 RPC `get_leaderboard()`（不回傳 `user_id`、server 判定的 `is_pro`），等擁有者決定 §9 |
 
 教訓：#155–#164 在 Codex review 出現前就合併，造成 #165、#166、#167 的回頭修正。這就是 §2 合併條件的由來。獨立 review 在 #167、#168、#169 都找到真正的問題（例如椅子畫在螢幕後面、壁燈在相框下投出暗影），所以複查不能省。
 
