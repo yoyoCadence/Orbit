@@ -107,9 +107,14 @@ export function statusBarNoticeText(step, { signedIn, pendingSync }) {
   if (!signedIn) {
     data.push(`注意：訪客模式的所有資料都只存在這個主畫面 app 裡，刪除圖示會一起刪掉。${keep}`);
   } else {
+    // The banner stays up while records are added, so it never claims that
+    // everything is synced: it says how to check (js/ui/feedback.js keeps
+    // 離線中 or 同步暫停 on screen while writes are waiting offline or after a
+    // failed sync). A count it did see only ever asks to wait.
+    const check = '刪除圖示前，先連上網路打開 Orbit，確認上方沒有「離線中」或「同步暫停」的提示';
     data.push(pendingSync > 0
-      ? `還有 ${pendingSync} 筆資料等待同步：請先連上網路，等同步完成再刪除圖示。`
-      : '帳號、任務與紀錄都已同步，重新加入後用同一個帳號登入就會回來。');
+      ? `還有 ${pendingSync} 筆資料等待同步。${check}，等同步完成再刪除。`
+      : `帳號、任務與紀錄會同步到伺服器，重新加入後用同一個帳號登入就會回來。${check}。`);
     data.push(`注意：佐證照片，以及個人空間的物品、擺放與外觀選擇只存在這台裝置，刪除圖示會一起刪掉。${keep}`);
   }
   return {

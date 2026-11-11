@@ -262,7 +262,7 @@
   - 完成（2026-11-11，v1.41.16）：
     - 新模組 `pwa/js/statusBarNotice.js`（INFRA-105，加入 SHELL）：以 `navigator.standalone` 與頂部 safe area（`--sat`；`default` 下為 0）判斷仍是半透明狀態列的舊圖示（橫向不判斷）。第一次：請使用者完全關閉再打開（app 內的重新載入〔更新橫幅〕不算啟動，關閉前每次都提示）；之後的啟動仍是半透明：說明怎麼重新加入主畫面，並提醒哪些資料會跟著圖示刪除（訪客的所有資料；已登入時帳號、任務與紀錄同步後會回來〔有待同步就先等〕，但佐證照片與個人空間的物品、擺放和外觀只存在這台裝置），每次啟動都顯示到按 ✕ 為止；狀態列變成不透明就清除記錄。狀態存在 `orbit_status_bar_notice`。
     - `app.js`：`showMainApp()` 在 header 下方顯示橫幅（`#status-bar-notice`，文字以 `textContent` 放入）；session 恢復與同步結果出來後（`_applyProDependentUi()`、`_reportSyncResult()`、`_showSyncFailure()`）重畫文字，因為快取開機時 main app 先顯示、`getSession()` 之後才有 session。`domActions.js` 加上 `dismissStatusBarNotice`。
-    - 審查（#243）：Codex P1：已同步的帳號仍有只存在裝置上的資料（佐證照片、個人空間）→ 文字一律提醒；P2：快取開機時先以訪客的文字顯示 → 重畫。
+    - 審查（#243）：Codex P1：已同步的帳號仍有只存在裝置上的資料（佐證照片、個人空間）→ 文字一律提醒；P2：快取開機時先以訪客的文字顯示 → 重畫；P2：橫幅開著時新增的紀錄會讓「都已同步」變成錯的 → 文字不再聲稱已同步，改為說明刪除前怎麼確認（上方沒有「離線中」或「同步暫停」），離線寫入時也更新待同步的筆數。
     - 測試：`tests/unit/statusBarNotice.test.js`（13 個）；`tests/e2e/bug118-status-bar-notice.test.js`（舊圖示依序看到重開與重新加入、關閉後不再出現；不透明狀態列與瀏覽器分頁看不到，並清除記錄）。
     - BUG-117A 的步驟改寫為 BUG-118A（Next）。
 

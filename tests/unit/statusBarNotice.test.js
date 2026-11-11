@@ -115,7 +115,13 @@ describe('statusBarNoticeText', () => {
 
   it('asks a signed-in user to wait for pending sync', () => {
     expect(statusBarNoticeText('readd', { signedIn: true, pendingSync: 3 }).body.join('\n')).toContain('還有 3 筆資料等待同步');
-    expect(statusBarNoticeText('readd', { signedIn: true, pendingSync: 0 }).body.join('\n')).toContain('都已同步');
+    expect(statusBarNoticeText('readd', { signedIn: true, pendingSync: 3 }).body.join('\n')).toContain('等同步完成再刪除');
+  });
+
+  it('never claims everything is synced: records can be added while the banner is up', () => {
+    const text = statusBarNoticeText('readd', { signedIn: true, pendingSync: 0 }).body.join('\n');
+    expect(text).not.toContain('已同步');
+    expect(text).toContain('確認上方沒有「離線中」或「同步暫停」的提示');
   });
 
   it('warns a signed-in user that device-only data goes with the icon, synced or not', () => {

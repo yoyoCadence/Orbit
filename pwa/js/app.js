@@ -579,6 +579,7 @@ function _showSyncFailure() {
 function _refreshOfflineHint() {
   if (!_currentSession || isOnline()) return;
   showSyncBanner('offline', { pending: _pendingSyncCount() });
+  _showStatusBarNotice();          // BUG-118: keep its pending count current
 }
 
 // Deliberately not authOperationGuard.begin(): a new generation would cancel a
