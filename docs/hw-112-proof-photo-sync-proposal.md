@@ -130,7 +130,11 @@ CREATE POLICY "proofs_delete" ON storage.objects
 ### 5.4 刪除
 
 - 刪除一筆紀錄時，連同本機與雲端的照片一起刪，並從待傳清單移除。
-- 雲端刪除沿用既有的刪除紀錄（`sessionDeletionLog`）重試，不另外做一個清單。
+- 雲端刪除沿用既有的刪除紀錄（`sessionDeletionLog`）重試，不另外做一個清單，但**這份紀錄要等資料列與照片都確認刪除後才能清掉**：
+  - 現在的程式只確認資料列：`sessionFlow.js` 在 `db.deleteSession()` 成功後就 `clearSessionDeletion()`，`storage.js` 的重試也會跳過已有 `remoteConfirmedAt` 的項目。照樣沿用的話，資料列刪掉但照片刪除失敗（例如 Storage 一時錯誤）時，照片會永遠留在雲端。
+  - 改法：紀錄多一個照片的確認欄位（例如 `proofRemovedAt`）；清除紀錄的條件改成「資料列與照片都確認」；重試時只要照片還沒確認就再刪一次照片，資料列已確認的不再刪資料列。
+  - 舊版 client 寫的紀錄沒有這個欄位：當作照片未確認，重試一次刪除（`remove()` 對不存在的檔案也回成功，所以無害）。
+  - `sessionDeletionLog.js` 是既有的 SHELL 模組：新增的欄位與函式只能由新模組或它自己用，`sessionFlow.js`／`storage.js` 改呼叫 `proofSync.js` 的新 export（INFRA-105）。
 - `remove()` 在檔案不存在（或看不到）時也回成功：當作已刪除。
 - 順手修現況的小問題：刪除紀錄時本機的照片也一起刪（目前會留下）。
 - 本機刪除照片的函式放在新模組 `proofSync.js`（不是在 `proofStore.js` 加新 export 給 `sessionFlow.js` 用），符合 INFRA-105。
