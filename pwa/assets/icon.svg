@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- UI-001: Orbit app icon. A planet with a ring and a small gold moon on
+       its orbit. Full-bleed square (iOS and Android add their own mask);
+       `npm run icons` (scripts/make-icons.mjs) renders the PNGs from this file. -->
+  <defs>
+    <radialGradient id="bg" cx="30%" cy="20%" r="110%">
+      <stop offset="0" stop-color="#4c1d95"/>
+      <stop offset="0.5" stop-color="#2e1065"/>
+      <stop offset="1" stop-color="#120a2e"/>
+    </radialGradient>
+    <radialGradient id="planet" cx="36%" cy="30%" r="78%">
+      <stop offset="0" stop-color="#f3e8ff"/>
+      <stop offset="0.28" stop-color="#c084fc"/>
+      <stop offset="0.7" stop-color="#7c3aed"/>
+      <stop offset="1" stop-color="#3b0f7a"/>
+    </radialGradient>
+    <linearGradient id="ring" gradientUnits="userSpaceOnUse" x1="92" y1="0" x2="932" y2="0">
+      <stop offset="0" stop-color="#7c5ce6"/>
+      <stop offset="0.55" stop-color="#e2c6ff"/>
+      <stop offset="1" stop-color="#fbbf24"/>
+    </linearGradient>
+    <radialGradient id="glow">
+      <stop offset="0" stop-color="#fde68a" stop-opacity="0.95"/>
+      <stop offset="0.45" stop-color="#f59e0b" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#f59e0b" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="halo">
+      <stop offset="0.55" stop-color="#7c3aed" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#7c3aed" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <!-- everything but the background; the maskable icon shrinks this group
+       into the 80% safe zone (scripts/make-icons.mjs) -->
+  <g id="art">
+  <g fill="#fff">
+    <circle cx="214" cy="236" r="7" opacity=".85"/>
+    <circle cx="790" cy="190" r="5" opacity=".7"/>
+    <circle cx="300" cy="820" r="5" opacity=".55"/>
+    <circle cx="842" cy="760" r="6" opacity=".6"/>
+    <circle cx="150" cy="560" r="4" opacity=".5"/>
+    <circle cx="640" cy="150" r="4" opacity=".5"/>
+  </g>
+  <circle cx="512" cy="540" r="330" fill="url(#halo)"/>
+  <g transform="rotate(-22 512 540)">
+    <!-- the whole ring behind the planet, then its front half over it -->
+    <ellipse cx="512" cy="540" rx="420" ry="158" fill="none" stroke="url(#ring)" stroke-width="46"/>
+    <circle cx="512" cy="540" r="236" fill="url(#planet)" transform="rotate(22 512 540)"/>
+    <path d="M932 540 A420 158 0 0 1 92 540" fill="none" stroke="url(#ring)" stroke-width="46"/>
+    <circle cx="858" cy="450" r="130" fill="url(#glow)"/>
+    <circle cx="858" cy="450" r="54" fill="#fde68a"/>
+    <circle cx="844" cy="436" r="22" fill="#fffbeb" opacity=".9"/>
+  </g>
+  </g>
+</svg>
