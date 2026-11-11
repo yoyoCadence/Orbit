@@ -3,6 +3,13 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.41.17] - 2026-11-11
+
+### Changed
+- **新的 app 圖示（UI-203）**：主畫面圖示改成紫色的行星、環與軌道上的金色衛星，取代原本的「O」。舊圖示的四個角是透明的圓角，iPhone 會把透明的地方補成黑色；新圖示填滿整個方形，由 iOS 與 Android 自己裁成圓角或圓形。另外提供 iPhone 用的 180×180 圖示，以及 Android 用的 maskable 圖示（主體縮在安全範圍內，不會被裁掉）。**iPhone 會沿用加入主畫面當時的圖示**：要看到新圖示，請重新加入主畫面（先加新的、確認後再移除舊的，見 1.41.16）。Android 上從 Chrome 安裝的 app 會在 Chrome 之後檢查時更新（可能會請你確認）。
+
+---
+
 ## [1.41.16] - 2026-11-11
 
 ### Fixed

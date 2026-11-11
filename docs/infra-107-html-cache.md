@@ -28,7 +28,7 @@
 
 1. **判斷**：`e.request.mode === 'navigate'`（任何開啟頁面的請求，包括根目錄與帶查詢字串的網址）或 pathname 以 `.html` 結尾。不再依賴根目錄的路徑，所以 `/Orbit/` 與本機的 `/` 都成立。
 2. **回傳這個版本快取中的 HTML**：`cache.match(e.request, { ignoreSearch: true })`，有就直接回傳，不問網路（離線也一樣）。SHELL 已包含 `./` 與 `./index.html`，install 時以 `cache: 'no-cache'` 重新驗證（INFRA-105），所以快取中的 HTML 與同一個快取中的程式同一版（加上第 5 點，之後也不會被背景更新拆開）。
-3. **快取中沒有的頁面**（例如開發用的 `make-icons.html`）：向網路取得；只有成功（`res.ok`）且沒有經過 redirect 的回應才存入，存在去掉查詢字串的網址下。離線且沒有快取時與現在相同（瀏覽器的離線錯誤頁）。
+3. **快取中沒有的頁面**（例如當時開發用的 `make-icons.html`，UI-001 已刪除）：向網路取得；只有成功（`res.ok`）且沒有經過 redirect 的回應才存入，存在去掉查詢字串的網址下。離線且沒有快取時與現在相同（瀏覽器的離線錯誤頁）。
 4. **新版本照現在的流程**：開啟頁面時瀏覽器檢查 `sw.js` → 新的 service worker 安裝（重新驗證 SHELL）→ `skipWaiting`／`clients.claim` → 「🆕 新版本已就緒」→ 重新整理後拿到新版本的 HTML 與程式。
 5. **JS／CSS 也固定同一版**（2026-10-24 決定）：原本的 stale-while-revalidate 在背景以伺服器上的檔案更新**目前版本**的快取。HTML 固定之後，下一版的 service worker 沒裝成功（手機網路斷一下、iOS 中途關掉 app，或任何一個 SHELL 檔案失敗）時，下一次開啟會是「舊 HTML＋新程式」（獨立 review 以 Playwright 重現）。改為：
    - 快取中有的 JS／CSS 直接回傳，**不在背景更新**；

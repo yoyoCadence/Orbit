@@ -52,7 +52,7 @@
 | `style-src 'unsafe-inline'` | 注入的 style 可以改變畫面，但不能執行程式碼。 |
 | `img-src data:` | 頭像與截圖需要。 |
 | 外部頭像網址 | `profiles.avatar_url` 若是 Supabase 以外的 https 網址，圖片會被擋（顯示破圖）。目前上傳的頭像都在 Supabase Storage。 |
-| `make-icons.html` | 開發用的頁面，仍然部署，沒有 CSP（沒有輸入，不在 app 的流程中）。 |
+| ~~`make-icons.html`~~ | UI-203（v1.41.17）刪除：圖示改由 `art-pipeline/app-icon/icon.svg`（不部署）以 `npm run icons`（`scripts/make-icons.mjs`）產生，網站上不再有沒有 CSP 的頁面。 |
 | `'self'` 的範圍 | GitHub Pages 上 `'self'` 是 `https://yoyocadence.github.io`，包含同一帳號的其他 Pages 網站。 |
 | 改版過渡期 | 仍在 v1.41.0 以前版本的 service worker（INFRA-107 之前）以 network-first 取得 `index.html`、JS 用舊快取：第一次開啟可能是新 HTML（有 CSP）配舊 JS，舊模板中的 `onclick`（回顧頁月視圖、保護卡說明、保護卡確認的「取消」）被擋。新的 service worker 同時安裝並出現「新版本已就緒」，重新整理後一致。沒有 service worker 的瀏覽器在 HTTP cache 的 10 分鐘內也可能新舊混用。v1.41.1 以後的 service worker 不受影響（設計上如此；獨立 review 以 e2e 確認了 v1.41.7）。 |
 
