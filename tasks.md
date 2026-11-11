@@ -65,27 +65,6 @@
   - 狀態：此項只作為追蹤母項，不直接進入實作；各子任務需各自遵守 `Next → In Progress → Done`
   - 既有 PR：[#132](https://github.com/yoyoCadence/Orbit/pull/132)（Ready for review；開始後續任務前應確認最新 head）
 
-- [ ] **PRO-014H** Production Pro entitlement client cutover
-  - 目標：把 `REPO_PRO_ENTITLEMENT_SOURCE` 由 `legacy` 切到 `server`，讓 production 的 `isProUser()` 實際改用 server-derived UI projection
-  - 範圍：repo 常數變更、付費／非付費／trial／離線／切換帳號的實機驗證、rollback 程序；不含新功能
-  - 完成條件：切換後付費使用者維持 Pro、非付費不會誤授權、離線在 grace window 內維持、超出後 fail closed
-  - **rollback 是「旗標＋相容層」兩件事，不能只切回 `legacy`**：本任務會移除 `PRO-014C` 的 legacy 寫回相容層，而 `legacy` gate 的 `isTrialUser()` 只讀 `user.trialStartedAt`。若只把旗標切回 `legacy` 而不還原相容層，trial 使用者會直接失去 Pro —— rollback 本身變成一次故障。演練與記錄需涵蓋兩者同時還原。
-  - **前置：`PRO-014J` 完成（因此 C／D／I 皆已完成且 client 已上線），以及 `PRO-014L`、`PRO-014P` 完成。** 依 AGENTS.md §3 高風險規則，production rollout 需另行取得明確核准
-  - **為什麼 `PRO-014L` 是前置**：SUB-16 連勝解鎖目前在 client 端寫 `state.user.isPro`。切到 `server` source 後那個寫入不再有任何效果，連勝解鎖會靜默失效 —— cutover 不該挾帶一個功能迴歸。
-  - 一併移除 `PRO-014C` 建立的 legacy 相容層（client 寫回 `trial_started_at`）—— cutover 後 legacy gate 不再被使用。**移除與旗標切換應在同一次變更內**，rollback 時也一起還原。
-  - 依賴：`PRO-014J`、`PRO-014L`、`PRO-014O`（已於 v1.25.5 完成：cached-user 啟動也會 refresh projection）、`PRO-014P`（**擋 cutover**；2026-11-01 完成，#221）；`PRO-014Q` 已完成（2026-10-31），實機驗證使用 [`docs/pro-test-accounts.md`](docs/pro-test-accounts.md) 的 5 個測試帳號，測試前先重跑其中的 SQL。
-  - 前置 `PRO-014RA`（014 套用到 production）：**已完成**（2026-11-01）。`server` source 下終身付費不再被試用日期限制。
-  - **cutover 前（PRO-014L）**：再跑一次 012 的回填（L2 普及前舊版 client 仍以 profile 發放 SUB-16，回報的筆數是新標記的帳號）；並查 profile 顯示 SUB-16 還有效、但 server 的付費授權沒有涵蓋到同一天的帳號（查詢見 `docs/pro-014l-streak-unlock-server.md` §7），由擁有者決定。L2 的 legacy 寫回與 PRO-014C 的相容層一起移除；`showMainApp()` 處理 `FLAG_STREAK_UNLOCK_NEW` 的舊版相容（只有 1.41.13 以前快取的 `dayCycle.js` 會設這個旗標）也一起移除。
-  - **切換前要決定核准名單**（2026-10-31 發現）：PRO-014I 套用 011 時核准名單為 0 筆，沒有把 legacy 的 Pro 搬到 `pro_entitlements`。專案擁有者自己的帳號在 `profiles` 是終身 Pro（`is_pro = true`、`pro_expires_at` 為 NULL），但 `pro_entitlements` 沒有資料列；切到 `server` source 當天就會失去 Pro。切換前要由擁有者決定哪些帳號列入核准名單並寫入 `pro_entitlements`。
-  - **核准名單已寫入並對帳（2026-11-02）**：
-    - 決定（2026-11-01，使用者）：只有專案擁有者的主帳號，授權為終身。
-    - 覆核：擁有者以只讀查詢確認帳號（1 列，`profiles.is_pro = true`、`pro_expires_at` 為 NULL），agent 覆核 UUID、授權類型與到期日。
-    - 寫入：擁有者在 SQL Editor 執行，寫入前有三道檢查（email 恰好 1 個帳號、UUID 與覆核的一致、`pro_entitlements` 尚無資料列），任一不符就中止且不寫入。
-    - 寫入內容：`is_pro = true`、`pro_expires_at = NULL`、`trial_started_at = NULL`。來源是擁有者的核准，不是 profile 的欄位；profile 的試用起點不搬移。
-    - 對帳：以該帳號身份呼叫 `my_pro_status()`，結果 `is_active = true`、`expires_at = NULL`、`trial_ends_at = NULL`，即終身付費。
-    - 紀錄（依 `docs/sub-14-leaderboard-pro.md` 的對帳規則）：核准 1 筆、成功 1 筆、拒絕／重複 0 筆，執行人為專案擁有者。email 與 UUID 不寫進 repo。
-    - 撤回：刪除該帳號在 `pro_entitlements` 的資料列。`legacy` source 下這筆資料沒有作用，切換到 `server` 後才生效。
-
 - [ ] **PRO-014S**（可選）`my_pro_status()` 明確回傳 `is_pro`，移除付費／試用的推斷
   - 來源：PRO-014N 以 PRO-014R 的方案 A 結案時，把原本「不需推斷」的條件改列在這裡（2026-11-01）。
   - 範圍：RPC 新增回傳欄位（改回傳型別需 `DROP FUNCTION` 再建立並重新 `REVOKE`／`GRANT`，可包在同一個 transaction）；client 改讀新欄位，server 尚未提供時退回推斷；部署順序先 migration 後 client。
@@ -229,6 +208,31 @@
 ---
 
 ## In Progress
+
+- [ ] **PRO-014H** Production Pro entitlement client cutover
+  - 目標：把 `REPO_PRO_ENTITLEMENT_SOURCE` 由 `legacy` 切到 `server`，讓 production 的 `isProUser()` 實際改用 server-derived UI projection
+  - 範圍：repo 常數變更、付費／非付費／trial／離線／切換帳號的實機驗證、rollback 程序；不含新功能
+  - 完成條件：切換後付費使用者維持 Pro、非付費不會誤授權、離線在 grace window 內維持、超出後 fail closed
+  - **rollback 是「旗標＋相容層」兩件事，不能只切回 `legacy`**：本任務會移除 `PRO-014C` 的 legacy 寫回相容層，而 `legacy` gate 的 `isTrialUser()` 只讀 `user.trialStartedAt`。若只把旗標切回 `legacy` 而不還原相容層，trial 使用者會直接失去 Pro —— rollback 本身變成一次故障。演練與記錄需涵蓋兩者同時還原。
+  - **前置：`PRO-014J` 完成（因此 C／D／I 皆已完成且 client 已上線），以及 `PRO-014L`、`PRO-014P` 完成。** 依 AGENTS.md §3 高風險規則，production rollout 需另行取得明確核准
+  - **為什麼 `PRO-014L` 是前置**：SUB-16 連勝解鎖目前在 client 端寫 `state.user.isPro`。切到 `server` source 後那個寫入不再有任何效果，連勝解鎖會靜默失效 —— cutover 不該挾帶一個功能迴歸。
+  - 一併移除 `PRO-014C` 建立的 legacy 相容層（client 寫回 `trial_started_at`）—— cutover 後 legacy gate 不再被使用。**移除與旗標切換應在同一次變更內**，rollback 時也一起還原。
+  - 依賴：`PRO-014J`、`PRO-014L`、`PRO-014O`（已於 v1.25.5 完成：cached-user 啟動也會 refresh projection）、`PRO-014P`（**擋 cutover**；2026-11-01 完成，#221）；`PRO-014Q` 已完成（2026-10-31），實機驗證使用 [`docs/pro-test-accounts.md`](docs/pro-test-accounts.md) 的 5 個測試帳號，測試前先重跑其中的 SQL。
+  - 前置 `PRO-014RA`（014 套用到 production）：**已完成**（2026-11-01）。`server` source 下終身付費不再被試用日期限制。
+  - **cutover 前（PRO-014L）**：再跑一次 012 的回填（L2 普及前舊版 client 仍以 profile 發放 SUB-16，回報的筆數是新標記的帳號）；並查 profile 顯示 SUB-16 還有效、但 server 的付費授權沒有涵蓋到同一天的帳號（查詢見 `docs/pro-014l-streak-unlock-server.md` §7），由擁有者決定。L2 的 legacy 寫回與 PRO-014C 的相容層一起移除；`showMainApp()` 處理 `FLAG_STREAK_UNLOCK_NEW` 的舊版相容（只有 1.41.13 以前快取的 `dayCycle.js` 會設這個旗標）也一起移除。
+  - **切換前要決定核准名單**（2026-10-31 發現）：PRO-014I 套用 011 時核准名單為 0 筆，沒有把 legacy 的 Pro 搬到 `pro_entitlements`。專案擁有者自己的帳號在 `profiles` 是終身 Pro（`is_pro = true`、`pro_expires_at` 為 NULL），但 `pro_entitlements` 沒有資料列；切到 `server` source 當天就會失去 Pro。切換前要由擁有者決定哪些帳號列入核准名單並寫入 `pro_entitlements`。
+  - **核准名單已寫入並對帳（2026-11-02）**：
+    - 決定（2026-11-01，使用者）：只有專案擁有者的主帳號，授權為終身。
+    - 覆核：擁有者以只讀查詢確認帳號（1 列，`profiles.is_pro = true`、`pro_expires_at` 為 NULL），agent 覆核 UUID、授權類型與到期日。
+    - 寫入：擁有者在 SQL Editor 執行，寫入前有三道檢查（email 恰好 1 個帳號、UUID 與覆核的一致、`pro_entitlements` 尚無資料列），任一不符就中止且不寫入。
+    - 寫入內容：`is_pro = true`、`pro_expires_at = NULL`、`trial_started_at = NULL`。來源是擁有者的核准，不是 profile 的欄位；profile 的試用起點不搬移。
+    - 對帳：以該帳號身份呼叫 `my_pro_status()`，結果 `is_active = true`、`expires_at = NULL`、`trial_ends_at = NULL`，即終身付費。
+    - 紀錄（依 `docs/sub-14-leaderboard-pro.md` 的對帳規則）：核准 1 筆、成功 1 筆、拒絕／重複 0 筆，執行人為專案擁有者。email 與 UUID 不寫進 repo。
+    - 撤回：刪除該帳號在 `pro_entitlements` 的資料列。`legacy` source 下這筆資料沒有作用，切換到 `server` 後才生效。
+  - In progress（2026-11-11）：使用者回覆「ok 核准」，BUG-117（#237）合併後開始（Backlog → In Progress）。
+    - 只讀檢查（2026-11-11，Supabase connector，只看筆數）：`profiles.streak_unlock_used` 0 筆，012 回填重跑會新標記 0 筆、提案 §7 的不一致帳號 0 筆——這次不需要任何寫入（cutover 前若有變再跑一次）。8 個 profile 中，legacy 規則（`is_pro_active()` 套在 profile 欄位上，client 的試用也是 15 天）與 server 規則各有 4 個有效；切換後失去權限 0、多出權限 0。`profiles.is_pro` 6 筆與 server 4 筆的差是已過期的 Pro。
+    - 做法（同一個 PR）：`REPO_PRO_ENTITLEMENT_SOURCE` 改為 `server`；移除兩個 legacy 相容層（`startTrial()` 寫回 `profiles.trial_started_at`、`grantStreakUnlock()` 把 SUB-16 寫回 profile 的 `isPro`／`proExpiresAt`）與 `showMainApp()` 的 `FLAG_STREAK_UNLOCK_NEW` 處理；測試改為以 `server` 為預設；rollback 程序（旗標、相容層與期間資料一起還原）寫進文件。
+    - 部署後：擁有者以 `docs/pro-test-accounts.md` 的 5 個測試帳號做真機驗證（先重跑該文件的 SQL）。
 
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
