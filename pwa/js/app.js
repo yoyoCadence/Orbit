@@ -38,6 +38,7 @@ import {
   statusBarNoticeStep, statusBarNoticeText, dismissStatusBarNotice,
   readStatusBarNoticeState, writeStatusBarNoticeState,
 } from './statusBarNotice.js';
+import { hasStoredSession } from './sessionPresence.js';
 import { isOnline, onConnectivityChange } from './platform/network.js';
 import { orbitWindowRuntimeDestroyer } from './personalSpace/v2/runtime/pixiSceneRuntime.js';
 
@@ -96,7 +97,7 @@ function _applyProDependentUi() {
   resolvePendingProRollover();     // PRO-014P: deferred Pro effects
   applyRandomThemeForToday();      // Pro-only; once a day
   _showTrialBanner();
-  _showStatusBarNotice();          // BUG-118: the session may have been restored
+  _showStatusBarNotice();          // BUG-118: signed in or out since the boot
   updateHeader();
   // Re-rendering under a focused text field would throw away what is being typed.
   if (!isTextInputActive()) renderPage(currentHash());
@@ -119,9 +120,11 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // BUG-118: an icon added before v1.41.14 keeps the old translucent status bar
-// (js/statusBarNotice.js). The step is decided once per page load; the text is
-// redrawn when the session or the sync queue settles (a cached boot shows the
-// main app before getSession() restores the session).
+// (js/statusBarNotice.js). The step is decided once per page load. Whether
+// the device is signed in comes from the stored session as well: a cached boot
+// shows the main app before getSession() resolves, and offline with an expired
+// token it never does (BUG-116). The banner is rebuilt only when its text
+// changes, so a redraw neither re-announces it nor drops focus.
 let _statusBarNotice = null;
 function _showStatusBarNotice() {
   const el = document.getElementById('status-bar-notice');
@@ -132,6 +135,7 @@ function _showStatusBarNotice() {
       iosHomeScreen: window.navigator.standalone === true,
       safeTop: parseFloat(rootStyle.getPropertyValue('--sat')) || 0,
       portrait: window.innerHeight >= window.innerWidth,
+      viewportWidth: window.innerWidth,
       navigationType: window.performance?.getEntriesByType?.('navigation')?.[0]?.type ?? 'navigate',
       saved: readStatusBarNoticeState(window.localStorage),
       nowMs: Date.now(),
@@ -143,30 +147,46 @@ function _showStatusBarNotice() {
   if (step === 'none') {
     el.classList.add('hidden');
     el.replaceChildren();
+    delete el.dataset.key;
     return;
   }
-  const ownerId = _currentSession?.user?.id ?? null;
-  const text = statusBarNoticeText(step, {
-    signedIn: Boolean(ownerId),
-    pendingSync: ownerId ? storage.getPendingSyncSummary(ownerId).total : 0,
-  });
+  const signedIn = Boolean(_currentSession) || hasStoredSession();
+  const key = `${step}:${signedIn ? 'account' : 'guest'}`;
+  if (el.dataset.key === key && !el.classList.contains('hidden')) return;
+  const appUrl = window.location.origin + window.location.pathname.replace(/index\.html$/, '');
+  const text = statusBarNoticeText(step, { signedIn, appUrl });
+
   const body = document.createElement('div');
   body.className = 'sbn-text';
   const title = document.createElement('strong');
   title.textContent = text.title;
-  body.append(title);
-  for (const line of text.body) {
-    const p = document.createElement('p');
-    p.textContent = line;
-    body.append(p);
+  const summary = document.createElement('p');
+  summary.textContent = text.summary;
+  body.append(title, summary);
+  if (text.steps.length) {
+    const details = document.createElement('details');
+    const toggle = document.createElement('summary');
+    toggle.textContent = '怎麼做';
+    const list = document.createElement('ol');
+    for (const line of text.steps) {
+      const item = document.createElement('li');
+      item.textContent = line;
+      list.append(item);
+    }
+    const warning = document.createElement('p');
+    warning.className = 'sbn-warning';
+    warning.textContent = text.warning;
+    details.append(toggle, list, warning);
+    body.append(details);
   }
   const close = document.createElement('button');
   close.className = 'sbn-close';
   close.dataset.action = 'dismissStatusBarNotice';
-  close.setAttribute('aria-label', '關閉');
+  close.setAttribute('aria-label', '關閉這個提示');
   close.textContent = '✕';
   el.replaceChildren(body, close);
   el.dataset.step = step;
+  el.dataset.key = key;
   el.classList.remove('hidden');
 }
 
@@ -174,8 +194,8 @@ window._dismissStatusBarNotice = function () {
   const step = _statusBarNotice?.step;
   if (!step || step === 'none') return;
   const storageArea = window.localStorage;
-  writeStatusBarNoticeState(storageArea,
-    dismissStatusBarNotice(readStatusBarNoticeState(storageArea), step, Date.now()));
+  const next = dismissStatusBarNotice(readStatusBarNoticeState(storageArea), step, Date.now());
+  writeStatusBarNoticeState(storageArea, next);
   _statusBarNotice = { step: 'none' };
   _showStatusBarNotice();
 };
@@ -562,7 +582,6 @@ async function _reportSyncResult(loaded, isCurrent) {
   }
   _needsResync = false;
   showSyncBanner('synced');
-  _showStatusBarNotice();          // BUG-118: what it says depends on pending sync
 }
 
 function _pendingSyncCount() {
@@ -572,14 +591,12 @@ function _pendingSyncCount() {
 function _showSyncFailure() {
   _needsResync = true;
   showSyncBanner(isOnline() ? 'error' : 'offline', { pending: _pendingSyncCount() });
-  _showStatusBarNotice();          // BUG-118: what it says depends on pending sync
 }
 
 /** Keeps the offline banner's pending count current after local writes. */
 function _refreshOfflineHint() {
   if (!_currentSession || isOnline()) return;
   showSyncBanner('offline', { pending: _pendingSyncCount() });
-  _showStatusBarNotice();          // BUG-118: keep its pending count current
 }
 
 // Deliberately not authOperationGuard.begin(): a new generation would cancel a

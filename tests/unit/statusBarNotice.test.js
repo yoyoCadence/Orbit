@@ -2,6 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   STATUS_BAR_NOTICE_KEY,
+  STATUS_BAR_NOTICE_MAX_WIDTH,
   statusBarNoticeStep,
   dismissStatusBarNotice,
   readStatusBarNoticeState,
@@ -10,7 +11,11 @@ import {
 } from '../../pwa/js/statusBarNotice.js';
 
 const NOW = 1_800_000_000_000;
-const base = { iosHomeScreen: true, safeTop: 59, portrait: true, navigationType: 'navigate', saved: null, nowMs: NOW };
+const base = {
+  iosHomeScreen: true, safeTop: 59, portrait: true, viewportWidth: 390,
+  navigationType: 'navigate', saved: null, nowMs: NOW,
+};
+const URL_ = 'https://example.test/Orbit/';
 
 function memoryStorage(initial = {}) {
   const data = new Map(Object.entries(initial));
@@ -34,10 +39,18 @@ describe('statusBarNoticeStep', () => {
     expect(statusBarNoticeStep({ ...base, portrait: false, safeTop: 0, saved })).toEqual({ step: 'none', next: saved });
   });
 
-  it('forgets everything once the status bar is opaque (top inset 0)', () => {
-    const saved = { relaunchAskedAtMs: 1, readdDismissedAtMs: 2 };
-    expect(statusBarNoticeStep({ ...base, safeTop: 0, saved })).toEqual({ step: 'none', next: null });
-    expect(statusBarNoticeStep({ ...base, safeTop: Number.NaN, saved })).toEqual({ step: 'none', next: null });
+  it('leaves iPads out: a new icon may not clear the blur there (BUG-117)', () => {
+    expect(STATUS_BAR_NOTICE_MAX_WIDTH).toBe(475);
+    expect(statusBarNoticeStep({ ...base, viewportWidth: 476 }).step).toBe('none');
+    expect(statusBarNoticeStep({ ...base, viewportWidth: 820 }).step).toBe('none');
+    expect(statusBarNoticeStep({ ...base, viewportWidth: Number.NaN }).step).toBe('none');
+    expect(statusBarNoticeStep({ ...base, viewportWidth: 475 }).step).toBe('relaunch');
+  });
+
+  it('shows nothing under an opaque status bar and keeps what was closed', () => {
+    const saved = { relaunchAskedAtMs: 1, readdShownAtMs: 2, readdDismissedAtMs: 3 };
+    expect(statusBarNoticeStep({ ...base, safeTop: 0, saved })).toEqual({ step: 'none', next: saved });
+    expect(statusBarNoticeStep({ ...base, safeTop: Number.NaN, saved })).toEqual({ step: 'none', next: saved });
   });
 
   it('asks for a relaunch the first time, on a launch or on the update reload', () => {
@@ -57,14 +70,24 @@ describe('statusBarNoticeStep', () => {
       .toEqual({ step: 'none', next: closed });
   });
 
-  it('explains re-adding on a later launch that is still translucent, until closed', () => {
+  it('moves to re-adding on a later launch that is still translucent, and remembers it', () => {
     for (const saved of [{ relaunchAskedAtMs: 1 }, { relaunchAskedAtMs: 1, relaunchDismissedAtMs: 2 }]) {
       for (const navigationType of ['navigate', 'back_forward', 'prerender']) {
-        expect(statusBarNoticeStep({ ...base, navigationType, saved })).toEqual({ step: 'readd', next: saved });
+        expect(statusBarNoticeStep({ ...base, navigationType, saved }))
+          .toEqual({ step: 'readd', next: { ...saved, readdShownAtMs: NOW } });
       }
     }
-    const closed = { relaunchAskedAtMs: 1, readdDismissedAtMs: 3 };
-    expect(statusBarNoticeStep({ ...base, saved: closed })).toEqual({ step: 'none', next: closed });
+    const shown = { relaunchAskedAtMs: 1, readdShownAtMs: 5 };
+    expect(statusBarNoticeStep({ ...base, saved: shown })).toEqual({ step: 'readd', next: shown });
+  });
+
+  it('keeps the re-add step on in-app reloads: it never goes back to asking for a relaunch', () => {
+    const shown = { relaunchAskedAtMs: 1, readdShownAtMs: 5 };
+    expect(statusBarNoticeStep({ ...base, navigationType: 'reload', saved: shown })).toEqual({ step: 'readd', next: shown });
+    const closed = { relaunchAskedAtMs: 1, relaunchDismissedAtMs: 2, readdShownAtMs: 5, readdDismissedAtMs: 6 };
+    for (const navigationType of ['reload', 'navigate']) {
+      expect(statusBarNoticeStep({ ...base, navigationType, saved: closed })).toEqual({ step: 'none', next: closed });
+    }
   });
 
   it('treats an unreadable stored value as nothing stored', () => {
@@ -84,12 +107,14 @@ describe('dismissStatusBarNotice', () => {
 });
 
 describe('stored state', () => {
-  it('round-trips and removes on null', () => {
+  it('round-trips; null stores nothing', () => {
     const storage = memoryStorage();
+    writeStatusBarNoticeState(storage, null);
+    expect(storage.data.has(STATUS_BAR_NOTICE_KEY)).toBe(false);
     writeStatusBarNoticeState(storage, { relaunchAskedAtMs: 1 });
     expect(readStatusBarNoticeState(storage)).toEqual({ relaunchAskedAtMs: 1 });
     writeStatusBarNoticeState(storage, null);
-    expect(storage.data.has(STATUS_BAR_NOTICE_KEY)).toBe(false);
+    expect(readStatusBarNoticeState(storage)).toEqual({ relaunchAskedAtMs: 1 });
   });
 
   it('reads broken JSON as null and ignores storage errors', () => {
@@ -97,39 +122,44 @@ describe('stored state', () => {
     const throwing = { getItem() { throw new Error('denied'); }, setItem() { throw new Error('full'); }, removeItem() { throw new Error('denied'); } };
     expect(readStatusBarNoticeState(throwing)).toBeNull();
     expect(() => writeStatusBarNoticeState(throwing, { relaunchAskedAtMs: 1 })).not.toThrow();
-    expect(() => writeStatusBarNoticeState(throwing, null)).not.toThrow();
   });
 });
 
 describe('statusBarNoticeText', () => {
-  it('asks a relaunch in one line', () => {
-    const text = statusBarNoticeText('relaunch', { signedIn: true, pendingSync: 0 });
-    expect(text.title).toContain('重新開啟');
-    expect(text.body).toHaveLength(1);
+  it('asks a relaunch in one line, Home-button iPhones included, with nothing to expand', () => {
+    const text = statusBarNoticeText('relaunch', { signedIn: true, appUrl: URL_ });
+    expect(text.title).toContain('完全關閉 Orbit');
+    expect(text.summary).toContain('按兩下 Home 鍵');
+    expect(text.steps).toEqual([]);
   });
 
-  it('warns a guest that removing the icon removes the data', () => {
-    const text = statusBarNoticeText('readd', { signedIn: false, pendingSync: 0 });
-    expect(text.body.at(-1)).toContain('訪客模式的所有資料');
-  });
-
-  it('asks a signed-in user to wait for pending sync', () => {
-    expect(statusBarNoticeText('readd', { signedIn: true, pendingSync: 3 }).body.join('\n')).toContain('還有 3 筆資料等待同步');
-    expect(statusBarNoticeText('readd', { signedIn: true, pendingSync: 3 }).body.join('\n')).toContain('等同步完成再刪除');
-  });
-
-  it('never claims everything is synced: records can be added while the banner is up', () => {
-    const text = statusBarNoticeText('readd', { signedIn: true, pendingSync: 0 }).body.join('\n');
-    expect(text).not.toContain('已同步');
-    expect(text).toContain('確認上方沒有「離線中」或「同步暫停」的提示');
-  });
-
-  it('warns a signed-in user that device-only data goes with the icon, synced or not', () => {
-    for (const pendingSync of [0, 2]) {
-      const last = statusBarNoticeText('readd', { signedIn: true, pendingSync }).body.at(-1);
-      expect(last).toContain('佐證照片');
-      expect(last).toContain('個人空間');
-      expect(last).toContain('只存在這台裝置');
+  it('is conditional: iOS before 26.1 has no blur to fix', () => {
+    for (const step of ['relaunch', 'readd']) {
+      expect(statusBarNoticeText(step, { signedIn: false, appUrl: URL_ }).title).toMatch(/^頂部如果/);
     }
+  });
+
+  it('adds the new icon and checks it before the old one is removed', () => {
+    for (const signedIn of [true, false]) {
+      const { steps } = statusBarNoticeText('readd', { signedIn, appUrl: URL_ });
+      expect(steps).toHaveLength(4);
+      expect(steps[0]).toContain(URL_);
+      expect(steps[0]).toContain('新版本已就緒');   // an older cached page would add the old style again
+      expect(steps[1]).toContain('加入主畫面');
+      expect(steps[2]).toContain('確認頂部不再模糊');
+      expect(steps[3]).toContain('移除');
+    }
+    expect(statusBarNoticeText('readd', { signedIn: true, appUrl: URL_ }).steps[2]).toContain('紀錄都在');
+  });
+
+  it('never claims anything is synced; says what only this device holds', () => {
+    const account = statusBarNoticeText('readd', { signedIn: true, appUrl: URL_ });
+    expect(JSON.stringify(account)).not.toContain('已同步');
+    for (const item of ['佐證照片', '背景圖片', '主題', '今天的計畫', '個人空間']) {
+      expect(account.warning).toContain(item);
+    }
+    const guest = statusBarNoticeText('readd', { signedIn: false, appUrl: URL_ });
+    expect(guest.warning).toContain('訪客模式的所有資料');
+    expect(guest.steps[2]).not.toContain('登入');
   });
 });

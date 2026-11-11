@@ -9,18 +9,29 @@
 // re-adding the icon does. So the app finds out on the device:
 //   1. still translucent → ask for a full relaunch (again after an in-app
 //      reload, until that banner is closed);
-//   2. still translucent on a later launch → explain how to re-add the icon,
-//      with what happens to the data, on every launch until the banner is
-//      closed;
-//   3. no longer translucent → forget everything.
+//   2. still translucent on a later launch → explain how to add a new icon,
+//      check it, and only then remove the old one (with what the old icon's
+//      storage holds), on every launch and reload until the banner is closed;
+//   3. not translucent → show nothing (the state is kept: a single reading of
+//      0 must not undo what was closed).
+// iPads are left out: BUG-117's opaque header does not span an iPad, so a new
+// icon may not clear the blur there.
 //
 // "Translucent" is read from the top safe area: under `default` the app starts
-// below an opaque status bar and the inset is 0 (js/appHeight.js). Landscape
-// says nothing (the inset is 0 there either way).
+// below an opaque status bar and the inset is 0 (js/appHeight.js; BUG-118A
+// checks it on a device). Landscape says nothing (the inset is 0 there either
+// way).
 //
 // INFRA-105: a new module; app.js imports only from it.
 
 export const STATUS_BAR_NOTICE_KEY = 'orbit_status_bar_notice';
+
+/** Wider than this is not a phone (BUG-117: the header column covers phones up to about 475px). */
+export const STATUS_BAR_NOTICE_MAX_WIDTH = 475;
+
+function isTime(value) {
+  return Number.isFinite(value);
+}
 
 /**
  * Decide what this page load shows and what to remember.
@@ -29,28 +40,32 @@ export const STATUS_BAR_NOTICE_KEY = 'orbit_status_bar_notice';
  *   iosHomeScreen: boolean,     // navigator.standalone === true
  *   safeTop: number,            // top safe-area inset in CSS px
  *   portrait: boolean,
+ *   viewportWidth: number,      // CSS px
  *   navigationType: string,     // performance navigation entry type
  *   saved: null | { relaunchAskedAtMs?: number, relaunchDismissedAtMs?: number,
- *                   readdDismissedAtMs?: number },
+ *                   readdShownAtMs?: number, readdDismissedAtMs?: number },
  *   nowMs: number,
  * }} input
  * @returns {{ step: 'none' | 'relaunch' | 'readd', next: object | null }}
- *   `next` is the state to store; `null` means remove it.
+ *   `next` is the state to store (null: nothing stored).
  */
-export function statusBarNoticeStep({ iosHomeScreen, safeTop, portrait, navigationType, saved, nowMs }) {
+export function statusBarNoticeStep({ iosHomeScreen, safeTop, portrait, viewportWidth, navigationType, saved, nowMs }) {
   const state = saved && typeof saved === 'object' ? saved : null;
-  if (!iosHomeScreen || !portrait) return { step: 'none', next: state };
-  if (!(safeTop > 0)) return { step: 'none', next: null };
+  const none = { step: 'none', next: state };
+  if (!iosHomeScreen || !portrait || !(viewportWidth <= STATUS_BAR_NOTICE_MAX_WIDTH)) return none;
+  if (!(safeTop > 0)) return none;
 
-  if (!Number.isFinite(state?.relaunchAskedAtMs)) {
+  if (!isTime(state?.relaunchAskedAtMs)) {
     return { step: 'relaunch', next: { relaunchAskedAtMs: nowMs } };
   }
   // A reload inside the app (the update banner, pull to refresh) is not a
-  // launch: iOS applies the stored style only when the app starts.
-  if (navigationType === 'reload') {
-    return { step: Number.isFinite(state.relaunchDismissedAtMs) ? 'none' : 'relaunch', next: state };
+  // launch: iOS applies the stored style only when the app starts. It keeps
+  // whichever step this icon has reached.
+  if (navigationType === 'reload' && !isTime(state.readdShownAtMs)) {
+    return isTime(state.relaunchDismissedAtMs) ? none : { step: 'relaunch', next: state };
   }
-  return { step: Number.isFinite(state.readdDismissedAtMs) ? 'none' : 'readd', next: state };
+  if (isTime(state.readdDismissedAtMs)) return none;
+  return { step: 'readd', next: isTime(state.readdShownAtMs) ? state : { ...state, readdShownAtMs: nowMs } };
 }
 
 /** The state after the banner for `step` is closed. */
@@ -72,11 +87,11 @@ export function readStatusBarNoticeState(storage) {
   }
 }
 
-/** Store `next` (or remove the key for null). Storage errors are ignored. */
+/** Store `next` (nothing for null). Storage errors are ignored. */
 export function writeStatusBarNoticeState(storage, next) {
+  if (next === null) return;
   try {
-    if (next === null) storage.removeItem(STATUS_BAR_NOTICE_KEY);
-    else storage.setItem(STATUS_BAR_NOTICE_KEY, JSON.stringify(next));
+    storage.setItem(STATUS_BAR_NOTICE_KEY, JSON.stringify(next));
   } catch {
     // Private mode or a full quota: the notice may show again, nothing breaks.
   }
@@ -84,45 +99,42 @@ export function writeStatusBarNoticeState(storage, next) {
 
 /**
  * The banner text for a step, as plain strings (the caller sets textContent).
+ * Short on screen (title and one line); the steps sit behind 「怎麼做」.
+ *
+ * It never relies on a sync state that can change while the banner is up:
+ * the user checks the new icon before removing the old one. Only the
+ * account's profile, tasks and records are on the server; proof photos
+ * (platform/proofStore.js), the background picture, theme, today's plan and
+ * the Personal Space (docs/personal-space-state-flow.md §6) are in this app's
+ * own storage, which removing the icon may delete.
  *
  * @param {'relaunch' | 'readd'} step
- * @param {{ signedIn: boolean, pendingSync: number }} account
- * @returns {{ title: string, body: string[] }}
+ * @param {{ signedIn: boolean, appUrl: string }} context
+ * @returns {{ title: string, summary: string, steps: string[], warning: string }}
  */
-export function statusBarNoticeText(step, { signedIn, pendingSync }) {
+export function statusBarNoticeText(step, { signedIn, appUrl }) {
   if (step === 'relaunch') {
     return {
-      title: '頂部模糊的修正需要重新開啟 Orbit',
-      body: [
-        '請把 Orbit 完全關閉再打開：從螢幕底部往上滑並停住，把 Orbit 的畫面往上滑掉，再從主畫面打開。',
-      ],
+      title: '頂部如果被模糊蓋住：請完全關閉 Orbit 再打開',
+      summary: '從 App 切換器把 Orbit 往上滑掉（有 Home 鍵的 iPhone：按兩下 Home 鍵），再從主畫面打開。',
+      steps: [],
+      warning: '',
     };
   }
-  // Only the account's profile, tasks and records are on the server. Proof
-  // photos (platform/proofStore.js) and the Personal Space items, layout and
-  // looks (docs/personal-space-state-flow.md §6) live only in this app's
-  // storage, which iOS deletes with the icon, synced or not.
-  const keep = '頂部的模糊不影響使用，要保留就先不要刪除圖示。';
-  const data = [];
-  if (!signedIn) {
-    data.push(`注意：訪客模式的所有資料都只存在這個主畫面 app 裡，刪除圖示會一起刪掉。${keep}`);
-  } else {
-    // The banner stays up while records are added, so it never claims that
-    // everything is synced: it says how to check (js/ui/feedback.js keeps
-    // 離線中 or 同步暫停 on screen while writes are waiting offline or after a
-    // failed sync). A count it did see only ever asks to wait.
-    const check = '刪除圖示前，先連上網路打開 Orbit，確認上方沒有「離線中」或「同步暫停」的提示';
-    data.push(pendingSync > 0
-      ? `還有 ${pendingSync} 筆資料等待同步。${check}，等同步完成再刪除。`
-      : `帳號、任務與紀錄會同步到伺服器，重新加入後用同一個帳號登入就會回來。${check}。`);
-    data.push(`注意：佐證照片，以及個人空間的物品、擺放與外觀選擇只存在這台裝置，刪除圖示會一起刪掉。${keep}`);
-  }
+  const keep = '頂部的模糊不影響使用，要保留就先不要移除舊圖示。';
   return {
-    title: '這個主畫面圖示要重新加入一次',
-    body: [
-      '這個圖示是在修正之前加入的，iOS 會一直沿用當時的狀態列設定，所以頂部仍會模糊，更新 app 也改不了。',
-      '修正方式：長按主畫面上的 Orbit →「移除 App」→「刪除 App」；再用 Safari 打開 Orbit，點「分享」→「加入主畫面」。',
-      ...data,
+    title: '頂部如果還是被模糊蓋住：請重新加入主畫面',
+    summary: '這個圖示是修正前加入的，iOS 會一直沿用當時的狀態列設定，更新 app 改不了。先加入新的圖示，確認正常後再移除這個舊的。',
+    steps: [
+      `用 Safari 打開 ${appUrl}；如果出現「新版本已就緒」，先點「重新整理」。`,
+      '在 Safari 的分享選單（iOS 26 在網址列旁的「⋯」裡）選「加入主畫面」。',
+      signedIn
+        ? '打開新的圖示，用同一個帳號登入，確認頂部不再模糊、紀錄都在。'
+        : '打開新的圖示，確認頂部不再模糊。',
+      '最後長按舊的 Orbit 圖示，把它從主畫面移除。',
     ],
+    warning: signedIn
+      ? `注意：佐證照片、背景圖片、主題、今天的計畫與個人空間只存在這台裝置的舊圖示裡，移除舊圖示時可能一起被刪除。${keep}`
+      : `注意：訪客模式的所有資料都只存在這台裝置的舊圖示裡，移除舊圖示時可能一起被刪除。${keep}`,
   };
 }
