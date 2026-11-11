@@ -900,7 +900,14 @@ export const db = {
     // PRO-014H: under `server` the trial is Pro only once the projection knows
     // it. The boot refreshed before starting the trial, so without this a new
     // account would see its trial only at the next refresh. No-op on legacy.
-    await this.refreshProEntitlement(userId);
+    // Only for the same account (a refresh for another one clears the
+    // snapshot), and never fatal: the trial itself has started.
+    try {
+      const current = await this._session();
+      if (current?.user?.id === userId) await this.refreshProEntitlement(userId);
+    } catch (err) {
+      console.warn('Pro refresh after start_trial failed:', err);
+    }
     return { ok: true, ownerChanged: false, trialStartedAt: startedAt };
   },
 

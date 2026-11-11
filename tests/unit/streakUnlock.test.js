@@ -287,6 +287,19 @@ describe('db.grantStreakUnlock(): write-back to the legacy profile', () => {
     expect(upsert).not.toHaveBeenCalled();
   });
 
+  it('server source (PRO-014H): after a paid grant the refreshed projection makes the account Pro', async () => {
+    const user = seedUser();
+    expect(storage.isProUser()).toBe(false);
+    answer({});
+    rpc.mockImplementationOnce(name => Promise.resolve(name === 'my_pro_status'
+      ? { data: [{ is_active: true, expires_at: SERVER_END, trial_ends_at: null }], error: null }
+      : { data: null, error: { message: `unexpected rpc ${name}` } }));
+    await expect(db.grantStreakUnlock(OWNER, () => user)).resolves.toMatchObject({ ok: true });
+    expect(rpc.mock.calls.map(call => call[0])).toEqual(['grant_streak_unlock', 'my_pro_status']);
+    expect(storage.isProUser()).toBe(true);
+    expect(storage.isPaidProUser()).toBe(true);
+  });
+
   it('refreshes the entitlement projection after a grant (no-op on legacy)', async () => {
     const user = seedUser();
     const refresh = vi.spyOn(db, 'refreshProEntitlement');

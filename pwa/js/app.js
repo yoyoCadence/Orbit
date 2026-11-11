@@ -33,6 +33,7 @@ import { createBootSequenceGuard } from './platform/bootSequenceGuard.js';
 import { resolvePendingProRollover } from './proRollover.js';
 import { requestStreakUnlock } from './streakUnlock.js';
 import { appShellHeight } from './appHeight.js';
+import { needsProRefreshOnResume } from './proResume.js';
 import { isOnline, onConnectivityChange } from './platform/network.js';
 import { orbitWindowRuntimeDestroyer } from './personalSpace/v2/runtime/pixiSceneRuntime.js';
 
@@ -84,6 +85,33 @@ function _showTrialBanner() {
     `<button class="trial-banner-close" data-action="dismissTrialBanner">✕</button>`;
   banner.classList.remove('hidden');
 }
+
+// PRO-014H: what depends on the Pro status, re-run once a refresh may have
+// changed it (each step is safe to repeat).
+function _applyProDependentUi() {
+  resolvePendingProRollover();     // PRO-014P: deferred Pro effects
+  applyRandomThemeForToday();      // Pro-only; once a day
+  _showTrialBanner();
+  updateHeader();
+  // Re-rendering under a focused text field would throw away what is being typed.
+  if (!isTextInputActive()) renderPage(currentHash());
+}
+
+// PRO-014H: a PWA kept in memory can outlive the projection's 24 h without a
+// boot or a reconnect (js/proResume.js).
+let _resumeProRefresh = null;
+function _refreshProOnResume() {
+  const session = _currentSession;
+  if (!session || _resumeProRefresh) return;
+  if (!needsProRefreshOnResume(session.user.id, { online: isOnline() })) return;
+  _resumeProRefresh = db.refreshProEntitlement(session.user.id)
+    .then(() => { if (_currentSession === session) _applyProDependentUi(); })
+    .catch(error => console.warn('Pro refresh on resume failed:', error))
+    .finally(() => { _resumeProRefresh = null; });
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') _refreshProOnResume();
+});
 
 window._dismissTrialBanner = function () {
   storage.saveTrialBannerDismissDate(today());
@@ -263,6 +291,7 @@ async function loadAndStart(session) {
     // production nothing until PRO-014H performs the cutover.
     await db.refreshProEntitlement(session.user.id);
     if (!authOperationGuard.isCurrent(operation)) return;
+    applyRandomThemeForToday();   // PRO-014H: init ran it before the Pro status was known
   } catch (e) {
     if (!authOperationGuard.isCurrent(operation) || e?.name === 'OwnerSessionChangedError') return;
     console.warn('Supabase load failed, using localStorage cache:', e);
@@ -498,10 +527,7 @@ async function _syncAfterReconnect() {
       await db.refreshProEntitlement(session.user.id);
       if (_currentSession !== session) return;
       loadStateFromStorage({ authoritative: true });
-      resolvePendingProRollover();   // PRO-014P: deferred Pro effects, now that the status may be known
-      updateHeader();
-      // Re-rendering under a focused text field would throw away what is being typed.
-      if (!isTextInputActive()) renderPage(currentHash());
+      _applyProDependentUi();        // now that the Pro status may be known
       _updateBadge();
       await _reportSyncResult(loaded, () => _currentSession === session);
       if (_currentSession === session) _askStreakUnlock(session.user.id, () => _currentSession === session);
@@ -605,9 +631,7 @@ async function init() {
           // Quietly refresh canonical state and the V2 projection from the
           // completed remote/local merge without enqueueing a reveal.
           loadStateFromStorage({ authoritative: true });
-          resolvePendingProRollover();   // PRO-014P: deferred Pro effects of this boot's rollover
-          updateHeader();
-          renderPage(currentHash());
+          _applyProDependentUi();        // the boot ran these before the refresh
           _updateBadge();
           await _reportSyncResult(loaded, () => authOperationGuard.isCurrent(operation));
           if (authOperationGuard.isCurrent(operation)) {

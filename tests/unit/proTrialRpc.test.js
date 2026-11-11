@@ -248,9 +248,10 @@ describe('trial 顯示面在兩種 source 下一致', () => {
   it('已結束的 trial 在兩種 source 下都是 false', () => {
     const expired = new Date(Date.now() - 20 * DAY).toISOString();
     seedUser(OWNER, { trialStartedAt: expired });
+    proSource.legacy = true;
     expect(storage.isTrialUser()).toBe(false);
 
-    enableServerProEntitlementLocally();
+    proSource.legacy = false;
     writeProEntitlementSnapshot({
       ownerId: OWNER,
       isActive: true,
@@ -276,6 +277,27 @@ describe('server source（PRO-014H）：開始試用後立刻是 Pro', () => {
     expect(storage.isProUser()).toBe(true);
     expect(storage.isTrialUser()).toBe(true);
     expect(storage.isPaidProUser()).toBe(false);
+  });
+
+  it('開始試用時換了帳號：不替另一個帳號 refresh（那會清掉它的 snapshot）', async () => {
+    seedUser();
+    let reply;
+    rpcMock.mockReturnValueOnce(new Promise(resolve => { reply = resolve; }));
+    const pending = db.startTrial(OWNER);
+    await vi.waitFor(() => expect(rpcMock).toHaveBeenCalledTimes(1));
+    sessionUserId.current = 'owner-2';
+    reply({ data: new Date().toISOString(), error: null });
+
+    await expect(pending).resolves.toMatchObject({ ok: true });
+    expect(rpcMock.mock.calls.map(call => call[0])).toEqual(['start_trial']);
+  });
+
+  it('refresh 本身拋錯：試用已開始，結果仍是 ok', async () => {
+    seedUser();
+    rpcMock
+      .mockResolvedValueOnce({ data: new Date().toISOString(), error: null })
+      .mockImplementationOnce(() => { throw new TypeError('boom'); });
+    await expect(db.startTrial(OWNER)).resolves.toMatchObject({ ok: true, ownerChanged: false });
   });
 
   it('start_trial 失敗：不重新取得，維持原狀', async () => {

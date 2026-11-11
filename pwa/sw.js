@@ -31,6 +31,7 @@ const SHELL = [
   './js/streakUnlock.js',
   './js/sessionPresence.js',
   './js/appHeight.js',
+  './js/proResume.js',
   './js/sessionFlow.js',
   './js/focusTimer.js',
   './js/authFlow.js',

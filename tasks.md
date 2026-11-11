@@ -114,7 +114,7 @@
 
 - [ ] **PRO-014HA**（擁有者）真機驗證 PRO-014H 的 cutover
   - v1.41.15 部署後依 `docs/pro-014h-cutover.md` §5：先跑 `docs/pro-test-accounts.md` 的重設 SQL，再分別登入 5 個測試帳號確認 Pro 狀態與 Pro 功能、主帳號仍是終身 Pro、離線 24 小時內維持。
-  - 有問題：依同文件 §4 回退（改回旗標即可，不需改資料），並回報帳號與現象。
+  - 有問題：依同文件 §4 回退（先以只讀查詢對帳，再改回旗標並 bump 版本），並回報帳號與現象。
 
 - [ ] **BUG-117A**（擁有者）真機確認 BUG-117 的修正
   - 步驟：v1.41.14 部署後，從主畫面圖示開 Orbit，完全關掉再開（出現更新提示就按更新，確認設定頁顯示 v1.41.14）；看頂部的頭像、名稱、XP／能量條是否還被模糊蓋住，狀態列是否是不透明的深色或跟 header 同色。
@@ -229,10 +229,10 @@
   - 目標：把 `REPO_PRO_ENTITLEMENT_SOURCE` 由 `legacy` 切到 `server`，讓 production 的 `isProUser()` 實際改用 server-derived UI projection
   - 範圍：repo 常數變更、付費／非付費／trial／離線／切換帳號的實機驗證、rollback 程序；不含新功能
   - 完成條件：切換後付費使用者維持 Pro、非付費不會誤授權、離線在 grace window 內維持、超出後 fail closed
-  - **rollback 是「旗標＋相容層」兩件事，不能只切回 `legacy`**：本任務會移除 `PRO-014C` 的 legacy 寫回相容層，而 `legacy` gate 的 `isTrialUser()` 只讀 `user.trialStartedAt`。若只把旗標切回 `legacy` 而不還原相容層，trial 使用者會直接失去 Pro —— rollback 本身變成一次故障。演練與記錄需涵蓋兩者同時還原。
+  - （2026-11-11 前的計畫，已由下方「完成」取代：相容層先保留，回退見 `docs/pro-014h-cutover.md` §4）**rollback 是「旗標＋相容層」兩件事，不能只切回 `legacy`**：本任務會移除 `PRO-014C` 的 legacy 寫回相容層，而 `legacy` gate 的 `isTrialUser()` 只讀 `user.trialStartedAt`。若只把旗標切回 `legacy` 而不還原相容層，trial 使用者會直接失去 Pro —— rollback 本身變成一次故障。演練與記錄需涵蓋兩者同時還原。
   - **前置：`PRO-014J` 完成（因此 C／D／I 皆已完成且 client 已上線），以及 `PRO-014L`、`PRO-014P` 完成。** 依 AGENTS.md §3 高風險規則，production rollout 需另行取得明確核准
   - **為什麼 `PRO-014L` 是前置**：SUB-16 連勝解鎖目前在 client 端寫 `state.user.isPro`。切到 `server` source 後那個寫入不再有任何效果，連勝解鎖會靜默失效 —— cutover 不該挾帶一個功能迴歸。
-  - 一併移除 `PRO-014C` 建立的 legacy 相容層（client 寫回 `trial_started_at`）—— cutover 後 legacy gate 不再被使用。**移除與旗標切換應在同一次變更內**，rollback 時也一起還原。
+  - （已取代，改列 PRO-014HB）一併移除 `PRO-014C` 建立的 legacy 相容層（client 寫回 `trial_started_at`）—— cutover 後 legacy gate 不再被使用。**移除與旗標切換應在同一次變更內**，rollback 時也一起還原。
   - 依賴：`PRO-014J`、`PRO-014L`、`PRO-014O`（已於 v1.25.5 完成：cached-user 啟動也會 refresh projection）、`PRO-014P`（**擋 cutover**；2026-11-01 完成，#221）；`PRO-014Q` 已完成（2026-10-31），實機驗證使用 [`docs/pro-test-accounts.md`](docs/pro-test-accounts.md) 的 5 個測試帳號，測試前先重跑其中的 SQL。
   - 前置 `PRO-014RA`（014 套用到 production）：**已完成**（2026-11-01）。`server` source 下終身付費不再被試用日期限制。
   - **cutover 前（PRO-014L）**：再跑一次 012 的回填（L2 普及前舊版 client 仍以 profile 發放 SUB-16，回報的筆數是新標記的帳號）；並查 profile 顯示 SUB-16 還有效、但 server 的付費授權沒有涵蓋到同一天的帳號（查詢見 `docs/pro-014l-streak-unlock-server.md` §7），由擁有者決定。L2 的 legacy 寫回與 PRO-014C 的相容層一起移除；`showMainApp()` 處理 `FLAG_STREAK_UNLOCK_NEW` 的舊版相容（只有 1.41.13 以前快取的 `dayCycle.js` 會設這個旗標）也一起移除。
@@ -252,10 +252,10 @@
   - 完成（2026-11-11，v1.41.15，#238）：
     - `REPO_PRO_ENTITLEMENT_SOURCE` 改為 `server`：Pro 與試用的判定都讀 `my_pro_status()` 的 projection，profile 的 `is_pro`／`pro_expires_at`／`trial_started_at` 不再決定 Pro；裝置無法降回 `legacy`。
     - `db.startTrial()` 成功後立刻 `refreshProEntitlement()`：開機是先 refresh 再開始試用，沒有這一步新帳號要到下一次 refresh 才看得到試用（`legacy` 下由相容層掩蓋）。
-    - **與原計畫不同：兩個 legacy 相容層與 `FLAG_STREAK_UNLOCK_NEW` 的處理先保留**（`docs/pro-014h-cutover.md` §3）。它們寫的是 server 的值，`server` 下不參與判定；開機「profile 沒有試用開始時間才呼叫 `start_trial()`」與設定頁的試用進度條還在用試用開始時間；保留後回退只需改回旗標、不會遺失期間的試用與 SUB-16。移除改列 `PRO-014HB`。
+    - **與原計畫不同：兩個 legacy 相容層與 `FLAG_STREAK_UNLOCK_NEW` 的處理先保留**（`docs/pro-014h-cutover.md` §3）。它們寫的是 server 的值，`server` 下不參與判定；開機「profile 沒有試用開始時間才呼叫 `start_trial()`」與設定頁的試用進度條還在用試用開始時間；保留後回退時期間的試用與 SUB-16 都在 profile 裡（回退前仍要以只讀查詢對帳：直接改 `pro_entitlements` 或舊裝置蓋回 profile 的情況不會出現在 profile）。移除改列 `PRO-014HB`。
     - 回退程序與真機驗證步驟：`docs/pro-014h-cutover.md`。
     - 測試：預設改為 `server`；legacy 的測試保留為「回退路徑」，以 mock `isServerProEntitlementEnabled()` 強制（`storage.test.js`、`pro014pRollover`、`proEntitlementGate`、`proGateCallSites`、`proSettingsProjection`、`proTrialRpc`）；新增「profile 欄位在 server 下不算 Pro」「預設不需裝置設定」「開始試用後立刻是 Pro」「start_trial 失敗不 refresh」（拿掉 refresh 時兩項失敗）；`streakUnlock.test.js` 的已知 Pro 改由 snapshot 決定；e2e 的 Pro 使用者改以 `seedProSnapshot()` 寫入 projection（隨機主題、成長報告 PDF）。
-
+    - 審查（#238）：Codex 沒有問題。獨立審查沒有 P1；P2：app 留在記憶體超過 24 小時會在線上失去 Pro → 新模組 `pwa/js/proResume.js`（INFRA-105，加入 SHELL），回到前景時上次結果超過一小時（或沒有）就 refresh；P2：隨機主題與試用到期提示只在 refresh 之前跑 → `_applyProDependentUi()` 在三條 refresh 路徑之後重跑（換日補做、隨機主題、試用提示、header、頁面）。P3：`startTrial()` 只替同一帳號 refresh、拋錯不影響結果；回退程序加上對帳、改為改旗標並 bump 而非 revert；更新後第一次離線開啟與開發者殘留資料列入 PRO-014HA；一項 legacy 檢查原本在 server 下空跑（補上 `proSource.legacy`）；新增 server 下 SUB-16 發放後是 Pro 的測試。各新測試在拿掉對應修正時都會失敗。
 
 - [x] **BUG-117** iPhone 上 header（頭像、名稱、XP／能量條）被模糊蓋住（擁有者 2026-11-04 回報，附截圖）
   - 現象：排行榜頁最上方從狀態列往下約到 header 底部，內容被由上而下漸弱的模糊蓋住；下面的內容清楚。`modern` skin（`data-ui-skin`）的深色畫面。

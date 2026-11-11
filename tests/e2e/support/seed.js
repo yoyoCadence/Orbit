@@ -77,8 +77,10 @@ export async function mockSupabase(page) {
 
 /**
  * PRO-014H: Pro comes from the server's projection (`orbit_pro_entitlement`),
- * not the profile fields. Seeds an active, fresh projection for `ownerId`, as
- * a successful my_pro_status() refresh would leave it (lifetime paid).
+ * not the profile fields. Seeds an active, fresh projection (lifetime paid)
+ * for `ownerId`. A shortcut for UI tests: production writes it only for a
+ * signed-in owner after my_pro_status(); the boot refresh itself is covered by
+ * tests/unit/appBootSequence.test.js.
  */
 export async function seedProSnapshot(page, ownerId = GUEST_USER.id) {
   await page.addInitScript(owner => {
