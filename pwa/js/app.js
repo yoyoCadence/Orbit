@@ -32,6 +32,7 @@ import { createAuthOperationGuard } from './platform/authOperationGuard.js';
 import { createBootSequenceGuard } from './platform/bootSequenceGuard.js';
 import { resolvePendingProRollover } from './proRollover.js';
 import { requestStreakUnlock } from './streakUnlock.js';
+import { appShellHeight } from './appHeight.js';
 import { isOnline, onConnectivityChange } from './platform/network.js';
 import { orbitWindowRuntimeDestroyer } from './personalSpace/v2/runtime/pixiSceneRuntime.js';
 
@@ -373,9 +374,14 @@ function handleSignOut() {
 // visualViewport is more reliable on Chrome when the address bar expands/collapses.
 function _syncAppHeight() {
   if (isTextInputActive()) return;
-  const viewportHeight = window.visualViewport?.height || window.innerHeight;
-  const sab = parseFloat(window.getComputedStyle(document.documentElement).getPropertyValue('--sab')) || 0;
-  document.documentElement.style.setProperty('--app-height', Math.round(viewportHeight + sab) + 'px');
+  const rootStyle = window.getComputedStyle(document.documentElement);
+  const height = appShellHeight({
+    viewportHeight: window.visualViewport?.height || window.innerHeight,
+    safeBottom: parseFloat(rootStyle.getPropertyValue('--sab')) || 0,
+    safeTop: parseFloat(rootStyle.getPropertyValue('--sat')) || 0,
+    iosHomeScreen: window.navigator.standalone === true,   // iOS only (BUG-117)
+  });
+  document.documentElement.style.setProperty('--app-height', height + 'px');
 }
 _syncAppHeight();
 window.addEventListener('resize', _syncAppHeight);

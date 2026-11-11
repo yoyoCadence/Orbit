@@ -2,18 +2,22 @@
  * bug117-ios-header.test.js — BUG-117
  *
  * iOS 26.1+ blurs the top of a home-screen web app. WebKit skips that blur
- * when a full-width fixed/sticky box at the top edge paints one solid colour,
- * which it cannot do under a black-translucent status bar. The fix: status bar
- * `default` (index.html) and, in the installed app on iOS only, a sticky,
- * opaque header without backdrop blur or sheen (style.css, BUG-117 block).
+ * when a fixed or sticky box spanning the top edge paints one solid colour; it
+ * finds that box by hit-testing the top edge with pointer-events ignored, and
+ * cannot under a black-translucent status bar. The fix: status bar `default`
+ * (index.html) and, in the installed app on iOS only, a sticky, opaque header
+ * above the time tint, without backdrop blur or sheen (style.css, BUG-117).
  *
  * Chromium neither matches `@supports (-webkit-touch-callout: none)` nor draws
  * the iOS blur, so this checks what it can:
- *   - outside iOS the block does not apply (the header is unchanged);
- *   - the block's rules, applied as written, win over every theme, both skins
- *     and a background image: the header ends sticky at the top, opaque, with
- *     no backdrop filter, no background image and no ::after sheen.
- * Whether iOS then skips the blur needs a device (tasks.md BUG-117).
+ *   - outside iOS the header is unchanged;
+ *   - with style.css served so that the iOS-only conditions hold (the rules
+ *     stay where they are in the file), for every theme, both skins, with and
+ *     without a background image and in every time band: the header is sticky
+ *     at the top, opaque, with no background image, backdrop filter or
+ *     ::after, and it is what a hit test at the top edge finds (pseudo-element
+ *     hits count as their host, as in WebKit).
+ * Whether iOS then skips the blur needs a device (tasks.md BUG-117A).
  */
 
 import { readFileSync } from 'node:fs';
@@ -22,22 +26,24 @@ import { FOCUS_TASK, GUEST_USER, mockSupabase, seedStorage } from './support/see
 
 const css = readFileSync(new URL('../../pwa/assets/style.css', import.meta.url), 'utf8');
 const THEMES = [...new Set([...css.matchAll(/\[data-theme="([a-z-]+)"\] \{/g)].map(match => match[1]))];
+const TIME_BANDS = ['morning', 'day', 'evening', 'night'];
 
-/** The rules inside the BUG-117 `@supports (-webkit-touch-callout: none)` block. */
-function iosStandaloneRules() {
-  const start = css.indexOf('BUG-117: iOS home-screen app');
-  const open = css.indexOf('@supports (-webkit-touch-callout: none) {', start);
-  let depth = 0;
-  for (let i = css.indexOf('{', open); i < css.length; i++) {
-    if (css[i] === '{') depth++;
-    if (css[i] === '}' && --depth === 0) return css.slice(css.indexOf('{', open) + 1, i);
-  }
-  throw new Error('BUG-117 block not found');
+/** style.css as an iOS home-screen app would apply it. */
+function cssAsIosHomeScreen() {
+  const conditions = ['@supports (-webkit-touch-callout: none)', '@media (display-mode: standalone)'];
+  for (const condition of conditions) expect(css).toContain(condition);
+  return css
+    .replaceAll('@supports (-webkit-touch-callout: none)', '@supports (display: block)')
+    .replaceAll('@media (display-mode: standalone)', '@media (min-width: 0px)');
 }
 
-async function openApp(page) {
+async function openApp(page, { iosHomeScreen = false } = {}) {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await mockSupabase(page);
+  if (iosHomeScreen) {
+    const body = cssAsIosHomeScreen();
+    await page.route('**/assets/style.css*', route => route.fulfill({ status: 200, contentType: 'text/css', body }));
+  }
   await seedStorage(page, [FOCUS_TASK], [], GUEST_USER);
   await page.goto('/');
   await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
@@ -47,6 +53,12 @@ function readHeader(page) {
   return page.evaluate(() => {
     const header = document.getElementById('header');
     const style = window.getComputedStyle(header);
+    // WebKit's hit test ignores pointer-events; force them on to do the same.
+    const probe = document.createElement('style');
+    probe.textContent = '*, *::before, *::after { pointer-events: auto !important; }';
+    document.head.append(probe);
+    const hit = document.elementFromPoint(window.innerWidth / 2, 4);
+    probe.remove();
     return {
       position: style.position,
       top: style.top,
@@ -54,18 +66,14 @@ function readHeader(page) {
       image: style.backgroundImage,
       backdrop: style.backdropFilter,
       after: window.getComputedStyle(header, '::after').display,
-      width: header.getBoundingClientRect().width,
+      topHit: hit?.closest('#header') ? 'header' : (hit?.id || hit?.tagName || 'nothing'),
     };
   });
 }
 
-const alpha = color => {
-  const match = /rgba?\(([^)]+)\)/.exec(color);
-  const parts = match[1].split(/[\s,/]+/).filter(Boolean);
-  return parts.length > 3 ? Number(parts[3]) : 1;
-};
-
 test.describe('BUG-117 iOS home-screen header', () => {
+  test.use({ serviceWorkers: 'block' });
+
   test('outside the iOS home-screen app the header is unchanged', async ({ page }) => {
     const html = await page.request.get('/').then(response => response.text());
     const styles = [...html.matchAll(/<meta name="apple-mobile-web-app-status-bar-style" content="([^"]*)">/g)];
@@ -75,26 +83,28 @@ test.describe('BUG-117 iOS home-screen header', () => {
     expect((await readHeader(page)).position).toBe('static');
   });
 
-  test('the rules win over every theme, both skins and a background image', async ({ page }) => {
+  test('in the iOS home-screen app the header is the solid box at the top edge, in every look', async ({ page }) => {
     expect(THEMES.length).toBeGreaterThan(10);
-    await openApp(page);
-    await page.addStyleTag({ content: iosStandaloneRules() });
+    await openApp(page, { iosHomeScreen: true });
 
     const failures = [];
     for (const skin of ['classic', 'modern']) {
       for (const theme of THEMES) {
         for (const hasBg of [false, true]) {
-          await page.evaluate(({ skin, theme, hasBg }) => {
-            const root = document.documentElement;
-            root.setAttribute('data-ui-skin', skin);
-            root.setAttribute('data-theme', theme);
-            root.classList.toggle('has-bg', hasBg);
-          }, { skin, theme, hasBg });
-          const header = await readHeader(page);
-          const ok = header.position === 'sticky' && header.top === '0px'
-            && alpha(header.background) === 1 && header.image === 'none'
-            && header.backdrop === 'none' && header.after === 'none';
-          if (!ok) failures.push({ skin, theme, hasBg, ...header });
+          for (const band of TIME_BANDS) {
+            await page.evaluate(({ skin, theme, hasBg, band }) => {
+              const root = document.documentElement;
+              root.setAttribute('data-ui-skin', skin);
+              root.setAttribute('data-theme', theme);
+              root.setAttribute('data-time-band', band);
+              root.classList.toggle('has-bg', hasBg);
+            }, { skin, theme, hasBg, band });
+            const header = await readHeader(page);
+            const ok = header.position === 'sticky' && header.top === '0px'
+              && /^rgb\(\d+, \d+, \d+\)$/.test(header.background) && header.image === 'none'
+              && header.backdrop === 'none' && header.after === 'none' && header.topHit === 'header';
+            if (!ok) failures.push({ skin, theme, hasBg, band, ...header });
+          }
         }
       }
     }
