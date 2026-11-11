@@ -14,13 +14,17 @@
 
 ## Backlog
 
-- [ ] **BUG-119** 排行榜頭像的 Storage policy 讀錯欄位：功能從來沒生效，而且可以被用來公開所有頭像（2026-11-11 寫 HW-112A 時發現，等擁有者核准）
+- [ ] **BUG-119** 排行榜頭像的 Storage policy 讀錯欄位：功能從來沒生效，而且任何已登入的人都能讓自己讀到所有人的頭像（2026-11-11 寫 HW-112A 時發現，等擁有者核准）
   - 位置：`pwa/db/010_leaderboard_avatars.sql` 的 `avatars_select_public_leaderboard_profiles`。子查詢 `from profiles p where p.user_id::text = (storage.foldername(name))[1]` 裡沒加表名的 `name` 會先找最內層的 `profiles.name`（顯示名稱），不是 `storage.objects.name`（檔案路徑）。production 的 `pg_policies` 也顯示為 `storage.foldername(p.name)`（2026-11-11 只讀查詢）。
-  - 影響：
-    - 原本的功能（已登入的人看得到公開排行榜使用者的頭像）從來沒生效：顯示名稱通常沒有 `/`，條件永遠不成立。
-    - 可被利用：任何已登入的人把自己的名稱改成「自己的 user_id/任意字」並設為公開（`profiles_update` 允許本人改這兩欄），條件就對 `avatars` bucket 的**每一個**檔案成立，所有已登入的人都讀得到所有人的頭像（包括沒公開的人）。只影響頭像，不影響其他資料與 `proofs`（HW-112A 的測試確認其他 policy 都限定自己的 bucket）。
-  - 修正（提案，需核准：schema 變更）：migration 017 以 `drop policy` ＋ `create policy` 改成 `storage.foldername(objects.name)`（明確指定表），加上 ASSERT 測試（公開的人的頭像別人讀得到、不公開的讀不到、改名稱打不開別人的頭像）；先在本機替身（`tests/database/support/storage-standin.sql`）演練，再以 production 乾跑，最後依寫入流程套用。
-  - 套用前先以只讀查詢確認是否已有人觸發（計數：公開且名稱的第一段等於自己 user_id 的 profile）。2026-11-11 送出的查詢因工作階段重啟沒有被核准，需要再送。
+  - 子查詢在呼叫者的權限下執行，受 profiles 的 RLS 限制（002：只看得到自己那一列）。所以：
+    - 原本的功能（已登入的人看得到公開排行榜使用者的頭像）從來沒生效。
+    - 自助外洩：任何已登入的人把自己的名稱改成「自己的 user_id/任意字」並設為公開（`profiles_update` 允許本人改這兩欄），子查詢看到的自己那一列就讓條件對 `avatars` bucket 的**每一個**檔案成立，**這個人**讀得到所有人的頭像（包括沒公開的人）。其他人不受影響。只涉及頭像，不涉及其他資料與 `proofs`（HW-112A 的測試確認其他 policy 都限定自己的 bucket）。
+    - 本機替身（加上 002 的 profiles RLS）重現：改名前 X 看得到 0 個、改名後 2 個（含不公開的 P）；旁人 Z 一直是 0。
+  - 修正（提案，需核准：schema 變更）：**只把 `name` 改成 `objects.name` 不夠**：子查詢仍受 profiles 的 RLS 限制，旁人看不到別人那一列，公開使用者的頭像還是讀不到（本機替身重現：Z 看到 0）。要讓「這個資料夾是不是公開使用者」的判斷繞過呼叫者的 RLS：
+    - 建議：`SECURITY DEFINER` 的 `public.is_public_profile_folder(folder text) returns boolean`（`stable`、`set search_path = ''`，只回傳布林值，`REVOKE ALL … FROM public, anon` 後 `GRANT EXECUTE … TO authenticated`），policy 改成 `bucket_id = 'avatars' and public.is_public_profile_folder((storage.foldername(objects.name))[1])`；
+    - 或從 `leaderboard_view` 讀（view 以擁有者的權限讀 profiles），但 PRO-014E 之後要拿掉這個 view，不建議。
+  - 測試：migration 017 的 ASSERT 測試（公開的人的頭像別人讀得到、不公開的讀不到、改名稱打不開別人的頭像），在加了 profiles RLS 的本機替身演練，再以 production 乾跑，最後依寫入流程套用。
+  - 套用前先以只讀查詢確認是否已有人觸發（計數：名稱的第一段等於自己 user_id 的 profile）。2026-11-11 送出的查詢因工作階段重啟沒有被核准，需要再送。
 
 - [ ] **PRO-014HB** 移除 PRO-014H 保留的 legacy 相容層
   - 時機：PRO-014HA 通過、`server` 穩定一段時間（例如兩週沒有回退）之後。
@@ -137,8 +141,9 @@
 ## Next
 
 - [ ] **HW-112B** 在 production 套用 016（佐證照片的 bucket 與 policy；production 寫入，需擁有者核准）
-  - 依寫入流程：本機演練（HW-112A 已做）→ production 乾跑：`begin;` ＋ 016 ＋ `tests/database/hw112.test.sql` 的內容 ＋ `rollback;`（真的 Storage schema；第一次在真的 Storage 上跑這份測試，替身與實際不同時會在這裡發現）→ 核准後鎖定套用 016 → 事後檢查（bucket 設定、四個 policy、再跑一次測試）。
-  - 套用後以兩個測試帳號實測 Storage API：本人可以上傳、讀、刪自己的檔案；不能碰別人的資料夾；超過 200 KB 或不是 JPEG 被拒（大小與類型由 API 檢查，資料庫測不到）。
+  - 依寫入流程：本機演練（HW-112A 已做）→ production 乾跑：`begin; set local lock_timeout = '5s';` ＋ 016 ＋ `tests/database/hw112.test.sql` 的內容 ＋ `rollback;`（DROP／CREATE POLICY 會鎖住 storage.objects 直到 commit 或 rollback）（真的 Storage schema；第一次在真的 Storage 上跑這份測試，替身與實際不同時會在這裡發現）→ 核准後鎖定套用 016 → 事後檢查（bucket 設定、四個 policy、再跑一次測試）。
+  - 套用後以兩個測試帳號實測 Storage API：本人可以上傳、讀、刪自己的檔案；不能碰別人的資料夾；上傳超過 200 KB 或不是 JPEG 被拒（大小與類型由 API 在上傳時檢查，資料庫測不到；移動與複製不會再檢查，所以本人可以把自己其他 bucket 的檔案搬進自己的 proofs 資料夾，只限自己）。
+  - HW-112C 下載時不能相信大小與類型（只當 JPEG 顯示在 `<img>`，過大的不處理）。
   - 套用不影響現在的 app：client 要到 HW-112C 才會上傳。
 
 - [ ] **BUG-118A**（擁有者，v1.41.16 部署後就做）確認重新加入的主畫面圖示
@@ -275,6 +280,7 @@
     - `tests/database/hw112.test.sql`：bucket 設定；四個 policy 的指令、角色與子句；其他 policy 都限定自己的 bucket（permissive policy 是 OR 起來的）；以兩個合成帳號與 anon 模擬 Storage API：上傳（別人的資料夾、大寫、別的副檔名、子資料夾、不是 UUID、只有前綴相同的資料夾都被拒）、讀取、修改（別人改不到、不能搬到別人的資料夾或不合規則的名稱）、刪除（需 `storage.allow_delete_query`，別人與 anon 刪不到）。單一 transaction，結尾 rollback。
     - 本機演練：這個雲端環境的 Docker daemon 可以啟動，但拉 Supabase 的 image 被網路政策擋下（public.ecr.aws 的 blob 403、Docker Hub 429），`supabase start` 不能用；直接執行下載的 Supabase Storage migration 也被環境的安全規則擋下。改用自己寫的最小替身 `tests/database/support/storage-standin.sql`（依 production 的 Storage 版本 0079 照抄 `storage.foldername()`、兩張表的欄位與 RLS、權限、`protect_delete`，加上 003 與 010 的頭像 policy）。本機 PG16：替身 → 003 → 016 → 測試，全部通過；故意改壞 016 的五種情況（拿掉名稱規則、SELECT 不看資料夾、UPDATE 的 WITH CHECK 改成 true、DELETE 不看資料夾、加一個不限 bucket 的 policy）都會失敗。
     - 替身與真的 Storage 的差異由 HW-112B 的 production 乾跑補上（同一份測試）。
+    - 審查（#245）：Codex 沒有問題。獨立審查：016 本身沒有 P1／P2（17 種路徑技巧只有正確的名稱能上傳）；P2 測試測不到 UPDATE／DELETE 的 USING（加了 WHERE 就也套用 SELECT policy，`proofs_select` 先把別人的檔案藏起來）→ 第 5 節前加一個只在 transaction 裡、看得到所有 proofs 的 SELECT policy；P2 BUG-119 的影響與修正寫錯（profiles 的 RLS）→ 改寫，替身加上 002 的 profiles RLS；P3：名稱規則再加四種壞名稱（沒有 `^`、`.` 沒跳脫、結尾換行、結尾 `/`），其他 policy 的檢查改成 USING 與 WITH CHECK 分開比對且只給 authenticated，替身的說明與權限改正，乾跑加 `lock_timeout`，移動／複製會繞過大小與類型的限制寫進 016 與 HW-112B。改壞 016 的八種情況（含審查發現原本測不到的五種）現在都會失敗。
     - 寫測試時發現 BUG-119（010 的頭像 policy 讀錯欄位），記在 Backlog，等擁有者核准。
 
 - [x] **UI-203** 重新設計主畫面的 app 圖示（擁有者 2026-11-11：「加入主畫面的 LOGO 太醜 請你重新設計」）

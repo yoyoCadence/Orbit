@@ -2,16 +2,21 @@
 -- 不要在 Supabase（本機或 production）執行。
 --
 -- 這個雲端環境拉不到 Supabase 的 Docker image（registry 被網路政策擋下），所以
--- `supabase start` 不能用。016 與 tests/database/hw112.test.sql 用到的只有下面這些，
--- 依 Supabase Storage 的 tenant migrations（production 為 0079
--- lifecycle-writer-coordination，2026-11-11 以只讀查詢確認）照抄：
---   - storage.buckets／storage.objects 的欄位（0002、0013、0014 等）與 (bucket_id, name) 唯一；
+-- `supabase start` 不能用。Storage 的 tenant migrations（production 為 0079
+-- lifecycle-writer-coordination，2026-11-11 以只讀查詢確認）中，016 的 policy 與
+-- tests/database/hw112.test.sql 用到的部分照抄在下面：
+--   - storage.buckets／storage.objects 中 policy 與測試會讀寫的欄位；
 --   - 兩張表都開 RLS（0002、0007）；
 --   - storage.foldername()（0060 的版本）；
 --   - storage.protect_delete()：沒有 storage.allow_delete_query = 'true' 就擋下 DELETE（0055）；
---   - anon／authenticated／service_role 的權限（0002、0046）。
--- 再加上 production 的頭像 policy：003 由測試步驟直接套用 pwa/db/003_storage.sql；
--- 010 的公開排行榜頭像 policy 依 production 的定義照抄在下面（010 其餘是 view，與 Storage 無關）。
+--   - anon／authenticated／service_role 的權限（0002、0046；0073 收回 TRUNCATE、REFERENCES、TRIGGER）。
+-- 沒有照抄、不影響 policy 判斷的部分：buckets 的 type、versioning_status、lifecycle 欄位，
+-- objects 的 archived_at、is_delete_marker、is_versioned；名稱長度、updated_at、版本與 lifecycle
+-- 的 trigger（0011、0037、0068、0074、0079）；(bucket_id, name) 在 0079 是三個部分索引
+-- （0065–0067），這裡用一個唯一索引代替。這些差異由 HW-112B 在 production 以同一份測試乾跑補上。
+-- 另外加上 production 的頭像 policy：003 由測試步驟直接套用 pwa/db/003_storage.sql；010 的
+-- 公開排行榜頭像 policy 依 production 的定義照抄在下面，連同它的子查詢會受影響的
+-- profiles RLS（002：只看得到自己那一列）。
 -- 檔案大小與 MIME 類型由 Storage API 檢查，不在資料庫裡，本機測不到；HW-112B 套用後以測試帳號實測。
 --
 -- 用法（本機的空資料庫，例如 createdb hw112）：
@@ -90,6 +95,7 @@ alter table storage.buckets enable row level security;
 alter table storage.objects enable row level security;
 
 grant all on storage.buckets, storage.objects to anon, authenticated, service_role;
+revoke truncate, references, trigger on storage.buckets, storage.objects from anon, authenticated, service_role;
 
 -- 0060 的 storage.foldername()：除了最後一段以外的路徑。
 create function storage.foldername(name text) returns text[]
@@ -119,13 +125,24 @@ create trigger protect_objects_delete before delete on storage.objects
   for each statement execute function storage.protect_delete();
 
 -- ── 010 的公開排行榜頭像 policy（production 的定義）──────────────
+-- profiles 的 RLS 同 002：本人只看得到、只改得到自己那一列。010 的子查詢在呼叫者的
+-- 權限下執行，所以也只看得到自己那一列（BUG-119 的影響範圍取決於這一點）。
 create table public.profiles (
   user_id uuid primary key,
   name text,
   is_public boolean default false,
   avatar_url text
 );
-grant select on public.profiles to authenticated;
+grant select, insert, update, delete on public.profiles to authenticated;
+alter table public.profiles enable row level security;
+create policy "profiles_select" on public.profiles
+  for select to authenticated using (auth.uid() = user_id);
+create policy "profiles_insert" on public.profiles
+  for insert to authenticated with check (auth.uid() = user_id);
+create policy "profiles_update" on public.profiles
+  for update to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "profiles_delete" on public.profiles
+  for delete to authenticated using (auth.uid() = user_id);
 
 create policy "avatars_select_public_leaderboard_profiles" on storage.objects
   for select to authenticated

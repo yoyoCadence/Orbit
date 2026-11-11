@@ -13,7 +13,12 @@
 -- 以 set local role authenticated／anon 加上 request.jwt.claims 模擬 Storage API：它也是以
 -- 呼叫者的角色存取 storage.objects，由 RLS 決定能做什麼；DELETE 另外要
 -- storage.allow_delete_query = 'true'（Storage API 會設定，storage.protect_delete）。
--- 檔案大小與 MIME 類型由 Storage API 檢查，不在資料庫裡：HW-112B 套用後以測試帳號實測。
+-- 檔案大小與 MIME 類型由 Storage API 在上傳時檢查，不在資料庫裡：HW-112B 套用後以測試帳號實測。
+-- 移動（UPDATE bucket_id／name）與複製不會再檢查這兩個限制：本人可以把自己 avatars 裡的檔案
+-- 搬或複製到自己的 proofs 資料夾（只限自己的資料夾）。這兩個限制只防寫錯，HW-112C 下載時
+-- 不能相信大小與類型。
+-- production 乾跑與套用時，在 begin; 後面加 set local lock_timeout = '5s';：DROP／CREATE POLICY
+-- 會鎖住 storage.objects 直到 commit 或 rollback，所有 Storage 的請求都會排在後面。
 
 begin;
 
@@ -76,13 +81,19 @@ begin
     end case;
   end loop;
 
+  -- 每個子句（USING 與 WITH CHECK 分開看）都必須以「bucket_id = '某個 bucket' AND …」開頭，
+  -- 外層不能有 OR；也都只給 authenticated。
   for r in
-    select policyname, concat_ws(' ', qual, with_check) as body from pg_policies
+    select policyname, roles, qual, with_check from pg_policies
     where schemaname = 'storage' and tablename = 'objects' and policyname not like 'proofs\_%'
   loop
-    assert r.body ~ '^\(*bucket_id = ''[a-z0-9_-]+''::text',
-      format('policy %s must start by limiting itself to one bucket', r.policyname);
-    assert r.body not like '%''proofs''%', format('policy %s must not mention bucket proofs', r.policyname);
+    assert r.roles = array['authenticated']::name[], format('policy %s must apply to authenticated only', r.policyname);
+    assert r.qual is null or r.qual ~ '^\(\(bucket_id = ''[a-z0-9_-]+''::text\) AND ',
+      format('policy %s: USING must start by limiting itself to one bucket', r.policyname);
+    assert r.with_check is null or r.with_check ~ '^\(\(bucket_id = ''[a-z0-9_-]+''::text\) AND ',
+      format('policy %s: WITH CHECK must start by limiting itself to one bucket', r.policyname);
+    assert concat_ws(' ', r.qual, r.with_check) not like '%''proofs''%',
+      format('policy %s must not mention bucket proofs', r.policyname);
   end loop;
 end $$;
 
@@ -107,7 +118,11 @@ begin
     a || '/sub/' || s || '.jpg',             -- 子資料夾
     a || '/not-a-session-id.jpg',            -- 不是 UUID
     s || '.jpg',                             -- 沒有資料夾
-    a || 'x/' || s || '.jpg'                 -- 資料夾只有前綴相同
+    a || 'x/' || s || '.jpg',                -- 資料夾只有前綴相同
+    a || '/' || a || '/' || s || '.jpg',     -- 名稱規則沒有 ^ 時會過
+    a || '/' || s || 'xjpg',                 -- 名稱規則的 . 沒有跳脫時會過
+    a || '/' || s || '.jpg' || E'\n',        -- 結尾的換行
+    a || '/' || s || '.jpg/'                 -- 結尾的 /
   ] loop
     begin
       insert into storage.objects (bucket_id, name) values ('proofs', bad);
@@ -152,6 +167,13 @@ begin
   end;
   execute 'reset role';
 end $$;
+
+-- UPDATE 與 DELETE 加了 WHERE 就也要通過 SELECT policy：proofs_select 會先把別人的檔案藏起來，
+-- 不管 UPDATE／DELETE 的 policy 寫了什麼。為了單獨測這兩個 policy，先加一個看得到所有 proofs
+-- 的 SELECT policy（只在這個 transaction 裡，結尾一起 rollback）。
+create policy "zz_hw112_test_see_all" on storage.objects
+  for select to authenticated
+  using (bucket_id = 'proofs');
 
 -- 5. 修改：別人改不到；本人不能把檔案搬到別人的資料夾或不合規則的名稱；本人可以改自己的
 do $$

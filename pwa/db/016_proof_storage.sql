@@ -15,7 +15,8 @@
 --   - 本機：tests/database/support/storage-standin.sql 提供 Storage 的最小替身
 --     （這個雲端環境拉不到 Supabase 的 Docker image）；
 --   - production：HW-112B 套用前以 begin; ＋ 本檔 ＋ 測試 ＋ rollback; 乾跑。
--- 套用：HW-112B（production 寫入，依寫入流程與擁有者核准）。
+-- 套用：HW-112B（production 寫入，依寫入流程與擁有者核准）。在 begin; 後面加
+--   set local lock_timeout = '5s';（DROP／CREATE POLICY 會鎖住 storage.objects 直到 commit）。
 --
 -- 回滾（寫在這裡，執行時另行核准）：
 --   1. HW-112C（client 上傳）上線之前，bucket 是空的：
@@ -31,8 +32,10 @@
 -- ============================================================
 
 -- 私有 bucket：沒有公開網址，只能帶登入者的 token 下載。
--- 每個檔案最大 200 KB、只收 image/jpeg（Storage API 依 client 送出的
--- Content-Type 檢查；目前一張照片不到 40 KB）。
+-- 每個檔案最大 200 KB、只收 image/jpeg（Storage API 上傳時依 client 送出的
+-- Content-Type 檢查；目前一張照片不到 40 KB）。這兩個限制只防寫錯：移動與複製
+-- 不會再檢查，本人可以把自己其他 bucket 的檔案搬或複製到自己的 proofs 資料夾。
+-- client（HW-112C）下載時不能相信大小與類型。
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values ('proofs', 'proofs', false, 204800, array['image/jpeg'])
 on conflict (id) do update
