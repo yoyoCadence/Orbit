@@ -14,7 +14,7 @@
 
 ## Backlog
 
-- [ ] **BUG-119** 排行榜頭像的 Storage policy 讀錯欄位：功能從來沒生效，而且任何已登入的人都能讓自己讀到所有人的頭像（2026-11-11 寫 HW-112A 時發現，等擁有者核准）
+- [ ] **BUG-119** 排行榜頭像的 Storage policy 讀錯欄位：功能從來沒生效，而且任何已登入的人都能讓自己讀到所有人的頭像（2026-11-11 寫 HW-112A 時發現；擁有者 2026-11-11 核准修正：「ok」）
   - 位置：`pwa/db/010_leaderboard_avatars.sql` 的 `avatars_select_public_leaderboard_profiles`。子查詢 `from profiles p where p.user_id::text = (storage.foldername(name))[1]` 裡沒加表名的 `name` 會先找最內層的 `profiles.name`（顯示名稱），不是 `storage.objects.name`（檔案路徑）。production 的 `pg_policies` 也顯示為 `storage.foldername(p.name)`（2026-11-11 只讀查詢）。
   - 子查詢在呼叫者的權限下執行，受 profiles 的 RLS 限制（002：只看得到自己那一列）。所以：
     - 原本的功能（已登入的人看得到公開排行榜使用者的頭像）從來沒生效。
@@ -24,7 +24,8 @@
     - 建議：`SECURITY DEFINER` 的 `public.is_public_profile_folder(folder text) returns boolean`（`stable`、`set search_path = ''`，只回傳布林值，`REVOKE ALL … FROM public, anon` 後 `GRANT EXECUTE … TO authenticated`），policy 改成 `bucket_id = 'avatars' and public.is_public_profile_folder((storage.foldername(objects.name))[1])`；
     - 或從 `leaderboard_view` 讀（view 以擁有者的權限讀 profiles），但 PRO-014E 之後要拿掉這個 view，不建議。
   - 測試：migration 017 的 ASSERT 測試（公開的人的頭像別人讀得到、不公開的讀不到、改名稱打不開別人的頭像），在加了 profiles RLS 的本機替身演練，再以 production 乾跑，最後依寫入流程套用。
-  - 套用前先以只讀查詢確認是否已有人觸發（計數：名稱的第一段等於自己 user_id 的 profile）。2026-11-11 送出的查詢因工作階段重啟沒有被核准，需要再送。
+  - 只讀查詢（2026-11-12，只回傳計數）：8 個 profile、2 個公開、**0 個觸發**（名稱的第一段等於自己 user_id）、0 個名稱含 `/`；`avatars` 有 10 個檔案、公開且有頭像的 1 個。目前沒有人利用過這個漏洞（只看得到現在的狀態，看不到過去）。
+  - 下一步：#245 合併後開下一個 PR（migration 017 ＋ 測試，同一個 branch 一次一個 PR）；production 的乾跑與套用再各請擁有者核准。
 
 - [ ] **PRO-014HB** 移除 PRO-014H 保留的 legacy 相容層
   - 時機：PRO-014HA 通過、`server` 穩定一段時間（例如兩週沒有回退）之後。
@@ -140,16 +141,13 @@
 
 ## Next
 
-- [ ] **HW-112B** 在 production 套用 016（佐證照片的 bucket 與 policy；production 寫入，需擁有者核准）
+- [ ] **HW-112B** 在 production 套用 016（佐證照片的 bucket 與 policy；production 寫入；擁有者 2026-11-11 核准：「照片同步第二步> 核准」）
+  - 2026-11-11 送出 production 乾跑（`begin; set local lock_timeout = '5s';` ＋ 016 ＋ 測試 ＋ `rollback;`）兩次，Supabase MCP 的確認都在時限（約 2 分鐘）內沒有被按下，沒有執行。擁有者回「可以送了」後再送，並請擁有者在時限內按核准。
+  - 正式套用等 #245 合併後（repo 是套用內容的來源），套用前再請擁有者核准一次。
   - 依寫入流程：本機演練（HW-112A 已做）→ production 乾跑：`begin; set local lock_timeout = '5s';` ＋ 016 ＋ `tests/database/hw112.test.sql` 的內容 ＋ `rollback;`（DROP／CREATE POLICY 會鎖住 storage.objects 直到 commit 或 rollback）（真的 Storage schema；第一次在真的 Storage 上跑這份測試，替身與實際不同時會在這裡發現）→ 核准後鎖定套用 016 → 事後檢查（bucket 設定、四個 policy、再跑一次測試）。
   - 套用後以兩個測試帳號實測 Storage API：本人可以上傳、讀、刪自己的檔案；不能碰別人的資料夾；上傳超過 200 KB 或不是 JPEG 被拒（大小與類型由 API 在上傳時檢查，資料庫測不到；移動與複製不會再檢查，所以本人可以把自己其他 bucket 的檔案搬進自己的 proofs 資料夾，只限自己）。
   - HW-112C 下載時不能相信大小與類型（只當 JPEG 顯示在 `<img>`，過大的不處理）。
   - 套用不影響現在的 app：client 要到 HW-112C 才會上傳。
-
-- [ ] **BUG-118A**（擁有者，v1.41.16 部署後就做）確認重新加入的主畫面圖示
-  - 擁有者的圖示已在 2026-11-11 重新加入（狀態列為 `default`）。v1.41.16 之後打開**不應出現** BUG-118 的橫幅（「頂部如果被模糊蓋住…」）。這是在確認偵測的前提（`default` 下頂部 safe area 為 0）：若出現，所有 iOS 主畫面的使用者都會被誤提示，回報後要立刻修正。
-  - 順便看：底部導覽列的圖示在 home indicator（底部橫條）上方，沒有被切掉、下方沒有多一條空白（`pwa/js/appHeight.js`）；狀態列與 header 同色或是 `theme-color`（`#0d0d1a`），淺色主題若出現深色狀態列就回報。
-  - 橫幅本身要有 v1.41.14 之前加入的圖示才看得到；沒有這種裝置就不用測（流程由 `tests/e2e/bug118-status-bar-notice.test.js` 涵蓋）。
 
 - [ ] **PRO-014HA**（擁有者，只剩真機畫面）真機驗證 PRO-014H 的 cutover
   - 2026-11-11 擁有者要求 agent 以 Supabase MCP 直接測試。agent 以只讀查詢（DO 區塊最後 `RAISE EXCEPTION`，整段回滾、沒有寫入）逐一以 5 個測試帳號與擁有者主帳號的身分（`request.jwt.claims` 加 `SET LOCAL ROLE authenticated`）呼叫 `my_pro_status()`：
@@ -273,6 +271,10 @@
 ---
 
 ## Done
+
+- [x] **BUG-118A**（擁有者）確認重新加入的主畫面圖示
+  - 結果（2026-11-11）：重新加入的圖示打開後**沒有**出現 BUG-118 的提示，頂部也沒有模糊。偵測的前提（`default` 下頂部 safe area 為 0）在真機上成立，其他使用者不會被誤提示。
+  - 同時發現：重新加入後**沒有**出現 UI-203 的新圖示（v1.41.17 已於 2026-11-11 13:20 UTC 部署成功）。原因推定為 Safari 裡的 Orbit 仍由舊版的 service worker 提供舊的 `index.html`（沒有 `apple-touch-icon` 的連結，manifest 與圖示也是舊快取）。已請擁有者：用 Safari 打開 Orbit → 設定頁確認 v1.41.17（出現「新版本已就緒」就按「重新整理」，沒出現就關掉分頁重開）→ 加入主畫面前看預覽是不是紫色行星；預覽仍是舊圖示就回報。
 
 - [x] **HW-112A** migration 016：佐證照片的私有 bucket `proofs` 與四個 policy，加上資料庫測試
   - 完成（2026-11-11，#245）：
