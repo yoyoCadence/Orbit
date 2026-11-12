@@ -264,6 +264,7 @@
 | #242 | — | PRO-017 提案（邀請解鎖 Pro：server 依被邀請者的有效日判定）與 AI-015 提案（AI 晨間報告：Edge Function 代呼叫 Claude API），等擁有者決定 |
 | #243 | v1.41.16 | BUG-118：舊的主畫面圖示（iOS 仍以半透明狀態列開啟）先請使用者完全關閉重開，仍是舊設定再請他先加新圖示、確認後移除舊的（提醒只存在裝置上的資料）；記錄六份提案的決定與 PRO-014HA 的 server 端驗證 |
 | #244 | v1.41.17 | UI-203：新的 app 圖示（`art-pipeline/app-icon/icon.svg`，行星與軌道），`npm run icons` 產生 any／maskable／apple-touch-icon，e2e 守住 maskable 安全範圍；刪除 `make-icons.html` |
+| #245 | — | HW-112A：migration 016（佐證照片的私有 bucket `proofs` 與四個 policy）、`tests/database/hw112.test.sql`、本機替身 `tests/database/support/storage-standin.sql`；記錄 BUG-119（010 的頭像 policy 讀錯欄位） |
 
 教訓：#155–#164 在 Codex review 出現前就合併，造成 #165、#166、#167 的回頭修正。這就是 §2 合併條件的由來。獨立 review 在 #167、#168、#169 都找到真正的問題（例如椅子畫在螢幕後面、壁燈在相框下投出暗影），所以複查不能省。
 
