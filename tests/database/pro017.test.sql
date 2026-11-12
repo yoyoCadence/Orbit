@@ -17,12 +17,15 @@
 
 begin;
 
--- 0. ASSERT 必須開啟，否則失敗時不會中止，整份測試會靜默通過
+-- 0. ASSERT 必須開啟，否則失敗時不會中止，整份測試會靜默通過。連線的 TimeZone 固定為 UTC
+--    （transaction 內有效；放在第一個 do $$ 裡，乾跑時從這裡開始複製也會帶到），fixture 的
+--    now() - interval 才不會遇到日光節約時間而差一小時。
 do $$
 begin
   if not current_setting('plpgsql.check_asserts')::boolean then
     raise exception 'plpgsql.check_asserts is off; this test would pass silently';
   end if;
+  perform set_config('timezone', 'UTC', true);
 end $$;
 
 -- 1. 結構與權限
@@ -83,7 +86,7 @@ begin
 end $$;
 
 -- 2. fixture。綁定時被邀請者要在 7 天內建立，所以先以 6 天前建立；綁定後（第 4 節結尾）再把
---    B／C／D／F／H 的建立時間改成 8 天前，模擬時間經過（領取時帳號要存在滿 7 天）。
+--    建立時間往前移，模擬時間經過（領取時帳號要存在滿 168 小時）。
 insert into auth.users (id, email, raw_user_meta_data, created_at)
 select ('00000000-0000-4000-8000-0000001700' || u.suffix)::uuid,
        'pro017-' || u.suffix || '@example.invalid', '{}'::jsonb, u.created_at
@@ -93,7 +96,7 @@ from (values
   ('f1', now() - interval '6 days'),
   ('11', now() - interval '6 days'), ('12', now() - interval '6 days'), ('13', now() - interval '6 days'),
   ('14', now() - interval '6 days'), ('15', now() - interval '6 days'),
-  ('e1', now() - interval '6 days'),
+  ('e1', now() - interval '6 days 23 hours 59 minutes'),
   ('02', now() - interval '6 days 23 hours'),
   ('01', now() - interval '7 days 1 minute'),
   ('03', null::timestamptz)
@@ -175,6 +178,8 @@ begin
   r := public.redeem_referral(fullwidth_a);
   assert r = 'redeemed', format('a full-width code must redeem (got %s)', r);
   assert public.redeem_referral(code_a) = 'already_redeemed', 'redeeming twice must be already_redeemed';
+  assert public.redeem_referral(unknown) = 'already_redeemed', 'a bound user must not learn whether a code exists';
+  assert public.redeem_referral(code_b) = 'already_redeemed', 'a bound user gets already_redeemed before own_code';
   begin
     perform 1 from public.referrals;
     raise exception 'a client must not read referrals';
@@ -188,7 +193,7 @@ begin
   end;
   execute 'reset role';
 
-  -- C：全形空白開頭；D：小寫加 tab 與換行；其他人：原樣
+  -- C：全形空白開頭；D：小寫加 tab 與換行；F：BOM 開頭、零寬空白結尾；其他人：原樣
   foreach who in array array['c1', 'd1', 'f1', '11', '12', '13', '14', '15', 'e1', '02'] loop
     perform set_config('request.jwt.claims',
       json_build_object('sub', '00000000-0000-4000-8000-0000001700' || who, 'role', 'authenticated')::text, true);
@@ -196,6 +201,7 @@ begin
     r := public.redeem_referral(case who
       when 'c1' then chr(12288) || code_a
       when 'd1' then lower(code_a) || chr(9) || chr(10)
+      when 'f1' then chr(65279) || code_a || chr(8203)
       else code_a end);
     assert r = 'redeemed', format('%s must redeem A''s code (got %s)', who, r);
     execute 'reset role';
@@ -224,20 +230,23 @@ begin
     ('00000000-0000-4000-8000-000000170001', '00000000-0000-4000-8000-000000170003')), 'O and Q must not be bound';
 end $$;
 
--- 時間經過：B／C／D／F／H 的帳號改成 8 天前建立（Y 仍是 6 天前）
+-- 時間經過：B 的帳號改成 7 天又 1 分鐘前建立（剛好滿 168 小時），C／D／F／H 改成 8 天前
+-- （Y 仍是 6 天 23 小時 59 分，差 1 分鐘才滿）
+update auth.users set created_at = now() - interval '7 days 1 minute'
+where id = '00000000-0000-4000-8000-0000001700b1';
 update auth.users set created_at = now() - interval '8 days'
 where id in (select ('00000000-0000-4000-8000-0000001700' || x)::uuid
-             from unnest(array['b1', 'c1', 'd1', 'f1', '11', '12', '13', '14', '15']) as x);
+             from unnest(array['c1', 'd1', 'f1', '11', '12', '13', '14', '15']) as x);
 
 -- 5. 被邀請者的 sessions（T = UTC 的今天）。一般的有效日：A 級任務、生產 XP 50、30 分鐘。
---    B：T-6..T（7 天）；T-3 另有娛樂剛好 120 分鐘（仍有效）→ 達成。
+--    B：T-6..T（7 天）；T-3 另有娛樂剛好 120 分鐘（仍有效）；帳號剛好滿 168 小時 → 達成。
 --    F：T-8..T-2（7 天，第一天就是建立當天）→ 達成。
 --    C：T-9（建立前，不算）、T-6..T-1、T+1（未來，不算）→ 6 天。
 --    D：T-6..T，但 T-3 娛樂 121 分鐘 → 6 天。
 --    H1–H5：T-6..T，但 T-3 各自只違反一個條件 → 6 天：
 --      H1 生產 XP 49；H2 只有 B 級任務；H3 A 級任務但結果 invalid；H4 不算生產力；
 --      H5 base_xp 60 但 final_xp 40。
---    Y：T-6..T（7 天），但帳號只存在 6 天 → 不算。
+--    Y：T-6..T（7 天），但帳號只存在 6 天 23 小時 59 分 → 不算。
 insert into public.sessions (
   user_id, task_name, date, started_at, completed_at, duration_minutes,
   result, base_xp, final_xp, energy_cost, energy_gain, impact_type,
@@ -293,6 +302,7 @@ begin
   end loop;
   assert (select referral_reward_granted_at from public.pro_entitlements
           where user_id = '00000000-0000-4000-8000-0000001700a0') is null, 'the flag must stay NULL';
+  perform set_config('timezone', 'UTC', true);
 end $$;
 
 -- 7. C 補上今天 → 3 位達成
@@ -374,6 +384,8 @@ begin
     format('a second claim must be already_granted (got %s)', r.status);
   assert (select pro_expires_at from public.pro_entitlements where user_id = a) = now() + interval '30 days',
     'a second claim must not extend the reward';
+  -- 放回 UTC：乾跑時同一個 transaction 接著跑 pro014l，它以 current_date 建立 fixture
+  perform set_config('timezone', 'UTC', true);
 end $$;
 
 -- 9. updated_at trigger 看得到新欄位：只改 referral_reward_granted_at 也會更新 updated_at

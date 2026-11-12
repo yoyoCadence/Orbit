@@ -38,7 +38,9 @@
 --   兩個連線同時領取：tests/database/support/pro017-concurrency.sh（只在本機的資料庫執行）。
 --   本機：tests/database/support/supabase-standin.sql → pwa/db 的 001～019 依序 → 測試。
 --   production（RA，擁有者核准每一步）：begin; set local lock_timeout = '5s'; ＋ 本檔 ＋ 測試的內容 ＋
---   rollback; 乾跑（同一個 transaction 裡也跑 pro014l.test.sql 的內容，確認 SUB-16 不受影響），
+--   rollback; 乾跑（同一個 transaction 裡也跑 pro014l.test.sql 從 begin; 之後的內容，包括它的
+--   set local timezone = 'UTC';，確認 SUB-16 不受影響；測試會改 auth.users 的 created_at，需要
+--   postgres 對 auth.users 的 UPDATE 權限，Supabase 預設有），
 --   再以 begin; set local lock_timeout = '5s'; ＋ 本檔 ＋ commit; 套用。鎖：ALTER TABLE
 --   pro_entitlements 鎖住它；建立指向 auth.users 的外鍵會以 ShareRowExclusiveLock 鎖住 auth.users，
 --   註冊與登入的寫入要等到 commit，所以整個 transaction 要短。
@@ -174,8 +176,10 @@ $$;
 --   already_redeemed  已經綁定過（不論是不是同一個邀請者）；
 --   too_late          帳號建立超過 7 天。
 -- 帳號建立時間讀 auth.users.created_at（server 寫的）；profiles.created_at 本人改得到，不能用。
+-- 「7 天」寫成 168 小時：interval '7 days' 依連線的 TimeZone 計算，遇到日光節約時間會差一小時，
+-- 而 PostgREST 可以由 Prefer: timezone 改變它。帳號年齡（claim_referral_reward()）也一樣。
 -- 碼先做 NFKC 正規化（中文輸入法的全形字母與數字、全形空白變成半形），再去掉前後的空白、tab、
--- 換行，不分大小寫。
+-- 換行、零寬空白（U+200B）與 BOM（U+FEFF），不分大小寫。
 -- 檢查順序：已經綁定、帳號太舊的人先回答，不去查碼，所以不能拿來試探某個碼存不存在。
 CREATE OR REPLACE FUNCTION public.redeem_referral(p_code text)
 RETURNS text
@@ -184,7 +188,7 @@ SET search_path = ''
 AS $$
 DECLARE
   caller_id uuid := (select auth.uid());
-  normalized text := upper(btrim(normalize(coalesce(p_code, ''), NFKC), E' \t\r\n'));
+  normalized text := upper(btrim(normalize(coalesce(p_code, ''), NFKC), E' \t\r\n' || chr(8203) || chr(65279)));
   inviter uuid;
   caller_created_at timestamptz;
 BEGIN
@@ -201,7 +205,7 @@ BEGIN
   END IF;
 
   SELECT u.created_at INTO caller_created_at FROM auth.users u WHERE u.id = caller_id;
-  IF caller_created_at IS NULL OR caller_created_at < now() - interval '7 days' THEN
+  IF caller_created_at IS NULL OR caller_created_at < now() - interval '168 hours' THEN
     RETURN 'too_late';
   END IF;
 
@@ -263,7 +267,7 @@ BEGIN
     FROM public.referrals r
     JOIN auth.users u ON u.id = r.invitee_id
     WHERE r.inviter_id = caller_id
-      AND u.created_at <= now() - interval '7 days'
+      AND u.created_at <= now() - interval '168 hours'
   ),
   daily_stats AS (
     SELECT

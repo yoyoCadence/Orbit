@@ -123,7 +123,7 @@
   - R2 要注意（R1 決定的介面）：
     - `get_my_referral_code()` 回傳 8 碼（`A-H J-N P-Z 2-9`，沒有 0／O、1／I）；`redeem_referral(p_code)` 先做 NFKC 正規化（全形字母、數字與空白變半形），再去掉前後的空白、tab、換行，不分大小寫；回傳 `redeemed`／`invalid_code`／`own_code`／`already_redeemed`／`too_late`（已經綁定或帳號太舊的人先回答，不查碼）：`redeemed` 與明確被拒的四種都清掉本機的邀請碼，網路錯誤才保留。
     - `claim_referral_reward()` 回傳 `status`（`granted`／`already_granted`／`active_entitlement`／`not_eligible`）、`achieved_count`、`required_count`（3）與 entitlement 的欄位（同 `grant_streak_unlock()`，含 `paid_active`）；發放後照 SUB-16 重新取得 projection。
-    - 帳號建立超過 7 天就不能綁定（以 `auth.users.created_at` 判斷）；設定頁的手動輸入只在這 7 天內顯示。被邀請者的帳號要存在滿 7 天、而且有 7 個有效日才算達成，所以邀請者最快在被邀請者註冊 7 天後才看到人數增加。
+    - 帳號建立超過 7 天就不能綁定（以 `auth.users.created_at` 判斷）；設定頁的手動輸入只在這 7 天內顯示。被邀請者的帳號要存在滿 7 天（168 小時）、而且有 7 個有效日才算達成，所以邀請者最快在被邀請者註冊 7 天後才看到人數增加。
 
 - [ ] **AI-015** AI 晨間報告
   - 目標：完成 roadmap 既有 SUB-15
@@ -161,7 +161,7 @@
 
 - [ ] **PRO-017RA** 在 production 套用 019 並開啟「確認 email」（production 寫入與 Auth 設定，每一步請擁有者核准；依賴：PRO-017R1 合併）
   - 套用前檢查（只讀）：`set_pro_entitlement_updated_at()` 與 012 相同（`pg_get_functiondef`，存下來給回滾比對）；`referral_codes`／`referrals` 與三個 RPC 還不存在。
-  - 乾跑：`begin; set local lock_timeout = '5s';` ＋ 019 ＋ `tests/database/pro017.test.sql` 的內容 ＋ `pro014l.test.sql` 的內容（同一個 transaction，確認 SUB-16 在 019 之後不受影響）＋ `rollback;`。
+  - 乾跑：`begin; set local lock_timeout = '5s';` ＋ 019 ＋ `tests/database/pro017.test.sql` 的內容 ＋ `pro014l.test.sql` 從 `begin;` 之後的內容（保留它的 `set local timezone = 'UTC';`；同一個 transaction，確認 SUB-16 在 019 之後不受影響）＋ `rollback;`。測試會改 `auth.users` 的 `created_at`（模擬時間經過），需要 postgres 對 `auth.users` 的 UPDATE 權限（Supabase 預設有；沒有的話乾跑會失敗、不會留下變更）。
   - 核准後以 `begin; set local lock_timeout = '5s';` ＋ 019 ＋ `commit;` 套用（建立外鍵會鎖住 `auth.users`，註冊與登入的寫入要等到 commit，transaction 要短），事後檢查：兩張表的 RLS、policy 與權限（anon 沒有、authenticated 只能讀自己的邀請碼、`referrals` 讀不到）；三個 RPC 的權限；再跑一次測試。Supabase 的 advisor 會把三個 RPC 列為 lint 0029（authenticated 可執行的 SECURITY DEFINER 函式），這是預期的。
   - 「確認 email」：擁有者在 Supabase Dashboard 的 Authentication 設定裡（Email provider）開啟 Confirm email（畫面名稱以當時的 Dashboard 為準）。會影響**所有新使用者**的註冊（要先收信確認才能登入）；開啟前確認註冊頁的提示與 email 範本。Google 登入不受影響。同時確認 Authentication 的「Allow anonymous sign-ins」維持關閉：匿名使用者也是 authenticated、有 `auth.users` 列、不需要確認 email，三個 RPC 不會把他們分開（app 的訪客模式只在本機，不用匿名登入）。
   - 兩個連線同時領取的測試（`tests/database/support/pro017-concurrency.sh`）只在本機跑，不在 production。
@@ -302,8 +302,8 @@
     - `tests/database/pro017.rollback.sql`：刪除三個 RPC 與兩張表、還原 012 的 trigger 函式、刪除欄位（已發放的 Pro 保留）；設 `lock_timeout`（刪除表會以 AccessExclusiveLock 鎖住 `auth.users`）。
     - `tests/database/support/pro017-concurrency.sh`：本機兩個連線同時領取，兩個情境都要只發一次、兩邊期限相同：(1) 第一個領取後 2 秒才 commit；(2) 另一個連線先鎖住邀請者的 entitlement 列，兩個領取同時開始。019 有兩道防線（`FOR UPDATE` 與 `WHERE … IS NULL`）；兩道都拿掉時情境 2 發放兩次（本機實測），只拿掉一道時仍然通過。暫存檔用 `mktemp -d`，結束時刪除。
     - 替身的 `auth.users` 加上 `created_at`。
-    - 本機 PG16（001～019）：`pro017` 與其他 8 份測試都通過；回滾後 trigger 函式與套用 019 前的 `pg_get_functiondef` 相同、`pro014l` 仍通過；再套用兩次（可重複執行）後 `pro017` 仍通過；並行腳本兩個情境都通過；改壞 019 的 38 種情況都會失敗（含審查發現存活的全部：有效日的每個條件、試用中、過期付費、7 天的帳號年齡、兩個時區、120 分鐘與 2 位的邊界、綁定期限、NULL 的建立時間、正規化與檢查順序、回傳的 `paid_active`）。
-    - 審查（#248）：Codex 沒有問題（e251769）。獨立審查：沒有 P1；P2：有效日的條件只測到娛樂、試用中與過期付費沒有測、「每個假帳號至少要存在 7 天」不成立（只看日期時 5 天多就能湊滿）→ 測試補齊，並在 `claim_referral_reward()` 加上「被邀請者的帳號要存在滿 7 天」，讓提案核准的說法成立；P3：NFKC 正規化與去掉 tab／換行、已經綁定或太舊的人不查碼、並行腳本加鎖住列的情境與 `mktemp`、回滾設 `lock_timeout`、套用時 `auth.users` 的鎖、匿名登入維持關閉、pro014l 在同一個乾跑 transaction 裡跑、兩個時區、各種邊界。
+    - 本機 PG16（001～019）：`pro017` 與其他 8 份測試都通過；回滾後 trigger 函式與套用 019 前的 `pg_get_functiondef` 相同、`pro014l` 仍通過；再套用兩次（可重複執行）後 `pro017` 仍通過；並行腳本兩個情境都通過；改壞 019 的 43 種情況都會失敗（含兩輪審查發現存活的全部：有效日的每個條件、試用中、過期付費、帳號年齡與它的兩側（6 天 1 小時、8 天）、兩個時區、120 分鐘與 2 位的邊界、綁定期限、NULL 的建立時間、正規化（NFKC、空白、零寬空白）、已綁定與太舊的人都先回答、回傳的 `paid_active`）；乾跑的兩種切法（從 `begin;` 或從第一個 `do $$`，接著跑 pro014l）在 10:00 UTC 之後也都通過。
+    - 審查（#248）：Codex 沒有問題（e251769）。獨立審查：沒有 P1；P2：有效日的條件只測到娛樂、試用中與過期付費沒有測、「每個假帳號至少要存在 7 天」不成立（只看日期時 5 天多就能湊滿）→ 測試補齊，並在 `claim_referral_reward()` 加上「被邀請者的帳號要存在滿 7 天」，讓提案核准的說法成立；第二輪（ff2f6fe）：Codex 沒有問題；獨立審查沒有 P1，P2：乾跑時 pro017 把 TimeZone 留在 UTC+14、pro014l 的 UTC 設定又被切掉，10:00 UTC 之後誤報失敗 → 測試在第 0 節固定 UTC、時區段落結束後放回 UTC，乾跑說明改成保留 pro014l 的 timezone 那一行；P3：已綁定的人不能試探碼的斷言、帳號年齡卡在 168 小時的兩側（6 天 23 小時 59 分、7 天 1 分）、「7 天」改成 168 小時（不受日光節約時間影響）、去掉零寬空白與 BOM；P3：NFKC 正規化與去掉 tab／換行、已經綁定或太舊的人不查碼、並行腳本加鎖住列的情境與 `mktemp`、回滾設 `lock_timeout`、套用時 `auth.users` 的鎖、匿名登入維持關閉、pro014l 在同一個乾跑 transaction 裡跑、兩個時區、各種邊界。
 
 - [x] **PRO-014E1** migration 018：排行榜的公開名稱（`profiles.display_name`）與 `get_leaderboard()`，加上資料庫測試
   - 完成（2026-11-12，#247；production 套用為 PRO-014EA）：
