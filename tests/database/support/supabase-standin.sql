@@ -22,6 +22,8 @@
 -- （005 有兩個檔案，依檔名排序套用：005_leaderboard.sql 先、005_profiles_extra_cols.sql 後，
 --   兩者都用 IF NOT EXISTS，順序不影響結果。）
 
+\set ON_ERROR_STOP on
+
 do $$
 begin
   if exists (select 1 from pg_namespace where nspname in ('auth', 'storage')) then

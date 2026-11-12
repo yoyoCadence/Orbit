@@ -83,15 +83,19 @@ update public.profiles set is_public = true, display_name = 'zz pro014e A',
   avatar_url = '00000000-0000-4000-8000-00000e014e0a/avatar-1.png',
   total_xp = 100, streak_days = 3, mode = 'normal', created_at = '2026-01-02 23:30:00+00'
   where user_id = '00000000-0000-4000-8000-00000e014e0a';
-update public.profiles set is_public = true, display_name = 'zz pro014e B', is_pro = true, mode = 'advanced'
+update public.profiles set is_public = true, display_name = 'zz pro014e B', is_pro = true, mode = 'advanced',
+  avatar_url = '00000000-0000-4000-8000-00000e014e0b/avatar-2.png'
   where user_id = '00000000-0000-4000-8000-00000e014e0b';
 update public.profiles set is_public = true, display_name = null
   where user_id = '00000000-0000-4000-8000-00000e014e0c';
 update public.profiles set is_public = false, display_name = 'zz pro014e D'
   where user_id = '00000000-0000-4000-8000-00000e014e0d';
-update public.profiles set is_public = true, display_name = 'zz pro014e E'
+-- E 與 F 的 avatar_url 不在自己的資料夾：任意網址、別人的路徑（RPC 必須回傳 NULL）
+update public.profiles set is_public = true, display_name = 'zz pro014e E',
+  avatar_url = 'https://example.invalid/track.png'
   where user_id = '00000000-0000-4000-8000-00000e014e0e';
-update public.profiles set is_public = true, display_name = 'zz pro014e F'
+update public.profiles set is_public = true, display_name = 'zz pro014e F',
+  avatar_url = '00000000-0000-4000-8000-00000e014e0a/avatar-1.png'
   where user_id = '00000000-0000-4000-8000-00000e014e0f';
 
 insert into public.pro_entitlements (user_id, is_pro, pro_expires_at, trial_started_at) values
@@ -99,67 +103,106 @@ insert into public.pro_entitlements (user_id, is_pro, pro_expires_at, trial_star
   ('00000000-0000-4000-8000-00000e014e0e', true, now() - interval '1 day', null),
   ('00000000-0000-4000-8000-00000e014e0f', true, null, null);
 
--- A 的 sessions：UTC 今天 50 與 6 天前 30 算進本週；7 天前 1000 與不算生產力的 999 不算
+-- A 的 sessions：UTC 今天 50 與 6 天前 30 算進本週；7 天前 1000 與不算生產力的 999 不算。
+-- base_xp 故意比 final_xp 少 10，確認加總的是 final_xp。
 insert into public.sessions (
   user_id, task_name, date, started_at, completed_at, duration_minutes,
   result, base_xp, final_xp, energy_cost, energy_gain, impact_type,
   task_nature, value, resistance, is_productive_xp
 )
 select '00000000-0000-4000-8000-00000e014e0a', 'pro014e task', (now() at time zone 'UTC')::date - d.days_ago,
-       now(), now(), 30, 'complete', d.xp, d.xp, 10, 0, 'task', 'growth', 'A', 1.0, d.productive
+       now(), now(), 30, 'complete', d.xp - 10, d.xp, 10, 0, 'task', 'growth', 'A', 1.0, d.productive
 from (values (0, 50, true), (6, 30, true), (7, 1000, true), (0, 999, false)) as d(days_ago, xp, productive);
 
 -- 3. 公開名稱的規則：CHECK 擋下的名稱與允許的名稱（以 postgres 改 D 的公開名稱）
+--    a. 018 列出的每一段不允許的字元：兩端與中間都被擋下，兩端外面的鄰居（不在任何一段裡）允許；
+--    b. 長度、前後空白、variation selector 與 tag 的邊界；
+--    c. 允許的名稱（中文、emoji、emoji 加 variation selector、英格蘭旗、20 個 emoji）。
 do $$
 declare
   d uuid := '00000000-0000-4000-8000-00000e014e0d';
-  bad text;
-  good text;
+  forbidden int4range[] := array[
+    int4range(1, 31, '[]')  /* U+0001–U+001F */,
+    int4range(127, 160, '[]')  /* U+007F–U+00A0 */,
+    int4range(173, 173, '[]')  /* U+00AD */,
+    int4range(847, 847, '[]')  /* U+034F */,
+    int4range(1564, 1564, '[]')  /* U+061C */,
+    int4range(4447, 4447, '[]')  /* U+115F */,
+    int4range(4448, 4448, '[]')  /* U+1160 */,
+    int4range(5760, 5760, '[]')  /* U+1680 */,
+    int4range(6068, 6068, '[]')  /* U+17B4 */,
+    int4range(6069, 6069, '[]')  /* U+17B5 */,
+    int4range(6155, 6159, '[]')  /* U+180B–U+180F */,
+    int4range(8192, 8207, '[]')  /* U+2000–U+200F */,
+    int4range(8232, 8239, '[]')  /* U+2028–U+202F */,
+    int4range(8287, 8303, '[]')  /* U+205F–U+206F */,
+    int4range(10240, 10240, '[]')  /* U+2800 */,
+    int4range(12288, 12288, '[]')  /* U+3000 */,
+    int4range(12644, 12644, '[]')  /* U+3164 */,
+    int4range(65279, 65279, '[]')  /* U+FEFF */,
+    int4range(65440, 65440, '[]')  /* U+FFA0 */,
+    int4range(65520, 65531, '[]')  /* U+FFF0–U+FFFB */,
+    int4range(113824, 113827, '[]')  /* U+1BCA0–U+1BCA3 */,
+    int4range(119129, 119129, '[]')  /* U+1D159 */,
+    int4range(119155, 119162, '[]')  /* U+1D173–U+1D17A */
+  ];
+  r int4range;
+  cp int;
+  candidate text;
+  refused int := 0;
 begin
-  foreach bad in array array[
-    '',                                  -- 空字串
-    repeat('a', 21),                     -- 21 字
-    ' a', 'a ',                          -- 前後半形空白
-    'a' || chr(9) || 'b',                -- tab
-    'a' || chr(10),                      -- 換行
-    'a' || chr(127),                     -- DEL
-    'a' || chr(133) || 'b',              -- U+0085
-    'a' || chr(160) || 'b',              -- 不換行空白
-    chr(173) || 'a',                     -- 軟連字號
-    'a' || chr(1564) || 'b',             -- U+061C 方向標記
-    chr(4447), chr(65440), chr(12644),   -- Hangul 的空白字元
-    chr(8194),                           -- en space
-    'a' || chr(8203) || 'b',             -- 零寬空白
-    'a' || chr(8205) || 'b',             -- 零寬連接（ZWJ）
-    chr(8238) || 'abc',                  -- U+202E 由右至左覆寫
-    'a' || chr(8239) || 'b',             -- 窄不換行空白
-    'a' || chr(8288),                    -- word joiner
-    chr(10240),                          -- Braille 空白
-    chr(12288), 'a' || chr(12288) || 'b',-- 全形空白
-    chr(65279) || 'a'                    -- BOM
+  foreach r in array forbidden loop
+    foreach cp in array array[lower(r), (lower(r) + upper(r) - 1) / 2, upper(r) - 1] loop
+      begin
+        update public.profiles set display_name = 'a' || chr(cp) || 'b' where user_id = d;
+        raise exception 'U+% must be refused', to_hex(cp);
+      exception when check_violation then
+        refused := refused + 1;
+      end;
+    end loop;
+    foreach cp in array array[lower(r) - 1, upper(r)] loop
+      continue when cp < 1 or exists (select 1 from unnest(forbidden) f where f @> cp);
+      update public.profiles set display_name = 'a' || chr(cp) || 'b' where user_id = d;
+    end loop;
+  end loop;
+  assert refused = 3 * array_length(forbidden, 1), 'every forbidden range must be probed';
+
+  foreach candidate in array array[
+    '',                                         -- 空字串
+    repeat('a', 21),                            -- 21 字
+    ' a', 'a ', '  ',                           -- 前後半形空白
+    chr(65039),                                 -- 只有 variation selector
+    chr(917760),                                -- 只有 U+E0100
+    chr(917505) || chr(917536),                 -- 只有 tag
+    chr(65039) || ' a',                         -- 以 variation selector 藏起開頭的空白
+    'a ' || chr(65039),                         -- 以 variation selector 藏起結尾的空白
+    'a ' || chr(917631)                         -- 以 tag 藏起結尾的空白
   ] loop
     begin
-      update public.profiles set display_name = bad where user_id = d;
-      raise exception 'display_name % must be refused', quote_literal(bad);
+      update public.profiles set display_name = candidate where user_id = d;
+      raise exception 'display_name % must be refused', quote_literal(candidate);
     exception when check_violation then
       null;
     end;
   end loop;
 
-  foreach good in array array[
+  foreach candidate in array array[
     'a', repeat(chr(28204), 20), 'Joey Chen', 'a  b', 'O''Brien',
-    chr(29579) || chr(23567) || chr(26126),   -- 中文名字
-    chr(128578),                              -- emoji
-    chr(10084) || chr(65039),                 -- emoji 加 variation selector
-    repeat(chr(128578), 20)                   -- 20 個 emoji 是 20 字
+    chr(29579) || chr(23567) || chr(26126),     -- 中文名字
+    chr(128578),                                -- emoji
+    chr(10084) || chr(65039),                   -- emoji 加 variation selector（結尾是 VS16）
+    chr(127988) || chr(917607) || chr(917602) || chr(917605) || chr(917614) || chr(917607) || chr(917631),
+                                                -- 英格蘭旗（黑旗＋tag）
+    repeat(chr(128578), 20)                     -- 20 個 emoji 是 20 字
   ] loop
-    update public.profiles set display_name = good where user_id = d;
+    update public.profiles set display_name = candidate where user_id = d;
   end loop;
 
   update public.profiles set display_name = 'zz pro014e D' where user_id = d;
 end $$;
 
--- 4. get_leaderboard()：以 A 的身分呼叫（連線的 TimeZone 故意不是 UTC）
+-- 4. get_leaderboard()：以 A 的身分呼叫。連線的 TimeZone 故意設成 UTC+14 與 UTC−12：
+--    無論現在 UTC 幾點，兩者至少有一個的「今天」與 UTC 不同，用連線的日期算就會錯。
 do $$
 declare
   a text := '00000000-0000-4000-8000-00000e014e0a';
@@ -167,43 +210,51 @@ declare
   expected int;
   n int;
   names text;
+  tz text;
 begin
   -- 呼叫者看到的列數必須等於所有「公開且有公開名稱」的人（不多不少），先以 postgres 數
   select count(*) into expected from public.profiles where is_public and display_name is not null;
 
-  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
-  perform set_config('timezone', 'Asia/Taipei', true);
-  execute 'set local role authenticated';
+  foreach tz in array array['Etc/GMT-14', 'Etc/GMT+12'] loop
+    perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+    perform set_config('timezone', tz, true);
+    execute 'set local role authenticated';
 
-  select count(*) into n from public.get_leaderboard();
-  assert n = expected, format('the RPC must list every public user with a public name (%s vs %s)', n, expected);
-  select string_agg(l.display_name, ',' order by l.display_name) into names
-  from public.get_leaderboard() l where l.display_name like 'zz pro014e %';
-  assert names = 'zz pro014e A,zz pro014e B,zz pro014e E,zz pro014e F',
-    format('only public users with a public name must be listed (got %s)', names);
-  assert not exists (select 1 from public.get_leaderboard() l where l.display_name is null),
-    'no row may have a NULL display_name';
-  assert (select count(*) from public.get_leaderboard() l where l.is_me) = 1, 'exactly one row must be is_me';
-  assert (select l.display_name from public.get_leaderboard() l where l.is_me) = 'zz pro014e A',
-    'is_me must be the caller''s row';
-  assert not exists (select 1 from public.get_leaderboard() l where l.display_name like 'pro014e-%'),
-    'email prefixes must not appear';
+    select count(*) into n from public.get_leaderboard();
+    assert n = expected, format('the RPC must list every public user with a public name (%s vs %s)', n, expected);
+    select string_agg(l.display_name, ',' order by l.display_name) into names
+    from public.get_leaderboard() l where l.display_name like 'zz pro014e %';
+    assert names = 'zz pro014e A,zz pro014e B,zz pro014e E,zz pro014e F',
+      format('only public users with a public name must be listed (got %s)', names);
+    assert not exists (select 1 from public.get_leaderboard() l where l.display_name is null),
+      'no row may have a NULL display_name';
+    assert (select count(*) from public.get_leaderboard() l where l.is_me) = 1, 'exactly one row must be is_me';
+    assert (select l.display_name from public.get_leaderboard() l where l.is_me) = 'zz pro014e A',
+      'is_me must be the caller''s row';
+    assert not exists (select 1 from public.get_leaderboard() l where l.display_name like 'pro014e-%'),
+      'email prefixes must not appear';
 
-  select * into r from public.get_leaderboard() l where l.display_name = 'zz pro014e A';
-  assert r.avatar_path = a || '/avatar-1.png', 'avatar_path must be the stored path';
-  assert r.total_xp = 100 and r.streak_days = 3 and r.mode = 'normal', 'A''s totals must be returned';
-  assert r.week_xp = 80, format('week_xp must count the last 7 UTC days of productive XP only (got %s)', r.week_xp);
-  assert r.joined_on = date '2026-01-02', format('joined_on must be the UTC date (got %s)', r.joined_on);
-  assert r.is_pro, 'an active trial must count as Pro';
+    select * into r from public.get_leaderboard() l where l.display_name = 'zz pro014e A';
+    assert r.avatar_path = a || '/avatar-1.png', 'avatar_path must be the stored path';
+    assert r.total_xp = 100 and r.streak_days = 3 and r.mode = 'normal', 'A''s totals must be returned';
+    assert r.week_xp = 80,
+      format('week_xp must count final_xp of the last 7 UTC days, productive only (got %s under %s)', r.week_xp, tz);
+    assert r.joined_on = date '2026-01-02', format('joined_on must be the UTC date (got %s under %s)', r.joined_on, tz);
+    assert r.is_pro, 'an active trial must count as Pro';
 
-  select * into r from public.get_leaderboard() l where l.display_name = 'zz pro014e B';
-  assert r.week_xp = 0 and r.mode = 'advanced' and not r.is_me, 'B''s row must be returned as is';
-  assert not r.is_pro, 'profiles.is_pro must not make anyone Pro (no entitlement)';
-  assert not (select l.is_pro from public.get_leaderboard() l where l.display_name = 'zz pro014e E'),
-    'expired paid Pro must be false';
-  assert (select l.is_pro from public.get_leaderboard() l where l.display_name = 'zz pro014e F'),
-    'lifetime paid Pro must be true';
-  execute 'reset role';
+    select * into r from public.get_leaderboard() l where l.display_name = 'zz pro014e B';
+    assert r.week_xp = 0 and r.mode = 'advanced' and not r.is_me, 'B''s row must be returned as is';
+    assert r.avatar_path = '00000000-0000-4000-8000-00000e014e0b/avatar-2.png',
+      'another user''s avatar_path must be returned when it is in their own folder';
+    assert not r.is_pro, 'profiles.is_pro must not make anyone Pro (no entitlement)';
+    select * into r from public.get_leaderboard() l where l.display_name = 'zz pro014e E';
+    assert not r.is_pro, 'expired paid Pro must be false';
+    assert r.avatar_path is null, 'an avatar_url outside the user''s folder (a URL) must not be returned';
+    select * into r from public.get_leaderboard() l where l.display_name = 'zz pro014e F';
+    assert r.is_pro, 'lifetime paid Pro must be true';
+    assert r.avatar_path is null, 'an avatar_url in someone else''s folder must not be returned';
+    execute 'reset role';
+  end loop;
 end $$;
 
 -- 5. 沒有 sub 的 authenticated 拿不到任何資料；anon 不能呼叫
@@ -243,6 +294,26 @@ begin
     'a private user must not be in the view';
   assert not exists (select 1 from public.leaderboard_view where name like 'pro014e-%'),
     'email prefixes must not appear in the view';
+  execute 'reset role';
+end $$;
+
+-- 6b. view 的其他欄位與 010 相同：以 UTC（Supabase 的預設）比對 A 與 B 的每一個欄位
+do $$
+declare
+  a text := '00000000-0000-4000-8000-00000e014e0a';
+  v record;
+begin
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  perform set_config('timezone', 'UTC', true);
+  execute 'set local role authenticated';
+  select * into v from public.leaderboard_view where user_id = a::uuid;
+  assert v.total_xp = 100 and v.streak_days = 3 and v.mode = 'normal' and v.week_xp = 80
+     and v.created_at = '2026-01-02 23:30:00+00' and v.avatar_url = a || '/avatar-1.png',
+    format('A''s view row must match 010 (got %s)', row_to_json(v));
+  select * into v from public.leaderboard_view where user_id = '00000000-0000-4000-8000-00000e014e0b';
+  assert v.name = 'zz pro014e B' and v.total_xp = 0 and v.week_xp = 0 and v.mode = 'advanced'
+     and v.avatar_url = '00000000-0000-4000-8000-00000e014e0b/avatar-2.png',
+    format('B''s view row must match 010 (got %s)', row_to_json(v));
   execute 'reset role';
 end $$;
 

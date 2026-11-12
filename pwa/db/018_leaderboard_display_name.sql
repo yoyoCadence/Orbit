@@ -20,15 +20,23 @@
 --   client（E2）之後才改用 RPC 與公開名稱，本檔不改 client。
 --
 -- 可重複執行：欄位與 constraint 先檢查、函式與 view 用 CREATE OR REPLACE、補名稱只補 NULL。
+-- **但 EA 之後不要 commit 重新執行本檔**：擁有者依 §9 第 8 點把不當名稱設為 NULL 的公開使用者，
+-- 會被第 2 段從 name 補回來（email 前段或真名又上排行榜）。以 rollback 結尾的測試重跑沒關係。
 --
 -- 測試（單一 transaction，結尾 rollback）：
 --   - tests/database/pro014e.test.sql：結構、權限、RPC 的欄位與資料列、名稱規則；
 --   - tests/database/pro014e.backfill.test.sql：先建立合成的公開使用者，再以 \ir 套用本檔，
 --     檢查補上的名稱（本檔可重複執行，所以已套用過的資料庫也能跑）。
 --   本機：tests/database/support/supabase-standin.sql → pwa/db 的 001～018 依序 → 兩份測試。
---   production（EA，擁有者核准每一步）：begin; set local lock_timeout = '5s'; ＋ 本檔 ＋
---   兩份測試的內容（backfill 測試的 \ir 換成本檔）＋ rollback; 乾跑，再套用。
---   ALTER TABLE profiles 與 CREATE OR REPLACE VIEW 會鎖住 profiles／leaderboard_view 直到 commit。
+--   production（EA，擁有者核准每一步）乾跑分成兩個各自 rollback 的 transaction：
+--     1. begin; set local lock_timeout = '5s'; ＋ 本檔 ＋ pro014e.test.sql 從第一個 do $$ 到
+--        最後的 rollback; 之前 ＋ rollback;
+--     2. pro014e.backfill.test.sql 整份照用（保留它自己的 begin; 與 rollback;），只把兩行 \ir
+--        換成本檔的內容，並在 begin; 後面加 set local lock_timeout = '5s';。
+--   真的套用也是 begin; set local lock_timeout = '5s'; ＋ 本檔 ＋ commit;。ALTER TABLE profiles 與
+--   CREATE OR REPLACE VIEW 會鎖住 profiles／leaderboard_view 直到 transaction 結束。
+--   Supabase 的 advisor 會把 get_leaderboard() 列為「authenticated 可執行的 SECURITY DEFINER 函式」
+--   （lint 0029），這是預期的（同 017）。
 -- 套用前檢查（只讀）：
 --   - leaderboard_view 的定義與 010 相同：SELECT pg_get_viewdef('public.leaderboard_view'::regclass);
 --   - public.get_leaderboard 還不存在、profiles 還沒有 display_name；
@@ -45,13 +53,18 @@
 
 -- ── 1. 公開名稱 ─────────────────────────────────────────────────
 -- 規則（client 在 E2 以完全相同的規則先檢查）：
---   - 1–20 字；
---   - 不含控制字元、不可見或方向控制字元，以及空白類字元中除了半形空白以外的全部
---     （不換行空白、全形空白、各種寬度的空白、零寬字元、U+202E 等方向控制、
---     Hangul／Braille 的空白字元、BOM、軟連字號）；
---   - 前後不能是半形空白。
--- 只允許半形空白當作空白，前後檢查就不必依賴 locale（PostgreSQL 的 \s 依 locale 而定）。
--- 名稱只要有一個看得到的字元，就不會是全部空白或看不見的名稱。
+--   - 1–20 字（以 code point 計）；
+--   - 任何位置都不能有：控制字元、半形空白以外的空白類字元（不換行空白、全形空白、各種寬度的
+--     空白）、零寬與方向控制字元（U+200B–U+200F、U+202A–U+202E、U+2060–U+206F 等）、
+--     常被拿來做「看不見的名稱」的字元（Hangul／Braille 的空白字元、U+1D159、U+1D173–U+1D17A、
+--     U+1BCA0–U+1BCA3）、BOM、軟連字號；
+--   - 開頭不能是半形空白、variation selector（U+FE00–U+FE0F、U+E0100–U+E01EF）或 tag 字元
+--     （U+E0000–U+E007F）；結尾不能是半形空白（後面只接 variation selector／tag 也不行）。
+--     variation selector 與 tag 只能跟在看得到的字後面（例如紅心 emoji、英格蘭旗），所以只由它們組成的
+--     名稱，或用它們把前後空白藏起來的名稱都會被擋下。
+-- 只允許半形空白當作空白，前後的檢查就不依賴 locale（PostgreSQL 的 \s 依 locale 而定）。
+-- 沒擋的：只有組合用符號、私人使用區或未指派的字元、堆疊很多組合符號、很寬的字。這些由擁有者
+-- 清除（§9 第 8 點），版面由 E2 的 CSS 截斷。名稱本來就可以重複（§9 第 7 點），冒名不靠這些字元。
 ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS display_name text;
 
@@ -65,8 +78,9 @@ BEGIN
       ADD CONSTRAINT profiles_display_name_check CHECK (
         display_name IS NULL OR (
           char_length(display_name) BETWEEN 1 AND 20
-          AND display_name !~ '[\u0001-\u001f\u007f-\u00a0\u00ad\u034f\u061c\u115f\u1160\u1680\u17b4\u17b5\u180b-\u180f\u2000-\u200f\u2028-\u202f\u205f-\u206f\u2800\u3000\u3164\ufeff\uffa0\ufff0-\ufffb]'
-          AND display_name !~ '^ | $'
+          AND display_name !~ '[\u0001-\u001f\u007f-\u00a0\u00ad\u034f\u061c\u115f\u1160\u1680\u17b4\u17b5\u180b-\u180f\u2000-\u200f\u2028-\u202f\u205f-\u206f\u2800\u3000\u3164\ufeff\uffa0\ufff0-\ufffb\U0001bca0-\U0001bca3\U0001d159\U0001d173-\U0001d17a]'
+          AND display_name !~ '^[ \ufe00-\ufe0f\U000e0000-\U000e007f\U000e0100-\U000e01ef]'
+          AND display_name !~ ' [\ufe00-\ufe0f\U000e0000-\U000e007f\U000e0100-\U000e01ef]*$'
         )
       );
   END IF;
@@ -74,31 +88,44 @@ END $$;
 
 -- ── 2. 既有公開使用者的公開名稱（§9 第 2 點 B）──────────────────
 -- name 最多 30 字、沒有 display_name 的規則，所以先整理：
---   空白類字元（tab、換行、不換行空白、全形空白等）換成半形空白 → 拿掉其他不允許的字元 → 去掉前後半形空白 → 取前 20 字 →
---   再去掉前後半形空白。整理完是空字串的不補（留 NULL，E2 會請他設定）。
+--   1. 空白類字元（tab、換行、U+0085、不換行空白、全形空白、各種寬度的空白）換成半形空白；
+--   2. 拿掉其他不允許的字元（U+2028／U+2029、U+180E 等是拿掉，不是換成空白）；
+--   3. 去掉開頭的空白／variation selector／tag，與結尾的空白（連同後面的 variation selector／tag）；
+--   4. 取前 20 字，再做一次第 3 步。
+-- 結果仍不符合規則（例如是空字串）的不補（留 NULL，E2 會請他設定）。WHERE 以和 CHECK 相同的條件
+-- 再檢查一次，所以這段不會因為某個名稱而讓整個 migration 失敗。
 -- 只補 is_public 且 display_name 為 NULL 的人；不公開的人在 E2 開啟排行榜時自己輸入。
 UPDATE public.profiles p
 SET display_name = c.candidate
 FROM (
   SELECT
-    user_id,
-    btrim(left(btrim(
-      regexp_replace(
-        regexp_replace(name, '[\u0009-\u000d\u0085\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000]', ' ', 'g'),
-        '[\u0001-\u001f\u007f-\u00a0\u00ad\u034f\u061c\u115f\u1160\u1680\u17b4\u17b5\u180b-\u180f\u2000-\u200f\u2028-\u202f\u205f-\u206f\u2800\u3000\u3164\ufeff\uffa0\ufff0-\ufffb]',
-        '', 'g'),
-      ' '), 20), ' ') AS candidate
-  FROM public.profiles
-  WHERE is_public = true AND display_name IS NULL
-) c
+    t.user_id,
+    regexp_replace(regexp_replace(left(t.trimmed, 20), '^[ \ufe00-\ufe0f\U000e0000-\U000e007f\U000e0100-\U000e01ef]+', ''), '( [\ufe00-\ufe0f\U000e0000-\U000e007f\U000e0100-\U000e01ef]*)+$', '') AS candidate
+  FROM (
+    SELECT
+      user_id,
+      regexp_replace(regexp_replace(
+        regexp_replace(
+          regexp_replace(name, '[\u0009-\u000d\u0085\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000]', ' ', 'g'),
+          '[\u0001-\u001f\u007f-\u00a0\u00ad\u034f\u061c\u115f\u1160\u1680\u17b4\u17b5\u180b-\u180f\u2000-\u200f\u2028-\u202f\u205f-\u206f\u2800\u3000\u3164\ufeff\uffa0\ufff0-\ufffb\U0001bca0-\U0001bca3\U0001d159\U0001d173-\U0001d17a]', '', 'g'),
+        '^[ \ufe00-\ufe0f\U000e0000-\U000e007f\U000e0100-\U000e01ef]+', ''), '( [\ufe00-\ufe0f\U000e0000-\U000e007f\U000e0100-\U000e01ef]*)+$', '') AS trimmed
+    FROM public.profiles
+    WHERE is_public = true AND display_name IS NULL
+  ) AS t
+) AS c
 WHERE p.user_id = c.user_id
-  AND c.candidate <> '';
+  AND char_length(c.candidate) BETWEEN 1 AND 20
+  AND c.candidate !~ '[\u0001-\u001f\u007f-\u00a0\u00ad\u034f\u061c\u115f\u1160\u1680\u17b4\u17b5\u180b-\u180f\u2000-\u200f\u2028-\u202f\u205f-\u206f\u2800\u3000\u3164\ufeff\uffa0\ufff0-\ufffb\U0001bca0-\U0001bca3\U0001d159\U0001d173-\U0001d17a]'
+  AND c.candidate !~ '^[ \ufe00-\ufe0f\U000e0000-\U000e007f\U000e0100-\U000e01ef]'
+  AND c.candidate !~ ' [\ufe00-\ufe0f\U000e0000-\U000e007f\U000e0100-\U000e01ef]*$';
 
 -- ── 3. 排行榜 RPC ───────────────────────────────────────────────
 -- 排行榜要讀別人的 profile 與 sessions 的加總，RLS 不允許，所以是 SECURITY DEFINER；
 -- 只回傳下面九個欄位（新增欄位必須寫在這裡）。search_path 為空，名稱都加 schema。
 -- is_pro_active() 在 011 對 authenticated 收回了執行權；這裡以擁有者的權限呼叫，不需要
 -- 重新開放。is_pro 只是顯示用（PRO-014F），任何有價值的 Pro 功能仍由 server 自己檢查。
+-- avatar_path 只回傳本人資料夾裡的路徑（017 只讓別人讀這種路徑的檔案）；其他值（舊資料的完整網址、
+-- 本人自己填的任意網址或 data: URL、別人的路徑）回傳 NULL，client 不會去載入別人指定的網址。
 -- 日期一律以 UTC 計算（不受呼叫者連線的 TimeZone 影響）：本週 XP 是 UTC 的今天往前 7 天，與
 -- leaderboard_view 在 Supabase 的預設（UTC）下相同；joined_on 是加入時間的 UTC 日期。
 CREATE OR REPLACE FUNCTION public.get_leaderboard()
@@ -118,7 +145,7 @@ SET search_path = ''
 AS $$
   SELECT
     p.display_name,
-    p.avatar_url,
+    CASE WHEN p.avatar_url LIKE p.user_id::text || '/%' THEN p.avatar_url END,
     p.total_xp,
     COALESCE(w.week_xp, 0),
     p.streak_days,
