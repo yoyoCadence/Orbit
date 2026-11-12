@@ -5,7 +5,11 @@
 -- 第 3 步還原的是 012 的 set_pro_entitlement_updated_at()；在 production 回滾前，先確認它與套用 019
 -- 前存下的 production 定義相同。
 -- 單一 transaction：任何一步失敗時整份都不生效（SQL Editor 也一樣）。
+-- 鎖：刪除兩張表會移除 auth.users 上的外鍵 trigger，以 AccessExclusiveLock 鎖住 auth.users（登入與註冊
+-- 都要等）；刪除欄位也鎖住 pro_entitlements。所以設 lock_timeout，排在長的 transaction 後面時直接失敗、
+-- 不要讓登入卡住。回滾後再套用 019，一次性標記與邀請碼都會重來。
 begin;
+set local lock_timeout = '5s';
 
 drop function public.claim_referral_reward();
 drop function public.redeem_referral(text);

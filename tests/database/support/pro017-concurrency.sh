@@ -3,11 +3,14 @@
 # 只在本機的資料庫執行（會 commit 合成資料，結束時刪除）：
 #   tests/database/support/supabase-standin.sql → pwa/db 的 001～019 依序套用之後，
 #   bash tests/database/support/pro017-concurrency.sh <資料庫名稱>
-# 做法：第一個連線在 transaction 裡領取後 pg_sleep 2 秒才 commit（一直鎖著 entitlement 列）；
-# 第二個連線在這期間領取，必須等第一個 commit，然後看到「已領過」。
-# 這個腳本驗證的是結果（只發一次、兩邊的期限相同），分不出是哪一道防線擋下的：019 的
-# INSERT … ON CONFLICT DO NOTHING 碰到正在被另一個 transaction 更新的同一列時也會等它 commit，
-# 所以拿掉 FOR UPDATE 與 UPDATE 的 WHERE … IS NULL 之後這裡仍然通過（本機實測）。三道防線都保留。
+# 兩個情境，都要「只發一次、兩邊的期限相同」：
+#   1. 第一個連線領取後 pg_sleep 2 秒才 commit；第二個連線在這期間領取。
+#   2. 另一個連線先以 SELECT … FOR UPDATE 鎖住邀請者的 entitlement 列 2 秒，兩個領取同時開始，
+#      等鎖放開後一起往下走。
+# 019 有兩道防線：FOR UPDATE（讓同一個邀請者的領取排隊）與發放的 UPDATE … WHERE 標記 IS NULL。
+# 情境 1 裡 INSERT … ON CONFLICT 也會等正在更新同一列的 transaction，兩道都拿掉仍然通過；
+# 情境 2 的列只是被鎖住、沒有被更新，INSERT 不會等，兩道都拿掉時會發放兩次（本機實測），
+# 所以情境 2 才驗證得到防線。只拿掉其中一道時兩個情境都仍然通過（另一道擋下）。
 set -euo pipefail
 DB=${1:?usage: pro017-concurrency.sh <local database>}
 P=(psql -X -q -A -t -v ON_ERROR_STOP=1 -d "$DB")
@@ -18,17 +21,19 @@ if "${P[@]}" -c "select 1 from pg_roles where rolname = 'supabase_admin'" | grep
   exit 1
 fi
 
+OUT=$(mktemp -d)
 cleanup() {
   "${P[@]}" -c "delete from auth.users where email like 'pro017-cc-%@example.invalid'" >/dev/null
+  rm -rf "$OUT"
 }
 trap cleanup EXIT
-cleanup
+"${P[@]}" -c "delete from auth.users where email like 'pro017-cc-%@example.invalid'" >/dev/null
 
 "${P[@]}" <<SQL >/dev/null
 begin;
 insert into auth.users (id, email, created_at)
 select ('00000000-0000-4000-8000-0000001700c' || x)::uuid, 'pro017-cc-' || x || '@example.invalid',
-       case when x = 'a' then now() - interval '30 days' else now() - interval '6 days' end
+       case when x = 'a' then now() - interval '30 days' else now() - interval '8 days' end
 from unnest(array['a', '1', '2', '3']) as x;
 -- 邀請者通常已經有 entitlement 列（試用時建立），讓兩個連線走 FOR UPDATE 的路
 insert into public.pro_entitlements (user_id, trial_started_at) values ('$A'::uuid, now() - interval '40 days');
@@ -56,21 +61,42 @@ commit;
 SQL
 }
 
-claim 2 >/tmp/pro017-cc-1.out &
+check() {
+  local name=$1 r1 r2 granted already
+  r1=$(cat "$OUT/1.out"); r2=$(cat "$OUT/2.out")
+  echo "$name first:  $r1"
+  echo "$name second: $r2"
+  granted=$(printf '%s\n%s\n' "$r1" "$r2" | grep -c '^granted ' || true)
+  already=$(printf '%s\n%s\n' "$r1" "$r2" | grep -c '^already_granted ' || true)
+  if [ "$granted" = 1 ] && [ "$already" = 1 ] && [ "${r1#* }" = "${r2#* }" ]; then
+    echo "PASS ($name): exactly one grant; both report the same expiry"
+  else
+    echo "FAIL ($name): expected one granted and one already_granted with the same expiry" >&2
+    exit 1
+  fi
+}
+
+# 情境 1
+claim 2 >"$OUT/1.out" &
 first=$!
 sleep 0.5
-claim 0 >/tmp/pro017-cc-2.out
+claim 0 >"$OUT/2.out"
 wait $first
+check "case 1"
 
-r1=$(cat /tmp/pro017-cc-1.out); r2=$(cat /tmp/pro017-cc-2.out)
-echo "first:  $r1"
-echo "second: $r2"
-granted=$(printf '%s\n%s\n' "$r1" "$r2" | grep -c '^granted ' || true)
-already=$(printf '%s\n%s\n' "$r1" "$r2" | grep -c '^already_granted ' || true)
-e1=${r1#* }; e2=${r2#* }
-if [ "$granted" = 1 ] && [ "$already" = 1 ] && [ "$e1" = "$e2" ]; then
-  echo "PASS: exactly one grant; both report the same expiry"
-else
-  echo "FAIL: expected one granted and one already_granted with the same expiry" >&2
-  exit 1
-fi
+# 情境 2：先把獎勵還原成還沒領，再讓另一個連線鎖住這一列
+"${P[@]}" -c "update public.pro_entitlements set is_pro = false, pro_expires_at = null, referral_reward_granted_at = null where user_id = '$A'" >/dev/null
+"${P[@]}" <<SQL >/dev/null &
+begin;
+select 1 from public.pro_entitlements where user_id = '$A' for update;
+select pg_sleep(2);
+commit;
+SQL
+holder=$!
+sleep 0.5
+claim 0 >"$OUT/1.out" &
+c1=$!
+claim 0 >"$OUT/2.out" &
+c2=$!
+wait $holder $c1 $c2
+check "case 2"

@@ -4,7 +4,9 @@
 -- 提案：docs/pro-017-invite-unlock-proposal.md（擁有者 2026-11-11 核准：§9 全部照建議）：
 --   - 邀請者：3 位被邀請者各自有 7 個有效日 → 30 天 Pro；每個帳號一生一次；
 --   - 被邀請者：第一版不給額外獎勵；
---   - 有效日只算被邀請者帳號建立當天（UTC）到今天（UTC）之間的日期；
+--   - 有效日只算被邀請者帳號建立當天（UTC）到今天（UTC）之間的日期，而且被邀請者的帳號要已經存在
+--     滿 7 天（提案 §6 的「每個假帳號至少要存在 7 天」；只看日期的話，在 UTC 23:59 建立的帳號
+--     5 天多就能湊到 7 個日期）；
 --   - 被邀請者帳號建立後 7 天內可以綁定；不能邀請自己；一個人只能被邀請一次；
 --   - 邀請者只看已達成的人數；
 --   - 邀請者目前已是 Pro（付費、試用或 SUB-16）時同 SUB-16：先不發、不消耗，之後不是 Pro 時再領；
@@ -28,7 +30,7 @@
 --     SECURITY DEFINER RPC（或 service_role）。table privileges 與 RLS 兩層都擋。
 --
 -- client 只「詢問」：不傳入人數、日期或期限。sessions 是使用者可寫的產品資料（日期也是 client
--- 寫的），這裡做到的是「只算帳號建立之後的日期」，每個假帳號至少要存在 7 天，不是防作弊。
+-- 寫的），這裡做到的是「只算帳號建立之後的日期、帳號要存在滿 7 天」，提高造假的成本，不是防作弊。
 --
 -- 本檔**不含 BEGIN／COMMIT**：乾跑時包在外層的 begin; … rollback; 內。SQL Editor 一次送出整份時
 -- 是單一 transaction；以 psql 套用時用 -1（--single-transaction）。
@@ -36,12 +38,16 @@
 --   兩個連線同時領取：tests/database/support/pro017-concurrency.sh（只在本機的資料庫執行）。
 --   本機：tests/database/support/supabase-standin.sql → pwa/db 的 001～019 依序 → 測試。
 --   production（RA，擁有者核准每一步）：begin; set local lock_timeout = '5s'; ＋ 本檔 ＋ 測試的內容 ＋
---   rollback; 乾跑，再套用。ALTER TABLE pro_entitlements 會鎖住它直到 commit。
+--   rollback; 乾跑（同一個 transaction 裡也跑 pro014l.test.sql 的內容，確認 SUB-16 不受影響），
+--   再以 begin; set local lock_timeout = '5s'; ＋ 本檔 ＋ commit; 套用。鎖：ALTER TABLE
+--   pro_entitlements 鎖住它；建立指向 auth.users 的外鍵會以 ShareRowExclusiveLock 鎖住 auth.users，
+--   註冊與登入的寫入要等到 commit，所以整個 transaction 要短。
 -- 套用前檢查（只讀）：set_pro_entitlement_updated_at() 與 012 相同
 --   （SELECT pg_get_functiondef('public.set_pro_entitlement_updated_at()'::regprocedure);），
 --   referral_codes／referrals 與三個 RPC 還不存在。
 -- 回滾：tests/database/pro017.rollback.sql（production 執行需另行核准；client 先退回不呼叫的版本；
---   已發放的 Pro 保留）。
+--   已發放的 Pro 保留）。回滾後再套用，一次性標記與邀請碼都會重來（獎勵可以再領一次、分享出去的
+--   碼失效）。
 -- ============================================================
 
 -- ── 1. 一次性標記 ─────────────────────────────────────────────
@@ -112,7 +118,7 @@ CREATE POLICY "referral_codes_select_own" ON public.referral_codes
 
 -- ── 3. get_my_referral_code() ─────────────────────────────────
 -- 沒有就建立。亂數取自 gen_random_uuid()（v4）的 16 個 byte 中完全隨機的 8 個（第 0–5、10–11
--- 個；第 6、8 個 byte 含版本位元），每個 byte 取 32 的餘數對應一個字元。邀請碼不是秘密（本來就要
+-- 個；第 6 個 byte 含版本位元、第 8 個含 variant 位元），每個 byte 取 32 的餘數對應一個字元。邀請碼不是秘密（本來就要
 -- 分享），猜中別人的碼只會把自己綁到那個人，所以不需要密碼學等級的亂數。碼撞到時重試。
 -- 同一個人同時呼叫兩次：INSERT 的 ON CONFLICT 讓第二次等第一次 commit，再讀到同一個碼。
 CREATE OR REPLACE FUNCTION public.get_my_referral_code()
@@ -168,7 +174,9 @@ $$;
 --   already_redeemed  已經綁定過（不論是不是同一個邀請者）；
 --   too_late          帳號建立超過 7 天。
 -- 帳號建立時間讀 auth.users.created_at（server 寫的）；profiles.created_at 本人改得到，不能用。
--- 碼不分大小寫、忽略前後空白。
+-- 碼先做 NFKC 正規化（中文輸入法的全形字母與數字、全形空白變成半形），再去掉前後的空白、tab、
+-- 換行，不分大小寫。
+-- 檢查順序：已經綁定、帳號太舊的人先回答，不去查碼，所以不能拿來試探某個碼存不存在。
 CREATE OR REPLACE FUNCTION public.redeem_referral(p_code text)
 RETURNS text
 LANGUAGE plpgsql SECURITY DEFINER
@@ -176,7 +184,7 @@ SET search_path = ''
 AS $$
 DECLARE
   caller_id uuid := (select auth.uid());
-  normalized text := upper(btrim(coalesce(p_code, '')));
+  normalized text := upper(btrim(normalize(coalesce(p_code, ''), NFKC), E' \t\r\n'));
   inviter uuid;
   caller_created_at timestamptz;
 BEGIN
@@ -188,14 +196,6 @@ BEGIN
     RETURN 'invalid_code';
   END IF;
 
-  SELECT c.user_id INTO inviter FROM public.referral_codes c WHERE c.code = normalized;
-  IF inviter IS NULL THEN
-    RETURN 'invalid_code';
-  END IF;
-  IF inviter = caller_id THEN
-    RETURN 'own_code';
-  END IF;
-
   IF EXISTS (SELECT 1 FROM public.referrals r WHERE r.invitee_id = caller_id) THEN
     RETURN 'already_redeemed';
   END IF;
@@ -203,6 +203,14 @@ BEGIN
   SELECT u.created_at INTO caller_created_at FROM auth.users u WHERE u.id = caller_id;
   IF caller_created_at IS NULL OR caller_created_at < now() - interval '7 days' THEN
     RETURN 'too_late';
+  END IF;
+
+  SELECT c.user_id INTO inviter FROM public.referral_codes c WHERE c.code = normalized;
+  IF inviter IS NULL THEN
+    RETURN 'invalid_code';
+  END IF;
+  IF inviter = caller_id THEN
+    RETURN 'own_code';
   END IF;
 
   -- 同一個人同時綁兩個碼：主鍵讓第二個等第一個 commit，再什麼都不做。
@@ -222,9 +230,10 @@ $$;
 -- achieved_count（已有 7 個有效日的被邀請者人數）、required_count（3）、is_active、expires_at、
 -- granted_at、paid_active（同 012：is_pro 且未到期，不含試用）。
 -- 有效日與 012（calcDailyStats()）相同：生產 XP ≥ 50、至少一個有效的 A／S 任務、娛樂 ≤ 120 分鐘；
--- 只算被邀請者帳號建立當天（UTC）到 UTC 的今天之間的日期（以 now() 換算，不用 current_date）。
--- 一次性與鎖同 012：先確保有 entitlement 列，FOR UPDATE 讓同一帳號的呼叫排隊，發放的 UPDATE 只在
--- 標記仍是 NULL 時生效。
+-- 只算被邀請者帳號建立當天（UTC）到 UTC 的今天之間的日期（以 now() 換算，不用 current_date），
+-- 而且被邀請者的帳號要已經存在滿 7 天。
+-- 一次性與鎖同 012：先確保有 entitlement 列，FOR UPDATE 讓同一帳號的呼叫排隊（第一道），發放的
+-- UPDATE 只在標記仍是 NULL 時生效（第二道）。
 CREATE OR REPLACE FUNCTION public.claim_referral_reward()
 RETURNS TABLE (
   status text,
@@ -254,6 +263,7 @@ BEGIN
     FROM public.referrals r
     JOIN auth.users u ON u.id = r.invitee_id
     WHERE r.inviter_id = caller_id
+      AND u.created_at <= now() - interval '7 days'
   ),
   daily_stats AS (
     SELECT
