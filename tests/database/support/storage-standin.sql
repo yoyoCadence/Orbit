@@ -24,6 +24,7 @@
 --   psql -v ON_ERROR_STOP=1 -d hw112 -f pwa/db/003_storage.sql
 --   psql -v ON_ERROR_STOP=1 -d hw112 -f pwa/db/016_proof_storage.sql
 --   psql -v ON_ERROR_STOP=1 -d hw112 -f tests/database/hw112.test.sql
+--   BUG-119：替身 → 003 → pwa/db/017_avatar_public_policy_fix.sql → tests/database/bug119.test.sql
 
 do $$
 begin
@@ -126,10 +127,11 @@ create trigger protect_objects_delete before delete on storage.objects
 
 -- ── 010 的公開排行榜頭像 policy（production 的定義）──────────────
 -- profiles 的 RLS 同 002：本人只看得到、只改得到自己那一列。010 的子查詢在呼叫者的
--- 權限下執行，所以也只看得到自己那一列（BUG-119 的影響範圍取決於這一點）。
+-- 權限下執行，所以也只看得到自己那一列；名稱的 30 字上限同 001（BUG-119 的影響範圍
+-- 取決於這兩點）。
 create table public.profiles (
   user_id uuid primary key,
-  name text,
+  name text not null check (char_length(name) <= 30),   -- 001：名稱最多 30 字
   is_public boolean default false,
   avatar_url text
 );
@@ -155,3 +157,22 @@ create policy "avatars_select_public_leaderboard_profiles" on storage.objects
         and p.is_public = true
     )
   );
+
+-- ── auth.users 與建立 profile 的 trigger（BUG-119 的測試以它建立合成帳號）──
+-- production 由 004／013 的 handle_new_user() 在 auth.users INSERT 後建立 profile；
+-- 這裡只建立測試會用到的欄位與行為。
+create table auth.users (
+  id uuid primary key,
+  email text,
+  raw_user_meta_data jsonb default '{}'::jsonb
+);
+create function auth.standin_handle_new_user() returns trigger
+  language plpgsql security definer set search_path = '' as $$
+begin
+  insert into public.profiles (user_id, name)
+  values (new.id, left(coalesce(new.raw_user_meta_data ->> 'name', split_part(new.email, '@', 1)), 30));
+  return new;
+end;
+$$;
+create trigger on_auth_user_created after insert on auth.users
+  for each row execute function auth.standin_handle_new_user();
