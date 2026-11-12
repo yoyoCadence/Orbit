@@ -65,7 +65,8 @@ grant execute on function auth.uid() to anon, authenticated, service_role;
 create table auth.users (
   id uuid primary key,
   email text,
-  raw_user_meta_data jsonb default '{}'::jsonb
+  raw_user_meta_data jsonb default '{}'::jsonb,
+  created_at timestamptz default now()   -- 019 的 redeem_referral()／claim_referral_reward() 讀它
 );
 
 -- ── storage（同 storage-standin.sql）────────────────────────────

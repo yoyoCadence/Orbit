@@ -118,7 +118,12 @@
   - 目標：完成 roadmap 既有 SUB-17
   - 對應 roadmap：中期
   - 提案（2026-11-11，使用者要求寫提案）：[`docs/pro-017-invite-unlock-proposal.md`](docs/pro-017-invite-unlock-proposal.md)。原構想的「雙方各得 15 天試用」與現況不合（新帳號本來就有 15 天試用、試用每帳號一次），「完成 onboarding」容易造假。建議：3 位被邀請者各有 7 個有效日（只算帳號建立之後的日期）後邀請者得 30 天 Pro（server 依 sessions 判定、一生一次）；被邀請者第一版不給額外獎勵（延長試用要改 `is_pro_active()`／`my_pro_status()`，與 PRO-014S 一起做）；拆成 R1→RA→R2。等擁有者決定 §9（9 點）。
-  - **核准（2026-11-11）**：§9 全部照建議。下一步 R1（migration 與測試）；RA 時擁有者在 Supabase Auth 開啟「確認 email」。
+  - **核准（2026-11-11）**：§9 全部照建議。RA 時擁有者在 Supabase Auth 開啟「確認 email」。
+  - R1 完成（2026-11-12，#248，見 Done 的 PRO-017R1）；下一步 PRO-017RA（Next，production 套用 019 與開啟「確認 email」），之後 R2（client）。
+  - R2 要注意（R1 決定的介面）：
+    - `get_my_referral_code()` 回傳 8 碼（`A-H J-N P-Z 2-9`，沒有 0／O、1／I）；`redeem_referral(p_code)` 不分大小寫、忽略前後空白，回傳 `redeemed`／`invalid_code`／`own_code`／`already_redeemed`／`too_late`：`redeemed` 與明確被拒的四種都清掉本機的邀請碼，網路錯誤才保留。
+    - `claim_referral_reward()` 回傳 `status`（`granted`／`already_granted`／`active_entitlement`／`not_eligible`）、`achieved_count`、`required_count`（3）與 entitlement 的欄位（同 `grant_streak_unlock()`，含 `paid_active`）；發放後照 SUB-16 重新取得 projection。
+    - 帳號建立超過 7 天就不能綁定（以 `auth.users.created_at` 判斷）；設定頁的手動輸入只在這 7 天內顯示。
 
 - [ ] **AI-015** AI 晨間報告
   - 目標：完成 roadmap 既有 SUB-15
@@ -153,6 +158,13 @@
   - 乾跑分成兩個各自 rollback 的 transaction（018 開頭有完整步驟）：(1) `begin; set local lock_timeout = '5s';` ＋ 018 ＋ `pro014e.test.sql` 從第一個 `do $$` 到最後的 `rollback;` 之前 ＋ `rollback;`；(2) `pro014e.backfill.test.sql` 整份照用（保留它自己的 `begin;`／`rollback;`），只把兩行 `\ir` 換成 018，`begin;` 後面加 `lock_timeout`。另外跑 `infra110.test.sql`（view 的權限不變）。
   - 核准後以 `begin; set local lock_timeout = '5s';` ＋ 018 ＋ `commit;` 套用，事後檢查：公開使用者中 `display_name` 有值的數量與套用前的預估相同；`get_leaderboard()` 的權限（authenticated 可以、anon 與 PUBLIC 不行）；`leaderboard_view` 的權限與 015 相同；再跑一次兩份測試；以兩個測試帳號的身分（`request.jwt.claims`）呼叫 RPC，確認 `is_me` 與欄位。Supabase 的 advisor 會把 `get_leaderboard()` 列為 lint 0029（authenticated 可執行的 SECURITY DEFINER 函式），這是預期的。**套用之後不要再 commit 重新執行 018**：擁有者清掉的不當名稱會被從 name 補回來。
   - 套用後舊版 client 的排行榜：名稱變成公開名稱（沒有的顯示「匿名」）。app 不用改；E2 才改用 RPC。**EA 到 E2 之間的行為改變**：個人頁改名稱不再改變排行榜上的名稱，而且還沒有介面能改公開名稱；名稱被沿用的人只能先關掉「顯示於排行榜」。所以 EA 之後要盡快接 E2。
+
+- [ ] **PRO-017RA** 在 production 套用 019 並開啟「確認 email」（production 寫入與 Auth 設定，每一步請擁有者核准；依賴：PRO-017R1 合併）
+  - 套用前檢查（只讀）：`set_pro_entitlement_updated_at()` 與 012 相同（`pg_get_functiondef`，存下來給回滾比對）；`referral_codes`／`referrals` 與三個 RPC 還不存在。
+  - 乾跑：`begin; set local lock_timeout = '5s';` ＋ 019 ＋ `tests/database/pro017.test.sql` 的內容 ＋ `rollback;`；另外跑 `pro014l.test.sql`（SUB-16 不受影響）。
+  - 核准後鎖定套用 019，事後檢查：兩張表的 RLS、policy 與權限（anon 沒有、authenticated 只能讀自己的邀請碼、`referrals` 讀不到）；三個 RPC 的權限；再跑一次測試。
+  - 「確認 email」：擁有者在 Supabase Dashboard 的 Authentication 設定裡（Email provider）開啟 Confirm email（畫面名稱以當時的 Dashboard 為準）。會影響**所有新使用者**的註冊（要先收信確認才能登入）；開啟前確認註冊頁的提示與 email 範本。Google 登入不受影響。
+  - 兩個連線同時領取的測試（`tests/database/support/pro017-concurrency.sh`）只在本機跑，不在 production。
 
 - [ ] **PRO-014HA**（擁有者，只剩真機畫面）真機驗證 PRO-014H 的 cutover
   - 2026-11-11 擁有者要求 agent 以 Supabase MCP 直接測試。agent 以只讀查詢（DO 區塊最後 `RAISE EXCEPTION`，整段回滾、沒有寫入）逐一以 5 個測試帳號與擁有者主帳號的身分（`request.jwt.claims` 加 `SET LOCAL ROLE authenticated`）呼叫 `my_pro_status()`：
@@ -277,6 +289,21 @@
 
 ## Done
 
+- [x] **PRO-017R1** migration 019：邀請朋友解鎖 Pro（SUB-17）的資料表與三個 RPC，加上資料庫測試
+  - 完成（2026-11-12，#248；production 套用為 PRO-017RA）：
+    - `pwa/db/019_referrals.sql`：
+      - `pro_entitlements.referral_reward_granted_at`（一次性標記）；`set_pro_entitlement_updated_at()` 把它算進去。
+      - `referral_codes`（`user_id` 主鍵、8 碼的 `code` 唯一並以 CHECK 限定字元）與 `referrals`（`invitee_id` 主鍵、`inviter_id`、不能是自己）：server-owned，RLS 開啟，`REVOKE ALL … FROM public, anon, authenticated`；`referral_codes` 只給 authenticated 讀自己的（一個 SELECT policy），`referrals` 不給任何權限、不建立 policy；檔案裡寫明刻意不建立寫入 policy。
+      - `get_my_referral_code()`：沒有就建立（亂數取自 `gen_random_uuid()` 完全隨機的 8 個 byte，撞碼重試）。
+      - `redeem_referral(p_code)`：格式、碼存在、不是自己、還沒綁定、帳號建立 7 天內（`auth.users.created_at`，不是本人改得到的 `profiles.created_at`）。
+      - `claim_referral_reward()`：已有 7 個有效日的被邀請者人數（有效日同 012；只算被邀請者帳號建立當天到 UTC 今天）；3 位 → 30 天 Pro，一生一次；已是 Pro（含試用、終身）時不發、不消耗；`FOR UPDATE` ＋ `WHERE … IS NULL`，同 012。
+      - 三個 RPC 都是 `SECURITY DEFINER`、`search_path = ''`，只給 authenticated。
+    - `tests/database/pro017.test.sql`：表與函式的結構、RLS、policy 與權限（含 PUBLIC 與 anon 的七種權限）；邀請碼的格式、同一人相同、不同人不同、只讀得到自己的、client 不能寫；綁定的五種狀態（含小寫加空白的碼、改綁別人的碼）與 client 讀寫 `referrals` 被拒；被邀請者的有效日（建立前的日期、未來的日期、娛樂超過 120 分鐘都不算）；1 位達成不發放、付費中與終身不發放也不消耗、不是 Pro 時發放 30 天、第二次不延長；updated_at trigger；沒有 sub 與 anon 都被拒。
+    - `tests/database/pro017.rollback.sql`：刪除三個 RPC 與兩張表、還原 012 的 trigger 函式、刪除欄位（已發放的 Pro 保留）。
+    - `tests/database/support/pro017-concurrency.sh`：本機兩個連線同時領取，只發一次、兩邊期限相同。腳本驗證的是結果：019 的 `INSERT … ON CONFLICT` 也會等另一個正在更新同一列的 transaction，所以拿掉 `FOR UPDATE` 與 `WHERE … IS NULL` 時仍然通過；三道防線都保留。
+    - 替身的 `auth.users` 加上 `created_at`。
+    - 本機 PG16（001～019）：`pro017` 與其他 8 份測試都通過；回滾後 trigger 函式與套用 019 前的 `pg_get_functiondef` 相同、`pro014l` 仍通過；再套用兩次（可重複執行）後 `pro017` 仍通過；並行腳本通過；改壞 019 的 17 種情況都會失敗。
+
 - [x] **PRO-014E1** migration 018：排行榜的公開名稱（`profiles.display_name`）與 `get_leaderboard()`，加上資料庫測試
   - 完成（2026-11-12，#247；production 套用為 PRO-014EA）：
     - `pwa/db/018_leaderboard_display_name.sql`：
@@ -290,7 +317,7 @@
     - `tests/database/support/supabase-standin.sql`：讓 pwa/db 的 001～018 能依序套用在空的 PostgreSQL（角色、Supabase 的 public 預設權限、`auth.users`／`auth.uid()`、Storage 的最小替身）。現有的 infra110、pro014r、pro014l、bug109、bug119、hw112 測試在這條鏈上也都通過（bug119 與 hw112 原本只在 storage-standin.sql 上跑過，這裡是真的 002／004／013 的 RLS 與 trigger）。
     - 本機 PG16：替身 → 001～017 → backfill 測試（套用前）→ 018 → 兩份測試與 infra110、pro014r、pro014l、bug109、bug119、hw112 都通過；改壞 018 的 63 種情況都會失敗：CHECK 少任何一段字元（27 種）或段中間少一個（2 種）、補名稱的清單少一段（3 種）、空白類清單少一個（4 種）、開頭／結尾的 VS 與 tag 規則拿掉或縮小（7 種）、30 字、補名稱不先去掉開頭空白、RPC 十一種（含用連線的日期、加總 `base_xp`、`avatar_path` 原樣回傳或只要「含有」user_id）、view 五種（含 7 天、頭像 NULL、不過濾生產力、總 XP 0）、補名稱兩種。
     - 審查（#247）：Codex 沒有問題（75f398f）。獨立審查：沒有 P1／P2；P3 全部處理：只由 variation selector 或 tag 組成的名稱、U+1D159 等「看不見的名稱」字元、用 VS16 藏起前後空白（CHECK 加上，補名稱同步）；測試每段字元都檢查、補名稱每段一個案例、開頭空白的去除、兩個時區、view 的其他欄位、`base_xp`；`avatar_path` 只回傳本人資料夾的路徑；乾跑分成兩個 transaction 的寫法、真的套用也加 `lock_timeout`、lint 0029、EA 後不要 commit 重新執行、EA 到 E2 之間的行為改變、ZWNJ、替身加 `\set ON_ERROR_STOP on`。
-    - 第二輪（a2bba58）：Codex 沒有問題。獨立審查：沒有 P1／P2；P3：再擋 U+13430–U+1343F、U+16FE4 與 tag／variation selector 旁邊未指派的 default-ignorable（也能藏起前後空白）；測試改成每一個 code point、VS 與 tag 每一段的兩端、空白類每一段的兩端、含有自己 user_id 的網址（審查中存活的 10 種改壞方式現在都會失敗）；EA 的套用前檢查加上頭像計數。
+    - 第二輪（a2bba58）：Codex 沒有問題。獨立審查：沒有 P1／P2；P3：再擋 U+13430–U+1343F、U+16FE4 與 tag／variation selector 旁邊未指派的 default-ignorable（也能藏起前後空白）；測試改成每一個 code point、VS 與 tag 每一段的兩端、空白類每一段的兩端、含有自己 user_id 的網址（審查中存活的 10 種改壞方式現在都會失敗）；EA 的套用前檢查加上頭像計數。5353031：Codex 沒有問題，CI 通過後合併。
     - 編號：017 是 BUG-119（#246），所以這裡是 018。
 
 - [x] **BUG-119** 排行榜頭像的 Storage policy 讀錯欄位：功能從來沒生效（2026-11-11 寫 HW-112A 時發現；擁有者 2026-11-11 核准修正：「ok」）
