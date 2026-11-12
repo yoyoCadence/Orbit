@@ -266,6 +266,7 @@
 | #244 | v1.41.17 | UI-203：新的 app 圖示（`art-pipeline/app-icon/icon.svg`，行星與軌道），`npm run icons` 產生 any／maskable／apple-touch-icon，e2e 守住 maskable 安全範圍；刪除 `make-icons.html` |
 | #245 | — | HW-112A：migration 016（佐證照片的私有 bucket `proofs` 與四個 policy）、`tests/database/hw112.test.sql`、本機替身 `tests/database/support/storage-standin.sql`；記錄 BUG-119（010 的頭像 policy 讀錯欄位） |
 | #246 | — | BUG-119：migration 017（`is_public_leaderboard_avatar()`，排行榜頭像 policy 不再讀 `profiles.name`，只開放公開使用者現在的頭像；功能從來沒生效，外洩的路被名稱 30 字上限擋住）、`tests/database/bug119.test.sql`；production 套用為 BUG-119A |
+| #247 | — | PRO-014E E1：migration 018（`profiles.display_name` 與規則、既有公開使用者的名稱整理後補上、`get_leaderboard()` RPC、舊 view 的 `name` 改為公開名稱）、`tests/database/pro014e.test.sql` 與 `pro014e.backfill.test.sql`、本機替身 `tests/database/support/supabase-standin.sql`（001～018 依序套用）；production 套用為 PRO-014EA |
 
 教訓：#155–#164 在 Codex review 出現前就合併，造成 #165、#166、#167 的回頭修正。這就是 §2 合併條件的由來。獨立 review 在 #167、#168、#169 都找到真正的問題（例如椅子畫在螢幕後面、壁燈在相框下投出暗影），所以複查不能省。
 
