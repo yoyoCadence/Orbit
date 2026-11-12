@@ -29,9 +29,12 @@
 --     以 user_id 的主鍵查詢（不是 UUID、NULL 都回傳 false）；
 --   - 只給 authenticated 執行（REVOKE ALL FROM public, anon）。
 --   **不要收回 authenticated 的執行權**：storage.objects 的查詢一開始就檢查 policy 裡函式的
---   執行權，收回後 authenticated 讀任何 bucket（avatars、proofs）都會失敗。Supabase 的
---   advisor 會把它列為「authenticated 可執行的 SECURITY DEFINER 函式」（lint 0029），這是
---   預期的。
+--   執行權，收回後 authenticated 在任何 bucket（avatars、proofs）的讀取、移動、刪除都會失敗
+--   （會套用 SELECT policy 的操作都是）。Supabase 的 advisor 會把它列為「authenticated 可執行的
+--   SECURITY DEFINER 函式」（lint 0029），這是預期的。
+-- 已知限制：排行榜以 createSignedUrl() 取得 7 天有效的網址，下載時 Storage 只檢查網址的
+--   token、不再看 policy。所以使用者換頭像或改成不公開之後，別人手上已經拿到的網址最多還能
+--   用 7 天；policy 管的是「之後還能不能再拿到網址」。
 -- policy 改成直接呼叫它；policy 裡沒有子查詢，name 就是 storage.objects.name。
 --
 -- 測試：tests/database/bug119.test.sql（單一 transaction，結尾 rollback）。

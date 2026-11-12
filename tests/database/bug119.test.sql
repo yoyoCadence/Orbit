@@ -41,10 +41,10 @@ begin
   assert found, 'avatars_select_public_leaderboard_profiles must exist';
   assert p.cmd = 'SELECT' and p.roles = array['authenticated']::name[], 'the policy must be SELECT for authenticated';
   assert p.with_check is null, 'the policy must have USING only';
-  assert p.qual like '%bucket_id = ''avatars''%', 'the policy must be limited to bucket avatars';
-  assert p.qual like '%is_public_leaderboard_avatar(name)%', 'the policy must ask is_public_leaderboard_avatar(name)';
-  assert p.qual not like '%profiles%' and p.qual not like '%p.name%',
-    'the policy must not read profiles itself (BUG-119)';
+  -- 整個條件就是「bucket 是 avatars」AND「函式」，沒有 OR、沒有子查詢、不讀 profiles
+  -- （函式名稱前的 public. 依連線的 search_path 可能出現，也可能不出現）
+  assert p.qual ~ '^\(\(bucket_id = ''avatars''::text\) AND (public\.)?is_public_leaderboard_avatar\(name\)\)$',
+    format('the policy must be exactly bucket avatars AND is_public_leaderboard_avatar(name) (got %s)', p.qual);
 end $$;
 
 -- 2. fixture：四個帳號（trigger 建立 profile）與它們的頭像。Y 另有一張已經換掉的舊頭像，
@@ -187,6 +187,7 @@ begin
     'an unknown user must be false';
   assert not public.is_public_leaderboard_avatar('00000000-0000-4000-8000-0000000b1192'),
     'a name without a folder must be false';
+  -- 大寫的資料夾：003 只讓人上傳到小寫的自己的資料夾，avatar_url 也不會相等，所以是 false
   assert not public.is_public_leaderboard_avatar('00000000-0000-4000-8000-0000000B1192/avatar.png'),
     'an upper-case folder must be false';
   assert not public.is_public_leaderboard_avatar('not-a-uuid/avatar.png'), 'a non-UUID folder must be false';
