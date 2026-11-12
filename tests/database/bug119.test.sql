@@ -8,7 +8,7 @@
 --   本檔從第一個 do $$ 到最後的 rollback; 之前 ＋ rollback;
 -- 全部在單一 transaction 內，結尾 rollback，不留下任何資料。**一定要保留開頭的 begin;**。
 -- 任一 ASSERT 失敗即中止並回報（純 SQL，不依賴 pgTAP）。成功的樣子是沒有錯誤。
--- 四個合成帳號（example.invalid）：X 攻擊者、Y 公開、P 不公開、Z 旁人。它們的頭像只是
+-- 四個合成帳號（example.invalid）：X 想利用 010 的人、Y 公開、P 不公開、Z 旁人。它們的頭像只是
 -- storage.objects 的資料列（沒有真的檔案），都會被 rollback。
 
 begin;
@@ -87,7 +87,8 @@ begin
   execute 'reset role';
 end $$;
 
--- 4. 攻擊者 X：把名稱改成「自己的 user_id/x」並公開（profiles_update 允許），仍然看不到 P
+-- 4. 攻擊者 X：010 的漏洞要把名稱改成「自己的 user_id/x」（至少 37 字），profiles.name 的
+--    30 字上限（001）擋下；X 改成公開之後，看得到自己與公開的 Y，仍然看不到 P
 do $$
 declare
   x text := '00000000-0000-4000-8000-0000000b1191';
@@ -95,15 +96,21 @@ declare
 begin
   perform set_config('request.jwt.claims', json_build_object('sub', x, 'role', 'authenticated')::text, true);
   execute 'set local role authenticated';
-  update public.profiles set name = x || '/x', is_public = true where user_id = x::uuid;
+  begin
+    update public.profiles set name = x || '/x', is_public = true where user_id = x::uuid;
+    raise exception 'a name of "<own user_id>/x" must be refused by the 30-character limit';
+  exception when check_violation then
+    null;
+  end;
+  update public.profiles set is_public = true where user_id = x::uuid;
   get diagnostics n = row_count;
-  assert n = 1, 'the attacker must be able to rename their own profile (the BUG-119 trigger)';
+  assert n = 1, 'a user must be able to make their own profile public';
   select count(*) into n from storage.objects
     where bucket_id = 'avatars' and name = '00000000-0000-4000-8000-0000000b1193/avatar.png';
-  assert n = 0, format('the rename must not open a private user''s avatar (saw %s)', n);
+  assert n = 0, format('going public must not open a private user''s avatar (saw %s)', n);
   select count(*) into n from storage.objects
     where bucket_id = 'avatars' and name like '00000000-0000-4000-8000-0000000b119_/avatar.png';
-  assert n = 2, format('the attacker must see only their own and the public user''s avatars (saw %s)', n);
+  assert n = 2, format('the user must see only their own and the public user''s avatars (saw %s)', n);
   execute 'reset role';
 end $$;
 

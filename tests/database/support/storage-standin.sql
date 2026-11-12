@@ -127,10 +127,11 @@ create trigger protect_objects_delete before delete on storage.objects
 
 -- ── 010 的公開排行榜頭像 policy（production 的定義）──────────────
 -- profiles 的 RLS 同 002：本人只看得到、只改得到自己那一列。010 的子查詢在呼叫者的
--- 權限下執行，所以也只看得到自己那一列（BUG-119 的影響範圍取決於這一點）。
+-- 權限下執行，所以也只看得到自己那一列；名稱的 30 字上限同 001（BUG-119 的影響範圍
+-- 取決於這兩點）。
 create table public.profiles (
   user_id uuid primary key,
-  name text,
+  name text not null check (char_length(name) <= 30),   -- 001：名稱最多 30 字
   is_public boolean default false,
   avatar_url text
 );

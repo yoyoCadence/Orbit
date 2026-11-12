@@ -265,12 +265,11 @@
 
 ## Done
 
-- [x] **BUG-119** 排行榜頭像的 Storage policy 讀錯欄位：功能從來沒生效，而且任何已登入的人都能讓自己讀到所有人的頭像（2026-11-11 寫 HW-112A 時發現；擁有者 2026-11-11 核准修正：「ok」）
+- [x] **BUG-119** 排行榜頭像的 Storage policy 讀錯欄位：功能從來沒生效（2026-11-11 寫 HW-112A 時發現；擁有者 2026-11-11 核准修正：「ok」）
   - 位置：`pwa/db/010_leaderboard_avatars.sql` 的 `avatars_select_public_leaderboard_profiles`。子查詢 `from profiles p where p.user_id::text = (storage.foldername(name))[1]` 裡沒加表名的 `name` 會先找最內層的 `profiles.name`（顯示名稱），不是 `storage.objects.name`（檔案路徑）。production 的 `pg_policies` 也顯示為 `storage.foldername(p.name)`（2026-11-11 只讀查詢）。
   - 子查詢在呼叫者的權限下執行，受 profiles 的 RLS 限制（002：只看得到自己那一列）。所以：
     - 原本的功能（已登入的人看得到公開排行榜使用者的頭像）從來沒生效。
-    - 自助外洩：任何已登入的人把自己的名稱改成「自己的 user_id/任意字」並設為公開（`profiles_update` 允許本人改這兩欄），子查詢看到的自己那一列就讓條件對 `avatars` bucket 的**每一個**檔案成立，**這個人**讀得到所有人的頭像（包括沒公開的人）。其他人不受影響。只涉及頭像，不涉及其他資料與 `proofs`（HW-112A 的測試確認其他 policy 都限定自己的 bucket）。
-    - 本機替身（加上 002 的 profiles RLS）重現：改名前 X 看得到 0 個、改名後 2 個（含不公開的 P）；旁人 Z 一直是 0。
+    - 外洩的路走不通：要讓條件成立，名稱必須是「自己的 user_id/任意字」（至少 37 字），但 `profiles.name` 有 30 字的上限（001 的 CHECK；BUG-109 證實 production 有這個限制）。2026-11-11 先寫成「任何人都能讓自己讀到所有頭像」，是在沒有這個限制的替身上重現的；#246 的審查前發現並改正。修正後也不再依賴名稱長度的上限。
   - 修正（提案，需核准：schema 變更）：**只把 `name` 改成 `objects.name` 不夠**：子查詢仍受 profiles 的 RLS 限制，旁人看不到別人那一列，公開使用者的頭像還是讀不到（本機替身重現：Z 看到 0）。要讓「這個資料夾是不是公開使用者」的判斷繞過呼叫者的 RLS：
     - 建議：`SECURITY DEFINER` 的 `public.is_public_profile_folder(folder text) returns boolean`（`stable`、`set search_path = ''`，只回傳布林值，`REVOKE ALL … FROM public, anon` 後 `GRANT EXECUTE … TO authenticated`），policy 改成 `bucket_id = 'avatars' and public.is_public_profile_folder((storage.foldername(objects.name))[1])`；
     - 或從 `leaderboard_view` 讀（view 以擁有者的權限讀 profiles），但 PRO-014E 之後要拿掉這個 view，不建議。
@@ -279,8 +278,8 @@
   - 下一步：#245 合併後開下一個 PR（migration 017 ＋ 測試，同一個 branch 一次一個 PR）；production 的乾跑與套用再各請擁有者核准。
   - 完成（2026-11-12，repo；production 套用為 BUG-119A）：
     - `pwa/db/017_avatar_public_policy_fix.sql`：`public.is_public_profile_folder(folder text)`（`SECURITY DEFINER`、`STABLE`、`search_path = ''`、只回傳布林值；`REVOKE ALL … FROM public, anon` 後只 `GRANT EXECUTE` 給 authenticated）；`avatars_select_public_leaderboard_profiles` 改成 `bucket_id = 'avatars' and public.is_public_profile_folder((storage.foldername(name))[1])`（policy 裡沒有子查詢，`name` 就是物件名稱）。回滾步驟寫在檔案開頭。
-    - `tests/database/bug119.test.sql`：函式與 policy 的結構與權限；四個合成帳號（X 攻擊者、Y 公開、P 不公開、Z 旁人）：Z 看得到 Y、看不到 P 與 X；X 改名稱並公開後仍看不到 P、只看到自己與 Y；P 看得到自己；anon 看不到、不能呼叫函式；函式對不公開、不存在、非 UUID、NULL 都回 false。
-    - 本機替身加上 `auth.users` 與建立 profile 的 trigger（同 004／013）。本機 PG16：替身 → 003 → 016 → 017 → BUG-119 與 HW-112 的測試都通過；改壞 017 的五種情況（留著 010 的 policy、只把 `name` 改成 `objects.name`、函式不是 SECURITY DEFINER、函式給 anon、函式不看 `is_public`）都會失敗。
+    - `tests/database/bug119.test.sql`：函式與 policy 的結構與權限；四個合成帳號（X 想利用 010 的人、Y 公開、P 不公開、Z 旁人）：Z 看得到 Y、看不到 P 與 X；X 把名稱改成「自己的 user_id/x」被 30 字上限擋下，改成公開後只看到自己與 Y、看不到 P；P 看得到自己；anon 看不到、不能呼叫函式；函式對不公開、不存在、非 UUID、NULL 都回 false。
+    - 本機替身加上 `auth.users` 與建立 profile 的 trigger（同 004／013），profiles.name 加上 001 的 30 字上限。本機 PG16：替身 → 003 → 016 → 017 → BUG-119 與 HW-112 的測試都通過；改壞 017 的五種情況（留著 010 的 policy、只把 `name` 改成 `objects.name`、函式不是 SECURITY DEFINER、函式給 anon、函式不看 `is_public`）都會失敗。
 
 - [x] **BUG-118A**（擁有者）確認重新加入的主畫面圖示
   - 結果（2026-11-11）：重新加入的圖示打開後**沒有**出現 BUG-118 的提示，頂部也沒有模糊。偵測的前提（`default` 下頂部 safe area 為 0）在真機上成立，其他使用者不會被誤提示。
