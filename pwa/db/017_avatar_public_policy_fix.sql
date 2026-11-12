@@ -17,11 +17,21 @@
 --
 -- 修正：只把 name 改成 objects.name 不夠，子查詢仍受 profiles 的 RLS 限制，旁人看不到
 -- 別人那一列，公開使用者的頭像還是讀不到。改用 SECURITY DEFINER 的小函式回答
--- 「這個資料夾是不是公開使用者的」：
+-- 「這個檔案是不是某個公開使用者現在的頭像」：
+--   - 只開放現在的頭像（profiles.avatar_url 等於檔案路徑），不是整個資料夾：
+--     uploadAvatar() 每次上傳都用新的檔名、舊檔不刪，開放整個資料夾會讓別人列出並下載
+--     已經換掉的舊照片（獨立審查 #246 發現）；
+--   - 檔案的第一層資料夾必須就是那個 profile 的 user_id，所以把 avatar_url 設成別人的
+--     路徑也打不開別人的檔案；
 --   - 只回傳布林值，不回傳任何欄位；能回答的只有排行榜本來就公開的事
---     （leaderboard_view 已列出公開使用者的 user_id）；
---   - stable、search_path 設為空字串、表名都完整寫出；
+--     （leaderboard_view 已列出公開使用者的 avatar_url）；
+--   - stable、search_path 設為空字串、表名都完整寫出；資料夾先確認是小寫 UUID 再轉型，
+--     以 user_id 的主鍵查詢（不是 UUID、NULL 都回傳 false）；
 --   - 只給 authenticated 執行（REVOKE ALL FROM public, anon）。
+--   **不要收回 authenticated 的執行權**：storage.objects 的查詢一開始就檢查 policy 裡函式的
+--   執行權，收回後 authenticated 讀任何 bucket（avatars、proofs）都會失敗。Supabase 的
+--   advisor 會把它列為「authenticated 可執行的 SECURITY DEFINER 函式」（lint 0029），這是
+--   預期的。
 -- policy 改成直接呼叫它；policy 裡沒有子查詢，name 就是 storage.objects.name。
 --
 -- 測試：tests/database/bug119.test.sql（單一 transaction，結尾 rollback）。
@@ -29,14 +39,14 @@
 --   - production：begin; set local lock_timeout = '5s'; ＋ 本檔 ＋ 測試 ＋ rollback; 乾跑，
 --     擁有者核准後才套用（DROP／CREATE POLICY 會鎖住 storage.objects 直到 commit）。
 -- 套用前檢查：production 的 policy 與 010 相同（pg_policies 的 qual 是
---   storage.foldername(p.name)），且 public.is_public_profile_folder 還不存在。
+--   storage.foldername(p.name)），且 public.is_public_leaderboard_avatar 還不存在。
 --
 -- 回滾（執行時另行核准）：重新執行 010 的 CREATE POLICY（先 drop 本檔建立的同名 policy），
---   再 drop function public.is_public_profile_folder(text)。回滾會帶回 BUG-119，只在
---   本檔造成新問題時才做。
+--   再 drop function public.is_public_leaderboard_avatar(text)（policy 依賴函式，順序不能反）。
+--   回滾會帶回 BUG-119，只在本檔造成新問題時才做。
 -- ============================================================
 
-create or replace function public.is_public_profile_folder(folder text)
+create or replace function public.is_public_leaderboard_avatar(object_name text)
 returns boolean
 language sql
 stable
@@ -46,21 +56,26 @@ as $$
   select exists (
     select 1
     from public.profiles p
-    where p.user_id::text = folder
+    where p.user_id = case
+        when (storage.foldername(object_name))[1]
+             ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+        then ((storage.foldername(object_name))[1])::uuid
+      end
       and p.is_public = true
+      and p.avatar_url = object_name
   );
 $$;
 
-revoke all on function public.is_public_profile_folder(text) from public, anon;
-grant execute on function public.is_public_profile_folder(text) to authenticated;
+revoke all on function public.is_public_leaderboard_avatar(text) from public, anon;
+grant execute on function public.is_public_leaderboard_avatar(text) to authenticated;
 
 drop policy if exists "avatars_select_public_leaderboard_profiles" on storage.objects;
 
--- 已登入的人讀得到「公開排行榜使用者」資料夾裡的頭像；自己的頭像仍由 003 的
+-- 已登入的人讀得到「公開排行榜使用者現在的頭像」；自己的所有頭像檔仍由 003 的
 -- avatars_select 負責。
 create policy "avatars_select_public_leaderboard_profiles" on storage.objects
   for select to authenticated
   using (
     bucket_id = 'avatars'
-    and public.is_public_profile_folder((storage.foldername(name))[1])
+    and public.is_public_leaderboard_avatar(name)
   );

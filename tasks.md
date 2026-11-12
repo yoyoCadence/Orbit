@@ -129,9 +129,9 @@
 ## Next
 
 - [ ] **BUG-119A** 在 production 套用 017（排行榜頭像 policy 的修正；production 寫入，每一步請擁有者核准）
-  - 套用前檢查：production 的 `avatars_select_public_leaderboard_profiles` 仍是 010 的定義（`pg_policies` 的 qual 含 `storage.foldername(p.name)`），且 `public.is_public_profile_folder` 還不存在。
+  - 套用前檢查：production 的 `avatars_select_public_leaderboard_profiles` 仍是 010 的定義（`pg_policies` 的 qual 含 `storage.foldername(p.name)`），且 `public.is_public_leaderboard_avatar` 還不存在。
   - 乾跑：`begin; set local lock_timeout = '5s';` ＋ 017 ＋ `tests/database/bug119.test.sql` 的內容 ＋ `rollback;`（真的 auth.users trigger 與 Storage）。
-  - 核准後鎖定套用 017，事後檢查：policy 的定義、函式的權限（authenticated 可以、anon 不行），再跑一次測試；以兩個測試帳號在排行榜確認公開使用者的頭像出現。
+  - 核准後鎖定套用 017，事後檢查：policy 的定義、函式的權限（authenticated 可以、anon 不行），再跑一次測試；以兩個測試帳號在排行榜確認公開使用者的頭像出現。Supabase 的 advisor 會把 `is_public_leaderboard_avatar` 列為「authenticated 可執行的 SECURITY DEFINER 函式」（lint 0029），這是預期的：**不要收回 authenticated 的執行權**，否則 authenticated 讀任何 bucket（avatars、proofs）都會失敗。
   - 套用後 app 不用改：排行榜原本就以 `createSignedUrl()` 取得頭像，現在才拿得到。
 
 - [ ] **HW-112B** 在 production 套用 016（佐證照片的 bucket 與 policy；production 寫入；擁有者 2026-11-11 核准：「照片同步第二步> 核准」）
@@ -270,16 +270,13 @@
   - 子查詢在呼叫者的權限下執行，受 profiles 的 RLS 限制（002：只看得到自己那一列）。所以：
     - 原本的功能（已登入的人看得到公開排行榜使用者的頭像）從來沒生效。
     - 外洩的路走不通：要讓條件成立，名稱必須是「自己的 user_id/任意字」（至少 37 字），但 `profiles.name` 有 30 字的上限（001 的 CHECK；BUG-109 證實 production 有這個限制）。2026-11-11 先寫成「任何人都能讓自己讀到所有頭像」，是在沒有這個限制的替身上重現的；#246 的審查前發現並改正。修正後也不再依賴名稱長度的上限。
-  - 修正（提案，需核准：schema 變更）：**只把 `name` 改成 `objects.name` 不夠**：子查詢仍受 profiles 的 RLS 限制，旁人看不到別人那一列，公開使用者的頭像還是讀不到（本機替身重現：Z 看到 0）。要讓「這個資料夾是不是公開使用者」的判斷繞過呼叫者的 RLS：
-    - 建議：`SECURITY DEFINER` 的 `public.is_public_profile_folder(folder text) returns boolean`（`stable`、`set search_path = ''`，只回傳布林值，`REVOKE ALL … FROM public, anon` 後 `GRANT EXECUTE … TO authenticated`），policy 改成 `bucket_id = 'avatars' and public.is_public_profile_folder((storage.foldername(objects.name))[1])`；
-    - 或從 `leaderboard_view` 讀（view 以擁有者的權限讀 profiles），但 PRO-014E 之後要拿掉這個 view，不建議。
-  - 測試：migration 017 的 ASSERT 測試（公開的人的頭像別人讀得到、不公開的讀不到、改名稱打不開別人的頭像），在加了 profiles RLS 的本機替身演練，再以 production 乾跑，最後依寫入流程套用。
+  - 修正：**只把 `name` 改成 `objects.name` 不夠**：子查詢仍受 profiles 的 RLS 限制，旁人看不到別人那一列，公開使用者的頭像還是讀不到（本機替身重現：Z 看到 0）。所以改用 `SECURITY DEFINER` 的小函式繞過呼叫者的 RLS，只回答布林值（不採用從 `leaderboard_view` 讀：PRO-014E 之後要拿掉這個 view）。
   - 只讀查詢（2026-11-12，只回傳計數）：8 個 profile、2 個公開、**0 個觸發**（名稱的第一段等於自己 user_id）、0 個名稱含 `/`；`avatars` 有 10 個檔案、公開且有頭像的 1 個。目前沒有人利用過這個漏洞（只看得到現在的狀態，看不到過去）。
-  - 下一步：#245 合併後開下一個 PR（migration 017 ＋ 測試，同一個 branch 一次一個 PR）；production 的乾跑與套用再各請擁有者核准。
   - 完成（2026-11-12，repo；production 套用為 BUG-119A）：
-    - `pwa/db/017_avatar_public_policy_fix.sql`：`public.is_public_profile_folder(folder text)`（`SECURITY DEFINER`、`STABLE`、`search_path = ''`、只回傳布林值；`REVOKE ALL … FROM public, anon` 後只 `GRANT EXECUTE` 給 authenticated）；`avatars_select_public_leaderboard_profiles` 改成 `bucket_id = 'avatars' and public.is_public_profile_folder((storage.foldername(name))[1])`（policy 裡沒有子查詢，`name` 就是物件名稱）。回滾步驟寫在檔案開頭。
-    - `tests/database/bug119.test.sql`：函式與 policy 的結構與權限；四個合成帳號（X 想利用 010 的人、Y 公開、P 不公開、Z 旁人）：Z 看得到 Y、看不到 P 與 X；X 把名稱改成「自己的 user_id/x」被 30 字上限擋下，改成公開後只看到自己與 Y、看不到 P；P 看得到自己；anon 看不到、不能呼叫函式；函式對不公開、不存在、非 UUID、NULL 都回 false。
-    - 本機替身加上 `auth.users` 與建立 profile 的 trigger（同 004／013），profiles.name 加上 001 的 30 字上限。本機 PG16：替身 → 003 → 016 → 017 → BUG-119 與 HW-112 的測試都通過；改壞 017 的五種情況（留著 010 的 policy、只把 `name` 改成 `objects.name`、函式不是 SECURITY DEFINER、函式給 anon、函式不看 `is_public`）都會失敗。
+    - `pwa/db/017_avatar_public_policy_fix.sql`：`public.is_public_leaderboard_avatar(object_name text)`（`SECURITY DEFINER`、`STABLE`、`search_path = ''`、只回傳布林值；`REVOKE ALL … FROM public, anon` 後只 `GRANT EXECUTE` 給 authenticated）回答「這個檔案是不是某個公開使用者現在的頭像」：檔案的第一層資料夾（確認是小寫 UUID 後以主鍵查詢）是那個 profile 的 user_id、`is_public`、而且 `avatar_url` 等於檔案路徑。`avatars_select_public_leaderboard_profiles` 改成 `bucket_id = 'avatars' and public.is_public_leaderboard_avatar(name)`（policy 裡沒有子查詢，`name` 就是物件名稱）。只開放現在的頭像、不是整個資料夾：`uploadAvatar()` 每次上傳都用新檔名、舊檔不刪，開放整個資料夾會讓別人列出並下載換掉的舊照片。回滾步驟與「不要收回 authenticated 的執行權」寫在檔案開頭。
+    - `tests/database/bug119.test.sql`：函式與 policy 的結構與權限；四個合成帳號（X 想利用 010 的人、Y 公開、P 不公開、Z 旁人），Y 另有一張換掉的舊頭像，另一個只在 transaction 裡的 bucket 有和 Y 的頭像同名的檔案：Z 只看得到 Y 現在的頭像（看不到舊頭像、另一個 bucket 的檔案、P 與 X）；X 把名稱改成「自己的 user_id/x」被 30 字上限擋下，把 `avatar_url` 指向 P 的檔案或 Y 的舊頭像並改成公開也打不開，之後只看到自己與 Y 現在的頭像；P 看得到自己與 Y 現在的頭像；anon 看不到、不能呼叫函式；函式對舊頭像、不公開、不存在、沒有資料夾、大寫或非 UUID 的資料夾、NULL 都回 false。
+    - 本機替身加上 `auth.users` 與建立 profile 的 trigger（同 004／013），profiles.name 加上 001 的 30 字上限。本機 PG16：替身 → 003 → 016 → 017 → BUG-119 與 HW-112 的測試都通過；改壞 017 的九種情況都會失敗：留著 010 的 policy、開放整個資料夾、不檢查資料夾是不是本人、不看 `is_public`、函式不是 SECURITY DEFINER、函式給 anon、沒給 authenticated、policy 也開放別的 bucket、policy 不限 authenticated。
+    - 審查（#246）：獨立審查：沒有 P1；P2 017 開放了公開使用者的整個頭像資料夾（含換掉的舊照片）→ 改成只開放現在的頭像（`avatar_url` 等於檔案路徑，且資料夾是那個 profile 本人）；P3：收回 authenticated 的執行權會讓所有 Storage 讀取失敗 → 017 與 BUG-119A 註明；測試沒有以行為檢查 bucket 的範圍 → 加另一個 bucket 的同名檔案；`user_id::text = folder` 用不到主鍵 → 先確認是 UUID 再轉型；過時的「提案」與「下一步」改寫。函式在 public schema，已登入的人可以以 RPC 呼叫，只回答「這個路徑是不是公開使用者現在的頭像」，與 `leaderboard_view` 已公開的 `avatar_url` 相同；PRO-014E 移除 view 之後仍只回答布林值（要知道 user_id 與檔名才問得出 true）。
 
 - [x] **BUG-118A**（擁有者）確認重新加入的主畫面圖示
   - 結果（2026-11-11）：重新加入的圖示打開後**沒有**出現 BUG-118 的提示，頂部也沒有模糊。偵測的前提（`default` 下頂部 safe area 為 0）在真機上成立，其他使用者不會被誤提示。
