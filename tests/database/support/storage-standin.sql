@@ -24,6 +24,7 @@
 --   psql -v ON_ERROR_STOP=1 -d hw112 -f pwa/db/003_storage.sql
 --   psql -v ON_ERROR_STOP=1 -d hw112 -f pwa/db/016_proof_storage.sql
 --   psql -v ON_ERROR_STOP=1 -d hw112 -f tests/database/hw112.test.sql
+--   BUG-119：替身 → 003 → pwa/db/017_avatar_public_policy_fix.sql → tests/database/bug119.test.sql
 
 do $$
 begin
@@ -155,3 +156,22 @@ create policy "avatars_select_public_leaderboard_profiles" on storage.objects
         and p.is_public = true
     )
   );
+
+-- ── auth.users 與建立 profile 的 trigger（BUG-119 的測試以它建立合成帳號）──
+-- production 由 004／013 的 handle_new_user() 在 auth.users INSERT 後建立 profile；
+-- 這裡只建立測試會用到的欄位與行為。
+create table auth.users (
+  id uuid primary key,
+  email text,
+  raw_user_meta_data jsonb default '{}'::jsonb
+);
+create function auth.standin_handle_new_user() returns trigger
+  language plpgsql security definer set search_path = '' as $$
+begin
+  insert into public.profiles (user_id, name)
+  values (new.id, left(coalesce(new.raw_user_meta_data ->> 'name', split_part(new.email, '@', 1)), 30));
+  return new;
+end;
+$$;
+create trigger on_auth_user_created after insert on auth.users
+  for each row execute function auth.standin_handle_new_user();

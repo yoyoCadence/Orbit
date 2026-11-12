@@ -14,19 +14,6 @@
 
 ## Backlog
 
-- [ ] **BUG-119** 排行榜頭像的 Storage policy 讀錯欄位：功能從來沒生效，而且任何已登入的人都能讓自己讀到所有人的頭像（2026-11-11 寫 HW-112A 時發現；擁有者 2026-11-11 核准修正：「ok」）
-  - 位置：`pwa/db/010_leaderboard_avatars.sql` 的 `avatars_select_public_leaderboard_profiles`。子查詢 `from profiles p where p.user_id::text = (storage.foldername(name))[1]` 裡沒加表名的 `name` 會先找最內層的 `profiles.name`（顯示名稱），不是 `storage.objects.name`（檔案路徑）。production 的 `pg_policies` 也顯示為 `storage.foldername(p.name)`（2026-11-11 只讀查詢）。
-  - 子查詢在呼叫者的權限下執行，受 profiles 的 RLS 限制（002：只看得到自己那一列）。所以：
-    - 原本的功能（已登入的人看得到公開排行榜使用者的頭像）從來沒生效。
-    - 自助外洩：任何已登入的人把自己的名稱改成「自己的 user_id/任意字」並設為公開（`profiles_update` 允許本人改這兩欄），子查詢看到的自己那一列就讓條件對 `avatars` bucket 的**每一個**檔案成立，**這個人**讀得到所有人的頭像（包括沒公開的人）。其他人不受影響。只涉及頭像，不涉及其他資料與 `proofs`（HW-112A 的測試確認其他 policy 都限定自己的 bucket）。
-    - 本機替身（加上 002 的 profiles RLS）重現：改名前 X 看得到 0 個、改名後 2 個（含不公開的 P）；旁人 Z 一直是 0。
-  - 修正（提案，需核准：schema 變更）：**只把 `name` 改成 `objects.name` 不夠**：子查詢仍受 profiles 的 RLS 限制，旁人看不到別人那一列，公開使用者的頭像還是讀不到（本機替身重現：Z 看到 0）。要讓「這個資料夾是不是公開使用者」的判斷繞過呼叫者的 RLS：
-    - 建議：`SECURITY DEFINER` 的 `public.is_public_profile_folder(folder text) returns boolean`（`stable`、`set search_path = ''`，只回傳布林值，`REVOKE ALL … FROM public, anon` 後 `GRANT EXECUTE … TO authenticated`），policy 改成 `bucket_id = 'avatars' and public.is_public_profile_folder((storage.foldername(objects.name))[1])`；
-    - 或從 `leaderboard_view` 讀（view 以擁有者的權限讀 profiles），但 PRO-014E 之後要拿掉這個 view，不建議。
-  - 測試：migration 017 的 ASSERT 測試（公開的人的頭像別人讀得到、不公開的讀不到、改名稱打不開別人的頭像），在加了 profiles RLS 的本機替身演練，再以 production 乾跑，最後依寫入流程套用。
-  - 只讀查詢（2026-11-12，只回傳計數）：8 個 profile、2 個公開、**0 個觸發**（名稱的第一段等於自己 user_id）、0 個名稱含 `/`；`avatars` 有 10 個檔案、公開且有頭像的 1 個。目前沒有人利用過這個漏洞（只看得到現在的狀態，看不到過去）。
-  - 下一步：#245 合併後開下一個 PR（migration 017 ＋ 測試，同一個 branch 一次一個 PR）；production 的乾跑與套用再各請擁有者核准。
-
 - [ ] **PRO-014HB** 移除 PRO-014H 保留的 legacy 相容層
   - 時機：PRO-014HA 通過、`server` 穩定一段時間（例如兩週沒有回退）之後。
   - 範圍：`startTrial()` 寫回 `trial_started_at`、`grantStreakUnlock()` 寫回 `is_pro`／`pro_expires_at`、`showMainApp()` 的 `FLAG_STREAK_UNLOCK_NEW` 處理（`flags.js` 的 export 保留，INFRA-105）；開機的「要不要開始試用」改依 projection（例如已知 Pro 就不呼叫），設定頁試用進度條的開始時間改用別的來源或隱藏。
@@ -140,6 +127,12 @@
 ---
 
 ## Next
+
+- [ ] **BUG-119A** 在 production 套用 017（排行榜頭像 policy 的修正；production 寫入，每一步請擁有者核准）
+  - 套用前檢查：production 的 `avatars_select_public_leaderboard_profiles` 仍是 010 的定義（`pg_policies` 的 qual 含 `storage.foldername(p.name)`），且 `public.is_public_profile_folder` 還不存在。
+  - 乾跑：`begin; set local lock_timeout = '5s';` ＋ 017 ＋ `tests/database/bug119.test.sql` 的內容 ＋ `rollback;`（真的 auth.users trigger 與 Storage）。
+  - 核准後鎖定套用 017，事後檢查：policy 的定義、函式的權限（authenticated 可以、anon 不行），再跑一次測試；以兩個測試帳號在排行榜確認公開使用者的頭像出現。
+  - 套用後 app 不用改：排行榜原本就以 `createSignedUrl()` 取得頭像，現在才拿得到。
 
 - [ ] **HW-112B** 在 production 套用 016（佐證照片的 bucket 與 policy；production 寫入；擁有者 2026-11-11 核准：「照片同步第二步> 核准」）
   - 2026-11-11 送出 production 乾跑（`begin; set local lock_timeout = '5s';` ＋ 016 ＋ 測試 ＋ `rollback;`）兩次，Supabase MCP 的確認都在時限（約 2 分鐘）內沒有被按下，沒有執行。擁有者回「可以送了」後再送，並請擁有者在時限內按核准。
@@ -271,6 +264,23 @@
 ---
 
 ## Done
+
+- [x] **BUG-119** 排行榜頭像的 Storage policy 讀錯欄位：功能從來沒生效，而且任何已登入的人都能讓自己讀到所有人的頭像（2026-11-11 寫 HW-112A 時發現；擁有者 2026-11-11 核准修正：「ok」）
+  - 位置：`pwa/db/010_leaderboard_avatars.sql` 的 `avatars_select_public_leaderboard_profiles`。子查詢 `from profiles p where p.user_id::text = (storage.foldername(name))[1]` 裡沒加表名的 `name` 會先找最內層的 `profiles.name`（顯示名稱），不是 `storage.objects.name`（檔案路徑）。production 的 `pg_policies` 也顯示為 `storage.foldername(p.name)`（2026-11-11 只讀查詢）。
+  - 子查詢在呼叫者的權限下執行，受 profiles 的 RLS 限制（002：只看得到自己那一列）。所以：
+    - 原本的功能（已登入的人看得到公開排行榜使用者的頭像）從來沒生效。
+    - 自助外洩：任何已登入的人把自己的名稱改成「自己的 user_id/任意字」並設為公開（`profiles_update` 允許本人改這兩欄），子查詢看到的自己那一列就讓條件對 `avatars` bucket 的**每一個**檔案成立，**這個人**讀得到所有人的頭像（包括沒公開的人）。其他人不受影響。只涉及頭像，不涉及其他資料與 `proofs`（HW-112A 的測試確認其他 policy 都限定自己的 bucket）。
+    - 本機替身（加上 002 的 profiles RLS）重現：改名前 X 看得到 0 個、改名後 2 個（含不公開的 P）；旁人 Z 一直是 0。
+  - 修正（提案，需核准：schema 變更）：**只把 `name` 改成 `objects.name` 不夠**：子查詢仍受 profiles 的 RLS 限制，旁人看不到別人那一列，公開使用者的頭像還是讀不到（本機替身重現：Z 看到 0）。要讓「這個資料夾是不是公開使用者」的判斷繞過呼叫者的 RLS：
+    - 建議：`SECURITY DEFINER` 的 `public.is_public_profile_folder(folder text) returns boolean`（`stable`、`set search_path = ''`，只回傳布林值，`REVOKE ALL … FROM public, anon` 後 `GRANT EXECUTE … TO authenticated`），policy 改成 `bucket_id = 'avatars' and public.is_public_profile_folder((storage.foldername(objects.name))[1])`；
+    - 或從 `leaderboard_view` 讀（view 以擁有者的權限讀 profiles），但 PRO-014E 之後要拿掉這個 view，不建議。
+  - 測試：migration 017 的 ASSERT 測試（公開的人的頭像別人讀得到、不公開的讀不到、改名稱打不開別人的頭像），在加了 profiles RLS 的本機替身演練，再以 production 乾跑，最後依寫入流程套用。
+  - 只讀查詢（2026-11-12，只回傳計數）：8 個 profile、2 個公開、**0 個觸發**（名稱的第一段等於自己 user_id）、0 個名稱含 `/`；`avatars` 有 10 個檔案、公開且有頭像的 1 個。目前沒有人利用過這個漏洞（只看得到現在的狀態，看不到過去）。
+  - 下一步：#245 合併後開下一個 PR（migration 017 ＋ 測試，同一個 branch 一次一個 PR）；production 的乾跑與套用再各請擁有者核准。
+  - 完成（2026-11-12，repo；production 套用為 BUG-119A）：
+    - `pwa/db/017_avatar_public_policy_fix.sql`：`public.is_public_profile_folder(folder text)`（`SECURITY DEFINER`、`STABLE`、`search_path = ''`、只回傳布林值；`REVOKE ALL … FROM public, anon` 後只 `GRANT EXECUTE` 給 authenticated）；`avatars_select_public_leaderboard_profiles` 改成 `bucket_id = 'avatars' and public.is_public_profile_folder((storage.foldername(name))[1])`（policy 裡沒有子查詢，`name` 就是物件名稱）。回滾步驟寫在檔案開頭。
+    - `tests/database/bug119.test.sql`：函式與 policy 的結構與權限；四個合成帳號（X 攻擊者、Y 公開、P 不公開、Z 旁人）：Z 看得到 Y、看不到 P 與 X；X 改名稱並公開後仍看不到 P、只看到自己與 Y；P 看得到自己；anon 看不到、不能呼叫函式；函式對不公開、不存在、非 UUID、NULL 都回 false。
+    - 本機替身加上 `auth.users` 與建立 profile 的 trigger（同 004／013）。本機 PG16：替身 → 003 → 016 → 017 → BUG-119 與 HW-112 的測試都通過；改壞 017 的五種情況（留著 010 的 policy、只把 `name` 改成 `objects.name`、函式不是 SECURITY DEFINER、函式給 anon、函式不看 `is_public`）都會失敗。
 
 - [x] **BUG-118A**（擁有者）確認重新加入的主畫面圖示
   - 結果（2026-11-11）：重新加入的圖示打開後**沒有**出現 BUG-118 的提示，頂部也沒有模糊。偵測的前提（`default` 下頂部 safe area 為 0）在真機上成立，其他使用者不會被誤提示。
