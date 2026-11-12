@@ -99,7 +99,13 @@
   - 安全閘門：此項是另一個 schema proposal；實作與套用前需個別核准
   - 依賴：`PRO-014D`
   - 提案（2026-11-11，使用者要求寫提案）：[`docs/pro-014e-leaderboard-read-model-proposal.md`](docs/pro-014e-leaderboard-read-model-proposal.md)。主要問題：排行榜顯示的 `name` 預設是 email 的 @ 前段。建議 `profiles.display_name`（開啟排行榜時自己設定）＋ RPC `get_leaderboard()`（固定欄位、`is_me` 取代 `user_id`、server 判定的 `is_pro`）；公開名稱與排行榜開關改為單獨的寫入（不隨整份 profile 同步）；拆成 E1（migration＋測試）→ EA（擁有者套用）→ E2（client）→ E3（移除舊 view）。等擁有者決定 §9（12 點）。
-  - **核准（2026-11-11）**：§9 照建議，但第 2 點改為 B（既有公開使用者的 `name` 複製成 `display_name`，繼續公開）。下一步 E1（migration 與測試）。
+  - **核准（2026-11-11）**：§9 照建議，但第 2 點改為 B（既有公開使用者的 `name` 複製成 `display_name`，繼續公開）。
+  - E1 完成（2026-11-12，#247，見 Done 的 PRO-014E1）；下一步 PRO-014EA（Next，production 套用 018），之後 E2（client）。
+  - E2 要注意（E1 決定的規則）：
+    - client 以和 `profiles_display_name_check` 完全相同的規則先檢查：1–20 字（以 code point 計，JS 用 `[...name].length`）、前後不能是半形空白、不能含 018 列出的字元（控制字元、各種空白與不可見字元、方向控制、ZWJ 等）。以 ZWJ 組成的 emoji（例如家庭、職業的 emoji）會被擋下，單一 emoji 與加 variation selector 的 emoji 可以。
+    - 排行榜改用 `supabase.rpc('get_leaderboard')`，欄位：`display_name, avatar_path, total_xp, week_xp, streak_days, mode, joined_on, is_me, is_pro`；`joined_on` 與本週 XP 都以 UTC 計算。
+    - 公開名稱與 `is_public` 從 `PROFILE_FIELDS` 的上傳拿掉，改成設定頁單獨、等待結果的寫入（提案 §5）。
+    - 頭像：BUG-119（017）之後，別人只讀得到公開使用者 `avatar_url` 指向的那一個檔案，`avatar_path` 就是它。
 
 - [ ] **PRO-014F** 交付 SUB-14 排行榜 glow 與 Personal Space Pro 呈現
   - 目標：只使用安全 read model 與 entitlement snapshot 呈現 Pro 身分，不讓視覺功能回寫 entitlement
@@ -141,6 +147,12 @@
   - 套用後以兩個測試帳號實測 Storage API：本人可以上傳、讀、刪自己的檔案；不能碰別人的資料夾；上傳超過 200 KB 或不是 JPEG 被拒（大小與類型由 API 在上傳時檢查，資料庫測不到；移動與複製不會再檢查，所以本人可以把自己其他 bucket 的檔案搬進自己的 proofs 資料夾，只限自己）。
   - HW-112C 下載時不能相信大小與類型（只當 JPEG 顯示在 `<img>`，過大的不處理）。
   - 套用不影響現在的 app：client 要到 HW-112C 才會上傳。
+
+- [ ] **PRO-014EA** 在 production 套用 018（排行榜的公開名稱與 `get_leaderboard()`；production 寫入，每一步請擁有者核准；依賴：PRO-014E1 合併）
+  - 套用前檢查（只讀）：`pg_get_viewdef('public.leaderboard_view')` 與 010 相同；`public.get_leaderboard` 與 `profiles.display_name` 還不存在；公開使用者的數量，以及 name 依 018 整理後是空字串（不補、從新排行榜消失、舊 view 顯示「匿名」）的數量（只回傳計數）。
+  - 乾跑：`begin; set local lock_timeout = '5s';` ＋ 018 ＋ `tests/database/pro014e.test.sql` 的內容 ＋ `tests/database/pro014e.backfill.test.sql` 的內容（兩行 `\ir` 換成 018）＋ `rollback;`；另外跑 `infra110.test.sql`（view 的權限不變）。
+  - 核准後鎖定套用 018，事後檢查：公開使用者中 `display_name` 有值的數量與套用前的預估相同；`get_leaderboard()` 的權限（authenticated 可以、anon 與 PUBLIC 不行）；`leaderboard_view` 的權限與 015 相同；再跑一次兩份測試；以兩個測試帳號的身分（`request.jwt.claims`）呼叫 RPC，確認 `is_me` 與欄位。
+  - 套用後舊版 client 的排行榜：名稱變成公開名稱（沒有的顯示「匿名」），其他不變。app 不用改；E2 才改用 RPC。
 
 - [ ] **PRO-014HA**（擁有者，只剩真機畫面）真機驗證 PRO-014H 的 cutover
   - 2026-11-11 擁有者要求 agent 以 Supabase MCP 直接測試。agent 以只讀查詢（DO 區塊最後 `RAISE EXCEPTION`，整段回滾、沒有寫入）逐一以 5 個測試帳號與擁有者主帳號的身分（`request.jwt.claims` 加 `SET LOCAL ROLE authenticated`）呼叫 `my_pro_status()`：
@@ -265,6 +277,20 @@
 
 ## Done
 
+- [x] **PRO-014E1** migration 018：排行榜的公開名稱（`profiles.display_name`）與 `get_leaderboard()`，加上資料庫測試
+  - 完成（2026-11-12，#247；production 套用為 PRO-014EA）：
+    - `pwa/db/018_leaderboard_display_name.sql`：
+      - `profiles.display_name`（NULL 或 1–20 字；前後不能是半形空白；不能含控制字元、半形空白以外的空白類字元、零寬與方向控制字元、Hangul／Braille 的空白字元、BOM、軟連字號）。只允許半形空白，前後的檢查就不依賴 locale。RLS 不變（002 的四個 owner-only policy）。
+      - 既有公開使用者（§9 第 2 點 B）：name 整理後補進 display_name（空白類字元換成半形空白 → 拿掉不允許的字元 → 去掉前後空白 → 前 20 字 → 再去掉前後空白；整理完是空的不補）。只補 `is_public` 且 `display_name` 為 NULL 的人，可重複執行。
+      - `get_leaderboard()`：`SECURITY DEFINER`、`STABLE`、`search_path = ''`，只回傳九個欄位（`display_name, avatar_path, total_xp, week_xp, streak_days, mode, joined_on, is_me, is_pro`），只列公開且有公開名稱的人；`is_me` 取代 `user_id`；`is_pro` 來自 `pro_entitlements`（含試用，§9 第 5 點），不看 profile 的 `is_pro`；日期以 UTC 計算；沒有 `auth.uid()` 的呼叫者拿不到資料。`REVOKE ALL … FROM public, anon` 後只給 authenticated。
+      - `leaderboard_view`（§9 第 4 點 A）：`name` 改為 `COALESCE(display_name, '匿名')`，其他與 010 相同；`CREATE OR REPLACE VIEW` 保留 015 的權限。
+      - 回滾步驟寫在檔案開頭（不刪 `display_name` 欄位）。
+    - `tests/database/pro014e.test.sql`：欄位、constraint、函式的結構與權限（含 PUBLIC）、回傳的九個欄位、view 的欄位與權限不變；名稱規則（24 種壞名稱被擋、9 種好名稱可以，特殊字元都以 `chr()` 寫出）；六個合成帳號：只列公開且有公開名稱的人、`is_me` 只有自己、本週 XP 只算 UTC 最近 7 天的生產力 XP、`joined_on` 是 UTC 日期（連線的 TimeZone 故意設成 Asia/Taipei）、試用與終身付費是 Pro、過期付費與只有 profile `is_pro` 的不是；沒有 sub 拿不到資料、anon 不能呼叫；view 顯示公開名稱與「匿名」、不再有 email 前段；本人能改自己的公開名稱、改不到別人的。
+    - `tests/database/pro014e.backfill.test.sql`：先建立 12 個合成帳號（各種 name），再以 `\ir` 套用 018，檢查補上的名稱；再改一個、套用第二次，確認只補 NULL。018 已套用過的資料庫也能跑。
+    - `tests/database/support/supabase-standin.sql`：讓 pwa/db 的 001～018 能依序套用在空的 PostgreSQL（角色、Supabase 的 public 預設權限、`auth.users`／`auth.uid()`、Storage 的最小替身）。現有的 infra110、pro014r、pro014l、bug109、bug119、hw112 測試在這條鏈上也都通過（bug119 與 hw112 原本只在 storage-standin.sql 上跑過，這裡是真的 002／004／013 的 RLS 與 trigger）。
+    - 本機 PG16：替身 → 001～017 → backfill 測試（套用前）→ 018 → 兩份測試與 infra110、pro014r、pro014l、bug109、bug119、hw112 都通過；改壞 018 的 18 種情況都會失敗（名稱規則三種、RPC 十種、view 一種、補名稱四種）。
+    - 編號：017 是 BUG-119（#246），所以這裡是 018。
+
 - [x] **BUG-119** 排行榜頭像的 Storage policy 讀錯欄位：功能從來沒生效（2026-11-11 寫 HW-112A 時發現；擁有者 2026-11-11 核准修正：「ok」）
   - 位置：`pwa/db/010_leaderboard_avatars.sql` 的 `avatars_select_public_leaderboard_profiles`。子查詢 `from profiles p where p.user_id::text = (storage.foldername(name))[1]` 裡沒加表名的 `name` 會先找最內層的 `profiles.name`（顯示名稱），不是 `storage.objects.name`（檔案路徑）。production 的 `pg_policies` 也顯示為 `storage.foldername(p.name)`（2026-11-11 只讀查詢）。
   - 子查詢在呼叫者的權限下執行，受 profiles 的 RLS 限制（002：只看得到自己那一列）。所以：
@@ -272,11 +298,11 @@
     - 外洩的路走不通：要讓條件成立，名稱必須是「自己的 user_id/任意字」（至少 37 字），但 `profiles.name` 有 30 字的上限（001 的 CHECK；BUG-109 證實 production 有這個限制）。2026-11-11 先寫成「任何人都能讓自己讀到所有頭像」，是在沒有這個限制的替身上重現的；#246 的審查前發現並改正。修正後也不再依賴名稱長度的上限。
   - 修正：**只把 `name` 改成 `objects.name` 不夠**：子查詢仍受 profiles 的 RLS 限制，旁人看不到別人那一列，公開使用者的頭像還是讀不到（本機替身重現：Z 看到 0）。所以改用 `SECURITY DEFINER` 的小函式繞過呼叫者的 RLS，只回答布林值（不採用從 `leaderboard_view` 讀：PRO-014E 之後要拿掉這個 view）。
   - 只讀查詢（2026-11-12，只回傳計數）：8 個 profile、2 個公開、**0 個觸發**（名稱的第一段等於自己 user_id）、0 個名稱含 `/`；`avatars` 有 10 個檔案、公開且有頭像的 1 個。目前沒有人利用過這個漏洞（只看得到現在的狀態，看不到過去）。
-  - 完成（2026-11-12，repo；production 套用為 BUG-119A）：
+  - 完成（2026-11-12，#246；production 套用為 BUG-119A）：
     - `pwa/db/017_avatar_public_policy_fix.sql`：`public.is_public_leaderboard_avatar(object_name text)`（`SECURITY DEFINER`、`STABLE`、`search_path = ''`、只回傳布林值；`REVOKE ALL … FROM public, anon` 後只 `GRANT EXECUTE` 給 authenticated）回答「這個檔案是不是某個公開使用者現在的頭像」：檔案的第一層資料夾（確認是小寫 UUID 後以主鍵查詢）是那個 profile 的 user_id、`is_public`、而且 `avatar_url` 等於檔案路徑。`avatars_select_public_leaderboard_profiles` 改成 `bucket_id = 'avatars' and public.is_public_leaderboard_avatar(name)`（policy 裡沒有子查詢，`name` 就是物件名稱）。只開放現在的頭像、不是整個資料夾：`uploadAvatar()` 每次上傳都用新檔名、舊檔不刪，開放整個資料夾會讓別人列出並下載換掉的舊照片。回滾步驟與「不要收回 authenticated 的執行權」寫在檔案開頭。
     - `tests/database/bug119.test.sql`：函式與 policy 的結構與權限；四個合成帳號（X 想利用 010 的人、Y 公開、P 不公開、Z 旁人），Y 另有一張換掉的舊頭像，另一個只在 transaction 裡的 bucket 有和 Y 的頭像同名的檔案：Z 只看得到 Y 現在的頭像（看不到舊頭像、另一個 bucket 的檔案、P 與 X）；X 把名稱改成「自己的 user_id/x」被 30 字上限擋下，把 `avatar_url` 指向 P 的檔案或 Y 的舊頭像並改成公開也打不開，之後只看到自己與 Y 現在的頭像；P 看得到自己與 Y 現在的頭像；anon 看不到、不能呼叫函式；函式對舊頭像、不公開、不存在、沒有資料夾、大寫或非 UUID 的資料夾、NULL 都回 false。
     - 本機替身加上 `auth.users` 與建立 profile 的 trigger（同 004／013），profiles.name 加上 001 的 30 字上限。本機 PG16：替身 → 003 → 016 → 017 → BUG-119 與 HW-112 的測試都通過；改壞 017 的九種情況都會失敗：留著 010 的 policy、開放整個資料夾、不檢查資料夾是不是本人、不看 `is_public`、函式不是 SECURITY DEFINER、函式給 anon、沒給 authenticated、policy 也開放別的 bucket、policy 不限 authenticated。
-    - 審查（#246）：獨立審查：沒有 P1；P2 017 開放了公開使用者的整個頭像資料夾（含換掉的舊照片）→ 改成只開放現在的頭像（`avatar_url` 等於檔案路徑，且資料夾是那個 profile 本人）；P3：收回 authenticated 的執行權會讓所有 Storage 讀取失敗 → 017 與 BUG-119A 註明；測試沒有以行為檢查 bucket 的範圍 → 加另一個 bucket 的同名檔案；`user_id::text = folder` 用不到主鍵 → 先確認是 UUID 再轉型；過時的「提案」與「下一步」改寫。第二輪（404fb97）：沒有 P1／P2；P3：policy 的 bucket 檢查改成整個條件的完全比對（原本的文字比對讓 `avatars OR proofs` 通過）、收回執行權的影響寫完整（讀取、移動、刪除）、7 天簽名網址的限制與 BUG-119A 的頭像檔案計數寫進文件。函式在 public schema，已登入的人可以以 RPC 呼叫，只回答「這個路徑是不是公開使用者現在的頭像」，與 `leaderboard_view` 已公開的 `avatar_url` 相同；PRO-014E 移除 view 之後仍只回答布林值（要知道 user_id 與檔名才問得出 true）。
+    - 審查（#246）：Codex 沒有問題（404fb97、05113bb）。獨立審查：沒有 P1；P2 017 開放了公開使用者的整個頭像資料夾（含換掉的舊照片）→ 改成只開放現在的頭像（`avatar_url` 等於檔案路徑，且資料夾是那個 profile 本人）；P3：收回 authenticated 的執行權會讓所有 Storage 讀取失敗 → 017 與 BUG-119A 註明；測試沒有以行為檢查 bucket 的範圍 → 加另一個 bucket 的同名檔案；`user_id::text = folder` 用不到主鍵 → 先確認是 UUID 再轉型；過時的「提案」與「下一步」改寫。第二輪（404fb97）：沒有 P1／P2；P3：policy 的 bucket 檢查改成整個條件的完全比對（原本的文字比對讓 `avatars OR proofs` 通過）、收回執行權的影響寫完整（讀取、移動、刪除）、7 天簽名網址的限制與 BUG-119A 的頭像檔案計數寫進文件。函式在 public schema，已登入的人可以以 RPC 呼叫，只回答「這個路徑是不是公開使用者現在的頭像」，與 `leaderboard_view` 已公開的 `avatar_url` 相同；PRO-014E 移除 view 之後仍只回答布林值（要知道 user_id 與檔名才問得出 true）。
 
 - [x] **BUG-118A**（擁有者）確認重新加入的主畫面圖示
   - 結果（2026-11-11）：重新加入的圖示打開後**沒有**出現 BUG-118 的提示，頂部也沒有模糊。偵測的前提（`default` 下頂部 safe area 為 0）在真機上成立，其他使用者不會被誤提示。
