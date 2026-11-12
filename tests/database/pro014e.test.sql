@@ -90,9 +90,9 @@ update public.profiles set is_public = true, display_name = null
   where user_id = '00000000-0000-4000-8000-00000e014e0c';
 update public.profiles set is_public = false, display_name = 'zz pro014e D'
   where user_id = '00000000-0000-4000-8000-00000e014e0d';
--- E 與 F 的 avatar_url 不在自己的資料夾：任意網址、別人的路徑（RPC 必須回傳 NULL）
+-- E 與 F 的 avatar_url 不在自己的資料夾：含有自己 user_id 的任意網址、別人的路徑（RPC 必須回傳 NULL）
 update public.profiles set is_public = true, display_name = 'zz pro014e E',
-  avatar_url = 'https://example.invalid/track.png'
+  avatar_url = 'https://example.invalid/00000000-0000-4000-8000-00000e014e0e/track.png'
   where user_id = '00000000-0000-4000-8000-00000e014e0e';
 update public.profiles set is_public = true, display_name = 'zz pro014e F',
   avatar_url = '00000000-0000-4000-8000-00000e014e0a/avatar-1.png'
@@ -115,7 +115,8 @@ select '00000000-0000-4000-8000-00000e014e0a', 'pro014e task', (now() at time zo
 from (values (0, 50, true), (6, 30, true), (7, 1000, true), (0, 999, false)) as d(days_ago, xp, productive);
 
 -- 3. 公開名稱的規則：CHECK 擋下的名稱與允許的名稱（以 postgres 改 D 的公開名稱）
---    a. 018 列出的每一段不允許的字元：兩端與中間都被擋下，兩端外面的鄰居（不在任何一段裡）允許；
+--    a. 018 列出的每一個不允許的字元都被擋下，每一段兩端外面的鄰居（不在任何一段裡）允許；
+--       variation selector 與 tag 每一段的兩端不能在開頭、不能藏起結尾的空白；
 --    b. 長度、前後空白、variation selector 與 tag 的邊界；
 --    c. 允許的名稱（中文、emoji、emoji 加 variation selector、英格蘭旗、20 個 emoji）。
 do $$
@@ -142,9 +143,13 @@ declare
     int4range(65279, 65279, '[]')  /* U+FEFF */,
     int4range(65440, 65440, '[]')  /* U+FFA0 */,
     int4range(65520, 65531, '[]')  /* U+FFF0–U+FFFB */,
+    int4range(78896, 78911, '[]')  /* U+13430–U+1343F */,
+    int4range(94180, 94180, '[]')  /* U+16FE4 */,
     int4range(113824, 113827, '[]')  /* U+1BCA0–U+1BCA3 */,
     int4range(119129, 119129, '[]')  /* U+1D159 */,
-    int4range(119155, 119162, '[]')  /* U+1D173–U+1D17A */
+    int4range(119155, 119162, '[]')  /* U+1D173–U+1D17A */,
+    int4range(917632, 917759, '[]')  /* U+E0080–U+E00FF */,
+    int4range(918000, 921599, '[]')  /* U+E01F0–U+E0FFF */
   ];
   r int4range;
   cp int;
@@ -152,7 +157,7 @@ declare
   refused int := 0;
 begin
   foreach r in array forbidden loop
-    foreach cp in array array[lower(r), (lower(r) + upper(r) - 1) / 2, upper(r) - 1] loop
+    for cp in lower(r) .. upper(r) - 1 loop
       begin
         update public.profiles set display_name = 'a' || chr(cp) || 'b' where user_id = d;
         raise exception 'U+% must be refused', to_hex(cp);
@@ -165,7 +170,21 @@ begin
       update public.profiles set display_name = 'a' || chr(cp) || 'b' where user_id = d;
     end loop;
   end loop;
-  assert refused = 3 * array_length(forbidden, 1), 'every forbidden range must be probed';
+  assert refused = 3894, format('every forbidden code point must be probed (%s)', refused);
+
+  -- variation selector 與 tag 的每一段的兩端：不能在開頭，也不能藏起結尾的空白
+  foreach cp in array array[65024, 65039, 917504, 917631, 917760, 917999] loop  -- FE00 FE0F E0000 E007F E0100 E01EF
+    begin
+      update public.profiles set display_name = chr(cp) || 'a' where user_id = d;
+      raise exception 'a name starting with U+% must be refused', to_hex(cp);
+    exception when check_violation then null;
+    end;
+    begin
+      update public.profiles set display_name = 'a ' || chr(cp) where user_id = d;
+      raise exception 'a trailing space hidden by U+% must be refused', to_hex(cp);
+    exception when check_violation then null;
+    end;
+  end loop;
 
   foreach candidate in array array[
     '',                                         -- 空字串
@@ -176,7 +195,8 @@ begin
     chr(917505) || chr(917536),                 -- 只有 tag
     chr(65039) || ' a',                         -- 以 variation selector 藏起開頭的空白
     'a ' || chr(65039),                         -- 以 variation selector 藏起結尾的空白
-    'a ' || chr(917631)                         -- 以 tag 藏起結尾的空白
+    'a ' || chr(917631),                        -- 以 tag 藏起結尾的空白
+    'a ' || chr(65039) || chr(917631)           -- 以兩個字元藏起結尾的空白
   ] loop
     begin
       update public.profiles set display_name = candidate where user_id = d;

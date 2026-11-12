@@ -73,9 +73,13 @@ declare
     int4range(65279, 65279, '[]')  /* U+FEFF */,
     int4range(65440, 65440, '[]')  /* U+FFA0 */,
     int4range(65520, 65531, '[]')  /* U+FFF0–U+FFFB */,
+    int4range(78896, 78911, '[]')  /* U+13430–U+1343F */,
+    int4range(94180, 94180, '[]')  /* U+16FE4 */,
     int4range(113824, 113827, '[]')  /* U+1BCA0–U+1BCA3 */,
     int4range(119129, 119129, '[]')  /* U+1D159 */,
-    int4range(119155, 119162, '[]')  /* U+1D173–U+1D17A */
+    int4range(119155, 119162, '[]')  /* U+1D173–U+1D17A */,
+    int4range(917632, 917759, '[]')  /* U+E0080–U+E00FF */,
+    int4range(918000, 921599, '[]')  /* U+E01F0–U+E0FFF */
   ];
   spacelike int4range[] := array[
     int4range(9, 13, '[]')  /* U+0009–U+000D */,
@@ -102,6 +106,13 @@ begin
     insert into pro014e_bf values
       (n, 'r' || chr(lo) || 's' || chr(hi) || 't', true, 'r' || lo_out || 's' || hi_out || 't');
     n := n + 1;
+  end loop;
+  -- 空白類每一段的兩端都換成半形空白（不是拿掉）
+  foreach r in array spacelike loop
+    foreach lo in array array[lower(r), upper(r) - 1] loop
+      insert into pro014e_bf values (n, 'x' || chr(lo) || 'y', true, 'x y');
+      n := n + 1;
+    end loop;
   end loop;
 end $$;
 

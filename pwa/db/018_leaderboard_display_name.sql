@@ -57,13 +57,15 @@
 --   - 任何位置都不能有：控制字元、半形空白以外的空白類字元（不換行空白、全形空白、各種寬度的
 --     空白）、零寬與方向控制字元（U+200B–U+200F、U+202A–U+202E、U+2060–U+206F 等）、
 --     常被拿來做「看不見的名稱」的字元（Hangul／Braille 的空白字元、U+1D159、U+1D173–U+1D17A、
---     U+1BCA0–U+1BCA3）、BOM、軟連字號；
+--     U+1BCA0–U+1BCA3、U+13430–U+1343F、U+16FE4）、BOM、軟連字號，以及 tag 與 variation selector
+--     旁邊未指派的 default-ignorable（U+E0080–U+E00FF、U+E01F0–U+E0FFF，瀏覽器顯示為空）；
 --   - 開頭不能是半形空白、variation selector（U+FE00–U+FE0F、U+E0100–U+E01EF）或 tag 字元
 --     （U+E0000–U+E007F）；結尾不能是半形空白（後面只接 variation selector／tag 也不行）。
---     variation selector 與 tag 只能跟在看得到的字後面（例如紅心 emoji、英格蘭旗），所以只由它們組成的
---     名稱，或用它們把前後空白藏起來的名稱都會被擋下。
+--     variation selector 與 tag 不能在開頭（正常的用法是跟在一個字後面，例如紅心 emoji、英格蘭旗），
+--     所以只由它們組成的名稱，或用它們把前後空白藏起來的名稱都會被擋下。
 -- 只允許半形空白當作空白，前後的檢查就不依賴 locale（PostgreSQL 的 \s 依 locale 而定）。
--- 沒擋的：只有組合用符號、私人使用區或未指派的字元、堆疊很多組合符號、很寬的字。這些由擁有者
+-- 沒擋的：只有組合用符號、私人使用區、U+FFFC、其他未指派的字元（也可能用來藏起前後空白）、堆疊
+-- 很多組合符號、很寬的字。這些由擁有者
 -- 清除（§9 第 8 點），版面由 E2 的 CSS 截斷。名稱本來就可以重複（§9 第 7 點），冒名不靠這些字元。
 ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS display_name text;
@@ -78,7 +80,7 @@ BEGIN
       ADD CONSTRAINT profiles_display_name_check CHECK (
         display_name IS NULL OR (
           char_length(display_name) BETWEEN 1 AND 20
-          AND display_name !~ '[\u0001-\u001f\u007f-\u00a0\u00ad\u034f\u061c\u115f\u1160\u1680\u17b4\u17b5\u180b-\u180f\u2000-\u200f\u2028-\u202f\u205f-\u206f\u2800\u3000\u3164\ufeff\uffa0\ufff0-\ufffb\U0001bca0-\U0001bca3\U0001d159\U0001d173-\U0001d17a]'
+          AND display_name !~ '[\u0001-\u001f\u007f-\u00a0\u00ad\u034f\u061c\u115f\u1160\u1680\u17b4\u17b5\u180b-\u180f\u2000-\u200f\u2028-\u202f\u205f-\u206f\u2800\u3000\u3164\ufeff\uffa0\ufff0-\ufffb\U00013430-\U0001343f\U00016fe4\U0001bca0-\U0001bca3\U0001d159\U0001d173-\U0001d17a\U000e0080-\U000e00ff\U000e01f0-\U000e0fff]'
           AND display_name !~ '^[ \ufe00-\ufe0f\U000e0000-\U000e007f\U000e0100-\U000e01ef]'
           AND display_name !~ ' [\ufe00-\ufe0f\U000e0000-\U000e007f\U000e0100-\U000e01ef]*$'
         )
@@ -107,7 +109,7 @@ FROM (
       regexp_replace(regexp_replace(
         regexp_replace(
           regexp_replace(name, '[\u0009-\u000d\u0085\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000]', ' ', 'g'),
-          '[\u0001-\u001f\u007f-\u00a0\u00ad\u034f\u061c\u115f\u1160\u1680\u17b4\u17b5\u180b-\u180f\u2000-\u200f\u2028-\u202f\u205f-\u206f\u2800\u3000\u3164\ufeff\uffa0\ufff0-\ufffb\U0001bca0-\U0001bca3\U0001d159\U0001d173-\U0001d17a]', '', 'g'),
+          '[\u0001-\u001f\u007f-\u00a0\u00ad\u034f\u061c\u115f\u1160\u1680\u17b4\u17b5\u180b-\u180f\u2000-\u200f\u2028-\u202f\u205f-\u206f\u2800\u3000\u3164\ufeff\uffa0\ufff0-\ufffb\U00013430-\U0001343f\U00016fe4\U0001bca0-\U0001bca3\U0001d159\U0001d173-\U0001d17a\U000e0080-\U000e00ff\U000e01f0-\U000e0fff]', '', 'g'),
         '^[ \ufe00-\ufe0f\U000e0000-\U000e007f\U000e0100-\U000e01ef]+', ''), '( [\ufe00-\ufe0f\U000e0000-\U000e007f\U000e0100-\U000e01ef]*)+$', '') AS trimmed
     FROM public.profiles
     WHERE is_public = true AND display_name IS NULL
@@ -115,7 +117,7 @@ FROM (
 ) AS c
 WHERE p.user_id = c.user_id
   AND char_length(c.candidate) BETWEEN 1 AND 20
-  AND c.candidate !~ '[\u0001-\u001f\u007f-\u00a0\u00ad\u034f\u061c\u115f\u1160\u1680\u17b4\u17b5\u180b-\u180f\u2000-\u200f\u2028-\u202f\u205f-\u206f\u2800\u3000\u3164\ufeff\uffa0\ufff0-\ufffb\U0001bca0-\U0001bca3\U0001d159\U0001d173-\U0001d17a]'
+  AND c.candidate !~ '[\u0001-\u001f\u007f-\u00a0\u00ad\u034f\u061c\u115f\u1160\u1680\u17b4\u17b5\u180b-\u180f\u2000-\u200f\u2028-\u202f\u205f-\u206f\u2800\u3000\u3164\ufeff\uffa0\ufff0-\ufffb\U00013430-\U0001343f\U00016fe4\U0001bca0-\U0001bca3\U0001d159\U0001d173-\U0001d17a\U000e0080-\U000e00ff\U000e01f0-\U000e0fff]'
   AND c.candidate !~ '^[ \ufe00-\ufe0f\U000e0000-\U000e007f\U000e0100-\U000e01ef]'
   AND c.candidate !~ ' [\ufe00-\ufe0f\U000e0000-\U000e007f\U000e0100-\U000e01ef]*$';
 
