@@ -416,7 +416,9 @@ describe('renderSettings: leaderboard opt-in and public name (PRO-014E2)', () =>
 
   it.each([
     ['', '請輸入公開名稱'],
-    [' Owl', '開頭和結尾不能是空白'],
+    ['   ', '請輸入公開名稱'],
+    [`${String.fromCodePoint(0xfe0f)}Owl`, '開頭和結尾不能是空白'],
+    [`Owl ${String.fromCodePoint(0xfe0f)}`, '開頭和結尾不能是空白'],
     ['a'.repeat(21), '最多 20 個字'],
     [`Owl${String.fromCodePoint(0x200b)}`, '看不見的字元'],
   ])('refuses %j before asking the server', (name, message) => {
@@ -427,6 +429,32 @@ describe('renderSettings: leaderboard opt-in and public name (PRO-014E2)', () =>
     c.querySelector('#lb-name-save').click();
     expect(mockSavePublicSettings).not.toHaveBeenCalled();
     expect(c.querySelector('#lb-name-error').textContent).toContain(message);
+    const input = c.querySelector('#lb-name-input');
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(input.getAttribute('aria-describedby')).toBe('lb-name-error');
+    typeName(c, 'Owl');
+    expect(input.getAttribute('aria-invalid')).toBe('false');
+    expect(c.querySelector('#lb-name-error').textContent).toBe('');
+  });
+
+  it('drops spaces a phone keyboard left at either end instead of refusing', async () => {
+    mockSavePublicSettings.mockResolvedValueOnce({ displayName: 'Night Owl', isPublic: true });
+    const c = makeContainer();
+    renderSettings(c);
+    toggleTo(c, true);
+    typeName(c, '  Night Owl ');
+    c.querySelector('#lb-name-save').click();
+    expect(mockSavePublicSettings).toHaveBeenCalledWith('user-1', { displayName: 'Night Owl', isPublic: true });
+    await flush();
+  });
+
+  it('a second tap on the toggle keeps what was typed', () => {
+    const c = makeContainer();
+    renderSettings(c);
+    toggleTo(c, true);
+    typeName(c, 'Half typed');
+    toggleTo(c, true);
+    expect(c.querySelector('#lb-name-input').value).toBe('Half typed');
   });
 
   it('saves the name and joins in one write, then updates only the local copy', async () => {
@@ -457,6 +485,9 @@ describe('renderSettings: leaderboard opt-in and public name (PRO-014E2)', () =>
     typeName(c, '夜貓');
     const input = c.querySelector('#lb-name-input');
     input.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', isComposing: true }));
+    expect(mockSavePublicSettings).not.toHaveBeenCalled();
+    // Safari: the Enter that picks a candidate has isComposing false, keyCode 229.
+    input.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', keyCode: 229 }));
     expect(mockSavePublicSettings).not.toHaveBeenCalled();
     input.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter' }));
     expect(mockSavePublicSettings).toHaveBeenCalledWith('user-1', { displayName: '夜貓', isPublic: true });

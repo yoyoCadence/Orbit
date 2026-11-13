@@ -508,6 +508,7 @@ function _leaderboardCardHtml() {
       <div class="form-group" id="lb-name-editor" style="margin-top:12px">
         <label class="form-label" for="lb-name-input">公開名稱</label>
         <input class="form-input" id="lb-name-input" autocomplete="off" enterkeyhint="done"
+               aria-describedby="lb-name-error" aria-invalid="${_lbError ? 'true' : 'false'}"
                value="${escHtml(_lbDraft)}" ${disabled}>
         <div style="font-size:11px;color:var(--text-muted);margin-top:6px">
           其他使用者會在排行榜看到這個名稱（最多 20 個字），不必使用真名；帳號名稱不會公開。
@@ -542,9 +543,13 @@ function _leaderboardCardHtml() {
 }
 
 function _openLeaderboardEditor(container, mode) {
+  // Opening the editor that is already open (a second tap on the toggle)
+  // keeps what was typed.
+  if (_lbEditor !== mode) {
+    _lbDraft = mode === 'rename' ? (state.user?.displayName ?? '') : '';
+    _lbError = '';
+  }
   _lbEditor = mode;
-  _lbDraft = mode === 'rename' ? (state.user?.displayName ?? '') : '';
-  _lbError = '';
   _renderView(container);
   container.querySelector('#lb-name-input')?.focus();
 }
@@ -575,14 +580,12 @@ function _bindLeaderboardCard(container) {
   input?.addEventListener('input', () => {
     _lbDraft = input.value;
     // Drop an old message once the name it was about has changed.
-    if (_lbError) {
-      _lbError = '';
-      const el = container.querySelector('#lb-name-error');
-      if (el) el.textContent = '';
-    }
+    if (_lbError) _showLeaderboardNameError(container, '');
   });
   input?.addEventListener('keydown', event => {
-    if (event.key === 'Enter' && !event.isComposing) {
+    // Safari reports the Enter that ends an IME composition with
+    // isComposing false but keyCode 229; that Enter picks a candidate.
+    if (event.key === 'Enter' && !event.isComposing && event.keyCode !== 229) {
       event.preventDefault();
       _saveLeaderboardName(container);
     }
@@ -596,18 +599,26 @@ function _bindLeaderboardCard(container) {
   container.querySelector('#lb-name-save')?.addEventListener('click', () => _saveLeaderboardName(container));
 }
 
+function _showLeaderboardNameError(container, message) {
+  _lbError = message;
+  const el = container.querySelector('#lb-name-error');
+  if (el) el.textContent = message;
+  container.querySelector('#lb-name-input')?.setAttribute('aria-invalid', message ? 'true' : 'false');
+}
+
 function _saveLeaderboardName(container) {
   if (_lbBusy || !_lbEditor) return;
-  const problem = displayNameProblem(_lbDraft);
+  // Phone keyboards add a space after a suggested word; spaces at either end
+  // are never part of a valid name, so drop them instead of refusing.
+  const name = _lbDraft.replace(/^ +| +$/g, '');
+  const problem = displayNameProblem(name);
   if (problem) {
-    _lbError = DISPLAY_NAME_MESSAGES[problem];
-    const el = container.querySelector('#lb-name-error');
-    if (el) el.textContent = _lbError;
+    _showLeaderboardNameError(container, DISPLAY_NAME_MESSAGES[problem]);
     return;
   }
   _savePublicSettings(container, _lbEditor === 'enable'
-    ? { displayName: _lbDraft, isPublic: true }
-    : { displayName: _lbDraft });
+    ? { displayName: name, isPublic: true }
+    : { displayName: name });
 }
 
 async function _savePublicSettings(container, changes) {

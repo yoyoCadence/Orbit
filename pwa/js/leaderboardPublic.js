@@ -66,7 +66,7 @@ export function displayNameProblem(name) {
 export const DISPLAY_NAME_MESSAGES = Object.freeze({
   empty: '請輸入公開名稱',
   too_long: `公開名稱最多 ${DISPLAY_NAME_MAX} 個字`,
-  forbidden: '公開名稱不能包含換行、tab 或看不見的字元（一般的半形空白可以）',
+  forbidden: '公開名稱不能有換行、tab、全形空白、看不見的字元，或由幾個 emoji 組成的符號（例如家庭、職業的 emoji）；一般的半形空白可以',
   edge: '公開名稱的開頭和結尾不能是空白',
   server: '公開名稱不符合規則，請換一個',
   network: '無法儲存，請確認網路連線後再試一次',
@@ -77,18 +77,26 @@ export const DISPLAY_NAME_MESSAGES = Object.freeze({
 export const LEADERBOARD_CACHE_V2_KEY = 'yoyo_leaderboardCacheV2';
 const LEGACY_CACHE_KEY = 'yoyo_leaderboardCache';
 
-export function readLeaderboardCacheV2() {
+// The rows belong to the account that asked: is_me marks that caller's row.
+// The cache records its owner and is read only by the same account, so a
+// request that finishes after sign-out (when clearAll has already run) can
+// never show another account's row as "你".
+
+/** The cached rows of `ownerId`, or null (no cache, another account's, unreadable). */
+export function readLeaderboardCacheV2(ownerId) {
+  if (!ownerId) return null;
   try {
     const cache = JSON.parse(localStorage.getItem(LEADERBOARD_CACHE_V2_KEY));
-    return cache && Array.isArray(cache.rows) ? cache : null;
+    return cache && cache.ownerId === ownerId && Array.isArray(cache.rows) ? cache : null;
   } catch {
     return null;
   }
 }
 
-export function writeLeaderboardCacheV2(rows, refreshedAt, refreshDate) {
+export function writeLeaderboardCacheV2(ownerId, rows, refreshedAt, refreshDate) {
+  if (!ownerId) return;
   try {
-    localStorage.setItem(LEADERBOARD_CACHE_V2_KEY, JSON.stringify({ rows, refreshedAt, refreshDate }));
+    localStorage.setItem(LEADERBOARD_CACHE_V2_KEY, JSON.stringify({ ownerId, rows, refreshedAt, refreshDate }));
     // The leaderboard_view cache of older versions is never read again.
     localStorage.removeItem(LEGACY_CACHE_KEY);
   } catch {
@@ -96,7 +104,16 @@ export function writeLeaderboardCacheV2(rows, refreshedAt, refreshDate) {
   }
 }
 
+// Bumped by every clear (a saved name or opt-in): a request that started
+// before it answers with the old name or opt-in and must not be cached.
+let _cacheGeneration = 0;
+
+export function leaderboardCacheGeneration() {
+  return _cacheGeneration;
+}
+
 export function clearLeaderboardCacheV2() {
+  _cacheGeneration += 1;
   try {
     localStorage.removeItem(LEADERBOARD_CACHE_V2_KEY);
   } catch {

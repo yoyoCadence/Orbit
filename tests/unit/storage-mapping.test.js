@@ -16,7 +16,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // ─── Supabase mock ────────────────────────────────────────────────────────────
 
 const tableData = vi.hoisted(() => ({}));           // table → rows/row for reads
-const captured  = vi.hoisted(() => ({ upserts: {}, inserts: {} }));
+const captured  = vi.hoisted(() => ({ upserts: {}, inserts: {}, updates: {}, updateError: null }));
 
 vi.mock('../../pwa/js/supabase.js', () => {
   function chain(table) {
@@ -25,7 +25,10 @@ vi.mock('../../pwa/js/supabase.js', () => {
       eq:     () => self,
       in:     () => Promise.resolve({ error: null }),
       delete: () => self,
-      update: () => self,
+      update: (payload) => {
+        (captured.updates[table] ??= []).push(payload);
+        return { eq: () => Promise.resolve({ error: captured.updateError }) };
+      },
       single: () => Promise.resolve({ data: tableData[table] ?? null, error: null }),
       order:  () => Promise.resolve({ data: tableData[table] ?? null, error: null }),
       upsert: (payload, opts) => {
@@ -61,6 +64,8 @@ beforeEach(() => {
   for (const k of Object.keys(tableData)) delete tableData[k];
   captured.upserts = {};
   captured.inserts = {};
+  captured.updates = {};
+  captured.updateError = null;
 });
 
 // ─── 讀取方向：loadFromRemote → localStorage cache ───────────────────────────
@@ -126,6 +131,45 @@ describe('loadFromRemote — profile row → user object', () => {
       focusDefaultMinutes: null,
       focusSoundEnabled: false,      // ?? — false 必須保留
     });
+  });
+});
+
+describe('loadFromRemote — leaderboard opt-out left by v1.41.17 or earlier (PRO-014E2)', () => {
+  const PENDING_KEY = 'yoyo_profileSyncPending:uid-1';
+  const seedPending = snapshot => localStorage.setItem(PENDING_KEY, JSON.stringify(snapshot));
+
+  it('an unmarked snapshot that turned the leaderboard off is honoured before the pull', async () => {
+    seedPending({ ownerId: 'uid-1', value: { id: 'uid-1', name: 'A', isPublic: false } });
+    tableData.profiles = { user_id: 'uid-1', name: 'A', is_public: false };
+    await db.loadFromRemote('uid-1');
+    expect(captured.upserts.profiles[0].payload).not.toHaveProperty('is_public');
+    expect(captured.updates.profiles).toEqual([{ is_public: false }]);
+    expect(localStorage.getItem(PENDING_KEY)).toBeNull();
+  });
+
+  it('an unmarked snapshot never turns the leaderboard on', async () => {
+    seedPending({ ownerId: 'uid-1', value: { id: 'uid-1', name: 'A', isPublic: true } });
+    await db.loadFromRemote('uid-1');
+    expect(captured.updates.profiles).toBeUndefined();
+  });
+
+  it('a snapshot of this version carries nothing for the leaderboard', async () => {
+    seedPending({ ownerId: 'uid-1', value: { id: 'uid-1', name: 'A', isPublic: false }, fields: 'pro014e2' });
+    await db.loadFromRemote('uid-1');
+    expect(captured.updates.profiles).toBeUndefined();
+  });
+
+  it('keeps the snapshot and stops the pull when the opt-out cannot be written', async () => {
+    seedPending({ ownerId: 'uid-1', value: { id: 'uid-1', name: 'A', isPublic: false } });
+    captured.updateError = { message: 'offline' };
+    await expect(db.loadFromRemote('uid-1')).rejects.toEqual({ message: 'offline' });
+    expect(JSON.parse(localStorage.getItem(PENDING_KEY)).value.isPublic).toBe(false);
+  });
+
+  it('marks the snapshots it writes', () => {
+    storage.saveUser({ id: 'uid-1', name: 'A', isPublic: false });
+    // Read before the push settles (it clears the snapshot once it lands).
+    expect(JSON.parse(localStorage.getItem(PENDING_KEY)).fields).toBe('pro014e2');
   });
 });
 

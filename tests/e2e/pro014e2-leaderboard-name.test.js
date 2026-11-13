@@ -92,9 +92,9 @@ test.describe('PRO-014E2 leaderboard public name', () => {
     expect(profileWrites).toEqual([]);
 
     // The name rule answers before the server does.
-    await input.fill(' Night Owl');
+    await input.fill('N'.repeat(21));
     await page.click('#lb-name-save');
-    await expect(page.locator('#lb-name-error')).toContainText('開頭和結尾');
+    await expect(page.locator('#lb-name-error')).toContainText('最多 20 個字');
     expect(profileWrites).toEqual([]);
 
     await input.fill('Night Owl');

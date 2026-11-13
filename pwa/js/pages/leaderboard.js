@@ -5,6 +5,7 @@ import { getLevelInfo } from '../leveling.js';
 import { effectiveToday, escHtml } from '../utils.js';
 import {
   fetchLeaderboardRows,
+  leaderboardCacheGeneration,
   readLeaderboardCacheV2,
   writeLeaderboardCacheV2,
 } from '../leaderboardPublic.js';
@@ -56,8 +57,11 @@ export async function renderLeaderboard(container) {
   const refreshHour = state.user?.newDayHour ?? 5;
   const refreshDate = effectiveToday(refreshHour);
   // PRO-014E2: its own cache key. Rows of leaderboard_view (user_id, name,
-  // created_at) are never mixed with get_leaderboard() rows.
-  const cache = readLeaderboardCacheV2();
+  // created_at) are never mixed with get_leaderboard() rows, and the rows of
+  // one account (is_me) are never shown to another.
+  const ownerId = state.user?.id ?? null;
+  const generation = leaderboardCacheGeneration();
+  const cache = readLeaderboardCacheV2(ownerId);
   const cachedRows = Array.isArray(cache?.rows) ? cache.rows : null;
   const isFresh = cachedRows && cache.refreshDate === refreshDate;
 
@@ -84,9 +88,8 @@ export async function renderLeaderboard(container) {
   let rows;
   try {
     rows = await _withAvatarUrls(await fetchLeaderboardRows());
-    writeLeaderboardCacheV2(rows, new Date().toISOString(), refreshDate);
   } catch {
-    if (!isCurrentLeaderboardRender(container)) return;
+    if (!isCurrentLeaderboardRender(container) || state.user?.id !== ownerId) return;
     if (cachedRows) {
       _renderRows(container, cachedRows, cache.refreshedAt, true, refreshHour);
       return;
@@ -100,6 +103,14 @@ export async function renderLeaderboard(container) {
     return;
   }
 
+  // Signed out or switched accounts while the request was out: these rows
+  // (is_me) answer the previous account. Neither cache nor show them.
+  if (state.user?.id !== ownerId) return;
+  // A name or opt-in saved while the request was out cleared the cache; these
+  // rows predate it, so show them but leave the next visit to ask again.
+  if (generation === leaderboardCacheGeneration()) {
+    writeLeaderboardCacheV2(ownerId, rows, new Date().toISOString(), refreshDate);
+  }
   if (!isCurrentLeaderboardRender(container)) return;
   _renderRows(container, rows, new Date().toISOString(), false, refreshHour);
 }

@@ -74,6 +74,15 @@ function createPendingSnapshot(ownerId, value) {
   };
 }
 
+// PRO-014E2: profile snapshots written since is_public stopped riding along
+// with the profile push. A snapshot without the marker comes from v1.41.17 or
+// earlier, whose push still carried is_public (see loadFromRemote).
+const PROFILE_SNAPSHOT_FIELDS = 'pro014e2';
+
+function createProfileSnapshot(ownerId, user) {
+  return { ...createPendingSnapshot(ownerId, user), fields: PROFILE_SNAPSHOT_FIELDS };
+}
+
 function clearPendingSnapshot(key, expected) {
   const current = get(key);
   if (JSON.stringify(current) === JSON.stringify(expected)) remove(key);
@@ -301,7 +310,7 @@ export function recoverPendingSessionDeletions(ownerId, recoveredAt = new Date()
     if (user) {
       set(
         ownerSyncPendingKey(PROFILE_SYNC_PENDING_KEY, ownerId),
-        createPendingSnapshot(ownerId, user),
+        createProfileSnapshot(ownerId, user),
       );
     }
     set(
@@ -571,6 +580,18 @@ export const db = {
       try {
         const synced = await this.upsertProfile(pendingProfileValue, userId);
         if (!synced) throw new Error('No authenticated profile sync session');
+        // PRO-014E2: a snapshot left by v1.41.17 or earlier may hold a
+        // leaderboard opt-out made offline; that version pushed it with the
+        // profile, this one no longer does. Honour the opt-out (never an
+        // opt-in) before the pull below reads is_public back.
+        if (pendingProfile?.ownerId === userId
+          && pendingProfile.fields !== PROFILE_SNAPSHOT_FIELDS
+          && pendingProfile.value?.isPublic === false) {
+          const { error } = await supabase.from('profiles')
+            .update({ is_public: false })
+            .eq('user_id', userId);
+          if (error) throw error;
+        }
         if (pendingProfile?.ownerId === userId) {
           clearPendingSnapshot(pendingProfileKey, pendingProfile);
         }
@@ -1011,7 +1032,7 @@ export const storage = {
     const saved = set('user', u);
     const ownerId = u?.id;
     if (!ownerId) return saved;
-    const pending = createPendingSnapshot(ownerId, u);
+    const pending = createProfileSnapshot(ownerId, u);
     const pendingKey = ownerSyncPendingKey(PROFILE_SYNC_PENDING_KEY, ownerId);
     set(pendingKey, pending);
     db.upsertProfile(u, ownerId)
@@ -1027,7 +1048,7 @@ export const storage = {
   },
   saveUserAndSync: async (u) => {
     set('user', u);
-    const pending = createPendingSnapshot(u?.id, u);
+    const pending = createProfileSnapshot(u?.id, u);
     const pendingKey = ownerSyncPendingKey(PROFILE_SYNC_PENDING_KEY, u?.id);
     if (pendingKey) set(pendingKey, pending);
     const synced = await db.upsertProfile(u, u?.id);

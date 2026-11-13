@@ -275,20 +275,21 @@
   - 完成（2026-11-13，#250）：
     - `pwa/js/leaderboardPublic.js`（新模組；INFRA-105：既有的 SHELL 模組只 import 新模組的 export）：
       - 公開名稱的規則 `displayNameProblem()` 與 018 的 `profiles_display_name_check` 相同：1–20 個 code point、27 段任何位置都不行的字元、開頭不能是空白／variation selector／tag、結尾的空白後面只接 variation selector／tag 也不行。
-      - `fetchLeaderboardRows()` 呼叫 `get_leaderboard()`；自己的快取 `yoyo_leaderboardCacheV2`（寫入時刪掉舊的 `yoyo_leaderboardCache`，兩種列的格式不會混用）。
+      - `fetchLeaderboardRows()` 呼叫 `get_leaderboard()`；自己的快取 `yoyo_leaderboardCacheV2`（寫入時刪掉舊的 `yoyo_leaderboardCache`，兩種列的格式不會混用）。快取記下是哪個帳號的（`is_me` 因人而異），只給同一個帳號讀；請求進行中換了帳號，或設定頁存了名稱（清快取時遞增的 generation），回來的列都不寫入快取。
       - `savePublicSettings()`：`update(...).eq('user_id', 本人).select('display_name, is_public').single()`，等伺服器回應；名稱不符規則時伺服器回 23514。
     - 排行榜：改用 RPC；「你」只看 `is_me`；名稱用 `display_name`；成長率與「新使用者」用 `joined_on`；頭像只簽 `avatar_path`（NULL 顯示首字，首字以 code point 取，emoji 不會被切半）；只截斷名稱文字、「你」標記保留，堆疊的組合符號裁在一行內。
     - 設定頁：
       - 訪客只顯示「登入帳號後才能加入排行榜」。
-      - 開啟時沒有公開名稱 → 先出現輸入框（預設空白，不帶入帳號名稱），按「儲存並加入排行榜」時一次寫入名稱與開啟；已有名稱 → 直接開啟。
+      - 開啟時沒有公開名稱 → 先出現輸入框（預設空白，不帶入帳號名稱），按「儲存並加入排行榜」時一次寫入名稱與開啟；已有名稱 → 直接開啟。名稱前後的半形空白（手機鍵盤選字後常會補上）直接去掉；再點一次開關不會清掉打到一半的名稱；Enter 不會在選字時（含 Safari 的 keyCode 229）送出；錯誤訊息以 `aria-describedby`／`aria-invalid` 連到輸入框。
       - 關閉保留名稱；「修改名稱」只改名稱；公開但沒有名稱（E2 之前用舊版開啟的人）會提示並可設定。
       - 寫入期間停用整張卡片；失敗時開關恢復原狀並說明原因（名稱不符規則／網路）；回應回來時已切換帳號則丟棄；成功後只更新本機的 user（`saveUserLocal`）並清掉排行榜快取。離開設定頁再回來時輸入框重新開始。
-    - `storage.js`：`is_public` 與新的 `display_name` 在 `PROFILE_FIELDS` 只讀不寫（整份 profile 的上傳不再帶這兩欄，其他裝置的舊資料不會把設定蓋回去）；移除不再使用的 `getLeaderboardCache`／`saveLeaderboardCache`；登出時清掉兩個排行榜快取。
+    - `storage.js`：`is_public` 與新的 `display_name` 在 `PROFILE_FIELDS` 只讀不寫（整份 profile 的上傳不再帶這兩欄，其他裝置的舊資料不會把設定蓋回去）；移除不再使用的 `getLeaderboardCache`／`saveLeaderboardCache`；登出時清掉兩個排行榜快取。這一版寫的 profile 待同步快照帶 `fields: 'pro014e2'`；沒有這個標記的快照來自 v1.41.17 以前（那一版離線關掉排行榜時，關閉是跟著 profile 上傳的），`loadFromRemote` 上傳它之後，若它的 `isPublic` 是 false，另外送 `update({ is_public: false })`（只照做關閉、不照做開啟；失敗時保留快照、中止這次讀取）。
     - 測試：
       - `tests/unit/leaderboardPublic.test.js`：從 018 讀出字元範圍與長度上限比對；可以與不可以的名稱（含 BMP 以外的字元、英格蘭旗、各類看不見的字元）；RPC、快取、寫入。
       - 排行榜、設定頁、storage 對映、整合測試與 `leaderboardViewGrantsSql` 更新（client 不再讀 view）。
       - 新的 e2e `tests/e2e/pro014e2-leaderboard-name.test.js`：真的 Supabase client、攔截 REST；開啟 → 不合規則的名稱被擋 → 輸入名稱 → 只有一次 PATCH（`display_name` 與 `is_public`，限本人）→ 排行榜顯示公開名稱、標記「你」、畫面上沒有帳號名稱。
-    - 驗證：單元與整合測試 1706 個、e2e 100 個全部通過（另 1 個原本就略過），lint 通過。名稱規則以本機 PostgreSQL 的 018 CHECK 對 55,224 個隨機名稱（集中在每段字元範圍的兩側）比對，0 個不同；把結尾空白的規則改壞時有 520 個不同，把兩段字元範圍改壞時單元測試會失敗。截圖確認設定頁三種狀態與排行榜（含 20 個全形字與堆疊組合符號的名稱）。
+    - 驗證：單元與整合測試 1720 個、e2e 100 個全部通過（另 1 個原本就略過），lint 通過；審查修正的 7 種改壞情況都會讓測試失敗。名稱規則以本機 PostgreSQL 的 018 CHECK 對 55,224 個隨機名稱（集中在每段字元範圍的兩側）比對，0 個不同；把結尾空白的規則改壞時有 520 個不同，把兩段字元範圍改壞時單元測試會失敗。截圖確認設定頁三種狀態與排行榜（含 20 個全形字與堆疊組合符號的名稱）。
+    - 審查（#250，89f4848）：Codex P2——快取沒有綁帳號，A 登出時還在進行的請求會在清快取之後寫回，同一天 B 開排行榜會看到 A 的列標成「你」→ 快取記下帳號、換帳號後的回應不寫入也不顯示。獨立審查：沒有 P1；P2 同上，另加「設定頁存名稱之後，之前送出的請求把舊名稱寫回快取」→ generation；P2：v1.41.17 離線關掉排行榜、還沒上傳就更新到這一版，關閉會遺失（新版上傳不帶 `is_public`，接著讀回 true）→ 上述的舊快照處理。P3 已改：Safari 選字的 Enter、前後空白、「不能有」的訊息（全形空白、組合的 emoji）、再點一次開關保留草稿、aria。沒改（記錄）：NUL 或單獨的 surrogate（打不出來）會被伺服器拒絕並顯示網路錯誤；頭像首字以 code point 取（以組合符號開頭的名稱，首字會是單獨的符號，只影響外觀）；開機的讀取若比設定頁的儲存晚回來，開關會短暫顯示舊狀態，下一次讀取就恢復。
 
 - [x] **2026-11-13 production 套用（BUG-119A、HW-112B、PRO-014EA、PRO-017RA）**：擁有者 2026-11-13 回覆「可以送了 依序即可」，agent 以 Supabase MCP 依序執行，每一項都是只讀檢查 → production 乾跑（完整的資料庫測試，單一 transaction、結尾 rollback；四項都另以只讀查詢確認沒有留下任何東西）→ 套用（`begin; set local lock_timeout = '5s';` … `commit;`，MCP 的確認即擁有者核准）→ 事後檢查（只讀的定義、權限、md5 與可見性檢查；需要合成帳號的部分在 transaction 裡做、結尾 rollback；019 套用後另跑完整的 pro014l）。
   - **BUG-119A（017）**：套用前 policy 仍是 010（`foldername(p.name)`）、`is_public_leaderboard_avatar` 不存在；公開使用者 2 位、有頭像且檔案存在 1 位。乾跑 bug119 測試全部通過。套用後：policy 為 `bucket avatars AND is_public_leaderboard_avatar(name)`，函式的 `pg_get_functiondef` md5 與本機以檔案套用的相同（`d7dacbf3…`），只給 authenticated（加上 postgres、service_role）；以合成帳號確認旁人只看得到公開使用者現在的頭像，已登入的旁人看得到那 1 位真的公開使用者的頭像，anon 看不到。

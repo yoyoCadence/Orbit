@@ -34,6 +34,7 @@ import {
   LEADERBOARD_CACHE_V2_KEY,
   clearLeaderboardCacheV2,
   displayNameProblem,
+  leaderboardCacheGeneration,
   fetchLeaderboardRows,
   isNameRuleViolation,
   readLeaderboardCacheV2,
@@ -216,36 +217,53 @@ describe('fetchLeaderboardRows', () => {
 describe('leaderboard cache V2', () => {
   beforeEach(() => localStorage.clear());
 
-  it('writes under its own key and drops the leaderboard_view cache', () => {
+  it('writes under its own key, with its owner, and drops the leaderboard_view cache', () => {
     localStorage.setItem('yoyo_leaderboardCache', '{"rows":[]}');
-    writeLeaderboardCacheV2([{ display_name: 'Bob' }], '2026-11-13T00:00:00Z', '2026-11-13');
+    writeLeaderboardCacheV2('me', [{ display_name: 'Bob', is_me: true }], '2026-11-13T00:00:00Z', '2026-11-13');
     expect(LEADERBOARD_CACHE_V2_KEY).toBe('yoyo_leaderboardCacheV2');
     expect(localStorage.getItem('yoyo_leaderboardCache')).toBeNull();
-    expect(readLeaderboardCacheV2()).toEqual({
-      rows: [{ display_name: 'Bob' }],
+    expect(readLeaderboardCacheV2('me')).toEqual({
+      ownerId: 'me',
+      rows: [{ display_name: 'Bob', is_me: true }],
       refreshedAt: '2026-11-13T00:00:00Z',
       refreshDate: '2026-11-13',
     });
   });
 
-  it('reads nothing from a missing, unreadable or malformed cache', () => {
-    expect(readLeaderboardCacheV2()).toBeNull();
-    localStorage.setItem(LEADERBOARD_CACHE_V2_KEY, '{not json');
-    expect(readLeaderboardCacheV2()).toBeNull();
-    localStorage.setItem(LEADERBOARD_CACHE_V2_KEY, '{"rows":"nope"}');
-    expect(readLeaderboardCacheV2()).toBeNull();
+  it('is read only by the account that wrote it (is_me is per caller)', () => {
+    writeLeaderboardCacheV2('me', [{ display_name: 'Bob', is_me: true }], null, '2026-11-13');
+    expect(readLeaderboardCacheV2('someone-else')).toBeNull();
+    expect(readLeaderboardCacheV2(null)).toBeNull();
+    expect(readLeaderboardCacheV2(undefined)).toBeNull();
   });
 
-  it('clears', () => {
-    writeLeaderboardCacheV2([], null, '2026-11-13');
+  it('writes nothing without an owner', () => {
+    writeLeaderboardCacheV2(null, [{ display_name: 'Bob' }], null, '2026-11-13');
+    expect(localStorage.getItem(LEADERBOARD_CACHE_V2_KEY)).toBeNull();
+  });
+
+  it('reads nothing from a missing, unreadable, malformed or ownerless cache', () => {
+    expect(readLeaderboardCacheV2('me')).toBeNull();
+    localStorage.setItem(LEADERBOARD_CACHE_V2_KEY, '{not json');
+    expect(readLeaderboardCacheV2('me')).toBeNull();
+    localStorage.setItem(LEADERBOARD_CACHE_V2_KEY, '{"ownerId":"me","rows":"nope"}');
+    expect(readLeaderboardCacheV2('me')).toBeNull();
+    localStorage.setItem(LEADERBOARD_CACHE_V2_KEY, '{"rows":[]}');
+    expect(readLeaderboardCacheV2('me')).toBeNull();
+  });
+
+  it('clears, and moves the generation on so requests already out are not cached', () => {
+    writeLeaderboardCacheV2('me', [], null, '2026-11-13');
+    const before = leaderboardCacheGeneration();
     clearLeaderboardCacheV2();
     expect(localStorage.getItem(LEADERBOARD_CACHE_V2_KEY)).toBeNull();
+    expect(leaderboardCacheGeneration()).toBe(before + 1);
   });
 
   it('survives storage that throws', () => {
     const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('full'); });
     try {
-      expect(() => writeLeaderboardCacheV2([], null, '2026-11-13')).not.toThrow();
+      expect(() => writeLeaderboardCacheV2('me', [], null, '2026-11-13')).not.toThrow();
     } finally {
       setItem.mockRestore();
     }

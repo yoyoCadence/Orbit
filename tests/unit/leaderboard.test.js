@@ -50,6 +50,7 @@ import {
   isNewUser,
   renderLeaderboard,
 } from '../../pwa/js/pages/leaderboard.js';
+import { clearLeaderboardCacheV2 } from '../../pwa/js/leaderboardPublic.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -203,6 +204,7 @@ describe('renderLeaderboard — guest (INFRA-110)', () => {
 
   it('asks a guest to sign in, without calling the RPC or showing a cached list', async () => {
     localStorage.setItem(CACHE_KEY, JSON.stringify({
+      ownerId: 'me',
       rows: [makeRow({ display_name: 'Cached Bob' })],
       refreshedAt: new Date().toISOString(),
       refreshDate: effectiveDateForTest(),
@@ -218,6 +220,7 @@ describe('renderLeaderboard — guest (INFRA-110)', () => {
     // the stored session still says the account is signed in.
     signIn();
     localStorage.setItem(CACHE_KEY, JSON.stringify({
+      ownerId: 'me',
       rows: [makeRow({ display_name: 'Cached Bob' })],
       refreshedAt: new Date().toISOString(),
       refreshDate: effectiveDateForTest(),
@@ -299,6 +302,7 @@ describe('renderLeaderboard — with data', () => {
     const rows = [makeRow({ display_name: 'Cached Bob', week_xp: 200 })];
     const today = effectiveDateForTest();
     localStorage.setItem(CACHE_KEY, JSON.stringify({
+      ownerId: 'me',
       rows,
       refreshedAt: new Date().toISOString(),
       refreshDate: today,
@@ -356,6 +360,7 @@ describe('renderLeaderboard — with data', () => {
   it('falls back to stale cache when Supabase refresh fails', async () => {
     const rows = [makeRow({ display_name: 'Stale Bob', week_xp: 200 })];
     localStorage.setItem(CACHE_KEY, JSON.stringify({
+      ownerId: 'me',
       rows,
       refreshedAt: new Date(Date.now() - 86400000).toISOString(),
       refreshDate: '2000-01-01',
@@ -505,8 +510,55 @@ describe('renderLeaderboard — get_leaderboard() rows (PRO-014E2)', () => {
     expect(container.innerHTML).not.toContain('Account Name');
     expect(localStorage.getItem('yoyo_leaderboardCache')).toBeNull();
     const cache = JSON.parse(localStorage.getItem(CACHE_KEY));
+    expect(cache.ownerId).toBe('me');
     expect(cache.refreshDate).toBe(effectiveDateForTest());
     expect(cache.rows.map(r => r.display_name)).toEqual(['Public Bob']);
+  });
+
+  it('never shows another account\'s cached rows, even from today (is_me is per caller)', async () => {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({
+      ownerId: 'someone-else',
+      rows: [makeRow({ display_name: 'Their Row', is_me: true })],
+      refreshedAt: new Date().toISOString(),
+      refreshDate: effectiveDateForTest(),
+    }));
+    mockRpc.mockResolvedValueOnce({ data: [makeRow({ display_name: 'Fresh Bob' })], error: null });
+
+    await renderLeaderboard(container);
+
+    expect(mockRpc).toHaveBeenCalledWith('get_leaderboard');
+    expect(container.innerHTML).not.toContain('Their Row');
+    expect(container.querySelector('.lb-row-me')).toBeNull();
+    expect(JSON.parse(localStorage.getItem(CACHE_KEY)).ownerId).toBe('me');
+  });
+
+  it('drops an answer that arrives after the account changed: not cached, not shown', async () => {
+    const pending = deferred();
+    mockRpc.mockReturnValueOnce(pending.promise);
+    container.dataset.route = 'leaderboard';
+
+    const renderPromise = renderLeaderboard(container);
+    // Signed out (clearAll ran) and another account signed in meanwhile.
+    mockState.user = { id: 'other', name: 'Other', mode: 'normal' };
+    pending.resolve({ data: [makeRow({ display_name: 'Previous Me', is_me: true })], error: null });
+    await renderPromise;
+
+    expect(localStorage.getItem(CACHE_KEY)).toBeNull();
+    expect(container.innerHTML).not.toContain('Previous Me');
+  });
+
+  it('shows, but does not cache, rows from a request that a saved name overtook', async () => {
+    const pending = deferred();
+    mockRpc.mockReturnValueOnce(pending.promise);
+    container.dataset.route = 'leaderboard';
+
+    const renderPromise = renderLeaderboard(container);
+    clearLeaderboardCacheV2(); // settings saved a new name meanwhile
+    pending.resolve({ data: [makeRow({ display_name: 'Old Name', is_me: true })], error: null });
+    await renderPromise;
+
+    expect(container.innerHTML).toContain('Old Name');
+    expect(localStorage.getItem(CACHE_KEY)).toBeNull();
   });
 
   it('never reads a table or view', async () => {
