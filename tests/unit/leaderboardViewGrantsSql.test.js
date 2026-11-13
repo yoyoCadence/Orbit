@@ -22,12 +22,18 @@ describe('INFRA-110 leaderboard_view grants migration', () => {
     for (const name of ['005_leaderboard.sql', '010_leaderboard_avatars.sql']) expect(names).toContain(name);
   });
 
-  it('matches the columns the client reads (the view definition stays in 010)', () => {
+  it('keeps the columns older clients read (the view definition stays in 010)', () => {
     const view = read('010_leaderboard_avatars.sql');
     for (const column of ['user_id', 'name', 'total_xp', 'streak_days', 'week_xp', 'avatar_url']) {
       expect(view, column).toMatch(new RegExp(`\\b${column}\\b`));
     }
-    const client = readFileSync(new URL('../../pwa/js/pages/leaderboard.js', import.meta.url), 'utf8');
-    expect(client).toContain("supabase.from('leaderboard_view')");
+  });
+
+  it('is no longer read by this client: PRO-014E2 reads get_leaderboard() (018)', () => {
+    const client = readFileSync(new URL('../../pwa/js/pages/leaderboard.js', import.meta.url), 'utf8')
+      + readFileSync(new URL('../../pwa/js/leaderboardPublic.js', import.meta.url), 'utf8');
+    expect(client).not.toContain("from('leaderboard_view')");
+    expect(client).toContain("supabase.rpc('get_leaderboard')");
+    expect(read('018_leaderboard_display_name.sql')).toContain('CREATE OR REPLACE FUNCTION public.get_leaderboard()');
   });
 });

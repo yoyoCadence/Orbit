@@ -28,6 +28,7 @@ const mockStorage = vi.hoisted(() => ({
   getUiSkin:             vi.fn(() => 'classic'),
   getBgImage:            vi.fn(() => null),
   saveUser:              vi.fn(),
+  saveUserLocal:         vi.fn(),
   saveTasks:             vi.fn(),
   saveTheme:             vi.fn(),
   saveUiSkin:            vi.fn(),
@@ -96,6 +97,15 @@ vi.mock('../../pwa/js/utils.js', async (importOriginal) => ({
 vi.mock('../../pwa/js/leveling.js', () => ({
   getLevelInfo: vi.fn(() => ({ level: 1, percent: 0, currentXP: 0, needed: 120 })),
   getTitle:     vi.fn(() => '初心者'),
+}));
+// PRO-014E2: the name rule and messages are real; only the write and the cache
+// clear are stubbed.
+const mockSavePublicSettings = vi.hoisted(() => vi.fn());
+const mockClearLeaderboardCache = vi.hoisted(() => vi.fn());
+vi.mock('../../pwa/js/leaderboardPublic.js', async (importOriginal) => ({
+  ...(await importOriginal()),
+  savePublicSettings: mockSavePublicSettings,
+  clearLeaderboardCacheV2: mockClearLeaderboardCache,
 }));
 
 import { renderSettings, THEMES, THEMES_NEW, THEMES_CREATIVE } from '../../pwa/js/pages/settings.js';
@@ -350,23 +360,269 @@ describe('renderSettings: task list', () => {
   });
 });
 
-describe('renderSettings: leaderboard opt-in', () => {
+describe('renderSettings: leaderboard opt-in and public name (PRO-014E2)', () => {
+  function deferred() {
+    let resolve;
+    let reject;
+    const promise = new Promise((res, rej) => { resolve = res; reject = rej; });
+    return { promise, resolve, reject };
+  }
+  const flush = () => new Promise(resolve => setTimeout(resolve, 0));
+  const toggleTo = (c, checked) => {
+    const toggle = c.querySelector('#public-toggle');
+    toggle.checked = checked;
+    toggle.dispatchEvent(new Event('change'));
+  };
+  const typeName = (c, value) => {
+    const input = c.querySelector('#lb-name-input');
+    input.value = value;
+    input.dispatchEvent(new Event('input'));
+  };
+
+  afterEach(() => {
+    presence.signedIn = true;
+  });
+
   it('shows opt-in toggle unchecked by default', () => {
     const c = makeContainer();
     renderSettings(c);
     const toggle = c.querySelector('#public-toggle');
     expect(toggle).not.toBeNull();
     expect(toggle.checked).toBe(false);
+    expect(c.querySelector('#lb-settings-desc').textContent).toContain('目前不公開');
   });
 
-  it('toggling opt-in updates state.user.isPublic and calls saveUser', () => {
+  it('asks a guest to sign in instead of offering the toggle', () => {
+    presence.signedIn = false;
     const c = makeContainer();
     renderSettings(c);
-    const toggle = c.querySelector('#public-toggle');
-    toggle.checked = true;
-    toggle.dispatchEvent(new Event('change'));
+    expect(c.querySelector('#public-toggle')).toBeNull();
+    expect(c.querySelector('#lb-settings-guest').textContent).toContain('登入帳號後才能加入排行榜');
+  });
+
+  it('turning on without a public name asks for one first, blank, and saves nothing yet', () => {
+    const c = makeContainer();
+    renderSettings(c);
+    toggleTo(c, true);
+    expect(mockSavePublicSettings).not.toHaveBeenCalled();
+    expect(c.querySelector('#public-toggle').checked).toBe(false);
+    const input = c.querySelector('#lb-name-input');
+    expect(input).not.toBeNull();
+    // Never the account name: that may be a real name.
+    expect(input.value).toBe('');
+    expect(document.activeElement).toBe(input);
+    expect(mockState.user.isPublic).toBe(false);
+  });
+
+  it.each([
+    ['', '請輸入公開名稱'],
+    ['   ', '請輸入公開名稱'],
+    [`${String.fromCodePoint(0xfe0f)}Owl`, '開頭和結尾不能是空白'],
+    [`Owl ${String.fromCodePoint(0xfe0f)}`, '開頭和結尾不能是空白'],
+    ['a'.repeat(21), '最多 20 個字'],
+    [`Owl${String.fromCodePoint(0x200b)}`, '看不見的字元'],
+  ])('refuses %j before asking the server', (name, message) => {
+    const c = makeContainer();
+    renderSettings(c);
+    toggleTo(c, true);
+    typeName(c, name);
+    c.querySelector('#lb-name-save').click();
+    expect(mockSavePublicSettings).not.toHaveBeenCalled();
+    expect(c.querySelector('#lb-name-error').textContent).toContain(message);
+    const input = c.querySelector('#lb-name-input');
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(input.getAttribute('aria-describedby')).toBe('lb-name-error');
+    typeName(c, 'Owl');
+    expect(input.getAttribute('aria-invalid')).toBe('false');
+    expect(c.querySelector('#lb-name-error').textContent).toBe('');
+  });
+
+  it('drops spaces a phone keyboard left at either end instead of refusing', async () => {
+    mockSavePublicSettings.mockResolvedValueOnce({ displayName: 'Night Owl', isPublic: true });
+    const c = makeContainer();
+    renderSettings(c);
+    toggleTo(c, true);
+    typeName(c, '  Night Owl ');
+    c.querySelector('#lb-name-save').click();
+    expect(mockSavePublicSettings).toHaveBeenCalledWith('user-1', { displayName: 'Night Owl', isPublic: true });
+    await flush();
+  });
+
+  it('a second tap on the toggle keeps what was typed', () => {
+    const c = makeContainer();
+    renderSettings(c);
+    toggleTo(c, true);
+    typeName(c, 'Half typed');
+    toggleTo(c, true);
+    expect(c.querySelector('#lb-name-input').value).toBe('Half typed');
+  });
+
+  it('saves the name and joins in one write, then updates only the local copy', async () => {
+    mockSavePublicSettings.mockResolvedValueOnce({ displayName: 'Night Owl', isPublic: true });
+    const c = makeContainer();
+    renderSettings(c);
+    toggleTo(c, true);
+    typeName(c, 'Night Owl');
+    c.querySelector('#lb-name-save').click();
+    expect(mockSavePublicSettings).toHaveBeenCalledWith('user-1', { displayName: 'Night Owl', isPublic: true });
+    await flush();
     expect(mockState.user.isPublic).toBe(true);
-    expect(mockStorage.saveUser).toHaveBeenCalled();
+    expect(mockState.user.displayName).toBe('Night Owl');
+    expect(mockStorage.saveUserLocal).toHaveBeenCalledWith(mockState.user);
+    // The whole-profile push no longer carries these fields.
+    expect(mockStorage.saveUser).not.toHaveBeenCalled();
+    expect(mockClearLeaderboardCache).toHaveBeenCalled();
+    expect(c.querySelector('#lb-name-editor')).toBeNull();
+    expect(c.querySelector('#public-toggle').checked).toBe(true);
+    expect(c.querySelector('#lb-current-name').textContent).toBe('Night Owl');
+  });
+
+  it('saves on Enter, but not on the Enter that ends an IME composition', async () => {
+    mockSavePublicSettings.mockResolvedValueOnce({ displayName: '夜貓', isPublic: true });
+    const c = makeContainer();
+    renderSettings(c);
+    toggleTo(c, true);
+    typeName(c, '夜貓');
+    const input = c.querySelector('#lb-name-input');
+    input.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', isComposing: true }));
+    expect(mockSavePublicSettings).not.toHaveBeenCalled();
+    // Safari: the Enter that picks a candidate has isComposing false, keyCode 229.
+    input.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', keyCode: 229 }));
+    expect(mockSavePublicSettings).not.toHaveBeenCalled();
+    input.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter' }));
+    expect(mockSavePublicSettings).toHaveBeenCalledWith('user-1', { displayName: '夜貓', isPublic: true });
+    await flush();
+  });
+
+  it('joins with the name already on the server, without asking again', async () => {
+    mockState.user = { ...mockState.user, displayName: 'Night Owl' };
+    mockSavePublicSettings.mockResolvedValueOnce({ displayName: 'Night Owl', isPublic: true });
+    const c = makeContainer();
+    renderSettings(c);
+    toggleTo(c, true);
+    expect(c.querySelector('#lb-name-editor')).toBeNull();
+    expect(mockSavePublicSettings).toHaveBeenCalledWith('user-1', { isPublic: true });
+    await flush();
+    expect(mockState.user.isPublic).toBe(true);
+  });
+
+  it('leaving keeps the public name for next time', async () => {
+    mockState.user = { ...mockState.user, isPublic: true, displayName: 'Night Owl' };
+    mockSavePublicSettings.mockResolvedValueOnce({ displayName: 'Night Owl', isPublic: false });
+    const c = makeContainer();
+    renderSettings(c);
+    toggleTo(c, false);
+    expect(mockSavePublicSettings).toHaveBeenCalledWith('user-1', { isPublic: false });
+    await flush();
+    expect(mockState.user.isPublic).toBe(false);
+    expect(mockState.user.displayName).toBe('Night Owl');
+    expect(c.querySelector('#public-toggle').checked).toBe(false);
+  });
+
+  it('renames without touching is_public', async () => {
+    mockState.user = { ...mockState.user, isPublic: true, displayName: 'Night Owl' };
+    mockSavePublicSettings.mockResolvedValueOnce({ displayName: 'Early Bird', isPublic: true });
+    const c = makeContainer();
+    renderSettings(c);
+    c.querySelector('#lb-name-edit').click();
+    expect(c.querySelector('#lb-name-input').value).toBe('Night Owl');
+    typeName(c, 'Early Bird');
+    c.querySelector('#lb-name-save').click();
+    expect(mockSavePublicSettings).toHaveBeenCalledWith('user-1', { displayName: 'Early Bird' });
+    await flush();
+    expect(c.querySelector('#lb-current-name').textContent).toBe('Early Bird');
+  });
+
+  it('offers to set a name when public without one (set by an older version)', () => {
+    mockState.user = { ...mockState.user, isPublic: true, displayName: null };
+    const c = makeContainer();
+    renderSettings(c);
+    expect(c.querySelector('#lb-settings-desc').textContent).toContain('還沒有公開名稱');
+    c.querySelector('#lb-name-edit').click();
+    expect(c.querySelector('#lb-name-save').textContent).toContain('加入排行榜');
+  });
+
+  it('shows the server\'s name-rule refusal and changes nothing locally', async () => {
+    mockSavePublicSettings.mockRejectedValueOnce({ code: '23514', message: 'violates check constraint' });
+    const c = makeContainer();
+    renderSettings(c);
+    toggleTo(c, true);
+    typeName(c, 'Night Owl');
+    c.querySelector('#lb-name-save').click();
+    await flush();
+    expect(mockState.user.isPublic).toBe(false);
+    expect(mockState.user.displayName).toBeUndefined();
+    expect(mockStorage.saveUserLocal).not.toHaveBeenCalled();
+    expect(c.querySelector('#lb-name-input').value).toBe('Night Owl');
+    expect(c.querySelector('#lb-name-error').textContent).toContain('不符合規則');
+    expect(c.querySelector('#public-toggle').checked).toBe(false);
+  });
+
+  it('puts the toggle back and says so when the network fails', async () => {
+    mockState.user = { ...mockState.user, displayName: 'Night Owl' };
+    mockSavePublicSettings.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    const c = makeContainer();
+    renderSettings(c);
+    toggleTo(c, true);
+    await flush();
+    expect(mockState.user.isPublic).toBe(false);
+    expect(c.querySelector('#public-toggle').checked).toBe(false);
+    expect(c.querySelector('#lb-settings-error').textContent).toContain('請確認網路連線');
+  });
+
+  it('disables the card while a write is out and ignores a second change', async () => {
+    mockState.user = { ...mockState.user, displayName: 'Night Owl' };
+    const pending = deferred();
+    mockSavePublicSettings.mockReturnValueOnce(pending.promise);
+    const c = makeContainer();
+    renderSettings(c);
+    toggleTo(c, true);
+    const toggle = c.querySelector('#public-toggle');
+    expect(toggle.disabled).toBe(true);
+    toggle.checked = false;
+    toggle.dispatchEvent(new Event('change'));
+    expect(mockSavePublicSettings).toHaveBeenCalledTimes(1);
+    pending.resolve({ displayName: 'Night Owl', isPublic: true });
+    await flush();
+    expect(c.querySelector('#public-toggle').disabled).toBe(false);
+    expect(c.querySelector('#public-toggle').checked).toBe(true);
+  });
+
+  it('drops an answer that arrives after the account changed', async () => {
+    mockState.user = { ...mockState.user, displayName: 'Night Owl' };
+    const pending = deferred();
+    mockSavePublicSettings.mockReturnValueOnce(pending.promise);
+    const c = makeContainer();
+    renderSettings(c);
+    toggleTo(c, true);
+    mockState.user = { id: 'user-2', name: 'Other', mode: 'normal', isPublic: false };
+    pending.resolve({ displayName: 'Night Owl', isPublic: true });
+    await flush();
+    expect(mockState.user.isPublic).toBe(false);
+    expect(mockState.user.displayName).toBeUndefined();
+    expect(mockStorage.saveUserLocal).not.toHaveBeenCalled();
+  });
+
+  it('starts fresh when Settings is entered again, but keeps the draft across re-renders', () => {
+    const c = makeContainer();
+    renderSettings(c);
+    toggleTo(c, true);
+    typeName(c, 'Half typed');
+    // A re-render within the page (here: the UI skin toggle) keeps it.
+    const skin = c.querySelector('#ui-skin-toggle');
+    skin.checked = !skin.checked;
+    skin.dispatchEvent(new Event('change'));
+    expect(c.querySelector('#lb-name-input').value).toBe('Half typed');
+    renderSettings(c);
+    expect(c.querySelector('#lb-name-editor')).toBeNull();
+  });
+
+  it('escapes the public name', () => {
+    mockState.user = { ...mockState.user, isPublic: true, displayName: '<img src=x onerror=alert(1)>' };
+    const c = makeContainer();
+    renderSettings(c);
+    expect(c.querySelector('#leaderboard-card img')).toBeNull();
+    expect(c.querySelector('#lb-current-name').textContent).toBe('<img src=x onerror=alert(1)>');
   });
 });
 

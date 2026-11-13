@@ -20,6 +20,13 @@ import {
   supportsGeolocation,
 } from '../platform/placeContext.js';
 import { resetPlaceHintCache } from '../ui/placeHint.js';
+import {
+  DISPLAY_NAME_MESSAGES,
+  clearLeaderboardCacheV2,
+  displayNameProblem,
+  isNameRuleViolation,
+  savePublicSettings,
+} from '../leaderboardPublic.js';
 
 // ── Theme definitions ────────────────────────────────────────────────────────
 export const THEMES = [
@@ -450,6 +457,201 @@ function _placeContextHtml() {
     </div>`;
 }
 
+// ── Leaderboard opt-in and public name (PRO-014E2) ───────────────────────────
+//
+// The leaderboard shows a name the user picks for it (profiles.display_name,
+// migration 018), never the account name. Joining asks for that name first;
+// leaving keeps it for next time. Both writes wait for the server (see
+// leaderboardPublic.js) and change local state only once it has answered.
+// The card's own state outlives _renderView() but not leaving the page
+// (renderSettings resets it), and belongs to one account.
+let _lbOwnerId = null;
+let _lbEditor = null;   // null | 'enable' | 'rename'
+let _lbDraft = '';
+let _lbError = '';
+let _lbBusy = false;
+
+function _resetLeaderboardCardFor(ownerId) {
+  if (_lbOwnerId === ownerId) return;
+  _lbOwnerId = ownerId;
+  _lbEditor = null;
+  _lbDraft = '';
+  _lbError = '';
+}
+
+function _leaderboardCardHtml() {
+  // A guest has no profile on the server; the leaderboard needs an account.
+  if (!state.user?.id || !hasStoredSession()) {
+    return `
+    <div class="card" id="leaderboard-card">
+      <div class="card-title">🏆 排行榜</div>
+      <div class="mode-desc" id="lb-settings-guest">登入帳號後才能加入排行榜。遊客的資料只存在這台裝置，不會公開。</div>
+    </div>`;
+  }
+  _resetLeaderboardCardFor(state.user.id);
+  const isPublic = state.user.isPublic === true;
+  const name = typeof state.user.displayName === 'string' && state.user.displayName
+    ? state.user.displayName
+    : null;
+  const disabled = _lbBusy ? 'disabled' : '';
+  const desc = isPublic && name
+    ? `排行榜上的名稱：<b id="lb-current-name" style="overflow-wrap:anywhere">${escHtml(name)}</b>`
+    : isPublic
+      ? '已開啟，但還沒有公開名稱，所以不會出現在排行榜'
+      : '目前不公開，不會出現在排行榜';
+  const nameButton = name
+    ? `<button class="btn btn-outline btn-sm" id="lb-name-edit" ${disabled}>修改名稱</button>`
+    : isPublic
+      ? `<button class="btn btn-outline btn-sm" id="lb-name-edit" ${disabled}>設定名稱</button>`
+      : '';
+  const editor = _lbEditor ? `
+      <div class="form-group" id="lb-name-editor" style="margin-top:12px">
+        <label class="form-label" for="lb-name-input">公開名稱</label>
+        <input class="form-input" id="lb-name-input" autocomplete="off" enterkeyhint="done"
+               aria-describedby="lb-name-error" aria-invalid="${_lbError ? 'true' : 'false'}"
+               value="${escHtml(_lbDraft)}" ${disabled}>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:6px">
+          其他使用者會在排行榜看到這個名稱（最多 20 個字），不必使用真名；帳號名稱不會公開。
+        </div>
+        <div class="lb-settings-error" id="lb-name-error" role="alert"
+             style="font-size:12px;color:var(--danger);margin-top:6px">${escHtml(_lbError)}</div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn btn-outline btn-sm" id="lb-name-cancel" ${disabled}>取消</button>
+          <button class="btn btn-primary btn-sm" id="lb-name-save" ${disabled}>${_lbEditor === 'enable' ? '儲存並加入排行榜' : '儲存名稱'}</button>
+        </div>
+      </div>` : '';
+  const toggleError = !_lbEditor && _lbError ? `
+      <div class="lb-settings-error" id="lb-settings-error" role="alert"
+           style="font-size:12px;color:var(--danger);margin-top:8px">${escHtml(_lbError)}</div>` : '';
+  return `
+    <div class="card" id="leaderboard-card">
+      <div class="card-title">🏆 排行榜</div>
+      <div class="mode-row">
+        <div class="mode-info">
+          <div class="mode-name">顯示於排行榜</div>
+          <div class="mode-desc" id="lb-settings-desc">${desc}</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="public-toggle" ${isPublic ? 'checked' : ''} ${disabled}>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      ${!_lbEditor && nameButton ? `<div style="margin-top:8px">${nameButton}</div>` : ''}
+      ${toggleError}
+      ${editor}
+    </div>`;
+}
+
+function _openLeaderboardEditor(container, mode) {
+  // Opening the editor that is already open (a second tap on the toggle)
+  // keeps what was typed.
+  if (_lbEditor !== mode) {
+    _lbDraft = mode === 'rename' ? (state.user?.displayName ?? '') : '';
+    _lbError = '';
+  }
+  _lbEditor = mode;
+  _renderView(container);
+  container.querySelector('#lb-name-input')?.focus();
+}
+
+function _bindLeaderboardCard(container) {
+  container.querySelector('#public-toggle')?.addEventListener('change', event => {
+    const turnOn = event.target.checked;
+    if (!state.user?.id || _lbBusy) {
+      event.target.checked = !turnOn;
+      return;
+    }
+    if (!turnOn) {
+      _lbEditor = null;
+      _savePublicSettings(container, { isPublic: false });
+    } else if (state.user.displayName) {
+      _lbEditor = null;
+      _savePublicSettings(container, { isPublic: true });
+    } else {
+      // No public name yet: ask for one first; joining happens on save.
+      event.target.checked = false;
+      _openLeaderboardEditor(container, 'enable');
+    }
+  });
+  container.querySelector('#lb-name-edit')?.addEventListener('click', () => {
+    _openLeaderboardEditor(container, state.user?.isPublic && !state.user?.displayName ? 'enable' : 'rename');
+  });
+  const input = container.querySelector('#lb-name-input');
+  input?.addEventListener('input', () => {
+    _lbDraft = input.value;
+    // Drop an old message once the name it was about has changed.
+    if (_lbError) _showLeaderboardNameError(container, '');
+  });
+  input?.addEventListener('keydown', event => {
+    // Safari reports the Enter that ends an IME composition with
+    // isComposing false but keyCode 229; that Enter picks a candidate.
+    if (event.key === 'Enter' && !event.isComposing && event.keyCode !== 229) {
+      event.preventDefault();
+      _saveLeaderboardName(container);
+    }
+  });
+  container.querySelector('#lb-name-cancel')?.addEventListener('click', () => {
+    _lbEditor = null;
+    _lbDraft = '';
+    _lbError = '';
+    _renderView(container);
+  });
+  container.querySelector('#lb-name-save')?.addEventListener('click', () => _saveLeaderboardName(container));
+}
+
+function _showLeaderboardNameError(container, message) {
+  _lbError = message;
+  const el = container.querySelector('#lb-name-error');
+  if (el) el.textContent = message;
+  container.querySelector('#lb-name-input')?.setAttribute('aria-invalid', message ? 'true' : 'false');
+}
+
+function _saveLeaderboardName(container) {
+  if (_lbBusy || !_lbEditor) return;
+  // Phone keyboards add a space after a suggested word; spaces at either end
+  // are never part of a valid name, so drop them instead of refusing.
+  const name = _lbDraft.replace(/^ +| +$/g, '');
+  const problem = displayNameProblem(name);
+  if (problem) {
+    _showLeaderboardNameError(container, DISPLAY_NAME_MESSAGES[problem]);
+    return;
+  }
+  _savePublicSettings(container, _lbEditor === 'enable'
+    ? { displayName: name, isPublic: true }
+    : { displayName: name });
+}
+
+async function _savePublicSettings(container, changes) {
+  const ownerId = state.user?.id;
+  if (!ownerId || _lbBusy) return;
+  _lbBusy = true;
+  _lbError = '';
+  // Disable in place: a full re-render now would flip the toggle back to the
+  // stored value while the request is still out.
+  container.querySelectorAll('#leaderboard-card input, #leaderboard-card button')
+    .forEach(el => { el.disabled = true; });
+  try {
+    const saved = await savePublicSettings(ownerId, changes);
+    // Signed out or switched accounts while the request was out: the answer
+    // belongs to the previous account and must not touch the current one.
+    if (state.user?.id !== ownerId) return;
+    state.user.isPublic = saved.isPublic;
+    state.user.displayName = saved.displayName;
+    // Local copy only: these two fields are not part of the profile push.
+    storage.saveUserLocal(state.user);
+    clearLeaderboardCacheV2();
+    _lbEditor = null;
+    _lbDraft = '';
+  } catch (err) {
+    console.warn('Leaderboard settings save failed:', err);
+    if (state.user?.id !== ownerId) return;
+    _lbError = isNameRuleViolation(err) ? DISPLAY_NAME_MESSAGES.server : DISPLAY_NAME_MESSAGES.network;
+  } finally {
+    _lbBusy = false;
+    if (container.isConnected && container.querySelector('#leaderboard-card')) _renderView(container);
+  }
+}
+
 // Bumped by every place action. A position that resolves after the user cleared
 // the data or switched the mode off belongs to a cancelled request and must not
 // be written back.
@@ -493,6 +695,9 @@ function _bindPlaceContext(container) {
 
 // ── Main render ──────────────────────────────────────────────────────────────
 export function renderSettings(container) {
+  // Entering the page starts the leaderboard card fresh; re-renders within the
+  // page (_renderView) keep an open name editor and its draft.
+  _lbOwnerId = null;
   _renderView(container);
 }
 
@@ -738,22 +943,8 @@ function _renderView(container) {
       ${!isPro ? `<p style="font-size:11px;color:var(--text-muted);margin-top:10px;">點擊了解 Orbit Pro ↓</p>` : ''}
     </div>
 
-    <!-- Leaderboard opt-in -->
-    <div class="card">
-      <div class="card-title">🏆 排行榜</div>
-      <div class="mode-row">
-        <div class="mode-info">
-          <div class="mode-name">顯示於排行榜</div>
-          <div class="mode-desc">${state.user?.isPublic
-            ? '你的名字與分數已公開顯示在排行榜'
-            : '目前不公開，不會出現在排行榜'}</div>
-        </div>
-        <label class="toggle-switch">
-          <input type="checkbox" id="public-toggle" ${state.user?.isPublic ? 'checked' : ''}>
-          <span class="toggle-slider"></span>
-        </label>
-      </div>
-    </div>
+    <!-- Leaderboard opt-in (PRO-014E2) -->
+    ${_leaderboardCardHtml()}
 
     <!-- Pro subscription -->
     <div class="card pro-card" id="pro-card">
@@ -907,13 +1098,8 @@ function _setupListeners(container) {
     }
   });
 
-  // Leaderboard opt-in
-  container.querySelector('#public-toggle')?.addEventListener('change', e => {
-    if (!state.user) return;
-    state.user.isPublic = e.target.checked;
-    storage.saveUser(state.user);
-    _renderView(container);
-  });
+  // Leaderboard opt-in (PRO-014E2)
+  _bindLeaderboardCard(container);
 
   // Show account email async (cached so re-renders don't flash "載入中…")
   if (!_cachedEmail) {
