@@ -30,8 +30,9 @@
   - Acceptance: logged-in user completes a task, attaches proof, photo survives sign-out and re-login on a different device; guest mode still works with localStorage only; no service_role key in client code.
   - Note: requires Supabase Storage RLS policy and a bucket — propose SQL migration before implementation.
   - 提案（2026-11-11，使用者要求寫提案）：[`docs/hw-112-proof-photo-sync-proposal.md`](docs/hw-112-proof-photo-sync-proposal.md)。建議私有 bucket `proofs`、路徑 `{user_id}/{session_id}.jpg`、四個 policy；拆成 HW-112A（migration 016＋測試）→ HW-112B（擁有者套用）→ HW-112C（client）。等擁有者決定 §9（9 點；Codex 與獨立審查後修訂：下載不用 list、不放 localStorage）。
-  - **核准（2026-11-11）**：§9 全部照建議。HW-112A 完成（見 Done）；HW-112B（production 套用 016）在 Next；之後 HW-112C（client）。
+  - **核准（2026-11-11）**：§9 全部照建議。HW-112A 完成（見 Done）；HW-112B 已於 2026-11-13 套用（見 Done）；下一步 HW-112C（client）。
   - HW-112C 上線後，`pwa/js/statusBarNotice.js`（BUG-118）的「佐證照片只存在這台裝置」要改成只提醒還沒上傳的照片。
+  - HW-112C 的驗收（從 HW-112B 移過來）：以兩個測試帳號經 Storage API 實測——本人可以上傳、讀、刪自己的檔案；不能碰別人的資料夾；上傳超過 200 KB 或不是 JPEG 被拒（大小與類型由 API 在上傳時檢查，資料庫測不到）。下載時不能相信大小與類型（只當 JPEG 顯示在 `<img>`，過大的不處理；移動與複製不會再檢查，016 開頭有說明）。
 
 - [ ] **INFRA-101** 設定 Custom SMTP（Resend）並自訂 email 寄件人名稱與模板
   - 目標：讓 auth email（重設密碼等）以「Orbit」名義寄出，而非「Supabase Auth」；並把 email 內容換成品牌模板
@@ -100,7 +101,7 @@
   - 依賴：`PRO-014D`
   - 提案（2026-11-11，使用者要求寫提案）：[`docs/pro-014e-leaderboard-read-model-proposal.md`](docs/pro-014e-leaderboard-read-model-proposal.md)。主要問題：排行榜顯示的 `name` 預設是 email 的 @ 前段。建議 `profiles.display_name`（開啟排行榜時自己設定）＋ RPC `get_leaderboard()`（固定欄位、`is_me` 取代 `user_id`、server 判定的 `is_pro`）；公開名稱與排行榜開關改為單獨的寫入（不隨整份 profile 同步）；拆成 E1（migration＋測試）→ EA（擁有者套用）→ E2（client）→ E3（移除舊 view）。等擁有者決定 §9（12 點）。
   - **核准（2026-11-11）**：§9 照建議，但第 2 點改為 B（既有公開使用者的 `name` 複製成 `display_name`，繼續公開）。
-  - E1 完成（2026-11-12，#247，見 Done 的 PRO-014E1）；下一步 PRO-014EA（Next，production 套用 018），之後 E2（client）。
+  - E1 完成（2026-11-12，#247，見 Done 的 PRO-014E1）；EA 已於 2026-11-13 套用（見 Done）；下一步 E2（client，Next 的 PRO-014E2，盡快）。
   - E2 要注意（E1 決定的規則）：
     - client 以和 `profiles_display_name_check` 完全相同的規則先檢查：1–20 字（以 code point 計，JS 用 `[...name].length`）；任何位置都不能有 018 列出的字元（控制字元、半形空白以外的空白類、零寬與方向控制、ZWJ 與 ZWNJ、Hangul／Braille 的空白字元、U+1D159、U+1D173–U+1D17A、U+1BCA0–U+1BCA3、U+13430–U+1343F、U+16FE4、U+E0080–U+E00FF、U+E01F0–U+E0FFF、BOM、軟連字號）；開頭不能是空白、variation selector 或 tag；結尾不能是空白（後面只接 variation selector／tag 也不行）。以 ZWJ 組成的 emoji（例如家庭、職業的 emoji）會被擋下，單一 emoji、加 variation selector 的 emoji 與英格蘭旗可以；ZWNJ（U+200C）被擋，波斯文與部分印度文字的名稱會受影響（目前使用者用不到）。名稱可能很寬或堆疊組合符號，排行榜的 CSS 要截斷。
     - 排行榜改用 `supabase.rpc('get_leaderboard')`，欄位：`display_name, avatar_path, total_xp, week_xp, streak_days, mode, joined_on, is_me, is_pro`；`joined_on` 與本週 XP 都以 UTC 計算。
@@ -119,7 +120,7 @@
   - 對應 roadmap：中期
   - 提案（2026-11-11，使用者要求寫提案）：[`docs/pro-017-invite-unlock-proposal.md`](docs/pro-017-invite-unlock-proposal.md)。原構想的「雙方各得 15 天試用」與現況不合（新帳號本來就有 15 天試用、試用每帳號一次），「完成 onboarding」容易造假。建議：3 位被邀請者各有 7 個有效日（只算帳號建立之後的日期）後邀請者得 30 天 Pro（server 依 sessions 判定、一生一次）；被邀請者第一版不給額外獎勵（延長試用要改 `is_pro_active()`／`my_pro_status()`，與 PRO-014S 一起做）；拆成 R1→RA→R2。等擁有者決定 §9（9 點）。
   - **核准（2026-11-11）**：§9 全部照建議。RA 時擁有者在 Supabase Auth 開啟「確認 email」。
-  - R1 完成（2026-11-12，#248，見 Done 的 PRO-017R1）；下一步 PRO-017RA（Next，production 套用 019 與開啟「確認 email」），之後 R2（client）。
+  - R1 完成（2026-11-12，#248，見 Done 的 PRO-017R1）；RA 的 019 已於 2026-11-13 套用（見 Done），「確認 email」等擁有者（Next 的 PRO-017RA-Auth）；之後 R2（client）。
   - R2 要注意（R1 決定的介面）：
     - `get_my_referral_code()` 回傳 8 碼（`A-H J-N P-Z 2-9`，沒有 0／O、1／I）；`redeem_referral(p_code)` 先做 NFKC 正規化（全形字母、數字與空白變半形），再去掉前後的空白、tab、換行，不分大小寫；回傳 `redeemed`／`invalid_code`／`own_code`／`already_redeemed`／`too_late`（已經綁定或帳號太舊的人先回答，不查碼）：`redeemed` 與明確被拒的四種都清掉本機的邀請碼，網路錯誤才保留。
     - `claim_referral_reward()` 回傳 `status`（`granted`／`already_granted`／`active_entitlement`／`not_eligible`）、`achieved_count`、`required_count`（3）與 entitlement 的欄位（同 `grant_streak_unlock()`，含 `paid_active`）；發放後照 SUB-16 重新取得 projection。
@@ -139,32 +140,17 @@
 
 ## Next
 
-- [ ] **BUG-119A** 在 production 套用 017（排行榜頭像 policy 的修正；production 寫入，每一步請擁有者核准）
-  - 套用前檢查：production 的 `avatars_select_public_leaderboard_profiles` 仍是 010 的定義（`pg_policies` 的 qual 含 `storage.foldername(p.name)`），且 `public.is_public_leaderboard_avatar` 還不存在。另外只讀計數：公開使用者中 `avatar_url` 指向 `avatars` 裡存在的檔案的人數（`exists (select 1 from storage.objects o where o.bucket_id = 'avatars' and o.name = p.avatar_url)`）；`avatar_url` 是 NULL、網址或指向不存在的檔案的人，套用後頭像也不會出現，不是 017 的問題。
-  - 乾跑：`begin; set local lock_timeout = '5s';` ＋ 017 ＋ `tests/database/bug119.test.sql` 的內容 ＋ `rollback;`（真的 auth.users trigger 與 Storage）。
-  - 核准後鎖定套用 017，事後檢查：policy 的定義、函式的權限（authenticated 可以、anon 不行），再跑一次測試；以兩個測試帳號在排行榜確認公開使用者的頭像出現。Supabase 的 advisor 會把 `is_public_leaderboard_avatar` 列為「authenticated 可執行的 SECURITY DEFINER 函式」（lint 0029），這是預期的：**不要收回 authenticated 的執行權**，否則 authenticated 在任何 bucket（avatars、proofs）的讀取、移動、刪除都會失敗。
-  - 套用後 app 不用改：排行榜原本就以 `createSignedUrl()` 取得頭像，現在才拿得到。已知限制：簽名網址 7 天有效、下載時不再看 policy，使用者換頭像或改成不公開後，別人已經拿到的網址最多還能用 7 天（寫在 017 開頭）。
+- [ ] **PRO-017RA-Auth**（擁有者）先完成 INFRA-101（Custom SMTP），再在 Supabase 開啟「確認 email」，並確認匿名登入維持關閉
+  - 019 已於 2026-11-13 套用（見 Done 的 PRO-017RA）；這一步只能由擁有者在 Supabase Dashboard 做（agent 的工具改不到 Auth 設定）。
+  - Authentication 設定裡（Email provider）開啟 Confirm email（畫面名稱以當時的 Dashboard 為準）。會影響**所有新使用者**的 email 註冊（要先收信確認才能登入）；開啟前確認註冊頁的提示與 email 範本（INFRA-101 的寄件人設定也相關）。Google 登入不受影響。
+  - 同時確認「Allow anonymous sign-ins」維持關閉：匿名使用者也是 authenticated、有 `auth.users` 列、不需要確認 email，三個邀請 RPC 不會把他們分開（app 的訪客模式只在本機，不用匿名登入）。
+  - **順序：INFRA-101 → 確認 email → R2。** Supabase 內建的 email 每天只能寄 2 封（INFRA-101），在設定 Custom SMTP 之前開啟「確認 email」，大部分新的 email 註冊會收不到確認信而無法登入。
+  - 時機：提案核准的是「RA 時」開啟；019 已上線而「確認 email」還沒開，這段期間三個 RPC 已經可以從 API 呼叫（app 還沒有介面，R2 才會用），開啟之前建立的帳號也不需要確認。實際影響小（要湊到獎勵仍要 3 個存在滿 7 天、各有 7 個有效日的帳號），但應在 R2 上線之前完成；R2 上線前 agent 會再提醒。
 
-- [ ] **HW-112B** 在 production 套用 016（佐證照片的 bucket 與 policy；production 寫入；擁有者 2026-11-11 核准：「照片同步第二步> 核准」）
-  - 2026-11-11 送出 production 乾跑（`begin; set local lock_timeout = '5s';` ＋ 016 ＋ 測試 ＋ `rollback;`）兩次，Supabase MCP 的確認都在時限（約 2 分鐘）內沒有被按下，沒有執行。擁有者回「可以送了」後再送，並請擁有者在時限內按核准。
-  - 正式套用等 #245 合併後（repo 是套用內容的來源），套用前再請擁有者核准一次。
-  - 依寫入流程：本機演練（HW-112A 已做）→ production 乾跑：`begin; set local lock_timeout = '5s';` ＋ 016 ＋ `tests/database/hw112.test.sql` 的內容 ＋ `rollback;`（DROP／CREATE POLICY 會鎖住 storage.objects 直到 commit 或 rollback）（真的 Storage schema；第一次在真的 Storage 上跑這份測試，替身與實際不同時會在這裡發現）→ 核准後鎖定套用 016 → 事後檢查（bucket 設定、四個 policy、再跑一次測試）。
-  - 套用後以兩個測試帳號實測 Storage API：本人可以上傳、讀、刪自己的檔案；不能碰別人的資料夾；上傳超過 200 KB 或不是 JPEG 被拒（大小與類型由 API 在上傳時檢查，資料庫測不到；移動與複製不會再檢查，所以本人可以把自己其他 bucket 的檔案搬進自己的 proofs 資料夾，只限自己）。
-  - HW-112C 下載時不能相信大小與類型（只當 JPEG 顯示在 `<img>`，過大的不處理）。
-  - 套用不影響現在的 app：client 要到 HW-112C 才會上傳。
-
-- [ ] **PRO-014EA** 在 production 套用 018（排行榜的公開名稱與 `get_leaderboard()`；production 寫入，每一步請擁有者核准；依賴：PRO-014E1 合併）
-  - 套用前檢查（只讀）：`pg_get_viewdef('public.leaderboard_view')` 與 010 相同；`public.get_leaderboard` 與 `profiles.display_name` 還不存在；公開使用者的數量，以及 name 依 018 整理後是空字串（不補、從新排行榜消失、舊 view 顯示「匿名」）的數量（只回傳計數）。另外計數：公開使用者中 `avatar_url` 有值但不在自己資料夾的人數（E2 之後他們顯示預設頭像，是預期的結果；舊的 view 在 E3 之前仍把原本的 `avatar_url` 給舊版 client，與現在相同）。
-  - 乾跑分成兩個各自 rollback 的 transaction（018 開頭有完整步驟）：(1) `begin; set local lock_timeout = '5s';` ＋ 018 ＋ `pro014e.test.sql` 從第一個 `do $$` 到最後的 `rollback;` 之前 ＋ `rollback;`；(2) `pro014e.backfill.test.sql` 整份照用（保留它自己的 `begin;`／`rollback;`），只把兩行 `\ir` 換成 018，`begin;` 後面加 `lock_timeout`。另外跑 `infra110.test.sql`（view 的權限不變）。
-  - 核准後以 `begin; set local lock_timeout = '5s';` ＋ 018 ＋ `commit;` 套用，事後檢查：公開使用者中 `display_name` 有值的數量與套用前的預估相同；`get_leaderboard()` 的權限（authenticated 可以、anon 與 PUBLIC 不行）；`leaderboard_view` 的權限與 015 相同；再跑一次兩份測試；以兩個測試帳號的身分（`request.jwt.claims`）呼叫 RPC，確認 `is_me` 與欄位。Supabase 的 advisor 會把 `get_leaderboard()` 列為 lint 0029（authenticated 可執行的 SECURITY DEFINER 函式），這是預期的。**套用之後不要再 commit 重新執行 018**：擁有者清掉的不當名稱會被從 name 補回來。
-  - 套用後舊版 client 的排行榜：名稱變成公開名稱（沒有的顯示「匿名」）。app 不用改；E2 才改用 RPC。**EA 到 E2 之間的行為改變**：個人頁改名稱不再改變排行榜上的名稱，而且還沒有介面能改公開名稱；名稱被沿用的人只能先關掉「顯示於排行榜」。所以 EA 之後要盡快接 E2。
-
-- [ ] **PRO-017RA** 在 production 套用 019 並開啟「確認 email」（production 寫入與 Auth 設定，每一步請擁有者核准；依賴：PRO-017R1 合併）
-  - 套用前檢查（只讀）：`set_pro_entitlement_updated_at()` 與 012 相同（`pg_get_functiondef`，存下來給回滾比對）；`referral_codes`／`referrals` 與三個 RPC 還不存在。
-  - 乾跑：`begin; set local lock_timeout = '5s';` ＋ 019 ＋ `tests/database/pro017.test.sql` 的內容 ＋ `pro014l.test.sql` 從 `begin;` 之後的內容（保留它的 `set local timezone = 'UTC';`；同一個 transaction，確認 SUB-16 在 019 之後不受影響）＋ `rollback;`。測試會改 `auth.users` 的 `created_at`（模擬時間經過），需要 postgres 對 `auth.users` 的 UPDATE 權限（Supabase 預設有；沒有的話乾跑會失敗、不會留下變更）。
-  - 核准後以 `begin; set local lock_timeout = '5s';` ＋ 019 ＋ `commit;` 套用（建立外鍵會鎖住 `auth.users`，註冊與登入的寫入要等到 commit，transaction 要短），事後檢查：兩張表的 RLS、policy 與權限（anon 沒有、authenticated 只能讀自己的邀請碼、`referrals` 讀不到）；三個 RPC 的權限；再跑一次測試。Supabase 的 advisor 會把三個 RPC 列為 lint 0029（authenticated 可執行的 SECURITY DEFINER 函式），這是預期的。
-  - 「確認 email」：擁有者在 Supabase Dashboard 的 Authentication 設定裡（Email provider）開啟 Confirm email（畫面名稱以當時的 Dashboard 為準）。會影響**所有新使用者**的註冊（要先收信確認才能登入）；開啟前確認註冊頁的提示與 email 範本。Google 登入不受影響。同時確認 Authentication 的「Allow anonymous sign-ins」維持關閉：匿名使用者也是 authenticated、有 `auth.users` 列、不需要確認 email，三個 RPC 不會把他們分開（app 的訪客模式只在本機，不用匿名登入）。
-  - 兩個連線同時領取的測試（`tests/database/support/pro017-concurrency.sh`）只在本機跑，不在 production。
+- [ ] **PRO-014E2**（下一個 repo 任務，盡快）client 改用 `get_leaderboard()` 與公開名稱
+  - 018 已於 2026-11-13 套用（見 Done 的 PRO-014EA）。**現在的行為改變**：個人頁改名稱不再改變排行榜上的名稱，而且還沒有介面能改公開名稱；名稱被沿用的人（2 位公開使用者）只能先關掉「顯示於排行榜」。所以 E2 要盡快上線。
+  - E2 之前新打開「顯示於排行榜」的人沒有公開名稱：舊 view 顯示「匿名」，`get_leaderboard()` 不列出他們。
+  - 範圍與規則見 Backlog 的 PRO-014E（「E2 要注意」）與提案 §5。
 
 - [ ] **PRO-014HA**（擁有者，只剩真機畫面）真機驗證 PRO-014H 的 cutover
   - 2026-11-11 擁有者要求 agent 以 Supabase MCP 直接測試。agent 以只讀查詢（DO 區塊最後 `RAISE EXCEPTION`，整段回滾、沒有寫入）逐一以 5 個測試帳號與擁有者主帳號的身分（`request.jwt.claims` 加 `SET LOCAL ROLE authenticated`）呼叫 `my_pro_status()`：
@@ -289,6 +275,14 @@
 
 ## Done
 
+- [x] **2026-11-13 production 套用（BUG-119A、HW-112B、PRO-014EA、PRO-017RA）**：擁有者 2026-11-13 回覆「可以送了 依序即可」，agent 以 Supabase MCP 依序執行，每一項都是只讀檢查 → production 乾跑（完整的資料庫測試，單一 transaction、結尾 rollback；四項都另以只讀查詢確認沒有留下任何東西）→ 套用（`begin; set local lock_timeout = '5s';` … `commit;`，MCP 的確認即擁有者核准）→ 事後檢查（只讀的定義、權限、md5 與可見性檢查；需要合成帳號的部分在 transaction 裡做、結尾 rollback；019 套用後另跑完整的 pro014l）。
+  - **BUG-119A（017）**：套用前 policy 仍是 010（`foldername(p.name)`）、`is_public_leaderboard_avatar` 不存在；公開使用者 2 位、有頭像且檔案存在 1 位。乾跑 bug119 測試全部通過。套用後：policy 為 `bucket avatars AND is_public_leaderboard_avatar(name)`，函式的 `pg_get_functiondef` md5 與本機以檔案套用的相同（`d7dacbf3…`），只給 authenticated（加上 postgres、service_role）；以合成帳號確認旁人只看得到公開使用者現在的頭像，已登入的旁人看得到那 1 位真的公開使用者的頭像，anon 看不到。
+  - **HW-112B（016）**：套用前沒有 `proofs` bucket 與 policy。乾跑 hw112 測試（含 12 種壞檔名、UPDATE／DELETE 的 USING、`storage.protect_delete`）在真的 Storage 表上全部通過。套用後：bucket 私有、200 KB、只收 `image/jpeg`；四個 `proofs_*` policy 只給 authenticated，定義（`pg_policies`）的 md5 與本機以檔案套用的相同（`7afa17ea…`）；以合成帳號確認本人看得到自己的、別人與 anon 看不到。**還沒做**：以測試帳號經 Storage API 上傳，確認大小與 MIME 的限制——併入 HW-112C 的驗收（見 Backlog 的 HW-112）。
+  - **PRO-014EA（018）**：套用前 view 與 010 相同、權限與 015 相同，`get_leaderboard` 與 `display_name` 不存在；公開使用者 2 位、頭像不在自己資料夾的 0 位。乾跑 1（018 ＋ pro014e，3894 個不允許的字元逐一檢查）與乾跑 2（backfill，62 個案例）都通過；2 位公開使用者都會補上公開名稱、0 位留空。套用後：CHECK 的 `pg_get_constraintdef` md5 與 repo 相同（`46e980e2…`），`get_leaderboard()`（`e00fdf13…`）與 view（`4a95f577…`）的定義 md5 與本機以檔案套用的相同；2 位公開使用者都有公開名稱、不公開而有公開名稱的 0 位；舊 view 不再顯示原本的名稱；RPC 只給 authenticated（加上 postgres、service_role）；以一位真的公開使用者的身分呼叫 RPC，列數等於公開且有公開名稱的人數、`is_me` 恰好一列、沒有 NULL 名稱，anon 被拒。**套用之後不要再 commit 重新執行 018**（018 開頭有說明）：擁有者清掉的不當名稱會被從 name 補回來。
+  - **PRO-017RA（019）**：套用前 `set_pro_entitlement_updated_at()` 是 012 的版本（md5 `5f393e3e…`，回滾時比對），兩張表、三個 RPC 與新欄位都不存在，postgres 可以 UPDATE `auth.users`（測試需要）。乾跑 019 ＋ pro017 全部通過。套用後：四個函式（`set_pro_entitlement_updated_at`、`get_my_referral_code`、`redeem_referral`、`claim_referral_reward`）的 `pg_get_functiondef` 合起來的 md5 與本機以檔案套用的相同（`90b9e473…`）；兩張表都開 RLS，`referral_codes` 只有一個 SELECT policy、`referrals` 沒有 policy，client 只有 authenticated 對 `referral_codes` 的 SELECT；三個 RPC 只給 authenticated（加上 postgres、service_role）；兩張表都是空的。另外在套用後的 production 跑 pro014l（SUB-16）全部通過。「確認 email」由擁有者另外做（Next 的 PRO-017RA-Auth）。
+  - **送出 SQL 的方法**：工具的輸入會把小寫的 `\uXXXX`、`\t`、`\r`、`\n` 等反斜線逸出轉成字元本身，直接送出會讓 production 存下看不見的字元、與 repo 不同。做法：把含逸出的那一句放進 `EXECUTE replace($q$ … $q$, '<佔位字>', chr(92) …)`，佔位字在 server 端換回反斜線——018 的 regex 用 `#u`／`#U` 換成 `chr(92) || 'u'`／`'U'`，019 的 `E' \t\r\n'` 用 `#BS` 換成 `chr(92)`。本機先比對這樣套用與直接執行檔案的 `pg_get_constraintdef`／`pg_get_functiondef` md5 完全相同，套用後再以 production 的 md5 確認。另外，函式內的註解是函式內容的一部分，送出時不能刪（本機第一次組 019 的乾跑 SQL 時刪了註解，md5 不同，改正後才送到 production）。016 的 `\.jpg$` 不是 JSON 逸出、不受影響（policy 的 md5 相同）。之後的 migration 若含反斜線逸出，沿用這個方法。
+  - 乾跑、套用與事後檢查都沒有讀出任何使用者的名稱或 email（回傳的只有計數、布林值、md5、policy 定義與權限清單）。
+
 - [x] **PRO-017R1** migration 019：邀請朋友解鎖 Pro（SUB-17）的資料表與三個 RPC，加上資料庫測試
   - 完成（2026-11-12，#248；production 套用為 PRO-017RA）：
     - `pwa/db/019_referrals.sql`：
@@ -309,7 +303,7 @@
   - 完成（2026-11-12，#247；production 套用為 PRO-014EA）：
     - `pwa/db/018_leaderboard_display_name.sql`：
       - `profiles.display_name`（NULL 或 1–20 字；任何位置都不能有控制字元、半形空白以外的空白類字元、零寬與方向控制字元、常被拿來做「看不見的名稱」的字元〔Hangul／Braille 的空白、U+1D159、U+1D173–U+1D17A、U+1BCA0–U+1BCA3、U+13430–U+1343F、U+16FE4，與 tag／variation selector 旁邊未指派的 default-ignorable U+E0080–U+E00FF、U+E01F0–U+E0FFF〕、BOM、軟連字號；開頭不能是空白、variation selector 或 tag，結尾不能是空白〔後面只接 variation selector／tag 也不行〕）。只允許半形空白，檢查不依賴 locale。只有組合符號、私人使用區、U+FFFC、其他未指派的字元等仍可通過（也可能用來藏起前後空白），由擁有者清除（§9 第 8 點）。RLS 不變（002 的四個 owner-only policy）。
-      - 既有公開使用者（§9 第 2 點 B）：name 整理後補進 display_name（空白類字元換成半形空白 → 拿掉其他不允許的字元 → 去掉開頭的空白／variation selector／tag 與結尾的空白 → 前 20 字 → 再去掉一次）；WHERE 以和 CHECK 相同的條件再檢查，整理完仍不符合的不補，所以不會讓 migration 失敗。只補 `is_public` 且 `display_name` 為 NULL 的人，可重複執行（但 EA 之後不要 commit 重新執行，見 PRO-014EA）。
+      - 既有公開使用者（§9 第 2 點 B）：name 整理後補進 display_name（空白類字元換成半形空白 → 拿掉其他不允許的字元 → 去掉開頭的空白／variation selector／tag 與結尾的空白 → 前 20 字 → 再去掉一次）；WHERE 以和 CHECK 相同的條件再檢查，整理完仍不符合的不補，所以不會讓 migration 失敗。只補 `is_public` 且 `display_name` 為 NULL 的人，可重複執行（但 EA 之後不要 commit 重新執行，見 018 開頭）。
       - `get_leaderboard()`：`SECURITY DEFINER`、`STABLE`、`search_path = ''`，只回傳九個欄位（`display_name, avatar_path, total_xp, week_xp, streak_days, mode, joined_on, is_me, is_pro`），只列公開且有公開名稱的人；`is_me` 取代 `user_id`；`avatar_path` 只在是本人資料夾裡的路徑時才有值（017 只讓別人讀這種檔案）；`is_pro` 來自 `pro_entitlements`（含試用，§9 第 5 點），不看 profile 的 `is_pro`；日期以 UTC 計算；沒有 `auth.uid()` 的呼叫者拿不到資料。`REVOKE ALL … FROM public, anon` 後只給 authenticated。
       - `leaderboard_view`（§9 第 4 點 A）：`name` 改為 `COALESCE(display_name, '匿名')`，其他與 010 相同；`CREATE OR REPLACE VIEW` 保留 015 的權限。
       - 回滾步驟寫在檔案開頭（不刪 `display_name` 欄位）。
