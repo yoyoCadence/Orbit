@@ -22,7 +22,9 @@ import {
 } from './platform/sessionDeletionLog.js';
 
 const PREFIX = 'yoyo_';
-const LEADERBOARD_CACHE_KEY = 'leaderboardCache';
+// The leaderboard caches belong to leaderboardPublic.js (PRO-014E2); sign-out
+// clears both, the old key from versions before it included.
+const LEADERBOARD_CACHE_KEYS = ['leaderboardCache', 'leaderboardCacheV2'];
 const PROFILE_SYNC_PENDING_KEY = 'profileSyncPending';
 const ENERGY_SYNC_PENDING_KEY = 'energySyncPending';
 const SESSION_SYNC_PENDING_KEY = 'sessionSyncPending';
@@ -324,6 +326,11 @@ export function recoverPendingSessionDeletions(ownerId, recoveredAt = new Date()
 // 例如 last_streak_date 讀 null→'' 但寫 ''→null）verbatim — locked by
 // tests/unit/storage-mapping.test.js. Adding a synced field = one new row here
 // (+ DB migration). toRow = null marks read-only fields never written back.
+//
+// PRO-014E2: is_public and display_name are read here but written only by
+// leaderboardPublic.savePublicSettings(), which waits for the server. A whole-
+// profile push from a device with an older copy could otherwise switch the
+// leaderboard back on or off, or wipe the public name.
 
 const PROFILE_FIELDS = [
   ['name',                   'name',                      p => p.name,                              u => u.name],
@@ -333,7 +340,8 @@ const PROFILE_FIELDS = [
   ['lastWeeklyBonusDate',    'last_weekly_bonus_date',    p => p.last_weekly_bonus_date   || '',    u => u.lastWeeklyBonusDate  || null],
   ['morningState',           'morning_state',             p => p.morning_state,                     u => u.morningState         || 'normal'],
   ['mode',                   'mode',                      p => p.mode,                              u => u.mode                 || 'normal'],
-  ['isPublic',               'is_public',                 p => p.is_public                ?? false, u => u.isPublic             ?? false],
+  ['isPublic',               'is_public',                 p => p.is_public                ?? false, null],
+  ['displayName',            'display_name',              p => p.display_name             ?? null,  null],
   ['titleTemplate',          'title_template',            p => p.title_template           || 'rpg', u => u.titleTemplate        || 'rpg'],
   ['customTitle',            'custom_title',              p => p.custom_title             || '',    u => u.customTitle          || null],
   ['newDayHour',             'new_day_hour',              p => p.new_day_hour             ?? 5,     u => u.newDayHour           ?? 5],
@@ -1251,12 +1259,6 @@ export const storage = {
     ? localStorage.setItem(PREFIX + 'bgImage', d)
     : localStorage.removeItem(PREFIX + 'bgImage'),
 
-  // ── Leaderboard cache (local only; refreshed once per effective day) ───────
-  getLeaderboardCache: () => get(LEADERBOARD_CACHE_KEY),
-  saveLeaderboardCache: (rows, refreshedAt, refreshDate) => {
-    set(LEADERBOARD_CACHE_KEY, { rows, refreshedAt, refreshDate });
-  },
-
   // ── Daily Plan (local only, resets each effective day) ──────────────────────
   // HW-113: dated by the same effective day as Sessions (`newDayHour`), so the
   // plan survives midnight until the new-day hour instead of vanishing at
@@ -1311,7 +1313,7 @@ export const storage = {
     // Owner-scoped pending profile/Energy snapshots deliberately survive
     // sign-out so an offline undo can be pushed when that owner returns.
     ['user','tasks','sessions','energy','goals','logs','theme','uiSkin','bgImage','dailyPlan',
-      'trialBannerDismiss', LEADERBOARD_CACHE_KEY]
+      'trialBannerDismiss', ...LEADERBOARD_CACHE_KEYS]
       .forEach(k => localStorage.removeItem(PREFIX + k));
     // The entitlement snapshot must never outlive its owner's session: a
     // leftover snapshot is exactly how the next account would inherit Pro.

@@ -71,7 +71,8 @@ describe('loadFromRemote — profile row → user object', () => {
       user_id: 'uid-1', name: '阿橘', avatar_url: 'https://cdn.example.com/a.jpg',
       total_xp: 1234, streak_days: 7, last_streak_date: '2026-07-06',
       last_weekly_bonus_date: '2026-07-06', morning_state: 'good', mode: 'advanced',
-      is_public: true, title_template: 'kny_dynamic', custom_title: '自訂稱號',
+      is_public: true, display_name: 'Night Owl',
+      title_template: 'kny_dynamic', custom_title: '自訂稱號',
       new_day_hour: 3, created_at: '2026-01-01', is_pro: true,
       pro_expires_at: '2026-12-31T00:00:00Z', trial_started_at: '2026-06-01T00:00:00Z',
       streak_shield_count: 1, streak_shield_reset_month: '2026-07',
@@ -83,7 +84,8 @@ describe('loadFromRemote — profile row → user object', () => {
       avatarPath: 'https://cdn.example.com/a.jpg',
       totalXP: 1234, streakDays: 7, lastStreakDate: '2026-07-06',
       lastWeeklyBonusDate: '2026-07-06', morningState: 'good', mode: 'advanced',
-      isPublic: true, titleTemplate: 'kny_dynamic', customTitle: '自訂稱號',
+      isPublic: true, displayName: 'Night Owl',
+      titleTemplate: 'kny_dynamic', customTitle: '自訂稱號',
       newDayHour: 3, createdAt: '2026-01-01', isPro: true,
       proExpiresAt: '2026-12-31T00:00:00Z', trialStartedAt: '2026-06-01T00:00:00Z',
       streakShieldCount: 1, streakShieldResetMonth: '2026-07',
@@ -96,7 +98,7 @@ describe('loadFromRemote — profile row → user object', () => {
       user_id: 'uid-1', name: '極簡', avatar_url: null,
       total_xp: 0, streak_days: 0, last_streak_date: null,
       last_weekly_bonus_date: null, morning_state: null, mode: null,
-      is_public: null, title_template: null, custom_title: null,
+      is_public: null, display_name: null, title_template: null, custom_title: null,
       new_day_hour: 0, created_at: '2026-01-01', is_pro: null,
       pro_expires_at: null, trial_started_at: null,
       streak_shield_count: 0, streak_shield_reset_month: null,
@@ -111,6 +113,7 @@ describe('loadFromRemote — profile row → user object', () => {
       morningState: null,            // 直通
       mode: null,                    // 直通
       isPublic: false,               // null → false（??）
+      displayName: null,             // null → null（??）
       titleTemplate: 'rpg',          // null → 'rpg'（||）
       customTitle: '',               // null → ''（||）
       newDayHour: 0,                 // ?? — 0 必須保留
@@ -196,7 +199,8 @@ describe('upsertProfile — user object → DB payload', () => {
       id: 'uid-1', name: '阿橘', avatar: 'data:image/png;base64,xxx', avatarPath: 'uid-1/a.jpg',
       totalXP: 1234, streakDays: 7, lastStreakDate: '2026-07-06',
       lastWeeklyBonusDate: '2026-07-06', morningState: 'good', mode: 'advanced',
-      isPublic: true, titleTemplate: 'kny_dynamic', customTitle: '自訂稱號',
+      isPublic: true, displayName: 'Night Owl',
+      titleTemplate: 'kny_dynamic', customTitle: '自訂稱號',
       newDayHour: 0, isPro: true, proExpiresAt: '2026-12-31T00:00:00Z',
       trialStartedAt: '2026-06-01T00:00:00Z', streakShieldCount: 0,
       streakShieldResetMonth: '2026-07', streakUnlockUsed: true,
@@ -207,7 +211,9 @@ describe('upsertProfile — user object → DB payload', () => {
       user_id: 'uid-1', name: '阿橘', avatar_url: 'uid-1/a.jpg',
       total_xp: 1234, streak_days: 7, last_streak_date: '2026-07-06',
       last_weekly_bonus_date: '2026-07-06', morning_state: 'good', mode: 'advanced',
-      is_public: true, title_template: 'kny_dynamic', custom_title: '自訂稱號',
+      // PRO-014E2: is_public / display_name are never pushed with the profile;
+      // leaderboardPublic.savePublicSettings() writes them on their own.
+      title_template: 'kny_dynamic', custom_title: '自訂稱號',
       new_day_hour: 0,               // ?? — 0 必須保留
       is_pro: true, pro_expires_at: '2026-12-31T00:00:00Z',
       trial_started_at: '2026-06-01T00:00:00Z',
@@ -226,7 +232,7 @@ describe('upsertProfile — user object → DB payload', () => {
       total_xp: 0, streak_days: 0,
       last_streak_date: null,        // '' → null（||）
       last_weekly_bonus_date: null,
-      morning_state: 'normal', mode: 'normal', is_public: false,
+      morning_state: 'normal', mode: 'normal',
       title_template: 'rpg',
       custom_title: null,            // '' → null（||）
       new_day_hour: 5, is_pro: false, pro_expires_at: null, trial_started_at: null,
@@ -234,6 +240,13 @@ describe('upsertProfile — user object → DB payload', () => {
       streak_shield_reset_month: '', streak_unlock_used: false,
       focus_default_minutes: null, focus_sound_enabled: true,
     });
+  });
+
+  it('PRO-014E2：stale 的 isPublic / displayName 不會覆寫 server 上的排行榜設定', async () => {
+    await db.upsertProfile({ name: 'A', isPublic: false, displayName: null });
+    const payload = captured.upserts.profiles[0].payload;
+    expect(payload).not.toHaveProperty('is_public');
+    expect(payload).not.toHaveProperty('display_name');
   });
 
   it('https avatar（無 avatarPath）直接作為 avatar_url', async () => {

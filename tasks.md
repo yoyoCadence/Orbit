@@ -101,8 +101,9 @@
   - 依賴：`PRO-014D`
   - 提案（2026-11-11，使用者要求寫提案）：[`docs/pro-014e-leaderboard-read-model-proposal.md`](docs/pro-014e-leaderboard-read-model-proposal.md)。主要問題：排行榜顯示的 `name` 預設是 email 的 @ 前段。建議 `profiles.display_name`（開啟排行榜時自己設定）＋ RPC `get_leaderboard()`（固定欄位、`is_me` 取代 `user_id`、server 判定的 `is_pro`）；公開名稱與排行榜開關改為單獨的寫入（不隨整份 profile 同步）；拆成 E1（migration＋測試）→ EA（擁有者套用）→ E2（client）→ E3（移除舊 view）。等擁有者決定 §9（12 點）。
   - **核准（2026-11-11）**：§9 照建議，但第 2 點改為 B（既有公開使用者的 `name` 複製成 `display_name`，繼續公開）。
-  - E1 完成（2026-11-12，#247，見 Done 的 PRO-014E1）；EA 已於 2026-11-13 套用（見 Done）；下一步 E2（client，Next 的 PRO-014E2，盡快）。
-  - E2 要注意（E1 決定的規則）：
+  - E1 完成（2026-11-12，#247，見 Done 的 PRO-014E1）；EA 已於 2026-11-13 套用（見 Done）；E2 完成（2026-11-13，#250，v1.41.18，見 Done 的 PRO-014E2）。
+  - **下一步 E3**（另行核准）：E2 上線一個月後（約 2026-12-13，§9 第 11 點）提出移除 `leaderboard_view` 的 migration（`DROP VIEW`，不重建）。在那之前，還沒更新的舊版 client 仍讀這個 view（`name` 已是公開名稱或「匿名」），profile 同步仍會上傳 `is_public`。
+  - E2 要注意（E1 決定的規則；E2 已照做）：
     - client 以和 `profiles_display_name_check` 完全相同的規則先檢查：1–20 字（以 code point 計，JS 用 `[...name].length`）；任何位置都不能有 018 列出的字元（控制字元、半形空白以外的空白類、零寬與方向控制、ZWJ 與 ZWNJ、Hangul／Braille 的空白字元、U+1D159、U+1D173–U+1D17A、U+1BCA0–U+1BCA3、U+13430–U+1343F、U+16FE4、U+E0080–U+E00FF、U+E01F0–U+E0FFF、BOM、軟連字號）；開頭不能是空白、variation selector 或 tag；結尾不能是空白（後面只接 variation selector／tag 也不行）。以 ZWJ 組成的 emoji（例如家庭、職業的 emoji）會被擋下，單一 emoji、加 variation selector 的 emoji 與英格蘭旗可以；ZWNJ（U+200C）被擋，波斯文與部分印度文字的名稱會受影響（目前使用者用不到）。名稱可能很寬或堆疊組合符號，排行榜的 CSS 要截斷。
     - 排行榜改用 `supabase.rpc('get_leaderboard')`，欄位：`display_name, avatar_path, total_xp, week_xp, streak_days, mode, joined_on, is_me, is_pro`；`joined_on` 與本週 XP 都以 UTC 計算。
     - 公開名稱與 `is_public` 從 `PROFILE_FIELDS` 的上傳拿掉，改成設定頁單獨、等待結果的寫入（提案 §5）。
@@ -146,11 +147,6 @@
   - 同時確認「Allow anonymous sign-ins」維持關閉：匿名使用者也是 authenticated、有 `auth.users` 列、不需要確認 email，三個邀請 RPC 不會把他們分開（app 的訪客模式只在本機，不用匿名登入）。
   - **順序：INFRA-101 → 確認 email → R2。** Supabase 內建的 email 每天只能寄 2 封（INFRA-101），在設定 Custom SMTP 之前開啟「確認 email」，大部分新的 email 註冊會收不到確認信而無法登入。
   - 時機：提案核准的是「RA 時」開啟；019 已上線而「確認 email」還沒開，這段期間三個 RPC 已經可以從 API 呼叫（app 還沒有介面，R2 才會用），開啟之前建立的帳號也不需要確認。實際影響小（要湊到獎勵仍要 3 個存在滿 7 天、各有 7 個有效日的帳號），但應在 R2 上線之前完成；R2 上線前 agent 會再提醒。
-
-- [ ] **PRO-014E2**（下一個 repo 任務，盡快）client 改用 `get_leaderboard()` 與公開名稱
-  - 018 已於 2026-11-13 套用（見 Done 的 PRO-014EA）。**現在的行為改變**：個人頁改名稱不再改變排行榜上的名稱，而且還沒有介面能改公開名稱；名稱被沿用的人（2 位公開使用者）只能先關掉「顯示於排行榜」。所以 E2 要盡快上線。
-  - E2 之前新打開「顯示於排行榜」的人沒有公開名稱：舊 view 顯示「匿名」，`get_leaderboard()` 不列出他們。
-  - 範圍與規則見 Backlog 的 PRO-014E（「E2 要注意」）與提案 §5。
 
 - [ ] **PRO-014HA**（擁有者，只剩真機畫面）真機驗證 PRO-014H 的 cutover
   - 2026-11-11 擁有者要求 agent 以 Supabase MCP 直接測試。agent 以只讀查詢（DO 區塊最後 `RAISE EXCEPTION`，整段回滾、沒有寫入）逐一以 5 個測試帳號與擁有者主帳號的身分（`request.jwt.claims` 加 `SET LOCAL ROLE authenticated`）呼叫 `my_pro_status()`：
@@ -274,6 +270,25 @@
 ---
 
 ## Done
+
+- [x] **PRO-014E2** client 改用 `get_leaderboard()` 與公開名稱（v1.41.18）
+  - 完成（2026-11-13，#250）：
+    - `pwa/js/leaderboardPublic.js`（新模組；INFRA-105：既有的 SHELL 模組只 import 新模組的 export）：
+      - 公開名稱的規則 `displayNameProblem()` 與 018 的 `profiles_display_name_check` 相同：1–20 個 code point、27 段任何位置都不行的字元、開頭不能是空白／variation selector／tag、結尾的空白後面只接 variation selector／tag 也不行。
+      - `fetchLeaderboardRows()` 呼叫 `get_leaderboard()`；自己的快取 `yoyo_leaderboardCacheV2`（寫入時刪掉舊的 `yoyo_leaderboardCache`，兩種列的格式不會混用）。
+      - `savePublicSettings()`：`update(...).eq('user_id', 本人).select('display_name, is_public').single()`，等伺服器回應；名稱不符規則時伺服器回 23514。
+    - 排行榜：改用 RPC；「你」只看 `is_me`；名稱用 `display_name`；成長率與「新使用者」用 `joined_on`；頭像只簽 `avatar_path`（NULL 顯示首字，首字以 code point 取，emoji 不會被切半）；只截斷名稱文字、「你」標記保留，堆疊的組合符號裁在一行內。
+    - 設定頁：
+      - 訪客只顯示「登入帳號後才能加入排行榜」。
+      - 開啟時沒有公開名稱 → 先出現輸入框（預設空白，不帶入帳號名稱），按「儲存並加入排行榜」時一次寫入名稱與開啟；已有名稱 → 直接開啟。
+      - 關閉保留名稱；「修改名稱」只改名稱；公開但沒有名稱（E2 之前用舊版開啟的人）會提示並可設定。
+      - 寫入期間停用整張卡片；失敗時開關恢復原狀並說明原因（名稱不符規則／網路）；回應回來時已切換帳號則丟棄；成功後只更新本機的 user（`saveUserLocal`）並清掉排行榜快取。離開設定頁再回來時輸入框重新開始。
+    - `storage.js`：`is_public` 與新的 `display_name` 在 `PROFILE_FIELDS` 只讀不寫（整份 profile 的上傳不再帶這兩欄，其他裝置的舊資料不會把設定蓋回去）；移除不再使用的 `getLeaderboardCache`／`saveLeaderboardCache`；登出時清掉兩個排行榜快取。
+    - 測試：
+      - `tests/unit/leaderboardPublic.test.js`：從 018 讀出字元範圍與長度上限比對；可以與不可以的名稱（含 BMP 以外的字元、英格蘭旗、各類看不見的字元）；RPC、快取、寫入。
+      - 排行榜、設定頁、storage 對映、整合測試與 `leaderboardViewGrantsSql` 更新（client 不再讀 view）。
+      - 新的 e2e `tests/e2e/pro014e2-leaderboard-name.test.js`：真的 Supabase client、攔截 REST；開啟 → 不合規則的名稱被擋 → 輸入名稱 → 只有一次 PATCH（`display_name` 與 `is_public`，限本人）→ 排行榜顯示公開名稱、標記「你」、畫面上沒有帳號名稱。
+    - 驗證：單元與整合測試 1706 個、e2e 100 個全部通過（另 1 個原本就略過），lint 通過。名稱規則以本機 PostgreSQL 的 018 CHECK 對 55,224 個隨機名稱（集中在每段字元範圍的兩側）比對，0 個不同；把結尾空白的規則改壞時有 520 個不同，把兩段字元範圍改壞時單元測試會失敗。截圖確認設定頁三種狀態與排行榜（含 20 個全形字與堆疊組合符號的名稱）。
 
 - [x] **2026-11-13 production 套用（BUG-119A、HW-112B、PRO-014EA、PRO-017RA）**：擁有者 2026-11-13 回覆「可以送了 依序即可」，agent 以 Supabase MCP 依序執行，每一項都是只讀檢查 → production 乾跑（完整的資料庫測試，單一 transaction、結尾 rollback；四項都另以只讀查詢確認沒有留下任何東西）→ 套用（`begin; set local lock_timeout = '5s';` … `commit;`，MCP 的確認即擁有者核准）→ 事後檢查（只讀的定義、權限、md5 與可見性檢查；需要合成帳號的部分在 transaction 裡做、結尾 rollback；019 套用後另跑完整的 pro014l）。
   - **BUG-119A（017）**：套用前 policy 仍是 010（`foldername(p.name)`）、`is_public_leaderboard_avatar` 不存在；公開使用者 2 位、有頭像且檔案存在 1 位。乾跑 bug119 測試全部通過。套用後：policy 為 `bucket avatars AND is_public_leaderboard_avatar(name)`，函式的 `pg_get_functiondef` md5 與本機以檔案套用的相同（`d7dacbf3…`），只給 authenticated（加上 postgres、service_role）；以合成帳號確認旁人只看得到公開使用者現在的頭像，已登入的旁人看得到那 1 位真的公開使用者的頭像，anon 看不到。

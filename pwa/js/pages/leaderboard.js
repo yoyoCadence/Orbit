@@ -1,15 +1,21 @@
 import { state }    from '../state.js';
-import { storage }  from '../storage.js';
 import { supabase } from '../supabase.js';
 import { SUPABASE_URL } from '../config.js';
 import { getLevelInfo } from '../leveling.js';
 import { effectiveToday, escHtml } from '../utils.js';
+import {
+  fetchLeaderboardRows,
+  readLeaderboardCacheV2,
+  writeLeaderboardCacheV2,
+} from '../leaderboardPublic.js';
 
 // ─── Growth rate calculation ──────────────────────────────────────────────────
 
 /**
  * growthRate = weekXP / personalAvgWeekXP * 100
  * personalAvgWeekXP = totalXP / max(weeksActive, 1)
+ * `createdAt` is any date string Date can parse; get_leaderboard() gives the
+ * UTC join date (`joined_on`, e.g. '2026-11-01').
  */
 export function calcGrowthRate(totalXP, weekXP, createdAt) {
   const msPerWeek = 7 * 24 * 60 * 60 * 1000;
@@ -32,8 +38,8 @@ function isCurrentLeaderboardRender(container) {
   return !container.dataset?.route || container.dataset.route === 'leaderboard';
 }
 
-// INFRA-110: only signed-in users may read leaderboard_view (migration 015);
-// a guest's data stays on this device. A guest has no session stored by the
+// INFRA-110: only signed-in users may read the leaderboard (migration 015; since
+// PRO-014E2 through get_leaderboard(), 018); a guest's data stays on this device. A guest has no session stored by the
 // Supabase client (its default key). Read the key, not getSession(): that first
 // tries to refresh an expired token, which offline takes ~25 s and then reports
 // no session although the account is still signed in.
@@ -49,7 +55,9 @@ function isGuest() {
 export async function renderLeaderboard(container) {
   const refreshHour = state.user?.newDayHour ?? 5;
   const refreshDate = effectiveToday(refreshHour);
-  const cache = storage.getLeaderboardCache?.();
+  // PRO-014E2: its own cache key. Rows of leaderboard_view (user_id, name,
+  // created_at) are never mixed with get_leaderboard() rows.
+  const cache = readLeaderboardCacheV2();
   const cachedRows = Array.isArray(cache?.rows) ? cache.rows : null;
   const isFresh = cachedRows && cache.refreshDate === refreshDate;
 
@@ -75,10 +83,8 @@ export async function renderLeaderboard(container) {
 
   let rows;
   try {
-    const { data, error } = await supabase.from('leaderboard_view').select('*');
-    if (error) throw error;
-    rows = await _withAvatarUrls(data || []);
-    storage.saveLeaderboardCache?.(rows, new Date().toISOString(), refreshDate);
+    rows = await _withAvatarUrls(await fetchLeaderboardRows());
+    writeLeaderboardCacheV2(rows, new Date().toISOString(), refreshDate);
   } catch {
     if (!isCurrentLeaderboardRender(container)) return;
     if (cachedRows) {
@@ -104,7 +110,7 @@ function _renderRows(container, rows, refreshedAt, isStale, refreshHour) {
       <div class="section-title">🏆 排行榜</div>
       <div class="card">
         <div style="color:var(--text-muted);font-size:13px;text-align:center;padding:16px">
-          目前還沒有公開用戶。<br>在設定頁開啟「顯示於排行榜」即可加入！
+          目前還沒有公開用戶。<br>在設定頁開啟「顯示於排行榜」並設定公開名稱即可加入！
         </div>
       </div>
       ${_refreshNoteHtml(refreshedAt, isStale, refreshHour)}
@@ -119,17 +125,15 @@ function _renderRows(container, rows, refreshedAt, isStale, refreshHour) {
 }
 
 function _renderContent(container, rows, refreshedAt, isStale, refreshHour) {
-  const myUserId = state.user?.id;
-
   // ── Week XP ranking ───────────────────────────────────────────────────────
   const weekRanked = [...rows]
-    .sort((a, b) => b.week_xp - a.week_xp);
+    .sort((a, b) => Number(b.week_xp) - Number(a.week_xp));
 
   // ── Growth rate ranking ───────────────────────────────────────────────────
   const growthRanked = [...rows]
     .map(r => ({
       ...r,
-      growthRate: isNewUser(r.created_at) ? null : calcGrowthRate(r.total_xp, r.week_xp, r.created_at),
+      growthRate: isNewUser(r.joined_on) ? null : calcGrowthRate(r.total_xp, r.week_xp, r.joined_on),
     }))
     .filter(r => r.growthRate !== null)
     .sort((a, b) => b.growthRate - a.growthRate);
@@ -145,7 +149,8 @@ function _renderContent(container, rows, refreshedAt, isStale, refreshHour) {
 
   const listHtml = activeRows.length
     ? activeRows.map((r, i) => {
-        const isMe = r.user_id === myUserId;
+        // get_leaderboard() never returns user_id; the server marks the caller.
+        const isMe = r.is_me === true;
         const lvl  = getLevelInfo(r.total_xp || 0).level;
         const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`;
         const score = _tab === 'week'   ? `${r.week_xp} XP`
@@ -154,7 +159,8 @@ function _renderContent(container, rows, refreshedAt, isStale, refreshHour) {
         const subLabel = _tab === 'week' ? '本週XP'
           : _tab === 'growth'            ? '成長率'
           :                                '累積XP';
-        const initial = (r.name || '?')[0].toUpperCase();
+        // First code point, so an emoji or a CJK Extension B character stays whole.
+        const initial = (Array.from(r.display_name || '?')[0] || '?').toUpperCase();
         const avatarHtml = r.avatar_display_url
           ? `<img src="${escAttr(r.avatar_display_url)}" alt="">`
           : escHtml(initial);
@@ -164,7 +170,7 @@ function _renderContent(container, rows, refreshedAt, isStale, refreshHour) {
             <span class="lb-rank">${medal}</span>
             <div class="lb-avatar">${avatarHtml}</div>
             <div class="lb-info">
-              <div class="lb-name">${escHtml(r.name)}${isMe ? ' <span class="lb-you">你</span>' : ''}</div>
+              <div class="lb-name"><span class="lb-name-text">${escHtml(r.display_name)}</span>${isMe ? '<span class="lb-you">你</span>' : ''}</div>
               <div class="lb-sub">Lv.${lvl} · 連勝 ${r.streak_days}天</div>
             </div>
             <div class="lb-score">
@@ -212,16 +218,16 @@ function _renderContent(container, rows, refreshedAt, isStale, refreshHour) {
   });
 }
 
+// get_leaderboard() gives avatar_path only for a file in the owner's own
+// avatars folder (NULL otherwise), so the board never loads an address another
+// user typed in; a NULL path shows the initial.
 async function _withAvatarUrls(rows) {
   const resolved = await Promise.all(rows.map(async row => {
-    if (!row.avatar_url) return { ...row, avatar_display_url: null };
-    if (/^(https?:|data:|blob:)/.test(row.avatar_url)) {
-      return { ...row, avatar_display_url: row.avatar_url };
-    }
+    if (!row.avatar_path) return { ...row, avatar_display_url: null };
     try {
       const { data, error } = await supabase.storage
         .from('avatars')
-        .createSignedUrl(row.avatar_url, 60 * 60 * 24 * 7);
+        .createSignedUrl(row.avatar_path, 60 * 60 * 24 * 7);
       if (error) throw error;
       return { ...row, avatar_display_url: data?.signedUrl || null };
     } catch {

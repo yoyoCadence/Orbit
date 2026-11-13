@@ -4,6 +4,9 @@
  *
  * 測試排行榜純函數（calcGrowthRate、isNewUser）與 renderLeaderboard DOM 渲染。
  * 環境：jsdom（需要 DOM API 支援渲染測試）
+ *
+ * PRO-014E2: the board reads get_leaderboard() (migration 018). Its rows carry
+ * display_name, avatar_path, joined_on, is_me and is_pro, and never user_id.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -23,14 +26,15 @@ vi.mock('../../pwa/js/leveling.js', () => ({
   getLevelInfo: vi.fn(() => ({ level: 5, currentXP: 0, needed: 200, percent: 0, totalXP: 0 })),
 }));
 
-// Supabase mock — configure per-test in beforeEach
-const mockSelect = vi.hoisted(() => vi.fn());
-const mockFrom   = vi.hoisted(() => vi.fn(() => ({ select: mockSelect })));
+// Supabase mock — configure per-test in beforeEach. `from` must stay unused:
+// the board no longer reads leaderboard_view or any table.
+const mockRpc    = vi.hoisted(() => vi.fn());
+const mockFrom   = vi.hoisted(() => vi.fn());
 const mockCreateSignedUrl = vi.hoisted(() => vi.fn());
 const mockStorageFrom = vi.hoisted(() => vi.fn(() => ({ createSignedUrl: mockCreateSignedUrl })));
 
 vi.mock('../../pwa/js/supabase.js', () => ({
-  supabase: { from: mockFrom, storage: { from: mockStorageFrom } },
+  supabase: { rpc: mockRpc, from: mockFrom, storage: { from: mockStorageFrom } },
 }));
 
 // INFRA-110: the page treats an account as signed in when the Supabase client
@@ -59,18 +63,27 @@ function weeksAgo(n) {
   return daysAgo(n * 7);
 }
 
+/** get_leaderboard() gives the UTC join date, e.g. '2026-11-01'. */
+function joinedDaysAgo(n) {
+  return daysAgo(n).slice(0, 10);
+}
+
 function makeRow(overrides = {}) {
   return {
-    user_id:     'user-1',
-    name:        'Bob',
-    mode:        'normal',
-    total_xp:    500,
-    week_xp:     100,
-    streak_days: 5,
-    created_at:  weeksAgo(10), // established user (>14 days)
+    display_name: 'Bob',
+    avatar_path:  null,
+    mode:         'normal',
+    total_xp:     500,
+    week_xp:      100,
+    streak_days:  5,
+    joined_on:    joinedDaysAgo(70), // established user (>14 days)
+    is_me:        false,
+    is_pro:       false,
     ...overrides,
   };
 }
+
+const CACHE_KEY = 'yoyo_leaderboardCacheV2';
 
 function effectiveDateForTest(newDayHour = 5) {
   const d = new Date();
@@ -167,8 +180,8 @@ describe('renderLeaderboard — Supabase error', () => {
     document.body.removeChild(container);
   });
 
-  it('shows loading state then fallback when Supabase throws', async () => {
-    mockSelect.mockResolvedValueOnce({ data: null, error: { message: 'network error' } });
+  it('shows loading state then fallback when the RPC fails', async () => {
+    mockRpc.mockResolvedValueOnce({ data: null, error: { message: 'network error' } });
     await renderLeaderboard(container);
     expect(container.innerHTML).toContain('無法載入排行榜');
   });
@@ -188,14 +201,14 @@ describe('renderLeaderboard — guest (INFRA-110)', () => {
     document.body.removeChild(container);
   });
 
-  it('asks a guest to sign in, without querying the view or showing a cached list', async () => {
-    localStorage.setItem('yoyo_leaderboardCache', JSON.stringify({
-      rows: [makeRow({ name: 'Cached Bob' })],
+  it('asks a guest to sign in, without calling the RPC or showing a cached list', async () => {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({
+      rows: [makeRow({ display_name: 'Cached Bob' })],
       refreshedAt: new Date().toISOString(),
       refreshDate: effectiveDateForTest(),
     }));
     await renderLeaderboard(container);
-    expect(mockFrom).not.toHaveBeenCalled();
+    expect(mockRpc).not.toHaveBeenCalled();
     expect(container.querySelector('.lb-guest').textContent).toContain('登入帳號後才能看排行榜');
     expect(container.innerHTML).not.toContain('Cached Bob');
   });
@@ -204,8 +217,8 @@ describe('renderLeaderboard — guest (INFRA-110)', () => {
     // getSession() would try to refresh and report no session while offline;
     // the stored session still says the account is signed in.
     signIn();
-    localStorage.setItem('yoyo_leaderboardCache', JSON.stringify({
-      rows: [makeRow({ name: 'Cached Bob' })],
+    localStorage.setItem(CACHE_KEY, JSON.stringify({
+      rows: [makeRow({ display_name: 'Cached Bob' })],
       refreshedAt: new Date().toISOString(),
       refreshDate: effectiveDateForTest(),
     }));
@@ -223,13 +236,13 @@ describe('renderLeaderboard — guest (INFRA-110)', () => {
 
   it('runs the query when storage cannot be read', async () => {
     const getItem = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('denied'); });
-    mockSelect.mockResolvedValueOnce({ data: [makeRow({ name: 'Bob' })], error: null });
+    mockRpc.mockResolvedValueOnce({ data: [makeRow({ display_name: 'Bob' })], error: null });
     try {
       await renderLeaderboard(container);
     } finally {
       getItem.mockRestore();
     }
-    expect(mockFrom).toHaveBeenCalledWith('leaderboard_view');
+    expect(mockRpc).toHaveBeenCalledWith('get_leaderboard');
     expect(container.innerHTML).toContain('Bob');
   });
 });
@@ -251,7 +264,7 @@ describe('renderLeaderboard — empty data', () => {
   });
 
   it('shows empty-state message when rows=[]', async () => {
-    mockSelect.mockResolvedValueOnce({ data: [], error: null });
+    mockRpc.mockResolvedValueOnce({ data: [], error: null });
     await renderLeaderboard(container);
     expect(container.innerHTML).toContain('目前還沒有公開用戶');
   });
@@ -275,17 +288,17 @@ describe('renderLeaderboard — with data', () => {
   });
 
   it('renders user name in week tab', async () => {
-    const rows = [makeRow({ user_id: 'user-1', name: 'Bob', week_xp: 200 })];
-    mockSelect.mockResolvedValueOnce({ data: rows, error: null });
+    const rows = [makeRow({ display_name: 'Bob', week_xp: 200 })];
+    mockRpc.mockResolvedValueOnce({ data: rows, error: null });
     await renderLeaderboard(container);
     expect(container.innerHTML).toContain('Bob');
     expect(container.innerHTML).toContain('本週XP');
   });
 
   it('uses same-day cache without querying Supabase again', async () => {
-    const rows = [makeRow({ user_id: 'user-1', name: 'Cached Bob', week_xp: 200 })];
+    const rows = [makeRow({ display_name: 'Cached Bob', week_xp: 200 })];
     const today = effectiveDateForTest();
-    localStorage.setItem('yoyo_leaderboardCache', JSON.stringify({
+    localStorage.setItem(CACHE_KEY, JSON.stringify({
       rows,
       refreshedAt: new Date().toISOString(),
       refreshDate: today,
@@ -293,14 +306,14 @@ describe('renderLeaderboard — with data', () => {
 
     await renderLeaderboard(container);
 
-    expect(mockFrom).not.toHaveBeenCalled();
+    expect(mockRpc).not.toHaveBeenCalled();
     expect(container.innerHTML).toContain('Cached Bob');
     expect(container.innerHTML).toContain('每日 05:00');
   });
 
   it('does not overwrite content when leaderboard async result resolves after navigation away', async () => {
     const pending = deferred();
-    mockSelect.mockReturnValueOnce(pending.promise);
+    mockRpc.mockReturnValueOnce(pending.promise);
     container.dataset.route = 'leaderboard';
 
     const renderPromise = renderLeaderboard(container);
@@ -308,7 +321,7 @@ describe('renderLeaderboard — with data', () => {
 
     container.dataset.route = 'home';
     container.innerHTML = '<div>Home stays here</div>';
-    pending.resolve({ data: [makeRow({ name: 'Late Bob' })], error: null });
+    pending.resolve({ data: [makeRow({ display_name: 'Late Bob' })], error: null });
     await renderPromise;
 
     expect(container.innerHTML).toContain('Home stays here');
@@ -316,9 +329,9 @@ describe('renderLeaderboard — with data', () => {
   });
 
   it('renders signed avatar image from leaderboard avatar path', async () => {
-    const rows = [makeRow({ user_id: 'user-1', name: 'Bob', avatar_url: 'user-1/avatar.png' })];
+    const rows = [makeRow({ display_name: 'Bob', avatar_path: 'user-1/avatar.png' })];
     mockCreateSignedUrl.mockResolvedValueOnce({ data: { signedUrl: 'https://signed.example/avatar.png' }, error: null });
-    mockSelect.mockResolvedValueOnce({ data: rows, error: null });
+    mockRpc.mockResolvedValueOnce({ data: rows, error: null });
 
     await renderLeaderboard(container);
 
@@ -330,9 +343,9 @@ describe('renderLeaderboard — with data', () => {
   });
 
   it('falls back to initial when avatar signing fails', async () => {
-    const rows = [makeRow({ user_id: 'user-1', name: 'Bob', avatar_url: 'user-1/avatar.png' })];
+    const rows = [makeRow({ display_name: 'Bob', avatar_path: 'user-1/avatar.png' })];
     mockCreateSignedUrl.mockResolvedValueOnce({ data: null, error: { message: 'denied' } });
-    mockSelect.mockResolvedValueOnce({ data: rows, error: null });
+    mockRpc.mockResolvedValueOnce({ data: rows, error: null });
 
     await renderLeaderboard(container);
 
@@ -341,24 +354,24 @@ describe('renderLeaderboard — with data', () => {
   });
 
   it('falls back to stale cache when Supabase refresh fails', async () => {
-    const rows = [makeRow({ user_id: 'user-1', name: 'Stale Bob', week_xp: 200 })];
-    localStorage.setItem('yoyo_leaderboardCache', JSON.stringify({
+    const rows = [makeRow({ display_name: 'Stale Bob', week_xp: 200 })];
+    localStorage.setItem(CACHE_KEY, JSON.stringify({
       rows,
       refreshedAt: new Date(Date.now() - 86400000).toISOString(),
       refreshDate: '2000-01-01',
     }));
-    mockSelect.mockResolvedValueOnce({ data: null, error: { message: 'network error' } });
+    mockRpc.mockResolvedValueOnce({ data: null, error: { message: 'network error' } });
 
     await renderLeaderboard(container);
 
-    expect(mockFrom).toHaveBeenCalledWith('leaderboard_view');
+    expect(mockRpc).toHaveBeenCalledWith('get_leaderboard');
     expect(container.innerHTML).toContain('Stale Bob');
     expect(container.innerHTML).toContain('目前顯示快取資料');
   });
 
   it('escapes HTML in user names', async () => {
-    const rows = [makeRow({ name: '<script>alert(1)</script>' })];
-    mockSelect.mockResolvedValueOnce({ data: rows, error: null });
+    const rows = [makeRow({ display_name: '<script>alert(1)</script>' })];
+    mockRpc.mockResolvedValueOnce({ data: rows, error: null });
     await renderLeaderboard(container);
     expect(container.innerHTML).not.toContain('<script>');
     expect(container.innerHTML).toContain('&lt;script&gt;');
@@ -366,20 +379,18 @@ describe('renderLeaderboard — with data', () => {
 
   it('new user (< 14 days) excluded from growth tab ranking', async () => {
     const newUserRow = makeRow({
-      user_id:    'new-1',
-      name:       'Newbie',
-      created_at: daysAgo(5),
-      week_xp:    999,
-      total_xp:   999,
+      display_name: 'Newbie',
+      joined_on:    joinedDaysAgo(5),
+      week_xp:      999,
+      total_xp:     999,
     });
     const oldUserRow = makeRow({
-      user_id:    'old-1',
-      name:       'Veteran',
-      created_at: weeksAgo(20),
-      week_xp:    50,
-      total_xp:   1000,
+      display_name: 'Veteran',
+      joined_on:    joinedDaysAgo(140),
+      week_xp:      50,
+      total_xp:     1000,
     });
-    mockSelect.mockResolvedValueOnce({ data: [newUserRow, oldUserRow], error: null });
+    mockRpc.mockResolvedValueOnce({ data: [newUserRow, oldUserRow], error: null });
     await renderLeaderboard(container);
 
     // Switch to growth tab
@@ -392,17 +403,27 @@ describe('renderLeaderboard — with data', () => {
     expect(container.innerHTML).not.toContain('Newbie');
   });
 
-  it('my own row has lb-row-me class', async () => {
-    const rows = [makeRow({ user_id: 'me', name: 'Alice' })];
-    mockSelect.mockResolvedValueOnce({ data: rows, error: null });
+  it('my own row has lb-row-me class (is_me from the server)', async () => {
+    const rows = [makeRow({ display_name: 'Alice', is_me: true }), makeRow({ display_name: 'Bob' })];
+    mockRpc.mockResolvedValueOnce({ data: rows, error: null });
     await renderLeaderboard(container);
-    const myRow = container.querySelector('.lb-row-me');
-    expect(myRow).not.toBeNull();
+    const myRows = container.querySelectorAll('.lb-row-me');
+    expect(myRows).toHaveLength(1);
+    expect(myRows[0].textContent).toContain('Alice');
+    expect(myRows[0].querySelector('.lb-you')).not.toBeNull();
+  });
+
+  it('never marks a row as mine from anything but is_me', async () => {
+    // A row with the caller's id (an old cache shape) is not the caller's row.
+    const rows = [makeRow({ display_name: 'Bob', user_id: 'me', is_me: false })];
+    mockRpc.mockResolvedValueOnce({ data: rows, error: null });
+    await renderLeaderboard(container);
+    expect(container.querySelector('.lb-row-me')).toBeNull();
   });
 
   it('tab switching: week → growth → week', async () => {
-    const rows = [makeRow({ created_at: weeksAgo(20) })];
-    mockSelect.mockResolvedValueOnce({ data: rows, error: null });
+    const rows = [makeRow({ joined_on: joinedDaysAgo(140) })];
+    mockRpc.mockResolvedValueOnce({ data: rows, error: null });
     await renderLeaderboard(container);
 
     // Click growth tab
@@ -416,14 +437,14 @@ describe('renderLeaderboard — with data', () => {
 
   it('累積XP tab button exists', async () => {
     const rows = [makeRow()];
-    mockSelect.mockResolvedValueOnce({ data: rows, error: null });
+    mockRpc.mockResolvedValueOnce({ data: rows, error: null });
     await renderLeaderboard(container);
     expect(container.querySelector('[data-tab="total"]')).not.toBeNull();
   });
 
   it('切換到累積XP tab → sub-label 顯示「累積XP」', async () => {
     const rows = [makeRow({ total_xp: 1200, week_xp: 50 })];
-    mockSelect.mockResolvedValueOnce({ data: rows, error: null });
+    mockRpc.mockResolvedValueOnce({ data: rows, error: null });
     await renderLeaderboard(container);
 
     container.querySelector('[data-tab="total"]').click();
@@ -436,10 +457,10 @@ describe('renderLeaderboard — with data', () => {
 
   it('累積XP tab 依 total_xp 降冪排列', async () => {
     const rows = [
-      makeRow({ user_id: 'low',  name: 'Low',  total_xp: 100,  week_xp: 200 }),
-      makeRow({ user_id: 'high', name: 'High', total_xp: 5000, week_xp: 10  }),
+      makeRow({ display_name: 'Low',  total_xp: 100,  week_xp: 200 }),
+      makeRow({ display_name: 'High', total_xp: 5000, week_xp: 10  }),
     ];
-    mockSelect.mockResolvedValueOnce({ data: rows, error: null });
+    mockRpc.mockResolvedValueOnce({ data: rows, error: null });
     await renderLeaderboard(container);
 
     container.querySelector('[data-tab="total"]').click();
@@ -449,5 +470,82 @@ describe('renderLeaderboard — with data', () => {
 
     // reset to week
     container.querySelector('[data-tab="week"]').click();
+  });
+});
+
+describe('renderLeaderboard — get_leaderboard() rows (PRO-014E2)', () => {
+  let container;
+
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    localStorage.clear();
+    signIn();
+    vi.clearAllMocks();
+    mockCreateSignedUrl.mockResolvedValue({ data: { signedUrl: 'signed-avatar-url' }, error: null });
+    mockState.user = { id: 'me', name: 'Alice', mode: 'normal' };
+  });
+
+  afterEach(() => {
+    document.body.removeChild(container);
+  });
+
+  it('ignores a same-day cache of leaderboard_view rows, then drops it after a refresh', async () => {
+    localStorage.setItem('yoyo_leaderboardCache', JSON.stringify({
+      rows: [{ user_id: 'u1', name: 'Account Name', mode: 'normal', total_xp: 1, week_xp: 1 }],
+      refreshedAt: new Date().toISOString(),
+      refreshDate: effectiveDateForTest(),
+    }));
+    mockRpc.mockResolvedValueOnce({ data: [makeRow({ display_name: 'Public Bob' })], error: null });
+
+    await renderLeaderboard(container);
+
+    expect(mockRpc).toHaveBeenCalledWith('get_leaderboard');
+    expect(container.innerHTML).toContain('Public Bob');
+    expect(container.innerHTML).not.toContain('Account Name');
+    expect(localStorage.getItem('yoyo_leaderboardCache')).toBeNull();
+    const cache = JSON.parse(localStorage.getItem(CACHE_KEY));
+    expect(cache.refreshDate).toBe(effectiveDateForTest());
+    expect(cache.rows.map(r => r.display_name)).toEqual(['Public Bob']);
+  });
+
+  it('never reads a table or view', async () => {
+    mockRpc.mockResolvedValueOnce({ data: [makeRow()], error: null });
+    await renderLeaderboard(container);
+    expect(mockFrom).not.toHaveBeenCalled();
+  });
+
+  it('shows the initial without signing anything when avatar_path is NULL', async () => {
+    mockRpc.mockResolvedValueOnce({ data: [makeRow({ display_name: 'Bob', avatar_path: null })], error: null });
+    await renderLeaderboard(container);
+    expect(mockCreateSignedUrl).not.toHaveBeenCalled();
+    expect(container.querySelector('.lb-avatar img')).toBeNull();
+    expect(container.querySelector('.lb-avatar').textContent.trim()).toBe('B');
+  });
+
+  it('keeps a character outside the BMP whole in the initial', async () => {
+    mockRpc.mockResolvedValueOnce({ data: [makeRow({ display_name: '🐢慢慢來' })], error: null });
+    await renderLeaderboard(container);
+    expect(container.querySelector('.lb-avatar').textContent.trim()).toBe('🐢');
+  });
+
+  it('lists only rows in the viewer\'s own mode', async () => {
+    mockRpc.mockResolvedValueOnce({
+      data: [makeRow({ display_name: 'Normal Bob' }), makeRow({ display_name: 'Advanced Eve', mode: 'advanced' })],
+      error: null,
+    });
+    await renderLeaderboard(container);
+    expect(container.innerHTML).toContain('Normal Bob');
+    expect(container.innerHTML).not.toContain('Advanced Eve');
+  });
+
+  it('ranks the week tab by week_xp', async () => {
+    mockRpc.mockResolvedValueOnce({
+      data: [makeRow({ display_name: 'Slow', week_xp: 10 }), makeRow({ display_name: 'Fast', week_xp: 300 })],
+      error: null,
+    });
+    await renderLeaderboard(container);
+    const names = [...container.querySelectorAll('.lb-name')].map(el => el.textContent.trim());
+    expect(names).toEqual(['Fast', 'Slow']);
   });
 });
