@@ -639,6 +639,9 @@ async function _savePublicSettings(container, changes) {
     state.user.displayName = saved.displayName;
     // Local copy only: these two fields are not part of the profile push.
     storage.saveUserLocal(state.user);
+    // An opt-out kept from an older version must not undo this choice later.
+    // Optional call: a stale cached storage.js may lack it (INFRA-105).
+    storage.clearLeaderboardOptOutPending?.(ownerId);
     clearLeaderboardCacheV2();
     _lbEditor = null;
     _lbDraft = '';

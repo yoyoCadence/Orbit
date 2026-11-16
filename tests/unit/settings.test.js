@@ -29,6 +29,7 @@ const mockStorage = vi.hoisted(() => ({
   getBgImage:            vi.fn(() => null),
   saveUser:              vi.fn(),
   saveUserLocal:         vi.fn(),
+  clearLeaderboardOptOutPending: vi.fn(),
   saveTasks:             vi.fn(),
   saveTheme:             vi.fn(),
   saveUiSkin:            vi.fn(),
@@ -469,6 +470,8 @@ describe('renderSettings: leaderboard opt-in and public name (PRO-014E2)', () =>
     expect(mockState.user.isPublic).toBe(true);
     expect(mockState.user.displayName).toBe('Night Owl');
     expect(mockStorage.saveUserLocal).toHaveBeenCalledWith(mockState.user);
+    // The user's own choice supersedes an opt-out kept from an older version.
+    expect(mockStorage.clearLeaderboardOptOutPending).toHaveBeenCalledWith('user-1');
     // The whole-profile push no longer carries these fields.
     expect(mockStorage.saveUser).not.toHaveBeenCalled();
     expect(mockClearLeaderboardCache).toHaveBeenCalled();

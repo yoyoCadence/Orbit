@@ -16,7 +16,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // ─── Supabase mock ────────────────────────────────────────────────────────────
 
 const tableData = vi.hoisted(() => ({}));           // table → rows/row for reads
-const captured  = vi.hoisted(() => ({ upserts: {}, inserts: {}, updates: {}, updateError: null }));
+const captured  = vi.hoisted(() => ({ upserts: {}, inserts: {}, updates: {}, updateError: null, updateRows: 1 }));
 
 vi.mock('../../pwa/js/supabase.js', () => {
   function chain(table) {
@@ -27,7 +27,17 @@ vi.mock('../../pwa/js/supabase.js', () => {
       delete: () => self,
       update: (payload) => {
         (captured.updates[table] ??= []).push(payload);
-        return { eq: () => Promise.resolve({ error: captured.updateError }) };
+        const result = () => ({
+          error: captured.updateError,
+          data: captured.updateError ? null : Array.from({ length: captured.updateRows }, () => ({ user_id: 'uid-1' })),
+        });
+        return {
+          eq: () => {
+            const done = Promise.resolve(result());
+            done.select = () => Promise.resolve(result());
+            return done;
+          },
+        };
       },
       single: () => Promise.resolve({ data: tableData[table] ?? null, error: null }),
       order:  () => Promise.resolve({ data: tableData[table] ?? null, error: null }),
@@ -66,6 +76,7 @@ beforeEach(() => {
   captured.inserts = {};
   captured.updates = {};
   captured.updateError = null;
+  captured.updateRows = 1;
 });
 
 // ─── 讀取方向：loadFromRemote → localStorage cache ───────────────────────────
@@ -136,7 +147,9 @@ describe('loadFromRemote — profile row → user object', () => {
 
 describe('loadFromRemote — leaderboard opt-out left by v1.41.17 or earlier (PRO-014E2)', () => {
   const PENDING_KEY = 'yoyo_profileSyncPending:uid-1';
+  const OPT_OUT_KEY = 'yoyo_leaderboardOptOutPending:uid-1';
   const seedPending = snapshot => localStorage.setItem(PENDING_KEY, JSON.stringify(snapshot));
+  const flush = () => new Promise(resolve => setTimeout(resolve, 0));
 
   it('an unmarked snapshot that turned the leaderboard off is honoured before the pull', async () => {
     seedPending({ ownerId: 'uid-1', value: { id: 'uid-1', name: 'A', isPublic: false } });
@@ -145,6 +158,40 @@ describe('loadFromRemote — leaderboard opt-out left by v1.41.17 or earlier (PR
     expect(captured.upserts.profiles[0].payload).not.toHaveProperty('is_public');
     expect(captured.updates.profiles).toEqual([{ is_public: false }]);
     expect(localStorage.getItem(PENDING_KEY)).toBeNull();
+    expect(localStorage.getItem(OPT_OUT_KEY)).toBeNull();
+  });
+
+  it('survives a saveUser at boot that replaces and pushes the snapshot first', async () => {
+    // processYesterdayStreak() saves the user before the remote load starts.
+    seedPending({ ownerId: 'uid-1', value: { id: 'uid-1', name: 'A', isPublic: false } });
+    storage.saveUser({ id: 'uid-1', name: 'A', isPublic: false, streakDays: 3 });
+    await flush(); // its push lands and clears the (now marked) snapshot
+    expect(localStorage.getItem(PENDING_KEY)).toBeNull();
+    expect(JSON.parse(localStorage.getItem(OPT_OUT_KEY))).toEqual({ ownerId: 'uid-1' });
+
+    await db.loadFromRemote('uid-1');
+    expect(captured.updates.profiles).toEqual([{ is_public: false }]);
+    expect(localStorage.getItem(OPT_OUT_KEY)).toBeNull();
+  });
+
+  it('a choice made in settings supersedes the kept opt-out', async () => {
+    localStorage.setItem(OPT_OUT_KEY, JSON.stringify({ ownerId: 'uid-1' }));
+    storage.clearLeaderboardOptOutPending('uid-1');
+    await db.loadFromRemote('uid-1');
+    expect(captured.updates.profiles).toBeUndefined();
+  });
+
+  it('keeps the opt-out and stops the pull when no row was updated', async () => {
+    localStorage.setItem(OPT_OUT_KEY, JSON.stringify({ ownerId: 'uid-1' }));
+    captured.updateRows = 0;
+    await expect(db.loadFromRemote('uid-1')).rejects.toThrow('updated no profile row');
+    expect(localStorage.getItem(OPT_OUT_KEY)).not.toBeNull();
+  });
+
+  it('ignores another account\'s kept opt-out', async () => {
+    localStorage.setItem(OPT_OUT_KEY, JSON.stringify({ ownerId: 'someone-else' }));
+    await db.loadFromRemote('uid-1');
+    expect(captured.updates.profiles).toBeUndefined();
   });
 
   it('an unmarked snapshot never turns the leaderboard on', async () => {
@@ -155,15 +202,18 @@ describe('loadFromRemote — leaderboard opt-out left by v1.41.17 or earlier (PR
 
   it('a snapshot of this version carries nothing for the leaderboard', async () => {
     seedPending({ ownerId: 'uid-1', value: { id: 'uid-1', name: 'A', isPublic: false }, fields: 'pro014e2' });
+    storage.saveUser({ id: 'uid-1', name: 'A', isPublic: false });
+    await flush();
     await db.loadFromRemote('uid-1');
     expect(captured.updates.profiles).toBeUndefined();
+    expect(localStorage.getItem(OPT_OUT_KEY)).toBeNull();
   });
 
-  it('keeps the snapshot and stops the pull when the opt-out cannot be written', async () => {
+  it('keeps the opt-out and stops the pull when it cannot be written', async () => {
     seedPending({ ownerId: 'uid-1', value: { id: 'uid-1', name: 'A', isPublic: false } });
     captured.updateError = { message: 'offline' };
     await expect(db.loadFromRemote('uid-1')).rejects.toEqual({ message: 'offline' });
-    expect(JSON.parse(localStorage.getItem(PENDING_KEY)).value.isPublic).toBe(false);
+    expect(JSON.parse(localStorage.getItem(OPT_OUT_KEY))).toEqual({ ownerId: 'uid-1' });
   });
 
   it('marks the snapshots it writes', () => {
