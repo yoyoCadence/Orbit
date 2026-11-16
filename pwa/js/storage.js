@@ -22,7 +22,9 @@ import {
 } from './platform/sessionDeletionLog.js';
 
 const PREFIX = 'yoyo_';
-const LEADERBOARD_CACHE_KEY = 'leaderboardCache';
+// The leaderboard caches belong to leaderboardPublic.js (PRO-014E2); sign-out
+// clears both, the old key from versions before it included.
+const LEADERBOARD_CACHE_KEYS = ['leaderboardCache', 'leaderboardCacheV2'];
 const PROFILE_SYNC_PENDING_KEY = 'profileSyncPending';
 const ENERGY_SYNC_PENDING_KEY = 'energySyncPending';
 const SESSION_SYNC_PENDING_KEY = 'sessionSyncPending';
@@ -70,6 +72,42 @@ function createPendingSnapshot(ownerId, value) {
     ownerId,
     value: { ...value },
   };
+}
+
+// PRO-014E2: profile snapshots written since is_public stopped riding along
+// with the profile push. A snapshot without the marker comes from v1.41.17 or
+// earlier, whose push still carried is_public (see loadFromRemote).
+const PROFILE_SNAPSHOT_FIELDS = 'pro014e2';
+
+function createProfileSnapshot(ownerId, user) {
+  return { ...createPendingSnapshot(ownerId, user), fields: PROFILE_SNAPSHOT_FIELDS };
+}
+
+// An unmarked snapshot whose isPublic is false may hold a leaderboard opt-out
+// made offline in v1.41.17 or earlier (that version pushed is_public with the
+// profile; this one does not). Anything that replaces or pushes such a snapshot
+// first moves the opt-out here, so a saveUser() at boot (processYesterdayStreak
+// runs before the remote load) cannot drop it. loadFromRemote sends it before
+// its pull; an explicit choice in settings (clearLeaderboardOptOutPending)
+// supersedes it. Opt-ins are never replayed: the snapshot is a copy of the
+// whole user, so isPublic true proves nothing was asked.
+const LEADERBOARD_OPT_OUT_PENDING_KEY = 'leaderboardOptOutPending';
+
+function keepLegacyLeaderboardOptOut(ownerId, snapshot) {
+  if (!ownerId || snapshot?.ownerId !== ownerId) return;
+  if (snapshot.fields === PROFILE_SNAPSHOT_FIELDS || snapshot.value?.isPublic !== false) return;
+  set(ownerSyncPendingKey(LEADERBOARD_OPT_OUT_PENDING_KEY, ownerId), { ownerId });
+}
+
+/** Replace the owner's pending profile snapshot, keeping a legacy opt-out it held. */
+function writeProfileSnapshot(ownerId, user) {
+  const key = ownerSyncPendingKey(PROFILE_SYNC_PENDING_KEY, ownerId);
+  const pending = createProfileSnapshot(ownerId, user);
+  if (key) {
+    keepLegacyLeaderboardOptOut(ownerId, get(key));
+    set(key, pending);
+  }
+  return { key, pending };
 }
 
 function clearPendingSnapshot(key, expected) {
@@ -296,12 +334,7 @@ export function recoverPendingSessionDeletions(ownerId, recoveredAt = new Date()
   if (user) set('user', user);
   set('energy', energy);
   if (unsettledEntries.length) {
-    if (user) {
-      set(
-        ownerSyncPendingKey(PROFILE_SYNC_PENDING_KEY, ownerId),
-        createPendingSnapshot(ownerId, user),
-      );
-    }
+    if (user) writeProfileSnapshot(ownerId, user);
     set(
       ownerSyncPendingKey(ENERGY_SYNC_PENDING_KEY, ownerId),
       createPendingSnapshot(ownerId, energy),
@@ -324,6 +357,11 @@ export function recoverPendingSessionDeletions(ownerId, recoveredAt = new Date()
 // 例如 last_streak_date 讀 null→'' 但寫 ''→null）verbatim — locked by
 // tests/unit/storage-mapping.test.js. Adding a synced field = one new row here
 // (+ DB migration). toRow = null marks read-only fields never written back.
+//
+// PRO-014E2: is_public and display_name are read here but written only by
+// leaderboardPublic.savePublicSettings(), which waits for the server. A whole-
+// profile push from a device with an older copy could otherwise switch the
+// leaderboard back on or off, or wipe the public name.
 
 const PROFILE_FIELDS = [
   ['name',                   'name',                      p => p.name,                              u => u.name],
@@ -333,7 +371,8 @@ const PROFILE_FIELDS = [
   ['lastWeeklyBonusDate',    'last_weekly_bonus_date',    p => p.last_weekly_bonus_date   || '',    u => u.lastWeeklyBonusDate  || null],
   ['morningState',           'morning_state',             p => p.morning_state,                     u => u.morningState         || 'normal'],
   ['mode',                   'mode',                      p => p.mode,                              u => u.mode                 || 'normal'],
-  ['isPublic',               'is_public',                 p => p.is_public                ?? false, u => u.isPublic             ?? false],
+  ['isPublic',               'is_public',                 p => p.is_public                ?? false, null],
+  ['displayName',            'display_name',              p => p.display_name             ?? null,  null],
   ['titleTemplate',          'title_template',            p => p.title_template           || 'rpg', u => u.titleTemplate        || 'rpg'],
   ['customTitle',            'custom_title',              p => p.custom_title             || '',    u => u.customTitle          || null],
   ['newDayHour',             'new_day_hour',              p => p.new_day_hour             ?? 5,     u => u.newDayHour           ?? 5],
@@ -561,6 +600,9 @@ export const db = {
         : null;
     if (pendingProfileValue) {
       try {
+        // PRO-014E2: keep a legacy opt-out this snapshot may hold before the
+        // push below clears it (sent after this block).
+        keepLegacyLeaderboardOptOut(userId, pendingProfile);
         const synced = await this.upsertProfile(pendingProfileValue, userId);
         if (!synced) throw new Error('No authenticated profile sync session');
         if (pendingProfile?.ownerId === userId) {
@@ -570,6 +612,19 @@ export const db = {
         console.warn('Could not push pending local profile before remote load:', err);
         throw err;
       }
+    }
+    // PRO-014E2: an offline opt-out of v1.41.17 or earlier (see
+    // keepLegacyLeaderboardOptOut), sent before the pull below reads is_public
+    // back. Kept until a row is confirmed updated, so a failure retries.
+    const optOutKey = ownerSyncPendingKey(LEADERBOARD_OPT_OUT_PENDING_KEY, userId);
+    if (get(optOutKey)?.ownerId === userId) {
+      const { data, error } = await supabase.from('profiles')
+        .update({ is_public: false })
+        .eq('user_id', userId)
+        .select('user_id');
+      if (error) throw error;
+      if (!data?.length) throw new Error('Leaderboard opt-out updated no profile row');
+      remove(optOutKey);
     }
     if (pendingEnergy?.ownerId === userId) {
       try {
@@ -1003,9 +1058,7 @@ export const storage = {
     const saved = set('user', u);
     const ownerId = u?.id;
     if (!ownerId) return saved;
-    const pending = createPendingSnapshot(ownerId, u);
-    const pendingKey = ownerSyncPendingKey(PROFILE_SYNC_PENDING_KEY, ownerId);
-    set(pendingKey, pending);
+    const { key: pendingKey, pending } = writeProfileSnapshot(ownerId, u);
     db.upsertProfile(u, ownerId)
       .then(synced => {
         if (synced) clearPendingSnapshot(pendingKey, pending);
@@ -1013,15 +1066,21 @@ export const storage = {
       .catch(console.error);
     return saved;
   },
+  /**
+   * PRO-014E2: the user just chose in settings (and the server confirmed);
+   * that supersedes an opt-out kept from v1.41.17 or earlier.
+   */
+  clearLeaderboardOptOutPending: (ownerId) => {
+    const key = ownerSyncPendingKey(LEADERBOARD_OPT_OUT_PENDING_KEY, ownerId);
+    if (key) remove(key);
+  },
   /** Local-only write — no Supabase sync（profile 樂觀更新）。 */
   saveUserLocal: (u) => {
     try { set('user', u); } catch (err) { console.error('Local user save failed:', err); }
   },
   saveUserAndSync: async (u) => {
     set('user', u);
-    const pending = createPendingSnapshot(u?.id, u);
-    const pendingKey = ownerSyncPendingKey(PROFILE_SYNC_PENDING_KEY, u?.id);
-    if (pendingKey) set(pendingKey, pending);
+    const { key: pendingKey, pending } = writeProfileSnapshot(u?.id, u);
     const synced = await db.upsertProfile(u, u?.id);
     if (synced && pendingKey) {
       clearPendingSnapshot(pendingKey, pending);
@@ -1251,12 +1310,6 @@ export const storage = {
     ? localStorage.setItem(PREFIX + 'bgImage', d)
     : localStorage.removeItem(PREFIX + 'bgImage'),
 
-  // ── Leaderboard cache (local only; refreshed once per effective day) ───────
-  getLeaderboardCache: () => get(LEADERBOARD_CACHE_KEY),
-  saveLeaderboardCache: (rows, refreshedAt, refreshDate) => {
-    set(LEADERBOARD_CACHE_KEY, { rows, refreshedAt, refreshDate });
-  },
-
   // ── Daily Plan (local only, resets each effective day) ──────────────────────
   // HW-113: dated by the same effective day as Sessions (`newDayHour`), so the
   // plan survives midnight until the new-day hour instead of vanishing at
@@ -1311,7 +1364,7 @@ export const storage = {
     // Owner-scoped pending profile/Energy snapshots deliberately survive
     // sign-out so an offline undo can be pushed when that owner returns.
     ['user','tasks','sessions','energy','goals','logs','theme','uiSkin','bgImage','dailyPlan',
-      'trialBannerDismiss', LEADERBOARD_CACHE_KEY]
+      'trialBannerDismiss', ...LEADERBOARD_CACHE_KEYS]
       .forEach(k => localStorage.removeItem(PREFIX + k));
     // The entitlement snapshot must never outlive its owner's session: a
     // leftover snapshot is exactly how the next account would inherit Pro.

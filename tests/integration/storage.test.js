@@ -1058,9 +1058,10 @@ describe('db.upsertProfile()', () => {
         streak_days:   3,
         morning_state: 'good',
         mode:          'advanced',
-        is_public:     true,
       })
     );
+    // PRO-014E2: the leaderboard opt-in is written on its own, never here.
+    expect(chain.upsert.mock.calls[0][0]).not.toHaveProperty('is_public');
   });
 
   it('does not sync base64 avatar to Supabase (omits data-URL)', async () => {
@@ -1115,15 +1116,12 @@ describe('db.uploadAvatar()', () => {
 });
 
 describe('storage leaderboard cache', () => {
-  it('saves and reads leaderboard cache', () => {
-    const rows = [{ user_id: 'u1', name: 'Alice' }];
-    storage.saveLeaderboardCache(rows, '2026-04-26T00:00:00Z', '2026-04-26');
-
-    expect(storage.getLeaderboardCache()).toEqual({
-      rows,
-      refreshedAt: '2026-04-26T00:00:00Z',
-      refreshDate: '2026-04-26',
-    });
+  it('clearAll drops both leaderboard caches (PRO-014E2 and the leaderboard_view one before it)', () => {
+    localStorage.setItem('yoyo_leaderboardCache', '{"rows":[]}');
+    localStorage.setItem('yoyo_leaderboardCacheV2', '{"rows":[]}');
+    storage.clearAll();
+    expect(localStorage.getItem('yoyo_leaderboardCache')).toBeNull();
+    expect(localStorage.getItem('yoyo_leaderboardCacheV2')).toBeNull();
   });
 });
 

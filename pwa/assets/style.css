@@ -5071,9 +5071,12 @@ nav {
 }
 
 .lb-info { flex: 1; min-width: 0; }
-.lb-name { font-size: 14px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* PRO-014E2: public names are chosen by other users. Clip the name itself
+   (width and stacked combining marks), never the "你" badge after it. */
+.lb-name { font-size: 14px; font-weight: 600; color: var(--text); display: flex; align-items: center; min-width: 0; }
+.lb-name-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .lb-sub  { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
-.lb-you  { font-size: 10px; background: var(--primary); color: #fff; border-radius: 4px; padding: 1px 5px; margin-left: 4px; }
+.lb-you  { font-size: 10px; background: var(--primary); color: #fff; border-radius: 4px; padding: 1px 5px; margin-left: 4px; flex-shrink: 0; }
 
 .lb-score { text-align: right; flex-shrink: 0; }
 .lb-score-val { font-size: 15px; font-weight: 700; color: var(--primary-lt); }
