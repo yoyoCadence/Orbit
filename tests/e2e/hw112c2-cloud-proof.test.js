@@ -119,6 +119,12 @@ test.describe('HW-112C2a cloud proof photos on another device', () => {
       .toHaveAttribute('data-photo-status', 'selected', { timeout: 5000 });
     expect(downloads.filter(path => path === photoPath)).toHaveLength(1);
 
+    // Personal Space shows it too (after a reload: from this device's cache).
+    await page.click('.nav-item[data-page="personalSpace"]');
+    await expect(page.locator('[data-achievement-photo]').first())
+      .toHaveAttribute('data-photo-status', 'selected', { timeout: 5000 });
+    expect(downloads.filter(path => path === photoPath)).toHaveLength(1);
+
     // Signing out removes this account's photos from the cache.
     const cached = () => page.evaluate(owner => new Promise(resolve => {
       const request = window.indexedDB.open('orbit-proofs');

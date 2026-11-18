@@ -34,6 +34,8 @@ export const MAX_DOWNLOADS = 3;
 export const MISS_TTL_MS = 10 * 60 * 1000;
 export const CACHE_MAX_ENTRIES = 300;
 export const CACHE_MAX_BYTES = 15 * 1024 * 1024;
+export const DOWNLOAD_TIMEOUT_MS = 20 * 1000;
+export const MEMORY_MAX_PHOTOS = 200;
 
 const DB_NAME = 'orbit-proofs';
 const DB_VERSION = 1;
@@ -133,6 +135,10 @@ function openDb() {
           db.close();
           dbPromise = null;
         };
+        // The browser closed it (iOS does, under memory pressure): open again next time.
+        db.onclose = () => {
+          dbPromise = null;
+        };
         resolve(db);
       };
       request.onerror = () => resolve(null);
@@ -210,20 +216,41 @@ async function trimCache(db, ownerId) {
   await finished(tx);
 }
 
-async function deleteCachedFor(ownerId) {
-  const db = await openDb();
-  if (!db) return;
-  try {
-    const tx = db.transaction([PHOTOS, META], 'readwrite');
-    const keys = await done(tx.objectStore(META).index('owner').getAllKeys(ownerId));
-    for (const key of keys) {
-      tx.objectStore(PHOTOS).delete(key);
-      tx.objectStore(META).delete(key);
+// Delete the cached photos whose meta matches `which`. Tried a second time on
+// a fresh connection: a handle the browser closed fails, and these deletions
+// are what keeps an account's photos off a shared device.
+async function deleteCached(which) {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const db = await openDb();
+    if (!db) return;
+    try {
+      const tx = db.transaction([PHOTOS, META], 'readwrite');
+      const metas = await done(tx.objectStore(META).getAll());
+      for (const meta of metas) {
+        if (!which(meta)) continue;
+        tx.objectStore(PHOTOS).delete(meta.key);
+        tx.objectStore(META).delete(meta.key);
+      }
+      await finished(tx);
+      return;
+    } catch {
+      dbPromise = null;
     }
-    await finished(tx);
-  } catch {
-    // nothing more to do
   }
+}
+
+function deleteCachedFor(ownerId) {
+  return deleteCached(meta => meta.ownerId === ownerId);
+}
+
+/**
+ * Keep only this account's downloaded photos on this device. One account is
+ * signed in at a time, so anything else is left from an account that never
+ * got its sign-out here (an expired session, a switch). Run at each sync.
+ */
+export function keepCloudProofsOf(ownerId) {
+  if (!ownerId) return Promise.resolve();
+  return deleteCached(meta => meta.ownerId !== ownerId);
 }
 
 // ─── Download ─────────────────────────────────────────────────────────────────
@@ -242,11 +269,19 @@ function isNotFound(error) {
 async function download(ownerId, sessionId) {
   if (await signedInUserId() !== ownerId) return null;
   let result;
+  let timer;
   try {
-    result = await supabase.storage.from(PROOF_BUCKET).download(proofObjectPath(ownerId, sessionId));
+    // A request that never answers would hold one of the few slots for good.
+    result = await Promise.race([
+      supabase.storage.from(PROOF_BUCKET).download(proofObjectPath(ownerId, sessionId)),
+      new Promise(resolve => { timer = setTimeout(() => resolve({ timedOut: true }), DOWNLOAD_TIMEOUT_MS); }),
+    ]);
   } catch {
     return null;
+  } finally {
+    clearTimeout(timer);
   }
+  if (result?.timedOut) return null;
   const { data, error } = result ?? {};
   if (error || !data) {
     if (error && isNotFound(error)) misses.set(entryKey(ownerId, sessionId), Date.now() + MISS_TTL_MS);
@@ -282,7 +317,24 @@ function remember(ownerId, sessionId, blob) {
   const url = URL.createObjectURL(blob);
   loaded.set(key, { url, blob });
   misses.delete(key);
+  forgetOldest();
   return url;
+}
+
+// A long history scrolled to the end would keep every photo in memory: past
+// MEMORY_MAX_PHOTOS, the oldest that no image on the page shows are let go
+// (they come back from this device's cache when needed).
+function forgetOldest() {
+  if (loaded.size <= MEMORY_MAX_PHOTOS) return;
+  const shown = typeof document === 'undefined'
+    ? new Set()
+    : new Set([...document.querySelectorAll('img')].map(img => img.getAttribute('src')));
+  for (const [key, entry] of loaded) {
+    if (loaded.size <= MEMORY_MAX_PHOTOS) return;
+    if (shown.has(entry.url)) continue;
+    URL.revokeObjectURL(entry.url);
+    loaded.delete(key);
+  }
 }
 
 /**
@@ -368,7 +420,12 @@ export function observeCloudProofs(container, ownerId, onLoaded) {
       record.observer.unobserve(entry.target);
       record.start(entry.target);
     }
-  }, { rootMargin: '200px 0px' });
+  }, {
+    // The rows scroll inside <main>: with the viewport as root, the margin
+    // would fall outside main's clip and rows would only load once on screen.
+    root: container.closest('main') || null,
+    rootMargin: '200px 0px',
+  });
   record.byRow.forEach((_sentinel, row) => record.observer.observe(row));
 }
 
@@ -411,6 +468,8 @@ function rearm(record) {
 
 // ─── Achievement photo (home and Personal Space) ─────────────────────────────
 
+const achievementWaiters = new Map(); // entryKey → the latest onLoaded
+
 function blobToDataUrl(blob) {
   return new Promise(resolve => {
     try {
@@ -446,13 +505,23 @@ export function withCloudAchievementPhoto(ownerId, sessions, photo, onLoaded) {
   const sessionId = photo.sessionId;
   const session = (Array.isArray(sessions) ? sessions : []).find(entry => String(entry?.id || '') === sessionId);
   if (!session || !signedInHere(ownerId)) return photo;
-  const entry = loaded.get(entryKey(ownerId, sessionId));
+  const key = entryKey(ownerId, sessionId);
+  const entry = loaded.get(key);
   if (entry?.dataUrl) return { ...photo, status: 'selected', src: entry.dataUrl };
   if (!entry && !wantsCloudProof(ownerId, sessionId)) return photo;
+  // One load per photo: asked again meanwhile (another render), only the
+  // latest caller is told, once.
+  const pending = achievementWaiters.has(key);
+  achievementWaiters.set(key, onLoaded);
+  if (pending) return photo;
   void loadCloudProof(ownerId, sessionId)
     .then(url => (url ? loadedDataUrl(ownerId, sessionId) : null))
-    .then(dataUrl => { if (dataUrl && signedInHere(ownerId)) onLoaded?.(); })
-    .catch(() => {});
+    .then(dataUrl => {
+      const waiter = achievementWaiters.get(key);
+      achievementWaiters.delete(key);
+      if (dataUrl && signedInHere(ownerId)) waiter?.();
+    })
+    .catch(() => achievementWaiters.delete(key));
   return photo;
 }
 

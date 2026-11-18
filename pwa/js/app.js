@@ -40,7 +40,7 @@ import {
 } from './statusBarNotice.js';
 import { hasStoredSession } from './sessionPresence.js';
 import { flushProofSync } from './platform/proofSync.js';
-import { clearCloudProofs, forgetCloudProofMisses } from './platform/proofCloud.js';
+import { clearCloudProofs, forgetCloudProofMisses, keepCloudProofsOf } from './platform/proofCloud.js';
 import { isOnline, onConnectivityChange } from './platform/network.js';
 import { orbitWindowRuntimeDestroyer } from './personalSpace/v2/runtime/pixiSceneRuntime.js';
 
@@ -609,6 +609,8 @@ function _loadRemote(ownerId) {
   // from the other device), so every sync forgets those "not found".
   load.then(() => {
     forgetCloudProofMisses();
+    // Downloaded photos of any other account that never signed out here go.
+    void keepCloudProofsOf(ownerId);
     return flushProofSync(ownerId);
   }, () => {});
   return load;

@@ -213,6 +213,47 @@ describe('download', () => {
     expect(cloud.wantsCloudProof(OWNER, sid(1))).toBe(true);
   });
 
+  it('gives up on a request that never answers, so the next photos still load', async () => {
+    signIn();
+    const timers = [];
+    const realSetTimeout = globalThis.setTimeout;
+    const spy = vi.spyOn(globalThis, 'setTimeout').mockImplementation((fn, delay, ...args) => {
+      if (delay === cloud.DOWNLOAD_TIMEOUT_MS) { timers.push(fn); return 0; }
+      return realSetTimeout(fn, delay, ...args);
+    });
+    try {
+      mockDownload.mockImplementation(path => (path.includes(sid(4))
+        ? Promise.resolve({ data: jpeg(), error: null })
+        : new Promise(() => {}))); // hangs
+      const loads = [1, 2, 3, 4].map(n => cloud.loadCloudProof(OWNER, sid(n)));
+      await vi.waitFor(() => expect(timers).toHaveLength(3));
+      expect(mockDownload).toHaveBeenCalledTimes(3);
+      timers.forEach(fire => fire());
+      expect(await loads[3]).toMatch(/^blob:/);
+      expect(await loads[0]).toBeNull();
+      expect(cloud.wantsCloudProof(OWNER, sid(1))).toBe(true); // tried again later
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('lets go of the oldest photos past the memory limit, never one on the page', async () => {
+    signIn();
+    const first = await cloud.loadCloudProof(OWNER, sid(1));
+    const second = await cloud.loadCloudProof(OWNER, sid(2));
+    const shown = document.createElement('img');
+    shown.setAttribute('src', first);
+    document.body.appendChild(shown);
+    for (let n = 3; n <= cloud.MEMORY_MAX_PHOTOS + 1; n += 1) await cloud.loadCloudProof(OWNER, sid(n));
+    expect(cloud.cloudProofUrl(OWNER, sid(1))).toBe(first); // on the page
+    expect(cloud.cloudProofUrl(OWNER, sid(2))).toBeNull(); // let go…
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith(second);
+    mockDownload.mockClear();
+    expect(await cloud.loadCloudProof(OWNER, sid(2))).toMatch(/^blob:/); // …back from the cache
+    expect(mockDownload).not.toHaveBeenCalled();
+    shown.remove();
+  });
+
   it('sends nothing while signed out', async () => {
     expect(await cloud.loadCloudProof(OWNER, sid(1))).toBeNull();
     expect(mockDownload).not.toHaveBeenCalled();
@@ -263,6 +304,21 @@ describe('cache on this device (IndexedDB)', () => {
     mockDownload.mockClear();
     mockDownload.mockResolvedValue(notFound());
     expect(await cloud.loadCloudProof(OWNER, sid(1))).toBeNull(); // not in the cache
+    expect(mockDownload).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps only the signed-in account\'s photos at a sync (another account never signed out here)', async () => {
+    signIn(OTHER);
+    await cloud.loadCloudProof(OTHER, sid(9));
+    signIn();
+    await cloud.loadCloudProof(OWNER, sid(1));
+    await cloud.keepCloudProofsOf(OWNER);
+    await freshModule();
+    mockDownload.mockClear();
+    mockDownload.mockResolvedValue(notFound());
+    expect(await cloud.loadCloudProof(OWNER, sid(1))).toMatch(/^blob:/);
+    signIn(OTHER);
+    expect(await cloud.loadCloudProof(OTHER, sid(9))).toBeNull(); // gone from the cache
     expect(mockDownload).toHaveBeenCalledTimes(1);
   });
 
@@ -423,6 +479,20 @@ describe('achievement photo', () => {
     expect(shown.status).toBe('selected');
     expect(shown.src).toMatch(/^data:image\/jpeg;base64,/);
     expect(onLoaded).toHaveBeenCalledTimes(1);
+  });
+
+  it('tells only the latest caller, once, when asked again while it downloads', async () => {
+    signIn();
+    let release;
+    mockDownload.mockImplementationOnce(() => new Promise(resolve => { release = () => resolve({ data: jpeg(), error: null }); }));
+    const callers = [vi.fn(), vi.fn(), vi.fn()];
+    for (const caller of callers) cloud.withCloudAchievementPhoto(OWNER, sessions, unavailable, caller);
+    await vi.waitFor(() => expect(release).toBeTypeOf('function'));
+    release();
+    await vi.waitFor(() => expect(callers[2]).toHaveBeenCalledTimes(1));
+    expect(callers[0]).not.toHaveBeenCalled();
+    expect(callers[1]).not.toHaveBeenCalled();
+    expect(mockDownload).toHaveBeenCalledTimes(1);
   });
 
   it('leaves it as it is for a guest, a selection whose session is gone, or a photo already shown', () => {
