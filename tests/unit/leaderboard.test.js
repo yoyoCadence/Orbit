@@ -650,17 +650,24 @@ describe('renderLeaderboard — get_leaderboard() rows (PRO-014E2)', () => {
 });
 
 describe('renderLeaderboard — browsers without Intl.Segmenter', () => {
+  let container;
+
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+
   afterEach(() => {
+    container.remove();
     vi.unstubAllGlobals();
     vi.resetModules();
   });
 
   it('falls back to the first code point, never half a surrogate pair', async () => {
-    vi.stubGlobal('Intl', { ...Intl, Segmenter: undefined });
+    // Inherits every Intl member, enumerable or not; only Segmenter is missing.
+    vi.stubGlobal('Intl', Object.create(Intl, { Segmenter: { value: undefined } }));
     vi.resetModules();
     const { renderLeaderboard: render } = await import('../../pwa/js/pages/leaderboard.js');
-    const container = document.createElement('div');
-    document.body.appendChild(container);
     localStorage.clear();
     signIn();
     mockState.user = { id: 'me', name: 'Alice', mode: 'normal' };
@@ -672,6 +679,5 @@ describe('renderLeaderboard — browsers without Intl.Segmenter', () => {
     await render(container);
     const initials = [...container.querySelectorAll('.lb-avatar')].map(el => el.textContent.trim());
     expect(initials).toEqual([String.fromCodePoint(0x1f422), 'E']);
-    document.body.removeChild(container);
   });
 });

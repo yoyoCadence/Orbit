@@ -564,6 +564,7 @@
   --surface-2:    #142844;
   --surface-g:    rgba(13,30,53,0.82);
   --primary:      #0ea5e9;
+  --on-primary:   #050d1a;
   --primary-lt:   #38bdf8;
   --accent:       #06d6a0;
   --success:      #06d6a0;
@@ -580,6 +581,7 @@
   --surface-2:    #1a2b1d;
   --surface-g:    rgba(17,26,19,0.82);
   --primary:      #16a34a;
+  --on-primary:   #080f0a;
   --primary-lt:   #22c55e;
   --accent:       #fbbf24;
   --success:      #22c55e;
@@ -596,6 +598,7 @@
   --surface-2:    #2e1a0d;
   --surface-g:    rgba(31,16,8,0.82);
   --primary:      #ea580c;
+  --on-primary:   #120a05;
   --primary-lt:   #fb923c;
   --accent:       #fde047;
   --success:      #10b981;
@@ -661,6 +664,7 @@
   --surface-2:    #36343b;
   --surface-g:    rgba(43,41,48,0.92);
   --primary:      #d0bcff;
+  --on-primary:   #1c1b1f;
   --primary-lt:   #eaddff;
   --accent:       #efb8c8;
   --success:      #6fd08c;
@@ -678,6 +682,7 @@
   --surface-2:    #13131f;
   --surface-g:    rgba(12,12,20,0.92);
   --primary:      #00ff9f;
+  --on-primary:   #050508;
   --primary-lt:   #80ffd4;
   --accent:       #ff2d78;
   --success:      #00ff9f;
@@ -695,6 +700,7 @@
   --surface-2:    #1a1a1a;
   --surface-g:    rgba(17,17,17,0.92);
   --primary:      #39ff14;
+  --on-primary:   #0a0a0a;
   --primary-lt:   #7fff00;
   --accent:       #ffff00;
   --success:      #39ff14;
@@ -718,6 +724,7 @@
   --surface-2:    #ffe8f0;
   --surface-g:    rgba(255,255,255,0.92);
   --primary:      #ff6b9d;
+  --on-primary:   #2d1b2e;
   --primary-lt:   #ff9aba;
   --accent:       #7ec8e3;
   --success:      #4ecb71;
@@ -805,6 +812,7 @@
   --surface-2:    rgba(45, 59, 72, 0.48);
   --surface-g:    rgba(35, 50, 64, 0.58);
   --primary:      #eaff35;
+  --on-primary:   #071522;
   --primary-lt:   #f3ff6a;
   --accent:       #8b5cf6;
   --success:      #39d98a;
@@ -880,20 +888,20 @@ html.has-bg #app { background: transparent; }
 }
 .pro-badge {
   position: absolute; top: 12px; right: 12px;
-  background: var(--primary); color: #fff;
+  background: var(--primary); color: var(--on-primary, #fff);
   font-size: 10px; font-weight: 700; padding: 2px 8px;
   border-radius: 99px; letter-spacing: .4px;
 }
 .pro-badge--inline {
   display: inline-block; vertical-align: middle;
-  background: var(--primary); color: #fff;
+  background: var(--primary); color: var(--on-primary, #fff);
   font-size: 10px; font-weight: 700; padding: 1px 6px;
   border-radius: 99px; letter-spacing: .3px; line-height: 1.6;
   text-transform: none;
 }
 .pro-badge--corner {
   position: absolute; top: 12px; right: 12px;
-  background: var(--primary); color: #fff;
+  background: var(--primary); color: var(--on-primary, #fff);
   font-size: 10px; font-weight: 700; padding: 2px 8px;
   border-radius: 99px; letter-spacing: .3px; line-height: 1.6;
   pointer-events: none;
@@ -5061,7 +5069,7 @@ nav {
 
 .lb-avatar {
   width: 36px; height: 36px; border-radius: 50%;
-  background: var(--primary); color: #fff;
+  background: var(--primary); color: var(--on-primary, #fff);
   display: flex; align-items: center; justify-content: center;
   font-size: 15px; font-weight: 700; flex-shrink: 0;
   overflow: hidden;
@@ -5076,21 +5084,34 @@ nav {
 .lb-name { font-size: 14px; font-weight: 600; color: var(--text); display: flex; align-items: center; min-width: 0; }
 .lb-name-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .lb-sub  { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
-.lb-you  { font-size: 10px; background: var(--primary); color: #fff; border-radius: 4px; padding: 1px 5px; margin-left: 4px; flex-shrink: 0; }
-/* PRO-014F (SUB-14): the Pro glow. A ring in the theme's accent colour that
-   breathes slowly; still under reduced motion. Display only (is_pro comes from
-   get_leaderboard()). */
+.lb-you  { font-size: 10px; background: var(--primary); color: var(--on-primary, #fff); border-radius: 4px; padding: 1px 5px; margin-left: 4px; flex-shrink: 0; }
+/* PRO-014F (SUB-14): the Pro glow. A ring in the theme's accent colour, and a
+   halo that breathes slowly; still under reduced motion. Display only (is_pro
+   comes from get_leaderboard()). The halo is a layer of its own whose opacity
+   moves (composited), not an animated box-shadow, which repaints every Pro
+   avatar on every frame. The avatar no longer clips, so the photo clips itself. */
 .lb-pro { margin-left: 4px; flex-shrink: 0; }
 .lb-avatar--pro {
-  box-shadow: 0 0 0 2px var(--accent), 0 0 10px 2px color-mix(in srgb, var(--accent) 55%, transparent);
+  position: relative;
+  overflow: visible;
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.lb-avatar--pro img { border-radius: 50%; }
+.lb-avatar--pro::after {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  box-shadow: 0 0 14px 3px color-mix(in srgb, var(--accent) 65%, transparent);
+  opacity: .45;
+  pointer-events: none;
   animation: lb-pro-glow 3.2s ease-in-out infinite alternate;
 }
 @keyframes lb-pro-glow {
-  from { box-shadow: 0 0 0 2px var(--accent), 0 0 6px 0 color-mix(in srgb, var(--accent) 40%, transparent); }
-  to   { box-shadow: 0 0 0 2px var(--accent), 0 0 14px 3px color-mix(in srgb, var(--accent) 65%, transparent); }
+  from { opacity: .45; }
+  to   { opacity: 1; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .lb-avatar--pro { animation: none; }
+  .lb-avatar--pro::after { animation: none; opacity: .75; }
 }
 
 .lb-score { text-align: right; flex-shrink: 0; }

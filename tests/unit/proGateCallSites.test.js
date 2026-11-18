@@ -109,9 +109,7 @@ describe('Pro gate 呼叫點', () => {
       'platform/proEntitlement.js': '註解中引用欄位名以說明取代了什麼',
       'app.js': '讀 trialStartedAt 只為決定要不要啟動試用，不是 Pro 判定',
       'pages/settings.js': '_devApplyPro() 開發者面板；見下方單獨的測試',
-      // PRO-014F1: not a profile field. get_leaderboard() (018) decides is_pro on
-      // the server for each listed user; the board only shows the Pro mark.
-      'pages/leaderboard.js': 'get_leaderboard() 回傳的 is_pro（server 判定）只用於顯示 Pro 光環，不是 Pro 判定',
+      'pages/leaderboard.js': '只讀 get_leaderboard() 回傳的 is_pro；見下方單獨的測試',
     };
 
     const offenders = files
@@ -121,6 +119,23 @@ describe('Pro gate 呼叫點', () => {
       .map(({ path }) => path);
 
     expect(offenders).toEqual([]);
+  });
+
+  // PRO-014F1：is_pro 不是 profile 欄位。get_leaderboard()（018）在 server 端替
+  // 每個列出的用戶判定，排行榜只拿來顯示 Pro 光環。只放行那一處讀取：拿掉它（與
+  // 註解）之後，不能再有任何 Pro 欄位的讀取。
+  it('排行榜只讀 get_leaderboard() 那一列的 is_pro，一處', () => {
+    const source = files.find(f => f.path === 'pages/leaderboard.js').source;
+    const ALLOWED_READ = 'r.is_pro === true';
+    expect(countCalls(source, ALLOWED_READ)).toBe(1);
+    const rest = source
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .split('\n')
+      .filter(line => !line.trim().startsWith('//'))
+      .join('\n')
+      .replace(ALLOWED_READ, '');
+    expect(rest).not.toMatch(/\.(isPro|proExpiresAt|trialStartedAt)\b/);
+    expect(rest).not.toMatch(/\b(is_pro|pro_expires_at|trial_started_at)\b/);
   });
 
   // PRO-014L2：最後一處 client 端的 Pro 寫入（換日的 SUB-16）已移除，改由

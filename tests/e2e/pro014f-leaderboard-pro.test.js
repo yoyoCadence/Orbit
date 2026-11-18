@@ -56,6 +56,17 @@ async function openBoard(page, reducedMotion) {
 }
 
 const avatarOf = (page, name) => page.locator('.lb-row', { hasText: name }).locator('.lb-avatar');
+// Runs in the page: the ring (the avatar's own shadow) and the halo (its ::after layer).
+const glowOf = el => {
+  const own = window.getComputedStyle(el);
+  const halo = window.getComputedStyle(el, '::after');
+  return {
+    ring: own.boxShadow,
+    ringAnimation: own.animationName,
+    halo: halo.content === 'none' ? 'none' : halo.boxShadow,
+    animation: halo.animationName,
+  };
+};
 
 test.describe('PRO-014F leaderboard Pro mark', () => {
   test('marks only the Pro row, with a visible glow that breathes', async ({ page }) => {
@@ -66,23 +77,38 @@ test.describe('PRO-014F leaderboard Pro mark', () => {
     await expect(page.locator('.lb-row', { hasText: 'Free Bird' }).locator('.lb-pro')).toHaveCount(0);
     await expect(page.locator('.lb-row', { hasText: 'Free Bird' }).locator('.lb-you')).toHaveText('你');
 
-    const pro = await avatarOf(page, 'Pro Owl').evaluate(el => {
-      const style = window.getComputedStyle(el);
-      return { shadow: style.boxShadow, animation: style.animationName };
-    });
-    expect(pro.shadow).not.toBe('none');
+    const pro = await avatarOf(page, 'Pro Owl').evaluate(glowOf);
+    expect(pro.ring).not.toBe('none');
+    expect(pro.halo).not.toBe('none');
+    // The halo breathes by opacity on its own layer, not by repainting a shadow.
     expect(pro.animation).toBe('lb-pro-glow');
-    const free = await avatarOf(page, 'Free Bird').evaluate(el => window.getComputedStyle(el).boxShadow);
-    expect(free).toBe('none');
+    expect(pro.ringAnimation).toBe('none');
+    const free = await avatarOf(page, 'Free Bird').evaluate(glowOf);
+    expect(free.ring).toBe('none');
+    expect(free.halo).toBe('none');
+  });
+
+  test('keeps the badge text readable on themes with a light primary colour', async ({ page }) => {
+    await openBoard(page, 'reduce');
+    const colours = await page.evaluate(() => {
+      const read = () => ({
+        pro: window.getComputedStyle(document.querySelector('.lb-pro')).color,
+        you: window.getComputedStyle(document.querySelector('.lb-you')).color,
+      });
+      const before = read();
+      document.documentElement.setAttribute('data-theme', 'liquid-galss');
+      return { before, after: read() };
+    });
+    // liquid-galss: #eaff35 behind the text, so its dark background colour, not white.
+    expect(colours.after).toEqual({ pro: 'rgb(7, 21, 34)', you: 'rgb(7, 21, 34)' });
+    expect(colours.before.pro).not.toBe(colours.after.pro);
   });
 
   test('keeps the glow but stops it moving under reduced motion', async ({ page }) => {
     await openBoard(page, 'reduce');
-    const pro = await avatarOf(page, 'Pro Owl').evaluate(el => {
-      const style = window.getComputedStyle(el);
-      return { shadow: style.boxShadow, animation: style.animationName };
-    });
-    expect(pro.shadow).not.toBe('none');
+    const pro = await avatarOf(page, 'Pro Owl').evaluate(glowOf);
+    expect(pro.ring).not.toBe('none');
+    expect(pro.halo).not.toBe('none');
     expect(pro.animation).toBe('none');
   });
 });
