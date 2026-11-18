@@ -3,6 +3,14 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.41.19] - 2026-11-18
+
+### Fixed
+- 排行榜的頭像首字（沒有頭像時顯示）會完整顯示第一個字：帶重音符號的字母、國旗、帶膚色的 emoji 不再被切開。
+- 只修改排行榜的公開名稱時，不會再清掉舊版在離線時留下的「不公開」設定（它仍會在下次連線時送出）。
+
+---
+
 ## [1.41.18] - 2026-11-13
 
 ### Changed
