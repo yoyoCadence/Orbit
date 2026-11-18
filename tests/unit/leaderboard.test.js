@@ -581,6 +581,16 @@ describe('renderLeaderboard — get_leaderboard() rows (PRO-014E2)', () => {
     expect(container.querySelector('.lb-avatar').textContent.trim()).toBe('🐢');
   });
 
+  it.each([
+    ['a letter with a combining accent', [0x65, 0x301, 0x63, 0x6c], [0x45, 0x301]],
+    ['a flag (two regional indicators)', [0x1f1ef, 0x1f1f5, 0x41], [0x1f1ef, 0x1f1f5]],
+    ['an emoji with a skin-tone modifier', [0x1f44d, 0x1f3fd, 0x42], [0x1f44d, 0x1f3fd]],
+  ])('takes the whole first grapheme for the initial: %s', async (_label, name, initial) => {
+    mockRpc.mockResolvedValueOnce({ data: [makeRow({ display_name: String.fromCodePoint(...name) })], error: null });
+    await renderLeaderboard(container);
+    expect(container.querySelector('.lb-avatar').textContent.trim()).toBe(String.fromCodePoint(...initial));
+  });
+
   it('lists only rows in the viewer\'s own mode', async () => {
     mockRpc.mockResolvedValueOnce({
       data: [makeRow({ display_name: 'Normal Bob' }), makeRow({ display_name: 'Advanced Eve', mode: 'advanced' })],

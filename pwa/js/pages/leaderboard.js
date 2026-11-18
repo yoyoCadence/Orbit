@@ -170,8 +170,7 @@ function _renderContent(container, rows, refreshedAt, isStale, refreshHour) {
         const subLabel = _tab === 'week' ? '本週XP'
           : _tab === 'growth'            ? '成長率'
           :                                '累積XP';
-        // First code point, so an emoji or a CJK Extension B character stays whole.
-        const initial = (Array.from(r.display_name || '?')[0] || '?').toUpperCase();
+        const initial = _initialOf(r.display_name);
         const avatarHtml = r.avatar_display_url
           ? `<img src="${escAttr(r.avatar_display_url)}" alt="">`
           : escHtml(initial);
@@ -227,6 +226,27 @@ function _renderContent(container, rows, refreshedAt, isStale, refreshHour) {
       _renderContent(container, rows, refreshedAt, isStale, refreshHour);
     });
   });
+}
+
+// The first character as a reader sees it (a grapheme cluster): a letter with
+// its accent, a flag, an emoji with its modifiers. Without Intl.Segmenter
+// (older browsers) the first code point, which still never splits a surrogate
+// pair.
+let _graphemes = null;
+function _initialOf(name) {
+  const text = name || '?';
+  try {
+    _graphemes ??= typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function'
+      ? new Intl.Segmenter(undefined, { granularity: 'grapheme' })
+      : false;
+    if (_graphemes) {
+      const first = _graphemes.segment(text)[Symbol.iterator]().next().value?.segment;
+      if (first) return first.toUpperCase();
+    }
+  } catch {
+    // fall back below
+  }
+  return (Array.from(text)[0] || '?').toUpperCase();
 }
 
 // get_leaderboard() gives avatar_path only for a file in the owner's own

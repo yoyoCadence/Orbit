@@ -534,6 +534,19 @@ describe('renderSettings: leaderboard opt-in and public name (PRO-014E2)', () =>
     expect(mockSavePublicSettings).toHaveBeenCalledWith('user-1', { displayName: 'Early Bird' });
     await flush();
     expect(c.querySelector('#lb-current-name').textContent).toBe('Early Bird');
+    // A rename is no choice about joining: an opt-out kept from an older
+    // version still has to be sent.
+    expect(mockStorage.clearLeaderboardOptOutPending).not.toHaveBeenCalled();
+  });
+
+  it('leaving also supersedes a kept opt-out', async () => {
+    mockState.user = { ...mockState.user, isPublic: true, displayName: 'Night Owl' };
+    mockSavePublicSettings.mockResolvedValueOnce({ displayName: 'Night Owl', isPublic: false });
+    const c = makeContainer();
+    renderSettings(c);
+    toggleTo(c, false);
+    await flush();
+    expect(mockStorage.clearLeaderboardOptOutPending).toHaveBeenCalledWith('user-1');
   });
 
   it('offers to set a name when public without one (set by an older version)', () => {

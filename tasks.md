@@ -141,6 +141,17 @@
 
 ## Next
 
+> 2026-11-18 擁有者要求：「列出幾個你覺得需要完善的事 持續完善」，每完成一段就開 PR 並合併，不必特別詢問（必要時才問）。agent 列出的完善清單如下，依序做；需要核准的另外標明。
+
+- [ ] **DEV-001** 讓任何 agent 在雲端容器裡都能直接跑完整的檢查
+  - 問題：容器預裝的 Chromium 版本與專案 Playwright 預設的不同，e2e 要另寫暫時的設定檔才能跑；名稱規則與 018 CHECK 的比對腳本只在 2026-11-13 的 scratchpad 裡；資料庫測試怎麼跑散在各任務的記錄裡。
+  - 範圍：`playwright.config.js` 接受環境變數指定 Chromium 路徑（未設定時行為不變；測試設定，低風險）；把名稱規則的比對工具放進 `tests/database/support/`；`docs/agent-handoff.md` 寫明單元、e2e、資料庫測試在這個環境的跑法。
+- [ ] **PRO-014F** 排行榜的 Pro 標記（`get_leaderboard()` 的 `is_pro`，server 判定）與 Personal Space 的 Pro 呈現——E2 已完成，不再被擋；完成條件見 Backlog 的 PRO-014F。
+- [ ] **HW-112C** 佐證照片上傳的 client（016 已在 production）；用真的帳號經 Storage API 驗證大小與 MIME 限制的那一步需要擁有者（agent 沒有測試帳號的密碼）。
+- [ ] **INFRA-116**（**需要擁有者核准**：CI 變更）CI 跑 `tests/database/*.sql`
+  - 問題：資料庫測試（bug109、bug119、hw112、infra110、pro014d/e/l/r、pro017）只在本機 PostgreSQL 跑，CI 不會發現 migration 或測試的退化。
+  - 提案：在 `ci.yml` 加一個 job，用 GitHub Actions 的 PostgreSQL 16 service，依序套用 `tests/database/support/supabase-standin.sql` 與 `pwa/db/0*.sql`，再跑每份測試（`plpgsql.check_asserts = on`）。不接觸 production、不需要任何 secret。核准後才做。
+
 - [ ] **PRO-017RA-Auth**（擁有者）先完成 INFRA-101（Custom SMTP），再在 Supabase 開啟「確認 email」，並確認匿名登入維持關閉
   - 019 已於 2026-11-13 套用（見 Done 的 PRO-017RA）；這一步只能由擁有者在 Supabase Dashboard 做（agent 的工具改不到 Auth 設定）。
   - Authentication 設定裡（Email provider）開啟 Confirm email（畫面名稱以當時的 Dashboard 為準）。會影響**所有新使用者**的 email 註冊（要先收信確認才能登入）；開啟前確認註冊頁的提示與 email 範本（INFRA-101 的寄件人設定也相關）。Google 登入不受影響。
@@ -271,6 +282,11 @@
 
 ## Done
 
+- [x] **PRO-014E2 收尾**（v1.41.19，#251）
+  - 設定頁：只有加入或離開排行榜（`isPublic` 有變）才清掉舊版留下的「關閉」；只改名稱時保留，讓它照樣送出（E2 第三輪審查的 P3）。
+  - 排行榜的頭像首字改以字素（grapheme）取：帶重音符號的字母、國旗、帶膚色的 emoji 都完整顯示；沒有 `Intl.Segmenter` 的舊瀏覽器仍取第一個 code point。
+  - 記錄 E2 第三輪審查與合併；在 Next 列出 2026-11-18 的完善清單（DEV-001、PRO-014F、HW-112C、INFRA-116）。
+
 - [x] **PRO-014E2** client 改用 `get_leaderboard()` 與公開名稱（v1.41.18）
   - 完成（2026-11-13，#250）：
     - `pwa/js/leaderboardPublic.js`（新模組；INFRA-105：既有的 SHELL 模組只 import 新模組的 export）：
@@ -291,6 +307,7 @@
     - 驗證：單元與整合測試 1724 個、e2e 100 個全部通過（另 1 個原本就略過），lint 通過；兩輪審查修正的 13 種改壞情況都會讓測試失敗。名稱規則以本機 PostgreSQL 的 018 CHECK 對 55,224 個隨機名稱（集中在每段字元範圍的兩側）比對，0 個不同；把結尾空白的規則改壞時有 520 個不同，把兩段字元範圍改壞時單元測試會失敗。截圖確認設定頁三種狀態與排行榜（含 20 個全形字與堆疊組合符號的名稱）。
     - 審查（#250，89f4848）：Codex P2——快取沒有綁帳號，A 登出時還在進行的請求會在清快取之後寫回，同一天 B 開排行榜會看到 A 的列標成「你」→ 快取記下帳號、換帳號後的回應不寫入也不顯示。獨立審查：沒有 P1；P2 同上，另加「設定頁存名稱之後，之前送出的請求把舊名稱寫回快取」→ generation；P2：v1.41.17 離線關掉排行榜、還沒上傳就更新到這一版，關閉會遺失（新版上傳不帶 `is_public`，接著讀回 true）→ 上述的舊快照處理。P3 已改：Safari 選字的 Enter、前後空白、「不能有」的訊息（全形空白、組合的 emoji）、再點一次開關保留草稿、aria。沒改（記錄）：NUL 或單獨的 surrogate（打不出來）會被伺服器拒絕並顯示網路錯誤；頭像首字以 code point 取（以組合符號開頭的名稱，首字會是單獨的符號，只影響外觀）；開機的讀取若比設定頁的儲存晚回來，開關會短暫顯示舊狀態，下一次讀取就恢復。
     - 第二輪（1c821eb）：Codex 沒有問題。獨立審查：沒有 P1；P2：舊快照裡的「關閉」通常在 `loadFromRemote` 看到之前就被開機的 `saveUser` 換掉（之後上傳不帶 `is_public`，讀回 true）→ 改成上述的另一個 key，並以 0 列視為失敗。P3（記錄、不改）：沒有標記的快照是整份 user 的副本，`isPublic: false` 不一定是使用者剛關掉——一台離線很久、停在舊版的裝置更新後，可能把之後在別台裝置開啟的人關掉一次（偏向不公開，設定頁看得到，v1.41.17 本來也會這樣）。
+    - 第三輪（f1d7aef）：Codex 沒有問題；獨立審查沒有 P1／P2。P3：只改名稱時也會清掉舊版留下的「關閉」（改名不是加入與否的選擇）→ #251 改成只有 `isPublic` 有變時才清；開啟時另一個裝置的舊「關閉」可能正在送出、讓剛開啟的人又被關掉（偏向不公開，設定頁看得到，記錄不改）；profile 列不存在時 0 列會讓同步一直失敗（client 不會刪 profile 列，碰不到，記錄不改）。CI 全綠後合併（2026-11-16，d4f7077）。
 
 - [x] **2026-11-13 production 套用（BUG-119A、HW-112B、PRO-014EA、PRO-017RA）**：擁有者 2026-11-13 回覆「可以送了 依序即可」，agent 以 Supabase MCP 依序執行，每一項都是只讀檢查 → production 乾跑（完整的資料庫測試，單一 transaction、結尾 rollback；四項都另以只讀查詢確認沒有留下任何東西）→ 套用（`begin; set local lock_timeout = '5s';` … `commit;`，MCP 的確認即擁有者核准）→ 事後檢查（只讀的定義、權限、md5 與可見性檢查；需要合成帳號的部分在 transaction 裡做、結尾 rollback；019 套用後另跑完整的 pro014l）。
   - **BUG-119A（017）**：套用前 policy 仍是 010（`foldername(p.name)`）、`is_public_leaderboard_avatar` 不存在；公開使用者 2 位、有頭像且檔案存在 1 位。乾跑 bug119 測試全部通過。套用後：policy 為 `bucket avatars AND is_public_leaderboard_avatar(name)`，函式的 `pg_get_functiondef` md5 與本機以檔案套用的相同（`d7dacbf3…`），只給 authenticated（加上 postgres、service_role）；以合成帳號確認旁人只看得到公開使用者現在的頭像，已登入的旁人看得到那 1 位真的公開使用者的頭像，anon 看不到。
