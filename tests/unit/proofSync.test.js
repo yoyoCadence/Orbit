@@ -369,6 +369,53 @@ describe('backfill of photos already on this device (once per account)', () => {
     expect(mockUpload).toHaveBeenCalledTimes(1);
   });
 
+  it('finds a new photo again when its queue entry could not be saved (storage full)', async () => {
+    signIn();
+    ownSessions(sid(1), sid(2));
+    saveProof(sid(1), jpegDataUrl());
+    await flushProofSync(OWNER); // backfill done, sid(1) uploaded
+    expect(mockUpload).toHaveBeenCalledTimes(1);
+
+    saveProof(sid(2), jpegDataUrl());
+    const setItem = Storage.prototype.setItem;
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (key, value) {
+      if (key.startsWith('orbit_proofsync_upload:')) throw new Error('QuotaExceededError');
+      return setItem.call(this, key, value);
+    });
+    try {
+      proofSaved(OWNER, sid(2));
+      await flushProofSync(OWNER);
+    } finally {
+      spy.mockRestore();
+    }
+    expect(pendingProofUploads(OWNER)).toEqual([]);
+
+    // Space again: the next sync rediscovers it (sid(1) comes back as "exists").
+    mockUpload.mockImplementation(async path => (path.endsWith(`${sid(1)}.jpg`)
+      ? { data: null, error: { status: 400, statusCode: '409', code: 'ResourceAlreadyExists', message: 'exists' } }
+      : { data: {}, error: null }));
+    await flushProofSync(OWNER);
+    // A save during a running sync adds one more pass afterwards: wait for it.
+    await vi.waitFor(() => expect(mockUpload.mock.calls.map(call => call[0])).toContain(`${OWNER}/${sid(2)}.jpg`));
+    await vi.waitFor(() => expect(pendingProofUploads(OWNER)).toEqual([]));
+  });
+
+  it('tries the cloud deletion directly when its queue entry could not be saved', async () => {
+    signIn();
+    ownSessions(sid(2));
+    const setItem = Storage.prototype.setItem;
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (key, value) {
+      if (key.startsWith('orbit_proofsync_remove:')) throw new Error('QuotaExceededError');
+      return setItem.call(this, key, value);
+    });
+    try {
+      proofSessionDeleted(OWNER, sid(1), { signedIn: true });
+      await vi.waitFor(() => expect(mockRemove).toHaveBeenCalledWith([`${OWNER}/${sid(1)}.jpg`]));
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   it('waits until the account\'s sessions are on this device', async () => {
     signIn();
     saveProof(sid(1), jpegDataUrl());

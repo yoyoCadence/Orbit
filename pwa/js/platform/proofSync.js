@@ -77,9 +77,10 @@ function writeQueue(prefix, ownerId, ids) {
   }
 }
 
+/** @returns {boolean} whether the queue now holds it (false: storage full). */
 function addToQueue(prefix, ownerId, sessionId) {
-  if (!ownerId || !isObjectId(sessionId)) return;
-  writeQueue(prefix, ownerId, [...readQueue(prefix, ownerId), sessionId]);
+  if (!ownerId || !isObjectId(sessionId)) return false;
+  return writeQueue(prefix, ownerId, [...readQueue(prefix, ownerId), sessionId]);
 }
 
 function dropFromQueue(prefix, ownerId, sessionId) {
@@ -96,8 +97,9 @@ export function pendingProofRemovals(ownerId) {
   return ownerId ? readQueue(REMOVE_QUEUE_PREFIX, ownerId) : [];
 }
 
+/** @returns {boolean} whether the photo is now queued. */
 export function queueProofUpload(ownerId, sessionId) {
-  addToQueue(UPLOAD_QUEUE_PREFIX, ownerId, sessionId);
+  return addToQueue(UPLOAD_QUEUE_PREFIX, ownerId, sessionId);
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -319,8 +321,9 @@ export function flushProofSync(ownerId) {
         // Deleted while it was being uploaded: take the new file down again. Only
         // when the account's sessions are still here and this one is not.
         const after = ownSessionIds(ownerId);
-        if (result === 'uploaded' && after && !after.has(sessionId)) {
-          addToQueue(REMOVE_QUEUE_PREFIX, ownerId, sessionId);
+        if (result === 'uploaded' && after && !after.has(sessionId)
+          && !addToQueue(REMOVE_QUEUE_PREFIX, ownerId, sessionId)) {
+          await removeCloudProof(ownerId, sessionId); // queue full: one direct try
         }
       }
       await flushRemovals(ownerId);
@@ -341,7 +344,16 @@ export function flushProofSync(ownerId) {
 /** A photo was just saved for a session of this signed-in account. */
 export function proofSaved(ownerId, sessionId) {
   if (!ownerId || !isObjectId(sessionId)) return;
-  queueProofUpload(ownerId, sessionId);
+  if (!queueProofUpload(ownerId, sessionId)) {
+    // Storage full: the queue could not take it. Forget that the backfill ran
+    // (removing a key works even then), so the next sync looks at every photo
+    // of this account again; those already in the cloud come back as "exists".
+    try {
+      localStorage.removeItem(queueKey(BACKFILL_DONE_PREFIX, ownerId));
+    } catch {
+      // nothing more to do here
+    }
+  }
   void flushProofSync(ownerId);
 }
 
@@ -359,6 +371,9 @@ export function proofSessionDeleted(ownerId, sessionId, { signedIn = false } = {
   if (!ownerId) return;
   dropFromQueue(UPLOAD_QUEUE_PREFIX, ownerId, sessionId);
   if (!signedIn) return;
-  addToQueue(REMOVE_QUEUE_PREFIX, ownerId, sessionId);
+  if (!addToQueue(REMOVE_QUEUE_PREFIX, ownerId, sessionId)) {
+    void removeCloudProof(ownerId, sessionId); // queue full: one direct try
+    return;
+  }
   void flushProofSync(ownerId);
 }
