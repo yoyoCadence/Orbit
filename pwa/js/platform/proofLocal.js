@@ -204,6 +204,9 @@ export async function deleteAllProofs(ownerId, sessions) {
       if (error) return { ok: false, local, cloud };
       cloud += paths.length;
     }
+    // A row shown meanwhile may have downloaded a photo again before it left
+    // the cloud: clear the copies once more.
+    void clearCloudProofs(ownerId);
     return { ok: true, local, cloud };
   } catch {
     return { ok: false, local, cloud };

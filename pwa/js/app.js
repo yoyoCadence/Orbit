@@ -215,11 +215,18 @@ window._checkStatusBarSync = function () {
     pending: ownerId ? storage.getPendingSyncSummary(ownerId).total : 0,
     // Not just the queue: photos never queued yet (or not sendable as is)
     // live only in this icon too.
-    photos: ownerId ? photosNotSurelyUploaded(ownerId, storage.getSessions() || []) : 0,
+    photos: ownerId ? photosNotSurelyUploaded(ownerId, _sessionsOf(ownerId)) : 0,
   });
   result.textContent = check.text;
   result.dataset.ok = String(check.ok);
 };
+
+// This account's sessions: the ones in memory, or the stored ones while they
+// are this account's (another tab may have switched the stored user).
+function _sessionsOf(ownerId) {
+  if (state.user?.id === ownerId) return state.sessions || [];
+  return storage.getUser()?.id === ownerId ? storage.getSessions() || [] : [];
+}
 
 window._dismissStatusBarNotice = function () {
   const step = _statusBarNotice?.step;

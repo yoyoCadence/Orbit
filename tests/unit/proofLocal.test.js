@@ -203,6 +203,9 @@ describe('settings: delete all proof photos', () => {
     expect(removed.every(path => path.startsWith(`${OWNER}/`))).toBe(true);
     // The queued upload found no photo and left the queue (nothing re-uploaded).
     expect(mockUpload).not.toHaveBeenCalled();
+    // Downloaded copies are cleared again once the cloud is empty (a row shown
+    // meanwhile may have fetched one back).
+    expect(clearCloudProofs).toHaveBeenCalledTimes(2);
   });
 
   it('empties the cloud folder even when this device\'s cache never answers', async () => {
