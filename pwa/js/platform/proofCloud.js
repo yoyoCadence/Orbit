@@ -51,10 +51,19 @@ const misses = new Map();   // entryKey → time the "not found" expires
 const inFlight = new Map(); // entryKey → Promise<string|null>
 const waiting = [];
 let active = 0;
+// Moves on each time an account's photos are cleared (sign-out): work started
+// before that must not put a photo back, in memory or in the cache.
+const generations = new Map(); // ownerId → number
 
-/** Forget every "this session has no cloud photo" (sync, back to the foreground). */
+const generationOf = ownerId => generations.get(ownerId) ?? 0;
+
+/**
+ * Forget every "this session has no cloud photo" (sync, back to the
+ * foreground), and look again for the rows on screen that found none.
+ */
 export function forgetCloudProofMisses() {
   misses.clear();
+  for (const record of [...rowWatchers]) rearm(record);
 }
 
 if (typeof document !== 'undefined') {
@@ -165,11 +174,15 @@ async function readCached(ownerId, sessionId) {
   }
 }
 
-async function writeCached(ownerId, sessionId, blob) {
+async function writeCached(ownerId, sessionId, blob, generation) {
   const db = await openDb();
   if (!db) return;
   try {
     const bytes = await blob.arrayBuffer();
+    // Signed out (or cleared) meanwhile: nothing goes back into the cache. The
+    // check and the write happen in the same task, so a later clear's own
+    // transaction runs after this one and removes it.
+    if (generationOf(ownerId) !== generation || !signedInHere(ownerId)) return;
     const key = entryKey(ownerId, sessionId);
     const tx = db.transaction([PHOTOS, META], 'readwrite');
     tx.objectStore(PHOTOS).put({ key, bytes, type: blob.type || 'image/jpeg' });
@@ -283,13 +296,15 @@ export function loadCloudProof(ownerId, sessionId) {
   if (known) return Promise.resolve(known.url);
   if (!wantsCloudProof(ownerId, sessionId)) return Promise.resolve(null);
   if (inFlight.has(key)) return inFlight.get(key);
+  const generation = generationOf(ownerId);
+  const current = () => generationOf(ownerId) === generation && signedInHere(ownerId);
   const promise = (async () => {
     const cached = await readCached(ownerId, sessionId);
-    if (cached) return signedInHere(ownerId) ? remember(ownerId, sessionId, cached) : null;
+    if (cached) return current() ? remember(ownerId, sessionId, cached) : null;
     const blob = await withSlot(() => download(ownerId, sessionId));
-    if (!blob) return null;
+    if (!blob || !current()) return null;
     const url = remember(ownerId, sessionId, blob);
-    if (signedInHere(ownerId)) await writeCached(ownerId, sessionId, blob);
+    await writeCached(ownerId, sessionId, blob, generation);
     return url;
   })().catch(() => null).finally(() => inFlight.delete(key));
   inFlight.set(key, promise);
@@ -298,46 +313,100 @@ export function loadCloudProof(ownerId, sessionId) {
 
 // ─── Session rows ─────────────────────────────────────────────────────────────
 
-const observers = new WeakMap(); // container → IntersectionObserver
+const watchers = new WeakMap(); // container → its row watcher
+const rowWatchers = new Set();  // every live watcher, for rearm()
 
 /**
  * Fetch the cloud photos of the rows in `container` that come into view.
  * `onLoaded(sentinel, url)` runs for each photo found while its row is still
- * on the page. Calling it again for the same container replaces the observer.
+ * on the page. Calling it again for the same container replaces the watcher.
+ * A row that found nothing (no photo yet, offline) is looked at again when the
+ * "not found" memory is cleared or runs out.
  */
 export function observeCloudProofs(container, ownerId, onLoaded) {
-  observers.get(container)?.disconnect();
-  observers.delete(container);
+  stopWatching(watchers.get(container));
   const sentinels = [...container.querySelectorAll('[data-proof-cloud-session-id]')];
   if (!sentinels.length || !signedInHere(ownerId)) return;
 
-  const start = sentinel => {
-    const sessionId = sentinel.dataset.proofCloudSessionId;
-    void loadCloudProof(ownerId, sessionId).then(url => {
-      if (url && sentinel.isConnected) onLoaded(sentinel, url);
+  const record = {
+    container,
+    ownerId,
+    observer: null,
+    byRow: new Map(),
+    unresolved: new Set(),
+    timer: null,
+    start: null,
+  };
+  record.start = row => {
+    const sentinel = record.byRow.get(row);
+    if (!sentinel) return;
+    void loadCloudProof(ownerId, sentinel.dataset.proofCloudSessionId).then(url => {
+      if (!sentinel.isConnected || watchers.get(container) !== record) return;
+      if (url) {
+        onLoaded(sentinel, url);
+        return;
+      }
+      record.unresolved.add(row);
+      scheduleRearm(record);
     });
   };
-  if (typeof IntersectionObserver !== 'function') {
-    sentinels.forEach(start); // still at most MAX_DOWNLOADS at a time
-    return;
-  }
-  const byRow = new Map();
-  const observer = new IntersectionObserver(entries => {
-    for (const entry of entries) {
-      if (!entry.isIntersecting) continue;
-      observer.unobserve(entry.target);
-      const sentinel = byRow.get(entry.target);
-      if (sentinel) start(sentinel);
-    }
-  }, { rootMargin: '200px 0px' });
   for (const sentinel of sentinels) {
     // The sentinel itself is hidden (no box): watch its row.
     const row = sentinel.closest('.log-item') || sentinel.parentElement;
-    if (!row) continue;
-    byRow.set(row, sentinel);
-    observer.observe(row);
+    if (row) record.byRow.set(row, sentinel);
   }
-  observers.set(container, observer);
+  watchers.set(container, record);
+  rowWatchers.add(record);
+
+  if (typeof IntersectionObserver !== 'function') {
+    record.byRow.forEach((_sentinel, row) => record.start(row)); // still at most MAX_DOWNLOADS at a time
+    return;
+  }
+  record.observer = new IntersectionObserver(entries => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      record.observer.unobserve(entry.target);
+      record.start(entry.target);
+    }
+  }, { rootMargin: '200px 0px' });
+  record.byRow.forEach((_sentinel, row) => record.observer.observe(row));
+}
+
+function stopWatching(record) {
+  if (!record) return;
+  record.observer?.disconnect();
+  clearTimeout(record.timer);
+  rowWatchers.delete(record);
+  if (watchers.get(record.container) === record) watchers.delete(record.container);
+}
+
+// Once the "not found" of a row that just missed has run out.
+function scheduleRearm(record) {
+  if (record.timer || !record.unresolved.size) return;
+  record.timer = setTimeout(() => {
+    record.timer = null;
+    rearm(record);
+  }, MISS_TTL_MS + 1000);
+}
+
+// Watch again the rows that found nothing, once a new look can find something.
+function rearm(record) {
+  if (!record.container.isConnected || !signedInHere(record.ownerId)) {
+    stopWatching(record);
+    return;
+  }
+  for (const row of [...record.unresolved]) {
+    const sentinel = record.byRow.get(row);
+    if (!row.isConnected || !sentinel?.isConnected) {
+      record.unresolved.delete(row);
+      continue;
+    }
+    if (!wantsCloudProof(record.ownerId, sentinel.dataset.proofCloudSessionId)) continue; // a fresh "not found"
+    record.unresolved.delete(row);
+    if (record.observer) record.observer.observe(row);
+    else record.start(row);
+  }
+  scheduleRearm(record); // rows whose "not found" is still fresh: later
 }
 
 // ─── Achievement photo (home and Personal Space) ─────────────────────────────
@@ -392,6 +461,7 @@ export function withCloudAchievementPhoto(ownerId, sessions, photo, onLoaded) {
 /** Forget this account's downloaded photos: memory, misses and this device's cache. */
 export function clearCloudProofs(ownerId) {
   if (!ownerId) return Promise.resolve();
+  generations.set(ownerId, generationOf(ownerId) + 1);
   const prefix = `${ownerId}/`;
   for (const [key, entry] of loaded) {
     if (!key.startsWith(prefix)) continue;

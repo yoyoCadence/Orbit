@@ -246,6 +246,26 @@ describe('cache on this device (IndexedDB)', () => {
     expect(mockDownload).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps nothing that arrives after sign-out cleared the cache', async () => {
+    signIn();
+    let release;
+    const slow = jpeg();
+    const bytes = slow.arrayBuffer.bind(slow);
+    slow.arrayBuffer = () => new Promise(resolve => { release = () => resolve(bytes()); });
+    mockDownload.mockResolvedValueOnce({ data: slow, error: null });
+    const loading = cloud.loadCloudProof(OWNER, sid(1));
+    await vi.waitFor(() => expect(release).toBeTypeOf('function'));
+    await cloud.clearCloudProofs(OWNER); // sign-out while the photo is being stored
+    release();
+    await loading;
+
+    await freshModule();
+    mockDownload.mockClear();
+    mockDownload.mockResolvedValue(notFound());
+    expect(await cloud.loadCloudProof(OWNER, sid(1))).toBeNull(); // not in the cache
+    expect(mockDownload).toHaveBeenCalledTimes(1);
+  });
+
   it('signing out forgets that account\'s photos here (memory, misses and cache) only', async () => {
     signIn(OTHER);
     await cloud.loadCloudProof(OTHER, sid(9));
@@ -312,6 +332,65 @@ describe('rows in view', () => {
     expect(mockDownload).toHaveBeenCalledWith(`${OWNER}/${sid(1)}.jpg`);
     expect(onLoaded.mock.calls[0][0].dataset.proofCloudSessionId).toBe(sid(1));
     expect(observed).toHaveLength(1);
+  });
+
+  it('looks again at a row that found nothing once "not found" is forgotten (sync, foreground)', async () => {
+    signIn();
+    const container = rows(sid(1));
+    const onLoaded = vi.fn();
+    mockDownload.mockResolvedValueOnce(notFound());
+    cloud.observeCloudProofs(container, OWNER, onLoaded);
+    const [row] = container.querySelectorAll('.log-item');
+    observerCallback([{ target: row, isIntersecting: true }]);
+    await vi.waitFor(() => expect(mockDownload).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() => expect(observed).toHaveLength(0));
+
+    cloud.forgetCloudProofMisses(); // the other device has uploaded it since
+    expect(observed).toEqual([row]);
+    observerCallback([{ target: row, isIntersecting: true }]);
+    await vi.waitFor(() => expect(onLoaded).toHaveBeenCalledTimes(1));
+    expect(mockDownload).toHaveBeenCalledTimes(2);
+  });
+
+  it('looks again after an offline failure when the next sync runs', async () => {
+    signIn();
+    const container = rows(sid(1));
+    mockDownload.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    cloud.observeCloudProofs(container, OWNER, vi.fn());
+    const [row] = container.querySelectorAll('.log-item');
+    observerCallback([{ target: row, isIntersecting: true }]);
+    await vi.waitFor(() => expect(mockDownload).toHaveBeenCalledTimes(1));
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(observed).toHaveLength(0);
+    cloud.forgetCloudProofMisses();
+    expect(observed).toEqual([row]);
+  });
+
+  it('looks again when "not found" runs out, and not before', async () => {
+    signIn();
+    const timers = [];
+    const realSetTimeout = globalThis.setTimeout;
+    const spy = vi.spyOn(globalThis, 'setTimeout').mockImplementation((fn, delay, ...args) => {
+      if (delay >= cloud.MISS_TTL_MS) { timers.push(fn); return 0; }
+      return realSetTimeout(fn, delay, ...args);
+    });
+    try {
+      const container = rows(sid(1));
+      mockDownload.mockResolvedValueOnce(notFound());
+      cloud.observeCloudProofs(container, OWNER, vi.fn());
+      const [row] = container.querySelectorAll('.log-item');
+      observerCallback([{ target: row, isIntersecting: true }]);
+      await vi.waitFor(() => expect(timers).toHaveLength(1));
+      vi.useFakeTimers({ toFake: ['Date'] });
+      timers[0](); // too early: the "not found" still holds
+      expect(observed).toHaveLength(0);
+      vi.setSystemTime(Date.now() + cloud.MISS_TTL_MS + 1);
+      await vi.waitFor(() => expect(timers).toHaveLength(2));
+      timers[1]();
+      expect(observed).toEqual([row]);
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it('does nothing for a guest', () => {
