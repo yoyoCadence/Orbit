@@ -275,6 +275,7 @@
 | #252 | — | DEV-001：`PLAYWRIGHT_CHROMIUM_EXECUTABLE` 讓容器裡直接跑 e2e；`tests/database/run.sh` 一次跑全部資料庫測試（每份一個新資料庫，pgTAP 的失敗也算）；替身加上 `extensions` schema；名稱規則比對工具 `support/name-rule-parity.mjs`；`tests/database/README.md`、§8 的跑法 |
 | #253 | v1.41.20 | PRO-014F1：排行榜的 Pro 光環（主題強調色、減少動態效果時靜止）與「✦ Pro」標記，只依 `get_leaderboard()` 的 `is_pro`，只是顯示；Personal Space 的 Pro 呈現改為 PRO-014F2（先寫提案）；#251 審查的 P3（首字退回的測試等） |
 | #254 | v1.41.21 | HW-112C1：新模組 `platform/proofSync.js`，登入的帳號拍照後在背景上傳到 `proofs/{uid}/{session}.jpg`（JPEG、不覆寫），上傳與刪除各有自己的重試清單（`orbit_proofsync_*`，每次遠端讀取成功後補傳），每個帳號一次補傳既有照片，撤銷紀錄時連同本機與雲端照片一起刪；雲端刪除不沿用 session 刪除紀錄（原因見 tasks.md）。另：CI 的 runner 換成 Ubuntu 26.04，`@playwright/test` 升到 1.65.1（INFRA-117）。下一步 HW-112C2 |
+| #255 | v1.41.22 | PRO-014F1 收尾：主色很亮的 8 個主題，Pro／「你」標記與字母頭像改用主題深色（`--on-primary`，`badgeContrast.test.js` 逐一檢查 ≥ 4.5:1）；Pro 光環改成 `::after` 透明度動畫；`proGateCallSites` 只放行排行榜的一處 `r.is_pro === true`；Segmenter 退回測試改用 `Object.create(Intl, …)` |
 
 教訓：#155–#164 在 Codex review 出現前就合併，造成 #165、#166、#167 的回頭修正。這就是 §2 合併條件的由來。獨立 review 在 #167、#168、#169 都找到真正的問題（例如椅子畫在螢幕後面、壁燈在相框下投出暗影），所以複查不能省。
 

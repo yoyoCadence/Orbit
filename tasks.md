@@ -147,13 +147,9 @@
 - [ ] **PRO-014F2**（先寫提案）Personal Space 的 Pro 呈現：SUB-14 與 PRO-014F 都沒有定義 Pro 在 Personal Space 要呈現什麼（例如房間裡的裝飾、Companion 的台詞、角色外觀），屬於設計決定；agent 先寫提案（只寫文件），擁有者決定後才實作。排行榜的部分已由 PRO-014F1 完成（見 Done）。
 - [ ] **HW-112C2** 佐證照片在其他裝置顯示、設定頁與登出（HW-112C1 的上傳已完成，見 Done）
   - 範圍（提案 §5.3、§5.5，§9 照建議）：只下載畫面上看得到的（IntersectionObserver，同時最多 3 個）；放在有上限的快取（Cache API，例如 300 張或 15 MB，最久沒看的先刪），以 `blob:` 顯示；「這筆沒有雲端照片」的記錄 10 分鐘過期、同步與回到前景時清掉；`proofControlsHtml()` 與 `resolveAchievementPhoto()` 先顯示預留圖、下載完再重畫；設定頁分成「清除這台裝置的照片」與「刪除所有佐證照片」（§9.4 A，跳過待傳中的）；登出時刪掉已上傳完成的本機照片（§9.5 B，待傳中的保留），登出時清掉這個帳號的快取；`statusBarNotice.js`（BUG-118）改成只提醒還沒上傳的照片。
+  - 一併處理（#254 第四輪獨立審查的 P3，這次會改到 `proofSync.js`）：(1) 補測試：上傳期間被刪、而刪除清單存不進去時（`queueRemoval` 進記憶體）也會刪雲端檔案；(2) 上傳迴圈遇到 `'failed'` 提早結束時，先跑一次 `flushRemovals()`，不讓記憶體裡的刪除等到下次同步；(3) `unsavedRemovals` 的註解改成「下一次同步時、有空間就寫回清單」。
   - 評估（#254 第四輪留下的）：讀這個帳號的雲端資料夾時，可清掉沒有對應紀錄的檔案（刪除時儲存空間滿、離線又關掉 app 才會留下）；要確認別台裝置剛建立、紀錄還沒同步到的照片不會被誤刪，否則不做。
   - 驗收需要擁有者：以兩個測試帳號經 Storage API 實測本人可上傳、讀、刪自己的檔案、不能碰別人的資料夾、超過 200 KB 或不是 JPEG 被拒（agent 沒有測試帳號的密碼）。
-- [ ] **PRO-014F1 收尾**（#253 獨立審查的 P3，不急）
-  - 「✦ Pro」與「你」標記在 liquid-galss（`--primary #eaff35`）與像素（`#39ff14`）主題是白字配亮黃／亮綠，對比約 1.1–1.3:1：比照 liquid-galss 的 `.btn-primary` 給這兩個標記依主題的文字顏色。
-  - `proGateCallSites` 的允許清單豁免整個 `pages/leaderboard.js`：改成把唯一的 `r.is_pro === true` 拿掉後再檢查，和 settings.js 的單獨測試一樣精確。
-  - `leaderboard.test.js` 的退回測試：`{ ...Intl }` 複製不到不可列舉的成員，改用 `Object.create(Intl, …)`；容器的移除放進 `afterEach`。
-  - 光環以 `box-shadow` 無限動畫，每個 Pro 頭像每一幀重畫；Pro 的列多時改成動畫另一層的 `opacity`。
 - [ ] **INFRA-116**（**需要擁有者核准**：CI 變更）CI 跑 `tests/database/*.sql`
   - 問題：資料庫測試（bug109、bug119、hw112、infra110、pro014d/e/l/r、pro017）只在本機 PostgreSQL 跑，CI 不會發現 migration 或測試的退化。
   - 提案：在 `ci.yml` 加一個 job，用 GitHub Actions 的 PostgreSQL 16 service（裝上 pgtap），執行 DEV-001 的 `tests/database/run.sh`（每份測試一個新的資料庫：替身 → `pwa/db/0*.sql` → 測試，`plpgsql.check_asserts = on`；本機 10 份全部通過），設 `REQUIRE_PGTAP=1`。不接觸 production、不需要任何 secret。核准後才做。
@@ -289,6 +285,13 @@
 
 ## Done
 
+- [x] **PRO-014F1 收尾** 排行榜 Pro 標記的可讀性、光環效能與測試精確度（v1.41.22，#253 獨立審查的 P3）
+  - Pro 標記（`.pro-badge`、`--inline`、`--corner`，各頁共用）、排行榜的「你」標記與字母頭像都是主色底：白字在主色很亮的主題只有 1.1–3.6:1。新增 `--on-primary`，只在白字未達 4.5:1 的 8 個主題設定為該主題自己的深色（liquid-galss、像素、cyberpunk、Material、aurora-blue、emerald、flame 用背景色；anime 是淺色主題，用它的文字色 `#2d1b2e`），其他主題維持白字；`tests/unit/badgeContrast.test.js` 從 style.css 逐一算每個主題的對比（≥ 4.5:1），拿掉任一個設定就失敗。其他用主色底的元件（按鈕等）不在這次範圍。
+  - 光環：外圈仍是頭像自己的 `box-shadow`（靜止），會呼吸的光暈改成 `::after` 一層、動畫只改 `opacity`（合成層，不重畫）；Pro 頭像不再 `overflow: hidden`，照片自己切圓。減少動態時光暈靜止（opacity .75）。e2e 改查 `::after` 的動畫，並新增 liquid-galss 下標記文字是深色的檢查；4 個主題（dark-purple、liquid-galss、像素、anime）截圖確認外觀。
+  - `proGateCallSites`：`pages/leaderboard.js` 不再整檔豁免，單獨的測試只放行一處 `r.is_pro === true`（拿掉它與註解後不能再有任何 Pro 欄位讀取；改壞時測試失敗）。
+  - `leaderboard.test.js` 沒有 `Intl.Segmenter` 的測試：改用 `Object.create(Intl, { Segmenter: { value: undefined } })`（繼承所有成員），容器在 `afterEach` 移除。
+  - 審查（#255，4a60e6b）：獨立審查 P2——Pro 頭像為了光暈不再 `overflow: hidden`，字母頭像（別人取的公開名稱的第一個字素）若帶 19 個疊加的組合符號（名稱規則允許），會往上畫進上一列（PRO-014E2 刻意擋掉的）→ 頭像內容包進 `.lb-avatar-face`（圓形、`overflow: hidden`），只有外層不裁切；e2e 把這種名稱放在第二列，比對上一列的截圖與換成普通「Z」時相同（拿掉裁切時失敗）。P3 一併改：對比測試改以 `theme.js` 的 `_ALL_THEME_IDS` 為準，任何主題找不到 hex 主色就失敗（原本會默默略過）；`proGateCallSites` 的允許讀取改成錨定的 `r.is_pro`（`user.is_pro === true` 不能冒充）；排行榜選中的分頁（`.lb-tab.active`）也用 `--on-primary`；`.lb-info` 設 `position: relative`，名字畫在光暈上面。
+
 - [x] **HW-112C1** 佐證照片上傳到雲端（v1.41.21，#254）
   - 新模組 `pwa/js/platform/proofSync.js`（SHELL；INFRA-105：既有模組只 import 它的新 export，它只 import 依賴既有的 export）：
     - 拍照存檔後（`proofSheet.js`），登入的帳號把照片排進上傳清單並在背景送出：`proofs/{user_id}/{session_id}.jpg`、JPEG Blob、`upsert: false`（沒有重拍，「已存在」當作完成）；上傳前後都確認登入的還是同一個帳號。PNG／WebP 的舊照片先重新編碼成 JPEG（不支援時跳過、留在本機）；超過 200 KB 的不送（bucket 會拒絕）。訪客不上傳。
@@ -308,7 +311,7 @@
   - `get_leaderboard()` 的 `is_pro` 為 `true` 的列：頭像外圍一圈主題強調色的光環（`.lb-avatar--pro`，3.2 秒緩慢明暗；`prefers-reduced-motion: reduce` 時靜止、光環仍在），名稱後面「✦ Pro」（沿用 app 既有的 `pro-badge--inline` 樣式），排在「你」之前；只認嚴格的 `true`（字串 `'true'`、缺少都不算）；不影響排名。
   - **Pro 入口的授權**（PRO-014F 的完成條件）：本次沒有新增任何取得資料、觸發運算或解鎖功能的 Pro 入口，只有顯示。`is_pro` 由 018 的 `get_leaderboard()`（SECURITY DEFINER）在 server 以 `is_pro_active()` 對 `pro_entitlements` 判定，client 不傳任何 Pro 狀態；排行榜的其他資料對所有登入者相同。
   - 一併處理 #251 審查的 P3：沒有 `Intl.Segmenter` 時的首字退回加上測試（`vi.stubGlobal` 後重新載入模組；把退回改壞時會失敗）、無法建立時記住不再重試；`clearLeaderboardOptOutPending` 的說明改成「加入或離開」。
-  - 審查（#253）：Codex 沒有問題；獨立審查沒有 P1／P2（在 6 個主題、兩種外觀、320px 寬截圖確認；把退回改壞或拿掉 `vi.resetModules()` 時測試會失敗），P3 列在 Next 的「PRO-014F1 收尾」。合併（2026-11-18，a305822）。
+  - 審查（#253）：Codex 沒有問題；獨立審查沒有 P1／P2（在 6 個主題、兩種外觀、320px 寬截圖確認；把退回改壞或拿掉 `vi.resetModules()` 時測試會失敗），P3 由「PRO-014F1 收尾」完成（v1.41.22，見 Done）。合併（2026-11-18，a305822）。
   - 測試：單元（Pro／非 Pro／`'true'`／缺少、標記位置、不影響排名、退回）；e2e `tests/e2e/pro014f-leaderboard-pro.test.js`（只有 Pro 列有光環與標記、計算後的 `box-shadow` 與動畫名稱；減少動態效果時動畫為 `none`）。截圖確認預設與純白光兩種主題。`proGateCallSites` 的允許清單加上 `pages/leaderboard.js`（讀的是 RPC 回傳的 `is_pro`，不是 profile 欄位，只用於顯示）。
 
 - [x] **DEV-001** 讓任何 agent 在雲端容器裡都能直接跑完整的檢查（#252，只改測試工具與文件，不 bump）
