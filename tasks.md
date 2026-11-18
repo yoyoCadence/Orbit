@@ -30,7 +30,7 @@
   - Acceptance: logged-in user completes a task, attaches proof, photo survives sign-out and re-login on a different device; guest mode still works with localStorage only; no service_role key in client code.
   - Note: requires Supabase Storage RLS policy and a bucket — propose SQL migration before implementation.
   - 提案（2026-11-11，使用者要求寫提案）：[`docs/hw-112-proof-photo-sync-proposal.md`](docs/hw-112-proof-photo-sync-proposal.md)。建議私有 bucket `proofs`、路徑 `{user_id}/{session_id}.jpg`、四個 policy；拆成 HW-112A（migration 016＋測試）→ HW-112B（擁有者套用）→ HW-112C（client）。等擁有者決定 §9（9 點；Codex 與獨立審查後修訂：下載不用 list、不放 localStorage）。
-  - **核准（2026-11-11）**：§9 全部照建議。HW-112A 完成（見 Done）；HW-112B 已於 2026-11-13 套用（見 Done）；下一步 HW-112C（client）。
+  - **核准（2026-11-11）**：§9 全部照建議。HW-112A 完成（見 Done）；HW-112B 已於 2026-11-13 套用（見 Done）；HW-112C1（上傳）完成（#254，見 Done）；下一步 HW-112C2（Next）。
   - HW-112C 上線後，`pwa/js/statusBarNotice.js`（BUG-118）的「佐證照片只存在這台裝置」要改成只提醒還沒上傳的照片。
   - HW-112C 的驗收（從 HW-112B 移過來）：以兩個測試帳號經 Storage API 實測——本人可以上傳、讀、刪自己的檔案；不能碰別人的資料夾；上傳超過 200 KB 或不是 JPEG 被拒（大小與類型由 API 在上傳時檢查，資料庫測不到）。下載時不能相信大小與類型（只當 JPEG 顯示在 `<img>`，過大的不處理；移動與複製不會再檢查，016 開頭有說明）。
 
@@ -145,10 +145,19 @@
 > 2026-11-18 擁有者要求：「列出幾個你覺得需要完善的事 持續完善」，每完成一段就開 PR 並合併，不必特別詢問（必要時才問）。agent 列出的完善清單如下，依序做；需要核准的另外標明。
 
 - [ ] **PRO-014F2**（先寫提案）Personal Space 的 Pro 呈現：SUB-14 與 PRO-014F 都沒有定義 Pro 在 Personal Space 要呈現什麼（例如房間裡的裝飾、Companion 的台詞、角色外觀），屬於設計決定；agent 先寫提案（只寫文件），擁有者決定後才實作。排行榜的部分已由 PRO-014F1 完成（見 Done）。
-- [ ] **HW-112C** 佐證照片上傳的 client（016 已在 production）；用真的帳號經 Storage API 驗證大小與 MIME 限制的那一步需要擁有者（agent 沒有測試帳號的密碼）。
+- [ ] **HW-112C2** 佐證照片在其他裝置顯示、設定頁與登出（HW-112C1 的上傳已完成，見 Done）
+  - 範圍（提案 §5.3、§5.5，§9 照建議）：只下載畫面上看得到的（IntersectionObserver，同時最多 3 個）；放在有上限的快取（Cache API，例如 300 張或 15 MB，最久沒看的先刪），以 `blob:` 顯示；「這筆沒有雲端照片」的記錄 10 分鐘過期、同步與回到前景時清掉；`proofControlsHtml()` 與 `resolveAchievementPhoto()` 先顯示預留圖、下載完再重畫；設定頁分成「清除這台裝置的照片」與「刪除所有佐證照片」（§9.4 A，跳過待傳中的）；登出時刪掉已上傳完成的本機照片（§9.5 B，待傳中的保留），登出時清掉這個帳號的快取；`statusBarNotice.js`（BUG-118）改成只提醒還沒上傳的照片。
+  - 評估（#254 第四輪留下的）：讀這個帳號的雲端資料夾時，可清掉沒有對應紀錄的檔案（刪除時儲存空間滿、離線又關掉 app 才會留下）；要確認別台裝置剛建立、紀錄還沒同步到的照片不會被誤刪，否則不做。
+  - 驗收需要擁有者：以兩個測試帳號經 Storage API 實測本人可上傳、讀、刪自己的檔案、不能碰別人的資料夾、超過 200 KB 或不是 JPEG 被拒（agent 沒有測試帳號的密碼）。
+- [ ] **PRO-014F1 收尾**（#253 獨立審查的 P3，不急）
+  - 「✦ Pro」與「你」標記在 liquid-galss（`--primary #eaff35`）與像素（`#39ff14`）主題是白字配亮黃／亮綠，對比約 1.1–1.3:1：比照 liquid-galss 的 `.btn-primary` 給這兩個標記依主題的文字顏色。
+  - `proGateCallSites` 的允許清單豁免整個 `pages/leaderboard.js`：改成把唯一的 `r.is_pro === true` 拿掉後再檢查，和 settings.js 的單獨測試一樣精確。
+  - `leaderboard.test.js` 的退回測試：`{ ...Intl }` 複製不到不可列舉的成員，改用 `Object.create(Intl, …)`；容器的移除放進 `afterEach`。
+  - 光環以 `box-shadow` 無限動畫，每個 Pro 頭像每一幀重畫；Pro 的列多時改成動畫另一層的 `opacity`。
 - [ ] **INFRA-116**（**需要擁有者核准**：CI 變更）CI 跑 `tests/database/*.sql`
   - 問題：資料庫測試（bug109、bug119、hw112、infra110、pro014d/e/l/r、pro017）只在本機 PostgreSQL 跑，CI 不會發現 migration 或測試的退化。
-  - 提案：在 `ci.yml` 加一個 job，用 GitHub Actions 的 PostgreSQL 16 service（裝上 pgtap），執行 DEV-001 的 `tests/database/run.sh`（每份測試一個新的資料庫：替身 → `pwa/db/0*.sql` → 測試，`plpgsql.check_asserts = on`；本機 10 份全部通過）。不接觸 production、不需要任何 secret。核准後才做。
+  - 提案：在 `ci.yml` 加一個 job，用 GitHub Actions 的 PostgreSQL 16 service（裝上 pgtap），執行 DEV-001 的 `tests/database/run.sh`（每份測試一個新的資料庫：替身 → `pwa/db/0*.sql` → 測試，`plpgsql.check_asserts = on`；本機 10 份全部通過），設 `REQUIRE_PGTAP=1`。不接觸 production、不需要任何 secret。核准後才做。
+  - 一併處理 #252 第二輪審查的 P3：`run.sh` 拒絕非本機主機時只看 `PGHOST`，也要拒絕非空的 `PGHOSTADDR`／`PGSERVICE`（或 `PGHOST` 裡逗號後的遠端主機）。
 
 - [ ] **PRO-017RA-Auth**（擁有者）先完成 INFRA-101（Custom SMTP），再在 Supabase 開啟「確認 email」，並確認匿名登入維持關閉
   - 019 已於 2026-11-13 套用（見 Done 的 PRO-017RA）；這一步只能由擁有者在 Supabase Dashboard 做（agent 的工具改不到 Auth 設定）。
@@ -280,10 +289,26 @@
 
 ## Done
 
+- [x] **HW-112C1** 佐證照片上傳到雲端（v1.41.21，#254）
+  - 新模組 `pwa/js/platform/proofSync.js`（SHELL；INFRA-105：既有模組只 import 它的新 export，它只 import 依賴既有的 export）：
+    - 拍照存檔後（`proofSheet.js`），登入的帳號把照片排進上傳清單並在背景送出：`proofs/{user_id}/{session_id}.jpg`、JPEG Blob、`upsert: false`（沒有重拍，「已存在」當作完成）；上傳前後都確認登入的還是同一個帳號。PNG／WebP 的舊照片先重新編碼成 JPEG（不支援時跳過、留在本機）；超過 200 KB 的不送（bucket 會拒絕）。訪客不上傳。
+    - 上傳清單 `orbit_proofsync_upload:<帳號>`（存 session id，不存圖片），每次遠端讀取成功後（開機、重新連線，`app.js` 的 `_loadRemote`）在背景補傳，一次最多 10 張，遇到失敗（通常是離線）就停、其餘留到下次；同一個帳號同時只跑一次。
+    - 第一次（每個帳號一次）把這台裝置上屬於這個帳號紀錄的舊照片排進清單（§9.6）；別的帳號或訪客留下的照片不上傳；帳號的紀錄還沒載入時下次再試。
+    - 撤銷紀錄時（`sessionFlow.js`）：刪掉這台裝置上的照片（原本會留下）、從上傳清單移除；登入時把雲端那份排進刪除清單 `orbit_proofsync_remove:<帳號>`，直到伺服器確認才移除（`remove()` 對不存在的檔案也回成功）。上傳期間被刪掉的紀錄，上傳完成後立刻刪掉雲端的檔案。
+    - key 都以 `orbit_proofsync_` 開頭：`proofStore` 把所有 `orbit_proof_*` 當成照片（計數、`clearAllProofs()` 會刪），不能共用前綴。
+  - **與提案的差異**：§5.4 建議雲端刪除沿用 session 刪除紀錄（加 `proofRemovedAt`）。那份紀錄的「完成」條件同時給 Personal Space 的重算用，分散在三處（`sessionFlow.js`、`storage.js` 的重試、V2 controller）；照片與兩者無關，改用 `proofSync.js` 自己的刪除清單，保證相同（重試到伺服器確認）、不動那三處。
+  - 上傳以 multipart 送出（supabase-js 對 Blob 的做法，和頭像相同）：Storage 檢查的是檔案那一段的類型（`image/jpeg`），e2e 確認。
+  - 不算進同步橫幅的待同步數字（照片是背景備份）。
+  - 測試：`tests/unit/proofSync.test.js`（18：上傳的路徑、格式與不覆寫、「已存在」、失敗時保留並停止、換帳號不送、超過 200 KB、紀錄不在或不屬於這個帳號、一次 10 張、同時只跑一次、PNG 重新編碼與不支援時跳過、上傳期間被刪、不合 policy 的 id、補傳只限這個帳號且只一次、紀錄還沒載入時等待、key 不算進照片數、撤銷時本機與雲端都刪、刪除重試、訪客只刪本機）；`tests/unit/proofSyncHooks.test.js`（拍照存檔與撤銷紀錄的接點，登入與訪客）；`appBootSequence` 加上「遠端讀取成功後才補傳、失敗時不送」；e2e `tests/e2e/hw112c-proof-upload.test.js`（真的 Supabase client、攔截 Storage：存檔後送到自己資料夾的 JPEG、`x-upsert: false`；撤銷後 DELETE 那一個檔案、本機的照片也刪掉）。把三個接點各自拿掉時測試都會失敗。
+  - 下一步 HW-112C2（Next）：其他裝置的顯示、設定頁、登出。
+  - 審查（#254，42512d9）：Codex P2 與獨立審查的 P2 相同——同步進行中登出（或換帳號）時，`handleSignOut()` 清掉本機的 user 與紀錄，舊程式把「這台裝置沒有這個帳號的紀錄」當成「紀錄被刪了」：剛上傳完的照片被排進刪除清單（下次登入時刪掉有效的備份），其餘排隊的照片被丟掉（補傳已標記完成，不會再補）→ `ownSessionIds()` 在這台裝置沒有這個帳號的資料時回傳 null（未知，不是「刪了」），同步立刻停下、兩個清單都不動；只有帳號的資料還在而這一筆不在（或在刪除紀錄裡）才算刪除。獨立審查的 P3 一併改：同步進行中新排的照片或刪除，結束後再跑一次（原本要等下次開機）；壞掉的 data URL 不再卡住整個清單；伺服器明確拒絕（400／413／415／422）的那一張丟掉、不擋後面的（401／403 等保留重試）；補傳的清單存不進去（儲存空間滿）時不標記完成；同步結束前再處理一次期間排進來的刪除。測試從 18 個增加到 28 個，把每一項修正改壞時都會失敗。第二輪（0f6c962）：獨立審查的 P2——「明確拒絕」原本以 HTTP 400 判斷，但 Storage 對過期或無效的 token 也回 400（`InvalidJWT`），會把整個清單當成永久拒絕而丟掉 → 改以 Storage 的錯誤代碼判斷（supabase-js 保留在 `error.code`）：只有 `EntityTooLarge`、`InvalidMimeType`、`InvalidKey`（與沒有代碼的 413）丟掉，其他 400 停下並保留清單；「已存在」也認 `Duplicate`／`ResourceAlreadyExists` 代碼（測試 30 個）。第三輪（6fae449）：獨立審查沒有 P1／P2；Codex P2——補傳完成之後，新拍的照片若因儲存空間滿而排不進上傳清單，之後再也不會被找到 → 排不進時清掉「補傳已完成」的標記（刪除 key 在空間滿時也做得到），下次同步重新找這個帳號的所有照片（已在雲端的回「已存在」）；刪除排不進清單時直接試一次（測試 32 個）。記錄不改：照片在快取開機時（遠端讀取之前）存檔，而那筆紀錄已在別台裝置刪除，可能上傳後留下沒人用的雲端檔案；舊版 client 也不會刪雲端的檔案——都很少見，之後若要清可另列任務。第四輪（ec3ced8）：獨立審查沒有 P1／P2；Codex P2——刪除排不進清單（儲存空間滿）而直接那一次也失敗（離線）時，這筆刪除就被忘了：之後的同步只看存下來的清單，而 session 刪除紀錄在資料庫那列刪掉後就清掉 → 排不進清單的刪除留在記憶體裡（app 執行期間），每次同步都重試，並在有空間時寫回清單；直接試一次改成走同一個同步（測試 34 個，新增的兩個在舊程式上會失敗）。剩下的情況：儲存空間滿、離線，而且在空間或網路恢復之前就關掉 app——不另外做（先刪本機照片已騰出 10–40 KB，清單只要幾十個位元組）；HW-112C2 會讀這個帳號的雲端資料夾，到時可評估清掉沒有對應紀錄的檔案。
+  - **CI（INFRA-117，併入 #254）**：GitHub Actions 的 `ubuntu-latest` 在 2026-11-18 換成 Ubuntu 26.04，Playwright 1.59.1 不支援（`npx playwright install --with-deps chromium` 直接失敗：`Playwright does not support chromium on ubuntu26.04-x64`），e2e 在跑任何測試之前就紅了，之後每個 PR 都會遇到（CI 不在 main 的 push 上跑）。devDependency `@playwright/test` 升到 1.65.1（套件裡有 `ubuntu26.04-x64`；1.59.1 只到 24.04）；不改 CI 設定。本機以容器預裝的 Chromium 跑完整 e2e 仍全部通過。
+
 - [x] **PRO-014F1** 排行榜的 Pro 光環與標記（SUB-14 的排行榜部分，v1.41.20，#253）
   - `get_leaderboard()` 的 `is_pro` 為 `true` 的列：頭像外圍一圈主題強調色的光環（`.lb-avatar--pro`，3.2 秒緩慢明暗；`prefers-reduced-motion: reduce` 時靜止、光環仍在），名稱後面「✦ Pro」（沿用 app 既有的 `pro-badge--inline` 樣式），排在「你」之前；只認嚴格的 `true`（字串 `'true'`、缺少都不算）；不影響排名。
   - **Pro 入口的授權**（PRO-014F 的完成條件）：本次沒有新增任何取得資料、觸發運算或解鎖功能的 Pro 入口，只有顯示。`is_pro` 由 018 的 `get_leaderboard()`（SECURITY DEFINER）在 server 以 `is_pro_active()` 對 `pro_entitlements` 判定，client 不傳任何 Pro 狀態；排行榜的其他資料對所有登入者相同。
   - 一併處理 #251 審查的 P3：沒有 `Intl.Segmenter` 時的首字退回加上測試（`vi.stubGlobal` 後重新載入模組；把退回改壞時會失敗）、無法建立時記住不再重試；`clearLeaderboardOptOutPending` 的說明改成「加入或離開」。
+  - 審查（#253）：Codex 沒有問題；獨立審查沒有 P1／P2（在 6 個主題、兩種外觀、320px 寬截圖確認；把退回改壞或拿掉 `vi.resetModules()` 時測試會失敗），P3 列在 Next 的「PRO-014F1 收尾」。合併（2026-11-18，a305822）。
   - 測試：單元（Pro／非 Pro／`'true'`／缺少、標記位置、不影響排名、退回）；e2e `tests/e2e/pro014f-leaderboard-pro.test.js`（只有 Pro 列有光環與標記、計算後的 `box-shadow` 與動畫名稱；減少動態效果時動畫為 `none`）。截圖確認預設與純白光兩種主題。`proGateCallSites` 的允許清單加上 `pages/leaderboard.js`（讀的是 RPC 回傳的 `is_pro`，不是 profile 欄位，只用於顯示）。
 
 - [x] **DEV-001** 讓任何 agent 在雲端容器裡都能直接跑完整的檢查（#252，只改測試工具與文件，不 bump）
