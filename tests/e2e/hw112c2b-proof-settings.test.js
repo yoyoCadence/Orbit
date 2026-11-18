@@ -31,7 +31,7 @@ const session = (id, minutesAgo) => ({
   durationMinutes: 30, finalXP: 50,
 });
 
-async function openApp(page, storageCalls, { backfilled = true } = {}) {
+async function openApp(page, storageCalls, { backfilled = true, listGate = null } = {}) {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.route(`${SUPABASE_URL}/**`, route => route.abort('internetdisconnected'));
   await page.route(`${SUPABASE_URL}/rest/**`, route => route.fulfill({
@@ -42,10 +42,10 @@ async function openApp(page, storageCalls, { backfilled = true } = {}) {
     const path = new URL(request.url()).pathname;
     storageCalls.push({ method: request.method(), path, body: request.postDataJSON?.() ?? null });
     if (path === '/storage/v1/object/list/proofs') {
-      return route.fulfill({
+      return (listGate ?? Promise.resolve()).then(() => route.fulfill({
         status: 200, contentType: 'application/json',
         body: JSON.stringify([`${UPLOADED}.jpg`, `${ELSEWHERE}.jpg`].map((name, i) => ({ name, id: `obj-${i}` }))),
-      });
+      }));
     }
     if (request.method() === 'GET') {
       return route.fulfill({
@@ -116,6 +116,21 @@ test.describe('HW-112C2b proof photos: settings and sign-out', () => {
     expect(removal.body).toEqual({ prefixes: [`${USER_ID}/${UPLOADED}.jpg`, `${USER_ID}/${ELSEWHERE}.jpg`] });
     // The photo that was waiting was not uploaded after all.
     expect(storageCalls.filter(call => call.method === 'POST' && call.path.startsWith('/storage/v1/object/proofs/'))).toEqual([]);
+  });
+
+  test('delete all does not paint settings over the page the user moved to meanwhile', async ({ page }) => {
+    let release;
+    const listGate = new Promise(resolve => { release = resolve; });
+    await openApp(page, [], { listGate });
+    await page.click('.nav-item[data-page="settings"]');
+    page.on('dialog', dialog => dialog.accept());
+    await page.locator('#proof-delete-all-btn').click();
+    await page.click('.nav-item[data-page="home"]'); // while the cloud folder is being listed
+    await expect(page.locator('#proof-delete-all-btn')).toHaveCount(0);
+    release();
+    await expect(page.locator('#toast, .toast').first()).toContainText('已刪除所有佐證照片');
+    await expect(page.locator('#proof-delete-all-btn')).toHaveCount(0); // still home
+    await expect(page.locator('.nav-item[data-page="home"]')).toHaveClass(/active/);
   });
 
   test('signing out drops only the photo already in the cloud', async ({ page }) => {

@@ -1264,11 +1264,12 @@ function _setupListeners(container) {
 
   container.querySelector('#proof-delete-all-btn')?.addEventListener('click', async event => {
     if (!_proofAccountSignedIn()) return;
-    if (!confirm('刪除所有佐證照片？\n這台裝置與雲端的佐證照片都會刪除，其他裝置也不會再看到。')) return;
+    if (!confirm('刪除所有佐證照片？\n這台裝置與雲端的佐證照片都會刪除。其他裝置已下載的副本會留到那台裝置登出或清除，那台裝置上還沒上傳的照片之後仍會上傳。')) return;
     if (!confirm('再確認一次：刪除後無法復原。確定要刪除所有佐證照片？')) return;
     event.currentTarget.disabled = true;
     const result = await deleteAllProofs(state.user?.id, state.sessions);
-    if (container.isConnected) _renderView(container);
+    // The router reuses the page container; only repaint if settings is still shown.
+    if (container.isConnected && container.querySelector('#proof-delete-all-btn')) _renderView(container);
     window.showToast(result.ok
       ? `已刪除所有佐證照片（雲端 ${result.cloud} 張）`
       : '雲端的佐證照片還沒全部刪除：連上網路後再按一次');

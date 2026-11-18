@@ -39,6 +39,7 @@ import {
   clearDeviceProofs,
   deleteAllProofs,
   dropUploadedLocalProofs,
+  photosNotSurelyUploaded,
   uploadedLocalProofIds,
 } from '../../pwa/js/platform/proofLocal.js';
 import { getAchievementPhotoSelection, saveProof, setAchievementPhotoSelection } from '../../pwa/js/platform/proofStore.js';
@@ -102,6 +103,20 @@ describe('what is surely uploaded', () => {
   });
 });
 
+describe('what an old icon must not be removed with (BUG-118 "check sync")', () => {
+  it('counts every photo not surely uploaded: never queued yet, waiting, or not sendable as is', async () => {
+    signIn(sid(1), sid(2), sid(3));
+    saveProof(sid(1), jpeg());
+    saveProof(sid(2), jpeg());
+    expect(photosNotSurelyUploaded(OWNER, local.sessions)).toBe(2); // before the first sync queued them
+    await flushProofSync(OWNER);
+    expect(photosNotSurelyUploaded(OWNER, local.sessions)).toBe(0);
+    saveProof(sid(3), png);
+    queueProofUpload(OWNER, sid(2));
+    expect(photosNotSurelyUploaded(OWNER, local.sessions)).toBe(2);
+  });
+});
+
 describe('sign-out', () => {
   it('drops the local copies surely in the cloud and the downloaded ones; keeps the rest', async () => {
     signIn(sid(1), sid(2));
@@ -139,6 +154,14 @@ describe('settings: clear this device\'s photos', () => {
     expect([has(sid(1)), has(sid(2)), has(sid(9))]).toEqual([false, true, true]);
     expect(getAchievementPhotoSelection(OWNER)).toBe(sid(1)); // shown from the cloud
     expect(clearCloudProofs).toHaveBeenCalledWith(OWNER);
+  });
+
+  it('an account seen as a guest (its stored session gone) keeps the photos still waiting to upload', () => {
+    saveProof(sid(1), jpeg());
+    saveProof(sid(2), jpeg());
+    queueProofUpload(OWNER, sid(2));
+    expect(clearDeviceProofs(OWNER, sessions(sid(1), sid(2)), { signedIn: false })).toEqual({ cleared: 1, kept: 1 });
+    expect([has(sid(1)), has(sid(2))]).toEqual([false, true]);
   });
 
   it('a guest: the guest\'s photos (no cloud copy) and the Personal Space selection', () => {
@@ -180,6 +203,13 @@ describe('settings: delete all proof photos', () => {
     expect(removed.every(path => path.startsWith(`${OWNER}/`))).toBe(true);
     // The queued upload found no photo and left the queue (nothing re-uploaded).
     expect(mockUpload).not.toHaveBeenCalled();
+  });
+
+  it('empties the cloud folder even when this device\'s cache never answers', async () => {
+    signIn(sid(1));
+    clearCloudProofs.mockImplementationOnce(() => new Promise(() => {})); // IndexedDB hangs
+    mockList.mockResolvedValueOnce({ data: names(1), error: null });
+    expect(await deleteAllProofs(OWNER, local.sessions)).toEqual({ ok: true, local: 0, cloud: 1 });
   });
 
   it('reports a cloud folder it could not empty (offline): pressing again retries', async () => {

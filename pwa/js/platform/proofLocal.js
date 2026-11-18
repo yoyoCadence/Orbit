@@ -99,6 +99,16 @@ export function uploadedLocalProofIds(ownerId, sessions) {
 }
 
 /**
+ * This account's photos on this device that are not surely in the cloud
+ * (waiting, never queued yet, or one the sync could not send as is): what an
+ * old icon must not be removed with (BUG-118's "check sync").
+ */
+export function photosNotSurelyUploaded(ownerId, sessions) {
+  const uploaded = new Set(uploadedLocalProofIds(ownerId, sessions));
+  return sessionIdsOf(sessions).filter(sessionId => getProof(sessionId) && !uploaded.has(sessionId)).length;
+}
+
+/**
  * Sign-out (§9.5 B): drop this account's local photos that are surely in the
  * cloud, and its downloaded copies. Returns how many local photos went.
  */
@@ -122,7 +132,12 @@ export function dropUploadedLocalProofs(ownerId, sessions) {
  */
 export function clearDeviceProofs(ownerId, sessions, { signedIn = false } = {}) {
   const ids = sessionIdsOf(sessions).filter(sessionId => getProof(sessionId));
-  const clearable = signedIn && ownerId ? new Set(uploadedLocalProofIds(ownerId, sessions)) : new Set(ids);
+  // A guest has no queue; an account whose stored session is gone (seen here
+  // as a guest) still has one, and those photos are its only copies.
+  const waiting = new Set(ownerId ? pendingProofUploads(ownerId) : []);
+  const clearable = signedIn && ownerId
+    ? new Set(uploadedLocalProofIds(ownerId, sessions))
+    : new Set(ids.filter(sessionId => !waiting.has(sessionId)));
   let cleared = 0;
   let kept = 0;
   for (const sessionId of ids) {
@@ -172,7 +187,9 @@ export async function deleteAllProofs(ownerId, sessions) {
     if (getProof(sessionId) && removeLocal(sessionId)) local += 1;
   }
   clearAchievementPhotoSelection(ownerId);
-  await clearCloudProofs(ownerId);
+  // Not waited for: opening IndexedDB can hang (iOS), and the cloud deletion
+  // below must not depend on it. The clear takes effect at once in memory.
+  void clearCloudProofs(ownerId);
 
   let cloud = 0;
   try {
