@@ -110,6 +110,7 @@
     - 頭像：BUG-119（017）之後，別人只讀得到公開使用者 `avatar_url` 指向的那一個檔案；`get_leaderboard()` 的 `avatar_path` 只在它是本人資料夾裡的路徑時才有值，其他（舊資料的網址、任意網址、data: URL、別人的路徑）是 NULL，client 顯示預設頭像，不去載入別人指定的網址。
 
 - [ ] **PRO-014F** 交付 SUB-14 排行榜 glow 與 Personal Space Pro 呈現
+  - 進度：排行榜的光環與標記為 PRO-014F1（完成，見 Done）；Personal Space 的部分為 PRO-014F2（Next，先寫提案）。
   - 目標：只使用安全 read model 與 entitlement snapshot 呈現 Pro 身分，不讓視覺功能回寫 entitlement
   - 範圍：排行榜、Personal Space projection、HTML escaping、reduced motion、responsive 與視覺／E2E regression tests
   - 完成條件：Pro／非 Pro／匿名狀態顯示正確，動態文字安全，reduced motion 下無必要動畫，且不改動 auth／entitlement schema
@@ -143,7 +144,7 @@
 
 > 2026-11-18 擁有者要求：「列出幾個你覺得需要完善的事 持續完善」，每完成一段就開 PR 並合併，不必特別詢問（必要時才問）。agent 列出的完善清單如下，依序做；需要核准的另外標明。
 
-- [ ] **PRO-014F** 排行榜的 Pro 標記（`get_leaderboard()` 的 `is_pro`，server 判定）與 Personal Space 的 Pro 呈現——E2 已完成，不再被擋；完成條件見 Backlog 的 PRO-014F。
+- [ ] **PRO-014F2**（先寫提案）Personal Space 的 Pro 呈現：SUB-14 與 PRO-014F 都沒有定義 Pro 在 Personal Space 要呈現什麼（例如房間裡的裝飾、Companion 的台詞、角色外觀），屬於設計決定；agent 先寫提案（只寫文件），擁有者決定後才實作。排行榜的部分已由 PRO-014F1 完成（見 Done）。
 - [ ] **HW-112C** 佐證照片上傳的 client（016 已在 production）；用真的帳號經 Storage API 驗證大小與 MIME 限制的那一步需要擁有者（agent 沒有測試帳號的密碼）。
 - [ ] **INFRA-116**（**需要擁有者核准**：CI 變更）CI 跑 `tests/database/*.sql`
   - 問題：資料庫測試（bug109、bug119、hw112、infra110、pro014d/e/l/r、pro017）只在本機 PostgreSQL 跑，CI 不會發現 migration 或測試的退化。
@@ -278,6 +279,12 @@
 ---
 
 ## Done
+
+- [x] **PRO-014F1** 排行榜的 Pro 光環與標記（SUB-14 的排行榜部分，v1.41.20，#253）
+  - `get_leaderboard()` 的 `is_pro` 為 `true` 的列：頭像外圍一圈主題強調色的光環（`.lb-avatar--pro`，3.2 秒緩慢明暗；`prefers-reduced-motion: reduce` 時靜止、光環仍在），名稱後面「✦ Pro」（沿用 app 既有的 `pro-badge--inline` 樣式），排在「你」之前；只認嚴格的 `true`（字串 `'true'`、缺少都不算）；不影響排名。
+  - **Pro 入口的授權**（PRO-014F 的完成條件）：本次沒有新增任何取得資料、觸發運算或解鎖功能的 Pro 入口，只有顯示。`is_pro` 由 018 的 `get_leaderboard()`（SECURITY DEFINER）在 server 以 `is_pro_active()` 對 `pro_entitlements` 判定，client 不傳任何 Pro 狀態；排行榜的其他資料對所有登入者相同。
+  - 一併處理 #251 審查的 P3：沒有 `Intl.Segmenter` 時的首字退回加上測試（`vi.stubGlobal` 後重新載入模組；把退回改壞時會失敗）、無法建立時記住不再重試；`clearLeaderboardOptOutPending` 的說明改成「加入或離開」。
+  - 測試：單元（Pro／非 Pro／`'true'`／缺少、標記位置、不影響排名、退回）；e2e `tests/e2e/pro014f-leaderboard-pro.test.js`（只有 Pro 列有光環與標記、計算後的 `box-shadow` 與動畫名稱；減少動態效果時動畫為 `none`）。截圖確認預設與純白光兩種主題。`proGateCallSites` 的允許清單加上 `pages/leaderboard.js`（讀的是 RPC 回傳的 `is_pro`，不是 profile 欄位，只用於顯示）。
 
 - [x] **DEV-001** 讓任何 agent 在雲端容器裡都能直接跑完整的檢查（#252，只改測試工具與文件，不 bump）
   - `playwright.config.js`：環境變數 `PLAYWRIGHT_CHROMIUM_EXECUTABLE` 指定 Chromium（容器裡是 `/opt/pw-browsers/chromium`）；沒設定時行為不變。不必再寫暫時的設定檔。

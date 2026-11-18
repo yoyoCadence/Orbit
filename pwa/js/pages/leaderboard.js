@@ -174,13 +174,17 @@ function _renderContent(container, rows, refreshedAt, isStale, refreshHour) {
         const avatarHtml = r.avatar_display_url
           ? `<img src="${escAttr(r.avatar_display_url)}" alt="">`
           : escHtml(initial);
+        // PRO-014F (SUB-14): the Pro mark is display only. get_leaderboard()
+        // decides is_pro on the server (is_pro_active over pro_entitlements, 018);
+        // nothing here grants or unlocks anything.
+        const isPro = r.is_pro === true;
 
         return `
           <div class="lb-row ${isMe ? 'lb-row-me' : ''}">
             <span class="lb-rank">${medal}</span>
-            <div class="lb-avatar">${avatarHtml}</div>
+            <div class="lb-avatar${isPro ? ' lb-avatar--pro' : ''}">${avatarHtml}</div>
             <div class="lb-info">
-              <div class="lb-name"><span class="lb-name-text">${escHtml(r.display_name)}</span>${isMe ? '<span class="lb-you">你</span>' : ''}</div>
+              <div class="lb-name"><span class="lb-name-text">${escHtml(r.display_name)}</span>${isPro ? '<span class="pro-badge--inline lb-pro" title="Orbit Pro 會員">✦ Pro</span>' : ''}${isMe ? '<span class="lb-you">你</span>' : ''}</div>
               <div class="lb-sub">Lv.${lvl} · 連勝 ${r.streak_days}天</div>
             </div>
             <div class="lb-score">
@@ -244,7 +248,7 @@ function _initialOf(name) {
       if (first) return first.toUpperCase();
     }
   } catch {
-    // fall back below
+    _graphemes = false; // cannot be built here: do not retry for every row
   }
   return (Array.from(text)[0] || '?').toUpperCase();
 }

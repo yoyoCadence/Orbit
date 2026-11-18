@@ -561,6 +561,43 @@ describe('renderLeaderboard — get_leaderboard() rows (PRO-014E2)', () => {
     expect(localStorage.getItem(CACHE_KEY)).toBeNull();
   });
 
+  it('marks a Pro row with the glow and the badge, from is_pro alone (PRO-014F)', async () => {
+    mockRpc.mockResolvedValueOnce({
+      data: [
+        makeRow({ display_name: 'Pro Bob', is_pro: true, is_me: true, week_xp: 300 }),
+        makeRow({ display_name: 'Free Eve', is_pro: false, week_xp: 200 }),
+        makeRow({ display_name: 'Odd Sam', is_pro: 'true', week_xp: 100 }),
+        makeRow({ display_name: 'Missing Kim', is_pro: undefined, week_xp: 50 }),
+      ],
+      error: null,
+    });
+    await renderLeaderboard(container);
+    const rows = [...container.querySelectorAll('.lb-row')];
+    const marks = rows.map(row => [
+      row.querySelector('.lb-name-text').textContent,
+      !!row.querySelector('.lb-avatar--pro'),
+      row.querySelector('.lb-pro')?.textContent ?? null,
+    ]);
+    expect(marks).toEqual([
+      ['Pro Bob', true, '✦ Pro'],
+      ['Free Eve', false, null],
+      ['Odd Sam', false, null],
+      ['Missing Kim', false, null],
+    ]);
+    // The badge sits before "你", and neither is inside the truncated name text.
+    const name = rows[0].querySelector('.lb-name');
+    expect([...name.children].map(el => el.className)).toEqual(['lb-name-text', 'pro-badge--inline lb-pro', 'lb-you']);
+  });
+
+  it('a Pro mark does not change the ranking', async () => {
+    mockRpc.mockResolvedValueOnce({
+      data: [makeRow({ display_name: 'Pro Low', is_pro: true, week_xp: 10 }), makeRow({ display_name: 'Free High', week_xp: 90 })],
+      error: null,
+    });
+    await renderLeaderboard(container);
+    expect([...container.querySelectorAll('.lb-name-text')].map(el => el.textContent)).toEqual(['Free High', 'Pro Low']);
+  });
+
   it('never reads a table or view', async () => {
     mockRpc.mockResolvedValueOnce({ data: [makeRow()], error: null });
     await renderLeaderboard(container);
@@ -609,5 +646,32 @@ describe('renderLeaderboard — get_leaderboard() rows (PRO-014E2)', () => {
     await renderLeaderboard(container);
     const names = [...container.querySelectorAll('.lb-name')].map(el => el.textContent.trim());
     expect(names).toEqual(['Fast', 'Slow']);
+  });
+});
+
+describe('renderLeaderboard — browsers without Intl.Segmenter', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.resetModules();
+  });
+
+  it('falls back to the first code point, never half a surrogate pair', async () => {
+    vi.stubGlobal('Intl', { ...Intl, Segmenter: undefined });
+    vi.resetModules();
+    const { renderLeaderboard: render } = await import('../../pwa/js/pages/leaderboard.js');
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    localStorage.clear();
+    signIn();
+    mockState.user = { id: 'me', name: 'Alice', mode: 'normal' };
+    mockRpc.mockResolvedValueOnce({
+      data: [makeRow({ display_name: String.fromCodePoint(0x1f422, 0x41), week_xp: 2 }),
+        makeRow({ display_name: String.fromCodePoint(0x65, 0x301, 0x63), week_xp: 1 })],
+      error: null,
+    });
+    await render(container);
+    const initials = [...container.querySelectorAll('.lb-avatar')].map(el => el.textContent.trim());
+    expect(initials).toEqual([String.fromCodePoint(0x1f422), 'E']);
+    document.body.removeChild(container);
   });
 });

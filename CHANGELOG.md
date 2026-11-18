@@ -3,6 +3,16 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.41.20] - 2026-11-18
+
+### Added
+- **排行榜的 Pro 光環（PRO-014F，SUB-14）**：Orbit Pro 會員（含試用）在排行榜上，頭像外圍有一圈以主題強調色發光的光環，名稱後面有「✦ Pro」標記。是否為 Pro 由伺服器判定，只是顯示，不影響排名。光環會緩慢明暗變化；系統開啟「減少動態效果」時保持靜止。
+
+### Fixed
+- 不支援 `Intl.Segmenter` 的瀏覽器，排行榜頭像首字的退回作法加上測試；無法建立時不再每一列重試。
+
+---
+
 ## [1.41.19] - 2026-11-18
 
 ### Fixed
