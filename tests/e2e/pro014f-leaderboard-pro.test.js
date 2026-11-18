@@ -116,11 +116,20 @@ test.describe('PRO-014F leaderboard Pro mark', () => {
     const withMarks = await rowAbove();
     const face = avatar.locator('.lb-avatar-face');
     await face.evaluate(el => { el.textContent = 'Z'; });
-    expect((await rowAbove()).equals(withMarks)).toBe(true);
-    // Self-check: unclipped, the marks do reach the row above (the font stacks
-    // them), so the comparison above can fail.
-    await face.evaluate((el, text) => { el.textContent = text; el.style.overflow = 'visible'; }, stacked);
-    expect((await rowAbove()).equals(withMarks)).toBe(false);
+    const plain = await rowAbove();
+    expect(plain.equals(withMarks)).toBe(true);
+    // How high the marks reach depends on the fonts installed (on some systems
+    // they never leave the circle), so the clip is also checked with content
+    // that surely does: a bar reaching 60px up into the row above…
+    await face.evaluate(el => {
+      el.insertAdjacentHTML('beforeend',
+        '<span data-e2e-bar style="position:absolute;left:16px;top:-60px;width:4px;height:70px;background:#ff00ff"></span>');
+      el.style.position = 'relative';
+    });
+    expect((await rowAbove()).equals(plain)).toBe(true);
+    // …which does show there once the face stops clipping (so this check can fail).
+    await face.evaluate(el => { el.style.overflow = 'visible'; });
+    expect((await rowAbove()).equals(plain)).toBe(false);
   });
 
   test('keeps the glow but stops it moving under reduced motion', async ({ page }) => {

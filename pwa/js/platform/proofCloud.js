@@ -66,6 +66,7 @@ const generationOf = ownerId => generations.get(ownerId) ?? 0;
 export function forgetCloudProofMisses() {
   misses.clear();
   for (const record of [...rowWatchers]) rearm(record);
+  retryAchievementPhotos();
 }
 
 if (typeof document !== 'undefined') {
@@ -249,7 +250,9 @@ function deleteCachedFor(ownerId) {
  * got its sign-out here (an expired session, a switch). Run at each sync.
  */
 export function keepCloudProofsOf(ownerId) {
-  if (!ownerId) return Promise.resolve();
+  // A sync of an account that has since been switched away from must not
+  // clear the account now signed in.
+  if (!ownerId || !signedInHere(ownerId)) return Promise.resolve();
   return deleteCached(meta => meta.ownerId !== ownerId);
 }
 
@@ -317,21 +320,23 @@ function remember(ownerId, sessionId, blob) {
   const url = URL.createObjectURL(blob);
   loaded.set(key, { url, blob });
   misses.delete(key);
-  forgetOldest();
+  forgetOldest(key);
   return url;
 }
 
 // A long history scrolled to the end would keep every photo in memory: past
 // MEMORY_MAX_PHOTOS, the oldest that no image on the page shows are let go
 // (they come back from this device's cache when needed).
-function forgetOldest() {
+// The photo just added is never the one let go (it is not on the page yet);
+// when everything else is on screen, the count goes past the limit.
+function forgetOldest(justAdded) {
   if (loaded.size <= MEMORY_MAX_PHOTOS) return;
   const shown = typeof document === 'undefined'
     ? new Set()
     : new Set([...document.querySelectorAll('img')].map(img => img.getAttribute('src')));
   for (const [key, entry] of loaded) {
     if (loaded.size <= MEMORY_MAX_PHOTOS) return;
-    if (shown.has(entry.url)) continue;
+    if (key === justAdded || shown.has(entry.url)) continue;
     URL.revokeObjectURL(entry.url);
     loaded.delete(key);
   }
@@ -347,8 +352,10 @@ export function loadCloudProof(ownerId, sessionId) {
   const known = loaded.get(key);
   if (known) return Promise.resolve(known.url);
   if (!wantsCloudProof(ownerId, sessionId)) return Promise.resolve(null);
-  if (inFlight.has(key)) return inFlight.get(key);
   const generation = generationOf(ownerId);
+  // A download from before a sign-out resolves to nothing: never join it.
+  const flightKey = `${key}#${generation}`;
+  if (inFlight.has(flightKey)) return inFlight.get(flightKey);
   const current = () => generationOf(ownerId) === generation && signedInHere(ownerId);
   const promise = (async () => {
     const cached = await readCached(ownerId, sessionId);
@@ -358,8 +365,8 @@ export function loadCloudProof(ownerId, sessionId) {
     const url = remember(ownerId, sessionId, blob);
     await writeCached(ownerId, sessionId, blob, generation);
     return url;
-  })().catch(() => null).finally(() => inFlight.delete(key));
-  inFlight.set(key, promise);
+  })().catch(() => null).finally(() => inFlight.delete(flightKey));
+  inFlight.set(flightKey, promise);
   return promise;
 }
 
@@ -383,6 +390,7 @@ export function observeCloudProofs(container, ownerId, onLoaded) {
   const record = {
     container,
     ownerId,
+    onLoaded,
     observer: null,
     byRow: new Map(),
     unresolved: new Set(),
@@ -458,7 +466,15 @@ function rearm(record) {
       record.unresolved.delete(row);
       continue;
     }
-    if (!wantsCloudProof(record.ownerId, sentinel.dataset.proofCloudSessionId)) continue; // a fresh "not found"
+    const sessionId = sentinel.dataset.proofCloudSessionId;
+    const url = cloudProofUrl(record.ownerId, sessionId);
+    if (url) {
+      // Loaded meanwhile by another path (the achievement photo): just show it.
+      record.unresolved.delete(row);
+      record.onLoaded(sentinel, url);
+      continue;
+    }
+    if (!wantsCloudProof(record.ownerId, sessionId)) continue; // a fresh "not found"
     record.unresolved.delete(row);
     if (record.observer) record.observer.observe(row);
     else record.start(row);
@@ -469,6 +485,10 @@ function rearm(record) {
 // ─── Achievement photo (home and Personal Space) ─────────────────────────────
 
 const achievementWaiters = new Map(); // entryKey → the latest onLoaded
+// Selected photos that found nothing (not found, offline): tried again, like
+// the rows, when "not found" is forgotten or runs out.
+const achievementRetries = new Map(); // entryKey → { ownerId, sessionId, onLoaded }
+let achievementTimer = null;
 
 function blobToDataUrl(blob) {
   return new Promise(resolve => {
@@ -508,21 +528,63 @@ export function withCloudAchievementPhoto(ownerId, sessions, photo, onLoaded) {
   const key = entryKey(ownerId, sessionId);
   const entry = loaded.get(key);
   if (entry?.dataUrl) return { ...photo, status: 'selected', src: entry.dataUrl };
+  const retry = achievementRetries.get(key);
+  if (retry) retry.onLoaded = onLoaded; // the page drawn last is the one told
   if (!entry && !wantsCloudProof(ownerId, sessionId)) return photo;
   // One load per photo: asked again meanwhile (another render), only the
   // latest caller is told, once.
   const pending = achievementWaiters.has(key);
   achievementWaiters.set(key, onLoaded);
-  if (pending) return photo;
+  achievementRetries.delete(key);
+  if (!pending) awaitAchievementPhoto(ownerId, sessionId);
+  return photo;
+}
+
+function awaitAchievementPhoto(ownerId, sessionId) {
+  const key = entryKey(ownerId, sessionId);
   void loadCloudProof(ownerId, sessionId)
     .then(url => (url ? loadedDataUrl(ownerId, sessionId) : null))
     .then(dataUrl => {
       const waiter = achievementWaiters.get(key);
       achievementWaiters.delete(key);
-      if (dataUrl && signedInHere(ownerId)) waiter?.();
+      if (!signedInHere(ownerId)) return;
+      if (dataUrl) {
+        waiter?.();
+        return;
+      }
+      achievementRetries.set(key, { ownerId, sessionId, onLoaded: waiter });
+      scheduleAchievementRetry();
     })
     .catch(() => achievementWaiters.delete(key));
-  return photo;
+}
+
+function scheduleAchievementRetry() {
+  if (achievementTimer || !achievementRetries.size) return;
+  achievementTimer = setTimeout(() => {
+    achievementTimer = null;
+    retryAchievementPhotos();
+  }, MISS_TTL_MS + 1000);
+}
+
+function retryAchievementPhotos() {
+  for (const [key, retry] of [...achievementRetries]) {
+    if (!signedInHere(retry.ownerId)) {
+      achievementRetries.delete(key);
+      continue;
+    }
+    if (loaded.has(key)) {
+      // A row loaded it meanwhile: only the frame is left to update.
+      achievementRetries.delete(key);
+      void loadedDataUrl(retry.ownerId, retry.sessionId).then(dataUrl => { if (dataUrl) retry.onLoaded?.(); });
+      continue;
+    }
+    if (!wantsCloudProof(retry.ownerId, retry.sessionId)) continue; // a fresh "not found"
+    achievementRetries.delete(key);
+    if (achievementWaiters.has(key)) continue;
+    achievementWaiters.set(key, retry.onLoaded);
+    awaitAchievementPhoto(retry.ownerId, retry.sessionId);
+  }
+  scheduleAchievementRetry();
 }
 
 // ─── Sign-out ─────────────────────────────────────────────────────────────────
@@ -538,5 +600,6 @@ export function clearCloudProofs(ownerId) {
     loaded.delete(key);
   }
   for (const key of [...misses.keys()]) if (key.startsWith(prefix)) misses.delete(key);
+  for (const key of [...achievementRetries.keys()]) if (key.startsWith(prefix)) achievementRetries.delete(key);
   return deleteCachedFor(ownerId);
 }
