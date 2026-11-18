@@ -11,9 +11,9 @@ tests/database/run.sh                                  # 全部 *.test.sql
 tests/database/run.sh tests/database/pro017.test.sql   # 指定幾份
 ```
 
-`run.sh` 為每份測試建立新的資料庫（`orbit_test_*`），依序套用 `support/supabase-standin.sql` 與 `pwa/db/0*.sql`，再以 `plpgsql.check_asserts = on` 執行測試，最後刪掉資料庫。輸出每份 `PASS`／`FAIL`／`SKIP`，有失敗時結束碼是 1。沒有安裝 pgtap 擴充套件時，`pro014d` 會 `SKIP`（Ubuntu：`apt-get install postgresql-16-pgtap`）。
+`run.sh` 為每份測試建立新的資料庫（`orbit_test_*`），依序套用 `support/supabase-standin.sql` 與 `pwa/db/0*.sql`，再以 `plpgsql.check_asserts = on` 執行測試，最後刪掉資料庫（中斷時也會刪）。輸出每份 `PASS`／`FAIL`／`SKIP`，失敗時列出 pgTAP 失敗的項目；有失敗時結束碼是 1，參數或環境不對時是 2。測試檔的路徑以執行的目錄為準。沒有安裝 pgtap 擴充套件時，`pro014d` 會 `SKIP`（Ubuntu：`apt-get install postgresql-16-pgtap`）；設定 `REQUIRE_PGTAP=1` 時改為失敗（給 CI 用）。
 
-只能對本機、可以丟棄的叢集執行，**不要指向 Supabase**。
+只能對本機、可以丟棄的叢集執行，**不要指向 Supabase**：`PGHOST` 不是本機時直接拒絕（`ORBIT_DB_TEST_ALLOW_REMOTE=1` 才放行）。
 
 ### Claude Code 的雲端容器
 
@@ -34,11 +34,12 @@ su postgres -c "$PWD/tests/database/run.sh"
 - `support/name-rule-parity.mjs`：排行榜公開名稱的規則，client（`pwa/js/leaderboardPublic.js`）與 server（018 的 CHECK）以大量隨機名稱比對：
 
   ```bash
-  node tests/database/support/name-rule-parity.mjs | psql -X -q -v ON_ERROR_STOP=1 -d postgres
-  node tests/database/support/name-rule-parity.mjs --mutate | psql ...   # 故意改壞，必須失敗
+  node tests/database/support/name-rule-parity.mjs > /tmp/name-rule-parity.sql \
+    && psql -X -q -v ON_ERROR_STOP=1 -d postgres -f /tmp/name-rule-parity.sql
+  # 加上 --mutate 故意改壞 client 的規則，這時必須失敗
   ```
 
-  改了任何一邊的規則都要跑。
+  先寫成檔案再交給 psql：直接以 `|` 串接時，腳本若出錯，psql 收到空的輸入仍會成功。比對的名稱少於 500 個也算失敗。改了任何一邊的規則都要跑。
 
 ## production 乾跑
 

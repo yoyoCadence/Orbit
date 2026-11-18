@@ -283,7 +283,8 @@
   - `playwright.config.js`：環境變數 `PLAYWRIGHT_CHROMIUM_EXECUTABLE` 指定 Chromium（容器裡是 `/opt/pw-browsers/chromium`）；沒設定時行為不變。不必再寫暫時的設定檔。
   - `tests/database/run.sh`：每份 `*.test.sql` 一個新的本機資料庫（替身 → `pwa/db/0*.sql` → 測試，`plpgsql.check_asserts = on`），輸出 PASS／FAIL／SKIP，有失敗時結束碼 1；pgTAP 的 `not ok` 與「planned N but ran M」也算失敗（故意改壞的純 SQL、pgTAP 斷言與計畫數三種情況都確認會失敗）；沒有 pgtap 時 `pro014d` 跳過。本機 10 份全部通過。
   - `support/supabase-standin.sql` 加上 Supabase 的 `extensions` schema（`pro014d` 用 `create extension pgtap with schema extensions`），`pro014d` 在這條鏈上也能跑。
-  - `support/name-rule-parity.mjs`：公開名稱規則的 client／server 比對（2026-11-13 只在 scratchpad 裡的工具），輸出 SQL 給 psql，不一致時失敗；`--mutate` 故意改壞 client 的結尾空白規則，用來確認比對有效（48,114 個名稱：正常 0 個不同，改壞後 434 個）。
+  - `support/name-rule-parity.mjs`：公開名稱規則的 client／server 比對（2026-11-13 只在 scratchpad 裡的工具），輸出 SQL 給 psql（先寫成檔案再 `psql -f`，腳本出錯時才不會被當成成功），不一致或比對少於 500 個名稱時失敗，`--count` 不是 1000 以上的整數時直接報錯；`--mutate` 故意改壞 client 的結尾空白規則，用來確認比對有效（48,114 個名稱：正常 0 個不同，改壞後 434 個）。
+  - 審查（#252）：Codex 沒有問題。獨立審查：沒有 P1；P2 兩個都在比對工具（`--count 0` 等會比對 0 個名稱仍然通過；`node … | psql` 在腳本出錯時仍回傳 0）→ 已修。P3 一併改：`run.sh` 列出 pgTAP 失敗的項目、測試路徑以執行的目錄為準並先確認存在、中斷時刪掉測試資料庫、以 `create extension … pgtap` 判斷 pgTAP 測試、`REQUIRE_PGTAP=1`、`not ok` 不限行首、拒絕非本機的 `PGHOST`。
   - 文件：新的 `tests/database/README.md`；`tests/e2e/README.md` 與 `docs/agent-handoff.md` §8 改成環境變數與 `run.sh` 的跑法、容器被換掉時要重裝什麼；§2 記下 2026-11-18 使用者的工作方式。
 
 - [x] **PRO-014E2 收尾**（v1.41.19，#251）

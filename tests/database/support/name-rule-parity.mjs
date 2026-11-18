@@ -3,14 +3,20 @@
 // displayNameProblem) with the server's (pwa/db/018_leaderboard_display_name.sql,
 // profiles_display_name_check) on many random names, in a real PostgreSQL.
 //
-// The script prints SQL; pipe it to psql on any UTF8 database (it only uses a
-// temporary table, so no migration or stand-in is needed):
+// The script prints SQL; run it with psql on any UTF8 database (it only uses a
+// temporary table, so no migration or stand-in is needed). Write it to a file
+// first: in a plain `node ... | psql` pipe, a crash of this script would leave
+// psql an empty input and the pipe would still exit 0.
 //
-//   node tests/database/support/name-rule-parity.mjs | psql -X -q -v ON_ERROR_STOP=1 -d postgres
+//   node tests/database/support/name-rule-parity.mjs > /tmp/name-rule-parity.sql \
+//     && psql -X -q -v ON_ERROR_STOP=1 -d postgres -f /tmp/name-rule-parity.sql
 //
 // It fails (psql exits non-zero) when any name gets a different answer, and lists
-// a few as UTF-8 hex. Options:
-//   --count N   names to try (default 50000; duplicates are dropped)
+// a few as UTF-8 hex; it also fails when it compared fewer than 500 names
+// (a comparison that small would mean nothing).
+// Options:
+//   --count N   names to try (an integer from 1000; default 50000; duplicates
+//               are dropped)
 //   --seed N    random seed (default 20261113, the first run's)
 //   --mutate    break the client's trailing-space check first, to show the
 //               comparison does catch a difference (it must then fail)
@@ -29,13 +35,20 @@ const TAB = String.fromCharCode(9);
 const NL = String.fromCharCode(10);
 const BS = String.fromCharCode(92);
 
+const MIN_NAMES = 1000; // --count floor
+const MIN_COMPARED = 500; // after duplicates are dropped
 const args = process.argv.slice(2);
-const option = (name, fallback) => {
+const option = (name, fallback, min) => {
   const at = args.indexOf(name);
-  return at === -1 ? fallback : Number(args[at + 1]);
+  if (at === -1) return fallback;
+  const value = Number(args[at + 1]);
+  if (!Number.isInteger(value) || value < min) {
+    throw new Error(`${name} needs an integer of at least ${min}, got ${JSON.stringify(args[at + 1] ?? null)}`);
+  }
+  return value;
 };
-const count = option('--count', 50000);
-let seed = option('--seed', 20261113);
+const count = option('--count', 50000, MIN_NAMES);
+let seed = option('--seed', 20261113, 0);
 const mutate = args.includes('--mutate');
 
 // ── The client rule, without its Supabase import (not loadable in Node) ──────
@@ -128,6 +141,9 @@ process.stdout.write([
   "           filter (where ok is distinct from client_accepts)",
   '    into total, client, server, differ, examples',
   `    from (select hex, client_accepts, (${serverAccepts}) as ok from name_rule_parity) t;`,
+  `  if total < ${MIN_COMPARED} then`,
+  "    raise exception 'name rule parity: only % names compared; the comparison would mean nothing', total;",
+  '  end if;',
   '  if differ > 0 then',
   "    raise exception 'name rule parity: % of % names differ (client accepts %, server %); first: %',",
   '      differ, total, client, server, left(examples, 600);',

@@ -379,7 +379,8 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --t
 ```bash
 pg_ctlcluster 16 main start            # 容器重新開始後常常沒有啟動
 su postgres -c "$PWD/tests/database/run.sh"
-node tests/database/support/name-rule-parity.mjs | su postgres -c "psql -X -q -v ON_ERROR_STOP=1 -d postgres"
+node tests/database/support/name-rule-parity.mjs > /tmp/name-rule-parity.sql \
+  && su postgres -c "psql -X -q -v ON_ERROR_STOP=1 -d postgres -f /tmp/name-rule-parity.sql"
 ```
 
 容器被換掉時（`/home/user` 底下只剩 `Orbit`）：`npm ci` 重新安裝；`apt-get install -y postgresql-16-pgtap` 才能跑 `pro014d`。
