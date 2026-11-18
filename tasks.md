@@ -290,6 +290,7 @@
   - 光環：外圈仍是頭像自己的 `box-shadow`（靜止），會呼吸的光暈改成 `::after` 一層、動畫只改 `opacity`（合成層，不重畫）；Pro 頭像不再 `overflow: hidden`，照片自己切圓。減少動態時光暈靜止（opacity .75）。e2e 改查 `::after` 的動畫，並新增 liquid-galss 下標記文字是深色的檢查；4 個主題（dark-purple、liquid-galss、像素、anime）截圖確認外觀。
   - `proGateCallSites`：`pages/leaderboard.js` 不再整檔豁免，單獨的測試只放行一處 `r.is_pro === true`（拿掉它與註解後不能再有任何 Pro 欄位讀取；改壞時測試失敗）。
   - `leaderboard.test.js` 沒有 `Intl.Segmenter` 的測試：改用 `Object.create(Intl, { Segmenter: { value: undefined } })`（繼承所有成員），容器在 `afterEach` 移除。
+  - 審查（#255，4a60e6b）：獨立審查 P2——Pro 頭像為了光暈不再 `overflow: hidden`，字母頭像（別人取的公開名稱的第一個字素）若帶 19 個疊加的組合符號（名稱規則允許），會往上畫進上一列（PRO-014E2 刻意擋掉的）→ 頭像內容包進 `.lb-avatar-face`（圓形、`overflow: hidden`），只有外層不裁切；e2e 把這種名稱放在第二列，比對上一列的截圖與換成普通「Z」時相同（拿掉裁切時失敗）。P3 一併改：對比測試改以 `theme.js` 的 `_ALL_THEME_IDS` 為準，任何主題找不到 hex 主色就失敗（原本會默默略過）；`proGateCallSites` 的允許讀取改成錨定的 `r.is_pro`（`user.is_pro === true` 不能冒充）；排行榜選中的分頁（`.lb-tab.active`）也用 `--on-primary`；`.lb-info` 設 `position: relative`，名字畫在光暈上面。
 
 - [x] **HW-112C1** 佐證照片上傳到雲端（v1.41.21，#254）
   - 新模組 `pwa/js/platform/proofSync.js`（SHELL；INFRA-105：既有模組只 import 它的新 export，它只 import 依賴既有的 export）：

@@ -5055,7 +5055,7 @@ nav {
   font-size: 13px; font-weight: 600; transition: background 0.2s, color 0.2s;
 }
 .lb-tab.active {
-  background: var(--primary); color: #fff;
+  background: var(--primary); color: var(--on-primary, #fff);
 }
 
 .lb-row {
@@ -5077,8 +5077,16 @@ nav {
 .lb-avatar img {
   width: 100%; height: 100%; object-fit: cover; display: block;
 }
+/* The photo or initial, clipped to the circle: an initial is the first grapheme
+   of a name other users choose (stacked combining marks included, PRO-014E2),
+   and a Pro avatar itself must not clip, so that its halo shows. */
+.lb-avatar-face {
+  width: 100%; height: 100%; border-radius: 50%; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
 
-.lb-info { flex: 1; min-width: 0; }
+/* Positioned so the name paints above the Pro halo next to it. */
+.lb-info { flex: 1; min-width: 0; position: relative; }
 /* PRO-014E2: public names are chosen by other users. Clip the name itself
    (width and stacked combining marks), never the "你" badge after it. */
 .lb-name { font-size: 14px; font-weight: 600; color: var(--text); display: flex; align-items: center; min-width: 0; }
@@ -5089,14 +5097,13 @@ nav {
    halo that breathes slowly; still under reduced motion. Display only (is_pro
    comes from get_leaderboard()). The halo is a layer of its own whose opacity
    moves (composited), not an animated box-shadow, which repaints every Pro
-   avatar on every frame. The avatar no longer clips, so the photo clips itself. */
+   avatar on every frame. The avatar itself no longer clips (.lb-avatar-face does). */
 .lb-pro { margin-left: 4px; flex-shrink: 0; }
 .lb-avatar--pro {
   position: relative;
   overflow: visible;
   box-shadow: 0 0 0 2px var(--accent);
 }
-.lb-avatar--pro img { border-radius: 50%; }
 .lb-avatar--pro::after {
   content: '';
   position: absolute; inset: 0;

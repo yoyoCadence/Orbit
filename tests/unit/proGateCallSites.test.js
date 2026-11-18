@@ -126,14 +126,15 @@ describe('Pro gate 呼叫點', () => {
   // 註解）之後，不能再有任何 Pro 欄位的讀取。
   it('排行榜只讀 get_leaderboard() 那一列的 is_pro，一處', () => {
     const source = files.find(f => f.path === 'pages/leaderboard.js').source;
-    const ALLOWED_READ = 'r.is_pro === true';
-    expect(countCalls(source, ALLOWED_READ)).toBe(1);
-    const rest = source
+    // Anchored: `user.is_pro === true` (a profile read) must not pass for it.
+    const ALLOWED_READ = /(?<![\w$.])r\.is_pro === true/g;
+    const code = source
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .split('\n')
       .filter(line => !line.trim().startsWith('//'))
-      .join('\n')
-      .replace(ALLOWED_READ, '');
+      .join('\n');
+    expect(code.match(ALLOWED_READ)).toHaveLength(1);
+    const rest = code.replace(ALLOWED_READ, '');
     expect(rest).not.toMatch(/\.(isPro|proExpiresAt|trialStartedAt)\b/);
     expect(rest).not.toMatch(/\b(is_pro|pro_expires_at|trial_started_at)\b/);
   });

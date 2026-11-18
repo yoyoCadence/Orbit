@@ -29,12 +29,12 @@ const ROWS = [
   },
 ];
 
-async function openBoard(page, reducedMotion) {
+async function openBoard(page, reducedMotion, rows = ROWS) {
   await page.emulateMedia({ reducedMotion });
   await page.route(`${SUPABASE_URL}/**`, route => route.abort('internetdisconnected'));
   await page.route(`${SUPABASE_URL}/rest/**`, route => {
     if (new URL(route.request().url()).pathname === '/rest/v1/rpc/get_leaderboard') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(ROWS) });
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(rows) });
     }
     return route.fulfill({ status: 500, contentType: 'application/json', body: '{"message":"e2e"}' });
   });
@@ -52,7 +52,7 @@ async function openBoard(page, reducedMotion) {
   await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
   await page.waitForSelector('#sync-banner.sync-error', { timeout: 8000 });
   await page.click('.nav-item[data-page="leaderboard"]');
-  await expect(page.locator('.lb-row')).toHaveCount(2);
+  await expect(page.locator('.lb-row')).toHaveCount(rows.length);
 }
 
 const avatarOf = (page, name) => page.locator('.lb-row', { hasText: name }).locator('.lb-avatar');
@@ -102,6 +102,20 @@ test.describe('PRO-014F leaderboard Pro mark', () => {
     // liquid-galss: #eaff35 behind the text, so its dark background colour, not white.
     expect(colours.after).toEqual({ pro: 'rgb(7, 21, 34)', you: 'rgb(7, 21, 34)' });
     expect(colours.before.pro).not.toBe(colours.after.pro);
+  });
+
+  test('still clips a Pro initial with stacked combining marks to the circle', async ({ page }) => {
+    // Allowed by the public-name rule (PRO-014E2): one grapheme, 19 marks high.
+    // The Pro row is second, so unclipped marks would paint into the row above.
+    const stacked = 'Z' + String.fromCharCode(0x301).repeat(19);
+    await openBoard(page, 'reduce', [{ ...ROWS[1], week_xp: 200 }, { ...ROWS[0], display_name: stacked }]);
+    const avatar = page.locator('.lb-row').nth(1).locator('.lb-avatar');
+    await expect(avatar).toHaveClass(/lb-avatar--pro/);
+    // The row above looks the same with the stacked name as with a plain "Z".
+    const rowAbove = () => page.locator('.lb-row').first().screenshot({ animations: 'disabled' });
+    const withMarks = await rowAbove();
+    await avatar.locator('.lb-avatar-face').evaluate(face => { face.textContent = 'Z'; });
+    expect((await rowAbove()).equals(withMarks)).toBe(true);
   });
 
   test('keeps the glow but stops it moving under reduced motion', async ({ page }) => {

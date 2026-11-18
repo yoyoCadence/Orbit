@@ -182,7 +182,7 @@ function _renderContent(container, rows, refreshedAt, isStale, refreshHour) {
         return `
           <div class="lb-row ${isMe ? 'lb-row-me' : ''}">
             <span class="lb-rank">${medal}</span>
-            <div class="lb-avatar${isPro ? ' lb-avatar--pro' : ''}">${avatarHtml}</div>
+            <div class="lb-avatar${isPro ? ' lb-avatar--pro' : ''}"><span class="lb-avatar-face">${avatarHtml}</span></div>
             <div class="lb-info">
               <div class="lb-name"><span class="lb-name-text">${escHtml(r.display_name)}</span>${isPro ? '<span class="pro-badge--inline lb-pro" title="Orbit Pro 會員">✦ Pro</span>' : ''}${isMe ? '<span class="lb-you">你</span>' : ''}</div>
               <div class="lb-sub">Lv.${lvl} · 連勝 ${r.streak_days}天</div>
