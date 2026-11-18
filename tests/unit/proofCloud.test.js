@@ -543,6 +543,30 @@ describe('rows in view', () => {
     expect(mockDownload).toHaveBeenCalledTimes(2);
   });
 
+  it('looks again when the "not found" runs out, not a whole period later', async () => {
+    signIn();
+    vi.useFakeTimers({ toFake: ['Date'] });
+    mockDownload.mockResolvedValueOnce(notFound());
+    await cloud.loadCloudProof(OWNER, sid(1)); // seen missing on another page
+    vi.setSystemTime(Date.now() + 9 * 60 * 1000); // nine minutes later
+    const delays = [];
+    const realSetTimeout = globalThis.setTimeout;
+    const spy = vi.spyOn(globalThis, 'setTimeout').mockImplementation((fn, delay, ...args) => {
+      if (delay > 30 * 1000) { delays.push(delay); return 0; }
+      return realSetTimeout(fn, delay, ...args);
+    });
+    try {
+      const container = rows(sid(1));
+      cloud.observeCloudProofs(container, OWNER, vi.fn());
+      const [row] = container.querySelectorAll('.log-item');
+      observerCallback([{ target: row, isIntersecting: true }]);
+      await vi.waitFor(() => expect(delays).toHaveLength(1));
+      expect(delays[0]).toBeLessThanOrEqual(61 * 1000);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   it('does nothing for a guest', () => {
     signIn();
     auth.stored = false;
@@ -658,6 +682,31 @@ describe('achievement photo', () => {
     await vi.waitFor(() => expect(after).toHaveBeenCalledTimes(1));
     expect(before).not.toHaveBeenCalled();
     expect(mockDownload).toHaveBeenCalledTimes(2);
+  });
+
+  it('stops trying the photo of a session deleted while it was selected', async () => {
+    signIn();
+    mockDownload.mockResolvedValueOnce(notFound());
+    cloud.withCloudAchievementPhoto(OWNER, sessions, unavailable, vi.fn());
+    await vi.waitFor(() => expect(cloud.wantsCloudProof(OWNER, sid(1))).toBe(false));
+    cloud.withCloudAchievementPhoto(OWNER, [], unavailable, vi.fn()); // the session is gone
+    mockDownload.mockClear();
+    cloud.forgetCloudProofMisses();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(mockDownload).not.toHaveBeenCalled();
+  });
+
+  it('keeps the photo the frame shows in memory past the limit', async () => {
+    signIn();
+    vi.useFakeTimers({ toFake: ['Date'] });
+    const onLoaded = vi.fn();
+    cloud.withCloudAchievementPhoto(OWNER, sessions, unavailable, onLoaded);
+    await vi.waitFor(() => expect(onLoaded).toHaveBeenCalledTimes(1));
+    vi.setSystemTime(Date.now() + 60 * 1000);
+    for (let n = 2; n <= cloud.MEMORY_MAX_PHOTOS + 2; n += 1) await cloud.loadCloudProof(OWNER, sid(n));
+    vi.setSystemTime(Date.now() + 60 * 1000);
+    await cloud.loadCloudProof(OWNER, sid(cloud.MEMORY_MAX_PHOTOS + 3));
+    expect(cloud.withCloudAchievementPhoto(OWNER, sessions, unavailable, vi.fn()).status).toBe('selected');
   });
 
   it('leaves it as it is for a guest, a selection whose session is gone, or a photo already shown', () => {

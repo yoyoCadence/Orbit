@@ -30,7 +30,7 @@
   - Acceptance: logged-in user completes a task, attaches proof, photo survives sign-out and re-login on a different device; guest mode still works with localStorage only; no service_role key in client code.
   - Note: requires Supabase Storage RLS policy and a bucket — propose SQL migration before implementation.
   - 提案（2026-11-11，使用者要求寫提案）：[`docs/hw-112-proof-photo-sync-proposal.md`](docs/hw-112-proof-photo-sync-proposal.md)。建議私有 bucket `proofs`、路徑 `{user_id}/{session_id}.jpg`、四個 policy；拆成 HW-112A（migration 016＋測試）→ HW-112B（擁有者套用）→ HW-112C（client）。等擁有者決定 §9（9 點；Codex 與獨立審查後修訂：下載不用 list、不放 localStorage）。
-  - **核准（2026-11-11）**：§9 全部照建議。HW-112A 完成（見 Done）；HW-112B 已於 2026-11-13 套用（見 Done）；HW-112C1（上傳）完成（#254，見 Done）；HW-112C2a（其他裝置顯示）完成（見 Done）；下一步 HW-112C2b（Next）。
+  - **核准（2026-11-11）**：§9 全部照建議。HW-112A 完成（見 Done）；HW-112B 已於 2026-11-13 套用（見 Done）；HW-112C1（上傳）完成（#254，見 Done）；HW-112C2a（其他裝置顯示）與 HW-112C2b（設定頁、登出）完成（見 Done）；剩下擁有者驗收（HW-112D，Next）。
   - HW-112C 上線後，`pwa/js/statusBarNotice.js`（BUG-118）的「佐證照片只存在這台裝置」要改成只提醒還沒上傳的照片。
   - HW-112C 的驗收（從 HW-112B 移過來）：以兩個測試帳號經 Storage API 實測——本人可以上傳、讀、刪自己的檔案；不能碰別人的資料夾；上傳超過 200 KB 或不是 JPEG 被拒（大小與類型由 API 在上傳時檢查，資料庫測不到）。下載時不能相信大小與類型（只當 JPEG 顯示在 `<img>`，過大的不處理；移動與複製不會再檢查，016 開頭有說明）。
 
@@ -145,9 +145,7 @@
 > 2026-11-18 擁有者要求：「列出幾個你覺得需要完善的事 持續完善」，每完成一段就開 PR 並合併，不必特別詢問（必要時才問）。agent 列出的完善清單如下，依序做；需要核准的另外標明。
 
 - [ ] **PRO-014F2**（先寫提案）Personal Space 的 Pro 呈現：SUB-14 與 PRO-014F 都沒有定義 Pro 在 Personal Space 要呈現什麼（例如房間裡的裝飾、Companion 的台詞、角色外觀），屬於設計決定；agent 先寫提案（只寫文件），擁有者決定後才實作。排行榜的部分已由 PRO-014F1 完成（見 Done）。
-- [ ] **HW-112C2b** 佐證照片：設定頁、登出、狀態列文字（HW-112C2a 的雲端照片顯示已完成，見 Done）
-  - 範圍（提案 §5.5，§9 照建議）：設定頁分成「清除這台裝置的照片」與「刪除所有佐證照片」（§9.4 A，跳過待傳中的；後者含雲端、再確認一次）；登出時刪掉已上傳完成的本機照片（§9.5 B，待傳中的保留，再登入時從雲端顯示）；`statusBarNotice.js`（BUG-118）改成只提醒還沒上傳的照片。（登出時清掉這個帳號下載的照片已在 C2a 做了。）
-  - 一併處理（#254 第四輪獨立審查的 P3，這次會改到 `proofSync.js`）：(1) 補測試：上傳期間被刪、而刪除清單存不進去時（`queueRemoval` 進記憶體）也會刪雲端檔案；(2) 上傳迴圈遇到 `'failed'` 提早結束時，先跑一次 `flushRemovals()`，不讓記憶體裡的刪除等到下次同步；(3) `unsavedRemovals` 的註解改成「下一次同步時、有空間就寫回清單」。
+- [ ] **HW-112D** 佐證照片：擁有者驗收與後續評估（HW-112C1／C2a／C2b 已完成，見 Done）
   - 評估（#254 第四輪留下的）：讀這個帳號的雲端資料夾時，可清掉沒有對應紀錄的檔案（刪除時儲存空間滿、離線又關掉 app 才會留下）；要確認別台裝置剛建立、紀錄還沒同步到的照片不會被誤刪，否則不做。
   - 驗收需要擁有者：以兩個測試帳號經 Storage API 實測本人可上傳、讀、刪自己的檔案、不能碰別人的資料夾、超過 200 KB 或不是 JPEG 被拒（agent 沒有測試帳號的密碼）。
 - [ ] **INFRA-116**（**需要擁有者核准**：CI 變更）CI 跑 `tests/database/*.sql`
@@ -284,6 +282,16 @@
 ---
 
 ## Done
+
+- [x] **HW-112C2b** 佐證照片：設定頁、登出、狀態列文字（v1.41.24）
+  - 新模組 `pwa/js/platform/proofLocal.js`（SHELL；INFRA-105：`proofSync.js`、`proofCloud.js` 都已發佈，新的 export 放在新模組；`settings.js`、`app.js` 只 import 它的新 export，它只 import 既有的 export）：
+    - 「確定已上傳」：這個帳號的照片已補傳過（backfill 標記，與 `proofSync.js` 寫的同一個 key，測試以真的 `proofSync.js` 確認）、不在待傳清單、是 bucket 會照原樣收的 JPEG（≤ 200 KB；舊版的 PNG／WebP 上傳時要重新編碼，不能確定成功，不算）、session id 合乎 bucket 規則。不確定的都保留。
+    - 登出（§9.5 B）：`handleSignOut()` 在清掉 `state.sessions` 之前，移除這個帳號「確定已上傳」的本機照片與下載的照片；其他保留。
+    - 設定頁（§9.4 A）：登入時「清除這台裝置的佐證照片（N 張）」只清這個帳號的本機照片（待傳的保留）與下載的照片，成就照片的選擇保留（之後從雲端顯示）；「刪除所有佐證照片（包括雲端）」問兩次，先刪本機（包括待傳的）、選擇與下載的照片，等正在跑的同步結束（沒有本機照片，待傳清單只會清空，不會再上傳），再以 `list()` 分頁（每頁 100）列出這個帳號的雲端資料夾、每 100 個一批刪除（也會刪掉沒有對應紀錄的檔案）；失敗時提示連線後再按一次。訪客只有「刪除佐證照片」（沒有雲端備份，問一次並說明無法復原），並清掉成就照片的選擇。其他帳號的照片不動（原本的按鈕會刪掉這台裝置上所有帳號的照片與選擇）。
+  - `statusBarNotice.js`（BUG-118）：登入時的警告改成「還沒上傳的佐證照片…只存在舊圖示」；「檢查同步」把還沒上傳的照片（`pendingProofUploads`）也算進去，都清空才說可以移除。
+  - #256 最後一輪獨立審查的 P3（`proofCloud.js`）：選中的紀錄被刪除後不再重試它的照片；重試的計時改成「最早到期的『沒有照片』」再 1 秒（原本從現在起算整整 10 分鐘，最久要等近 20 分鐘）；成就相框正在用的照片（有 data URL）不會被記憶體上限放掉（避免相框閃回預留圖）。各有測試，在前一版會失敗。
+  - #254 第四輪獨立審查的 P3：上傳期間被刪、刪除清單又存不進去時，雲端檔案也會刪（補測試）；上傳迴圈遇到失敗提早結束前先送出排進來的刪除；`unsavedRemovals` 的註解。
+  - 測試：`tests/unit/proofLocal.test.js`（10），`statusBarNotice.test.js`（+2），`proofSync.test.js`（+2，在舊程式上會失敗）；e2e `hw112c2b-proof-settings.test.js`（清除這台裝置時保留待傳的、刪除全部清空本機與雲端資料夾且不再上傳、登出只移除已上傳的）。
 
 - [x] **HW-112C2a** 佐證照片在其他裝置顯示（v1.41.23）
   - 新模組 `pwa/js/platform/proofCloud.js`（SHELL；INFRA-105：`sessionRow.js`、`home.js`、`personalSpaceV2.js`、`app.js` 只 import 它的新 export，它只 import 依賴既有的 export，含 `proofSync.js` 的 `PROOF_BUCKET`／`proofObjectPath`）：

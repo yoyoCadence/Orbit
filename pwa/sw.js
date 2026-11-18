@@ -1,7 +1,7 @@
 // Service Worker
 // Bump CACHE version on every deploy: since INFRA-107 a new worker is the only
 // way new HTML and code reach users.
-const CACHE = 'orbit-v1.41.23';
+const CACHE = 'orbit-v1.41.24';
 
 const SHELL = [
   './',
@@ -63,6 +63,7 @@ const SHELL = [
   './js/platform/proofStore.js',
   './js/platform/proofSync.js',
   './js/platform/proofCloud.js',
+  './js/platform/proofLocal.js',
   './js/platform/sessionDeletionLog.js',
   './js/platform/share.js',
   './js/platform/purchases.js',
