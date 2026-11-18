@@ -277,17 +277,44 @@ describe('upload', () => {
     expect(pendingProofUploads(OWNER)).toEqual([]);
   });
 
-  it.each([['400'], ['413'], ['415'], ['422']])('drops an item the server refuses for good (%s) and goes on', async status => {
+  // StorageApiError as supabase-js builds it: status (HTTP), statusCode, code.
+  it.each([
+    ['EntityTooLarge', { status: 413, statusCode: '413', code: 'EntityTooLarge' }],
+    ['InvalidMimeType', { status: 415, statusCode: '415', code: 'InvalidMimeType' }],
+    ['InvalidKey', { status: 400, statusCode: '400', code: 'InvalidKey' }],
+    ['a bare 413 from a proxy', { status: 413, statusCode: '413' }],
+  ])('drops an item the server refuses for good (%s) and goes on', async (_label, refusal) => {
     signIn();
     ownSessions(sid(1), sid(2));
     saveProof(sid(1), jpegDataUrl());
     saveProof(sid(2), jpegDataUrl());
     queueProofUpload(OWNER, sid(1));
     queueProofUpload(OWNER, sid(2));
-    mockUpload.mockResolvedValueOnce({ data: null, error: { statusCode: status, message: 'refused' } });
+    mockUpload.mockResolvedValueOnce({ data: null, error: { message: 'refused', ...refusal } });
     await flushProofSync(OWNER);
     expect(mockUpload).toHaveBeenCalledTimes(2);
     expect(pendingProofUploads(OWNER)).toEqual([]);
+  });
+
+  it('stops and keeps the whole queue on an expired or invalid token (Storage answers 400 InvalidJWT)', async () => {
+    signIn();
+    ownSessions(sid(1), sid(2), sid(3));
+    for (const id of [sid(1), sid(2), sid(3)]) { saveProof(id, jpegDataUrl()); queueProofUpload(OWNER, id); }
+    mockUpload.mockResolvedValue({
+      data: null,
+      error: { status: 400, statusCode: '400', code: 'InvalidJWT', message: '"exp" claim timestamp check failed' },
+    });
+    await flushProofSync(OWNER);
+    expect(mockUpload).toHaveBeenCalledTimes(1);
+    expect(pendingProofUploads(OWNER)).toEqual([sid(1), sid(2), sid(3)]);
+  });
+
+  it('counts the Duplicate code as already stored', async () => {
+    signIn();
+    ownSessions(sid(1));
+    saveProof(sid(1), jpegDataUrl());
+    mockUpload.mockResolvedValueOnce({ data: null, error: { status: 400, statusCode: '409', code: 'Duplicate', message: 'x' } });
+    expect(await uploadProof(OWNER, sid(1))).toBe('exists');
   });
 
   it('keeps an item refused for authentication (401/403) for the next sync', async () => {

@@ -177,14 +177,19 @@ async function proofJpeg(sessionId) {
   }
 }
 
-// A refusal that will not change on retry (bad request, too large, wrong type):
-// drop the item rather than block every later one behind it. Auth and network
-// errors are not here; they keep the item for the next sync.
+// A refusal that will not change on retry: drop that item rather than block
+// every later one behind it. Decided by Storage's error code (supabase-js keeps
+// it as `error.code`), not by the HTTP status: Storage also answers 400 for an
+// expired or invalid token (`InvalidJWT`), which must stop the sync and keep
+// the queue. A bare 413 (a proxy refusing the size) is permanent too.
+const PERMANENT_STORAGE_CODES = new Set(['EntityTooLarge', 'InvalidMimeType', 'InvalidKey']);
+
 function isPermanentRefusal(error) {
-  return ['400', '413', '415', '422'].includes(String(error?.statusCode ?? error?.status ?? ''));
+  return PERMANENT_STORAGE_CODES.has(String(error?.code ?? '')) || Number(error?.status) === 413;
 }
 
 function isAlreadyStored(error) {
+  if (['Duplicate', 'ResourceAlreadyExists'].includes(String(error?.code ?? ''))) return true;
   const status = String(error?.statusCode ?? error?.status ?? '');
   return status === '409' || /already exists|duplicate/i.test(String(error?.message ?? error?.error ?? ''));
 }
