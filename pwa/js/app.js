@@ -41,7 +41,7 @@ import {
 import { hasStoredSession } from './sessionPresence.js';
 import { flushProofSync } from './platform/proofSync.js';
 import { forgetCloudProofMisses, keepCloudProofsOf } from './platform/proofCloud.js';
-import { dropUploadedLocalProofs, photosNotSurelyUploaded } from './platform/proofLocal.js';
+import { photosNotSurelyUploaded, signOutProofCleanup } from './platform/proofLocal.js';
 import { isOnline, onConnectivityChange } from './platform/network.js';
 import { orbitWindowRuntimeDestroyer } from './personalSpace/v2/runtime/pixiSceneRuntime.js';
 
@@ -514,9 +514,13 @@ function handleSignOut() {
   // HW-112C2a/b: this account's downloaded proof photos leave with it, and so
   // do its local photos that are surely in the cloud (§5.5, §9.5 B); photos
   // still waiting to upload stay. Before state.sessions is cleared below.
-  // This tab's account goes with this tab's sessions (another tab may have
-  // switched the stored user).
-  dropUploadedLocalProofs(_currentSession?.user?.id ?? state.user?.id, state.sessions);
+  // The local photos are checked against the owner of the sessions in memory
+  // (during an account switch the session can be ahead of them).
+  signOutProofCleanup({
+    authOwnerId: _currentSession?.user?.id ?? null,
+    sessionsOwnerId: state.user?.id ?? null,
+    sessions: state.sessions,
+  });
   _currentSession = null;
   state.user     = null;
   state.tasks    = [];

@@ -109,8 +109,24 @@ export function photosNotSurelyUploaded(ownerId, sessions) {
 }
 
 /**
+ * Sign-out cleanup. The local photos are checked against the account whose
+ * sessions are in memory (its backfill and queue), never against the
+ * authenticated one: during an account switch the session can already be the
+ * new account while the sessions are still the previous one's, and pairing
+ * those would take the previous account's never-uploaded photos for uploaded.
+ * The authenticated account's downloaded copies go as well.
+ * @returns {number} local photos dropped.
+ */
+export function signOutProofCleanup({ authOwnerId = null, sessionsOwnerId = null, sessions = [] } = {}) {
+  const dropped = dropUploadedLocalProofs(sessionsOwnerId, sessions);
+  if (authOwnerId && authOwnerId !== sessionsOwnerId) void clearCloudProofs(authOwnerId);
+  return dropped;
+}
+
+/**
  * Sign-out (§9.5 B): drop this account's local photos that are surely in the
  * cloud, and its downloaded copies. Returns how many local photos went.
+ * `sessions` must be this account's own (see signOutProofCleanup).
  */
 export function dropUploadedLocalProofs(ownerId, sessions) {
   if (!ownerId) return 0;

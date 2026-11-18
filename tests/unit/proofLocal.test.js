@@ -40,6 +40,7 @@ import {
   deleteAllProofs,
   dropUploadedLocalProofs,
   photosNotSurelyUploaded,
+  signOutProofCleanup,
   uploadedLocalProofIds,
 } from '../../pwa/js/platform/proofLocal.js';
 import { getAchievementPhotoSelection, saveProof, setAchievementPhotoSelection } from '../../pwa/js/platform/proofStore.js';
@@ -128,6 +129,34 @@ describe('sign-out', () => {
     expect(dropUploadedLocalProofs(OWNER, local.sessions)).toBe(1);
     expect([has(sid(1)), has(sid(2)), has(sid(9))]).toEqual([false, true, true]);
     expect(clearCloudProofs).toHaveBeenCalledWith(OWNER);
+  });
+});
+
+describe('sign-out during an account switch', () => {
+  const OTHER = '22222222-2222-4222-8222-222222222222';
+
+  it('checks the photos against the account whose sessions they are, not the newly authenticated one', async () => {
+    // Account B is fully backed up here (marker set, empty queue).
+    auth.userId = OTHER;
+    local.user = { id: OTHER };
+    local.sessions = [];
+    await flushProofSync(OTHER);
+    // A's photo was never queued (A's backfill has not run).
+    saveProof(sid(1), jpeg());
+    // The session is B already; the sessions in memory are still A's.
+    const dropped = signOutProofCleanup({ authOwnerId: OTHER, sessionsOwnerId: OWNER, sessions: sessions(sid(1)) });
+    expect(dropped).toBe(0);
+    expect(has(sid(1))).toBe(true);
+    expect(clearCloudProofs).toHaveBeenCalledWith(OWNER);
+    expect(clearCloudProofs).toHaveBeenCalledWith(OTHER);
+  });
+
+  it('the usual sign-out: one account, its uploaded photos go', async () => {
+    signIn(sid(1));
+    saveProof(sid(1), jpeg());
+    await flushProofSync(OWNER);
+    expect(signOutProofCleanup({ authOwnerId: OWNER, sessionsOwnerId: OWNER, sessions: local.sessions })).toBe(1);
+    expect(has(sid(1))).toBe(false);
   });
 });
 
