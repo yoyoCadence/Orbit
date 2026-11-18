@@ -239,11 +239,13 @@ describe('download', () => {
 
   it('lets go of the oldest photos past the memory limit, never one on the page', async () => {
     signIn();
+    vi.useFakeTimers({ toFake: ['Date'] });
     const first = await cloud.loadCloudProof(OWNER, sid(1));
     const second = await cloud.loadCloudProof(OWNER, sid(2));
     const shown = document.createElement('img');
     shown.setAttribute('src', first);
     document.body.appendChild(shown);
+    vi.setSystemTime(Date.now() + 60 * 1000); // no longer just loaded
     for (let n = 3; n <= cloud.MEMORY_MAX_PHOTOS + 1; n += 1) await cloud.loadCloudProof(OWNER, sid(n));
     expect(cloud.cloudProofUrl(OWNER, sid(1))).toBe(first); // on the page
     expect(cloud.cloudProofUrl(OWNER, sid(2))).toBeNull(); // let go…
@@ -266,6 +268,23 @@ describe('download', () => {
     const added = await cloud.loadCloudProof(OWNER, sid(cloud.MEMORY_MAX_PHOTOS + 1));
     expect(added).toMatch(/^blob:/);
     expect(cloud.cloudProofUrl(OWNER, sid(cloud.MEMORY_MAX_PHOTOS + 1))).toBe(added);
+    expect(URL.revokeObjectURL).not.toHaveBeenCalled();
+    shown.forEach(img => img.remove());
+  });
+
+  it('never lets go of photos still on their way to the page (several loading at once)', async () => {
+    signIn();
+    vi.useFakeTimers({ toFake: ['Date'] });
+    const shown = [];
+    for (let n = 1; n <= cloud.MEMORY_MAX_PHOTOS; n += 1) {
+      const img = document.createElement('img');
+      img.setAttribute('src', await cloud.loadCloudProof(OWNER, sid(n)));
+      document.body.appendChild(img);
+      shown.push(img);
+    }
+    vi.setSystemTime(Date.now() + 60 * 1000);
+    const urls = await Promise.all([1, 2, 3].map(n => cloud.loadCloudProof(OWNER, sid(cloud.MEMORY_MAX_PHOTOS + n))));
+    [1, 2, 3].forEach((n, i) => expect(cloud.cloudProofUrl(OWNER, sid(cloud.MEMORY_MAX_PHOTOS + n))).toBe(urls[i]));
     expect(URL.revokeObjectURL).not.toHaveBeenCalled();
     shown.forEach(img => img.remove());
   });
@@ -502,6 +521,28 @@ describe('rows in view', () => {
     expect(observed).toHaveLength(0);
   });
 
+  it('a row drawn again during a recent "not found" keeps its place and is looked at once it is forgotten', async () => {
+    signIn();
+    mockDownload.mockResolvedValueOnce(notFound());
+    await cloud.loadCloudProof(OWNER, sid(1)); // seen on another page a moment ago
+    expect(cloud.wantsCloudProof(OWNER, sid(1))).toBe(false);
+    expect(cloud.wantsCloudProof(OWNER, sid(1), { evenIfMissed: true })).toBe(true);
+
+    const container = rows(sid(1)); // the page drawn again
+    const onLoaded = vi.fn();
+    cloud.observeCloudProofs(container, OWNER, onLoaded);
+    const [row] = container.querySelectorAll('.log-item');
+    observerCallback([{ target: row, isIntersecting: true }]);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(mockDownload).toHaveBeenCalledTimes(1); // still a fresh miss: no request
+
+    cloud.forgetCloudProofMisses();
+    expect(observed).toEqual([row]);
+    observerCallback([{ target: row, isIntersecting: true }]);
+    await vi.waitFor(() => expect(onLoaded).toHaveBeenCalledTimes(1));
+    expect(mockDownload).toHaveBeenCalledTimes(2);
+  });
+
   it('does nothing for a guest', () => {
     signIn();
     auth.stored = false;
@@ -577,6 +618,45 @@ describe('achievement photo', () => {
     expect(mockDownload).toHaveBeenCalledTimes(2);
     cloud.forgetCloudProofMisses();
     await vi.waitFor(() => expect(onLoaded).toHaveBeenCalledTimes(1));
+    expect(mockDownload).toHaveBeenCalledTimes(2);
+  });
+
+  it('tries a selected photo a history row just found missing once that is forgotten', async () => {
+    signIn();
+    mockDownload.mockResolvedValueOnce(notFound());
+    await cloud.loadCloudProof(OWNER, sid(1)); // the row's lookup
+    const onLoaded = vi.fn();
+    cloud.withCloudAchievementPhoto(OWNER, sessions, unavailable, onLoaded);
+    expect(mockDownload).toHaveBeenCalledTimes(1);
+    cloud.forgetCloudProofMisses();
+    await vi.waitFor(() => expect(onLoaded).toHaveBeenCalledTimes(1));
+    expect(mockDownload).toHaveBeenCalledTimes(2);
+  });
+
+  it('stops trying a photo that is no longer the selected one', async () => {
+    signIn();
+    mockDownload.mockResolvedValueOnce(notFound());
+    cloud.withCloudAchievementPhoto(OWNER, sessions, unavailable, vi.fn());
+    await vi.waitFor(() => expect(cloud.wantsCloudProof(OWNER, sid(1))).toBe(false));
+    // The selection is cleared (or moved): the page draws an empty frame.
+    cloud.withCloudAchievementPhoto(OWNER, sessions, { status: 'empty', sessionId: null }, vi.fn());
+    mockDownload.mockClear();
+    cloud.forgetCloudProofMisses();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(mockDownload).not.toHaveBeenCalled();
+  });
+
+  it('a sign-out drops the page waiting for a photo, so the next page loads its own', async () => {
+    signIn();
+    mockDownload.mockImplementationOnce(() => new Promise(() => {})); // still out
+    const before = vi.fn();
+    cloud.withCloudAchievementPhoto(OWNER, sessions, unavailable, before);
+    await vi.waitFor(() => expect(mockDownload).toHaveBeenCalledTimes(1));
+    await cloud.clearCloudProofs(OWNER); // sign-out, then the same account again
+    const after = vi.fn();
+    cloud.withCloudAchievementPhoto(OWNER, sessions, unavailable, after);
+    await vi.waitFor(() => expect(after).toHaveBeenCalledTimes(1));
+    expect(before).not.toHaveBeenCalled();
     expect(mockDownload).toHaveBeenCalledTimes(2);
   });
 

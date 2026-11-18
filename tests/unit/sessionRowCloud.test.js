@@ -18,7 +18,10 @@ const cloud = vi.hoisted(() => ({
 
 vi.mock('../../pwa/js/platform/proofCloud.js', () => ({
   cloudProofUrl: (_ownerId, sessionId) => cloud.urls.get(sessionId) ?? null,
-  wantsCloudProof: () => cloud.wants,
+  wantsCloudProof: (_ownerId, _sessionId, options) => {
+    cloud.wantsOptions = options;
+    return cloud.wants;
+  },
   observeCloudProofs: (_container, ownerId, onLoaded) => {
     cloud.observedOwner = ownerId;
     cloud.onLoaded = onLoaded;
@@ -57,6 +60,9 @@ describe('proofControlsHtml', () => {
     expect(placeholder.dataset.proofCloudSessionId).toBe(sid(1));
     expect(placeholder.dataset.proofCloudTaskName).toBe('Deep <work>');
     expect(holder.querySelector('.session-proof-thumb')).toBeNull();
+    // A recent "not found" does not take the placeholder away (it is how the
+    // row gets looked at again).
+    expect(cloud.wantsOptions).toEqual({ evenIfMissed: true });
   });
 
   it('nothing for a guest or when no cloud photo is wanted', () => {

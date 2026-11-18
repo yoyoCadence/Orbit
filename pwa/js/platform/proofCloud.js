@@ -36,6 +36,9 @@ export const CACHE_MAX_ENTRIES = 300;
 export const CACHE_MAX_BYTES = 15 * 1024 * 1024;
 export const DOWNLOAD_TIMEOUT_MS = 20 * 1000;
 export const MEMORY_MAX_PHOTOS = 200;
+// A photo this recent may still be on its way to the page (several load at
+// once, and the cache write comes first): never let go of it.
+const MEMORY_GRACE_MS = 30 * 1000;
 
 const DB_NAME = 'orbit-proofs';
 const DB_VERSION = 1;
@@ -94,14 +97,18 @@ export function cloudProofUrl(ownerId, sessionId) {
 }
 
 /**
- * Whether a session row should ask for a cloud photo: a signed-in account's
- * own session, no photo on this device, and no recent "not found".
+ * Whether a cloud photo should be asked for now: a signed-in account's own
+ * session, no photo on this device, not loaded yet, and no recent "not found".
+ * `evenIfMissed`: whether a row should hold a place for one at all — a recent
+ * "not found" only delays the download, so a row drawn meanwhile still gets
+ * its placeholder and is looked at again when that runs out.
  */
-export function wantsCloudProof(ownerId, sessionId) {
+export function wantsCloudProof(ownerId, sessionId, { evenIfMissed = false } = {}) {
   if (!isObjectId(sessionId) || !signedInHere(ownerId)) return false;
   if (getProof(sessionId)) return false;
   const key = entryKey(ownerId, sessionId);
   if (loaded.has(key)) return false;
+  if (evenIfMissed) return true;
   const missUntil = misses.get(key);
   if (missUntil && missUntil > Date.now()) return false;
   return true;
@@ -318,25 +325,27 @@ function withSlot(task) {
 function remember(ownerId, sessionId, blob) {
   const key = entryKey(ownerId, sessionId);
   const url = URL.createObjectURL(blob);
-  loaded.set(key, { url, blob });
+  loaded.set(key, { url, blob, addedAt: Date.now() });
   misses.delete(key);
-  forgetOldest(key);
+  forgetOldest();
   return url;
 }
 
 // A long history scrolled to the end would keep every photo in memory: past
 // MEMORY_MAX_PHOTOS, the oldest that no image on the page shows are let go
 // (they come back from this device's cache when needed).
-// The photo just added is never the one let go (it is not on the page yet);
-// when everything else is on screen, the count goes past the limit.
-function forgetOldest(justAdded) {
+// Photos added in the last MEMORY_GRACE_MS are never let go (they may not be
+// on the page yet); when everything else is on screen, the count goes past
+// the limit.
+function forgetOldest() {
   if (loaded.size <= MEMORY_MAX_PHOTOS) return;
   const shown = typeof document === 'undefined'
     ? new Set()
     : new Set([...document.querySelectorAll('img')].map(img => img.getAttribute('src')));
+  const recent = Date.now() - MEMORY_GRACE_MS;
   for (const [key, entry] of loaded) {
     if (loaded.size <= MEMORY_MAX_PHOTOS) return;
-    if (key === justAdded || shown.has(entry.url)) continue;
+    if (entry.addedAt > recent || shown.has(entry.url)) continue;
     URL.revokeObjectURL(entry.url);
     loaded.delete(key);
   }
@@ -521,6 +530,8 @@ async function loadedDataUrl(ownerId, sessionId) {
  * `onLoaded()` once there is something new to show.
  */
 export function withCloudAchievementPhoto(ownerId, sessions, photo, onLoaded) {
+  // Only the photo selected now is ever tried again (one per account).
+  dropAchievementRetries(ownerId, photo?.status === 'unavailable' ? photo.sessionId : null);
   if (photo?.status !== 'unavailable' || !photo.sessionId) return photo;
   const sessionId = photo.sessionId;
   const session = (Array.isArray(sessions) ? sessions : []).find(entry => String(entry?.id || '') === sessionId);
@@ -530,7 +541,14 @@ export function withCloudAchievementPhoto(ownerId, sessions, photo, onLoaded) {
   if (entry?.dataUrl) return { ...photo, status: 'selected', src: entry.dataUrl };
   const retry = achievementRetries.get(key);
   if (retry) retry.onLoaded = onLoaded; // the page drawn last is the one told
-  if (!entry && !wantsCloudProof(ownerId, sessionId)) return photo;
+  if (!entry && !wantsCloudProof(ownerId, sessionId)) {
+    // A recent "not found" (seen by a history row, say): try when it runs out.
+    if (!retry && !achievementWaiters.has(key) && wantsCloudProof(ownerId, sessionId, { evenIfMissed: true })) {
+      achievementRetries.set(key, { ownerId, sessionId, onLoaded });
+      scheduleAchievementRetry();
+    }
+    return photo;
+  }
   // One load per photo: asked again meanwhile (another render), only the
   // latest caller is told, once.
   const pending = achievementWaiters.has(key);
@@ -556,6 +574,13 @@ function awaitAchievementPhoto(ownerId, sessionId) {
       scheduleAchievementRetry();
     })
     .catch(() => achievementWaiters.delete(key));
+}
+
+function dropAchievementRetries(ownerId, keepSessionId) {
+  const keep = keepSessionId ? entryKey(ownerId, keepSessionId) : null;
+  for (const [key, retry] of [...achievementRetries]) {
+    if (retry.ownerId === ownerId && key !== keep) achievementRetries.delete(key);
+  }
 }
 
 function scheduleAchievementRetry() {
@@ -601,5 +626,6 @@ export function clearCloudProofs(ownerId) {
   }
   for (const key of [...misses.keys()]) if (key.startsWith(prefix)) misses.delete(key);
   for (const key of [...achievementRetries.keys()]) if (key.startsWith(prefix)) achievementRetries.delete(key);
+  for (const key of [...achievementWaiters.keys()]) if (key.startsWith(prefix)) achievementWaiters.delete(key);
   return deleteCachedFor(ownerId);
 }

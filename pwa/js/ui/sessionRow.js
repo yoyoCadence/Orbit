@@ -60,7 +60,9 @@ export function proofControlsHtml(sessionId, { ownerId = null, taskName = '' } =
   const safeTaskName = escHtml(taskName || '這筆任務');
   const proof = getProof(sessionId) || cloudProofUrl(ownerId, sessionId);
   if (!proof) {
-    return wantsCloudProof(ownerId, sessionId)
+    // Even during a recent "not found": the placeholder is how the row gets
+    // looked at again once that runs out.
+    return wantsCloudProof(ownerId, sessionId, { evenIfMissed: true })
       ? `<span class="session-proof-cloud" data-proof-cloud-session-id="${escHtml(sessionId)}" data-proof-cloud-task-name="${escHtml(taskName || '')}" hidden></span>`
       : '';
   }
