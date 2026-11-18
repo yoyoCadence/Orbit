@@ -17,6 +17,7 @@
 ## 2. 與使用者約定的工作規則
 
 - 工作循環：依 `tasks.md` 完成一個段落 → 開 PR → 合併 → 下一個。每個段落結束時更新本檔。
+- **2026-11-18 使用者**：「列出幾個你覺得需要完善的事 持續完善」，每完成一段就開 PR 並合併，讓任何 agent 都能接手；不必特別詢問，必要時才問。清單在 `tasks.md` 的 Next（2026-11-18 那一段）。
 - **合併條件**（2026-10-18 使用者核准）：
   - CI 四項（lint、test、e2e、build-check）全綠；
   - Codex review 已完成（開 PR 約 2–3 分鐘後才出現），且沒有未解決的 finding；
@@ -271,6 +272,7 @@
 | #249 | — | 記錄 2026-11-13 的 production 套用：BUG-119A（017）、HW-112B（016）、PRO-014EA（018）、PRO-017RA（019），每一項的檢查、乾跑、套用與事後檢查結果（定義的 md5 與 repo 相同）；送出含反斜線逸出的 SQL 的方法。剩下：擁有者先做 INFRA-101 再開啟「確認 email」（PRO-017RA-Auth）；E2（PRO-014E2）；Storage API 上傳測試併入 HW-112C |
 | #250 | v1.41.18 | PRO-014E2：排行榜改用 `get_leaderboard()`（`is_me`、`display_name`、`joined_on`、`avatar_path`，新快取 `leaderboardCacheV2`）；設定頁開啟排行榜時先設定公開名稱，`display_name`／`is_public` 改為等待伺服器的單獨寫入、不再隨 profile 上傳；名稱規則與 018 的 CHECK 相同（單元測試從 018 讀出範圍比對）；新 e2e。下一步 E3（約 2026-12-13，另行核准） |
 | #251 | v1.41.19 | PRO-014E2 收尾：改名不清掉舊版留下的「關閉」、排行榜頭像首字以字素取；記錄 E2 第三輪審查；Next 列出 2026-11-18 的完善清單（DEV-001、PRO-014F、HW-112C、INFRA-116 需核准） |
+| #252 | — | DEV-001：`PLAYWRIGHT_CHROMIUM_EXECUTABLE` 讓容器裡直接跑 e2e；`tests/database/run.sh` 一次跑全部資料庫測試（每份一個新資料庫，pgTAP 的失敗也算）；替身加上 `extensions` schema；名稱規則比對工具 `support/name-rule-parity.mjs`；`tests/database/README.md`、§8 的跑法 |
 
 教訓：#155–#164 在 Codex review 出現前就合併，造成 #165、#166、#167 的回頭修正。這就是 §2 合併條件的由來。獨立 review 在 #167、#168、#169 都找到真正的問題（例如椅子畫在螢幕後面、壁燈在相框下投出暗影），所以複查不能省。
 
@@ -366,4 +368,19 @@ npm run ps242:manifest -- --check
 npm run ps243:assets -- --check
 ```
 
-本機 e2e：repo 鎖定的 Playwright headless shell 在雲端容器裡不存在。做法是建一個只在本機用的 config，沿用 `playwright.config.js`，並把 `launchOptions.executablePath` 指到 `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`。這個 config 不要提交。
+本機 e2e：repo 鎖定的 Playwright 瀏覽器在雲端容器裡不存在，以環境變數指定容器預裝的 Chromium（DEV-001；細節見 `tests/e2e/README.md`）：
+
+```bash
+PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --trace off
+```
+
+資料庫測試（CI 不跑，改 migration 或 `tests/database` 時在本機跑；細節見 `tests/database/README.md`）：
+
+```bash
+pg_ctlcluster 16 main start            # 容器重新開始後常常沒有啟動
+su postgres -c "$PWD/tests/database/run.sh"
+node tests/database/support/name-rule-parity.mjs > /tmp/name-rule-parity.sql \
+  && su postgres -c "psql -X -q -v ON_ERROR_STOP=1 -d postgres -f /tmp/name-rule-parity.sql"
+```
+
+容器被換掉時（`/home/user` 底下只剩 `Orbit`）：`npm ci` 重新安裝；`apt-get install -y postgresql-16-pgtap` 才能跑 `pro014d`。

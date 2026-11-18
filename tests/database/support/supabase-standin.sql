@@ -18,7 +18,8 @@
 --   psql -v ON_ERROR_STOP=1 -d pro014e -f tests/database/support/supabase-standin.sql
 --   for f in pwa/db/0*.sql; do psql -v ON_ERROR_STOP=1 -d pro014e -f "$f" || break; done
 --   psql -v ON_ERROR_STOP=1 -d pro014e -c 'set plpgsql.check_asserts = on' -f tests/database/pro014e.test.sql
---   （tests/database 的其他測試也能在這條鏈上跑：infra110、pro014r、pro014l、bug109、bug119、hw112。）
+--   （tests/database 的其他測試也能在這條鏈上跑；`tests/database/run.sh` 為每份測試建立新的資料庫、
+--   套用這條鏈再執行，見 tests/database/README.md。）
 -- （005 有兩個檔案，依檔名排序套用：005_leaderboard.sql 先、005_profiles_extra_cols.sql 後，
 --   兩者都用 IF NOT EXISTS，順序不影響結果。）
 
@@ -52,6 +53,11 @@ alter default privileges in schema public grant all on sequences to anon, authen
 alter default privileges in schema public grant all on functions to anon, authenticated, service_role;
 
 -- ── auth ────────────────────────────────────────────────────────
+-- Supabase 的 extensions schema（pg_cron、pgtap 等擴充套件裝在這裡）。pro014d 的 pgTAP 測試
+-- 以 `create extension ... with schema extensions` 安裝 pgtap。
+create schema if not exists extensions;
+grant usage on schema extensions to anon, authenticated, service_role;
+
 create schema auth;
 grant usage on schema auth to anon, authenticated, service_role;
 create function auth.uid() returns uuid language sql stable as $$

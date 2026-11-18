@@ -11,7 +11,7 @@ npx playwright test tests/e2e/ps251b-window-view.test.js   # 單一檔案
 npx playwright test --repeat-each=3 <file>                 # 檢查是否穩定
 ```
 
-- 第一次要 `npx playwright install chromium`。已預先安裝瀏覽器的環境（例如 Claude Code 的雲端容器）不要再下載，改在自己的設定檔指定 `launchOptions.executablePath`。
+- 第一次要 `npx playwright install chromium`。已預先安裝瀏覽器的環境（例如 Claude Code 的雲端容器）不要再下載，以環境變數指定那個瀏覽器：`PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --trace off`（`playwright.config.js` 讀它；沒設定時用 Playwright 自己的瀏覽器）。
 - CI 上 `retries: 1`。重跑才通過的測試仍然要找出原因，不要當成正常。
 
 ## 檔案

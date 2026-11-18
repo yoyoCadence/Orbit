@@ -143,14 +143,11 @@
 
 > 2026-11-18 擁有者要求：「列出幾個你覺得需要完善的事 持續完善」，每完成一段就開 PR 並合併，不必特別詢問（必要時才問）。agent 列出的完善清單如下，依序做；需要核准的另外標明。
 
-- [ ] **DEV-001** 讓任何 agent 在雲端容器裡都能直接跑完整的檢查
-  - 問題：容器預裝的 Chromium 版本與專案 Playwright 預設的不同，e2e 要另寫暫時的設定檔才能跑；名稱規則與 018 CHECK 的比對腳本只在 2026-11-13 的 scratchpad 裡；資料庫測試怎麼跑散在各任務的記錄裡。
-  - 範圍：`playwright.config.js` 接受環境變數指定 Chromium 路徑（未設定時行為不變；測試設定，低風險）；把名稱規則的比對工具放進 `tests/database/support/`；`docs/agent-handoff.md` 寫明單元、e2e、資料庫測試在這個環境的跑法。
 - [ ] **PRO-014F** 排行榜的 Pro 標記（`get_leaderboard()` 的 `is_pro`，server 判定）與 Personal Space 的 Pro 呈現——E2 已完成，不再被擋；完成條件見 Backlog 的 PRO-014F。
 - [ ] **HW-112C** 佐證照片上傳的 client（016 已在 production）；用真的帳號經 Storage API 驗證大小與 MIME 限制的那一步需要擁有者（agent 沒有測試帳號的密碼）。
 - [ ] **INFRA-116**（**需要擁有者核准**：CI 變更）CI 跑 `tests/database/*.sql`
   - 問題：資料庫測試（bug109、bug119、hw112、infra110、pro014d/e/l/r、pro017）只在本機 PostgreSQL 跑，CI 不會發現 migration 或測試的退化。
-  - 提案：在 `ci.yml` 加一個 job，用 GitHub Actions 的 PostgreSQL 16 service，依序套用 `tests/database/support/supabase-standin.sql` 與 `pwa/db/0*.sql`，再跑每份測試（`plpgsql.check_asserts = on`）。不接觸 production、不需要任何 secret。核准後才做。
+  - 提案：在 `ci.yml` 加一個 job，用 GitHub Actions 的 PostgreSQL 16 service（裝上 pgtap），執行 DEV-001 的 `tests/database/run.sh`（每份測試一個新的資料庫：替身 → `pwa/db/0*.sql` → 測試，`plpgsql.check_asserts = on`；本機 10 份全部通過）。不接觸 production、不需要任何 secret。核准後才做。
 
 - [ ] **PRO-017RA-Auth**（擁有者）先完成 INFRA-101（Custom SMTP），再在 Supabase 開啟「確認 email」，並確認匿名登入維持關閉
   - 019 已於 2026-11-13 套用（見 Done 的 PRO-017RA）；這一步只能由擁有者在 Supabase Dashboard 做（agent 的工具改不到 Auth 設定）。
@@ -281,6 +278,14 @@
 ---
 
 ## Done
+
+- [x] **DEV-001** 讓任何 agent 在雲端容器裡都能直接跑完整的檢查（#252，只改測試工具與文件，不 bump）
+  - `playwright.config.js`：環境變數 `PLAYWRIGHT_CHROMIUM_EXECUTABLE` 指定 Chromium（容器裡是 `/opt/pw-browsers/chromium`）；沒設定時行為不變。不必再寫暫時的設定檔。
+  - `tests/database/run.sh`：每份 `*.test.sql` 一個新的本機資料庫（替身 → `pwa/db/0*.sql` → 測試，`plpgsql.check_asserts = on`），輸出 PASS／FAIL／SKIP，有失敗時結束碼 1；pgTAP 的 `not ok` 與「planned N but ran M」也算失敗（故意改壞的純 SQL、pgTAP 斷言與計畫數三種情況都確認會失敗）；沒有 pgtap 時 `pro014d` 跳過。本機 10 份全部通過。
+  - `support/supabase-standin.sql` 加上 Supabase 的 `extensions` schema（`pro014d` 用 `create extension pgtap with schema extensions`），`pro014d` 在這條鏈上也能跑。
+  - `support/name-rule-parity.mjs`：公開名稱規則的 client／server 比對（2026-11-13 只在 scratchpad 裡的工具），輸出 SQL 給 psql（先寫成檔案再 `psql -f`，腳本出錯時才不會被當成成功），不一致或比對少於 500 個名稱時失敗，`--count` 不是 1000 以上的整數時直接報錯；`--mutate` 故意改壞 client 的結尾空白規則，用來確認比對有效（48,114 個名稱：正常 0 個不同，改壞後 434 個）。
+  - 審查（#252）：Codex 沒有問題。獨立審查：沒有 P1；P2 兩個都在比對工具（`--count 0` 等會比對 0 個名稱仍然通過；`node … | psql` 在腳本出錯時仍回傳 0）→ 已修。P3 一併改：`run.sh` 列出 pgTAP 失敗的項目、測試路徑以執行的目錄為準並先確認存在、中斷時刪掉測試資料庫、以 `create extension … pgtap` 判斷 pgTAP 測試、`REQUIRE_PGTAP=1`、`not ok` 不限行首、拒絕非本機的 `PGHOST`。
+  - 文件：新的 `tests/database/README.md`；`tests/e2e/README.md` 與 `docs/agent-handoff.md` §8 改成環境變數與 `run.sh` 的跑法、容器被換掉時要重裝什麼；§2 記下 2026-11-18 使用者的工作方式。
 
 - [x] **PRO-014E2 收尾**（v1.41.19，#251）
   - 設定頁：只有加入或離開排行榜（`isPublic` 有變）才清掉舊版留下的「關閉」；只改名稱時保留，讓它照樣送出（E2 第三輪審查的 P3）。
