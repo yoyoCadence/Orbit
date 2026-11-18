@@ -67,11 +67,13 @@ function writeQueue(prefix, ownerId, ids) {
     const unique = [...new Set(ids.filter(isObjectId))];
     if (unique.length) localStorage.setItem(queueKey(prefix, ownerId), JSON.stringify(unique));
     else localStorage.removeItem(queueKey(prefix, ownerId));
+    return true;
   } catch {
     // Storage full or unavailable: the photo stays on this device; a later
     // backfill cannot find it again once the account is marked done, so this
     // is logged rather than ignored.
     console.warn('Proof sync queue could not be saved.');
+    return false;
   }
 }
 
@@ -109,9 +111,15 @@ async function signedInUserId() {
   }
 }
 
-/** Ids of this account's sessions on this device, without the ones being deleted. */
+/**
+ * Ids of this account's sessions on this device, without the ones being
+ * deleted; or null when this device holds no data for the account (signed out,
+ * or another account's data now). Null means unknown, never "deleted": sign-out
+ * clears the local sessions, and reading that as deletions would drop queued
+ * photos and take valid backups down.
+ */
 function ownSessionIds(ownerId) {
-  if (storage.getUser()?.id !== ownerId) return new Set();
+  if (storage.getUser()?.id !== ownerId) return null;
   const deleted = new Set(getDeletedSessionIds(ownerId));
   return new Set((storage.getSessions() || [])
     .map(session => session?.id)
@@ -121,7 +129,12 @@ function ownSessionIds(ownerId) {
 function decodeDataUrl(dataUrl) {
   const match = /^data:(image\/(?:jpeg|png|webp));base64,(.+)$/i.exec(dataUrl || '');
   if (!match) return null;
-  const binary = atob(match[2]);
+  let binary;
+  try {
+    binary = atob(match[2]);
+  } catch {
+    return null; // corrupt: never block the queue on it
+  }
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
   return new Blob([bytes], { type: match[1].toLowerCase() });
@@ -148,7 +161,13 @@ async function reencodeAsJpeg(blob) {
 }
 
 async function proofJpeg(sessionId) {
-  const blob = decodeDataUrl(getProof(sessionId));
+  let stored = null;
+  try {
+    stored = getProof(sessionId);
+  } catch {
+    return null;
+  }
+  const blob = decodeDataUrl(stored);
   if (!blob) return null;
   if (blob.type === 'image/jpeg') return blob;
   try {
@@ -156,6 +175,13 @@ async function proofJpeg(sessionId) {
   } catch {
     return null;
   }
+}
+
+// A refusal that will not change on retry (bad request, too large, wrong type):
+// drop the item rather than block every later one behind it. Auth and network
+// errors are not here; they keep the item for the next sync.
+function isPermanentRefusal(error) {
+  return ['400', '413', '415', '422'].includes(String(error?.statusCode ?? error?.status ?? ''));
 }
 
 function isAlreadyStored(error) {
@@ -187,7 +213,8 @@ export async function uploadProof(ownerId, sessionId) {
         cacheControl: '3600',
       });
     if (!error) return 'uploaded';
-    return isAlreadyStored(error) ? 'exists' : 'failed';
+    if (isAlreadyStored(error)) return 'exists';
+    return isPermanentRefusal(error) ? 'skipped' : 'failed';
   } catch {
     return 'failed';
   }
@@ -219,7 +246,7 @@ function backfillDone(ownerId) {
 function queueExistingProofs(ownerId) {
   if (backfillDone(ownerId)) return;
   const own = ownSessionIds(ownerId);
-  if (own.size === 0) return; // sessions not loaded yet: try again next time
+  if (!own || own.size === 0) return; // sessions not here yet: try again next time
   const local = [];
   for (let i = 0; i < localStorage.length; i += 1) {
     const key = localStorage.key(i);
@@ -229,7 +256,9 @@ function queueExistingProofs(ownerId) {
     // this device are never uploaded here.
     if (own.has(sessionId)) local.push(sessionId);
   }
-  writeQueue(UPLOAD_QUEUE_PREFIX, ownerId, [...readQueue(UPLOAD_QUEUE_PREFIX, ownerId), ...local]);
+  // Not marked done when the queue could not be saved (storage full): the
+  // photos would otherwise never be queued again.
+  if (!writeQueue(UPLOAD_QUEUE_PREFIX, ownerId, [...readQueue(UPLOAD_QUEUE_PREFIX, ownerId), ...local])) return;
   try {
     localStorage.setItem(queueKey(BACKFILL_DONE_PREFIX, ownerId), '1');
   } catch {
@@ -240,27 +269,41 @@ function queueExistingProofs(ownerId) {
 // ─── Flush ────────────────────────────────────────────────────────────────────
 
 const flushing = new Map();
+const rerun = new Set();
+
+async function flushRemovals(ownerId) {
+  for (const sessionId of readQueue(REMOVE_QUEUE_PREFIX, ownerId).slice(0, PROOF_SYNC_BATCH)) {
+    if (!await removeCloudProof(ownerId, sessionId)) return false;
+    dropFromQueue(REMOVE_QUEUE_PREFIX, ownerId, sessionId);
+  }
+  return true;
+}
 
 /**
  * Send what is queued for this account: deletions first, then at most
- * PROOF_SYNC_BATCH uploads. Stops at the first failure (usually offline) and
- * keeps the rest for the next time. Never throws.
+ * PROOF_SYNC_BATCH uploads, then deletions queued meanwhile. Stops at the
+ * first failure (usually offline), and as soon as this device no longer holds
+ * the account's data (signed out, switched), keeping the rest for next time.
+ * Never throws.
  */
 export function flushProofSync(ownerId) {
   if (!ownerId) return Promise.resolve();
-  if (flushing.has(ownerId)) return flushing.get(ownerId);
+  if (flushing.has(ownerId)) {
+    // Already running with the queue as it was: one more pass afterwards, so a
+    // photo saved or a session deleted meanwhile does not wait for next launch.
+    rerun.add(ownerId);
+    return flushing.get(ownerId);
+  }
   const run = (async () => {
     try {
       if (await signedInUserId() !== ownerId) return;
       queueExistingProofs(ownerId);
-
-      for (const sessionId of readQueue(REMOVE_QUEUE_PREFIX, ownerId).slice(0, PROOF_SYNC_BATCH)) {
-        if (!await removeCloudProof(ownerId, sessionId)) return;
-        dropFromQueue(REMOVE_QUEUE_PREFIX, ownerId, sessionId);
-      }
+      if (!await flushRemovals(ownerId)) return;
 
       for (const sessionId of readQueue(UPLOAD_QUEUE_PREFIX, ownerId).slice(0, PROOF_SYNC_BATCH)) {
-        if (!ownSessionIds(ownerId).has(sessionId)) {
+        const own = ownSessionIds(ownerId);
+        if (!own) return; // signed out or switched: unknown, keep everything queued
+        if (!own.has(sessionId)) {
           // Deleted (here or on another device) or not this account's: nothing to back up.
           dropFromQueue(UPLOAD_QUEUE_PREFIX, ownerId, sessionId);
           continue;
@@ -268,17 +311,22 @@ export function flushProofSync(ownerId) {
         const result = await uploadProof(ownerId, sessionId);
         if (result === 'failed') return;
         dropFromQueue(UPLOAD_QUEUE_PREFIX, ownerId, sessionId);
-        // Deleted while it was being uploaded: take the new file down again.
-        if (result === 'uploaded' && !ownSessionIds(ownerId).has(sessionId)) {
+        // Deleted while it was being uploaded: take the new file down again. Only
+        // when the account's sessions are still here and this one is not.
+        const after = ownSessionIds(ownerId);
+        if (result === 'uploaded' && after && !after.has(sessionId)) {
           addToQueue(REMOVE_QUEUE_PREFIX, ownerId, sessionId);
-          if (await removeCloudProof(ownerId, sessionId)) dropFromQueue(REMOVE_QUEUE_PREFIX, ownerId, sessionId);
         }
       }
+      await flushRemovals(ownerId);
     } catch (error) {
       console.warn('Proof sync stopped; queued photos stay for the next sync:', error);
     }
   })();
-  const settled = run.finally(() => flushing.delete(ownerId));
+  const settled = run.finally(() => {
+    flushing.delete(ownerId);
+    if (rerun.delete(ownerId)) void flushProofSync(ownerId);
+  });
   flushing.set(ownerId, settled);
   return settled;
 }

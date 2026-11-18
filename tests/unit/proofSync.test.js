@@ -196,12 +196,108 @@ describe('upload', () => {
     saveProof(sid(1), jpegDataUrl());
     queueProofUpload(OWNER, sid(1));
     mockUpload.mockImplementationOnce(async () => {
-      local.sessions = []; // deleted while the request was out
+      // Deleted here while the request was out: in the deletion log, and the
+      // account's other data is still on this device.
+      local.deleted = new Set([sid(1)]);
       return { data: {}, error: null };
     });
     await flushProofSync(OWNER);
     expect(mockRemove).toHaveBeenCalledWith([`${OWNER}/${sid(1)}.jpg`]);
     expect(pendingProofRemovals(OWNER)).toEqual([]);
+  });
+
+  it('keeps the backup and the rest of the queue when the user signs out mid-sync', async () => {
+    signIn();
+    ownSessions(sid(1), sid(2), sid(3));
+    for (const id of [sid(1), sid(2), sid(3)]) { saveProof(id, jpegDataUrl()); queueProofUpload(OWNER, id); }
+    mockUpload.mockImplementationOnce(async () => {
+      // handleSignOut(): the session ends and the local user and sessions are cleared.
+      auth.userId = null;
+      local.user = null;
+      local.sessions = [];
+      return { data: {}, error: null };
+    });
+    await flushProofSync(OWNER);
+
+    expect(mockUpload).toHaveBeenCalledTimes(1);
+    expect(mockRemove).not.toHaveBeenCalled();
+    expect(pendingProofRemovals(OWNER)).toEqual([]);
+    // The first one is in the cloud; the other two wait for the account to come back.
+    expect(pendingProofUploads(OWNER)).toEqual([sid(2), sid(3)]);
+
+    signIn();
+    ownSessions(sid(1), sid(2), sid(3));
+    await flushProofSync(OWNER);
+    expect(mockUpload).toHaveBeenCalledTimes(3);
+    expect(mockRemove).not.toHaveBeenCalled();
+  });
+
+  it('stops without touching the queues when another account\'s data replaces this one mid-sync', async () => {
+    signIn();
+    ownSessions(sid(1), sid(2));
+    for (const id of [sid(1), sid(2)]) { saveProof(id, jpegDataUrl()); queueProofUpload(OWNER, id); }
+    mockUpload.mockImplementationOnce(async () => {
+      local.user = { id: OTHER };
+      local.sessions = [{ id: sid(9) }];
+      return { data: {}, error: null };
+    });
+    await flushProofSync(OWNER);
+    expect(mockRemove).not.toHaveBeenCalled();
+    expect(pendingProofUploads(OWNER)).toEqual([sid(2)]);
+  });
+
+  it('runs one more pass for a photo saved while a sync was running', async () => {
+    signIn();
+    ownSessions(sid(1), sid(2));
+    saveProof(sid(1), jpegDataUrl());
+    queueProofUpload(OWNER, sid(1));
+    mockUpload.mockImplementationOnce(async () => {
+      // Photographed while the first upload was out (so the backfill at the
+      // start of this sync could not have seen it).
+      saveProof(sid(2), jpegDataUrl());
+      proofSaved(OWNER, sid(2));
+      return { data: {}, error: null };
+    });
+    await flushProofSync(OWNER);
+    await vi.waitFor(() => expect(mockUpload).toHaveBeenCalledTimes(2));
+    expect(mockUpload.mock.calls[1][0]).toBe(`${OWNER}/${sid(2)}.jpg`);
+    await vi.waitFor(() => expect(pendingProofUploads(OWNER)).toEqual([]));
+  });
+
+  it('skips a corrupt photo and goes on with the next one', async () => {
+    signIn();
+    ownSessions(sid(1), sid(2));
+    saveProof(sid(1), 'data:image/jpeg;base64,%%%not-base64%%%');
+    saveProof(sid(2), jpegDataUrl());
+    queueProofUpload(OWNER, sid(1));
+    queueProofUpload(OWNER, sid(2));
+    await flushProofSync(OWNER);
+    expect(mockUpload).toHaveBeenCalledTimes(1);
+    expect(mockUpload.mock.calls[0][0]).toBe(`${OWNER}/${sid(2)}.jpg`);
+    expect(pendingProofUploads(OWNER)).toEqual([]);
+  });
+
+  it.each([['400'], ['413'], ['415'], ['422']])('drops an item the server refuses for good (%s) and goes on', async status => {
+    signIn();
+    ownSessions(sid(1), sid(2));
+    saveProof(sid(1), jpegDataUrl());
+    saveProof(sid(2), jpegDataUrl());
+    queueProofUpload(OWNER, sid(1));
+    queueProofUpload(OWNER, sid(2));
+    mockUpload.mockResolvedValueOnce({ data: null, error: { statusCode: status, message: 'refused' } });
+    await flushProofSync(OWNER);
+    expect(mockUpload).toHaveBeenCalledTimes(2);
+    expect(pendingProofUploads(OWNER)).toEqual([]);
+  });
+
+  it('keeps an item refused for authentication (401/403) for the next sync', async () => {
+    signIn();
+    ownSessions(sid(1));
+    saveProof(sid(1), jpegDataUrl());
+    queueProofUpload(OWNER, sid(1));
+    mockUpload.mockResolvedValueOnce({ data: null, error: { statusCode: '403', message: 'new row violates row-level security policy' } });
+    await flushProofSync(OWNER);
+    expect(pendingProofUploads(OWNER)).toEqual([sid(1)]);
   });
 
   it('ignores ids the bucket policy would refuse', () => {
@@ -225,6 +321,25 @@ describe('backfill of photos already on this device (once per account)', () => {
     localStorage.removeItem(`orbit_proofsync_upload:${encodeURIComponent(OWNER)}`);
     await flushProofSync(OWNER);
     expect(pendingProofUploads(OWNER)).toEqual([]);
+  });
+
+  it('is not marked done when the queue could not be saved (storage full)', async () => {
+    signIn();
+    ownSessions(sid(1));
+    saveProof(sid(1), jpegDataUrl());
+    const setItem = Storage.prototype.setItem;
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (key, value) {
+      if (key.startsWith('orbit_proofsync_upload:')) throw new Error('QuotaExceededError');
+      return setItem.call(this, key, value);
+    });
+    try {
+      await flushProofSync(OWNER);
+    } finally {
+      spy.mockRestore();
+    }
+    expect(localStorage.getItem(`orbit_proofsync_backfilled:${encodeURIComponent(OWNER)}`)).toBeNull();
+    await flushProofSync(OWNER);
+    expect(mockUpload).toHaveBeenCalledTimes(1);
   });
 
   it('waits until the account\'s sessions are on this device', async () => {
