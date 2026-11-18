@@ -300,6 +300,7 @@
   - 不算進同步橫幅的待同步數字（照片是背景備份）。
   - 測試：`tests/unit/proofSync.test.js`（18：上傳的路徑、格式與不覆寫、「已存在」、失敗時保留並停止、換帳號不送、超過 200 KB、紀錄不在或不屬於這個帳號、一次 10 張、同時只跑一次、PNG 重新編碼與不支援時跳過、上傳期間被刪、不合 policy 的 id、補傳只限這個帳號且只一次、紀錄還沒載入時等待、key 不算進照片數、撤銷時本機與雲端都刪、刪除重試、訪客只刪本機）；`tests/unit/proofSyncHooks.test.js`（拍照存檔與撤銷紀錄的接點，登入與訪客）；`appBootSequence` 加上「遠端讀取成功後才補傳、失敗時不送」；e2e `tests/e2e/hw112c-proof-upload.test.js`（真的 Supabase client、攔截 Storage：存檔後送到自己資料夾的 JPEG、`x-upsert: false`；撤銷後 DELETE 那一個檔案、本機的照片也刪掉）。把三個接點各自拿掉時測試都會失敗。
   - 下一步 HW-112C2（Next）：其他裝置的顯示、設定頁、登出。
+  - **CI（INFRA-117，併入 #254）**：GitHub Actions 的 `ubuntu-latest` 在 2026-11-18 換成 Ubuntu 26.04，Playwright 1.59.1 不支援（`npx playwright install --with-deps chromium` 直接失敗：`Playwright does not support chromium on ubuntu26.04-x64`），e2e 在跑任何測試之前就紅了，之後每個 PR 都會遇到（CI 不在 main 的 push 上跑）。devDependency `@playwright/test` 升到 1.65.1（套件裡有 `ubuntu26.04-x64`；1.59.1 只到 24.04）；不改 CI 設定。本機以容器預裝的 Chromium 跑完整 e2e 仍全部通過。
 
 - [x] **PRO-014F1** 排行榜的 Pro 光環與標記（SUB-14 的排行榜部分，v1.41.20，#253）
   - `get_leaderboard()` 的 `is_pro` 為 `true` 的列：頭像外圍一圈主題強調色的光環（`.lb-avatar--pro`，3.2 秒緩慢明暗；`prefers-reduced-motion: reduce` 時靜止、光環仍在），名稱後面「✦ Pro」（沿用 app 既有的 `pro-badge--inline` 樣式），排在「你」之前；只認嚴格的 `true`（字串 `'true'`、缺少都不算）；不影響排名。
