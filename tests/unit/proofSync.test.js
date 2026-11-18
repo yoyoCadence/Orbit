@@ -400,7 +400,7 @@ describe('backfill of photos already on this device (once per account)', () => {
     await vi.waitFor(() => expect(pendingProofUploads(OWNER)).toEqual([]));
   });
 
-  it('tries the cloud deletion directly when its queue entry could not be saved', async () => {
+  it('tries the cloud deletion right away when its queue entry could not be saved', async () => {
     signIn();
     ownSessions(sid(2));
     const setItem = Storage.prototype.setItem;
@@ -411,6 +411,59 @@ describe('backfill of photos already on this device (once per account)', () => {
     try {
       proofSessionDeleted(OWNER, sid(1), { signedIn: true });
       await vi.waitFor(() => expect(mockRemove).toHaveBeenCalledWith([`${OWNER}/${sid(1)}.jpg`]));
+      await vi.waitFor(() => expect(pendingProofRemovals(OWNER)).toEqual([]));
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('keeps retrying a cloud deletion that neither the queue nor the network could take', async () => {
+    signIn();
+    ownSessions(sid(2));
+    const setItem = Storage.prototype.setItem;
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (key, value) {
+      if (key.startsWith('orbit_proofsync_remove:')) throw new Error('QuotaExceededError');
+      return setItem.call(this, key, value);
+    });
+    // Storage full and offline: the queue cannot save it and the request fails.
+    mockRemove.mockResolvedValue({ data: null, error: { message: 'Failed to fetch' } });
+    try {
+      proofSessionDeleted(OWNER, sid(1), { signedIn: true });
+      await vi.waitFor(() => expect(mockRemove).toHaveBeenCalled());
+      await flushProofSync(OWNER);
+      expect(pendingProofRemovals(OWNER)).toEqual([sid(1)]);
+    } finally {
+      spy.mockRestore();
+    }
+    // Room again: the next sync writes it to the queue, so it survives a restart…
+    await flushProofSync(OWNER);
+    await vi.waitFor(() => expect(JSON.parse(
+      localStorage.getItem(`orbit_proofsync_remove:${encodeURIComponent(OWNER)}`),
+    )).toEqual([sid(1)]));
+    // …and back online it is deleted.
+    mockRemove.mockResolvedValue({ data: [], error: null });
+    await flushProofSync(OWNER);
+    await vi.waitFor(() => expect(pendingProofRemovals(OWNER)).toEqual([]));
+    expect(mockRemove).toHaveBeenLastCalledWith([`${OWNER}/${sid(1)}.jpg`]);
+  });
+
+  it('keeps retrying, while the app runs, a deletion the queue still cannot take', async () => {
+    signIn();
+    ownSessions(sid(2));
+    const setItem = Storage.prototype.setItem;
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (key, value) {
+      if (key.startsWith('orbit_proofsync_remove:')) throw new Error('QuotaExceededError');
+      return setItem.call(this, key, value);
+    });
+    mockRemove.mockResolvedValueOnce({ data: null, error: { message: 'Failed to fetch' } });
+    try {
+      proofSessionDeleted(OWNER, sid(1), { signedIn: true });
+      await vi.waitFor(() => expect(mockRemove).toHaveBeenCalled());
+      // Still full, back online (a reconnect runs a sync): deleted from memory.
+      await flushProofSync(OWNER);
+      await vi.waitFor(() => expect(pendingProofRemovals(OWNER)).toEqual([]));
+      expect(mockRemove).toHaveBeenCalledTimes(2);
+      expect(mockRemove).toHaveBeenLastCalledWith([`${OWNER}/${sid(1)}.jpg`]);
     } finally {
       spy.mockRestore();
     }

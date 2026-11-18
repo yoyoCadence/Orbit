@@ -92,9 +92,37 @@ export function pendingProofUploads(ownerId) {
   return ownerId ? readQueue(UPLOAD_QUEUE_PREFIX, ownerId) : [];
 }
 
+// Cloud deletions the queue could not take (storage full). Held here for as
+// long as the app runs, retried by every sync, and written to the queue as soon
+// as there is room: once the session's row is gone, its deletion log entry is
+// cleared, and nothing else would remember that its photo is still in the cloud.
+const unsavedRemovals = new Map(); // ownerId → Set of session ids
+
+function queueRemoval(ownerId, sessionId) {
+  if (!ownerId || !isObjectId(sessionId)) return;
+  if (addToQueue(REMOVE_QUEUE_PREFIX, ownerId, sessionId)) return;
+  if (!unsavedRemovals.has(ownerId)) unsavedRemovals.set(ownerId, new Set());
+  unsavedRemovals.get(ownerId).add(sessionId);
+}
+
+function saveUnsavedRemovals(ownerId) {
+  const unsaved = unsavedRemovals.get(ownerId);
+  if (!unsaved?.size) return;
+  if (writeQueue(REMOVE_QUEUE_PREFIX, ownerId, [...readQueue(REMOVE_QUEUE_PREFIX, ownerId), ...unsaved])) {
+    unsavedRemovals.delete(ownerId);
+  }
+}
+
+function forgetRemoval(ownerId, sessionId) {
+  const unsaved = unsavedRemovals.get(ownerId);
+  if (unsaved?.delete(sessionId) && unsaved.size === 0) unsavedRemovals.delete(ownerId);
+  dropFromQueue(REMOVE_QUEUE_PREFIX, ownerId, sessionId);
+}
+
 /** Session ids whose cloud photo is still waiting to be deleted for this account. */
 export function pendingProofRemovals(ownerId) {
-  return ownerId ? readQueue(REMOVE_QUEUE_PREFIX, ownerId) : [];
+  if (!ownerId) return [];
+  return [...new Set([...readQueue(REMOVE_QUEUE_PREFIX, ownerId), ...(unsavedRemovals.get(ownerId) ?? [])])];
 }
 
 /** @returns {boolean} whether the photo is now queued. */
@@ -279,9 +307,10 @@ const flushing = new Map();
 const rerun = new Set();
 
 async function flushRemovals(ownerId) {
-  for (const sessionId of readQueue(REMOVE_QUEUE_PREFIX, ownerId).slice(0, PROOF_SYNC_BATCH)) {
+  saveUnsavedRemovals(ownerId);
+  for (const sessionId of pendingProofRemovals(ownerId).slice(0, PROOF_SYNC_BATCH)) {
     if (!await removeCloudProof(ownerId, sessionId)) return false;
-    dropFromQueue(REMOVE_QUEUE_PREFIX, ownerId, sessionId);
+    forgetRemoval(ownerId, sessionId);
   }
   return true;
 }
@@ -321,10 +350,7 @@ export function flushProofSync(ownerId) {
         // Deleted while it was being uploaded: take the new file down again. Only
         // when the account's sessions are still here and this one is not.
         const after = ownSessionIds(ownerId);
-        if (result === 'uploaded' && after && !after.has(sessionId)
-          && !addToQueue(REMOVE_QUEUE_PREFIX, ownerId, sessionId)) {
-          await removeCloudProof(ownerId, sessionId); // queue full: one direct try
-        }
+        if (result === 'uploaded' && after && !after.has(sessionId)) queueRemoval(ownerId, sessionId);
       }
       await flushRemovals(ownerId);
     } catch (error) {
@@ -371,9 +397,6 @@ export function proofSessionDeleted(ownerId, sessionId, { signedIn = false } = {
   if (!ownerId) return;
   dropFromQueue(UPLOAD_QUEUE_PREFIX, ownerId, sessionId);
   if (!signedIn) return;
-  if (!addToQueue(REMOVE_QUEUE_PREFIX, ownerId, sessionId)) {
-    void removeCloudProof(ownerId, sessionId); // queue full: one direct try
-    return;
-  }
+  queueRemoval(ownerId, sessionId);
   void flushProofSync(ownerId);
 }
