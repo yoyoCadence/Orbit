@@ -13,6 +13,7 @@ import {
 import {
   mountOrbitWindow,
   renderOrbitWindow,
+  updateOrbitWindowAchievementPhoto,
 } from '../personalSpace/v2/ui/orbitWindow.js';
 import { orbitWindowRuntimeDestroyer } from '../personalSpace/v2/runtime/pixiSceneRuntime.js';
 import { isAssetGalleryEnabled, renderAssetGallery } from '../personalSpace/v2/ui/assetGallery.js';
@@ -26,6 +27,7 @@ import { formatRewardLine, relationshipStageLabel } from '../personalSpace/v2/co
 import { emitPersonalSpaceTelemetry } from '../personalSpace/v2/telemetry.js';
 import { describeControl, findControl, watchRemindWindow } from '../personalSpace/v2/remindWindow.js';
 import { resolveAchievementPhoto } from '../platform/proofStore.js';
+import { withCloudAchievementPhoto } from '../platform/proofCloud.js';
 
 const MOMENTUM_LABELS = Object.freeze({
   low: '低',
@@ -302,6 +304,21 @@ export function renderPersonalSpaceV2(container, options = {}) {
     render(mode);
   }
 
+  // HW-112C2a: the cloud copy when this device has none. When it arrives the
+  // frame is updated in place, as on home: a render would close the detail
+  // the user is reading and remount the scene.
+  function achievementPhoto() {
+    return withCloudAchievementPhoto(
+      user.id,
+      coreState.sessions,
+      resolveAchievementPhoto(user.id, coreState.sessions),
+      () => {
+        if (disposed) return;
+        updateOrbitWindowAchievementPhoto(container.querySelector('[data-orbit-window]'), achievementPhoto());
+      },
+    );
+  }
+
   function render(nextMode = mode) {
     if (disposed) return;
     mode = nextMode === 'edit' ? 'edit' : 'full-world';
@@ -311,7 +328,7 @@ export function renderPersonalSpaceV2(container, options = {}) {
     const snapshot = buildPersonalSpaceV2Snapshot({
       coreState: {
         ...coreState,
-        achievementPhoto: resolveAchievementPhoto(user.id, coreState.sessions),
+        achievementPhoto: achievementPhoto(),
       },
       v2State,
       ledgerSnapshot,

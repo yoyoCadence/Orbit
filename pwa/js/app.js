@@ -40,6 +40,7 @@ import {
 } from './statusBarNotice.js';
 import { hasStoredSession } from './sessionPresence.js';
 import { flushProofSync } from './platform/proofSync.js';
+import { clearCloudProofs, forgetCloudProofMisses, keepCloudProofsOf } from './platform/proofCloud.js';
 import { isOnline, onConnectivityChange } from './platform/network.js';
 import { orbitWindowRuntimeDestroyer } from './personalSpace/v2/runtime/pixiSceneRuntime.js';
 
@@ -499,6 +500,8 @@ function handleSignOut() {
   // floating above the login screen with a null state.user behind them.
   clearDayCycleModals();
   if (!_currentSession && !storage.getUser()) return; // already signed out
+  // HW-112C2a: this account's downloaded proof photos leave with it (§5.5).
+  void clearCloudProofs(_currentSession?.user?.id ?? storage.getUser()?.id);
   _currentSession = null;
   state.user     = null;
   state.tasks    = [];
@@ -602,7 +605,14 @@ function _loadRemote(ownerId) {
   settled.then(() => { if (_remoteSync === settled) _remoteSync = null; });
   // HW-112C1: after each successful remote load (boot and reconnect), send the
   // proof photos still queued. In the background; never part of the sync result.
-  load.then(() => flushProofSync(ownerId), () => {});
+  // HW-112C2a: a photo may have arrived since a row found none (uploaded later
+  // from the other device), so every sync forgets those "not found".
+  load.then(() => {
+    forgetCloudProofMisses();
+    // Downloaded photos of any other account that never signed out here go.
+    void keepCloudProofsOf(ownerId);
+    return flushProofSync(ownerId);
+  }, () => {});
   return load;
 }
 

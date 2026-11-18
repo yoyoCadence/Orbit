@@ -1,6 +1,6 @@
 {
   "artifact": "ps243-asset-baseline",
-  "appVersion": "1.41.22",
+  "appVersion": "1.41.23",
   "note": "Reproducible: a pure function of committed files with CRLF normalized to LF. No timestamps; regenerate with `npm run ps243:assets` and diff to verify.",
   "method": {
     "assetSizes": "raw binary file bytes on disk (fs.statSync.size)",
@@ -281,7 +281,7 @@
       "files": [
         {
           "path": "pwa/js/pages/personalSpaceV2.js",
-          "bytes": 19017
+          "bytes": 19640
         },
         {
           "path": "pwa/js/personalSpace/economy.js",
@@ -400,8 +400,8 @@
           "bytes": 26763
         }
       ],
-      "rawBytes": 300908,
-      "gzipBytes": 79728
+      "rawBytes": 301531,
+      "gzipBytes": 79895
     },
     "vendoredPixi": {
       "path": "pwa/vendor/pixi.js",
@@ -413,7 +413,7 @@
       "rawBytes": 16298,
       "gzipBytes": 4332
     },
-    "combinedGzipBytes": 309488,
+    "combinedGzipBytes": 309655,
     "budgetBytes": 311296,
     "result": "PASS"
   }

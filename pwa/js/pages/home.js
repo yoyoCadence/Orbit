@@ -4,6 +4,7 @@ import { calcDailyStats, reorderTasks, previewBaseXP } from '../engine.js';
 import { storage } from '../storage.js';
 import { sessionRowHtml, bindProofThumbs } from '../ui/sessionRow.js';
 import { resolveAchievementPhoto } from '../platform/proofStore.js';
+import { withCloudAchievementPhoto } from '../platform/proofCloud.js';
 import { FLAG_SHIELD_DISMISSED, FLAG_SHIELD_SCROLL_TOP } from '../flags.js';
 import { readShieldOffer } from '../proRollover.js';
 import { showToast } from '../ui/feedback.js';
@@ -52,8 +53,20 @@ let _orbitWindowCleanup = null;
 function coreStateWithAchievementPhoto() {
   return {
     ...state,
-    achievementPhoto: resolveAchievementPhoto(state.user?.id, state.sessions),
+    achievementPhoto: homeAchievementPhoto(),
   };
+}
+
+// The local photo, or (HW-112C2a) the cloud copy once it has been downloaded:
+// the frame is updated in place when it arrives.
+function homeAchievementPhoto() {
+  const ownerId = state.user?.id;
+  const photo = resolveAchievementPhoto(ownerId, state.sessions);
+  return withCloudAchievementPhoto(ownerId, state.sessions, photo, () => {
+    if (state.user?.id !== ownerId) return;
+    const frame = _container?.querySelector('[data-orbit-window]');
+    if (frame) updateOrbitWindowAchievementPhoto(frame, homeAchievementPhoto());
+  });
 }
 
 function buildHomeOrbitWindow(persistedState = null) {
@@ -417,7 +430,7 @@ export function renderHome(container) {
         showToast('無法更新個人空間展示');
         return;
       }
-      const nextPhoto = resolveAchievementPhoto(state.user?.id, state.sessions);
+      const nextPhoto = homeAchievementPhoto();
       updateOrbitWindowAchievementPhoto(
         container.querySelector('[data-orbit-window]'),
         nextPhoto,

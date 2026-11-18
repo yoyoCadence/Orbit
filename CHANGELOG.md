@@ -3,6 +3,16 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.41.23] - 2026-11-18
+
+### Added
+- 佐證照片在其他裝置顯示（HW-112C2a）：登入後，這台裝置沒有的照片會從雲端下載顯示——只下載捲到畫面上的紀錄（同時最多 3 張），存在這台裝置的 IndexedDB（每個帳號最多 300 張或 15 MB，不佔 localStorage），之後開啟不必再下載；成就照片（首頁與個人空間）也會顯示雲端那份。登出時清掉這個帳號下載的照片。
+
+### Changed
+- 測試：新增 `fake-indexeddb`（devDependency）。
+
+---
+
 ## [1.41.22] - 2026-11-18
 
 ### Fixed
