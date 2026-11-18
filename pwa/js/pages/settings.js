@@ -385,9 +385,14 @@ function _proofButtonsHtml() {
   const signedIn = _proofAccountSignedIn();
   const { count, kb } = accountProofStats(state.sessions);
   const label = signedIn ? '🗑 清除這台裝置的佐證照片' : '🗑 刪除佐證照片';
-  const clear = count > 0
-    ? `<button class="btn btn-outline btn-sm" id="proof-clear-btn" style="margin-bottom:10px;width:100%;color:var(--text-muted)">${label}（${count} 張，約 ${kb} KB）</button>`
-    : `<button class="btn btn-outline btn-sm" id="proof-clear-btn" style="margin-bottom:10px;width:100%;opacity:0.4" disabled>${label}（這台裝置沒有）</button>`;
+  // Signed in, there may be downloaded copies even with no photo taken here:
+  // the button stays available.
+  const detail = count > 0
+    ? `（${count} 張，約 ${kb} KB${signedIn ? '，與下載的副本' : ''}）`
+    : signedIn ? '（下載的副本）' : '（這台裝置沒有）';
+  const clear = count > 0 || signedIn
+    ? `<button class="btn btn-outline btn-sm" id="proof-clear-btn" style="margin-bottom:10px;width:100%;color:var(--text-muted)">${label}${detail}</button>`
+    : `<button class="btn btn-outline btn-sm" id="proof-clear-btn" style="margin-bottom:10px;width:100%;opacity:0.4" disabled>${label}${detail}</button>`;
   const deleteAll = signedIn
     ? '<button class="btn-text-danger" id="proof-delete-all-btn" style="display:block;margin-bottom:10px">刪除所有佐證照片（包括雲端）</button>'
     : '';
@@ -1245,16 +1250,16 @@ function _setupListeners(container) {
   container.querySelector('#proof-clear-btn')?.addEventListener('click', () => {
     const signedIn = _proofAccountSignedIn();
     const { count, kb } = accountProofStats(state.sessions);
-    if (count === 0) return;
+    if (count === 0 && !signedIn) return;
     const message = signedIn
-      ? `清除這台裝置上的 ${count} 張佐證照片（約 ${kb} KB）？\n雲端的備份會保留，捲到那筆紀錄時會再顯示；還沒上傳的照片不會被清除。`
+      ? `清除這台裝置上的佐證照片（拍的 ${count} 張，約 ${kb} KB，與下載的副本）？\n雲端的備份會保留，捲到那筆紀錄時會再顯示；還沒確定上傳的照片不會被清除。`
       : `刪除這台裝置上的 ${count} 張佐證照片（約 ${kb} KB）？\n訪客的照片沒有雲端備份，刪除後無法復原。`;
     if (!confirm(message)) return;
     const { cleared, kept } = clearDeviceProofs(state.user?.id, state.sessions, { signedIn });
     _renderView(container);
     window.showToast(kept > 0
-      ? `已清除 ${cleared} 張；${kept} 張還沒上傳的先保留`
-      : `已清除 ${cleared} 張佐證照片`);
+      ? `已清除 ${cleared} 張；${kept} 張還沒確定上傳的先保留`
+      : signedIn ? `已清除這台裝置的佐證照片（${cleared} 張與下載的副本）` : `已清除 ${cleared} 張佐證照片`);
   });
 
   container.querySelector('#proof-delete-all-btn')?.addEventListener('click', async event => {

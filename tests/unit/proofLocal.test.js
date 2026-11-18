@@ -117,12 +117,23 @@ describe('sign-out', () => {
 });
 
 describe('settings: clear this device\'s photos', () => {
-  it('signed in: this account\'s photos except those waiting to upload; the selection stays', () => {
+  it('signed in, before the first sync queued anything: nothing is cleared (not surely uploaded)', () => {
+    signIn(sid(1), sid(2));
+    saveProof(sid(1), jpeg());
+    saveProof(sid(2), jpeg());
+    // Opened offline on the new version: the queue is empty, but nothing was sent.
+    expect(clearDeviceProofs(OWNER, local.sessions, { signedIn: true })).toEqual({ cleared: 0, kept: 2 });
+    expect([has(sid(1)), has(sid(2))]).toEqual([true, true]);
+    expect(clearCloudProofs).toHaveBeenCalledWith(OWNER); // the downloaded copies still go
+  });
+
+  it('signed in: this account\'s photos surely in the cloud; those waiting stay; the selection stays', async () => {
     signIn(sid(1), sid(2));
     saveProof(sid(1), jpeg());
     saveProof(sid(2), jpeg());
     saveProof(sid(9), jpeg());
-    queueProofUpload(OWNER, sid(2));
+    await flushProofSync(OWNER); // the backfill ran and sent both
+    queueProofUpload(OWNER, sid(2)); // say, waiting again
     setAchievementPhotoSelection(OWNER, sid(1));
     expect(clearDeviceProofs(OWNER, local.sessions, { signedIn: true })).toEqual({ cleared: 1, kept: 1 });
     expect([has(sid(1)), has(sid(2)), has(sid(9))]).toEqual([false, true, true]);

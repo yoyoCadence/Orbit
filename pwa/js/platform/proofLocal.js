@@ -114,22 +114,20 @@ export function dropUploadedLocalProofs(ownerId, sessions) {
 
 /**
  * Settings, "clear this device's photos". Signed in: this account's local
- * photos except those still waiting to be uploaded, and its downloaded copies
- * (the cloud keeps everything). A guest: the guest's photos (there is no cloud
- * copy) and the Personal Space selection.
- * @returns {{ cleared: number, kept: number }} kept: still waiting to upload.
+ * photos that are surely in the cloud (the same test as sign-out: not merely
+ * absent from the upload queue, which is empty before the first sync queued
+ * them), and its downloaded copies; every other photo stays. A guest: the
+ * guest's photos (there is no cloud copy) and the Personal Space selection.
+ * @returns {{ cleared: number, kept: number }} kept: not surely uploaded yet.
  */
 export function clearDeviceProofs(ownerId, sessions, { signedIn = false } = {}) {
-  const pending = new Set(signedIn && ownerId ? pendingProofUploads(ownerId) : []);
+  const ids = sessionIdsOf(sessions).filter(sessionId => getProof(sessionId));
+  const clearable = signedIn && ownerId ? new Set(uploadedLocalProofIds(ownerId, sessions)) : new Set(ids);
   let cleared = 0;
   let kept = 0;
-  for (const sessionId of sessionIdsOf(sessions)) {
-    if (!getProof(sessionId)) continue;
-    if (pending.has(sessionId)) {
-      kept += 1;
-      continue;
-    }
-    if (removeLocal(sessionId)) cleared += 1;
+  for (const sessionId of ids) {
+    if (clearable.has(sessionId) && removeLocal(sessionId)) cleared += 1;
+    else kept += 1;
   }
   if (signedIn && ownerId) void clearCloudProofs(ownerId);
   else if (ownerId) clearAchievementPhotoSelection(ownerId);

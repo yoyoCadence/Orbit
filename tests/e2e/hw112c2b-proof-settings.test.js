@@ -31,7 +31,7 @@ const session = (id, minutesAgo) => ({
   durationMinutes: 30, finalXP: 50,
 });
 
-async function openApp(page, storageCalls) {
+async function openApp(page, storageCalls, { backfilled = true } = {}) {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.route(`${SUPABASE_URL}/**`, route => route.abort('internetdisconnected'));
   await page.route(`${SUPABASE_URL}/rest/**`, route => route.fulfill({
@@ -57,7 +57,7 @@ async function openApp(page, storageCalls) {
   });
 
   await seedStorage(page, [FOCUS_TASK], [session(UPLOADED, 30), session(WAITING, 20)], { ...GUEST_USER, id: USER_ID });
-  await page.addInitScript(([key, userId, photo, ids]) => {
+  await page.addInitScript(([key, userId, photo, ids, backfilled]) => {
     if (localStorage.getItem(key)) return;
     localStorage.setItem(key, JSON.stringify({
       access_token: 'access-token', refresh_token: 'refresh-token', token_type: 'bearer',
@@ -66,9 +66,11 @@ async function openApp(page, storageCalls) {
     }));
     for (const id of ids) localStorage.setItem(`orbit_proof_${id}`, photo);
     // HW-112C1 state: the account's photos were queued once; one still waits.
+    // (Not yet, when the backfill has not run: opened offline on this version.)
+    if (!backfilled) return;
     localStorage.setItem(`orbit_proofsync_backfilled:${encodeURIComponent(userId)}`, '1');
     localStorage.setItem(`orbit_proofsync_upload:${encodeURIComponent(userId)}`, JSON.stringify([ids[1]]));
-  }, [SESSION_KEY, USER_ID, PHOTO, [UPLOADED, WAITING]]);
+  }, [SESSION_KEY, USER_ID, PHOTO, [UPLOADED, WAITING], backfilled]);
 
   await page.goto('/');
   await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
@@ -86,8 +88,17 @@ test.describe('HW-112C2b proof photos: settings and sign-out', () => {
 
     page.once('dialog', dialog => dialog.accept());
     await clear.click();
-    await expect(page.locator('#toast, .toast').first()).toContainText('1 張還沒上傳的先保留');
+    await expect(page.locator('#toast, .toast').first()).toContainText('1 張還沒確定上傳的先保留');
     expect(await localPhotos(page)).toEqual([WAITING]);
+  });
+
+  test('clearing this device before the first sync queued anything keeps every photo', async ({ page }) => {
+    await openApp(page, [], { backfilled: false });
+    await page.click('.nav-item[data-page="settings"]');
+    page.once('dialog', dialog => dialog.accept());
+    await page.locator('#proof-clear-btn').click();
+    await expect(page.locator('#toast, .toast').first()).toContainText('2 張還沒確定上傳的先保留');
+    expect(await localPhotos(page)).toEqual([UPLOADED, WAITING]);
   });
 
   test('delete all removes them here and empties the account\'s cloud folder', async ({ page }) => {
