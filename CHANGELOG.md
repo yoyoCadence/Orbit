@@ -3,6 +3,17 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.41.22] - 2026-11-18
+
+### Fixed
+- 排行榜與各頁的 Pro 標記、「你」標記與字母頭像：在主色很亮的主題（liquid-galss、像素、cyberpunk、Material 等 8 個）原本是白字配亮黃／亮綠，對比只有 1.1–3.6:1；改用主題自己的深色（`--on-primary`），每個主題都至少 4.5:1，有單元測試逐一檢查。
+- 排行榜 Pro 頭像的光環改成另一層的透明度在動，不再每一幀重畫陰影（Pro 的列多時比較省電）；外觀與減少動態時的靜止效果不變。
+
+### Changed
+- 測試：`proGateCallSites` 對 `pages/leaderboard.js` 只放行唯一一處 `r.is_pro === true`，不再豁免整個檔案；沒有 `Intl.Segmenter` 的退回測試改用 `Object.create(Intl, …)`，容器在 `afterEach` 移除。
+
+---
+
 ## [1.41.21] - 2026-11-18
 
 ### Added
