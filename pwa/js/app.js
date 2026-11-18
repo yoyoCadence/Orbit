@@ -39,6 +39,7 @@ import {
   readStatusBarNoticeState, writeStatusBarNoticeState,
 } from './statusBarNotice.js';
 import { hasStoredSession } from './sessionPresence.js';
+import { flushProofSync } from './platform/proofSync.js';
 import { isOnline, onConnectivityChange } from './platform/network.js';
 import { orbitWindowRuntimeDestroyer } from './personalSpace/v2/runtime/pixiSceneRuntime.js';
 
@@ -599,6 +600,9 @@ function _loadRemote(ownerId) {
   const settled = load.then(result => result?.backfilled, () => {});
   _remoteSync = settled;
   settled.then(() => { if (_remoteSync === settled) _remoteSync = null; });
+  // HW-112C1: after each successful remote load (boot and reconnect), send the
+  // proof photos still queued. In the background; never part of the sync result.
+  load.then(() => flushProofSync(ownerId), () => {});
   return load;
 }
 

@@ -18,6 +18,8 @@ import { renderPage, currentHash } from './router.js';
 import { showToast, showXPFloat, showLevelUp } from './ui/feedback.js';
 import { updateHeader } from './ui/header.js';
 import { showProofSheet } from './ui/proofSheet.js';
+import { proofSessionDeleted } from './platform/proofSync.js';
+import { hasStoredSession } from './sessionPresence.js';
 import { haptic } from './platform/haptics.js';
 import {
   clearSessionDeletion,
@@ -293,6 +295,9 @@ window.deleteSession = function (sessionId) {
   // Remove session
   state.sessions = state.sessions.filter(s => s.id !== sessionId);
   storage.saveSessions(state.sessions);
+  // HW-112C1: its proof photo goes too: on this device, and (signed in) the
+  // cloud copy, retried until the server confirms.
+  proofSessionDeleted(ownerId, sessionId, { signedIn: Boolean(ownerId) && hasStoredSession() });
   storage.saveUser(state.user);
   storage.saveEnergy(state.energy);
   if (ownerId) {

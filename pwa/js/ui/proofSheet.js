@@ -3,6 +3,8 @@
 
 import { showToast } from './feedback.js';
 import { saveProof } from '../platform/proofStore.js';
+import { proofSaved } from '../platform/proofSync.js';
+import { hasStoredSession } from '../sessionPresence.js';
 import { state } from '../state.js';
 import { bindProofThumbs, proofControlsHtml } from './sessionRow.js';
 
@@ -86,6 +88,9 @@ export async function showProofSheet(sessionId, taskName) {
   sheet.querySelector('#proof-confirm').addEventListener('click', () => {
     if (!selectedDataUrl) return;
     saveProof(sessionId, selectedDataUrl);
+    // HW-112C1: a signed-in account also keeps a copy in its private cloud
+    // folder (queued, sent in the background; guests stay on this device).
+    if (state.user?.id && hasStoredSession()) proofSaved(state.user.id, sessionId);
     // Inject thumbnail directly into the existing log-item row so it
     // survives the close animation without a full-page re-render.
     const delBtn = document.querySelector(`.session-del-btn[data-session-id="${sessionId}"]`);

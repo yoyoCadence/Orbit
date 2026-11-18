@@ -141,6 +141,9 @@ vi.mock('../../pwa/js/streakUnlock.js', () => streakUnlock);
 vi.mock('../../pwa/js/ui/header.js', () => ({ updateHeader: vi.fn() }));
 vi.mock('../../pwa/js/ui/feedback.js', () => feedback);
 vi.mock('../../pwa/js/sessionFlow.js', () => ({ setBadgeUpdater: vi.fn() }));
+// HW-112C1: proof photos queued for upload are sent after each remote load.
+const proofSync = vi.hoisted(() => ({ flushProofSync: vi.fn(() => Promise.resolve()) }));
+vi.mock('../../pwa/js/platform/proofSync.js', () => proofSync);
 vi.mock('../../pwa/js/focusTimer.js', () => ({}));
 vi.mock('../../pwa/js/defaultTasks.js', () => ({ createDefaultTasks: () => [] }));
 vi.mock('../../pwa/js/timeBand.js', () => ({ applyTimeBand: vi.fn() }));
@@ -1014,5 +1017,29 @@ describe('PRO-014Q Q6：遊客有任務但沒有 user', () => {
     const savedIds = storage.saveUser.mock.calls.map(([user]) => user.id);
     expect(savedIds).toContain('owner-b');
     expect(savedIds).not.toContain('owner-a');
+  });
+});
+
+describe('HW-112C1：遠端同步之後補傳佐證照片', () => {
+  it('遠端讀取成功後，在背景送出這個帳號排隊中的照片', async () => {
+    proofSync.flushProofSync.mockClear();
+    await bootWithPendingSession('owner-a');
+    auth.sessionResolve(sessionFor('owner-a'));
+    await flush();
+
+    expect(db.loadFromRemote).toHaveBeenCalledWith('owner-a');
+    expect(proofSync.flushProofSync).toHaveBeenCalledWith('owner-a');
+    expect(db.loadFromRemote.mock.invocationCallOrder[0])
+      .toBeLessThan(proofSync.flushProofSync.mock.invocationCallOrder[0]);
+  });
+
+  it('遠端讀取失敗（離線）時不送，留到下次同步', async () => {
+    proofSync.flushProofSync.mockClear();
+    db.loadFromRemote.mockRejectedValueOnce(new Error('offline'));
+    await bootWithPendingSession('owner-a');
+    auth.sessionResolve(sessionFor('owner-a'));
+    await flush();
+
+    expect(proofSync.flushProofSync).not.toHaveBeenCalled();
   });
 });
