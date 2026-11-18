@@ -62,6 +62,7 @@ const SHELL = [
   './js/platform/proofCapture.js',
   './js/platform/proofStore.js',
   './js/platform/proofSync.js',
+  './js/platform/proofCloud.js',
   './js/platform/sessionDeletionLog.js',
   './js/platform/share.js',
   './js/platform/purchases.js',

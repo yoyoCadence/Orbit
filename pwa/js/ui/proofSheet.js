@@ -96,6 +96,8 @@ export async function showProofSheet(sessionId, taskName) {
     const delBtn = document.querySelector(`.session-del-btn[data-session-id="${sessionId}"]`);
     if (delBtn) {
       const logItem = delBtn.closest('.log-item');
+      // A cloud placeholder (HW-112C2a) gives way to the photo just taken.
+      logItem?.querySelector('.session-proof-cloud')?.remove();
       if (logItem && !logItem.querySelector('.session-proof-thumb-wrap')) {
         const shell = document.createElement('div');
         shell.innerHTML = proofControlsHtml(sessionId, {

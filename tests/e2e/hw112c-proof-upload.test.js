@@ -91,6 +91,10 @@ test.describe('HW-112C1 proof photo backup', () => {
     await expect.poll(() => page.evaluate(owner => localStorage.getItem(
       `orbit_proofsync_upload:${encodeURIComponent(owner)}`,
     ), USER_ID)).toBeNull();
+    // HW-112C2a: the row's cloud placeholder gave way to the photo just taken.
+    const row = page.locator('.log-item', { has: page.locator(`.session-del-btn[data-session-id="${sessionId}"]`) });
+    await expect(row.locator('.session-proof-thumb')).toHaveAttribute('src', /^data:image\/jpeg;base64,/);
+    await expect(row.locator('.session-proof-cloud')).toHaveCount(0);
 
     // Undo the session: its photo goes here and in the cloud.
     page.once('dialog', dialog => dialog.accept());

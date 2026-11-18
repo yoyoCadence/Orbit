@@ -26,6 +26,7 @@ import { formatRewardLine, relationshipStageLabel } from '../personalSpace/v2/co
 import { emitPersonalSpaceTelemetry } from '../personalSpace/v2/telemetry.js';
 import { describeControl, findControl, watchRemindWindow } from '../personalSpace/v2/remindWindow.js';
 import { resolveAchievementPhoto } from '../platform/proofStore.js';
+import { withCloudAchievementPhoto } from '../platform/proofCloud.js';
 
 const MOMENTUM_LABELS = Object.freeze({
   low: '低',
@@ -311,7 +312,14 @@ export function renderPersonalSpaceV2(container, options = {}) {
     const snapshot = buildPersonalSpaceV2Snapshot({
       coreState: {
         ...coreState,
-        achievementPhoto: resolveAchievementPhoto(user.id, coreState.sessions),
+        // HW-112C2a: the cloud copy when this device has none; one more
+        // render once it has been downloaded.
+        achievementPhoto: withCloudAchievementPhoto(
+          user.id,
+          coreState.sessions,
+          resolveAchievementPhoto(user.id, coreState.sessions),
+          () => render(mode),
+        ),
       },
       v2State,
       ledgerSnapshot,

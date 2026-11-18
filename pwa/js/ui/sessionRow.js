@@ -10,6 +10,7 @@ import {
   getProof,
   setAchievementPhotoSelection,
 } from '../platform/proofStore.js';
+import { cloudProofUrl, observeCloudProofs, wantsCloudProof } from '../platform/proofCloud.js';
 
 export const RESULT_ICON  = { complete: '✅', partial: '🔶', invalid: '❌', instant: '✓' };
 export const RESULT_LABEL = { complete: '完成', partial: '部分完成', invalid: '無效', instant: '完成' };
@@ -50,12 +51,21 @@ export function sessionRowHtml(s, {
   `;
 }
 
+// `ownerId` is the signed-in (or guest) account the row belongs to: it keys the
+// Personal Space selection and, signed in, the cloud copy (HW-112C2a). Without
+// a photo on this device, a signed-in row gets a hidden placeholder that
+// bindProofThumbs() fills once the cloud photo arrives (rows with no photo stay
+// as they are).
 export function proofControlsHtml(sessionId, { ownerId = null, taskName = '' } = {}) {
-  const proof = getProof(sessionId);
-  if (!proof) return '';
+  const safeTaskName = escHtml(taskName || '這筆任務');
+  const proof = getProof(sessionId) || cloudProofUrl(ownerId, sessionId);
+  if (!proof) {
+    return wantsCloudProof(ownerId, sessionId)
+      ? `<span class="session-proof-cloud" data-proof-cloud-session-id="${escHtml(sessionId)}" data-proof-cloud-task-name="${escHtml(taskName || '')}" hidden></span>`
+      : '';
+  }
 
   const selected = getAchievementPhotoSelection(ownerId) === String(sessionId);
-  const safeTaskName = escHtml(taskName || '這筆任務');
   const wallButton = ownerId ? `
     <button
       class="session-proof-wall-btn ${selected ? 'is-selected' : ''}"
@@ -78,9 +88,29 @@ export function proofControlsHtml(sessionId, { ownerId = null, taskName = '' } =
   `;
 }
 
-/** Bind proof preview and local Personal Space photo-wall selection controls. */
+/**
+ * Bind proof preview and local Personal Space photo-wall selection controls,
+ * and fill in cloud photos as their rows come into view.
+ */
 export function bindProofThumbs(container, { ownerId = null, onPhotoWallChange } = {}) {
-  container.querySelectorAll('.session-proof-preview-btn').forEach(button => {
+  bindProofControls(container, container, { ownerId, onPhotoWallChange });
+  observeCloudProofs(container, ownerId, sentinel => {
+    const shell = document.createElement('div');
+    shell.innerHTML = proofControlsHtml(sentinel.dataset.proofCloudSessionId, {
+      ownerId,
+      taskName: sentinel.dataset.proofCloudTaskName,
+    });
+    const wrap = shell.querySelector('.session-proof-thumb-wrap');
+    if (!wrap) return;
+    sentinel.replaceWith(wrap);
+    bindProofControls(wrap, container, { ownerId, onPhotoWallChange });
+  });
+}
+
+// Binds the controls inside `target`; a selection change updates every
+// photo-wall button in `scope` (the whole list).
+function bindProofControls(target, scope, { ownerId = null, onPhotoWallChange } = {}) {
+  target.querySelectorAll('.session-proof-preview-btn').forEach(button => {
     button.addEventListener('click', e => {
       e.stopPropagation();
       const img = button.querySelector('.session-proof-thumb');
@@ -88,7 +118,7 @@ export function bindProofThumbs(container, { ownerId = null, onPhotoWallChange }
     });
   });
 
-  container.querySelectorAll('.session-proof-wall-btn').forEach(button => {
+  target.querySelectorAll('.session-proof-wall-btn').forEach(button => {
     button.addEventListener('click', event => {
       event.stopPropagation();
       const sessionId = button.dataset.proofWallSessionId;
@@ -103,7 +133,7 @@ export function bindProofThumbs(container, { ownerId = null, onPhotoWallChange }
       }
 
       const nextSelection = getAchievementPhotoSelection(ownerId);
-      container.querySelectorAll('.session-proof-wall-btn').forEach(candidate => {
+      scope.querySelectorAll('.session-proof-wall-btn').forEach(candidate => {
         const isSelected = candidate.dataset.proofWallSessionId === nextSelection;
         const candidateTask = candidate.dataset.proofWallTaskName || '這筆任務';
         candidate.classList.toggle('is-selected', isSelected);
