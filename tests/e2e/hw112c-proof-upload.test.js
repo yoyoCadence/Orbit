@@ -31,6 +31,13 @@ test.describe('HW-112C1 proof photo backup', () => {
     }));
     await page.route(`${SUPABASE_URL}/storage/**`, route => {
       const request = route.request();
+      // Downloads (HW-112C2a, a row in view asks for its cloud photo): none in the cloud yet.
+      if (request.method() === 'GET') {
+        return route.fulfill({
+          status: 400, contentType: 'application/json',
+          body: '{"statusCode":"404","error":"not_found","message":"Object not found"}',
+        });
+      }
       storageCalls.push({
         method: request.method(),
         path: new URL(request.url()).pathname,

@@ -276,6 +276,7 @@
 | #253 | v1.41.20 | PRO-014F1：排行榜的 Pro 光環（主題強調色、減少動態效果時靜止）與「✦ Pro」標記，只依 `get_leaderboard()` 的 `is_pro`，只是顯示；Personal Space 的 Pro 呈現改為 PRO-014F2（先寫提案）；#251 審查的 P3（首字退回的測試等） |
 | #254 | v1.41.21 | HW-112C1：新模組 `platform/proofSync.js`，登入的帳號拍照後在背景上傳到 `proofs/{uid}/{session}.jpg`（JPEG、不覆寫），上傳與刪除各有自己的重試清單（`orbit_proofsync_*`，每次遠端讀取成功後補傳），每個帳號一次補傳既有照片，撤銷紀錄時連同本機與雲端照片一起刪；雲端刪除不沿用 session 刪除紀錄（原因見 tasks.md）。另：CI 的 runner 換成 Ubuntu 26.04，`@playwright/test` 升到 1.65.1（INFRA-117）。下一步 HW-112C2 |
 | #255 | v1.41.22 | PRO-014F1 收尾：主色很亮的 8 個主題，Pro／「你」標記與字母頭像改用主題深色（`--on-primary`，`badgeContrast.test.js` 逐一檢查 ≥ 4.5:1）；Pro 光環改成 `::after` 透明度動畫；`proGateCallSites` 只放行排行榜的一處 `r.is_pro === true`；Segmenter 退回測試改用 `Object.create(Intl, …)` |
+| #256 | v1.41.23 | HW-112C2a：新模組 `platform/proofCloud.js`，登入後其他裝置的紀錄列在進入畫面時下載雲端佐證照片（同時最多 3 張、「沒有照片」記 10 分鐘），存在 IndexedDB（每帳號 300 張／15 MB；不用 Cache API，因為 `sw.js` 更新時會刪掉其他 cache），成就照片也會顯示雲端那份，登出時清掉；下一步 HW-112C2b（設定頁、登出刪本機已上傳的照片、狀態列文字） |
 
 教訓：#155–#164 在 Codex review 出現前就合併，造成 #165、#166、#167 的回頭修正。這就是 §2 合併條件的由來。獨立 review 在 #167、#168、#169 都找到真正的問題（例如椅子畫在螢幕後面、壁燈在相框下投出暗影），所以複查不能省。
 

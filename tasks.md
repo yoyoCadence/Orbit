@@ -30,7 +30,7 @@
   - Acceptance: logged-in user completes a task, attaches proof, photo survives sign-out and re-login on a different device; guest mode still works with localStorage only; no service_role key in client code.
   - Note: requires Supabase Storage RLS policy and a bucket — propose SQL migration before implementation.
   - 提案（2026-11-11，使用者要求寫提案）：[`docs/hw-112-proof-photo-sync-proposal.md`](docs/hw-112-proof-photo-sync-proposal.md)。建議私有 bucket `proofs`、路徑 `{user_id}/{session_id}.jpg`、四個 policy；拆成 HW-112A（migration 016＋測試）→ HW-112B（擁有者套用）→ HW-112C（client）。等擁有者決定 §9（9 點；Codex 與獨立審查後修訂：下載不用 list、不放 localStorage）。
-  - **核准（2026-11-11）**：§9 全部照建議。HW-112A 完成（見 Done）；HW-112B 已於 2026-11-13 套用（見 Done）；HW-112C1（上傳）完成（#254，見 Done）；下一步 HW-112C2（Next）。
+  - **核准（2026-11-11）**：§9 全部照建議。HW-112A 完成（見 Done）；HW-112B 已於 2026-11-13 套用（見 Done）；HW-112C1（上傳）完成（#254，見 Done）；HW-112C2a（其他裝置顯示）完成（見 Done）；下一步 HW-112C2b（Next）。
   - HW-112C 上線後，`pwa/js/statusBarNotice.js`（BUG-118）的「佐證照片只存在這台裝置」要改成只提醒還沒上傳的照片。
   - HW-112C 的驗收（從 HW-112B 移過來）：以兩個測試帳號經 Storage API 實測——本人可以上傳、讀、刪自己的檔案；不能碰別人的資料夾；上傳超過 200 KB 或不是 JPEG 被拒（大小與類型由 API 在上傳時檢查，資料庫測不到）。下載時不能相信大小與類型（只當 JPEG 顯示在 `<img>`，過大的不處理；移動與複製不會再檢查，016 開頭有說明）。
 
@@ -145,8 +145,8 @@
 > 2026-11-18 擁有者要求：「列出幾個你覺得需要完善的事 持續完善」，每完成一段就開 PR 並合併，不必特別詢問（必要時才問）。agent 列出的完善清單如下，依序做；需要核准的另外標明。
 
 - [ ] **PRO-014F2**（先寫提案）Personal Space 的 Pro 呈現：SUB-14 與 PRO-014F 都沒有定義 Pro 在 Personal Space 要呈現什麼（例如房間裡的裝飾、Companion 的台詞、角色外觀），屬於設計決定；agent 先寫提案（只寫文件），擁有者決定後才實作。排行榜的部分已由 PRO-014F1 完成（見 Done）。
-- [ ] **HW-112C2** 佐證照片在其他裝置顯示、設定頁與登出（HW-112C1 的上傳已完成，見 Done）
-  - 範圍（提案 §5.3、§5.5，§9 照建議）：只下載畫面上看得到的（IntersectionObserver，同時最多 3 個）；放在有上限的快取（Cache API，例如 300 張或 15 MB，最久沒看的先刪），以 `blob:` 顯示；「這筆沒有雲端照片」的記錄 10 分鐘過期、同步與回到前景時清掉；`proofControlsHtml()` 與 `resolveAchievementPhoto()` 先顯示預留圖、下載完再重畫；設定頁分成「清除這台裝置的照片」與「刪除所有佐證照片」（§9.4 A，跳過待傳中的）；登出時刪掉已上傳完成的本機照片（§9.5 B，待傳中的保留），登出時清掉這個帳號的快取；`statusBarNotice.js`（BUG-118）改成只提醒還沒上傳的照片。
+- [ ] **HW-112C2b** 佐證照片：設定頁、登出、狀態列文字（HW-112C2a 的雲端照片顯示已完成，見 Done）
+  - 範圍（提案 §5.5，§9 照建議）：設定頁分成「清除這台裝置的照片」與「刪除所有佐證照片」（§9.4 A，跳過待傳中的；後者含雲端、再確認一次）；登出時刪掉已上傳完成的本機照片（§9.5 B，待傳中的保留，再登入時從雲端顯示）；`statusBarNotice.js`（BUG-118）改成只提醒還沒上傳的照片。（登出時清掉這個帳號下載的照片已在 C2a 做了。）
   - 一併處理（#254 第四輪獨立審查的 P3，這次會改到 `proofSync.js`）：(1) 補測試：上傳期間被刪、而刪除清單存不進去時（`queueRemoval` 進記憶體）也會刪雲端檔案；(2) 上傳迴圈遇到 `'failed'` 提早結束時，先跑一次 `flushRemovals()`，不讓記憶體裡的刪除等到下次同步；(3) `unsavedRemovals` 的註解改成「下一次同步時、有空間就寫回清單」。
   - 評估（#254 第四輪留下的）：讀這個帳號的雲端資料夾時，可清掉沒有對應紀錄的檔案（刪除時儲存空間滿、離線又關掉 app 才會留下）；要確認別台裝置剛建立、紀錄還沒同步到的照片不會被誤刪，否則不做。
   - 驗收需要擁有者：以兩個測試帳號經 Storage API 實測本人可上傳、讀、刪自己的檔案、不能碰別人的資料夾、超過 200 KB 或不是 JPEG 被拒（agent 沒有測試帳號的密碼）。
@@ -285,6 +285,18 @@
 
 ## Done
 
+- [x] **HW-112C2a** 佐證照片在其他裝置顯示（v1.41.23）
+  - 新模組 `pwa/js/platform/proofCloud.js`（SHELL；INFRA-105：`sessionRow.js`、`home.js`、`personalSpaceV2.js`、`app.js` 只 import 它的新 export，它只 import 依賴既有的 export，含 `proofSync.js` 的 `PROOF_BUCKET`／`proofObjectPath`）：
+    - 登入的帳號、這台裝置沒有本機照片的紀錄列，先放一個隱藏的預留元素（沒有照片的列看起來和以前一樣）；列進入畫面（IntersectionObserver，上下 200px）才下載 `proofs/{uid}/{session}.jpg`，同時最多 3 個，同一張只發一次；下載完成後換成一般的縮圖（檢視、展示到個人空間都可用，展示的選擇會更新整個清單）。
+    - 不用 `list()`：「沒有雲端照片」（404、或 400 帶 statusCode 404／not_found）記 10 分鐘，每次同步（`_loadRemote`）與回到前景時清掉；離線、逾時、過期的 token（400 `InvalidJWT`）、伺服器錯誤不記，之後再試；回來的不是 JPEG（例如代理的錯誤頁）不顯示。
+    - 下載前後都確認登入的還是同一個帳號，換了就不顯示也不存。
+    - 下載的照片不放 localStorage：存在 IndexedDB `orbit-proofs`（照片與「最後看到的時間」分開存，清理時不必讀照片），每個帳號最多 300 張或 15 MB，最久沒看的先刪；重新開啟時從這裡顯示，不再下載。以 `blob:` URL 顯示。
+    - 成就照片（首頁的 Orbit Window 與個人空間）：選中的照片這台裝置沒有時，下載雲端那份，轉成 data URL（`orbitWindow.js` 只接受 data URL，不改它），下載完更新相框（首頁就地更新、個人空間重畫一次）。
+    - 登出（`handleSignOut`）時清掉這個帳號下載的照片（記憶體、「沒有照片」的記錄、IndexedDB），其他帳號的不動（§5.5）。
+    - 拍照存檔後，那一列的預留元素換成剛拍的照片（`proofSheet.js`）。
+  - **與提案的差異**：§5.3 建議 Cache API 的 `orbit-proofs-<ownerId>`，但 `sw.js` 在每次更新 activate 時刪掉自己以外的所有 cache，照片會在每次版本更新後消失；改 `sw.js` 的清除規則屬部署行為（需核准），所以改用 IndexedDB（service worker 不碰），一個資料庫、以帳號分開。
+  - 測試：`tests/unit/proofCloud.test.js`（22：誰會下載、路徑與 bucket、「沒有照片」10 分鐘後過期、三種 not found 的形式、同步與回到前景時清掉、離線／過期 token／伺服器錯誤不記、不是 JPEG 不顯示、同時最多 3 個且同一張只發一次、下載期間換帳號、登出時不送、重新開啟從 IndexedDB 顯示、15 MB 上限先刪最久沒看的、登出只清這個帳號、只下載進入畫面的列、訪客不觀察、重畫時換掉 observer、成就照片下載後以 data URL 顯示、訪客／紀錄不在／已有照片時不動），`fake-indexeddb` 為新的 devDependency；`tests/unit/sessionRowCloud.test.js`（7）；e2e `hw112c2-cloud-proof.test.js`（真的 supabase-js 與 Chromium 的 IndexedDB：畫面外不下載、捲到時顯示、沒有的不顯示、不寫 localStorage、選為成就照片、重新載入不再下載、登出清掉）；`hw112c-proof-upload.test.js` 加上拍照後那一列顯示剛拍的照片。
+  - 另：#255 獨立審查的 P3——疊加組合符號的 e2e 先確認不裁切時上一列真的會不同（字型不疊加時不會空過）。
 - [x] **PRO-014F1 收尾** 排行榜 Pro 標記的可讀性、光環效能與測試精確度（v1.41.22，#253 獨立審查的 P3）
   - Pro 標記（`.pro-badge`、`--inline`、`--corner`，各頁共用）、排行榜的「你」標記與字母頭像都是主色底：白字在主色很亮的主題只有 1.1–3.6:1。新增 `--on-primary`，只在白字未達 4.5:1 的 8 個主題設定為該主題自己的深色（liquid-galss、像素、cyberpunk、Material、aurora-blue、emerald、flame 用背景色；anime 是淺色主題，用它的文字色 `#2d1b2e`），其他主題維持白字；`tests/unit/badgeContrast.test.js` 從 style.css 逐一算每個主題的對比（≥ 4.5:1），拿掉任一個設定就失敗。其他用主色底的元件（按鈕等）不在這次範圍。
   - 光環：外圈仍是頭像自己的 `box-shadow`（靜止），會呼吸的光暈改成 `::after` 一層、動畫只改 `opacity`（合成層，不重畫）；Pro 頭像不再 `overflow: hidden`，照片自己切圓。減少動態時光暈靜止（opacity .75）。e2e 改查 `::after` 的動畫，並新增 liquid-galss 下標記文字是深色的檢查；4 個主題（dark-purple、liquid-galss、像素、anime）截圖確認外觀。

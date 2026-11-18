@@ -205,6 +205,14 @@ describe('download', () => {
     expect(mockDownload).toHaveBeenCalledTimes(1);
   });
 
+  it('shows nothing that is not a JPEG (a proxy\'s error page), and tries again later', async () => {
+    signIn();
+    mockDownload.mockResolvedValueOnce({ data: new Blob(['{"ok":true}'], { type: 'application/json' }), error: null });
+    expect(await cloud.loadCloudProof(OWNER, sid(1))).toBeNull();
+    expect(cloud.cloudProofUrl(OWNER, sid(1))).toBeNull();
+    expect(cloud.wantsCloudProof(OWNER, sid(1))).toBe(true);
+  });
+
   it('sends nothing while signed out', async () => {
     expect(await cloud.loadCloudProof(OWNER, sid(1))).toBeNull();
     expect(mockDownload).not.toHaveBeenCalled();

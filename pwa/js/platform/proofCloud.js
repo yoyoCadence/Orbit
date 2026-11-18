@@ -22,7 +22,7 @@
 // A module of its own (INFRA-105): existing SHELL modules import only these new
 // exports; this module imports only exports its dependencies already had.
 
-/* global Blob, FileReader, IntersectionObserver, indexedDB -- browser APIs; eslint.config.js lists only the common ones */
+/* global Blob, IntersectionObserver, indexedDB -- browser APIs; eslint.config.js lists only the common ones */
 
 import { supabase } from '../supabase.js';
 import { storage } from '../storage.js';
@@ -239,6 +239,8 @@ async function download(ownerId, sessionId) {
     if (error && isNotFound(error)) misses.set(entryKey(ownerId, sessionId), Date.now() + MISS_TTL_MS);
     return null;
   }
+  // The bucket only holds JPEGs: anything else (a proxy's error page) is not shown.
+  if (data.type && data.type !== 'image/jpeg') return null;
   // The account may have changed while the photo was on its way.
   if (await signedInUserId() !== ownerId || !signedInHere(ownerId)) return null;
   return data.type === 'image/jpeg' ? data : new Blob([data], { type: 'image/jpeg' });

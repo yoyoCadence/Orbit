@@ -121,7 +121,7 @@ test.describe('HW-112C2a cloud proof photos on another device', () => {
 
     // Signing out removes this account's photos from the cache.
     const cached = () => page.evaluate(owner => new Promise(resolve => {
-      const request = indexedDB.open('orbit-proofs');
+      const request = window.indexedDB.open('orbit-proofs');
       request.onsuccess = () => {
         const db = request.result;
         const keys = db.transaction('meta').objectStore('meta').index('owner').getAllKeys(owner);

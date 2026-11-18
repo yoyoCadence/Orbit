@@ -114,8 +114,13 @@ test.describe('PRO-014F leaderboard Pro mark', () => {
     // The row above looks the same with the stacked name as with a plain "Z".
     const rowAbove = () => page.locator('.lb-row').first().screenshot({ animations: 'disabled' });
     const withMarks = await rowAbove();
-    await avatar.locator('.lb-avatar-face').evaluate(face => { face.textContent = 'Z'; });
+    const face = avatar.locator('.lb-avatar-face');
+    await face.evaluate(el => { el.textContent = 'Z'; });
     expect((await rowAbove()).equals(withMarks)).toBe(true);
+    // Self-check: unclipped, the marks do reach the row above (the font stacks
+    // them), so the comparison above can fail.
+    await face.evaluate((el, text) => { el.textContent = text; el.style.overflow = 'visible'; }, stacked);
+    expect((await rowAbove()).equals(withMarks)).toBe(false);
   });
 
   test('keeps the glow but stops it moving under reduced motion', async ({ page }) => {
