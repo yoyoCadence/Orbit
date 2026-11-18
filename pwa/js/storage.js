@@ -1067,8 +1067,9 @@ export const storage = {
     return saved;
   },
   /**
-   * PRO-014E2: the user just chose in settings (and the server confirmed);
-   * that supersedes an opt-out kept from v1.41.17 or earlier.
+   * PRO-014E2: the user just joined or left the leaderboard in settings (and
+   * the server confirmed); that choice supersedes an opt-out kept from
+   * v1.41.17 or earlier. A rename does not call this.
    */
   clearLeaderboardOptOutPending: (ownerId) => {
     const key = ownerSyncPendingKey(LEADERBOARD_OPT_OUT_PENDING_KEY, ownerId);

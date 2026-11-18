@@ -5077,6 +5077,21 @@ nav {
 .lb-name-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .lb-sub  { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
 .lb-you  { font-size: 10px; background: var(--primary); color: #fff; border-radius: 4px; padding: 1px 5px; margin-left: 4px; flex-shrink: 0; }
+/* PRO-014F (SUB-14): the Pro glow. A ring in the theme's accent colour that
+   breathes slowly; still under reduced motion. Display only (is_pro comes from
+   get_leaderboard()). */
+.lb-pro { margin-left: 4px; flex-shrink: 0; }
+.lb-avatar--pro {
+  box-shadow: 0 0 0 2px var(--accent), 0 0 10px 2px color-mix(in srgb, var(--accent) 55%, transparent);
+  animation: lb-pro-glow 3.2s ease-in-out infinite alternate;
+}
+@keyframes lb-pro-glow {
+  from { box-shadow: 0 0 0 2px var(--accent), 0 0 6px 0 color-mix(in srgb, var(--accent) 40%, transparent); }
+  to   { box-shadow: 0 0 0 2px var(--accent), 0 0 14px 3px color-mix(in srgb, var(--accent) 65%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lb-avatar--pro { animation: none; }
+}
 
 .lb-score { text-align: right; flex-shrink: 0; }
 .lb-score-val { font-size: 15px; font-weight: 700; color: var(--primary-lt); }

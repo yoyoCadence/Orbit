@@ -109,6 +109,9 @@ describe('Pro gate 呼叫點', () => {
       'platform/proEntitlement.js': '註解中引用欄位名以說明取代了什麼',
       'app.js': '讀 trialStartedAt 只為決定要不要啟動試用，不是 Pro 判定',
       'pages/settings.js': '_devApplyPro() 開發者面板；見下方單獨的測試',
+      // PRO-014F1: not a profile field. get_leaderboard() (018) decides is_pro on
+      // the server for each listed user; the board only shows the Pro mark.
+      'pages/leaderboard.js': 'get_leaderboard() 回傳的 is_pro（server 判定）只用於顯示 Pro 光環，不是 Pro 判定',
     };
 
     const offenders = files

@@ -273,6 +273,7 @@
 | #250 | v1.41.18 | PRO-014E2：排行榜改用 `get_leaderboard()`（`is_me`、`display_name`、`joined_on`、`avatar_path`，新快取 `leaderboardCacheV2`）；設定頁開啟排行榜時先設定公開名稱，`display_name`／`is_public` 改為等待伺服器的單獨寫入、不再隨 profile 上傳；名稱規則與 018 的 CHECK 相同（單元測試從 018 讀出範圍比對）；新 e2e。下一步 E3（約 2026-12-13，另行核准） |
 | #251 | v1.41.19 | PRO-014E2 收尾：改名不清掉舊版留下的「關閉」、排行榜頭像首字以字素取；記錄 E2 第三輪審查；Next 列出 2026-11-18 的完善清單（DEV-001、PRO-014F、HW-112C、INFRA-116 需核准） |
 | #252 | — | DEV-001：`PLAYWRIGHT_CHROMIUM_EXECUTABLE` 讓容器裡直接跑 e2e；`tests/database/run.sh` 一次跑全部資料庫測試（每份一個新資料庫，pgTAP 的失敗也算）；替身加上 `extensions` schema；名稱規則比對工具 `support/name-rule-parity.mjs`；`tests/database/README.md`、§8 的跑法 |
+| #253 | v1.41.20 | PRO-014F1：排行榜的 Pro 光環（主題強調色、減少動態效果時靜止）與「✦ Pro」標記，只依 `get_leaderboard()` 的 `is_pro`，只是顯示；Personal Space 的 Pro 呈現改為 PRO-014F2（先寫提案）；#251 審查的 P3（首字退回的測試等） |
 
 教訓：#155–#164 在 Codex review 出現前就合併，造成 #165、#166、#167 的回頭修正。這就是 §2 合併條件的由來。獨立 review 在 #167、#168、#169 都找到真正的問題（例如椅子畫在螢幕後面、壁燈在相框下投出暗影），所以複查不能省。
 
