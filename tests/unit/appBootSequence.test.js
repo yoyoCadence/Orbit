@@ -17,6 +17,7 @@
  *   4. 直接切換到另一個帳號會重跑 boot 序列
  */
 
+import { readFileSync } from 'node:fs';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -1058,6 +1059,86 @@ describe('HW-112D：設定頁與另一個分頁（#262 審查）', () => {
       submit();
       expect(storage.saveUser).toHaveBeenCalledTimes(1);
       expect(reload).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('帳號載入失敗後改用遊客：快取的是同步過的帳號時，設定頁不沿用它（#264 審查）', async () => {
+    const owner = 'owner-b';
+    localStorage.setItem(`yoyo_sessionSyncCutover:v1.21:${encodeURIComponent(owner)}`,
+      JSON.stringify({ ownerId: owner, completed: true, completedAt: '2026-11-01T00:00:00.000Z' }));
+    try {
+      cache.user = { ...makeUser(owner), totalXP: 900, streakDays: 12 };
+      cache.tasks = [];
+      auth.getSession.mockResolvedValue(null);
+      await import('../../pwa/js/app.js');
+      await flush();
+      window.continueAsGuest();
+      await flush();
+      storage.saveUser.mockClear();
+      document.getElementById('setup-name').value = '訪客';
+      submit();
+      const [[saved]] = storage.saveUser.mock.calls;
+      expect(saved.id).not.toBe(owner);
+      expect(saved).toMatchObject({ name: '訪客', totalXP: 0, streakDays: 0 });
+    } finally {
+      localStorage.removeItem(`yoyo_sessionSyncCutover:v1.21:${encodeURIComponent(owner)}`);
+    }
+  });
+
+  it('遊客自己的本機使用者（沒有同步標記）照舊沿用', async () => {
+    cache.user = { ...makeUser('guest-1'), totalXP: 40 };
+    cache.tasks = [];
+    auth.getSession.mockResolvedValue(null);
+    await import('../../pwa/js/app.js');
+    await flush();
+    window.continueAsGuest();
+    await flush();
+    storage.saveUser.mockClear();
+    document.getElementById('setup-name').value = '訪客';
+    submit();
+    const [[saved]] = storage.saveUser.mock.calls;
+    expect(saved).toMatchObject({ id: 'guest-1', name: '訪客', totalXP: 40 });
+  });
+
+  it('選頭像讀取中又重新開啟設定頁：讀完的照片不會蓋回新的預覽（#265 審查）', async () => {
+    await openGuestSetup();
+    const input = document.getElementById('setup-avatar-input');
+    const file = new File([new Uint8Array([137, 80, 78, 71])], 'a.png', { type: 'image/png' });
+    Object.defineProperty(input, 'files', { configurable: true, value: [file] });
+    input.dispatchEvent(new Event('change'));
+    window.continueAsGuest(); // opened again before the read finishes
+    await new Promise(resolve => setTimeout(resolve, 50));
+    await flush();
+    const preview = document.getElementById('setup-avatar-preview');
+    expect(preview.style.backgroundImage).toBe('');
+    expect(preview.textContent).toBe('👤');
+  });
+
+  it('同步標記的 key 與 storage.js 一致（app.js 不從 storage.js 匯入：INFRA-105）', () => {
+    const storageSource = readFileSync('pwa/js/storage.js', 'utf8');
+    expect(storageSource).toContain("const SESSION_SYNC_CUTOVER_KEY = 'sessionSyncCutover:v1.21';");
+    expect(storageSource).toContain("const PREFIX = 'yoyo_';");
+    expect(readFileSync('pwa/js/app.js', 'utf8')).toContain('`yoyo_sessionSyncCutover:v1.21:${encodeURIComponent(String(userId))}`');
+  });
+
+  it('另一個分頁登出（已儲存的帳號變成沒有）時重新載入，但不設「切換了帳號」的提示（#265 審查）', async () => {
+    const reload = vi.fn();
+    vi.stubGlobal('location', { ...window.location, reload });
+    try {
+      cache.user = makeUser('guest-2');
+      cache.tasks = [];
+      auth.getSession.mockResolvedValue(null);
+      await import('../../pwa/js/app.js');
+      await flush();
+      window.continueAsGuest();
+      await flush();
+      cache.user = null; // signed out in another tab
+      document.getElementById('setup-name').value = '訪客';
+      submit();
+      expect(reload).toHaveBeenCalled();
+      expect(sessionStorage.getItem('orbit_account_reloaded')).toBeNull();
     } finally {
       vi.unstubAllGlobals();
     }

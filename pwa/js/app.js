@@ -286,6 +286,19 @@ window.signOut = async function () {
 
 // ─── Setup screen ────────────────────────────────────────────────────────────
 
+// An account this device has synced: storage.js marks its first successful
+// remote load (the session sync cutover, private there; the boot test checks
+// the key against storage.js). A guest's local user never has the mark.
+function _isSyncedAccount(userId) {
+  if (!userId) return false;
+  try {
+    const marker = JSON.parse(localStorage.getItem(`yoyo_sessionSyncCutover:v1.21:${encodeURIComponent(String(userId))}`));
+    return marker?.ownerId === userId && marker?.completed === true;
+  } catch {
+    return false;
+  }
+}
+
 // Every showSetup() adds its own listeners to the same form; only the latest
 // one acts (HW-112D, #262 review): an earlier one would save with the owner it
 // was opened for.
@@ -323,6 +336,7 @@ function showSetup(ownerId = null) {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = ev => {
+      if (!isCurrent()) return; // set up again while reading (#265 review)
       avatarData = ev.target.result;
       const preview = document.getElementById('setup-avatar-preview');
       preview.style.cssText += `;background-image:url(${avatarData});background-size:cover;background-position:center`;
@@ -340,9 +354,13 @@ function showSetup(ownerId = null) {
     // A guest's setup with an account stored meanwhile (another tab signed in,
     // and this one never heard): it would copy that account's id, upload the
     // guest's name to its profile and replace its tasks. Show it instead.
-    if (!ownerId && (storage.getUser()?.id ?? null) !== storedIdAtOpen) {
-      // Said after the reload, as for the other account switches.
-      try { sessionStorage.setItem(ACCOUNT_RELOADED_KEY, '1'); } catch { /* the toast is optional */ }
+    const storedIdNow = storage.getUser()?.id ?? null;
+    if (!ownerId && storedIdNow !== storedIdAtOpen) {
+      // Said after the reload when an account is there to show (not after a
+      // sign-out elsewhere, which lands on the login screen; #265 review).
+      if (storedIdNow) {
+        try { sessionStorage.setItem(ACCOUNT_RELOADED_KEY, '1'); } catch { /* the toast is optional */ }
+      }
       location.reload();
       return;
     }
@@ -352,7 +370,11 @@ function showSetup(ownerId = null) {
     // when the remote task list is empty). Treat setup as a partial update:
     // preserve every existing field, including future profile fields unknown to
     // this form, and only replace values the user actually edits here.
-    const existingProfile = storage.getUser() ?? state.user ?? {};
+    // A guest never takes over an account's cached profile (#264 review): after
+    // an account's failed load the login screen offers the guest path while
+    // another account's user may still be cached here. That one starts afresh.
+    const cachedProfile = storage.getUser() ?? state.user ?? null;
+    const existingProfile = !ownerId && _isSyncedAccount(cachedProfile?.id) ? {} : (cachedProfile ?? {});
 
     state.user = {
       ...existingProfile,
