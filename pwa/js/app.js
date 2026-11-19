@@ -43,7 +43,7 @@ import { flushProofSync } from './platform/proofSync.js';
 import { forgetCloudProofMisses, keepCloudProofsOf } from './platform/proofCloud.js';
 import { photosNotSurelyUploaded, signOutProofCleanup } from './platform/proofLocal.js';
 import { unsureProofPhotos } from './platform/proofUnsure.js';
-import { showProofKeepSheet } from './ui/proofKeepSheet.js';
+import { closeProofKeepSheet, showProofKeepSheet } from './ui/proofKeepSheet.js';
 import { isOnline, onConnectivityChange } from './platform/network.js';
 import { orbitWindowRuntimeDestroyer } from './personalSpace/v2/runtime/pixiSceneRuntime.js';
 
@@ -435,7 +435,16 @@ window.continueAsGuest = function () {
   }
 };
 
+// An account's proof photos shown full screen (the lightbox, HW-112D's sheet)
+// are mounted on <body>: they go when the account does.
+function _closeProofOverlays() {
+  closeProofKeepSheet();
+  document.querySelectorAll('.proof-lightbox').forEach(overlay => overlay.remove());
+}
+
 async function loadAndStart(session) {
+  // Another account signing in here (or in another tab) replaces the one shown.
+  if (state.user?.id && state.user.id !== session?.user?.id) _closeProofOverlays();
   const operation = authOperationGuard.begin(session);
   _currentSession = session;
   let remoteLoaded = false;
@@ -537,6 +546,7 @@ function handleSignOut() {
   // Overlays are mounted on <body>, so hiding #main-app below leaves them
   // floating above the login screen with a null state.user behind them.
   clearDayCycleModals();
+  _closeProofOverlays();
   if (!_currentSession && !storage.getUser()) return; // already signed out
   // HW-112C2a/b: this account's downloaded proof photos leave with it, and so
   // do its local photos that are surely in the cloud (§5.5, §9.5 B); photos

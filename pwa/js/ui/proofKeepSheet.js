@@ -21,6 +21,11 @@ function localProof(sessionId) {
 
 let closeOpenSheet = null;
 
+/** Sign-out or another account (app.js): its photos must not stay on screen. */
+export function closeProofKeepSheet() {
+  closeOpenSheet?.({ restoreFocus: false });
+}
+
 /**
  * @param {{ sessionId: string, date?: string, taskName?: string }[]} items
  * @param {{ returnFocus?: HTMLElement | null }} [options]

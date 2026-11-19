@@ -34,7 +34,7 @@ import { flushProofSync, queueProofUpload } from '../../pwa/js/platform/proofSyn
 import { photosNotSurelyUploaded } from '../../pwa/js/platform/proofLocal.js';
 import { saveProof } from '../../pwa/js/platform/proofStore.js';
 import { unsureProofPhotos } from '../../pwa/js/platform/proofUnsure.js';
-import { showProofKeepSheet } from '../../pwa/js/ui/proofKeepSheet.js';
+import { closeProofKeepSheet, showProofKeepSheet } from '../../pwa/js/ui/proofKeepSheet.js';
 import { statusBarSyncCheckText } from '../../pwa/js/statusBarNotice.js';
 
 const jpeg = (bytes = 8) => `data:image/jpeg;base64,${btoa('\xff\xd8\xff' + 'x'.repeat(bytes))}`;
@@ -169,5 +169,15 @@ describe('showProofKeepSheet', () => {
     expect(document.querySelectorAll('.proof-keep-sheet')).toHaveLength(1);
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     expect(document.querySelector('.proof-keep-sheet')).toBeNull();
+  });
+
+  it('closes for sign-out without moving focus (#261 Codex P2)', () => {
+    const opener = document.createElement('button');
+    document.body.append(opener);
+    showProofKeepSheet([], { returnFocus: opener });
+    closeProofKeepSheet();
+    expect(document.querySelector('.proof-keep-sheet')).toBeNull();
+    expect(document.activeElement).not.toBe(opener);
+    closeProofKeepSheet(); // nothing open: nothing happens
   });
 });

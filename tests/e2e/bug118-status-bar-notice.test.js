@@ -161,7 +161,7 @@ test('HW-112D (a): photos the sync is done with but cannot confirm are named, an
     if (localStorage.getItem(key)) return;
     localStorage.setItem(key, JSON.stringify({
       access_token: 'access-token', refresh_token: 'refresh-token', token_type: 'bearer',
-      expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) - 60,
+      expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600,
       user: { id: userId, aud: 'authenticated', role: 'authenticated', email: 'bug118@example.test' },
     }));
     localStorage.setItem(noticeKey, JSON.stringify({ relaunchAskedAtMs: 1 }));
@@ -233,6 +233,15 @@ test('HW-112D (a): photos the sync is done with but cannot confirm are named, an
   await page.keyboard.press('Escape');
   await expect(sheet).toHaveCount(0);
   await expect(view).toBeFocused();
+
+  // Signed out while the sheet is open (another tab's sign-out reaches the same
+  // handleSignOut through supabase's SIGNED_OUT): the photos go with the account.
+  await view.click();
+  await expect(sheet).toBeVisible();
+  void page.evaluate(() => window.signOut());
+  await expect(page.locator('#login-screen')).toBeVisible({ timeout: 8000 });
+  await expect(sheet).toHaveCount(0);
+  await expect(page.locator('.proof-lightbox')).toHaveCount(0);
 });
 
 test.describe('on a small iPhone', () => {
