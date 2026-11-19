@@ -144,17 +144,12 @@
 
 > 2026-11-18 擁有者要求：「列出幾個你覺得需要完善的事 持續完善」，每完成一段就開 PR 並合併，不必特別詢問（必要時才問）。agent 列出的完善清單如下，依序做；需要核准的另外標明。
 
-- [ ] **PRO-014F2**（**需要擁有者決定**）Personal Space 的 Pro 呈現：提案已寫，見 [`docs/pro-014f2-personal-space-pro-proposal.md`](docs/pro-014f2-personal-space-pro-proposal.md)。建議先做 F2A（只顯示：個人空間狀態列與首頁 Orbit Window 的「✦ Pro」標記，以及 Orbit 夥伴在 Pro 開始那天說一句中性的話，不推銷；狀態「不知道」時不顯示也不說話），不碰經濟、不新增素材、不改資料庫；Pro 專屬外觀（F2B）選做、只限新內容；不建議讓 Pro 影響進度。等待擁有者決定 §9（範圍、位置、文案、光暈、試用期、F2B）後才實作。排行榜的部分已由 PRO-014F1 完成（見 Done）。
+- [ ] **PRO-014F2**（擁有者 2026-11-19 決定 §9 全部照建議：做 F2A＝狀態列與首頁 Orbit Window 的標記＋只在開始那天的一句話；不做光暈；試用算 Pro；F2B 暫不做）Personal Space 的 Pro 呈現：提案已寫，見 [`docs/pro-014f2-personal-space-pro-proposal.md`](docs/pro-014f2-personal-space-pro-proposal.md)。建議先做 F2A（只顯示：個人空間狀態列與首頁 Orbit Window 的「✦ Pro」標記，以及 Orbit 夥伴在 Pro 開始那天說一句中性的話，不推銷；狀態「不知道」時不顯示也不說話），不碰經濟、不新增素材、不改資料庫；Pro 專屬外觀（F2B）選做、只限新內容；不建議讓 Pro 影響進度。等待擁有者決定 §9（範圍、位置、文案、光暈、試用期、F2B）後才實作。排行榜的部分已由 PRO-014F1 完成（見 Done）。
 - [ ] **HW-112D** 佐證照片：擁有者驗收與後續評估（HW-112C1／C2a／C2b 已完成，見 Done）
   - 留下的 P3（#257 審查，不急）：(1) 永遠上傳不了的照片（轉檔失敗的 PNG、超過 200 KB）會讓「檢查同步」一直說還有照片沒上傳，提示文字可另外說明（例如「這幾張無法備份，移除舊圖示前請先另存」）；(2) 既有問題、不限照片：`storage.saveSessions()` 不檢查擁有者，兩個分頁登入不同帳號時，記憶體仍是 A 的分頁可能把 A 的紀錄寫到已儲存的 B 底下（iOS 主畫面 app 不會發生；要修需在寫入時比對 `storage.getUser()?.id`）。
   - **需要擁有者決定**（#257 Codex P2）：「刪除所有佐證照片」只刪這台裝置與雲端；其他裝置已下載的副本（IndexedDB）留到那台裝置登出或「清除這台裝置的佐證照片」，確認文字已照實說明。要讓其他裝置也自動清掉，需要 (a) profile 加一個「照片全部刪除時間」欄位（schema 變更，需核准），其他裝置同步時比對並清掉較早的下載副本；或 (b) 每台裝置每次同步列出這個帳號的雲端資料夾（每 100 張一個請求）並清掉雲端已沒有的副本。agent 建議 (a)，但目前不做，等擁有者決定。
   - 評估（#254 第四輪留下的）：讀這個帳號的雲端資料夾時，可清掉沒有對應紀錄的檔案（刪除時儲存空間滿、離線又關掉 app 才會留下）；要確認別台裝置剛建立、紀錄還沒同步到的照片不會被誤刪，否則不做。
   - 驗收需要擁有者：以兩個測試帳號經 Storage API 實測本人可上傳、讀、刪自己的檔案、不能碰別人的資料夾、超過 200 KB 或不是 JPEG 被拒（agent 沒有測試帳號的密碼）。
-- [ ] **INFRA-116**（**需要擁有者核准**：CI 變更）CI 跑 `tests/database/*.sql`
-  - 問題：資料庫測試（bug109、bug119、hw112、infra110、pro014d/e/l/r、pro017）只在本機 PostgreSQL 跑，CI 不會發現 migration 或測試的退化。
-  - 提案：在 `ci.yml` 加一個 job，用 GitHub Actions 的 PostgreSQL 16 service（裝上 pgtap），執行 DEV-001 的 `tests/database/run.sh`（每份測試一個新的資料庫：替身 → `pwa/db/0*.sql` → 測試，`plpgsql.check_asserts = on`；本機 10 份全部通過），設 `REQUIRE_PGTAP=1`。不接觸 production、不需要任何 secret。核准後才做。
-  - 一併處理 #252 第二輪審查的 P3：`run.sh` 拒絕非本機主機時只看 `PGHOST`，也要拒絕非空的 `PGHOSTADDR`／`PGSERVICE`（或 `PGHOST` 裡逗號後的遠端主機）。
-
 - [ ] **PRO-017RA-Auth**（擁有者）先完成 INFRA-101（Custom SMTP），再在 Supabase 開啟「確認 email」，並確認匿名登入維持關閉
   - 019 已於 2026-11-13 套用（見 Done 的 PRO-017RA）；這一步只能由擁有者在 Supabase Dashboard 做（agent 的工具改不到 Auth 設定）。
   - Authentication 設定裡（Email provider）開啟 Confirm email（畫面名稱以當時的 Dashboard 為準）。會影響**所有新使用者**的 email 註冊（要先收信確認才能登入）；開啟前確認註冊頁的提示與 email 範本（INFRA-101 的寄件人設定也相關）。Google 登入不受影響。
@@ -284,6 +279,11 @@
 ---
 
 ## Done
+
+- [x] **INFRA-116** CI 跑資料庫測試（擁有者 2026-11-19 核准）
+  - `ci.yml` 新增 `database` job：PostgreSQL 16 官方容器（已含 PGDG apt，裝上 `postgresql-16-pgtap`），把 repo 唯讀掛進容器，以 `postgres` 使用者在容器內執行 `tests/database/run.sh`（`REQUIRE_PGTAP=1`，走本機 socket）。不接觸 production、不需要任何 secret；容器的第一次啟動會先開暫時的 server 再重啟，所以裝完 pgTAP 後再等一次 `pg_isready`。
+  - 一併處理 #252 第二輪審查的 P3：`run.sh` 拒絕任何可能連到別處的設定——`PGHOST` 逗號清單中任何一個非本機主機、非 loopback 的 `PGHOSTADDR`、或設了 `PGSERVICE`（`ORBIT_DB_TEST_ALLOW_REMOTE=1` 才略過）。本機以 `REQUIRE_PGTAP=1` 跑 10 份全部通過；四種遠端設定都以結束碼 2 拒絕。
+  - `tests/database/README.md` 更新。
 
 - [x] **HW-112C2b** 佐證照片：設定頁、登出、狀態列文字（v1.41.24）
   - 新模組 `pwa/js/platform/proofLocal.js`（SHELL；INFRA-105：`proofSync.js`、`proofCloud.js` 都已發佈，新的 export 放在新模組；`settings.js`、`app.js` 只 import 它的新 export，它只 import 既有的 export）：

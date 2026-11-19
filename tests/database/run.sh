@@ -9,22 +9,29 @@
 #
 # Connects through the usual PG* variables (default: the local socket). Only for a
 # local, throwaway cluster: it creates and drops databases named orbit_test_*, and it
-# refuses a PGHOST that is not local unless ORBIT_DB_TEST_ALLOW_REMOTE=1. Never point
-# it at Supabase. Tests that create the pgtap extension (pro014d) are skipped when
+# refuses any connection setting that may lead elsewhere — a PGHOST entry that is not
+# local (each of a comma-separated list), a PGHOSTADDR that is not loopback, or a
+# PGSERVICE — unless ORBIT_DB_TEST_ALLOW_REMOTE=1. Never point it at Supabase. Tests that create the pgtap extension (pro014d) are skipped when
 # pgtap is not installed; REQUIRE_PGTAP=1 makes that a failure instead (for CI).
 # Exit status: 0 when every test passed (or was skipped), 1 otherwise, 2 on a setup error.
 
 set -u
 
-case "${PGHOST:-}" in
-  ''|localhost|127.0.0.1|::1|/*) ;;
-  *)
-    if [ "${ORBIT_DB_TEST_ALLOW_REMOTE:-}" != "1" ]; then
-      echo "refusing PGHOST=$PGHOST: run.sh creates and drops databases; set ORBIT_DB_TEST_ALLOW_REMOTE=1 to override" >&2
-      exit 2
-    fi
-    ;;
-esac
+remote=""
+IFS=',' read -r -a pg_hosts <<< "${PGHOST:-}"
+for host in "${pg_hosts[@]:-}"; do
+  case "$host" in ''|localhost|127.0.0.1|::1|/*) ;; *) remote="PGHOST=$PGHOST" ;; esac
+done
+IFS=',' read -r -a pg_addrs <<< "${PGHOSTADDR:-}"
+for addr in "${pg_addrs[@]:-}"; do
+  case "$addr" in ''|127.0.0.1|::1) ;; *) remote="PGHOSTADDR=$PGHOSTADDR" ;; esac
+done
+# A service entry (pg_service.conf) can name any host.
+if [ -n "${PGSERVICE:-}" ]; then remote="PGSERVICE=$PGSERVICE"; fi
+if [ -n "$remote" ] && [ "${ORBIT_DB_TEST_ALLOW_REMOTE:-}" != "1" ]; then
+  echo "refusing $remote: run.sh creates and drops databases; set ORBIT_DB_TEST_ALLOW_REMOTE=1 to override" >&2
+  exit 2
+fi
 
 # Resolve the tests before moving to the repository root.
 tests=()

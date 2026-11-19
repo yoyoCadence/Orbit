@@ -1,6 +1,6 @@
 # 資料庫測試（tests/database）
 
-`pwa/db/` 的 migration 都有對應的資料庫測試。測試是純 SQL（`ASSERT`，失敗即中止）或 pgTAP（`pro014d`），每份都在單一 transaction 裡、結尾 rollback。CI 目前**不跑**這些測試（提案見 `tasks.md` 的 INFRA-116），改 migration 或測試時請在本機跑。
+`pwa/db/` 的 migration 都有對應的資料庫測試。測試是純 SQL（`ASSERT`，失敗即中止）或 pgTAP（`pro014d`），每份都在單一 transaction 裡、結尾 rollback。CI 的 `database` job 會在每個 PR 跑全部測試（INFRA-116：PostgreSQL 16 官方容器、裝上 pgTAP、`REQUIRE_PGTAP=1`）；改 migration 或測試時也請先在本機跑。
 
 ## 在本機跑全部
 
@@ -11,7 +11,7 @@ tests/database/run.sh                                  # 全部 *.test.sql
 tests/database/run.sh tests/database/pro017.test.sql   # 指定幾份
 ```
 
-`run.sh` 為每份測試建立新的資料庫（`orbit_test_*`），依序套用 `support/supabase-standin.sql` 與 `pwa/db/0*.sql`，再以 `plpgsql.check_asserts = on` 執行測試，最後刪掉資料庫（中斷時也會刪）。輸出每份 `PASS`／`FAIL`／`SKIP`，失敗時列出 pgTAP 失敗的項目；有失敗時結束碼是 1，參數或環境不對時是 2。測試檔的路徑以執行的目錄為準。沒有安裝 pgtap 擴充套件時，`pro014d` 會 `SKIP`（Ubuntu：`apt-get install postgresql-16-pgtap`）；設定 `REQUIRE_PGTAP=1` 時改為失敗（給 CI 用）。
+`run.sh` 為每份測試建立新的資料庫（`orbit_test_*`），依序套用 `support/supabase-standin.sql` 與 `pwa/db/0*.sql`，再以 `plpgsql.check_asserts = on` 執行測試，最後刪掉資料庫（中斷時也會刪）。只接受本機的連線設定：`PGHOST` 的每一個主機都要是本機（socket 路徑、localhost、127.0.0.1、::1）、`PGHOSTADDR` 只能是 loopback、不能設 `PGSERVICE`，否則拒絕（`ORBIT_DB_TEST_ALLOW_REMOTE=1` 可略過，但不要指向 Supabase）。輸出每份 `PASS`／`FAIL`／`SKIP`，失敗時列出 pgTAP 失敗的項目；有失敗時結束碼是 1，參數或環境不對時是 2。測試檔的路徑以執行的目錄為準。沒有安裝 pgtap 擴充套件時，`pro014d` 會 `SKIP`（Ubuntu：`apt-get install postgresql-16-pgtap`）；設定 `REQUIRE_PGTAP=1` 時改為失敗（給 CI 用）。
 
 只能對本機、可以丟棄的叢集執行，**不要指向 Supabase**：`PGHOST` 不是本機時直接拒絕（`ORBIT_DB_TEST_ALLOW_REMOTE=1` 才放行）。
 

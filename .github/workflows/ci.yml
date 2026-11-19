@@ -48,6 +48,38 @@ jobs:
       - name: Run tests
         run: npm test
 
+  # INFRA-116 (approved 2026-11-19): the database tests, each in a fresh
+  # database of a throwaway PostgreSQL 16 (stand-in → pwa/db/0*.sql → test, see
+  # tests/database/README.md). The official image already has the PGDG apt
+  # repository, so pgTAP installs inside it; run.sh runs there too, over the
+  # local socket. No secret, nothing outside this job's container.
+  database:
+    name: database
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Start PostgreSQL 16 with pgTAP
+        run: |
+          docker run -d --name orbit-db -e POSTGRES_HOST_AUTH_METHOD=trust \
+            -v "$GITHUB_WORKSPACE:/repo:ro" postgres:16
+          for i in $(seq 1 60); do
+            docker exec orbit-db pg_isready -U postgres -q && break
+            sleep 1
+          done
+          docker exec orbit-db bash -c 'apt-get update -qq && apt-get install -y -qq postgresql-16-pgtap >/dev/null'
+          # The image's first start runs a temporary server and then restarts:
+          # wait for the final one (by now well past it) before the tests.
+          for i in $(seq 1 60); do
+            docker exec orbit-db pg_isready -U postgres -q && break
+            sleep 1
+          done
+          docker exec orbit-db pg_isready -U postgres
+
+      - name: Run database tests
+        run: docker exec -u postgres -e REQUIRE_PGTAP=1 orbit-db /repo/tests/database/run.sh
+
   e2e:
     name: e2e
     runs-on: ubuntu-latest
