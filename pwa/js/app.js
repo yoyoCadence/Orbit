@@ -671,11 +671,20 @@ function _loadRemote(ownerId) {
     void keepCloudProofsOf(ownerId);
     // HW-112D (c): then, at most weekly, photos left behind by deleted sessions
     // (proofSweep.js). Only with this account's sessions as stored here.
-    return flushProofSync(ownerId).then(() => sweepOrphanCloudProofs(ownerId, {
-      sessions: storage.getUser()?.id === ownerId ? storage.getSessions() : null,
-    }));
+    return flushProofSync(ownerId).then(() => _sweepOrphanProofs(ownerId));
   }, () => {});
   return load;
+}
+
+// HW-112D (c): never throws (it runs in the background of every sync).
+function _sweepOrphanProofs(ownerId) {
+  try {
+    const sessions = storage.getUser()?.id === ownerId ? storage.getSessions() : null;
+    return sweepOrphanCloudProofs(ownerId, { sessions });
+  } catch (error) {
+    console.warn('Proof photo sweep skipped:', error);
+    return null;
+  }
 }
 
 // A resolved load can still leave writes queued: Session backfills settle

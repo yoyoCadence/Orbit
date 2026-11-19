@@ -285,6 +285,7 @@
   - 新模組 `platform/proofSweep.js`（SHELL）：`sweepOrphanCloudProofs(ownerId, { sessions })`，在 `app.js` 的 `_loadRemote()` 成功、`flushProofSync()` 之後執行，`sessions` 是這個帳號在這台裝置已儲存的紀錄（已儲存的使用者不是這個帳號時不跑）。每個帳號在這台裝置每 7 天最多一次（`orbit_proofsweep_at:<帳號>`，完成才記錄）。
   - 刪除條件（全部成立）：物件滿 30 天（別台裝置剛上傳、紀錄還在路上的照片很新）；這台裝置沒有這個紀錄、也不在上傳佇列；伺服器 `sessions` 沒有這個 id（`select('id').eq('user_id', 帳號).in('id', 每批 100 個)`）。物件時間讀不到的不刪。
   - 安全檢查：伺服器查詢同時帶入最多 5 個這台裝置「已確認在伺服器」的紀錄（沒有 `_syncPending`、不在待同步名單）當作證明，任何一個沒回來就停止（RLS 或 token 問題讓查詢靜默回傳空集合時，不會把每張照片都當成孤兒）；沒有可用的證明就不跑。查詢、列出、刪除任何錯誤都停止且不記錄；刪除前再確認登入的帳號；每次最多刪 100 張。
+  - `app.js` 以 `_sweepOrphanProofs()` 呼叫，永不拋錯（在每次同步的背景執行；#263 第一次 CI：`appBootSequence` 的 storage 替身沒有 `getSessions`，造成未處理的 rejection，本機只看了測試數字而漏看 vitest 另外列出的 Errors；之後本機驗證一律看 vitest 的結束碼）。
   - 補強：新模組 `platform/sessionsNotOnServer.js` 讀 storage.js 的待同步紀錄（`yoyo_sessionSyncPending:<帳號>`）與 `_syncPending` 旗標。`uploadedLocalProofIds()` 不再把「紀錄還沒上伺服器」的照片算成確定已上傳，所以登出與「清除這台裝置的佐證照片」會把它留在本機——雲端那份可能因為沒有紀錄而被清掉，本機這份就不會是最後一份被刪。`unsureProofPhotos()`（(a)）也把它們算成「還在等」。
   - 測試：`tests/unit/proofSweep.test.js`（只刪舊孤兒、保留本機／伺服器有／太新／在佇列／待同步／時間不明／非 UUID；查不到證明紀錄或沒有證明就不刪；錯誤、別的帳號、沒有 sessions 都不刪也不記錄；每週一次；每次 100 張、每批查詢 100 個；`sessionsNotOnServer` 讀真的 storage.js 寫的待同步名單）、`proofLocal`／`proofUnsure` 補強的案例、e2e `hw112d-proof-sweep.test.js`（真的 supabase-js：列出、REST 查詢的參數、只刪孤兒的那一張、一週內不再跑）。移除證明檢查或補強，對應的測試都會失敗。
 
