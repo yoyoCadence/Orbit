@@ -93,9 +93,10 @@ export function pendingProofUploads(ownerId) {
 }
 
 // Cloud deletions the queue could not take (storage full). Held here for as
-// long as the app runs, retried by every sync, and written to the queue as soon
-// as there is room: once the session's row is gone, its deletion log entry is
-// cleared, and nothing else would remember that its photo is still in the cloud.
+// long as the app runs, retried by every sync, and written to the queue by the
+// first sync that finds room: once the session's row is gone, its deletion log
+// entry is cleared, and nothing else would remember that its photo is still in
+// the cloud.
 const unsavedRemovals = new Map(); // ownerId → Set of session ids
 
 function queueRemoval(ownerId, sessionId) {
@@ -345,7 +346,12 @@ export function flushProofSync(ownerId) {
           continue;
         }
         const result = await uploadProof(ownerId, sessionId);
-        if (result === 'failed') return;
+        if (result === 'failed') {
+          // Usually offline, but a deletion queued during this run (one only held
+          // in memory included) still gets its try now.
+          await flushRemovals(ownerId);
+          return;
+        }
         dropFromQueue(UPLOAD_QUEUE_PREFIX, ownerId, sessionId);
         // Deleted while it was being uploaded: take the new file down again. Only
         // when the account's sessions are still here and this one is not.

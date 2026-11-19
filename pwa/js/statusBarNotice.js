@@ -138,7 +138,7 @@ export function statusBarNoticeText(step, { signedIn, appUrl }) {
         + '最後移除舊的圖示（打開後還會出現這個提示的那個）：長按它，從主畫面移除。',
     ],
     warning: signedIn
-      ? `注意：佐證照片、背景圖片、主題、今天的計畫與個人空間只存在這台裝置的舊圖示裡，移除舊圖示時可能一起被刪除。${keep}`
+      ? `注意：還沒上傳的佐證照片、背景圖片、主題、今天的計畫與個人空間只存在這台裝置的舊圖示裡，移除舊圖示時可能一起被刪除（已上傳的佐證照片在雲端，新圖示登入後會再顯示）。${keep}`
       : `注意：訪客模式的所有資料都只存在這台裝置的舊圖示裡，移除舊圖示時可能一起被刪除。${keep}`,
   };
 }
@@ -146,21 +146,26 @@ export function statusBarNoticeText(step, { signedIn, appUrl }) {
 /**
  * BUG-118: what 「檢查同步」 says, from the pending queue read when it is
  * pressed (storage.getPendingSyncSummary(): a write stays queued until the
- * server confirms it, a failed upload included). Only an empty queue, read
- * online, says the old icon can go.
+ * server confirms it, a failed upload included) and, HW-112C2b, the proof
+ * photos still waiting to be uploaded. Only empty queues, read online, say the
+ * old icon can go.
  *
- * @param {{ online: boolean, pending: number }} state
+ * @param {{ online: boolean, pending: number, photos?: number }} state
  * @returns {{ ok: boolean, text: string }}
  */
-export function statusBarSyncCheckText({ online, pending }) {
-  if (pending > 0) {
+export function statusBarSyncCheckText({ online, pending, photos = 0 }) {
+  const waiting = [
+    pending > 0 ? `${pending} 筆資料還沒同步` : '',
+    photos > 0 ? `${photos} 張佐證照片還沒上傳` : '',
+  ].filter(Boolean).join('、');
+  if (waiting) {
     return {
       ok: false,
-      text: `還有 ${pending} 筆資料還沒同步，先不要移除舊圖示。${online ? '' : '目前離線：'}連上網路、讓 Orbit 開著一會兒再按一次；一直沒有減少就完全關閉 Orbit 再打開（連線時會自動同步）。`,
+      text: `還有 ${waiting}，先不要移除舊圖示。${online ? '' : '目前離線：'}連上網路、讓 Orbit 開著一會兒再按一次；一直沒有減少就完全關閉 Orbit 再打開（連線時會自動同步）。`,
     };
   }
   if (!online) {
     return { ok: false, text: '目前離線：連上網路後再按一次。' };
   }
-  return { ok: true, text: '這個圖示沒有還沒同步的資料，可以移除了（佐證照片等只存在這台裝置的資料除外）。' };
+  return { ok: true, text: '這個圖示沒有還沒同步的資料，佐證照片也都上傳了，可以移除了（背景圖片、主題等只存在這台裝置的設定除外）。' };
 }

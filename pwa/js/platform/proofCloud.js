@@ -345,7 +345,8 @@ function forgetOldest() {
   const recent = Date.now() - MEMORY_GRACE_MS;
   for (const [key, entry] of loaded) {
     if (loaded.size <= MEMORY_MAX_PHOTOS) return;
-    if (entry.addedAt > recent || shown.has(entry.url)) continue;
+    // A data URL means the achievement frame shows it (not as an <img src=blob:>).
+    if (entry.addedAt > recent || entry.dataUrl || shown.has(entry.url)) continue;
     URL.revokeObjectURL(entry.url);
     loaded.delete(key);
   }
@@ -455,12 +456,24 @@ function stopWatching(record) {
 }
 
 // Once the "not found" of a row that just missed has run out.
+// When the first of these "not found" runs out (a lookup that failed for
+// another reason waits for the next sync, foreground or a full period).
+function retryDelay(keys) {
+  const now = Date.now();
+  const fresh = keys.map(key => misses.get(key)).filter(until => until > now);
+  return (fresh.length ? Math.min(...fresh) - now : MISS_TTL_MS) + 1000;
+}
+
 function scheduleRearm(record) {
   if (record.timer || !record.unresolved.size) return;
+  const keys = [...record.unresolved]
+    .map(row => record.byRow.get(row)?.dataset.proofCloudSessionId)
+    .filter(Boolean)
+    .map(sessionId => entryKey(record.ownerId, sessionId));
   record.timer = setTimeout(() => {
     record.timer = null;
     rearm(record);
-  }, MISS_TTL_MS + 1000);
+  }, retryDelay(keys));
 }
 
 // Watch again the rows that found nothing, once a new look can find something.
@@ -530,11 +543,13 @@ async function loadedDataUrl(ownerId, sessionId) {
  * `onLoaded()` once there is something new to show.
  */
 export function withCloudAchievementPhoto(ownerId, sessions, photo, onLoaded) {
-  // Only the photo selected now is ever tried again (one per account).
-  dropAchievementRetries(ownerId, photo?.status === 'unavailable' ? photo.sessionId : null);
-  if (photo?.status !== 'unavailable' || !photo.sessionId) return photo;
-  const sessionId = photo.sessionId;
-  const session = (Array.isArray(sessions) ? sessions : []).find(entry => String(entry?.id || '') === sessionId);
+  const sessionId = photo?.status === 'unavailable' ? photo.sessionId : null;
+  const session = sessionId
+    ? (Array.isArray(sessions) ? sessions : []).find(entry => String(entry?.id || '') === sessionId)
+    : null;
+  // Only the photo selected now, of a session that still exists, is ever
+  // tried again (one per account).
+  dropAchievementRetries(ownerId, session ? sessionId : null);
   if (!session || !signedInHere(ownerId)) return photo;
   const key = entryKey(ownerId, sessionId);
   const entry = loaded.get(key);
@@ -588,7 +603,7 @@ function scheduleAchievementRetry() {
   achievementTimer = setTimeout(() => {
     achievementTimer = null;
     retryAchievementPhotos();
-  }, MISS_TTL_MS + 1000);
+  }, retryDelay([...achievementRetries.keys()]));
 }
 
 function retryAchievementPhotos() {

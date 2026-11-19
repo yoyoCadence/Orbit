@@ -6,7 +6,7 @@ import { uid, today, escHtml }         from '../utils.js';
 import { exportSessionsCSV, showReportPicker } from '../export.js';
 import { previewBaseXP }                       from '../engine.js';
 import { goToProCard }                         from '../ui/proNav.js';
-import { proofStats, clearAllProofs }          from '../platform/proofStore.js';
+import { accountProofStats, clearDeviceProofs, deleteAllProofs } from '../platform/proofLocal.js';
 import { FLAG_PRO_HIGHLIGHT, FLAG_DEV_BACKUP, FLAG_DEV_PANEL } from '../flags.js';
 import { getProEntitlementSource } from '../platform/proEntitlement.js';
 import { hasStoredSession } from '../sessionPresence.js';
@@ -372,6 +372,31 @@ async function _devReset() {
   } finally {
     _devResetInFlight = false;
   }
+}
+
+// HW-112C2b: the proof photo buttons of the account card. Signed in, the
+// photos are backed up: "clear this device" keeps the cloud copies, and
+// "delete all" removes those too. A guest's photos exist only here.
+function _proofAccountSignedIn() {
+  return Boolean(state.user?.id) && hasStoredSession();
+}
+
+function _proofButtonsHtml() {
+  const signedIn = _proofAccountSignedIn();
+  const { count, kb } = accountProofStats(state.sessions);
+  const label = signedIn ? '🗑 清除這台裝置的佐證照片' : '🗑 刪除佐證照片';
+  // Signed in, there may be downloaded copies even with no photo taken here:
+  // the button stays available.
+  const detail = count > 0
+    ? `（${count} 張，約 ${kb} KB${signedIn ? '，與下載的副本' : ''}）`
+    : signedIn ? '（下載的副本）' : '（這台裝置沒有）';
+  const clear = count > 0 || signedIn
+    ? `<button class="btn btn-outline btn-sm" id="proof-clear-btn" style="margin-bottom:10px;width:100%;color:var(--text-muted)">${label}${detail}</button>`
+    : `<button class="btn btn-outline btn-sm" id="proof-clear-btn" style="margin-bottom:10px;width:100%;opacity:0.4" disabled>${label}${detail}</button>`;
+  const deleteAll = signedIn
+    ? '<button class="btn-text-danger" id="proof-delete-all-btn" style="display:block;margin-bottom:10px">刪除所有佐證照片（包括雲端）</button>'
+    : '';
+  return clear + deleteAll;
 }
 
 function _devPanelHtml() {
@@ -979,10 +1004,7 @@ function _renderView(container) {
       <button class="btn btn-outline btn-sm" id="sync-btn" style="margin-bottom:10px;width:100%">↻ 從雲端同步資料</button>
       <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px">版本 ${APP_VERSION}</div>
       <button class="btn btn-outline btn-sm" id="tour-btn" style="margin-bottom:10px;width:100%">重啟新手教學</button>
-      ${(() => { const p = proofStats(); return p.count > 0
-        ? `<button class="btn btn-outline btn-sm" id="proof-clear-btn" style="margin-bottom:10px;width:100%;color:var(--text-muted)">🗑 清除佐證圖片（${p.count} 張，約 ${p.kb} KB）</button>`
-        : `<button class="btn btn-outline btn-sm" id="proof-clear-btn" style="margin-bottom:10px;width:100%;opacity:0.4" disabled>🗑 清除佐證圖片（無儲存）</button>`;
-      })()}
+      ${_proofButtonsHtml()}
       <button class="btn-text-danger" id="reset-btn">清除本機快取資料（重新登入後可從雲端還原）</button>
     </div>
   `;
@@ -1223,14 +1245,34 @@ function _setupListeners(container) {
     window.signOut();
   });
 
-  // Clear proof images
+  // HW-112C2b (§9.4 A): clear this account's photos on this device (the cloud
+  // keeps them; photos still waiting to upload stay), or delete them all.
   container.querySelector('#proof-clear-btn')?.addEventListener('click', () => {
-    const { count, kb } = proofStats();
-    if (count === 0) return;
-    if (!confirm(`確定要刪除全部 ${count} 張佐證圖片（約 ${kb} KB）？\n此操作無法復原。`)) return;
-    clearAllProofs();
+    const signedIn = _proofAccountSignedIn();
+    const { count, kb } = accountProofStats(state.sessions);
+    if (count === 0 && !signedIn) return;
+    const message = signedIn
+      ? `清除這台裝置上的佐證照片（拍的 ${count} 張，約 ${kb} KB，與下載的副本）？\n雲端的備份會保留，捲到那筆紀錄時會再顯示；還沒確定上傳的照片不會被清除。`
+      : `刪除這台裝置上的 ${count} 張佐證照片（約 ${kb} KB）？\n訪客的照片沒有雲端備份，刪除後無法復原。`;
+    if (!confirm(message)) return;
+    const { cleared, kept } = clearDeviceProofs(state.user?.id, state.sessions, { signedIn });
     _renderView(container);
-    window.showToast('佐證圖片已清除');
+    window.showToast(kept > 0
+      ? `已清除 ${cleared} 張；${kept} 張還沒確定上傳的先保留`
+      : signedIn ? `已清除這台裝置的佐證照片（${cleared} 張與下載的副本）` : `已清除 ${cleared} 張佐證照片`);
+  });
+
+  container.querySelector('#proof-delete-all-btn')?.addEventListener('click', async event => {
+    if (!_proofAccountSignedIn()) return;
+    if (!confirm('刪除所有佐證照片？\n這台裝置與雲端的佐證照片都會刪除。其他裝置已下載的副本會留到那台裝置登出或清除，那台裝置上還沒上傳的照片之後仍會上傳。')) return;
+    if (!confirm('再確認一次：刪除後無法復原。確定要刪除所有佐證照片？')) return;
+    event.currentTarget.disabled = true;
+    const result = await deleteAllProofs(state.user?.id, state.sessions);
+    // The router reuses the page container; only repaint if settings is still shown.
+    if (container.isConnected && container.querySelector('#proof-delete-all-btn')) _renderView(container);
+    window.showToast(result.ok
+      ? `已刪除所有佐證照片（雲端 ${result.cloud} 張）`
+      : '雲端的佐證照片還沒全部刪除：連上網路後再按一次');
   });
 
   // Clear local cache

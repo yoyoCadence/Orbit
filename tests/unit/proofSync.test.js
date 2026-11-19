@@ -206,6 +206,46 @@ describe('upload', () => {
     expect(pendingProofRemovals(OWNER)).toEqual([]);
   });
 
+  it('takes the file down even when the deletion queue is full at that moment', async () => {
+    signIn();
+    ownSessions(sid(1));
+    saveProof(sid(1), jpegDataUrl());
+    queueProofUpload(OWNER, sid(1));
+    const setItem = Storage.prototype.setItem;
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (key, value) {
+      if (key.startsWith('orbit_proofsync_remove:')) throw new Error('QuotaExceededError');
+      return setItem.call(this, key, value);
+    });
+    mockUpload.mockImplementationOnce(async () => {
+      local.deleted = new Set([sid(1)]);
+      return { data: {}, error: null };
+    });
+    try {
+      await flushProofSync(OWNER);
+    } finally {
+      spy.mockRestore();
+    }
+    expect(mockRemove).toHaveBeenCalledWith([`${OWNER}/${sid(1)}.jpg`]);
+    expect(pendingProofRemovals(OWNER)).toEqual([]);
+  });
+
+  it('still sends a deletion queued during the sync when a later upload fails', async () => {
+    signIn();
+    ownSessions(sid(1), sid(2));
+    for (const id of [sid(1), sid(2)]) { saveProof(id, jpegDataUrl()); queueProofUpload(OWNER, id); }
+    mockUpload
+      .mockImplementationOnce(async () => {
+        local.deleted = new Set([sid(1)]); // deleted while its upload was out
+        return { data: {}, error: null };
+      })
+      .mockResolvedValueOnce({ data: null, error: { message: 'Failed to fetch' } });
+    await flushProofSync(OWNER);
+    expect(mockUpload).toHaveBeenCalledTimes(2);
+    expect(mockRemove).toHaveBeenCalledWith([`${OWNER}/${sid(1)}.jpg`]);
+    expect(pendingProofRemovals(OWNER)).toEqual([]);
+    expect(pendingProofUploads(OWNER)).toEqual([sid(2)]);
+  });
+
   it('keeps the backup and the rest of the queue when the user signs out mid-sync', async () => {
     signIn();
     ownSessions(sid(1), sid(2), sid(3));

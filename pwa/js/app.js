@@ -40,7 +40,8 @@ import {
 } from './statusBarNotice.js';
 import { hasStoredSession } from './sessionPresence.js';
 import { flushProofSync } from './platform/proofSync.js';
-import { clearCloudProofs, forgetCloudProofMisses, keepCloudProofsOf } from './platform/proofCloud.js';
+import { forgetCloudProofMisses, keepCloudProofsOf } from './platform/proofCloud.js';
+import { photosNotSurelyUploaded, signOutProofCleanup } from './platform/proofLocal.js';
 import { isOnline, onConnectivityChange } from './platform/network.js';
 import { orbitWindowRuntimeDestroyer } from './personalSpace/v2/runtime/pixiSceneRuntime.js';
 
@@ -212,10 +213,20 @@ window._checkStatusBarSync = function () {
   const check = statusBarSyncCheckText({
     online: isOnline(),
     pending: ownerId ? storage.getPendingSyncSummary(ownerId).total : 0,
+    // Not just the queue: photos never queued yet (or not sendable as is)
+    // live only in this icon too.
+    photos: ownerId ? photosNotSurelyUploaded(ownerId, _sessionsOf(ownerId)) : 0,
   });
   result.textContent = check.text;
   result.dataset.ok = String(check.ok);
 };
+
+// This account's sessions: the ones in memory, or the stored ones while they
+// are this account's (another tab may have switched the stored user).
+function _sessionsOf(ownerId) {
+  if (state.user?.id === ownerId) return state.sessions || [];
+  return storage.getUser()?.id === ownerId ? storage.getSessions() || [] : [];
+}
 
 window._dismissStatusBarNotice = function () {
   const step = _statusBarNotice?.step;
@@ -500,8 +511,16 @@ function handleSignOut() {
   // floating above the login screen with a null state.user behind them.
   clearDayCycleModals();
   if (!_currentSession && !storage.getUser()) return; // already signed out
-  // HW-112C2a: this account's downloaded proof photos leave with it (§5.5).
-  void clearCloudProofs(_currentSession?.user?.id ?? storage.getUser()?.id);
+  // HW-112C2a/b: this account's downloaded proof photos leave with it, and so
+  // do its local photos that are surely in the cloud (§5.5, §9.5 B); photos
+  // still waiting to upload stay. Before state.sessions is cleared below.
+  // The local photos are checked against the owner of the sessions in memory
+  // (during an account switch the session can be ahead of them).
+  signOutProofCleanup({
+    authOwnerId: _currentSession?.user?.id ?? null,
+    sessionsOwnerId: state.user?.id ?? null,
+    sessions: state.sessions,
+  });
   _currentSession = null;
   state.user     = null;
   state.tasks    = [];

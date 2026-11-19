@@ -201,6 +201,21 @@ describe('statusBarSyncCheckText', () => {
     expect(statusBarSyncCheckText({ online: false, pending: 2 }).text).toContain('目前離線');
   });
 
+  it('HW-112C2b: also waits for proof photos not yet uploaded', () => {
+    const photos = statusBarSyncCheckText({ online: true, pending: 0, photos: 3 });
+    expect(photos.ok).toBe(false);
+    expect(photos.text).toContain('還有 3 張佐證照片還沒上傳，先不要移除舊圖示');
+    expect(statusBarSyncCheckText({ online: true, pending: 2, photos: 1 }).text)
+      .toContain('還有 2 筆資料還沒同步、1 張佐證照片還沒上傳');
+    expect(statusBarSyncCheckText({ online: true, pending: 0, photos: 0 }).text).toContain('佐證照片也都上傳了');
+  });
+
+  it('HW-112C2b: signed in, only photos not yet uploaded are said to live in the old icon', () => {
+    const account = statusBarNoticeText('readd', { signedIn: true, appUrl: 'https://example.test/' });
+    expect(account.warning).toContain('還沒上傳的佐證照片');
+    expect(account.warning).toContain('已上傳的佐證照片在雲端');
+  });
+
   it('does not clear an empty queue read offline (queued writes may still be coming)', () => {
     expect(statusBarSyncCheckText({ online: false, pending: 0 })).toEqual({
       ok: false, text: expect.stringContaining('目前離線'),
