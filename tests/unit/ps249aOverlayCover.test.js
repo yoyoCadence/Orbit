@@ -437,13 +437,22 @@ describe('PS-249A Orbit Window under overlays', () => {
       '.space-idle-overlay', // the legacy Personal Space page, no Orbit Window
       '.space-map-window',
     ];
+    // Overlays that also carry .proof-lightbox, which orbitWindow.js knows.
+    const coveringAsLightbox = {
+      '.proof-keep-sheet': 'pwa/js/ui/proofKeepSheet.js', // HW-112D (a)
+    };
     const css = read('pwa/assets/style.css').replace(/\/\*[\s\S]*?\*\//g, '');
     const fullScreen = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
       .filter(([, , body]) => /position\s*:\s*fixed/.test(body) && /inset\s*:\s*0(?![.\d])/.test(body))
       .map(([, selector]) => selector.trim());
-    expect([...fullScreen].sort()).toEqual([...covering, ...notCovering].sort());
+    expect([...fullScreen].sort())
+      .toEqual([...covering, ...notCovering, ...Object.keys(coveringAsLightbox)].sort());
     const source = read('pwa/js/personalSpace/v2/ui/orbitWindow.js');
     covering.forEach(selector => expect(source).toContain(selector.replace('#', '')));
+    expect(source).toContain('.proof-lightbox');
+    for (const [selector, file] of Object.entries(coveringAsLightbox)) {
+      expect(read(file)).toMatch(new RegExp(`className = 'proof-lightbox ${selector.slice(1)}'`));
+    }
   });
 
   it('gives the proof lightbox a class instead of only inline styles', () => {

@@ -485,6 +485,15 @@ describe('AI-203B Companion remind', () => {
       .toBe(buildFullWorldViewModel(snapshot).companion.dialogueKey);
   });
 
+  it('PRO-014F2: the day Pro starts does not silence the user\'s own goal reminder', () => {
+    const proPresence = { status: 'pro', showMark: true, companionKey: 'companion.pro.started' };
+    const reminding = snapshotAt(at(12, 30), { proPresence });
+    expect(reminding.companion).toMatchObject({ state: 'remind', dialogueKey: 'companion.goal.gentle-reminder' });
+    expect(reminding.proMark).toBe(true);
+    // Outside the reminder window the line is said.
+    expect(snapshotAt(at(15, 0), { proPresence }).companion.dialogueKey).toBe('companion.pro.started');
+  });
+
   it.each([
     ['before 12:00', at(11, 59)],
     ['from 14:00', at(14, 0)],

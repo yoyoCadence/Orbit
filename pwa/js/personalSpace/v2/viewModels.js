@@ -570,9 +570,12 @@ export function buildPersonalSpaceV2Snapshot(coreOrInput = {}, v2Arg = {}, ledge
       pendingReveal,
     }),
   };
-  // PRO-014F2: resolved by the pages; replaces only the line, never over a reveal.
+  // PRO-014F2: resolved by the pages; replaces only the line, never over a
+  // reveal or the user's own goal reminder (AI-203B).
   const proPresence = coreState.proPresence || null;
-  if (proPresence?.companionKey && !pendingReveal) companion.dialogueKey = proPresence.companionKey;
+  if (proPresence?.companionKey && !pendingReveal && companion.state !== 'remind') {
+    companion.dialogueKey = proPresence.companionKey;
+  }
   const protagonist = selectProtagonistState({ pendingReveal, recentSessions, momentum });
   const world = v2State.world || {};
   const user = coreState.user || {};

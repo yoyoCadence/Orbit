@@ -126,6 +126,7 @@ describe('Orbit Window', () => {
     const home = render('home-window', true).querySelector('.orbit-window-pro');
     expect(home?.textContent).toBe('✦ Pro');
     expect(home?.getAttribute('aria-label')).toBe('Orbit Pro 會員');
+    expect(home?.getAttribute('role')).toBe('img'); // a named span needs a role
     expect(render('full-world', true).querySelector('.orbit-window-pro')).toBeNull();
     expect(render('edit', true).querySelector('.orbit-window-pro')).toBeNull();
     expect(render('home-window', false).querySelector('.orbit-window-pro')).toBeNull();

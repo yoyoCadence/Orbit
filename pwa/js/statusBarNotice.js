@@ -150,22 +150,41 @@ export function statusBarNoticeText(step, { signedIn, appUrl }) {
  * photos still waiting to be uploaded. Only empty queues, read online, say the
  * old icon can go.
  *
- * @param {{ online: boolean, pending: number, photos?: number }} state
- * @returns {{ ok: boolean, text: string }}
+ * `photos` counts every photo here not surely uploaded; `unsure` (HW-112D a,
+ * at most `photos`) of them the sync is done with, so waiting will not change
+ * them: those are named apart, with how to save them by hand.
+ *
+ * @param {{ online: boolean, pending: number, photos?: number, unsure?: number }} state
+ * @returns {{ ok: boolean, text: string, unsure: number }} unsure: how many of
+ *   them the text names apart (the page offers them only then).
  */
-export function statusBarSyncCheckText({ online, pending, photos = 0 }) {
+export function statusBarSyncCheckText({ online, pending, photos = 0, unsure = 0 }) {
+  const stuck = Math.max(0, Math.min(Number(unsure) || 0, photos));
+  const waitingPhotos = photos - stuck;
   const waiting = [
     pending > 0 ? `${pending} 筆資料還沒同步` : '',
-    photos > 0 ? `${photos} 張佐證照片還沒上傳` : '',
+    waitingPhotos > 0 ? `${waitingPhotos} 張佐證照片還沒上傳` : '',
   ].filter(Boolean).join('、');
+  const keepByHand = `按「查看這 ${stuck} 張照片」，長按照片存到手機`;
+  const stuckNote = stuck > 0
+    ? `另有 ${stuck} 張佐證照片無法確認已上傳（例如舊版本存的或太大的照片，再等也不會改變）：要保留的話，移除舊圖示前先${keepByHand}。`
+    : '';
   if (waiting) {
     return {
       ok: false,
-      text: `還有 ${waiting}，先不要移除舊圖示。${online ? '' : '目前離線：'}連上網路、讓 Orbit 開著一會兒再按一次；一直沒有減少就完全關閉 Orbit 再打開（連線時會自動同步）。`,
+      text: `還有 ${waiting}，先不要移除舊圖示。${online ? '' : '目前離線：'}連上網路、讓 Orbit 開著一會兒再按一次；一直沒有減少就完全關閉 Orbit 再打開（連線時會自動同步）。${stuckNote}`,
+      unsure: stuck,
     };
   }
   if (!online) {
-    return { ok: false, text: '目前離線：連上網路後再按一次。' };
+    return { ok: false, text: `目前離線：連上網路後再按一次。${stuckNote}`, unsure: stuck };
   }
-  return { ok: true, text: '這個圖示沒有還沒同步的資料，佐證照片也都上傳了，可以移除了（背景圖片、主題等只存在這台裝置的設定除外）。' };
+  if (stuck > 0) {
+    return {
+      ok: false,
+      text: `資料都同步了，但有 ${stuck} 張佐證照片無法確認已上傳（例如舊版本存的或太大的照片，再等也不會改變）。要保留的話，先${keepByHand}；存好後就可以移除舊圖示（背景圖片、主題等只存在這台裝置的設定除外）。`,
+      unsure: stuck,
+    };
+  }
+  return { ok: true, text: '這個圖示沒有還沒同步的資料，佐證照片也都上傳了，可以移除了（背景圖片、主題等只存在這台裝置的設定除外）。', unsure: 0 };
 }

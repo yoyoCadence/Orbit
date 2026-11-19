@@ -5022,13 +5022,50 @@ nav {
 .sbn-text ol { margin: 4px 0 0; padding-left: 18px; color: var(--text-muted); }
 .sbn-text li + li { margin-top: 2px; }
 .sbn-text .sbn-warning { margin-top: 6px; color: var(--text); }
-.sbn-check {
+.sbn-check,
+.sbn-keep-photos {
   margin-top: 8px; min-height: 36px; padding: 6px 14px;
   background: var(--surface); color: var(--text);
   border: 1px solid var(--border); border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer;
 }
 .sbn-text .sbn-check-result { margin-top: 6px; color: #d97706; }
 .sbn-text .sbn-check-result[data-ok="true"] { color: #10b981; }
+
+/* HW-112D (a): photos "check sync" cannot confirm, to save by hand (js/ui/proofKeepSheet.js) */
+.proof-keep-sheet {
+  /* Above the update banner (1000), which an old icon sees after updating. */
+  position: fixed; inset: 0; z-index: 1100;
+  display: flex; align-items: center; justify-content: center;
+  padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+  background: rgba(0, 0, 0, 0.88);
+}
+.proof-keep-panel {
+  width: 100%; max-width: 420px; max-height: 100%;
+  overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+  padding: 14px; border-radius: 14px;
+  background: var(--surface); color: var(--text);
+}
+.proof-keep-head { display: flex; align-items: center; gap: 8px; }
+.proof-keep-head h2 { flex: 1; min-width: 0; margin: 0; font-size: 15px; font-weight: 700; }
+.proof-keep-close {
+  min-width: 44px; min-height: 44px; padding: 0 14px;
+  background: var(--primary); color: var(--on-primary, #fff);
+  border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.proof-keep-hint { margin: 6px 0 12px; font-size: 13px; line-height: 1.5; color: var(--text-muted); }
+.proof-keep-list {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;
+  margin: 0; padding: 0; list-style: none;
+}
+.proof-keep-list figure { margin: 0; }
+.proof-keep-list img {
+  display: block; width: 100%; aspect-ratio: 1; object-fit: contain;
+  border-radius: 8px; background: var(--surface-2);
+}
+.proof-keep-list figcaption {
+  margin-top: 4px; font-size: 12px; color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
 #content:focus { outline: none; }   /* focused by code after the notice closes */
 .sbn-close {
   flex-shrink: 0;

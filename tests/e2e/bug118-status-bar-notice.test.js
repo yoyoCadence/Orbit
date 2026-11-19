@@ -12,6 +12,7 @@
  * old icon on an iPhone reports them.
  */
 
+import { Buffer } from 'node:buffer';
 import { readFileSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
 import { FOCUS_TASK, GUEST_USER, mockSupabase, seedStorage } from './support/seed.js';
@@ -26,7 +27,7 @@ const KEY = 'orbit_status_bar_notice';
 // reloads from its cache instead, which page.route does not see.
 test.use({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
 
-async function setUp(page, { standalone = true, safeTop = 59, supabase = 'mock', user = GUEST_USER } = {}) {
+async function setUp(page, { standalone = true, safeTop = 59, supabase = 'mock', user = GUEST_USER, sessions = [] } = {}) {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   if (supabase === 'mock') await mockSupabase(page);
   // The top inset an iPhone reports under a translucent status bar (0 under `default`).
@@ -38,7 +39,7 @@ async function setUp(page, { standalone = true, safeTop = 59, supabase = 'mock',
       Object.defineProperty(window.navigator, 'standalone', { configurable: true, get: () => true });
     });
   }
-  await seedStorage(page, [FOCUS_TASK], [], user);
+  await seedStorage(page, [FOCUS_TASK], sessions, user);
 }
 
 async function open(page, how = 'goto') {
@@ -140,6 +141,107 @@ test('a signed-in old icon gets the account text even before (or without) getSes
   await notice(page).locator('.sbn-check').click();
   await expect(result).toContainText('可以移除了');
   await expect(result).toHaveAttribute('data-ok', 'true');
+});
+
+test('HW-112D (a): photos the sync is done with but cannot confirm are named, and shown to save by hand', async ({ page }) => {
+  const user = { ...GUEST_USER, id: '00000000-0000-4000-8000-00000011d00a' };
+  const OLD_PNG = 'dddddddd-dddd-4ddd-8ddd-000000000001';
+  const WAITING = 'dddddddd-dddd-4ddd-8ddd-000000000002';
+  const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==';
+  const jpeg = `data:image/jpeg;base64,${Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4]).toString('base64')}`;
+  const session = (id, date, taskName) => ({
+    id, taskId: FOCUS_TASK.id, taskName, date, completedAt: `${date}T09:00:00.000Z`,
+    result: 'complete', impactType: 'task', category: 'focus', value: 'A', durationMinutes: 30, finalXP: 50,
+  });
+  // Older than the free 30-day history: only this sheet shows it.
+  const sessions = [session(OLD_PNG, '2025-12-31', '<b>舊的</b>跑步'), session(WAITING, '2026-01-02', '閱讀')];
+  await setUp(page, { supabase: 'offline', user, sessions });
+  await page.route(`${SUPABASE_URL}/**`, route => route.abort('internetdisconnected'));
+  await page.addInitScript(([key, userId, noticeKey, photos]) => {
+    if (localStorage.getItem(key)) return;
+    localStorage.setItem(key, JSON.stringify({
+      access_token: 'access-token', refresh_token: 'refresh-token', token_type: 'bearer',
+      expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600,
+      user: { id: userId, aud: 'authenticated', role: 'authenticated', email: 'bug118@example.test' },
+    }));
+    localStorage.setItem(noticeKey, JSON.stringify({ relaunchAskedAtMs: 1 }));
+    for (const [id, photo] of photos) localStorage.setItem(`orbit_proof_${id}`, photo);
+    // The account's photos were queued once; the PNG was dealt with, one JPEG waits.
+    localStorage.setItem(`orbit_proofsync_backfilled:${encodeURIComponent(userId)}`, '1');
+    localStorage.setItem(`orbit_proofsync_upload:${encodeURIComponent(userId)}`, JSON.stringify([photos[1][0]]));
+  }, [SESSION_KEY, user.id, KEY, [[OLD_PNG, png], [WAITING, jpeg]]]);
+
+  await open(page);
+  await notice(page).locator('summary').click();
+  await notice(page).locator('.sbn-check').click();
+  const result = notice(page).locator('.sbn-check-result');
+  await expect(result).toContainText('還有 1 張佐證照片還沒上傳，先不要移除舊圖示');
+  await expect(result).toContainText('另有 1 張佐證照片無法確認已上傳');
+  const view = notice(page).locator('.sbn-keep-photos');
+  await expect(view).toHaveText('查看這 1 張照片');
+  await notice(page).locator('.sbn-check').click(); // a second check keeps one button
+  await expect(view).toHaveCount(1);
+
+  await view.click();
+  const sheet = page.locator('.proof-keep-sheet');
+  await expect(sheet).toBeVisible();
+  await expect(sheet.locator('img')).toHaveCount(1);
+  await expect(sheet.locator('img')).toHaveAttribute('src', png);
+  await expect(sheet.locator('figcaption')).toHaveText('2025/12/31 <b>舊的</b>跑步');
+  // A JPEG still waits: the sheet sends the user back to 「檢查同步」.
+  await expect(sheet.locator('.proof-keep-hint')).toContainText('再按一次「檢查同步」');
+  await expect(sheet.locator('img')).toBeInViewport();
+  // Nothing in the way of a long-press on the photo.
+  expect(await sheet.locator('img').evaluate(el => {
+    for (let node = el; node; node = node.parentElement) {
+      const style = window.getComputedStyle(node);
+      if (style.pointerEvents === 'none' || style.webkitTouchCallout === 'none') return false;
+    }
+    return document.elementFromPoint(...(() => {
+      const box = el.getBoundingClientRect();
+      return [box.left + box.width / 2, box.top + box.height / 2];
+    })()) === el;
+  })).toBe(true);
+  await expect(sheet.locator('.proof-keep-close')).toBeFocused();
+  // An old icon sees the update banner after this release: the sheet stays on top.
+  await page.evaluate(() => {
+    const banner = document.createElement('div');
+    banner.id = 'update-banner';
+    banner.textContent = '新版本已就緒';
+    document.body.prepend(banner); // as swUpdate.js does
+  });
+  // It slides down into place first.
+  await expect.poll(() => page.evaluate(() => document.getElementById('update-banner').getBoundingClientRect().top))
+    .toBeGreaterThanOrEqual(0);
+  // (With many photos the panel's 完成 button sits where the banner is.)
+  expect(await page.evaluate(() => {
+    const box = document.getElementById('update-banner').getBoundingClientRect();
+    return Boolean(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)
+      ?.closest('.proof-keep-sheet'));
+  })).toBe(true);
+  await page.evaluate(() => document.getElementById('update-banner').remove());
+  // A sideways swipe over the sheet does not change the page behind it.
+  const pageBefore = await page.evaluate(() => location.hash);
+  await page.evaluate(() => {
+    const touch = x => new Touch({ identifier: 1, target: document.body, clientX: x, clientY: 300 });
+    document.dispatchEvent(new TouchEvent('touchstart', { touches: [touch(300)], changedTouches: [touch(300)] }));
+    document.dispatchEvent(new TouchEvent('touchend', { touches: [], changedTouches: [touch(100)] }));
+  });
+  await page.waitForTimeout(300);
+  expect(await page.evaluate(() => location.hash)).toBe(pageBefore);
+  await expect(sheet).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(sheet).toHaveCount(0);
+  await expect(view).toBeFocused();
+
+  // Signed out while the sheet is open (another tab's sign-out reaches the same
+  // handleSignOut through supabase's SIGNED_OUT): the photos go with the account.
+  await view.click();
+  await expect(sheet).toBeVisible();
+  void page.evaluate(() => window.signOut());
+  await expect(page.locator('#login-screen')).toBeVisible({ timeout: 8000 });
+  await expect(sheet).toHaveCount(0);
+  await expect(page.locator('.proof-lightbox')).toHaveCount(0);
 });
 
 test.describe('on a small iPhone', () => {

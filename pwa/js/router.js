@@ -198,6 +198,8 @@ document.addEventListener('touchstart', e => {
 
 document.addEventListener('touchend', e => {
   if (window._isDragging) return;
+  // A photo shown full screen (the proof lightbox or HW-112D's sheet) stays put.
+  if (document.querySelector('.proof-lightbox')) return;
   if (isTextInputTarget(e.target) || isTextInputActive() || Date.now() - _lastTextInputFocusAt < 900) return;
   const dx = e.changedTouches[0].clientX - _swipeStartX;
   const dy = e.changedTouches[0].clientY - _swipeStartY;

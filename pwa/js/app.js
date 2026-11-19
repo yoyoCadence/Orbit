@@ -42,6 +42,8 @@ import { hasStoredSession } from './sessionPresence.js';
 import { flushProofSync } from './platform/proofSync.js';
 import { forgetCloudProofMisses, keepCloudProofsOf } from './platform/proofCloud.js';
 import { photosNotSurelyUploaded, signOutProofCleanup } from './platform/proofLocal.js';
+import { unsureProofPhotos } from './platform/proofUnsure.js';
+import { closeProofKeepSheet, showProofKeepSheet } from './ui/proofKeepSheet.js';
 import { isOnline, onConnectivityChange } from './platform/network.js';
 import { orbitWindowRuntimeDestroyer } from './personalSpace/v2/runtime/pixiSceneRuntime.js';
 
@@ -208,18 +210,43 @@ function _showStatusBarNotice() {
 window._checkStatusBarSync = function () {
   const result = document.querySelector('#status-bar-notice .sbn-check-result');
   if (!result) return;
-  const ownerId = _currentSession?.user?.id
-    ?? (hasStoredSession() ? storage.getUser()?.id ?? null : null);
+  const ownerId = _statusBarSyncOwner();
+  const sessions = ownerId ? _sessionsOf(ownerId) : [];
+  // HW-112D (a): the ones waiting will not change, named apart.
+  const unsure = ownerId ? unsureProofPhotos(ownerId, sessions) : [];
   const check = statusBarSyncCheckText({
     online: isOnline(),
     pending: ownerId ? storage.getPendingSyncSummary(ownerId).total : 0,
     // Not just the queue: photos never queued yet (or not sendable as is)
     // live only in this icon too.
-    photos: ownerId ? photosNotSurelyUploaded(ownerId, _sessionsOf(ownerId)) : 0,
+    photos: ownerId ? photosNotSurelyUploaded(ownerId, sessions) : 0,
+    unsure: unsure.length,
   });
   result.textContent = check.text;
   result.dataset.ok = String(check.ok);
+  result.parentElement?.querySelector('.sbn-keep-photos')?.remove();
+  // Only when the text names them (an older statusBarNotice.js does not).
+  if (unsure.length && check.unsure > 0) {
+    const view = document.createElement('button');
+    view.type = 'button';
+    view.className = 'sbn-keep-photos';
+    view.textContent = `查看這 ${check.unsure} 張照片`;
+    view.addEventListener('click', () => {
+      // The account may have changed since (another tab): check again instead.
+      if (_statusBarSyncOwner() !== ownerId) {
+        window._checkStatusBarSync();
+        return;
+      }
+      showProofKeepSheet(unsure.slice(0, check.unsure), { returnFocus: view });
+    });
+    result.after(view);
+  }
 };
+
+function _statusBarSyncOwner() {
+  return _currentSession?.user?.id
+    ?? (hasStoredSession() ? storage.getUser()?.id ?? null : null);
+}
 
 // This account's sessions: the ones in memory, or the stored ones while they
 // are this account's (another tab may have switched the stored user).
@@ -408,7 +435,16 @@ window.continueAsGuest = function () {
   }
 };
 
+// An account's proof photos shown full screen (the lightbox, HW-112D's sheet)
+// are mounted on <body>: they go when the account does.
+function _closeProofOverlays() {
+  closeProofKeepSheet();
+  document.querySelectorAll('.proof-lightbox').forEach(overlay => overlay.remove());
+}
+
 async function loadAndStart(session) {
+  // Another account signing in here (or in another tab) replaces the one shown.
+  if (state.user?.id && state.user.id !== session?.user?.id) _closeProofOverlays();
   const operation = authOperationGuard.begin(session);
   _currentSession = session;
   let remoteLoaded = false;
@@ -510,6 +546,7 @@ function handleSignOut() {
   // Overlays are mounted on <body>, so hiding #main-app below leaves them
   // floating above the login screen with a null state.user behind them.
   clearDayCycleModals();
+  _closeProofOverlays();
   if (!_currentSession && !storage.getUser()) return; // already signed out
   // HW-112C2a/b: this account's downloaded proof photos leave with it, and so
   // do its local photos that are surely in the cloud (§5.5, §9.5 B); photos
