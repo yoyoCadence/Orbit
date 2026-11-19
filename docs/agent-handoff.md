@@ -284,6 +284,7 @@
 | #261 | v1.41.26 | HW-112D (a)：新模組 `platform/proofUnsure.js` 與 `ui/proofKeepSheet.js`；「檢查同步」把同步處理過卻無法確認已上傳的照片分開說明，並可打開列出這些照片的畫面長按另存；附帶 #260 的 P3（目標提醒優先、標記的 role、指定日期、`run.sh` 訊息） |
 | #262 | v1.41.27 | HW-112D (b)：`storage.saveSessions()`／`saveTasks()`／`saveEnergy()` 帶呼叫端的擁有者，與已儲存的帳號不同就拒絕並發 `orbit:stored-account-changed`；`sessionFlow` 完成／撤銷前先比對帳號；`app.js` 在別的分頁換了帳號時（storage 事件、bfcache、回到前景）重新載入；e2e 兩個分頁 |
 | #263 | v1.41.28 | HW-112D (c)：新模組 `platform/proofSweep.js`（同步後每週最多一次，清掉滿 30 天、本機與伺服器都沒有紀錄的雲端佐證照片；以本機已確認的紀錄證明伺服器查詢有效；每次最多 100 張）與 `platform/sessionsNotOnServer.js`（紀錄還沒上伺服器的照片不算確定已上傳） |
+| #264 | v1.41.29 | HW-112D 後續：`showSetup()` 只有最新一次開啟的 listener 動作；訪客設定開著時已儲存的帳號被換掉 → 送出時重新載入；`_loadRemote()` 在 backfill 完成後再 flush 佐證照片 |
 
 教訓：#155–#164 在 Codex review 出現前就合併，造成 #165、#166、#167 的回頭修正。這就是 §2 合併條件的由來。獨立 review 在 #167、#168、#169 都找到真正的問題（例如椅子畫在螢幕後面、壁燈在相框下投出暗影），所以複查不能省。
 

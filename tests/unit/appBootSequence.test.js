@@ -1031,6 +1031,57 @@ describe('PRO-014Q Q6：遊客有任務但沒有 user', () => {
   });
 });
 
+describe('HW-112D：設定頁與另一個分頁（#262 審查）', () => {
+  const submit = () => document.getElementById('setup-form').dispatchEvent(
+    new Event('submit', { bubbles: true, cancelable: true }),
+  );
+
+  async function openGuestSetup() {
+    cache.user = null;
+    cache.tasks = [];
+    auth.getSession.mockResolvedValue(null);
+    await import('../../pwa/js/app.js');
+    await flush();
+    window.continueAsGuest();
+    await flush();
+  }
+
+  it('設定頁開了兩次（兩組 listener）時，只有最新的那組動作：存一次、不重新載入', async () => {
+    const reload = vi.fn();
+    vi.stubGlobal('location', { ...window.location, reload });
+    try {
+      await openGuestSetup();
+      window.continueAsGuest();
+      await flush();
+      storage.saveUser.mockClear();
+      document.getElementById('setup-name').value = '訪客';
+      submit();
+      expect(storage.saveUser).toHaveBeenCalledTimes(1);
+      expect(reload).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('訪客設定開著時另一個分頁存入了帳號：送出時重新載入，不把訪客寫進那個帳號', async () => {
+    const reload = vi.fn();
+    vi.stubGlobal('location', { ...window.location, reload });
+    try {
+      await openGuestSetup();
+      cache.user = makeUser('owner-b'); // stored by the other tab
+      storage.saveUser.mockClear();
+      storage.saveTasks.mockClear();
+      document.getElementById('setup-name').value = '訪客';
+      submit();
+      expect(reload).toHaveBeenCalled();
+      expect(storage.saveUser).not.toHaveBeenCalled();
+      expect(storage.saveTasks).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
 describe('HW-112C1：遠端同步之後補傳佐證照片', () => {
   it('遠端讀取成功後，在背景送出這個帳號排隊中的照片', async () => {
     proofSync.flushProofSync.mockClear();
@@ -1042,6 +1093,21 @@ describe('HW-112C1：遠端同步之後補傳佐證照片', () => {
     expect(proofSync.flushProofSync).toHaveBeenCalledWith('owner-a');
     expect(db.loadFromRemote.mock.invocationCallOrder[0])
       .toBeLessThan(proofSync.flushProofSync.mock.invocationCallOrder[0]);
+  });
+
+  it('HW-112D (c, #263 審查): backfill 的紀錄確認後再送一次（等待紀錄的照片不必等到下次同步）', async () => {
+    let finishBackfills;
+    const backfilled = new Promise(resolve => { finishBackfills = resolve; });
+    db.loadFromRemote.mockImplementationOnce(async () => ({ backfilled }));
+    proofSync.flushProofSync.mockClear();
+    await bootWithPendingSession('owner-a');
+    auth.sessionResolve(sessionFor('owner-a'));
+    await flush();
+    expect(proofSync.flushProofSync).toHaveBeenCalledTimes(1);
+    finishBackfills([undefined]);
+    await flush();
+    expect(proofSync.flushProofSync).toHaveBeenCalledTimes(2);
+    expect(proofSync.flushProofSync).toHaveBeenLastCalledWith('owner-a');
   });
 
   it('HW-112D (c): after the flush, the sweep gets this account\'s stored sessions (or none for another account)', async () => {

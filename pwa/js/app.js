@@ -292,16 +292,27 @@ window.signOut = async function () {
  *   it can still hold an account whose remote load failed, and taking that id
  *   would push a blank profile over the real one on the next sync.
  */
+// Every showSetup() adds its own listeners to the same form; only the latest
+// one acts (HW-112D, #262 review): an earlier one would save with the owner it
+// was opened for.
+let _setupGeneration = 0;
+
 function showSetup(ownerId = null) {
   document.getElementById('setup-screen').classList.remove('hidden');
   document.getElementById('main-app').classList.add('hidden');
 
+  const generation = ++_setupGeneration;
+  const isCurrent = () => generation === _setupGeneration;
+  // A guest's setup must not take over an account another tab stored meanwhile.
+  const storedIdAtOpen = storage.getUser()?.id ?? null;
   let avatarData = null;
 
   document.getElementById('setup-avatar-btn').addEventListener('click', () => {
+    if (!isCurrent()) return;
     document.getElementById('setup-avatar-input').click();
   });
   document.getElementById('setup-avatar-input').addEventListener('change', e => {
+    if (!isCurrent()) return;
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
@@ -316,10 +327,17 @@ function showSetup(ownerId = null) {
 
   document.getElementById('setup-form').addEventListener('submit', e => {
     e.preventDefault();
-    // Each showSetup() adds a listener that keeps its own owner. If another tab
-    // switched accounts while setup stayed open, a listener left over from the
+    if (!isCurrent()) return;
+    // If another tab switched accounts while setup stayed open, setup for the
     // earlier account must not save the new account's data under the old id.
     if (ownerId && _currentSession?.user?.id !== ownerId) return;
+    // A guest's setup with an account stored meanwhile (another tab signed in,
+    // and this one never heard): it would copy that account's id, upload the
+    // guest's name to its profile and replace its tasks. Show it instead.
+    if (!ownerId && (storage.getUser()?.id ?? null) !== storedIdAtOpen) {
+      location.reload();
+      return;
+    }
     const name = document.getElementById('setup-name').value.trim();
     if (!name) return;
     // Authenticated setup can be reached with an existing profile (for example,
@@ -661,6 +679,12 @@ function _loadRemote(ownerId) {
   const settled = load.then(result => result?.backfilled, () => {});
   _remoteSync = settled;
   settled.then(() => { if (_remoteSync === settled) _remoteSync = null; });
+  // Sessions the load backfills are confirmed after it resolves: once they
+  // are, a photo waiting for its session (HW-112D c) is queued again now rather
+  // than at the next sync (#263 review).
+  settled.then(backfilled => {
+    if (backfilled) void flushProofSync(ownerId);
+  });
   // HW-112C1: after each successful remote load (boot and reconnect), send the
   // proof photos still queued. In the background; never part of the sync result.
   // HW-112C2a: a photo may have arrived since a row found none (uploaded later
