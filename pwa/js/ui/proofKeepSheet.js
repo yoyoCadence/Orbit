@@ -52,7 +52,9 @@ export function showProofKeepSheet(items, { returnFocus = null } = {}) {
 
   const hint = document.createElement('p');
   hint.className = 'proof-keep-hint';
-  hint.textContent = '長按照片就能存到手機相簿或分享。要保留的照片存好後，就可以移除舊圖示。';
+  // Only these photos are here: other data may still be waiting (the check
+  // result says so), so removing the old icon waits for a clean check.
+  hint.textContent = '長按照片就能存到手機相簿或分享。要保留的照片存好後，再按一次「檢查同步」：其他資料也都同步了，才移除舊圖示。';
 
   const list = document.createElement('ul');
   list.className = 'proof-keep-list';

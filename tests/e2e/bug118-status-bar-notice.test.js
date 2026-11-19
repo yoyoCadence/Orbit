@@ -188,6 +188,8 @@ test('HW-112D (a): photos the sync is done with but cannot confirm are named, an
   await expect(sheet.locator('img')).toHaveCount(1);
   await expect(sheet.locator('img')).toHaveAttribute('src', png);
   await expect(sheet.locator('figcaption')).toHaveText('2025/12/31 <b>舊的</b>跑步');
+  // A JPEG still waits: the sheet sends the user back to 「檢查同步」.
+  await expect(sheet.locator('.proof-keep-hint')).toContainText('再按一次「檢查同步」');
   await expect(sheet.locator('img')).toBeInViewport();
   // Nothing in the way of a long-press on the photo.
   expect(await sheet.locator('img').evaluate(el => {

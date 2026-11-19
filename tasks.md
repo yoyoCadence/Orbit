@@ -285,6 +285,7 @@
   - 新模組 `ui/proofKeepSheet.js`（SHELL）：結果下方的「查看這 N 張照片」打開一個列出這些照片的畫面（DOM 建立，任務名稱只當文字），長按照片即可存到相簿或分享；免費版的完成紀錄只顯示 30 天，較舊的照片只能從這裡看到。帶 `.proof-lightbox` class，Orbit Window 會在它下面暫停（PS-249A）；Escape 或「完成」關閉並把焦點還給按鈕。
   - 測試：`tests/unit/proofUnsure.test.js`（真的 proofSync／proofLocal；文字；畫面）、`ps249aOverlayCover` 認得新的全螢幕規則、e2e `bug118-status-bar-notice` 新增一個（舊 PNG＋一張在等的 JPEG：分開的文字、只有一個按鈕、畫面中的照片沒有被 `pointer-events`／`-webkit-touch-callout` 擋住、焦點）；320px 截圖確認。
   - 可再評估（不急）：重新編碼後成功送出的 PNG 其實已在雲端，若 `proofSync` 記下「已確認送出」就能不列；目前照實說「無法確認」，建議另存，較安全。
+  - 審查（#261）：Codex P2 已改：照片畫面只列這些照片，其他資料可能還在等，所以不再說「存好就可以移除舊圖示」，改成存好後再按一次「檢查同步」，其他資料也同步了才移除。
 
 - [x] **PRO-014F2 F2A** 個人空間的 Pro 呈現（v1.41.25；擁有者 2026-11-19 決定 §9 全部照建議；提案 `docs/pro-014f2-personal-space-pro-proposal.md`）
   - 新模組 `personalSpace/v2/proPresence.js`（SHELL）：以 `getProRolloverStatus()` 判斷（`pro`／`not-pro`／`unknown`），只有已知的 Pro 顯示標記；`unknown` 不顯示、不說話、不記錄。每個帳號在這台裝置記 `orbit_ps_pro_seen:<帳號>` = `{ status, changedOn }`：第一次記錄不說話；已知狀態改變時記下當天，`status === 'pro'` 且是當天才說那句話；結束時不說。

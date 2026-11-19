@@ -145,6 +145,11 @@ describe('showProofKeepSheet', () => {
     const captions = [...overlay.querySelectorAll('figcaption')].map(node => node.textContent);
     expect(captions).toEqual(['2026/3/4 <img src=x onerror=alert(1)>', '這筆任務']);
     expect(overlay.querySelectorAll('figcaption img')).toHaveLength(0);
+    // Other data may still be waiting: the sheet never says the old icon can go
+    // by itself (#261 Codex P2).
+    const hint = overlay.querySelector('.proof-keep-hint').textContent;
+    expect(hint).toContain('再按一次「檢查同步」');
+    expect(hint).not.toMatch(/存好後，就可以移除/);
     expect(document.activeElement?.className).toBe('proof-keep-close');
   });
 
