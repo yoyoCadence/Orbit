@@ -280,6 +280,7 @@
 | #257 | v1.41.24 | HW-112C2b：新模組 `platform/proofLocal.js`；設定頁分成「清除這台裝置的佐證照片」（待傳的保留、雲端保留）與「刪除所有佐證照片（包括雲端）」（列出雲端資料夾分批刪除），訪客只有刪除；登出時移除確定已上傳的本機照片；BUG-118 的提示與「檢查同步」改成只算還沒上傳的照片；#254 的 P3。剩下 HW-112D（擁有者驗收） |
 | #258 | — | PRO-014F2 提案（只寫文件）：個人空間的 Pro 呈現。建議 F2A（狀態列與 Orbit Window 的「✦ Pro」標記、Orbit 夥伴在 Pro 開始那天說一句；以 `getProRolloverStatus()` 判斷，「不知道」時不顯示也不說話），等待擁有者決定 §9；另記下 #257 留下的兩個 P3 |
 | #259 | — | INFRA-116：CI 新增 `database` job（PostgreSQL 16 容器＋pgTAP，執行 `tests/database/run.sh`，`REQUIRE_PGTAP=1`）；`run.sh` 也拒絕非本機的 `PGHOSTADDR`、`PGSERVICE` 與 `PGHOST` 清單中的遠端主機 |
+| #260 | v1.41.25 | PRO-014F2 F2A：新模組 `personalSpace/v2/proPresence.js`；個人空間狀態列與首頁 Orbit Window 的「✦ Pro」標記、Orbit 夥伴在成為 Pro 那天的一句話；以 `getProRolloverStatus()` 判斷，不確定時不顯示也不說話；PS-243 延遲載入預算只剩約 0.5 KB |
 
 教訓：#155–#164 在 Codex review 出現前就合併，造成 #165、#166、#167 的回頭修正。這就是 §2 合併條件的由來。獨立 review 在 #167、#168、#169 都找到真正的問題（例如椅子畫在螢幕後面、壁燈在相框下投出暗影），所以複查不能省。
 

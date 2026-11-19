@@ -59,23 +59,27 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
+        with:
+          # The repository is mounted into the container; keep the token out of .git/config.
+          persist-credentials: false
 
       - name: Start PostgreSQL 16 with pgTAP
         run: |
           docker run -d --name orbit-db -e POSTGRES_HOST_AUTH_METHOD=trust \
             -v "$GITHUB_WORKSPACE:/repo:ro" postgres:16
+          # The image's first start runs a temporary server on the socket only,
+          # then restarts: TCP answers only once the final server is up.
           for i in $(seq 1 60); do
-            docker exec orbit-db pg_isready -U postgres -q && break
+            docker exec orbit-db pg_isready -h 127.0.0.1 -U postgres -q && break
             sleep 1
           done
-          docker exec orbit-db bash -c 'apt-get update -qq && apt-get install -y -qq postgresql-16-pgtap >/dev/null'
-          # The image's first start runs a temporary server and then restarts:
-          # wait for the final one (by now well past it) before the tests.
-          for i in $(seq 1 60); do
-            docker exec orbit-db pg_isready -U postgres -q && break
-            sleep 1
+          docker exec orbit-db pg_isready -h 127.0.0.1 -U postgres || { docker logs orbit-db; exit 1; }
+          for attempt in 1 2 3; do
+            docker exec -e DEBIAN_FRONTEND=noninteractive orbit-db bash -c \
+              'apt-get update -qq && apt-get install -y -qq --no-install-recommends postgresql-16-pgtap >/dev/null' && break
+            [ "$attempt" = 3 ] && exit 1
+            sleep 10
           done
-          docker exec orbit-db pg_isready -U postgres
 
       - name: Run database tests
         run: docker exec -u postgres -e REQUIRE_PGTAP=1 orbit-db /repo/tests/database/run.sh

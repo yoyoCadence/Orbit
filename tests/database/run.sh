@@ -18,6 +18,10 @@
 set -u
 
 remote=""
+# `read` stops at a newline, so a value with one could hide a host from the checks.
+nl='
+'
+case "${PGHOST:-}${PGHOSTADDR:-}" in *"$nl"*) remote="a PGHOST/PGHOSTADDR with a newline" ;; esac
 IFS=',' read -r -a pg_hosts <<< "${PGHOST:-}"
 for host in "${pg_hosts[@]:-}"; do
   case "$host" in ''|localhost|127.0.0.1|::1|/*) ;; *) remote="PGHOST=$PGHOST" ;; esac

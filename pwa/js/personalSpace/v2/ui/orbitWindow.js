@@ -86,6 +86,9 @@ export function renderOrbitWindow(inputModel = {}, options = {}) {
           <span class="orbit-window-eyebrow">PERSONAL SPACE · 即時世界</span>
           <h2 id="orbit-window-title">${escapeHtml(model.sceneLabel)}</h2>
         </div>
+        ${model.proMark && model.renderMode === 'home-window'
+          ? '<span class="pro-badge--inline orbit-window-pro" aria-label="Orbit Pro 會員">✦ Pro</span>'
+          : ''}
         <span class="orbit-window-momentum" data-momentum="${escapeHtml(model.momentum)}">${escapeHtml(momentumLabel(model.momentum))}</span>
       </div>
 
@@ -528,6 +531,7 @@ export function normalizeOrbitWindowModel(input = {}, renderMode) {
       : 'home-window',
     sceneId: input.sceneId || input.world?.selectedSceneId || 'office-corner',
     sceneLabel: input.sceneLabel || 'Building Stage · 正式工作站',
+    proMark: input.proMark === true,
     worldRevision: Number.isFinite(input.worldRevision) ? input.worldRevision : 0,
     activeProject: {
       id: project.id || 'workspace-upgrade-v1',
