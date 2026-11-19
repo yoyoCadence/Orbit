@@ -36,7 +36,7 @@ vi.mock('../../pwa/js/ui/proofSheet.js', () => ({ showProofSheet: mocks.showProo
 vi.mock('../../pwa/js/platform/haptics.js', () => ({ haptic: vi.fn() }));
 
 import { state } from '../../pwa/js/state.js';
-import { commitSession } from '../../pwa/js/sessionFlow.js';
+import { commitSession, submitFocusResult } from '../../pwa/js/sessionFlow.js';
 import { loadSessionDeletionLog } from '../../pwa/js/platform/sessionDeletionLog.js';
 import { setPersonalSpaceRuntime } from '../../pwa/js/personalSpace/v2/featureFlag.js';
 import { loadPersonalSpaceV2State } from '../../pwa/js/personalSpace/v2/store.js';
@@ -82,7 +82,7 @@ describe('session settlement safety', () => {
     expect(mocks.saveSessions).not.toHaveBeenCalled();
     expect(mocks.saveEnergy).not.toHaveBeenCalled();
     expect(mocks.saveUser).not.toHaveBeenCalled();
-    expect(mocks.showToast).toHaveBeenCalledWith('另一個分頁已切換帳號，請重新整理這個頁面');
+    expect(mocks.showToast).toHaveBeenCalledWith('另一個分頁已切換帳號，這筆變更沒有儲存；請重新整理這個頁面');
 
     state.sessions = [session({ finalXP: 30 })];
     state.user.totalXP = 30;
@@ -108,6 +108,14 @@ describe('session settlement safety', () => {
 
       mocks.storedUser = state.user;
       window.completeInstant('task-instant');
+      vi.advanceTimersByTime(1000);
+      expect(state.sessions).toHaveLength(1);
+      expect(mocks.showProofSheet).toHaveBeenCalledTimes(1);
+
+      // A focus session too (submitFocusResult).
+      state.tasks.push({ ...state.tasks[0], id: 'task-focus', name: '深度學習', category: 'focus', minEffectiveMinutes: 1 });
+      mocks.storedUser = { id: 'owner-2' };
+      submitFocusResult('task-focus', 30 * 60, 'complete', 30);
       vi.advanceTimersByTime(1000);
       expect(state.sessions).toHaveLength(1);
       expect(mocks.showProofSheet).toHaveBeenCalledTimes(1);

@@ -188,7 +188,7 @@ export function submitFocusResult(taskId, elapsedSec, result, durationMin, note 
 // refuses it too). Reloading shows the stored account.
 function storedAccountIsAnother() {
   if ((storage.getUser()?.id ?? null) === (state.user?.id ?? null)) return false;
-  showToast('另一個分頁已切換帳號，請重新整理這個頁面');
+  showToast('另一個分頁已切換帳號，這筆變更沒有儲存；請重新整理這個頁面');
   return true;
 }
 

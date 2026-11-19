@@ -400,6 +400,7 @@ function loadStateFromStorage({
 
 /** Day rollover + show app + periodic bonus — the sequence formerly copy-pasted ×3. */
 function bootWithLocalState() {
+  _toastIfReloadedForAccount();
   // BUG-106: the cached-user branch and a 'SIGNED_IN' that lands before
   // getSession() resolves can both reach this in one launch. Revealing the app
   // again is harmless, but replaying the day rollover is not: it stacks a
@@ -760,6 +761,44 @@ window.addEventListener('orbit:stored-account-changed', () => {
   _storedAccountToastAt = Date.now();
   showToast('另一個分頁已切換帳號，這裡的變更沒有儲存；請重新整理這個頁面');
 });
+
+// HW-112D (b, #262 review): another tab switched the stored account while this
+// window still holds the previous one. Every write of this window's memory
+// (the user included: the morning check-in, settings toggles, …) would land on
+// the stored account, so the window reloads and shows the stored account. A
+// switch this window is making itself (its session already is the stored
+// account) is left to finish. Storage events are missed in the back/forward
+// cache and may be late for a frozen tab, so pageshow and the return to the
+// foreground check too.
+const ACCOUNT_RELOADED_KEY = 'orbit_account_reloaded';
+function _reloadIfAccountChangedElsewhere(storedId = storage.getUser()?.id ?? null) {
+  const memoryId = state.user?.id ?? null;
+  if (!memoryId || !storedId || storedId === memoryId) return;
+  if (_currentSession?.user?.id === storedId) return;
+  try { sessionStorage.setItem(ACCOUNT_RELOADED_KEY, '1'); } catch { /* the toast is optional */ }
+  location.reload();
+}
+window.addEventListener('storage', event => {
+  if (event.storageArea !== localStorage || event.key !== 'yoyo_user' || !event.newValue) return;
+  // Only another account written in; a removal is a sign-out (SIGNED_OUT handles it).
+  let storedId = null;
+  try { storedId = JSON.parse(event.newValue)?.id ?? null; } catch { return; }
+  _reloadIfAccountChangedElsewhere(storedId);
+});
+window.addEventListener('pageshow', event => {
+  if (event.persisted) _reloadIfAccountChangedElsewhere();
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') _reloadIfAccountChangedElsewhere();
+});
+function _toastIfReloadedForAccount() {
+  let reloaded = false;
+  try {
+    reloaded = sessionStorage.getItem(ACCOUNT_RELOADED_KEY) === '1';
+    sessionStorage.removeItem(ACCOUNT_RELOADED_KEY);
+  } catch { /* nothing to say */ }
+  if (reloaded) showToast('另一個分頁切換了帳號，這裡已重新載入');
+}
 
 // sessionFlow calls this after every commit/delete (no-op until badge module
 // loads); HW-110 also refreshes the offline pending count from the same hook.

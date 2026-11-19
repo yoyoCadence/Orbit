@@ -283,8 +283,8 @@
   - 問題：分頁 1 的記憶體是帳號 A，分頁 2 登出並登入 B（localStorage 換成 B）。分頁 1 完成一筆紀錄時，`saveSessions()` 以已儲存的使用者（B）為擁有者，把 A 的整份紀錄寫進 B 的快取，並把新紀錄以 B 的身分 insert 到伺服器（auth 在分頁間共用，所以會成功）。任務、精力同理。
   - `storage.saveSessions()`／`saveTasks()`／`saveEnergy()` 多一個參數：呼叫端記憶體中資料的擁有者（`state.user?.id ?? null`）。與已儲存的使用者不同就不寫入（回傳 false、`console.warn`），並發出 `orbit:stored-account-changed` 事件，`app.js` 顯示「另一個分頁已切換帳號，這裡的變更沒有儲存；請重新整理這個頁面」（3 秒內只一次）。不傳參數的舊呼叫維持原行為（新舊版本混用時不會壞）。事件名稱不從 storage.js 匯出（INFRA-105），兩邊各寫一次，測試確認一致。
   - `sessionFlow.js`：`commitSession()` 與撤銷（`window.deleteSession`）在改動任何狀態之前先比對 `storage.getUser()?.id` 與 `state.user?.id`，不同就提示並停止（撤銷不會先寫刪除紀錄）；之後的寫入也帶擁有者。其他呼叫端（`dayCycle.js` 的精力重設、`home.js` 拖曳排序、`settings.js` 任務編輯／刪除、`app.js` 初次設定）都帶擁有者。
-  - `saveUser()` 沒有加：它本身帶 id，也用在合法的換帳號流程；完成紀錄、撤銷在前面已經停下，不會走到它。
-  - 審查（#262）：Codex P2 已改：`completeInstant()` 與 `submitFocusResult()` 在 `commitSession()` 回傳 false 時不再跳出拍佐證照片的畫面（原本會替沒有儲存的紀錄存一張沒有紀錄可找的照片）。
+  - 舊分頁重新載入（#262 獨立審查 P2）：`saveUser()`／`saveUserLocal()` 等寫入目前使用者的地方很多（早晨視窗、專注時長、設定開關、每週獎勵、連續天數保護…），舊分頁一呼叫就把 A 寫回成已儲存的帳號，之後的保護都失效。所以 `app.js` 在知道「已儲存的帳號被別的分頁換成另一個帳號」時直接重新載入：跨分頁的 `storage` 事件（`yoyo_user` 寫入另一個帳號；被移除＝登出，交給 SIGNED_OUT）、從 bfcache 回來（`pageshow` persisted）、回到前景（`visibilitychange`）。這個視窗自己正在切換（它的 session 已經是已儲存的帳號）時不動。重新載入後提示「另一個分頁切換了帳號，這裡已重新載入」。storage 層的拒絕寫入保留，作為事件送達前那一瞬間的保險。
+  - 審查（#262）：獨立審查 P2 見上一點；P3 一併改：拒絕時的提示改成「這筆變更沒有儲存」、`submitFocusResult()` 的提前返回補單元測試；未改：初次設定時 `saveUser()` 因儲存空間滿而失敗，接著的 `saveTasks()` 會顯示「另一個分頁已切換帳號」的提示（不正確但罕見）。Codex P2 已改：`completeInstant()` 與 `submitFocusResult()` 在 `commitSession()` 回傳 false 時不再跳出拍佐證照片的畫面（原本會替沒有儲存的紀錄存一張沒有紀錄可找的照片）。
   - 測試：`tests/unit/storageOwnerGuard.test.js`（真的 storage.js、Supabase 以 B 登入的 spy：A 的分頁寫入不寫、不 insert、發事件；B 自己、訪客、沒帶參數照舊）、`sessionFlowSettlement`（完成與撤銷都不改狀態、不寫入、提示）、e2e `hw112d-stale-account-tab.test.js`（兩個分頁：另一個分頁換帳號後完成任務 → 提示、不寫入；重新整理後顯示新帳號）。
 
 - [x] **HW-112D (a)** 「檢查同步」分開說明無法確認已上傳的佐證照片（v1.41.26；擁有者 2026-11-19 同意）
