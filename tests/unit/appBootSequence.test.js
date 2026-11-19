@@ -1005,6 +1005,38 @@ describe('PRO-014Q Q6：遊客有任務但沒有 user', () => {
     expect(storage.saveUser.mock.lastCall[0].id).toBe('owner-new');
   });
 
+  it('#266 審查：登入帳號自己的設定（有同步標記）照舊沿用自己的資料，不被當成訪客重設', async () => {
+    const owner = 'owner-a';
+    const markerKey = `yoyo_sessionSyncCutover:v1.21:${encodeURIComponent(owner)}`;
+    localStorage.setItem(markerKey, JSON.stringify({ ownerId: owner, completed: true, completedAt: '2026-11-01T00:00:00.000Z' }));
+    try {
+      cache.user = null;
+      cache.tasks = [];
+      auth.getSession.mockImplementation(
+        () => new Promise(resolve => { auth.sessionResolve = resolve; }),
+      );
+      db.loadFromRemote.mockImplementationOnce(async () => {
+        cache.user = { ...makeUser(owner), totalXP: 700, streakDays: 9 };
+        cache.tasks = [];
+      });
+      await import('../../pwa/js/app.js');
+      await flush();
+      await auth.callback('SIGNED_IN', sessionFor(owner));
+      await flush();
+      expect(document.getElementById('setup-screen').classList.contains('hidden')).toBe(false);
+
+      storage.saveUser.mockClear();
+      document.getElementById('setup-name').value = 'A';
+      document.getElementById('setup-form').dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true }),
+      );
+      const [[saved]] = storage.saveUser.mock.calls;
+      expect(saved).toMatchObject({ id: owner, name: 'A', totalXP: 700, streakDays: 9 });
+    } finally {
+      localStorage.removeItem(markerKey);
+    }
+  });
+
   it('設定頁開著時另一個分頁換了帳號，舊帳號的設定不會用新帳號的資料寫回舊 id', async () => {
     cache.user = null;
     cache.tasks = [];
