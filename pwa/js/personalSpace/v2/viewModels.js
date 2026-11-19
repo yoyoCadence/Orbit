@@ -570,6 +570,9 @@ export function buildPersonalSpaceV2Snapshot(coreOrInput = {}, v2Arg = {}, ledge
       pendingReveal,
     }),
   };
+  // PRO-014F2: resolved by the pages; replaces only the line, never over a reveal.
+  const proPresence = coreState.proPresence || null;
+  if (proPresence?.companionKey && !pendingReveal) companion.dialogueKey = proPresence.companionKey;
   const protagonist = selectProtagonistState({ pendingReveal, recentSessions, momentum });
   const world = v2State.world || {};
   const user = coreState.user || {};
@@ -599,6 +602,7 @@ export function buildPersonalSpaceV2Snapshot(coreOrInput = {}, v2Arg = {}, ledge
     companion,
     companionState: companion.state,
     relationshipStage,
+    proMark: Boolean(proPresence?.showMark),
     timeBand: getTimeBand(now),
     weather: getWeather(v2State.weather || world.weather),
     player: {
@@ -642,6 +646,7 @@ function commonProjection(snapshot, renderMode) {
     companionState: snapshot.companionState,
     companion: snapshot.companion,
     relationshipStage: snapshot.relationshipStage,
+    proMark: snapshot.proMark,
     activeProject: snapshot.activeProject,
     mainQuest: snapshot.mainQuest,
     wallet: snapshot.wallet,

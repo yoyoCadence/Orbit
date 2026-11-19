@@ -144,7 +144,6 @@
 
 > 2026-11-18 擁有者要求：「列出幾個你覺得需要完善的事 持續完善」，每完成一段就開 PR 並合併，不必特別詢問（必要時才問）。agent 列出的完善清單如下，依序做；需要核准的另外標明。
 
-- [ ] **PRO-014F2**（擁有者 2026-11-19 決定 §9 全部照建議：做 F2A＝狀態列與首頁 Orbit Window 的標記＋只在開始那天的一句話；不做光暈；試用算 Pro；F2B 暫不做）Personal Space 的 Pro 呈現：提案已寫，見 [`docs/pro-014f2-personal-space-pro-proposal.md`](docs/pro-014f2-personal-space-pro-proposal.md)。建議先做 F2A（只顯示：個人空間狀態列與首頁 Orbit Window 的「✦ Pro」標記，以及 Orbit 夥伴在 Pro 開始那天說一句中性的話，不推銷；狀態「不知道」時不顯示也不說話），不碰經濟、不新增素材、不改資料庫；Pro 專屬外觀（F2B）選做、只限新內容；不建議讓 Pro 影響進度。等待擁有者決定 §9（範圍、位置、文案、光暈、試用期、F2B）後才實作。排行榜的部分已由 PRO-014F1 完成（見 Done）。
 - [ ] **HW-112D** 佐證照片：擁有者驗收與後續評估（HW-112C1／C2a／C2b 已完成，見 Done）
   - 留下的 P3（#257 審查，不急）：(1) 永遠上傳不了的照片（轉檔失敗的 PNG、超過 200 KB）會讓「檢查同步」一直說還有照片沒上傳，提示文字可另外說明（例如「這幾張無法備份，移除舊圖示前請先另存」）；(2) 既有問題、不限照片：`storage.saveSessions()` 不檢查擁有者，兩個分頁登入不同帳號時，記憶體仍是 A 的分頁可能把 A 的紀錄寫到已儲存的 B 底下（iOS 主畫面 app 不會發生；要修需在寫入時比對 `storage.getUser()?.id`）。
   - **需要擁有者決定**（#257 Codex P2）：「刪除所有佐證照片」只刪這台裝置與雲端；其他裝置已下載的副本（IndexedDB）留到那台裝置登出或「清除這台裝置的佐證照片」，確認文字已照實說明。要讓其他裝置也自動清掉，需要 (a) profile 加一個「照片全部刪除時間」欄位（schema 變更，需核准），其他裝置同步時比對並清掉較早的下載副本；或 (b) 每台裝置每次同步列出這個帳號的雲端資料夾（每 100 張一個請求）並清掉雲端已沒有的副本。agent 建議 (a)，但目前不做，等擁有者決定。
@@ -279,6 +278,14 @@
 ---
 
 ## Done
+
+- [x] **PRO-014F2 F2A** 個人空間的 Pro 呈現（v1.41.25；擁有者 2026-11-19 決定 §9 全部照建議；提案 `docs/pro-014f2-personal-space-pro-proposal.md`）
+  - 新模組 `personalSpace/v2/proPresence.js`（SHELL）：以 `getProRolloverStatus()` 判斷（`pro`／`not-pro`／`unknown`），只有已知的 Pro 顯示標記；`unknown` 不顯示、不說話、不記錄。每個帳號在這台裝置記 `orbit_ps_pro_seen:<帳號>` = `{ status, changedOn }`：第一次記錄不說話；已知狀態改變時記下當天，`status === 'pro'` 且是當天才說那句話；結束時不說。
+  - 首頁（`home.js`）與個人空間頁算好後當成 `coreState.proPresence` 傳給 `buildPersonalSpaceV2Snapshot()`（builder 維持純函式）；只換夥伴的 `dialogueKey`（狀態、動畫、world action 不變），有揭曉事件時不換。快照與 view model 帶出 `proMark`。
+  - 標記：個人空間狀態列「等級」之後（`.personal-space-v2-hud-stats .personal-space-v2-pro`，比狀態列的 span 規則更具體，主色背景＋`--on-primary` 文字）；首頁 Orbit Window 標題列 Momentum 旁（只在 `home-window`，個人空間頁不重複）。文案 `companion.pro.started` 加進夥伴文案表與 telemetry 的 allowlist。
+  - 純顯示：沒有新增任何有價值的資料或操作，不需要 server 端強制；新的 Pro 判斷位置 3 處（狀態列標記、Orbit Window 標記、夥伴的話），都用 `getProRolloverStatus()`，沒有新增 `storage.isProUser()` 呼叫。
+  - 測試：`tests/unit/pro014f2PersonalSpacePro.test.js`（8）、e2e `pro014f2-personal-space-pro.test.js`（首頁與狀態列的標記與實際計算樣式、個人空間頁只出現一次、當天的那句話、狀態不確定時都不顯示）；320px 截圖確認。
+  - 注意：PS-243 的延遲載入預算（V2 ＋ Pixi，304 KB gzip）剩約 0.5 KB；之後在個人空間加程式前要先處理預算（另列任務或擁有者調整）。
 
 - [x] **INFRA-116** CI 跑資料庫測試（擁有者 2026-11-19 核准）
   - `ci.yml` 新增 `database` job：PostgreSQL 16 官方容器（已含 PGDG apt，裝上 `postgresql-16-pgtap`），把 repo 唯讀掛進容器，以 `postgres` 使用者在容器內執行 `tests/database/run.sh`（`REQUIRE_PGTAP=1`，走本機 socket）。不接觸 production、不需要任何 secret；容器的第一次啟動會先開暫時的 server 再重啟，所以裝完 pgTAP 後再等一次 `pg_isready`。

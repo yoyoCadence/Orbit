@@ -5,6 +5,7 @@ import { storage } from '../storage.js';
 import { sessionRowHtml, bindProofThumbs } from '../ui/sessionRow.js';
 import { resolveAchievementPhoto } from '../platform/proofStore.js';
 import { withCloudAchievementPhoto } from '../platform/proofCloud.js';
+import { resolveProPresence } from '../personalSpace/v2/proPresence.js';
 import { FLAG_SHIELD_DISMISSED, FLAG_SHIELD_SCROLL_TOP } from '../flags.js';
 import { readShieldOffer } from '../proRollover.js';
 import { showToast } from '../ui/feedback.js';
@@ -54,6 +55,8 @@ function coreStateWithAchievementPhoto() {
   return {
     ...state,
     achievementPhoto: homeAchievementPhoto(),
+    // PRO-014F2: the Pro mark and the one-day line (display only).
+    proPresence: resolveProPresence(state.user?.id, { newDayHour: state.user?.newDayHour ?? 5 }),
   };
 }
 

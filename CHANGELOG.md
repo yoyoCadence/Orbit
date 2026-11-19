@@ -3,6 +3,13 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.41.25] - 2026-11-19
+
+### Added
+- 個人空間的 Pro 呈現（PRO-014F2 F2A，擁有者 2026-11-19 決定）：Pro（含試用）帳號在個人空間的狀態列與首頁 Orbit Window 標題旁看到「✦ Pro」；在這台裝置第一次成為 Pro 的那一天，Orbit 夥伴說一句「Pro 已開啟。這裡的一切照舊，你累積的每一步都算數。」（不推銷、結束時不說話）。Pro 狀態不確定時（例如很久沒開、剛登入）不顯示也不說話。只是顯示，不影響任何獎勵。
+
+---
+
 ## [1.41.24] - 2026-11-18
 
 ### Changed

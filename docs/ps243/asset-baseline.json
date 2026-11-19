@@ -1,6 +1,6 @@
 {
   "artifact": "ps243-asset-baseline",
-  "appVersion": "1.41.24",
+  "appVersion": "1.41.25",
   "note": "Reproducible: a pure function of committed files with CRLF normalized to LF. No timestamps; regenerate with `npm run ps243:assets` and diff to verify.",
   "method": {
     "assetSizes": "raw binary file bytes on disk (fs.statSync.size)",
@@ -277,11 +277,11 @@
   },
   "deferredJsBundles": {
     "personalSpaceV2AppJs": {
-      "fileCount": 30,
+      "fileCount": 31,
       "files": [
         {
           "path": "pwa/js/pages/personalSpaceV2.js",
-          "bytes": 19640
+          "bytes": 19952
         },
         {
           "path": "pwa/js/personalSpace/economy.js",
@@ -313,7 +313,7 @@
         },
         {
           "path": "pwa/js/personalSpace/v2/content/companionDialogue.js",
-          "bytes": 2353
+          "bytes": 2493
         },
         {
           "path": "pwa/js/personalSpace/v2/content/worldLabels.js",
@@ -334,6 +334,10 @@
         {
           "path": "pwa/js/personalSpace/v2/momentum.js",
           "bytes": 2094
+        },
+        {
+          "path": "pwa/js/personalSpace/v2/proPresence.js",
+          "bytes": 2255
         },
         {
           "path": "pwa/js/personalSpace/v2/projectEngine.js",
@@ -381,7 +385,7 @@
         },
         {
           "path": "pwa/js/personalSpace/v2/telemetry.js",
-          "bytes": 7836
+          "bytes": 7863
         },
         {
           "path": "pwa/js/personalSpace/v2/ui/appearancePicker.js",
@@ -393,15 +397,15 @@
         },
         {
           "path": "pwa/js/personalSpace/v2/ui/orbitWindow.js",
-          "bytes": 33692
+          "bytes": 33915
         },
         {
           "path": "pwa/js/personalSpace/v2/viewModels.js",
-          "bytes": 26763
+          "bytes": 27077
         }
       ],
-      "rawBytes": 301531,
-      "gzipBytes": 79895
+      "rawBytes": 304802,
+      "gzipBytes": 81052
     },
     "vendoredPixi": {
       "path": "pwa/vendor/pixi.js",
@@ -413,7 +417,7 @@
       "rawBytes": 16298,
       "gzipBytes": 4332
     },
-    "combinedGzipBytes": 309655,
+    "combinedGzipBytes": 310812,
     "budgetBytes": 311296,
     "result": "PASS"
   }

@@ -28,6 +28,7 @@ import { emitPersonalSpaceTelemetry } from '../personalSpace/v2/telemetry.js';
 import { describeControl, findControl, watchRemindWindow } from '../personalSpace/v2/remindWindow.js';
 import { resolveAchievementPhoto } from '../platform/proofStore.js';
 import { withCloudAchievementPhoto } from '../platform/proofCloud.js';
+import { resolveProPresence } from '../personalSpace/v2/proPresence.js';
 
 const MOMENTUM_LABELS = Object.freeze({
   low: '低',
@@ -139,6 +140,7 @@ function pageMarkup(model, mode, renderWindow) {
         </div>
         <div class="personal-space-v2-hud-stats" role="list" aria-label="世界狀態">
           <span role="listitem">等級 ${level}</span>
+          ${model.proMark ? '<span role="listitem" class="pro-badge--inline personal-space-v2-pro" aria-label="Orbit Pro 會員">✦ Pro</span>' : ''}
           <span role="listitem">金幣 ${model.wallet.balanceGold}</span>
           <span role="listitem">Momentum ${escapeHtml(MOMENTUM_LABELS[model.momentum] || model.momentum)}</span>
           <span role="listitem" aria-label="待處理事件">${model.pendingReveal ? '待揭曉事件 1' : '無待處理事件'}</span>
@@ -329,6 +331,7 @@ export function renderPersonalSpaceV2(container, options = {}) {
       coreState: {
         ...coreState,
         achievementPhoto: achievementPhoto(),
+        proPresence: resolveProPresence(user.id, { newDayHour: user.newDayHour ?? 5 }),
       },
       v2State,
       ledgerSnapshot,

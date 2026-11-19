@@ -32,6 +32,7 @@ export const COMPANION_DIALOGUE_INTERACTION_KEYS = Object.freeze([
   'companion.observe.partner',
   'companion.observe.trusted-companion',
   'companion.relationship.stage-up',
+  'companion.pro.started',
 ]);
 
 const EVENT_SCHEMAS = Object.freeze({

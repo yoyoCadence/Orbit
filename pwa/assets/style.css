@@ -65,6 +65,9 @@
   letter-spacing: .13em;
 }
 
+/* PRO-014F2: the Pro mark sits next to Momentum (pushed right with it). */
+.orbit-window-pro { margin-left: auto; flex-shrink: 0; }
+
 .orbit-window-momentum {
   flex: none;
   padding: 6px 9px;
@@ -6479,6 +6482,15 @@ html.has-bg[data-ui-skin="modern"] .levelup-box {
 }
 
 .personal-space-v2-hud-stats::-webkit-scrollbar { display: none; }
+
+/* PRO-014F2: the HUD pill in the Pro badge's colours (the HUD span rule is
+   more specific than .pro-badge--inline). */
+.personal-space-v2-hud-stats .personal-space-v2-pro {
+  color: var(--on-primary, #fff);
+  background: var(--primary);
+  border-color: var(--primary);
+  font-weight: 700;
+}
 
 .personal-space-v2-hud-stats span {
   flex: none;
