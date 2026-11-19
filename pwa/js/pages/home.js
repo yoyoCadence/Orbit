@@ -936,7 +936,7 @@ function _endDrag(container) {
   if (target && target !== _drag.card && _drag.taskId) {
     const newTasks = reorderTasks(state.tasks, _drag.taskId, target.dataset.taskId);
     state.tasks.splice(0, state.tasks.length, ...newTasks);
-    storage.saveTasks(state.tasks);
+    storage.saveTasks(state.tasks, state.user?.id ?? null);
 
     // Preserve which sections are in edit-mode before full re-render
     const editingSections = [...container.querySelectorAll('.task-grid.edit-mode')]

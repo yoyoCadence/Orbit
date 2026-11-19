@@ -22,6 +22,8 @@ import {
 } from './platform/sessionDeletionLog.js';
 
 const PREFIX = 'yoyo_';
+// Not exported (INFRA-105): app.js listens for the same name.
+const STORED_ACCOUNT_CHANGED_EVENT = 'orbit:stored-account-changed';
 // The leaderboard caches belong to leaderboardPublic.js (PRO-014E2); sign-out
 // clears both, the old key from versions before it included.
 const LEADERBOARD_CACHE_KEYS = ['leaderboardCache', 'leaderboardCacheV2'];
@@ -233,6 +235,19 @@ function loadOwnerPendingSnapshot(baseKey, ownerId) {
 
 function isCachedOwner(expectedOwnerId) {
   return Boolean(expectedOwnerId && get('user')?.id === expectedOwnerId);
+}
+
+// A window whose memory still holds one account while another tab has switched
+// the stored one must not write that memory under the stored account (its
+// sessions would be inserted into the other account). Callers pass the owner of
+// the data they hold (null for none); leaving it out keeps the old behaviour.
+function refusesStoredOwner(expectedOwnerId, what) {
+  if (expectedOwnerId === undefined) return false;
+  if ((expectedOwnerId ?? null) === (get('user')?.id ?? null)) return false;
+  console.warn(`Not saving ${what}: another window switched the stored account.`);
+  // The page tells the user (app.js): an edit shown here was not saved.
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(STORED_ACCOUNT_CHANGED_EVENT));
+  return true;
 }
 
 function markSessionSyncPending(sessionOrId, expectedOwnerId) {
@@ -1094,11 +1109,16 @@ export const storage = {
 
   // ── Tasks ────────────────────────────────────────────────────────────────────
   getTasks:   ()  => get('tasks') ?? [],
-  saveTasks:  (t) => {
+  /**
+   * @param {string|null} [expectedOwnerId] the account the tasks in memory belong to
+   * @returns {boolean} false only when refused: the stored account is another one.
+   */
+  saveTasks:  (t, expectedOwnerId) => {
+    if (refusesStoredOwner(expectedOwnerId, 'tasks')) return false;
     const prev = get('tasks') ?? [];
     set('tasks', t);
     const ownerId = get('user')?.id;
-    if (!ownerId) return;
+    if (!ownerId) return true;
     // Treat the list as unsynced until Supabase confirms it. loadFromRemote
     // overwrites the local task cache wholesale, so without this sidecar any
     // task added while offline (or whose upsert failed) is silently dropped
@@ -1120,6 +1140,7 @@ export const storage = {
         }
       })
       .catch(console.error);
+    return true;
   },
 
   // ── Sessions ─────────────────────────────────────────────────────────────────
@@ -1130,7 +1151,12 @@ export const storage = {
       ? filterDeletedSessions(sessions, loadSessionDeletionLog(ownerId))
       : sessions;
   },
-  saveSessions: (s) => {
+  /**
+   * @param {string|null} [expectedOwnerId] the account the sessions in memory belong to
+   * @returns {boolean} false only when refused: the stored account is another one.
+   */
+  saveSessions: (s, expectedOwnerId) => {
+    if (refusesStoredOwner(expectedOwnerId, 'sessions')) return false;
     const prev = get('sessions') ?? [];
     const ownerId = get('user')?.id;
     const previousById = new Map(prev.filter(session => session?.id).map(session => [session.id, session]));
@@ -1144,7 +1170,7 @@ export const storage = {
     ));
     set('sessions', persistedSessions);
     // Only INSERT the newly added sessions (not the whole array)
-    if (!ownerId) return;
+    if (!ownerId) return true;
     saveOwnerPendingSessions(
       ownerId,
       persistedSessions.filter(session => session?._syncPending === true),
@@ -1158,12 +1184,18 @@ export const storage = {
          console.error(err);
          markSessionSyncPending(ns.id, ownerId);
        }));
+    return true;
   },
 
   // ── Energy ───────────────────────────────────────────────────────────────────
   getEnergy:   ()  => get('energy') ?? { currentEnergy: 100, maxEnergy: 100, lastResetDate: '' },
-  /** @returns {boolean} whether the local write succeeded (see `set`). */
-  saveEnergy:  (e) => {
+  /**
+   * @param {string|null} [expectedOwnerId] the account the energy in memory belongs to
+   * @returns {boolean} whether the local write succeeded (see `set`); false also
+   *   when refused because the stored account is another one.
+   */
+  saveEnergy:  (e, expectedOwnerId) => {
+    if (refusesStoredOwner(expectedOwnerId, 'energy')) return false;
     const saved = set('energy', e);
     const ownerId = get('user')?.id;
     const pending = ownerId ? createPendingSnapshot(ownerId, e) : null;

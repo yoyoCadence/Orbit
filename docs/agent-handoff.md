@@ -282,6 +282,7 @@
 | #259 | — | INFRA-116：CI 新增 `database` job（PostgreSQL 16 容器＋pgTAP，執行 `tests/database/run.sh`，`REQUIRE_PGTAP=1`）；`run.sh` 也拒絕非本機的 `PGHOSTADDR`、`PGSERVICE` 與 `PGHOST` 清單中的遠端主機 |
 | #260 | v1.41.25 | PRO-014F2 F2A：新模組 `personalSpace/v2/proPresence.js`；個人空間狀態列與首頁 Orbit Window 的「✦ Pro」標記、Orbit 夥伴在成為 Pro 那天的一句話；以 `getProRolloverStatus()` 判斷，不確定時不顯示也不說話；PS-243 延遲載入預算只剩約 0.5 KB |
 | #261 | v1.41.26 | HW-112D (a)：新模組 `platform/proofUnsure.js` 與 `ui/proofKeepSheet.js`；「檢查同步」把同步處理過卻無法確認已上傳的照片分開說明，並可打開列出這些照片的畫面長按另存；附帶 #260 的 P3（目標提醒優先、標記的 role、指定日期、`run.sh` 訊息） |
+| #262 | v1.41.27 | HW-112D (b)：`storage.saveSessions()`／`saveTasks()`／`saveEnergy()` 帶呼叫端的擁有者，與已儲存的帳號不同就拒絕並發 `orbit:stored-account-changed`；`sessionFlow` 完成／撤銷前先比對帳號；e2e 兩個分頁 |
 
 教訓：#155–#164 在 Codex review 出現前就合併，造成 #165、#166、#167 的回頭修正。這就是 §2 合併條件的由來。獨立 review 在 #167、#168、#169 都找到真正的問題（例如椅子畫在螢幕後面、壁燈在相框下投出暗影），所以複查不能省。
 

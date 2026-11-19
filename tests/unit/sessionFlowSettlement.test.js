@@ -8,6 +8,8 @@ const mocks = vi.hoisted(() => ({
   saveUser: vi.fn(),
   deleteSession: vi.fn(),
   renderPage: vi.fn(),
+  showToast: vi.fn(),
+  storedUser: null,
 }));
 
 vi.mock('../../pwa/js/storage.js', () => ({
@@ -15,6 +17,7 @@ vi.mock('../../pwa/js/storage.js', () => ({
     saveSessions: mocks.saveSessions,
     saveEnergy: mocks.saveEnergy,
     saveUser: mocks.saveUser,
+    getUser: () => mocks.storedUser,
   },
   db: { deleteSession: mocks.deleteSession },
 }));
@@ -23,7 +26,7 @@ vi.mock('../../pwa/js/router.js', () => ({
   currentHash: () => 'home',
 }));
 vi.mock('../../pwa/js/ui/feedback.js', () => ({
-  showToast: vi.fn(),
+  showToast: mocks.showToast,
   showXPFloat: vi.fn(),
   showLevelUp: vi.fn(),
 }));
@@ -63,9 +66,36 @@ describe('session settlement safety', () => {
     localStorage.clear();
     vi.clearAllMocks();
     state.user = { id: 'owner-1', totalXP: 0 };
+    mocks.storedUser = state.user;
     state.sessions = [];
     state.energy = { currentEnergy: 100, maxEnergy: 100, lastResetDate: '' };
     globalThis.confirm = vi.fn(() => true);
+  });
+
+  it('HW-112D (b): another tab switched the stored account: nothing is committed or undone here', () => {
+    mocks.storedUser = { id: 'owner-2' };
+    expect(commitSession(session({ finalXP: 30, energyCost: 10 }))).toBe(false);
+    expect(state.sessions).toEqual([]);
+    expect(state.user.totalXP).toBe(0);
+    expect(state.energy.currentEnergy).toBe(100);
+    expect(mocks.saveSessions).not.toHaveBeenCalled();
+    expect(mocks.saveEnergy).not.toHaveBeenCalled();
+    expect(mocks.saveUser).not.toHaveBeenCalled();
+    expect(mocks.showToast).toHaveBeenCalledWith('另一個分頁已切換帳號，請重新整理這個頁面');
+
+    state.sessions = [session({ finalXP: 30 })];
+    state.user.totalXP = 30;
+    expect(window.deleteSession('session-1')).toBe(false);
+    expect(state.sessions).toHaveLength(1);
+    expect(state.user.totalXP).toBe(30);
+    expect(mocks.saveSessions).not.toHaveBeenCalled();
+    expect(loadSessionDeletionLog('owner-1')).toEqual({});
+  });
+
+  it('HW-112D (b): its own account: saves name the owner the data belongs to', () => {
+    expect(commitSession(session({ finalXP: 5 }))).toBe(true);
+    expect(mocks.saveSessions).toHaveBeenCalledWith(state.sessions, 'owner-1');
+    expect(mocks.saveEnergy).toHaveBeenCalledWith(state.energy, 'owner-1');
   });
 
   it('rejects a duplicate Session id before changing XP, Energy, or storage', () => {

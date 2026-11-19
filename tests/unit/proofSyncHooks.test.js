@@ -9,12 +9,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const sync = vi.hoisted(() => ({ proofSaved: vi.fn(), proofSessionDeleted: vi.fn() }));
-const presence = vi.hoisted(() => ({ signedIn: true }));
+const presence = vi.hoisted(() => ({ signedIn: true, storedUser: null }));
 
 vi.mock('../../pwa/js/platform/proofSync.js', () => sync);
 vi.mock('../../pwa/js/sessionPresence.js', () => ({ hasStoredSession: () => presence.signedIn }));
 vi.mock('../../pwa/js/storage.js', () => ({
-  storage: { saveSessions: vi.fn(), saveEnergy: vi.fn(), saveUser: vi.fn() },
+  storage: { saveSessions: vi.fn(), saveEnergy: vi.fn(), saveUser: vi.fn(), getUser: () => presence.storedUser },
   db: { deleteSession: vi.fn(() => Promise.resolve(false)) },
 }));
 vi.mock('../../pwa/js/router.js', () => ({ renderPage: vi.fn(), currentHash: () => 'home' }));
@@ -38,6 +38,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   presence.signedIn = true;
   state.user = { id: 'owner-1', totalXP: 10 };
+  presence.storedUser = state.user;
   state.energy = { currentEnergy: 50, maxEnergy: 100, lastResetDate: '' };
   state.sessions = [{
     id: SESSION, taskName: 'Deep work', finalXP: 10, energyCost: 0, energyGain: 0,

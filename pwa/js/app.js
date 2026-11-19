@@ -344,7 +344,7 @@ function showSetup(ownerId = null) {
 
     if (state.tasks.length === 0) {
       state.tasks = createDefaultTasks();
-      storage.saveTasks(state.tasks);
+      storage.saveTasks(state.tasks, state.user?.id ?? null);
     }
 
     showMainApp();
@@ -750,6 +750,15 @@ window.addEventListener('storage', event => {
   if (event.storageArea !== localStorage) return;
   const backupRemoved = event.key === FLAG_DEV_BACKUP && event.oldValue !== null && event.newValue === null;
   if (event.key === null || backupRemoved) location.reload();
+});
+
+// HW-112D (b): storage refused to write this window's tasks or energy because
+// another tab switched the stored account (storage.js names the same event).
+let _storedAccountToastAt = 0;
+window.addEventListener('orbit:stored-account-changed', () => {
+  if (Date.now() - _storedAccountToastAt < 3000) return;
+  _storedAccountToastAt = Date.now();
+  showToast('另一個分頁已切換帳號，這裡的變更沒有儲存；請重新整理這個頁面');
 });
 
 // sessionFlow calls this after every commit/delete (no-op until badge module

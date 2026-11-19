@@ -181,10 +181,20 @@ export function submitFocusResult(taskId, elapsedSec, result, durationMin, note 
 
 // ─── Shared session commit ────────────────────────────────────────────────────
 
+// Another tab switched the stored account while this window still holds the
+// previous one's data: nothing may be written under the stored account (storage
+// refuses it too). Reloading shows the stored account.
+function storedAccountIsAnother() {
+  if ((storage.getUser()?.id ?? null) === (state.user?.id ?? null)) return false;
+  showToast('另一個分頁已切換帳號，請重新整理這個頁面');
+  return true;
+}
+
 export function commitSession(session) {
   if (!session?.id || state.sessions.some(existing => existing.id === session.id)) {
     return false;
   }
+  if (storedAccountIsAnother()) return false;
   const oldLevel = getLevelInfo(state.user.totalXP || 0).level;
 
   const energyBefore = Number.isFinite(state.energy.currentEnergy)
@@ -206,14 +216,14 @@ export function commitSession(session) {
 
   // Persist session
   state.sessions.push(session);
-  storage.saveSessions(state.sessions);
+  storage.saveSessions(state.sessions, state.user?.id ?? null);
 
   // Update XP
   state.user.totalXP = (state.user.totalXP || 0) + session.finalXP;
 
   // Update energy
   state.energy.currentEnergy = energyAfter;
-  storage.saveEnergy(state.energy);
+  storage.saveEnergy(state.energy, state.user?.id ?? null);
   storage.saveUser(state.user);
   reconcilePersonalSpaceAfterSessionChange();
 
@@ -248,6 +258,7 @@ window.deleteSession = function (sessionId) {
   const session = state.sessions.find(s => s.id === sessionId);
   if (!session) return;
   if (!confirm(`撤銷「${session.taskName}」這筆記錄？`)) return;
+  if (storedAccountIsAnother()) return false;
 
   const ownerId = state.user?.id;
   const deletedAt = new Date().toISOString();
@@ -294,12 +305,12 @@ window.deleteSession = function (sessionId) {
 
   // Remove session
   state.sessions = state.sessions.filter(s => s.id !== sessionId);
-  storage.saveSessions(state.sessions);
+  storage.saveSessions(state.sessions, ownerId ?? null);
   // HW-112C1: its proof photo goes too: on this device, and (signed in) the
   // cloud copy, retried until the server confirms.
   proofSessionDeleted(ownerId, sessionId, { signedIn: Boolean(ownerId) && hasStoredSession() });
   storage.saveUser(state.user);
-  storage.saveEnergy(state.energy);
+  storage.saveEnergy(state.energy, ownerId ?? null);
   if (ownerId) {
     try {
       recordSessionDeletionLocalSettled(ownerId, sessionId, deletedAt);

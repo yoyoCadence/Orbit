@@ -64,7 +64,7 @@ export function resetEnergyIfNewDay(morningState) {
   state.energy.currentEnergy = energyMap[ms] ?? 90;
   state.energy.maxEnergy = 100;
   state.energy.lastResetDate = todayStr;
-  storage.saveEnergy(state.energy);
+  storage.saveEnergy(state.energy, state.user?.id ?? null);
 }
 
 // ─── Streak end-of-day processing ────────────────────────────────────────────
