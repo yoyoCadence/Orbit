@@ -78,6 +78,7 @@ const storage = vi.hoisted(() => ({
   isProUser: vi.fn(() => false),
   recoverPendingSessionDeletions: vi.fn(),
   getPendingSyncSummary: vi.fn(() => ({ total: 0 })),
+  getSessions: vi.fn(() => [{ id: 'cached-session' }]),
   saveUser: vi.fn(),
   saveTasks: vi.fn(),
   saveDailyPlan: vi.fn(),
@@ -144,6 +145,9 @@ vi.mock('../../pwa/js/sessionFlow.js', () => ({ setBadgeUpdater: vi.fn() }));
 // HW-112C1: proof photos queued for upload are sent after each remote load.
 const proofSync = vi.hoisted(() => ({ flushProofSync: vi.fn(() => Promise.resolve()) }));
 vi.mock('../../pwa/js/platform/proofSync.js', () => proofSync);
+// HW-112D (c): then, at most weekly, orphaned cloud photos (proofSweep.js decides).
+const proofSweep = vi.hoisted(() => ({ sweepOrphanCloudProofs: vi.fn(() => Promise.resolve(null)) }));
+vi.mock('../../pwa/js/platform/proofSweep.js', () => proofSweep);
 vi.mock('../../pwa/js/focusTimer.js', () => ({}));
 vi.mock('../../pwa/js/defaultTasks.js', () => ({ createDefaultTasks: () => [] }));
 vi.mock('../../pwa/js/timeBand.js', () => ({ applyTimeBand: vi.fn() }));
@@ -1038,6 +1042,24 @@ describe('HW-112C1：遠端同步之後補傳佐證照片', () => {
     expect(proofSync.flushProofSync).toHaveBeenCalledWith('owner-a');
     expect(db.loadFromRemote.mock.invocationCallOrder[0])
       .toBeLessThan(proofSync.flushProofSync.mock.invocationCallOrder[0]);
+  });
+
+  it('HW-112D (c): after the flush, the sweep gets this account\'s stored sessions (or none for another account)', async () => {
+    proofSweep.sweepOrphanCloudProofs.mockClear();
+    await bootWithPendingSession('owner-a');
+    auth.sessionResolve(sessionFor('owner-a'));
+    await flush();
+    expect(proofSweep.sweepOrphanCloudProofs).toHaveBeenCalledWith('owner-a', { sessions: [{ id: 'cached-session' }] });
+    expect(proofSync.flushProofSync.mock.invocationCallOrder.at(-1))
+      .toBeLessThan(proofSweep.sweepOrphanCloudProofs.mock.invocationCallOrder.at(-1));
+
+    // A storage that cannot list sessions never breaks the sync.
+    storage.getSessions.mockImplementationOnce(() => { throw new Error('broken'); });
+    proofSweep.sweepOrphanCloudProofs.mockClear();
+    await bootWithPendingSession('owner-a');
+    auth.sessionResolve(sessionFor('owner-a'));
+    await flush();
+    expect(proofSweep.sweepOrphanCloudProofs).not.toHaveBeenCalled();
   });
 
   it('遠端讀取失敗（離線）時不送，留到下次同步', async () => {

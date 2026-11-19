@@ -29,6 +29,11 @@ import { supabase } from '../supabase.js';
 import { storage } from '../storage.js';
 import { getDeletedSessionIds } from './sessionDeletionLog.js';
 import { getProof } from './proofStore.js';
+import {
+  photosAwaitingSessionSync,
+  sessionsNotOnServer,
+  setPhotosAwaitingSessionSync,
+} from './sessionsNotOnServer.js';
 
 export const PROOF_BUCKET = 'proofs';
 export const PROOF_MAX_BYTES = 204800; // 016's file_size_limit
@@ -302,6 +307,38 @@ function queueExistingProofs(ownerId) {
   }
 }
 
+// ─── Sessions not yet on the server (HW-112D c) ──────────────────────────────
+
+// A photo whose session the server has not confirmed may lose its cloud copy
+// to another device's sweep (proofSweep.js) before the session arrives: such
+// photos are remembered, and queued again once the session is on the server.
+// Only removed from the list once the upload queue holding them is saved.
+// @returns {Set<string>} photos not to upload in this flush: when the list could
+//   not be saved (storage full), a photo of a session not yet on the server
+//   stays queued, so it is never sent without a record to send it again
+//   (#263 review).
+function recheckPhotosOfSyncedSessions(ownerId) {
+  if (storage.getUser()?.id !== ownerId) return new Set();
+  const sessions = storage.getSessions() || [];
+  const own = new Set(sessions.map(session => String(session?.id ?? '')).filter(isObjectId));
+  const notOnServer = sessionsNotOnServer(ownerId, sessions);
+  const hasPhoto = sessionId => {
+    try {
+      return Boolean(getProof(sessionId));
+    } catch {
+      return false;
+    }
+  };
+  const listed = photosAwaitingSessionSync(ownerId).filter(sessionId => own.has(sessionId));
+  const waiting = [...notOnServer].filter(sessionId => own.has(sessionId) && hasPhoto(sessionId));
+  const ready = listed.filter(sessionId => !notOnServer.has(sessionId));
+  const hold = saved => (saved ? new Set() : new Set(notOnServer));
+  if (ready.length && !writeQueue(UPLOAD_QUEUE_PREFIX, ownerId, [...readQueue(UPLOAD_QUEUE_PREFIX, ownerId), ...ready])) {
+    return hold(setPhotosAwaitingSessionSync(ownerId, [...listed, ...waiting])); // try again next time
+  }
+  return hold(setPhotosAwaitingSessionSync(ownerId, [...listed.filter(sessionId => notOnServer.has(sessionId)), ...waiting]));
+}
+
 // ─── Flush ────────────────────────────────────────────────────────────────────
 
 const flushing = new Map();
@@ -335,9 +372,11 @@ export function flushProofSync(ownerId) {
     try {
       if (await signedInUserId() !== ownerId) return;
       queueExistingProofs(ownerId);
+      const holdBack = recheckPhotosOfSyncedSessions(ownerId);
       if (!await flushRemovals(ownerId)) return;
 
-      for (const sessionId of readQueue(UPLOAD_QUEUE_PREFIX, ownerId).slice(0, PROOF_SYNC_BATCH)) {
+      const sendable = readQueue(UPLOAD_QUEUE_PREFIX, ownerId).filter(sessionId => !holdBack.has(sessionId));
+      for (const sessionId of sendable.slice(0, PROOF_SYNC_BATCH)) {
         const own = ownSessionIds(ownerId);
         if (!own) return; // signed out or switched: unknown, keep everything queued
         if (!own.has(sessionId)) {

@@ -28,6 +28,7 @@ import {
   pendingProofUploads,
 } from './proofSync.js';
 import { clearCloudProofs } from './proofCloud.js';
+import { photosAwaitingSessionSync, sessionsNotOnServer } from './sessionsNotOnServer.js';
 
 const LOCAL_PROOF_PREFIX = 'orbit_proof_'; // proofStore's key prefix
 // proofSync's "this account's existing photos were queued" marker (private
@@ -87,14 +88,20 @@ function sendsAsIs(dataUrl) {
 
 /**
  * This account's local photos that are surely in the cloud: the account's
- * photos were all queued once (backfill), this one is no longer waiting, and
- * it was one the bucket takes as is. Anything uncertain stays.
+ * photos were all queued once (backfill), this one is no longer waiting, it
+ * was one the bucket takes as is, and (HW-112D c) its session is on the server
+ * (a cloud copy without a session row may be swept). Anything uncertain stays.
  */
 export function uploadedLocalProofIds(ownerId, sessions) {
   if (!ownerId || !backfillDone(ownerId)) return [];
   const pending = new Set(pendingProofUploads(ownerId));
+  const notOnServer = sessionsNotOnServer(ownerId, sessions);
+  // ...and not one to upload again now that its session is (#263 review).
+  const recheck = new Set(photosAwaitingSessionSync(ownerId));
   return sessionIdsOf(sessions).filter(sessionId => isObjectId(sessionId)
     && !pending.has(sessionId)
+    && !notOnServer.has(sessionId)
+    && !recheck.has(sessionId)
     && sendsAsIs(getProof(sessionId)));
 }
 

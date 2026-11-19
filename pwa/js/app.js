@@ -43,6 +43,7 @@ import { flushProofSync } from './platform/proofSync.js';
 import { forgetCloudProofMisses, keepCloudProofsOf } from './platform/proofCloud.js';
 import { photosNotSurelyUploaded, signOutProofCleanup } from './platform/proofLocal.js';
 import { unsureProofPhotos } from './platform/proofUnsure.js';
+import { sweepOrphanCloudProofs } from './platform/proofSweep.js';
 import { closeProofKeepSheet, showProofKeepSheet } from './ui/proofKeepSheet.js';
 import { isOnline, onConnectivityChange } from './platform/network.js';
 import { orbitWindowRuntimeDestroyer } from './personalSpace/v2/runtime/pixiSceneRuntime.js';
@@ -668,9 +669,22 @@ function _loadRemote(ownerId) {
     forgetCloudProofMisses();
     // Downloaded photos of any other account that never signed out here go.
     void keepCloudProofsOf(ownerId);
-    return flushProofSync(ownerId);
+    // HW-112D (c): then, at most weekly, photos left behind by deleted sessions
+    // (proofSweep.js). Only with this account's sessions as stored here.
+    return flushProofSync(ownerId).then(() => _sweepOrphanProofs(ownerId));
   }, () => {});
   return load;
+}
+
+// HW-112D (c): never throws (it runs in the background of every sync).
+function _sweepOrphanProofs(ownerId) {
+  try {
+    const sessions = storage.getUser()?.id === ownerId ? storage.getSessions() : null;
+    return sweepOrphanCloudProofs(ownerId, { sessions });
+  } catch (error) {
+    console.warn('Proof photo sweep skipped:', error);
+    return null;
+  }
 }
 
 // A resolved load can still leave writes queued: Session backfills settle
@@ -791,13 +805,18 @@ window.addEventListener('pageshow', event => {
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') _reloadIfAccountChangedElsewhere();
 });
+// Read (and cleared) when this page starts, so a launch that ends on the login
+// screen does not keep it for a later sign-in (#262 review P3); said by the
+// first boot of the app.
+let _reloadedForAccount = false;
+try {
+  _reloadedForAccount = sessionStorage.getItem(ACCOUNT_RELOADED_KEY) === '1';
+  sessionStorage.removeItem(ACCOUNT_RELOADED_KEY);
+} catch { /* nothing to say */ }
 function _toastIfReloadedForAccount() {
-  let reloaded = false;
-  try {
-    reloaded = sessionStorage.getItem(ACCOUNT_RELOADED_KEY) === '1';
-    sessionStorage.removeItem(ACCOUNT_RELOADED_KEY);
-  } catch { /* nothing to say */ }
-  if (reloaded) showToast('另一個分頁切換了帳號，這裡已重新載入');
+  if (!_reloadedForAccount) return;
+  _reloadedForAccount = false;
+  showToast('另一個分頁切換了帳號，這裡已重新載入');
 }
 
 // sessionFlow calls this after every commit/delete (no-op until badge module

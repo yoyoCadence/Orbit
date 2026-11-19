@@ -98,6 +98,24 @@ describe('unsureProofPhotos', () => {
     ]);
   });
 
+  it('HW-112D (c): a photo whose session the server has not confirmed is still waiting, not unsure', async () => {
+    signIn({ id: sid(1) }, { id: sid(2), _syncPending: true });
+    saveProof(sid(1), jpeg());
+    saveProof(sid(2), jpeg());
+    await flushProofSync(OWNER);
+    expect(unsureProofPhotos(OWNER, local.sessions)).toEqual([]);
+    expect(photosNotSurelyUploaded(OWNER, local.sessions)).toBe(1);
+  });
+
+  it('#263 review: a photo to upload again once its session is on the server is still waiting, not unsure', async () => {
+    signIn({ id: sid(1) });
+    saveProof(sid(1), png); // not sendable as is: unsure, unless it waits for its session
+    await flushProofSync(OWNER);
+    expect(unsureProofPhotos(OWNER, local.sessions).map(item => item.sessionId)).toEqual([sid(1)]);
+    localStorage.setItem(`orbit_proofsync_recheck:${encodeURIComponent(OWNER)}`, JSON.stringify([sid(1)]));
+    expect(unsureProofPhotos(OWNER, local.sessions)).toEqual([]);
+  });
+
   it('nothing without an account or sessions', () => {
     expect(unsureProofPhotos(null, [{ id: sid(1) }])).toEqual([]);
     expect(unsureProofPhotos(OWNER, null)).toEqual([]);

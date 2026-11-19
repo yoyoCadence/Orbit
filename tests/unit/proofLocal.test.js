@@ -7,7 +7,7 @@
  * Uses the real proofSync.js, so the backfill marker is the one it writes.
  */
 
-/* global btoa -- jsdom provides it */
+/* global btoa, DOMException -- jsdom provides them */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -94,6 +94,75 @@ describe('what is surely uploaded', () => {
       : { data: {}, error: null }));
     await flushProofSync(OWNER); // the real backfill marks the account
     expect(uploadedLocalProofIds(OWNER, local.sessions)).toEqual([sid(1)]);
+  });
+
+  it('HW-112D (c): not one whose session the server has not confirmed (a cloud copy without a row may be swept)', async () => {
+    signIn(sid(1), sid(2));
+    saveProof(sid(1), jpeg());
+    saveProof(sid(2), jpeg());
+    localStorage.setItem(`yoyo_sessionSyncPending:${encodeURIComponent(OWNER)}`,
+      JSON.stringify({ ownerId: OWNER, value: [{ id: sid(2) }] }));
+    await flushProofSync(OWNER);
+    expect(uploadedLocalProofIds(OWNER, local.sessions)).toEqual([sid(1)]);
+    // Sign-out keeps it here.
+    expect(signOutProofCleanup({ authOwnerId: OWNER, sessionsOwnerId: OWNER, sessions: local.sessions })).toBe(1);
+    expect(has(sid(1))).toBe(false);
+    expect(has(sid(2))).toBe(true);
+  });
+
+  it('#263 review: a photo uploaded before its session reached the server is sent again once it has, and stays here until then', async () => {
+    const pendingKey = `yoyo_sessionSyncPending:${encodeURIComponent(OWNER)}`;
+    const recheckKey = `orbit_proofsync_recheck:${encodeURIComponent(OWNER)}`;
+    signIn(sid(1));
+    saveProof(sid(1), jpeg());
+    localStorage.setItem(pendingKey, JSON.stringify({ ownerId: OWNER, value: [{ id: sid(1) }] }));
+    await flushProofSync(OWNER); // the photo goes up; its session does not (yet)
+    expect(mockUpload).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(localStorage.getItem(recheckKey))).toEqual([sid(1)]);
+    expect(uploadedLocalProofIds(OWNER, local.sessions)).toEqual([]);
+
+    // The session reaches the server; another device may have swept the photo meanwhile.
+    localStorage.removeItem(pendingKey);
+    expect(uploadedLocalProofIds(OWNER, local.sessions)).toEqual([]); // not before it is sent again
+    expect(signOutProofCleanup({ authOwnerId: OWNER, sessionsOwnerId: OWNER, sessions: local.sessions })).toBe(0);
+    expect(has(sid(1))).toBe(true);
+
+    await flushProofSync(OWNER);
+    expect(mockUpload).toHaveBeenCalledTimes(2); // "already exists" would do too
+    expect(mockUpload.mock.calls[1][0]).toBe(`${OWNER}/${sid(1)}.jpg`);
+    expect(localStorage.getItem(recheckKey)).toBeNull();
+    expect(uploadedLocalProofIds(OWNER, local.sessions)).toEqual([sid(1)]);
+  });
+
+  it('#263 review: when that record cannot be saved (storage full), the photo is not sent yet and stays queued', async () => {
+    const pendingKey = `yoyo_sessionSyncPending:${encodeURIComponent(OWNER)}`;
+    const recheckKey = `orbit_proofsync_recheck:${encodeURIComponent(OWNER)}`;
+    signIn(sid(1), sid(2));
+    saveProof(sid(1), jpeg());
+    saveProof(sid(2), jpeg());
+    await flushProofSync(OWNER); // the backfill: both on the server, both sent
+    mockUpload.mockClear();
+    saveProof(sid(3), jpeg());
+    local.sessions = sessions(sid(1), sid(2), sid(3));
+    localStorage.setItem(pendingKey, JSON.stringify({ ownerId: OWNER, value: [{ id: sid(3) }] }));
+    queueProofUpload(OWNER, sid(3));
+    const realSetItem = Storage.prototype.setItem;
+    const full = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function setItem(key, value) {
+      if (key === recheckKey) throw new DOMException('full', 'QuotaExceededError');
+      return realSetItem.call(this, key, value);
+    });
+    try {
+      await flushProofSync(OWNER);
+    } finally {
+      full.mockRestore();
+    }
+    expect(mockUpload).not.toHaveBeenCalled();
+    expect(JSON.parse(localStorage.getItem(`orbit_proofsync_upload:${encodeURIComponent(OWNER)}`))).toEqual([sid(3)]);
+    expect(uploadedLocalProofIds(OWNER, local.sessions)).toEqual([sid(1), sid(2)]);
+
+    await flushProofSync(OWNER); // storage has room again: recorded, then sent
+    expect(JSON.parse(localStorage.getItem(recheckKey))).toEqual([sid(3)]);
+    expect(mockUpload).toHaveBeenCalledTimes(1);
   });
 
   it('never a session id the bucket would refuse', async () => {
