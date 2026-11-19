@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   deleteSession: vi.fn(),
   renderPage: vi.fn(),
   showToast: vi.fn(),
+  showProofSheet: vi.fn(),
   storedUser: null,
 }));
 
@@ -31,7 +32,7 @@ vi.mock('../../pwa/js/ui/feedback.js', () => ({
   showLevelUp: vi.fn(),
 }));
 vi.mock('../../pwa/js/ui/header.js', () => ({ updateHeader: vi.fn() }));
-vi.mock('../../pwa/js/ui/proofSheet.js', () => ({ showProofSheet: vi.fn() }));
+vi.mock('../../pwa/js/ui/proofSheet.js', () => ({ showProofSheet: mocks.showProofSheet }));
 vi.mock('../../pwa/js/platform/haptics.js', () => ({ haptic: vi.fn() }));
 
 import { state } from '../../pwa/js/state.js';
@@ -90,6 +91,29 @@ describe('session settlement safety', () => {
     expect(state.user.totalXP).toBe(30);
     expect(mocks.saveSessions).not.toHaveBeenCalled();
     expect(loadSessionDeletionLog('owner-1')).toEqual({});
+  });
+
+  it('HW-112D (b): a session that was not saved is not offered a proof photo (#262 Codex P2)', () => {
+    vi.useFakeTimers();
+    try {
+      state.tasks = [{
+        id: 'task-instant', name: '喝水', category: 'instant', impactType: 'task', taskNature: 'maintenance',
+        value: 'B', difficulty: 0.4, resistance: 1, dailyXpCap: 100, cooldownMinutes: 0, minEffectiveMinutes: 0,
+      }];
+      mocks.storedUser = { id: 'owner-2' };
+      window.completeInstant('task-instant');
+      vi.advanceTimersByTime(1000);
+      expect(state.sessions).toEqual([]);
+      expect(mocks.showProofSheet).not.toHaveBeenCalled();
+
+      mocks.storedUser = state.user;
+      window.completeInstant('task-instant');
+      vi.advanceTimersByTime(1000);
+      expect(state.sessions).toHaveLength(1);
+      expect(mocks.showProofSheet).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('HW-112D (b): its own account: saves name the owner the data belongs to', () => {

@@ -140,7 +140,9 @@ window.completeInstant = function (taskId) {
     baseXP, finalXP, energyCost, energyGain,
   });
 
-  commitSession(session);
+  // Not committed (a duplicate, or another tab switched the account): no photo
+  // for a session that was never saved (#262 Codex P2).
+  if (!commitSession(session)) return;
   offerProofSheet(session, task);
 };
 
@@ -174,7 +176,7 @@ export function submitFocusResult(taskId, elapsedSec, result, durationMin, note 
     baseXP, finalXP, energyCost, energyGain, note,
   });
 
-  commitSession(session);
+  if (!commitSession(session)) return;
   // Show proof sheet for completed/partial timed sessions; not for invalid (unproductive)
   if (result !== 'invalid') offerProofSheet(session, task);
 }

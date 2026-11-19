@@ -37,6 +37,9 @@ test('a tab whose account was switched in another tab saves nothing and says to 
   await page.locator('.plan-card').first().click();
   await expect(page.locator('.toast').filter({ hasText: '另一個分頁已切換帳號' })).toBeVisible({ timeout: 3000 });
   await expect(page.locator('.xp-float')).toHaveCount(0);
+  // Nor is a proof photo offered for it (the sheet comes 700 ms after a commit).
+  await page.waitForTimeout(1200);
+  await expect(page.locator('.pro-sheet')).toHaveCount(0);
   await expect(page.locator('.log-item')).toHaveCount(0);
 
   const stored = () => page.evaluate(() => ({
