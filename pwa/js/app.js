@@ -43,6 +43,7 @@ import { flushProofSync } from './platform/proofSync.js';
 import { forgetCloudProofMisses, keepCloudProofsOf } from './platform/proofCloud.js';
 import { photosNotSurelyUploaded, signOutProofCleanup } from './platform/proofLocal.js';
 import { unsureProofPhotos } from './platform/proofUnsure.js';
+import { sweepOrphanCloudProofs } from './platform/proofSweep.js';
 import { closeProofKeepSheet, showProofKeepSheet } from './ui/proofKeepSheet.js';
 import { isOnline, onConnectivityChange } from './platform/network.js';
 import { orbitWindowRuntimeDestroyer } from './personalSpace/v2/runtime/pixiSceneRuntime.js';
@@ -668,7 +669,11 @@ function _loadRemote(ownerId) {
     forgetCloudProofMisses();
     // Downloaded photos of any other account that never signed out here go.
     void keepCloudProofsOf(ownerId);
-    return flushProofSync(ownerId);
+    // HW-112D (c): then, at most weekly, photos left behind by deleted sessions
+    // (proofSweep.js). Only with this account's sessions as stored here.
+    return flushProofSync(ownerId).then(() => sweepOrphanCloudProofs(ownerId, {
+      sessions: storage.getUser()?.id === ownerId ? storage.getSessions() : null,
+    }));
   }, () => {});
   return load;
 }

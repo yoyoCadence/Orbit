@@ -11,6 +11,7 @@
 import { getProof } from './proofStore.js';
 import { pendingProofUploads } from './proofSync.js';
 import { uploadedLocalProofIds } from './proofLocal.js';
+import { sessionsNotOnServer } from './sessionsNotOnServer.js';
 
 // proofSync's "this account's existing photos were queued" marker (private
 // there; tests/unit/proofUnsure.test.js checks against the one it writes).
@@ -43,13 +44,16 @@ export function unsureProofPhotos(ownerId, sessions) {
   if (!ownerId || !Array.isArray(sessions) || !backfillDone(ownerId)) return [];
   const pending = new Set(pendingProofUploads(ownerId));
   const uploaded = new Set(uploadedLocalProofIds(ownerId, sessions));
+  // HW-112D (c): a session the server has not confirmed is still waiting.
+  const notOnServer = sessionsNotOnServer(ownerId, sessions);
   const seen = new Set();
   const unsure = [];
   for (const session of sessions) {
     const sessionId = String(session?.id ?? '');
     if (!sessionId || seen.has(sessionId)) continue;
     seen.add(sessionId);
-    if (pending.has(sessionId) || uploaded.has(sessionId) || !hasLocalProof(sessionId)) continue;
+    if (pending.has(sessionId) || uploaded.has(sessionId) || notOnServer.has(sessionId)
+      || !hasLocalProof(sessionId)) continue;
     unsure.push({
       sessionId,
       date: typeof session.date === 'string' ? session.date : '',

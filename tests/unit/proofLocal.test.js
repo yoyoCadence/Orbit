@@ -96,6 +96,20 @@ describe('what is surely uploaded', () => {
     expect(uploadedLocalProofIds(OWNER, local.sessions)).toEqual([sid(1)]);
   });
 
+  it('HW-112D (c): not one whose session the server has not confirmed (a cloud copy without a row may be swept)', async () => {
+    signIn(sid(1), sid(2));
+    saveProof(sid(1), jpeg());
+    saveProof(sid(2), jpeg());
+    localStorage.setItem(`yoyo_sessionSyncPending:${encodeURIComponent(OWNER)}`,
+      JSON.stringify({ ownerId: OWNER, value: [{ id: sid(2) }] }));
+    await flushProofSync(OWNER);
+    expect(uploadedLocalProofIds(OWNER, local.sessions)).toEqual([sid(1)]);
+    // Sign-out keeps it here.
+    expect(signOutProofCleanup({ authOwnerId: OWNER, sessionsOwnerId: OWNER, sessions: local.sessions })).toBe(1);
+    expect(has(sid(1))).toBe(false);
+    expect(has(sid(2))).toBe(true);
+  });
+
   it('never a session id the bucket would refuse', async () => {
     signIn(sid(1));
     await flushProofSync(OWNER);
