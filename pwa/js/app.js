@@ -286,17 +286,17 @@ window.signOut = async function () {
 
 // ─── Setup screen ────────────────────────────────────────────────────────────
 
+// Every showSetup() adds its own listeners to the same form; only the latest
+// one acts (HW-112D, #262 review): an earlier one would save with the owner it
+// was opened for.
+let _setupGeneration = 0;
+
 /**
  * @param {string|null} ownerId the signed-in account this setup belongs to.
  *   Only `loadAndStart` passes one. A guest never inherits `_currentSession`:
  *   it can still hold an account whose remote load failed, and taking that id
  *   would push a blank profile over the real one on the next sync.
  */
-// Every showSetup() adds its own listeners to the same form; only the latest
-// one acts (HW-112D, #262 review): an earlier one would save with the owner it
-// was opened for.
-let _setupGeneration = 0;
-
 function showSetup(ownerId = null) {
   document.getElementById('setup-screen').classList.remove('hidden');
   document.getElementById('main-app').classList.add('hidden');
@@ -306,6 +306,12 @@ function showSetup(ownerId = null) {
   // A guest's setup must not take over an account another tab stored meanwhile.
   const storedIdAtOpen = storage.getUser()?.id ?? null;
   let avatarData = null;
+  // A photo picked on an earlier opening is not this one's (#264 review): clear
+  // the preview, and the input so picking the same file again is a change.
+  const preview = document.getElementById('setup-avatar-preview');
+  preview.style.backgroundImage = '';
+  preview.textContent = '👤';
+  document.getElementById('setup-avatar-input').value = '';
 
   document.getElementById('setup-avatar-btn').addEventListener('click', () => {
     if (!isCurrent()) return;
@@ -335,6 +341,8 @@ function showSetup(ownerId = null) {
     // and this one never heard): it would copy that account's id, upload the
     // guest's name to its profile and replace its tasks. Show it instead.
     if (!ownerId && (storage.getUser()?.id ?? null) !== storedIdAtOpen) {
+      // Said after the reload, as for the other account switches.
+      try { sessionStorage.setItem(ACCOUNT_RELOADED_KEY, '1'); } catch { /* the toast is optional */ }
       location.reload();
       return;
     }
@@ -683,7 +691,7 @@ function _loadRemote(ownerId) {
   // are, a photo waiting for its session (HW-112D c) is queued again now rather
   // than at the next sync (#263 review).
   settled.then(backfilled => {
-    if (backfilled) void flushProofSync(ownerId);
+    if (backfilled?.length) void flushProofSync(ownerId);
   });
   // HW-112C1: after each successful remote load (boot and reconnect), send the
   // proof photos still queued. In the background; never part of the sync result.
