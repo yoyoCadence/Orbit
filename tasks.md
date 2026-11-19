@@ -148,6 +148,7 @@
   - 留下的 P3（#257 審查，不急）：(1) ~~永遠上傳不了的照片會讓「檢查同步」一直說還有照片沒上傳~~ 已於 #261 完成（v1.41.26，擁有者 2026-11-19 同意，見 Done 的 HW-112D (a)）；(2) ~~`storage.saveSessions()` 不檢查擁有者~~ 已於 #262 完成（v1.41.27，見 Done 的 HW-112D (b)）。
   - **需要擁有者決定**（#257 Codex P2）：「刪除所有佐證照片」只刪這台裝置與雲端；其他裝置已下載的副本（IndexedDB）留到那台裝置登出或「清除這台裝置的佐證照片」，確認文字已照實說明。要讓其他裝置也自動清掉，需要 (a) profile 加一個「照片全部刪除時間」欄位（schema 變更，需核准），其他裝置同步時比對並清掉較早的下載副本；或 (b) 每台裝置每次同步列出這個帳號的雲端資料夾（每 100 張一個請求）並清掉雲端已沒有的副本。agent 建議 (a)，但目前不做，等擁有者決定。
   - ~~評估（#254 第四輪留下的）：清掉沒有對應紀錄的雲端檔案~~ 已於 #263 完成（v1.41.28，擁有者 2026-11-19 同意，見 Done 的 HW-112D (c)）。
+  - 待辦（#262 第二輪審查 P3 #2，既有問題，不急）：訪客停在初次設定畫面時，另一個分頁登入了 B；若這個分頁沒收到跨分頁的 SIGNED_IN，按下設定送出會以 `storage.getUser()`（已是 B）的 id 建立使用者，把訪客名稱寫進 B 的 profile，`saveTasks(預設任務, B)` 也會把 B 快取的任務當成刪除送到伺服器。修法：`showSetup()` 開啟時記下已儲存的帳號，送出時若已改變就重新載入；但設定表單每次 `showSetup()` 都會多加一個 submit listener（舊的 listener 仍會執行），要一併整理成只有一個 listener，否則較早的 listener 會誤判而重新載入。
   - 驗收需要擁有者：以兩個測試帳號經 Storage API 實測本人可上傳、讀、刪自己的檔案、不能碰別人的資料夾、超過 200 KB 或不是 JPEG 被拒（agent 沒有測試帳號的密碼）。
 - [ ] **PRO-017RA-Auth**（擁有者）先完成 INFRA-101（Custom SMTP），再在 Supabase 開啟「確認 email」，並確認匿名登入維持關閉
   - 019 已於 2026-11-13 套用（見 Done 的 PRO-017RA）；這一步只能由擁有者在 Supabase Dashboard 做（agent 的工具改不到 Auth 設定）。
@@ -292,6 +293,7 @@
   - `storage.saveSessions()`／`saveTasks()`／`saveEnergy()` 多一個參數：呼叫端記憶體中資料的擁有者（`state.user?.id ?? null`）。與已儲存的使用者不同就不寫入（回傳 false、`console.warn`），並發出 `orbit:stored-account-changed` 事件，`app.js` 顯示「另一個分頁已切換帳號，這裡的變更沒有儲存；請重新整理這個頁面」（3 秒內只一次）。不傳參數的舊呼叫維持原行為（新舊版本混用時不會壞）。事件名稱不從 storage.js 匯出（INFRA-105），兩邊各寫一次，測試確認一致。
   - `sessionFlow.js`：`commitSession()` 與撤銷（`window.deleteSession`）在改動任何狀態之前先比對 `storage.getUser()?.id` 與 `state.user?.id`，不同就提示並停止（撤銷不會先寫刪除紀錄）；之後的寫入也帶擁有者。其他呼叫端（`dayCycle.js` 的精力重設、`home.js` 拖曳排序、`settings.js` 任務編輯／刪除、`app.js` 初次設定）都帶擁有者。
   - 舊分頁重新載入（#262 獨立審查 P2）：`saveUser()`／`saveUserLocal()` 等寫入目前使用者的地方很多（早晨視窗、專注時長、設定開關、每週獎勵、連續天數保護…），舊分頁一呼叫就把 A 寫回成已儲存的帳號，之後的保護都失效。所以 `app.js` 在知道「已儲存的帳號被別的分頁換成另一個帳號」時直接重新載入：跨分頁的 `storage` 事件（`yoyo_user` 寫入另一個帳號；被移除＝登出，交給 SIGNED_OUT）、從 bfcache 回來（`pageshow` persisted）、回到前景（`visibilitychange`）。這個視窗自己正在切換（它的 session 已經是已儲存的帳號）時不動。重新載入後提示「另一個分頁切換了帳號，這裡已重新載入」。storage 層的拒絕寫入保留，作為事件送達前那一瞬間的保險。
+  - 第二輪獨立審查（#262，92aaf47）沒有 P1／P2（沒有重新載入迴圈、自己切換帳號時不誤觸發、e2e 連跑 16 次穩定）。P3 #1（重新載入後若停在登入畫面，提示旗標會留到之後的登入）於 #263 改成頁面一啟動就讀取並清除。P3 #2 另列待辦（見 Next 的 HW-112D）。
   - 審查（#262）：獨立審查 P2 見上一點；P3 一併改：拒絕時的提示改成「這筆變更沒有儲存」、`submitFocusResult()` 的提前返回補單元測試；未改：初次設定時 `saveUser()` 因儲存空間滿而失敗，接著的 `saveTasks()` 會顯示「另一個分頁已切換帳號」的提示（不正確但罕見）。Codex P2 已改：`completeInstant()` 與 `submitFocusResult()` 在 `commitSession()` 回傳 false 時不再跳出拍佐證照片的畫面（原本會替沒有儲存的紀錄存一張沒有紀錄可找的照片）。
   - 測試：`tests/unit/storageOwnerGuard.test.js`（真的 storage.js、Supabase 以 B 登入的 spy：A 的分頁寫入不寫、不 insert、發事件；B 自己、訪客、沒帶參數照舊）、`sessionFlowSettlement`（完成與撤銷都不改狀態、不寫入、提示）、e2e `hw112d-stale-account-tab.test.js`（兩個分頁：另一個分頁換帳號後完成任務 → 提示、不寫入；重新整理後顯示新帳號）。
 

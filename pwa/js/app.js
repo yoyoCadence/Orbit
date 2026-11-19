@@ -796,13 +796,18 @@ window.addEventListener('pageshow', event => {
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') _reloadIfAccountChangedElsewhere();
 });
+// Read (and cleared) when this page starts, so a launch that ends on the login
+// screen does not keep it for a later sign-in (#262 review P3); said by the
+// first boot of the app.
+let _reloadedForAccount = false;
+try {
+  _reloadedForAccount = sessionStorage.getItem(ACCOUNT_RELOADED_KEY) === '1';
+  sessionStorage.removeItem(ACCOUNT_RELOADED_KEY);
+} catch { /* nothing to say */ }
 function _toastIfReloadedForAccount() {
-  let reloaded = false;
-  try {
-    reloaded = sessionStorage.getItem(ACCOUNT_RELOADED_KEY) === '1';
-    sessionStorage.removeItem(ACCOUNT_RELOADED_KEY);
-  } catch { /* nothing to say */ }
-  if (reloaded) showToast('另一個分頁切換了帳號，這裡已重新載入');
+  if (!_reloadedForAccount) return;
+  _reloadedForAccount = false;
+  showToast('另一個分頁切換了帳號，這裡已重新載入');
 }
 
 // sessionFlow calls this after every commit/delete (no-op until badge module
