@@ -5033,7 +5033,8 @@ nav {
 
 /* HW-112D (a): photos "check sync" cannot confirm, to save by hand (js/ui/proofKeepSheet.js) */
 .proof-keep-sheet {
-  position: fixed; inset: 0; z-index: 600;
+  /* Above the update banner (1000), which an old icon sees after updating. */
+  position: fixed; inset: 0; z-index: 1100;
   display: flex; align-items: center; justify-content: center;
   padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
   background: rgba(0, 0, 0, 0.88);

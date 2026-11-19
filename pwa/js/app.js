@@ -210,8 +210,7 @@ function _showStatusBarNotice() {
 window._checkStatusBarSync = function () {
   const result = document.querySelector('#status-bar-notice .sbn-check-result');
   if (!result) return;
-  const ownerId = _currentSession?.user?.id
-    ?? (hasStoredSession() ? storage.getUser()?.id ?? null : null);
+  const ownerId = _statusBarSyncOwner();
   const sessions = ownerId ? _sessionsOf(ownerId) : [];
   // HW-112D (a): the ones waiting will not change, named apart.
   const unsure = ownerId ? unsureProofPhotos(ownerId, sessions) : [];
@@ -226,15 +225,28 @@ window._checkStatusBarSync = function () {
   result.textContent = check.text;
   result.dataset.ok = String(check.ok);
   result.parentElement?.querySelector('.sbn-keep-photos')?.remove();
-  if (unsure.length) {
+  // Only when the text names them (an older statusBarNotice.js does not).
+  if (unsure.length && check.unsure > 0) {
     const view = document.createElement('button');
     view.type = 'button';
     view.className = 'sbn-keep-photos';
-    view.textContent = `查看這 ${unsure.length} 張照片`;
-    view.addEventListener('click', () => showProofKeepSheet(unsure, { returnFocus: view }));
+    view.textContent = `查看這 ${check.unsure} 張照片`;
+    view.addEventListener('click', () => {
+      // The account may have changed since (another tab): check again instead.
+      if (_statusBarSyncOwner() !== ownerId) {
+        window._checkStatusBarSync();
+        return;
+      }
+      showProofKeepSheet(unsure.slice(0, check.unsure), { returnFocus: view });
+    });
     result.after(view);
   }
 };
+
+function _statusBarSyncOwner() {
+  return _currentSession?.user?.id
+    ?? (hasStoredSession() ? storage.getUser()?.id ?? null : null);
+}
 
 // This account's sessions: the ones in memory, or the stored ones while they
 // are this account's (another tab may have switched the stored user).

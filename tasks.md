@@ -286,6 +286,8 @@
   - 測試：`tests/unit/proofUnsure.test.js`（真的 proofSync／proofLocal；文字；畫面）、`ps249aOverlayCover` 認得新的全螢幕規則、e2e `bug118-status-bar-notice` 新增一個（舊 PNG＋一張在等的 JPEG：分開的文字、只有一個按鈕、畫面中的照片沒有被 `pointer-events`／`-webkit-touch-callout` 擋住、焦點）；320px 截圖確認。
   - 可再評估（不急）：重新編碼後成功送出的 PNG 其實已在雲端，若 `proofSync` 記下「已確認送出」就能不列；目前照實說「無法確認」，建議另存，較安全。
   - 審查（#261）：Codex P2 已改：照片畫面只列這些照片，其他資料可能還在等，所以不再說「存好就可以移除舊圖示」，改成存好後再按一次「檢查同步」，其他資料也同步了才移除。
+  - 獨立審查（#261）沒有 P1／P2；P3 一併改：按鈕張數取自文字（`statusBarSyncCheckText()` 回傳 `unsure`，新舊版本混用時舊模組不回傳就不出按鈕）；照片畫面 z-index 1100，蓋過「新版本已就緒」橫幅（1000，舊圖示更新後會看到），低於大型揭曉（1200）與導覽、登入；按下時帳號已變就重新檢查；全螢幕照片（燈箱或這個畫面）開著時左右滑不換頁；文字改成「例如舊版本存的或太大的照片」。未改（P3，不急）：焦點鎖定在畫面內、Escape 只關最上層的對話框；登入但沒有已儲存 session 時存的照片在 backfill 之後不會排入上傳（可再評估重新排入）。
+  - **擁有者驗收（真機）**：iPhone 主畫面 app 裡長按照片，確認選單出現「儲存到照片」或「分享」（`data:` 圖片在 standalone 模式的長按選單 agent 無法驗證；不出現的話改用 `navigator.share` 傳檔案）。
 
 - [x] **PRO-014F2 F2A** 個人空間的 Pro 呈現（v1.41.25；擁有者 2026-11-19 決定 §9 全部照建議；提案 `docs/pro-014f2-personal-space-pro-proposal.md`）
   - 新模組 `personalSpace/v2/proPresence.js`（SHELL）：以 `getProRolloverStatus()` 判斷（`pro`／`not-pro`／`unknown`），只有已知的 Pro 顯示標記；`unknown` 不顯示、不說話、不記錄。每個帳號在這台裝置記 `orbit_ps_pro_seen:<帳號>` = `{ status, changedOn }`：第一次記錄不說話；已知狀態改變時記下當天，`status === 'pro'` 且是當天才說那句話；結束時不說。

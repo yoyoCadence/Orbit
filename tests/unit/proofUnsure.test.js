@@ -119,11 +119,14 @@ describe('statusBarSyncCheckText with photos waiting will not change', () => {
     expect(check.text).toContain('還有 1 筆資料還沒同步、2 張佐證照片還沒上傳，先不要移除舊圖示');
     expect(check.text).toContain('另有 1 張佐證照片無法確認已上傳');
     const offline = statusBarSyncCheckText({ online: false, pending: 0, photos: 1, unsure: 1 });
-    expect(offline).toEqual({ ok: false, text: expect.stringContaining('目前離線：連上網路後再按一次。另有 1 張') });
+    expect(offline).toEqual({ ok: false, text: expect.stringContaining('目前離線：連上網路後再按一次。另有 1 張'), unsure: 1 });
   });
 
   it('never names more than the photos counted (an older caller passes no count)', () => {
-    expect(statusBarSyncCheckText({ online: true, pending: 0, photos: 1, unsure: 5 }).text).toContain('有 1 張');
+    const capped = statusBarSyncCheckText({ online: true, pending: 0, photos: 1, unsure: 5 });
+    expect(capped.text).toContain('有 1 張');
+    expect(capped.unsure).toBe(1); // the page offers that many, not more
+    expect(statusBarSyncCheckText({ online: true, pending: 0, photos: 2 }).unsure).toBe(0);
     expect(statusBarSyncCheckText({ online: true, pending: 0, photos: 2 }).text).toContain('還有 2 張佐證照片還沒上傳');
   });
 });

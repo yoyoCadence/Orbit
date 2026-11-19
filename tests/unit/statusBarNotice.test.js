@@ -187,7 +187,7 @@ describe('statusBarNoticeText', () => {
 describe('statusBarSyncCheckText', () => {
   it('says the old icon can go only with an empty queue read online', () => {
     expect(statusBarSyncCheckText({ online: true, pending: 0 })).toEqual({
-      ok: true, text: expect.stringContaining('可以移除了'),
+      ok: true, text: expect.stringContaining('可以移除了'), unsure: 0,
     });
   });
 
@@ -218,7 +218,7 @@ describe('statusBarSyncCheckText', () => {
 
   it('does not clear an empty queue read offline (queued writes may still be coming)', () => {
     expect(statusBarSyncCheckText({ online: false, pending: 0 })).toEqual({
-      ok: false, text: expect.stringContaining('目前離線'),
+      ok: false, text: expect.stringContaining('目前離線'), unsure: 0,
     });
   });
 });

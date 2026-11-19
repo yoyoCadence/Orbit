@@ -203,6 +203,33 @@ test('HW-112D (a): photos the sync is done with but cannot confirm are named, an
     })()) === el;
   })).toBe(true);
   await expect(sheet.locator('.proof-keep-close')).toBeFocused();
+  // An old icon sees the update banner after this release: the sheet stays on top.
+  await page.evaluate(() => {
+    const banner = document.createElement('div');
+    banner.id = 'update-banner';
+    banner.textContent = '新版本已就緒';
+    document.body.prepend(banner); // as swUpdate.js does
+  });
+  // It slides down into place first.
+  await expect.poll(() => page.evaluate(() => document.getElementById('update-banner').getBoundingClientRect().top))
+    .toBeGreaterThanOrEqual(0);
+  // (With many photos the panel's 完成 button sits where the banner is.)
+  expect(await page.evaluate(() => {
+    const box = document.getElementById('update-banner').getBoundingClientRect();
+    return Boolean(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)
+      ?.closest('.proof-keep-sheet'));
+  })).toBe(true);
+  await page.evaluate(() => document.getElementById('update-banner').remove());
+  // A sideways swipe over the sheet does not change the page behind it.
+  const pageBefore = await page.evaluate(() => location.hash);
+  await page.evaluate(() => {
+    const touch = x => new Touch({ identifier: 1, target: document.body, clientX: x, clientY: 300 });
+    document.dispatchEvent(new TouchEvent('touchstart', { touches: [touch(300)], changedTouches: [touch(300)] }));
+    document.dispatchEvent(new TouchEvent('touchend', { touches: [], changedTouches: [touch(100)] }));
+  });
+  await page.waitForTimeout(300);
+  expect(await page.evaluate(() => location.hash)).toBe(pageBefore);
+  await expect(sheet).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(sheet).toHaveCount(0);
   await expect(view).toBeFocused();
