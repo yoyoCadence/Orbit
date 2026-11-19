@@ -17,6 +17,7 @@ const cloud = vi.hoisted(() => ({
   signedIn: null,
   objects: [],          // { name, created_at }
   rows: new Set(),      // session ids the server has
+  blindAfter: Infinity, // requests after this many see no rows (a token gone anonymous)
   readError: null,
   removeError: null,
   removed: [],
@@ -46,6 +47,7 @@ vi.mock('../../pwa/js/supabase.js', () => ({
         in: async (column, values) => {
           cloud.reads.push({ ...query, ids: values });
           if (cloud.readError) return { data: null, error: cloud.readError };
+          if (cloud.reads.length > cloud.blindAfter) return { data: [], error: null };
           return { data: values.filter(id => cloud.rows.has(id)).map(id => ({ id })), error: null };
         },
         insert: async row => { cloud.inserts.push(row); return { error: null }; },
@@ -69,7 +71,7 @@ const confirmed = (...ids) => ids.map(id => ({ id }));
 beforeEach(() => {
   localStorage.clear();
   vi.spyOn(console, 'warn').mockImplementation(() => {});
-  Object.assign(cloud, { signedIn: OWNER, objects: [], rows: new Set(), readError: null, removeError: null, removed: [], reads: [], inserts: [] });
+  Object.assign(cloud, { signedIn: OWNER, objects: [], rows: new Set(), blindAfter: Infinity, readError: null, removeError: null, removed: [], reads: [], inserts: [] });
   queue.ids = [];
 });
 
@@ -139,8 +141,29 @@ describe('sweepOrphanCloudProofs', () => {
     expect(sweepOrphanCloudProofs(OWNER, { sessions: confirmed(sid(1)), now: NOW })).toBe(first);
     expect(await first).toEqual({ removed: SWEEP_MAX_REMOVALS });
     expect(cloud.removed).toHaveLength(100);
-    // The server was asked about every candidate, a hundred ids per request.
-    expect(cloud.reads.map(read => read.ids.length)).toEqual([100, 51]);
+    // The server was asked about every candidate, a hundred ids per request,
+    // each request with the confirmed session as proof.
+    expect(cloud.reads.map(read => read.ids.length)).toEqual([100, 52]);
+    expect(cloud.reads.every(read => read.ids[0] === sid(1))).toBe(true);
+  });
+
+  it('stops when a later request no longer sees this account\'s rows (#263 review)', async () => {
+    cloud.rows = new Set([sid(1)]);
+    cloud.objects = Array.from({ length: 150 }, (_, i) => object(sid(1000 + i), 60));
+    cloud.blindAfter = 1; // the second request sees nothing
+    expect(await sweepOrphanCloudProofs(OWNER, { sessions: confirmed(sid(1)), now: NOW })).toBeNull();
+    expect(cloud.removed).toEqual([]);
+  });
+
+  it('stops when the signed-in account changes between the listing and the removal', async () => {
+    cloud.rows = new Set([sid(1)]);
+    cloud.objects = [object(sid(4), 90)];
+    const { supabase } = await import('../../pwa/js/supabase.js');
+    supabase.auth.getSession
+      .mockResolvedValueOnce({ data: { session: { user: { id: OWNER } } } })
+      .mockResolvedValueOnce({ data: { session: { user: { id: '22222222-2222-4222-8222-222222222222' } } } });
+    expect(await sweepOrphanCloudProofs(OWNER, { sessions: confirmed(sid(1)), now: NOW })).toBeNull();
+    expect(cloud.removed).toEqual([]);
   });
 });
 

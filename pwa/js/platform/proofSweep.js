@@ -84,17 +84,25 @@ async function listCloudProofs(ownerId) {
   }
 }
 
-/** The ids among `ids` the server has a session row for (this account's). */
-async function sessionsOnServer(ownerId, ids) {
+/**
+ * The candidates the server has a session row for (this account's). Every
+ * request also asks for the canaries and must get them all back: a read that
+ * stops seeing this account's rows part-way (a token gone anonymous) is never
+ * read as "no row". @returns {Promise<Set<string>|null>} null: not proven.
+ */
+async function sessionsOnServer(ownerId, canaries, candidates) {
   const found = new Set();
-  for (let i = 0; i < ids.length; i += ID_BATCH) {
+  const perRequest = ID_BATCH - canaries.length;
+  for (let i = 0; i < candidates.length; i += perRequest) {
     const { data, error } = await supabase
       .from('sessions')
       .select('id')
       .eq('user_id', ownerId)
-      .in('id', ids.slice(i, i + ID_BATCH));
+      .in('id', [...canaries, ...candidates.slice(i, i + perRequest)]);
     if (error || !Array.isArray(data)) throw error || new Error('sessions read failed');
-    for (const row of data) if (row?.id) found.add(String(row.id).toLowerCase());
+    const rows = new Set(data.map(row => String(row?.id ?? '').toLowerCase()));
+    if (!canaries.every(id => rows.has(id))) return null;
+    for (const id of rows) found.add(id);
   }
   return found;
 }
@@ -123,8 +131,8 @@ async function sweep(ownerId, sessions, now) {
     return { removed: 0 };
   }
 
-  const onServer = await sessionsOnServer(ownerId, [...canaries, ...candidates]);
-  if (!canaries.every(id => onServer.has(id))) return null;
+  const onServer = await sessionsOnServer(ownerId, canaries, candidates);
+  if (!onServer) return null;
   const orphans = candidates.filter(id => !onServer.has(id)).slice(0, SWEEP_MAX_REMOVALS);
 
   if (orphans.length && await signedInUserId() !== ownerId) return null;
