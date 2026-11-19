@@ -110,7 +110,7 @@
     - 頭像：BUG-119（017）之後，別人只讀得到公開使用者 `avatar_url` 指向的那一個檔案；`get_leaderboard()` 的 `avatar_path` 只在它是本人資料夾裡的路徑時才有值，其他（舊資料的網址、任意網址、data: URL、別人的路徑）是 NULL，client 顯示預設頭像，不去載入別人指定的網址。
 
 - [ ] **PRO-014F** 交付 SUB-14 排行榜 glow 與 Personal Space Pro 呈現
-  - 進度：排行榜的光環與標記為 PRO-014F1（完成，見 Done）；Personal Space 的部分為 PRO-014F2（Next，先寫提案）。
+  - 進度：排行榜的光環與標記為 PRO-014F1（完成，見 Done）；Personal Space 的部分為 PRO-014F2（提案已寫，等待擁有者決定，見 Next）。
   - 目標：只使用安全 read model 與 entitlement snapshot 呈現 Pro 身分，不讓視覺功能回寫 entitlement
   - 範圍：排行榜、Personal Space projection、HTML escaping、reduced motion、responsive 與視覺／E2E regression tests
   - 完成條件：Pro／非 Pro／匿名狀態顯示正確，動態文字安全，reduced motion 下無必要動畫，且不改動 auth／entitlement schema
@@ -144,7 +144,7 @@
 
 > 2026-11-18 擁有者要求：「列出幾個你覺得需要完善的事 持續完善」，每完成一段就開 PR 並合併，不必特別詢問（必要時才問）。agent 列出的完善清單如下，依序做；需要核准的另外標明。
 
-- [ ] **PRO-014F2**（**需要擁有者決定**）Personal Space 的 Pro 呈現：提案已寫，見 [`docs/pro-014f2-personal-space-pro-proposal.md`](docs/pro-014f2-personal-space-pro-proposal.md)。建議先做 F2A（只顯示：個人空間狀態列與首頁 Orbit Window 的「✦ Pro」標記，以及 Orbit 夥伴在 Pro 開始與結束時各說一次中性的話，不推銷），不碰經濟、不新增素材、不改資料庫；Pro 專屬外觀（F2B）選做、只限新內容；不建議讓 Pro 影響進度。等待擁有者決定 §9（範圍、位置、文案、光暈、試用期、F2B）後才實作。排行榜的部分已由 PRO-014F1 完成（見 Done）。
+- [ ] **PRO-014F2**（**需要擁有者決定**）Personal Space 的 Pro 呈現：提案已寫，見 [`docs/pro-014f2-personal-space-pro-proposal.md`](docs/pro-014f2-personal-space-pro-proposal.md)。建議先做 F2A（只顯示：個人空間狀態列與首頁 Orbit Window 的「✦ Pro」標記，以及 Orbit 夥伴在 Pro 開始那天說一句中性的話，不推銷；狀態「不知道」時不顯示也不說話），不碰經濟、不新增素材、不改資料庫；Pro 專屬外觀（F2B）選做、只限新內容；不建議讓 Pro 影響進度。等待擁有者決定 §9（範圍、位置、文案、光暈、試用期、F2B）後才實作。排行榜的部分已由 PRO-014F1 完成（見 Done）。
 - [ ] **HW-112D** 佐證照片：擁有者驗收與後續評估（HW-112C1／C2a／C2b 已完成，見 Done）
   - 留下的 P3（#257 審查，不急）：(1) 永遠上傳不了的照片（轉檔失敗的 PNG、超過 200 KB）會讓「檢查同步」一直說還有照片沒上傳，提示文字可另外說明（例如「這幾張無法備份，移除舊圖示前請先另存」）；(2) 既有問題、不限照片：`storage.saveSessions()` 不檢查擁有者，兩個分頁登入不同帳號時，記憶體仍是 A 的分頁可能把 A 的紀錄寫到已儲存的 B 底下（iOS 主畫面 app 不會發生；要修需在寫入時比對 `storage.getUser()?.id`）。
   - **需要擁有者決定**（#257 Codex P2）：「刪除所有佐證照片」只刪這台裝置與雲端；其他裝置已下載的副本（IndexedDB）留到那台裝置登出或「清除這台裝置的佐證照片」，確認文字已照實說明。要讓其他裝置也自動清掉，需要 (a) profile 加一個「照片全部刪除時間」欄位（schema 變更，需核准），其他裝置同步時比對並清掉較早的下載副本；或 (b) 每台裝置每次同步列出這個帳號的雲端資料夾（每 100 張一個請求）並清掉雲端已沒有的副本。agent 建議 (a)，但目前不做，等擁有者決定。
