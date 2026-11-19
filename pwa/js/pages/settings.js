@@ -1119,7 +1119,7 @@ function _setupListeners(container) {
     if (delId) {
       if (!confirm('確定刪除此任務？')) return;
       state.tasks = state.tasks.filter(t => t.id !== delId);
-      storage.saveTasks(state.tasks);
+      storage.saveTasks(state.tasks, state.user?.id ?? null);
       _renderView(container);
     }
   });
@@ -1593,7 +1593,7 @@ function _showTaskModal(container, task) {
       state.tasks.push(saved);
     }
 
-    storage.saveTasks(state.tasks);
+    storage.saveTasks(state.tasks, state.user?.id ?? null);
     modal.remove();
     _renderView(container);
   });

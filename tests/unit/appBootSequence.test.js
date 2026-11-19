@@ -918,6 +918,13 @@ describe('PRO-014Q S0（A1）：另一個視窗按「還原」', () => {
     expect(reload).not.toHaveBeenCalled();
   });
 
+  it('HW-112D (b)：另一個分頁寫入了另一個帳號時重新載入（這個視窗的記憶體不能再寫）', () => {
+    fire({ key: 'yoyo_user', oldValue: '{"id":"owner-a"}', newValue: '{"id":"owner-b"}' });
+    expect(reload).toHaveBeenCalled();
+    expect(sessionStorage.getItem('orbit_account_reloaded')).toBe('1');
+    sessionStorage.removeItem('orbit_account_reloaded');
+  });
+
   it('sessionStorage 的事件不算', () => {
     fire({ storageArea: sessionStorage, key: null });
     fire({ storageArea: sessionStorage, key: 'orbit_dev_backup', oldValue: '{}', newValue: null });

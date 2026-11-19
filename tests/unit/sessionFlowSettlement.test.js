@@ -8,6 +8,9 @@ const mocks = vi.hoisted(() => ({
   saveUser: vi.fn(),
   deleteSession: vi.fn(),
   renderPage: vi.fn(),
+  showToast: vi.fn(),
+  showProofSheet: vi.fn(),
+  storedUser: null,
 }));
 
 vi.mock('../../pwa/js/storage.js', () => ({
@@ -15,6 +18,7 @@ vi.mock('../../pwa/js/storage.js', () => ({
     saveSessions: mocks.saveSessions,
     saveEnergy: mocks.saveEnergy,
     saveUser: mocks.saveUser,
+    getUser: () => mocks.storedUser,
   },
   db: { deleteSession: mocks.deleteSession },
 }));
@@ -23,16 +27,16 @@ vi.mock('../../pwa/js/router.js', () => ({
   currentHash: () => 'home',
 }));
 vi.mock('../../pwa/js/ui/feedback.js', () => ({
-  showToast: vi.fn(),
+  showToast: mocks.showToast,
   showXPFloat: vi.fn(),
   showLevelUp: vi.fn(),
 }));
 vi.mock('../../pwa/js/ui/header.js', () => ({ updateHeader: vi.fn() }));
-vi.mock('../../pwa/js/ui/proofSheet.js', () => ({ showProofSheet: vi.fn() }));
+vi.mock('../../pwa/js/ui/proofSheet.js', () => ({ showProofSheet: mocks.showProofSheet }));
 vi.mock('../../pwa/js/platform/haptics.js', () => ({ haptic: vi.fn() }));
 
 import { state } from '../../pwa/js/state.js';
-import { commitSession } from '../../pwa/js/sessionFlow.js';
+import { commitSession, submitFocusResult } from '../../pwa/js/sessionFlow.js';
 import { loadSessionDeletionLog } from '../../pwa/js/platform/sessionDeletionLog.js';
 import { setPersonalSpaceRuntime } from '../../pwa/js/personalSpace/v2/featureFlag.js';
 import { loadPersonalSpaceV2State } from '../../pwa/js/personalSpace/v2/store.js';
@@ -63,9 +67,67 @@ describe('session settlement safety', () => {
     localStorage.clear();
     vi.clearAllMocks();
     state.user = { id: 'owner-1', totalXP: 0 };
+    mocks.storedUser = state.user;
     state.sessions = [];
     state.energy = { currentEnergy: 100, maxEnergy: 100, lastResetDate: '' };
     globalThis.confirm = vi.fn(() => true);
+  });
+
+  it('HW-112D (b): another tab switched the stored account: nothing is committed or undone here', () => {
+    mocks.storedUser = { id: 'owner-2' };
+    expect(commitSession(session({ finalXP: 30, energyCost: 10 }))).toBe(false);
+    expect(state.sessions).toEqual([]);
+    expect(state.user.totalXP).toBe(0);
+    expect(state.energy.currentEnergy).toBe(100);
+    expect(mocks.saveSessions).not.toHaveBeenCalled();
+    expect(mocks.saveEnergy).not.toHaveBeenCalled();
+    expect(mocks.saveUser).not.toHaveBeenCalled();
+    expect(mocks.showToast).toHaveBeenCalledWith('另一個分頁已切換帳號，這筆變更沒有儲存；請重新整理這個頁面');
+
+    state.sessions = [session({ finalXP: 30 })];
+    state.user.totalXP = 30;
+    expect(window.deleteSession('session-1')).toBe(false);
+    expect(state.sessions).toHaveLength(1);
+    expect(state.user.totalXP).toBe(30);
+    expect(mocks.saveSessions).not.toHaveBeenCalled();
+    expect(loadSessionDeletionLog('owner-1')).toEqual({});
+  });
+
+  it('HW-112D (b): a session that was not saved is not offered a proof photo (#262 Codex P2)', () => {
+    vi.useFakeTimers();
+    try {
+      state.tasks = [{
+        id: 'task-instant', name: '喝水', category: 'instant', impactType: 'task', taskNature: 'maintenance',
+        value: 'B', difficulty: 0.4, resistance: 1, dailyXpCap: 100, cooldownMinutes: 0, minEffectiveMinutes: 0,
+      }];
+      mocks.storedUser = { id: 'owner-2' };
+      window.completeInstant('task-instant');
+      vi.advanceTimersByTime(1000);
+      expect(state.sessions).toEqual([]);
+      expect(mocks.showProofSheet).not.toHaveBeenCalled();
+
+      mocks.storedUser = state.user;
+      window.completeInstant('task-instant');
+      vi.advanceTimersByTime(1000);
+      expect(state.sessions).toHaveLength(1);
+      expect(mocks.showProofSheet).toHaveBeenCalledTimes(1);
+
+      // A focus session too (submitFocusResult).
+      state.tasks.push({ ...state.tasks[0], id: 'task-focus', name: '深度學習', category: 'focus', minEffectiveMinutes: 1 });
+      mocks.storedUser = { id: 'owner-2' };
+      submitFocusResult('task-focus', 30 * 60, 'complete', 30);
+      vi.advanceTimersByTime(1000);
+      expect(state.sessions).toHaveLength(1);
+      expect(mocks.showProofSheet).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('HW-112D (b): its own account: saves name the owner the data belongs to', () => {
+    expect(commitSession(session({ finalXP: 5 }))).toBe(true);
+    expect(mocks.saveSessions).toHaveBeenCalledWith(state.sessions, 'owner-1');
+    expect(mocks.saveEnergy).toHaveBeenCalledWith(state.energy, 'owner-1');
   });
 
   it('rejects a duplicate Session id before changing XP, Energy, or storage', () => {
