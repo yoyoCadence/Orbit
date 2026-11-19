@@ -28,7 +28,7 @@ import {
   pendingProofUploads,
 } from './proofSync.js';
 import { clearCloudProofs } from './proofCloud.js';
-import { sessionsNotOnServer } from './sessionsNotOnServer.js';
+import { photosAwaitingSessionSync, sessionsNotOnServer } from './sessionsNotOnServer.js';
 
 const LOCAL_PROOF_PREFIX = 'orbit_proof_'; // proofStore's key prefix
 // proofSync's "this account's existing photos were queued" marker (private
@@ -96,9 +96,12 @@ export function uploadedLocalProofIds(ownerId, sessions) {
   if (!ownerId || !backfillDone(ownerId)) return [];
   const pending = new Set(pendingProofUploads(ownerId));
   const notOnServer = sessionsNotOnServer(ownerId, sessions);
+  // ...and not one to upload again now that its session is (#263 review).
+  const recheck = new Set(photosAwaitingSessionSync(ownerId));
   return sessionIdsOf(sessions).filter(sessionId => isObjectId(sessionId)
     && !pending.has(sessionId)
     && !notOnServer.has(sessionId)
+    && !recheck.has(sessionId)
     && sendsAsIs(getProof(sessionId)));
 }
 

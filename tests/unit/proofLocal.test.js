@@ -110,6 +110,30 @@ describe('what is surely uploaded', () => {
     expect(has(sid(2))).toBe(true);
   });
 
+  it('#263 review: a photo uploaded before its session reached the server is sent again once it has, and stays here until then', async () => {
+    const pendingKey = `yoyo_sessionSyncPending:${encodeURIComponent(OWNER)}`;
+    const recheckKey = `orbit_proofsync_recheck:${encodeURIComponent(OWNER)}`;
+    signIn(sid(1));
+    saveProof(sid(1), jpeg());
+    localStorage.setItem(pendingKey, JSON.stringify({ ownerId: OWNER, value: [{ id: sid(1) }] }));
+    await flushProofSync(OWNER); // the photo goes up; its session does not (yet)
+    expect(mockUpload).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(localStorage.getItem(recheckKey))).toEqual([sid(1)]);
+    expect(uploadedLocalProofIds(OWNER, local.sessions)).toEqual([]);
+
+    // The session reaches the server; another device may have swept the photo meanwhile.
+    localStorage.removeItem(pendingKey);
+    expect(uploadedLocalProofIds(OWNER, local.sessions)).toEqual([]); // not before it is sent again
+    expect(signOutProofCleanup({ authOwnerId: OWNER, sessionsOwnerId: OWNER, sessions: local.sessions })).toBe(0);
+    expect(has(sid(1))).toBe(true);
+
+    await flushProofSync(OWNER);
+    expect(mockUpload).toHaveBeenCalledTimes(2); // "already exists" would do too
+    expect(mockUpload.mock.calls[1][0]).toBe(`${OWNER}/${sid(1)}.jpg`);
+    expect(localStorage.getItem(recheckKey)).toBeNull();
+    expect(uploadedLocalProofIds(OWNER, local.sessions)).toEqual([sid(1)]);
+  });
+
   it('never a session id the bucket would refuse', async () => {
     signIn(sid(1));
     await flushProofSync(OWNER);

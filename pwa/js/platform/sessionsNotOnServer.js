@@ -28,3 +28,39 @@ export function sessionsNotOnServer(ownerId, sessions = []) {
   }
   return ids;
 }
+
+// #263 review: a photo uploaded while its session was not on the server may
+// have had its cloud copy swept (on another device) before the session got
+// there. Such photos are remembered here and queued for upload again once
+// their session is on the server (proofSync.js); an upload of a copy still in
+// the cloud is "already exists", harmless. Until then they are not "surely
+// uploaded" (proofLocal.js), so this device keeps its copy.
+const RECHECK_PREFIX = 'orbit_proofsync_recheck:';
+
+function recheckKey(ownerId) {
+  return `${RECHECK_PREFIX}${encodeURIComponent(String(ownerId))}`;
+}
+
+/** Photos to upload again once their session is on the server. */
+export function photosAwaitingSessionSync(ownerId) {
+  if (!ownerId) return [];
+  try {
+    const ids = JSON.parse(localStorage.getItem(recheckKey(ownerId)));
+    return Array.isArray(ids) ? ids.filter(id => typeof id === 'string' && id) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** @returns {boolean} whether the list was saved. */
+export function setPhotosAwaitingSessionSync(ownerId, ids) {
+  if (!ownerId) return false;
+  try {
+    const unique = [...new Set(ids)];
+    if (unique.length) localStorage.setItem(recheckKey(ownerId), JSON.stringify(unique));
+    else localStorage.removeItem(recheckKey(ownerId));
+    return true;
+  } catch {
+    return false;
+  }
+}
