@@ -291,6 +291,7 @@
   - `ci.yml` 新增 `database` job：PostgreSQL 16 官方容器（已含 PGDG apt，裝上 `postgresql-16-pgtap`），把 repo 唯讀掛進容器，以 `postgres` 使用者在容器內執行 `tests/database/run.sh`（`REQUIRE_PGTAP=1`，走本機 socket）。不接觸 production、不需要任何 secret；容器的第一次啟動會先開暫時的 server 再重啟，所以裝完 pgTAP 後再等一次 `pg_isready`。
   - 一併處理 #252 第二輪審查的 P3：`run.sh` 拒絕任何可能連到別處的設定——`PGHOST` 逗號清單中任何一個非本機主機、非 loopback 的 `PGHOSTADDR`、或設了 `PGSERVICE`（`ORBIT_DB_TEST_ALLOW_REMOTE=1` 才略過）。本機以 `REQUIRE_PGTAP=1` 跑 10 份全部通過；四種遠端設定都以結束碼 2 拒絕。
   - `tests/database/README.md` 更新。
+  - 審查（#259）：Codex 沒有問題；獨立審查沒有 P1／P2（在本機 Docker 照 CI 步驟以真的 `postgres:16` 跑過，10 份通過、失敗時結束碼正確傳回）。CI 上實際跑了 10 份（含 pgTAP 的 pro014d）。P3 於 #260 一併改：等待改用 TCP 的 `pg_isready`（第一次啟動的暫時 server 只聽 socket），等不到時印出容器 log；pgTAP 以 `--no-install-recommends` 安裝並重試三次；checkout 不保留憑證（repo 掛進容器）；`run.sh` 拒絕含換行的 `PGHOST`／`PGHOSTADDR`（`read` 會在換行處停下，藏住後面的主機）。
 
 - [x] **HW-112C2b** 佐證照片：設定頁、登出、狀態列文字（v1.41.24）
   - 新模組 `pwa/js/platform/proofLocal.js`（SHELL；INFRA-105：`proofSync.js`、`proofCloud.js` 都已發佈，新的 export 放在新模組；`settings.js`、`app.js` 只 import 它的新 export，它只 import 既有的 export）：
