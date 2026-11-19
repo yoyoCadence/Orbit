@@ -18,7 +18,7 @@
   - Orbit Window 的標題列只有 Momentum（`personalSpace/v2/ui/orbitWindow.js`）。這個標題列在首頁（`home-window`）與個人空間頁的世界、編輯模式（`full-world`、`edit`）都會畫出來。
 - **Pro 的判定**：
   - 大多數 gate 讀 `storage.isProUser()`（server 的 `my_pro_status()` 投影，PRO-014B／H）；設定頁另外用 `isPaidProUser()`／`isTrialUser()`；排行榜用 `get_leaderboard()` 回傳的 `is_pro`。
-  - `storage.isProUser()` 在投影不存在或超過 24 小時、剛重新登入、或快取啟動還沒重新整理時都回傳 false——它分不出「不是 Pro」與「還不知道」。換日用的 `getProRolloverStatus()`（`proRollover.js`）會回傳 `pro`／`not-pro`／`unknown`。
+  - `storage.isProUser()` 在投影不存在（例如剛登入、登出時已清掉）或已超過 24 小時時都回傳 false——它分不出「不是 Pro」與「還不知道」。換日用的 `getProRolloverStatus()`（`proRollover.js`）在 server 模式（production）會回傳 `pro`／`not-pro`／`unknown`：沒有投影、投影屬於別的帳號、超過 24 小時或時鐘倒退、或取得時有效但已過了結束時間，都是 `unknown`；legacy 模式（回退用）只有 `pro`／`not-pro`。
   - server 的 `is_pro_active()` 把**試用期也算 Pro**（011、018），排行榜的 `is_pro` 也是。
 - **已有的 Pro 功能**：主題（SUB-06）、保護卡（SUB-09）、歷史深度（SUB-05）、Focus Timer Pro、匯出、稱號模板、月報、排行榜光環與標記（PRO-014F1）。`tests/unit/proGateCallSites.test.js` 逐一列出 `storage.isProUser()` 的呼叫位置（總數 17）。
 - **個人空間的原則**（`docs/personal-space-v2-product-spec.md` §3.2）：真實行動優先（1）；每個獎勵有清楚來源（2）；夥伴的話不得羞辱、威脅或情緒勒索（5）。
@@ -58,7 +58,7 @@
   - 個人空間頁的狀態列，在「等級 N」之後；世界與編輯模式都顯示；
   - 首頁 Orbit Window 的標題列，在 Momentum 之前，**只在 `renderMode === 'home-window'`**（個人空間頁的 Orbit Window 不畫，否則同一頁出現兩次）。
 - **來源**：`getProRolloverStatus(ownerId)`（`proRollover.js`，既有 export）。只有 `pro` 才顯示；`not-pro` 與 `unknown` 都不顯示。不寫進 V2 state、不進 reward ledger。
-- **樣式**：沿用 `.pro-badge--inline` 與 PRO-014F1 收尾後各主題的 `--on-primary`。注意狀態列的 `.personal-space-v2-hud-stats span`（`style.css`）比 `.pro-badge--inline` 更具體，會蓋掉背景與文字色：要用更具體的選擇器（例如 `.personal-space-v2-hud-stats .personal-space-v2-pro`），並以 e2e 讀實際的計算樣式確認背景是主色、文字是 `--on-primary`（`badgeContrast` 測試只檢查主題變數，抓不到這種覆蓋）。沒有動畫。
+- **樣式**：沿用 `.pro-badge--inline` 與 PRO-014F1 收尾後各主題的 `--on-primary`。注意狀態列的 `.personal-space-v2-hud-stats span`（`style.css`）比 `.pro-badge--inline` 更具體，會蓋掉背景、文字色、邊框與內距：要用更具體的選擇器（例如 `.personal-space-v2-hud-stats .personal-space-v2-pro`）把這幾項都設回標記的樣式，並以 e2e 讀實際的計算樣式確認背景是主色、文字是 `--on-primary`（`badgeContrast` 測試只檢查主題變數，抓不到這種覆蓋）。沒有動畫。
 - **無障礙**：`aria-label="Orbit Pro 會員"`；只是狀態，不可點。
 - **訪客**：不顯示。
 
@@ -66,16 +66,20 @@
 
 | key | 何時 | 建議文案 |
 |---|---|---|
-| `companion.pro.started` | 這個帳號在這台裝置從「不是 Pro」變成「是 Pro」的那一天（試用開始、付費、連勝解鎖、邀請解鎖都是） | 「Pro 已開啟。這裡的一切照舊，你累積的每一步都算數。」 |
+| `companion.pro.started` | 這個帳號在這台裝置從「不是 Pro」變成「是 Pro」的那一天（付費、連勝解鎖、邀請解鎖；試用見下） | 「Pro 已開啟。這裡的一切照舊，你累積的每一步都算數。」 |
 | `companion.pro.ended`（建議不用，§9.3） | 從「是 Pro」變成「不是 Pro」的那一天 | 「這個空間和你累積的一切都還在，我也還在。」 |
 
 - 文案保持中性：多數 Pro 的開始不是付款（每個新使用者都有試用，另有連勝解鎖與邀請解鎖），所以不說「謝謝你支持」。
+- **新帳號的試用多半聽不到**：開機時 `startTrial()` 與重新整理在第一次畫面之前完成（`app.js`），第一次記錄就已是 `pro`，依「第一次記錄不說」的規則不會說；只有試用在某次啟動之後才開始（例如離線時 `startTrial()` 沒成功、之後的啟動才成功）時才會說。
 - **狀態判斷**：用 `getProRolloverStatus()`。`unknown` 時**不說話也不記錄**；只有已知的 `pro`／`not-pro` 才和上次比較。
 - **記錄**：每個帳號在這台裝置記一筆 localStorage `orbit_ps_pro_seen:<帳號>` = `{ status, changedOn }`。
   - 第一次記錄（沒有舊值）只記下 `status`、`changedOn` 留空，不說話，避免舊使用者更新後突然收到；
   - 已知的狀態和上次不同時，記下新的 `status` 與 `changedOn = 今天`（以 app 的有效日期為準）；
-  - `changedOn` 是今天時，夥伴的訊息換成這句；隔天自動回到一般的訊息。
-- **覆寫點**：夥伴的訊息來自 `buildPersonalSpaceV2Snapshot()` 裡的 `getCompanionReaction()`（`viewModels.js`），首頁與個人空間頁都經過它。只在這裡**套一層覆寫**，不改夥伴引擎本身（它要維持確定性）。這樣首頁卡片與點擊的提示、個人空間的卡片、dock 與詳情面板都會一致。
+  - `status === 'pro'` 且 `changedOn` 是今天時，夥伴的訊息換成這句；隔天自動回到一般的訊息。同一天又變回 `not-pro`（不說結束的話）時回到一般的訊息。
+- **覆寫點**：夥伴的訊息來自 `buildPersonalSpaceV2Snapshot()` 裡的 `getCompanionReaction()`（`viewModels.js`），首頁與個人空間頁都經過它。
+  - 讀寫 localStorage 與 Pro 狀態的部分（`proPresence.js`）在頁面（`home.js`、`personalSpaceV2.js`）算好，當成一個輸入傳給 builder；builder 只套用，維持純函式（許多單元測試直接 import `viewModels.js`）。
+  - 覆寫只換 `dialogueKey`，所有顯示位置都經 `getCompanionDialogue()` 取文字；夥伴的 `state`、動畫與 `worldAction` 不變，夥伴引擎本身也不改（維持確定性）。
+  - 這樣首頁卡片與點擊的提示、個人空間的卡片、dock 與詳情面板都會一致。
 - **優先順序**：這句比揭曉事件、關係升階、專案完成等句子低；那些在的時候不覆寫。
 - **語氣規則**（個人空間 §3.2 第 5 點）：不提價格、不提「升級」、不倒數試用天數、結束時不說「失去」。
 - **不影響**：獎勵、揭曉事件、關係階段（AI-202）都不變。
