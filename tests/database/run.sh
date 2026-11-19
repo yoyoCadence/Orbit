@@ -22,16 +22,17 @@ remote=""
 nl='
 '
 case "${PGHOST:-}${PGHOSTADDR:-}" in *"$nl"*) remote="a PGHOST/PGHOSTADDR with a newline" ;; esac
+# The first reason found is the one given (so a newline never reaches the message).
 IFS=',' read -r -a pg_hosts <<< "${PGHOST:-}"
 for host in "${pg_hosts[@]:-}"; do
-  case "$host" in ''|localhost|127.0.0.1|::1|/*) ;; *) remote="PGHOST=$PGHOST" ;; esac
+  case "$host" in ''|localhost|127.0.0.1|::1|/*) ;; *) remote="${remote:-PGHOST=$PGHOST}" ;; esac
 done
 IFS=',' read -r -a pg_addrs <<< "${PGHOSTADDR:-}"
 for addr in "${pg_addrs[@]:-}"; do
-  case "$addr" in ''|127.0.0.1|::1) ;; *) remote="PGHOSTADDR=$PGHOSTADDR" ;; esac
+  case "$addr" in ''|127.0.0.1|::1) ;; *) remote="${remote:-PGHOSTADDR=$PGHOSTADDR}" ;; esac
 done
 # A service entry (pg_service.conf) can name any host.
-if [ -n "${PGSERVICE:-}" ]; then remote="PGSERVICE=$PGSERVICE"; fi
+if [ -n "${PGSERVICE:-}" ]; then remote="${remote:-PGSERVICE=$PGSERVICE}"; fi
 if [ -n "$remote" ] && [ "${ORBIT_DB_TEST_ALLOW_REMOTE:-}" != "1" ]; then
   echo "refusing $remote: run.sh creates and drops databases; set ORBIT_DB_TEST_ALLOW_REMOTE=1 to override" >&2
   exit 2

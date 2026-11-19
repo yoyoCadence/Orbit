@@ -87,7 +87,7 @@ export function renderOrbitWindow(inputModel = {}, options = {}) {
           <h2 id="orbit-window-title">${escapeHtml(model.sceneLabel)}</h2>
         </div>
         ${model.proMark && model.renderMode === 'home-window'
-          ? '<span class="pro-badge--inline orbit-window-pro" aria-label="Orbit Pro 會員">✦ Pro</span>'
+          ? '<span class="pro-badge--inline orbit-window-pro" role="img" aria-label="Orbit Pro 會員">✦ Pro</span>'
           : ''}
         <span class="orbit-window-momentum" data-momentum="${escapeHtml(model.momentum)}">${escapeHtml(momentumLabel(model.momentum))}</span>
       </div>

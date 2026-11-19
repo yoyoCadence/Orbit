@@ -109,8 +109,8 @@
     - 公開名稱與 `is_public` 從 `PROFILE_FIELDS` 的上傳拿掉，改成設定頁單獨、等待結果的寫入（提案 §5）。
     - 頭像：BUG-119（017）之後，別人只讀得到公開使用者 `avatar_url` 指向的那一個檔案；`get_leaderboard()` 的 `avatar_path` 只在它是本人資料夾裡的路徑時才有值，其他（舊資料的網址、任意網址、data: URL、別人的路徑）是 NULL，client 顯示預設頭像，不去載入別人指定的網址。
 
-- [ ] **PRO-014F** 交付 SUB-14 排行榜 glow 與 Personal Space Pro 呈現
-  - 進度：排行榜的光環與標記為 PRO-014F1（完成，見 Done）；Personal Space 的部分為 PRO-014F2（提案已寫，等待擁有者決定，見 Next）。
+- [x] **PRO-014F** 交付 SUB-14 排行榜 glow 與 Personal Space Pro 呈現
+  - 進度：排行榜的光環與標記為 PRO-014F1（完成，見 Done）；Personal Space 的部分為 PRO-014F2 F2A（完成，#260，見 Done）。擁有者 2026-11-19 決定不做 F2B（Pro 專屬的世界變化），PRO-014F 沒有剩下的工作。
   - 目標：只使用安全 read model 與 entitlement snapshot 呈現 Pro 身分，不讓視覺功能回寫 entitlement
   - 範圍：排行榜、Personal Space projection、HTML escaping、reduced motion、responsive 與視覺／E2E regression tests
   - 完成條件：Pro／非 Pro／匿名狀態顯示正確，動態文字安全，reduced motion 下無必要動畫，且不改動 auth／entitlement schema
@@ -145,7 +145,7 @@
 > 2026-11-18 擁有者要求：「列出幾個你覺得需要完善的事 持續完善」，每完成一段就開 PR 並合併，不必特別詢問（必要時才問）。agent 列出的完善清單如下，依序做；需要核准的另外標明。
 
 - [ ] **HW-112D** 佐證照片：擁有者驗收與後續評估（HW-112C1／C2a／C2b 已完成，見 Done）
-  - 留下的 P3（#257 審查，不急）：(1) 永遠上傳不了的照片（轉檔失敗的 PNG、超過 200 KB）會讓「檢查同步」一直說還有照片沒上傳，提示文字可另外說明（例如「這幾張無法備份，移除舊圖示前請先另存」）；(2) 既有問題、不限照片：`storage.saveSessions()` 不檢查擁有者，兩個分頁登入不同帳號時，記憶體仍是 A 的分頁可能把 A 的紀錄寫到已儲存的 B 底下（iOS 主畫面 app 不會發生；要修需在寫入時比對 `storage.getUser()?.id`）。
+  - 留下的 P3（#257 審查，不急）：(1) ~~永遠上傳不了的照片會讓「檢查同步」一直說還有照片沒上傳~~ 已於 #261 完成（v1.41.26，擁有者 2026-11-19 同意，見 Done 的 HW-112D (a)）；(2) 既有問題、不限照片：`storage.saveSessions()` 不檢查擁有者，兩個分頁登入不同帳號時，記憶體仍是 A 的分頁可能把 A 的紀錄寫到已儲存的 B 底下（iOS 主畫面 app 不會發生；要修需在寫入時比對 `storage.getUser()?.id`）。
   - **需要擁有者決定**（#257 Codex P2）：「刪除所有佐證照片」只刪這台裝置與雲端；其他裝置已下載的副本（IndexedDB）留到那台裝置登出或「清除這台裝置的佐證照片」，確認文字已照實說明。要讓其他裝置也自動清掉，需要 (a) profile 加一個「照片全部刪除時間」欄位（schema 變更，需核准），其他裝置同步時比對並清掉較早的下載副本；或 (b) 每台裝置每次同步列出這個帳號的雲端資料夾（每 100 張一個請求）並清掉雲端已沒有的副本。agent 建議 (a)，但目前不做，等擁有者決定。
   - 評估（#254 第四輪留下的）：讀這個帳號的雲端資料夾時，可清掉沒有對應紀錄的檔案（刪除時儲存空間滿、離線又關掉 app 才會留下）；要確認別台裝置剛建立、紀錄還沒同步到的照片不會被誤刪，否則不做。
   - 驗收需要擁有者：以兩個測試帳號經 Storage API 實測本人可上傳、讀、刪自己的檔案、不能碰別人的資料夾、超過 200 KB 或不是 JPEG 被拒（agent 沒有測試帳號的密碼）。
@@ -279,6 +279,13 @@
 
 ## Done
 
+- [x] **HW-112D (a)** 「檢查同步」分開說明無法確認已上傳的佐證照片（v1.41.26；擁有者 2026-11-19 同意）
+  - 新模組 `platform/proofUnsure.js`（SHELL）：`unsureProofPhotos(ownerId, sessions)` 列出這個帳號在這台裝置、同步已處理過（backfill 完成、不在上傳佇列）卻不是「確定已上傳」的照片：舊版本的 PNG／WebP（重新編碼後可能有送、可能沒有，無法確認）、超過 200 KB（被略過）、紀錄 id 不是 UUID（永遠不會上傳）。backfill 之前不列（照片還在等）。只用既有的 export（INFRA-105）；backfill 標記的 key 與 `proofLocal.js` 一樣自行讀取，測試用真的 `proofSync.js` 寫的標記確認一致。
+  - `statusBarSyncCheckText()` 多一個 `unsure` 數量（`photos` 仍是全部未確定上傳的張數，`unsure` 不會超過它）：在等的照片照舊說「還沒上傳」；這些另外說「無法確認已上傳（多半是舊版本存的，再等也不會改變）」並說明怎麼另存。只剩這些時 `ok` 仍是 false，文字說存好就可以移除舊圖示。新舊版本混用時（舊的 `app.js` 不傳 `unsure`）行為與之前一樣。
+  - 新模組 `ui/proofKeepSheet.js`（SHELL）：結果下方的「查看這 N 張照片」打開一個列出這些照片的畫面（DOM 建立，任務名稱只當文字），長按照片即可存到相簿或分享；免費版的完成紀錄只顯示 30 天，較舊的照片只能從這裡看到。帶 `.proof-lightbox` class，Orbit Window 會在它下面暫停（PS-249A）；Escape 或「完成」關閉並把焦點還給按鈕。
+  - 測試：`tests/unit/proofUnsure.test.js`（真的 proofSync／proofLocal；文字；畫面）、`ps249aOverlayCover` 認得新的全螢幕規則、e2e `bug118-status-bar-notice` 新增一個（舊 PNG＋一張在等的 JPEG：分開的文字、只有一個按鈕、畫面中的照片沒有被 `pointer-events`／`-webkit-touch-callout` 擋住、焦點）；320px 截圖確認。
+  - 可再評估（不急）：重新編碼後成功送出的 PNG 其實已在雲端，若 `proofSync` 記下「已確認送出」就能不列；目前照實說「無法確認」，建議另存，較安全。
+
 - [x] **PRO-014F2 F2A** 個人空間的 Pro 呈現（v1.41.25；擁有者 2026-11-19 決定 §9 全部照建議；提案 `docs/pro-014f2-personal-space-pro-proposal.md`）
   - 新模組 `personalSpace/v2/proPresence.js`（SHELL）：以 `getProRolloverStatus()` 判斷（`pro`／`not-pro`／`unknown`），只有已知的 Pro 顯示標記；`unknown` 不顯示、不說話、不記錄。每個帳號在這台裝置記 `orbit_ps_pro_seen:<帳號>` = `{ status, changedOn }`：第一次記錄不說話；已知狀態改變時記下當天，`status === 'pro'` 且是當天才說那句話；結束時不說。
   - 首頁（`home.js`）與個人空間頁算好後當成 `coreState.proPresence` 傳給 `buildPersonalSpaceV2Snapshot()`（builder 維持純函式）；只換夥伴的 `dialogueKey`（狀態、動畫、world action 不變），有揭曉事件時不換。快照與 view model 帶出 `proMark`。
@@ -286,9 +293,10 @@
   - 純顯示：沒有新增任何有價值的資料或操作，不需要 server 端強制；新的 Pro 判斷位置 3 處（狀態列標記、Orbit Window 標記、夥伴的話），都用 `getProRolloverStatus()`，沒有新增 `storage.isProUser()` 呼叫。
   - 測試：`tests/unit/pro014f2PersonalSpacePro.test.js`（8）、e2e `pro014f2-personal-space-pro.test.js`（首頁與狀態列的標記與實際計算樣式、個人空間頁只出現一次、當天的那句話、狀態不確定時都不顯示）；320px 截圖確認。
   - 注意：PS-243 的延遲載入預算（V2 ＋ Pixi，304 KB gzip）剩約 0.5 KB；之後在個人空間加程式前要先處理預算（另列任務或擁有者調整）。
+  - 審查（#260）：Codex 沒有問題；獨立審查沒有 P1／P2。P3 於 #261 一併改：成為 Pro 那天不蓋過使用者自己的目標提醒（AI-203B 的 `remind` 狀態，提案 §5.2 原本只說換台詞）；首頁標記加 `role="img"`（有 `aria-label` 的 span 需要 role）；個人空間頁以 `options.effectiveDate` 判斷當天；CHANGELOG 改成「從非 Pro 變成 Pro 的那一天」（第一次記錄不說話，重新訂閱會再說一次）；INFRA-116 的 Done 說明改成現在的 TCP 等待；`run.sh` 的拒絕訊息只給第一個原因（換行不會進到訊息）。
 
 - [x] **INFRA-116** CI 跑資料庫測試（擁有者 2026-11-19 核准）
-  - `ci.yml` 新增 `database` job：PostgreSQL 16 官方容器（已含 PGDG apt，裝上 `postgresql-16-pgtap`），把 repo 唯讀掛進容器，以 `postgres` 使用者在容器內執行 `tests/database/run.sh`（`REQUIRE_PGTAP=1`，走本機 socket）。不接觸 production、不需要任何 secret；容器的第一次啟動會先開暫時的 server 再重啟，所以裝完 pgTAP 後再等一次 `pg_isready`。
+  - `ci.yml` 新增 `database` job：PostgreSQL 16 官方容器（已含 PGDG apt，裝上 `postgresql-16-pgtap`），把 repo 唯讀掛進容器，以 `postgres` 使用者在容器內執行 `tests/database/run.sh`（`REQUIRE_PGTAP=1`，走本機 socket）。不接觸 production、不需要任何 secret；容器的第一次啟動會先開只聽 socket 的暫時 server 再重啟，所以用 TCP 的 `pg_isready -h 127.0.0.1` 等到正式的 server（#260 起）。
   - 一併處理 #252 第二輪審查的 P3：`run.sh` 拒絕任何可能連到別處的設定——`PGHOST` 逗號清單中任何一個非本機主機、非 loopback 的 `PGHOSTADDR`、或設了 `PGSERVICE`（`ORBIT_DB_TEST_ALLOW_REMOTE=1` 才略過）。本機以 `REQUIRE_PGTAP=1` 跑 10 份全部通過；四種遠端設定都以結束碼 2 拒絕。
   - `tests/database/README.md` 更新。
   - 審查（#259）：Codex 沒有問題；獨立審查沒有 P1／P2（在本機 Docker 照 CI 步驟以真的 `postgres:16` 跑過，10 份通過、失敗時結束碼正確傳回）。CI 上實際跑了 10 份（含 pgTAP 的 pro014d）。P3 於 #260 一併改：等待改用 TCP 的 `pg_isready`（第一次啟動的暫時 server 只聽 socket），等不到時印出容器 log；pgTAP 以 `--no-install-recommends` 安裝並重試三次；checkout 不保留憑證（repo 掛進容器）；`run.sh` 拒絕含換行的 `PGHOST`／`PGHOSTADDR`（`read` 會在換行處停下，藏住後面的主機）。

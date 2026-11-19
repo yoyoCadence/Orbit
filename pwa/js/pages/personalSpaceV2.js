@@ -331,7 +331,10 @@ export function renderPersonalSpaceV2(container, options = {}) {
       coreState: {
         ...coreState,
         achievementPhoto: achievementPhoto(),
-        proPresence: resolveProPresence(user.id, { newDayHour: user.newDayHour ?? 5 }),
+        proPresence: resolveProPresence(user.id, {
+          today: options.effectiveDate,
+          newDayHour: user.newDayHour ?? 5,
+        }),
       },
       v2State,
       ledgerSnapshot,

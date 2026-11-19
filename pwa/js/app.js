@@ -42,6 +42,8 @@ import { hasStoredSession } from './sessionPresence.js';
 import { flushProofSync } from './platform/proofSync.js';
 import { forgetCloudProofMisses, keepCloudProofsOf } from './platform/proofCloud.js';
 import { photosNotSurelyUploaded, signOutProofCleanup } from './platform/proofLocal.js';
+import { unsureProofPhotos } from './platform/proofUnsure.js';
+import { showProofKeepSheet } from './ui/proofKeepSheet.js';
 import { isOnline, onConnectivityChange } from './platform/network.js';
 import { orbitWindowRuntimeDestroyer } from './personalSpace/v2/runtime/pixiSceneRuntime.js';
 
@@ -210,15 +212,28 @@ window._checkStatusBarSync = function () {
   if (!result) return;
   const ownerId = _currentSession?.user?.id
     ?? (hasStoredSession() ? storage.getUser()?.id ?? null : null);
+  const sessions = ownerId ? _sessionsOf(ownerId) : [];
+  // HW-112D (a): the ones waiting will not change, named apart.
+  const unsure = ownerId ? unsureProofPhotos(ownerId, sessions) : [];
   const check = statusBarSyncCheckText({
     online: isOnline(),
     pending: ownerId ? storage.getPendingSyncSummary(ownerId).total : 0,
     // Not just the queue: photos never queued yet (or not sendable as is)
     // live only in this icon too.
-    photos: ownerId ? photosNotSurelyUploaded(ownerId, _sessionsOf(ownerId)) : 0,
+    photos: ownerId ? photosNotSurelyUploaded(ownerId, sessions) : 0,
+    unsure: unsure.length,
   });
   result.textContent = check.text;
   result.dataset.ok = String(check.ok);
+  result.parentElement?.querySelector('.sbn-keep-photos')?.remove();
+  if (unsure.length) {
+    const view = document.createElement('button');
+    view.type = 'button';
+    view.className = 'sbn-keep-photos';
+    view.textContent = `查看這 ${unsure.length} 張照片`;
+    view.addEventListener('click', () => showProofKeepSheet(unsure, { returnFocus: view }));
+    result.after(view);
+  }
 };
 
 // This account's sessions: the ones in memory, or the stored ones while they
