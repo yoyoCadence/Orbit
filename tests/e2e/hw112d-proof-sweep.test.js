@@ -25,6 +25,13 @@ const session = {
   id: HERE, taskId: INSTANT_TASK.id, taskName: INSTANT_TASK.name, date: TODAY,
   completedAt: COMPLETED_AT, result: 'instant', impactType: 'task', finalXP: 5,
 };
+const TASK_ROW = {
+  id: INSTANT_TASK.id, user_id: USER_ID, name: INSTANT_TASK.name, category: INSTANT_TASK.category,
+  impact_type: INSTANT_TASK.impactType, task_nature: INSTANT_TASK.taskNature, value: INSTANT_TASK.value,
+  difficulty: INSTANT_TASK.difficulty, resistance: INSTANT_TASK.resistance, emoji: INSTANT_TASK.emoji,
+  daily_xp_cap: INSTANT_TASK.dailyXpCap, cooldown_minutes: 0, min_effective_minutes: 0,
+  is_default: true, value_confidence: 100, created_at: TODAY,
+};
 const SESSION_ROW = {
   id: HERE, user_id: USER_ID, task_id: INSTANT_TASK.id, task_name: INSTANT_TASK.name, date: TODAY,
   completed_at: COMPLETED_AT, result: 'instant', impact_type: 'task', final_xp: 5,
@@ -53,11 +60,21 @@ test('the weekly sweep removes only the old photo no session has', async ({ page
     if (url.pathname.startsWith('/rest/v1/rpc/')) {
       return route.fulfill({ status: 200, contentType: 'application/json', body: 'null' });
     }
+    // The account's profile (without it the sync would leave this device with no user).
+    if (request.method() === 'GET' && url.pathname === '/rest/v1/profiles') {
+      return route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify({ user_id: USER_ID, name: GUEST_USER.name, total_xp: 0, new_day_hour: 0, created_at: TODAY }),
+      });
+    }
     if (request.method() === 'GET' && (request.headers().accept ?? '').includes('vnd.pgrst.object')) {
       return route.fulfill({
         status: 406, contentType: 'application/json',
         body: '{"code":"PGRST116","details":"The result contains 0 rows","hint":null,"message":"JSON object requested, multiple (or no) rows returned"}',
       });
+    }
+    if (request.method() === 'GET' && url.pathname === '/rest/v1/tasks') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([TASK_ROW]) });
     }
     if (request.method() === 'GET' && url.pathname === '/rest/v1/sessions') {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([SESSION_ROW]) });
@@ -105,11 +122,10 @@ test('the weekly sweep removes only the old photo no session has', async ({ page
   await expect.poll(() => removals.length, { timeout: 10_000 }).toBe(1);
   expect(removals[0]).toEqual({ prefixes: [`${USER_ID}/${ORPHAN}.jpg`] });
   expect(reads).toEqual([{ userId: `eq.${USER_ID}`, select: 'id', asked: [HERE, ELSEWHERE, ORPHAN] }]);
-  expect(await page.evaluate(id => Number(localStorage.getItem(`orbit_proofsweep_at:${id}`)) > 0, USER_ID)).toBe(true);
+  // Recorded once the removal's answer is back (the route sees the request first).
+  await expect.poll(() => page.evaluate(id => Number(localStorage.getItem(`orbit_proofsweep_at:${id}`)) > 0, USER_ID))
+    .toBe(true);
 
-  // The next sync within the week does not sweep again.
-  await page.reload();
-  await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
-  await page.waitForTimeout(1500);
-  expect(removals).toHaveLength(1);
+  // Not again within the week: tests/unit/proofSweep.test.js (a reload here would
+  // test this stub account's boot, not the sweep).
 });

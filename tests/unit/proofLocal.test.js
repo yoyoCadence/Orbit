@@ -7,7 +7,7 @@
  * Uses the real proofSync.js, so the backfill marker is the one it writes.
  */
 
-/* global btoa -- jsdom provides it */
+/* global btoa, DOMException -- jsdom provides them */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -132,6 +132,37 @@ describe('what is surely uploaded', () => {
     expect(mockUpload.mock.calls[1][0]).toBe(`${OWNER}/${sid(1)}.jpg`);
     expect(localStorage.getItem(recheckKey)).toBeNull();
     expect(uploadedLocalProofIds(OWNER, local.sessions)).toEqual([sid(1)]);
+  });
+
+  it('#263 review: when that record cannot be saved (storage full), the photo is not sent yet and stays queued', async () => {
+    const pendingKey = `yoyo_sessionSyncPending:${encodeURIComponent(OWNER)}`;
+    const recheckKey = `orbit_proofsync_recheck:${encodeURIComponent(OWNER)}`;
+    signIn(sid(1), sid(2));
+    saveProof(sid(1), jpeg());
+    saveProof(sid(2), jpeg());
+    await flushProofSync(OWNER); // the backfill: both on the server, both sent
+    mockUpload.mockClear();
+    saveProof(sid(3), jpeg());
+    local.sessions = sessions(sid(1), sid(2), sid(3));
+    localStorage.setItem(pendingKey, JSON.stringify({ ownerId: OWNER, value: [{ id: sid(3) }] }));
+    queueProofUpload(OWNER, sid(3));
+    const realSetItem = Storage.prototype.setItem;
+    const full = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function setItem(key, value) {
+      if (key === recheckKey) throw new DOMException('full', 'QuotaExceededError');
+      return realSetItem.call(this, key, value);
+    });
+    try {
+      await flushProofSync(OWNER);
+    } finally {
+      full.mockRestore();
+    }
+    expect(mockUpload).not.toHaveBeenCalled();
+    expect(JSON.parse(localStorage.getItem(`orbit_proofsync_upload:${encodeURIComponent(OWNER)}`))).toEqual([sid(3)]);
+    expect(uploadedLocalProofIds(OWNER, local.sessions)).toEqual([sid(1), sid(2)]);
+
+    await flushProofSync(OWNER); // storage has room again: recorded, then sent
+    expect(JSON.parse(localStorage.getItem(recheckKey))).toEqual([sid(3)]);
+    expect(mockUpload).toHaveBeenCalledTimes(1);
   });
 
   it('never a session id the bucket would refuse', async () => {
