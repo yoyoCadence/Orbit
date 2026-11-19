@@ -1063,6 +1063,18 @@ describe('HW-112D：設定頁與另一個分頁（#262 審查）', () => {
     }
   });
 
+  it('重新開啟設定頁時，前一次選的頭像不會留在預覽裡（#264 審查）', async () => {
+    await openGuestSetup();
+    const preview = document.getElementById('setup-avatar-preview');
+    preview.style.backgroundImage = 'url(data:image/png;base64,AAAA)';
+    preview.textContent = '';
+    window.continueAsGuest();
+    await flush();
+    expect(preview.style.backgroundImage).toBe('');
+    expect(preview.textContent).toBe('👤');
+    expect(document.getElementById('setup-avatar-input').value).toBe('');
+  });
+
   it('訪客設定開著時另一個分頁存入了帳號：送出時重新載入，不把訪客寫進那個帳號', async () => {
     const reload = vi.fn();
     vi.stubGlobal('location', { ...window.location, reload });
@@ -1076,6 +1088,8 @@ describe('HW-112D：設定頁與另一個分頁（#262 審查）', () => {
       expect(reload).toHaveBeenCalled();
       expect(storage.saveUser).not.toHaveBeenCalled();
       expect(storage.saveTasks).not.toHaveBeenCalled();
+      expect(sessionStorage.getItem('orbit_account_reloaded')).toBe('1'); // said after the reload
+      sessionStorage.removeItem('orbit_account_reloaded');
     } finally {
       vi.unstubAllGlobals();
     }
@@ -1108,6 +1122,15 @@ describe('HW-112C1：遠端同步之後補傳佐證照片', () => {
     await flush();
     expect(proofSync.flushProofSync).toHaveBeenCalledTimes(2);
     expect(proofSync.flushProofSync).toHaveBeenLastCalledWith('owner-a');
+  });
+
+  it('HW-112D (c, #264 審查): 沒有 backfill 時不多送一次', async () => {
+    db.loadFromRemote.mockImplementationOnce(async () => ({ backfilled: Promise.resolve([]) }));
+    proofSync.flushProofSync.mockClear();
+    await bootWithPendingSession('owner-a');
+    auth.sessionResolve(sessionFor('owner-a'));
+    await flush();
+    expect(proofSync.flushProofSync).toHaveBeenCalledTimes(1);
   });
 
   it('HW-112D (c): after the flush, the sweep gets this account\'s stored sessions (or none for another account)', async () => {
