@@ -4,6 +4,7 @@ Usage:
     python render_pack.py <out_dir> [--width 1536] [--samples 96] [--only id,id]
                           [--lighting day|night] [--style <room style>]
                           [--decor-boxes <ps250-decor/placements.json>]
+                          [--prop-boxes <ps244-blender/placements.json>]
 
 --only takes room, prop ids, decoration ids, or `decor` for every decoration.
 Decorations are rendered only when --only names them: a full pack is the room
@@ -12,6 +13,9 @@ and the props, as before PS-250F.
 box of the same lighting, plus DECOR_BOX_PAD pixels; the rest of the frame
 stays transparent. A room style's decoration is cut to that box anyway, so the
 result is the same at a fraction of the time.
+--prop-boxes (PS-260B) does the same for the props of a room style, which
+process_pack.py cuts to the default prop's box of the same lighting: about 8
+minutes per lighting instead of 30. The room itself is always a full frame.
 
 Writes full-frame RGBA PNGs to <out_dir>:
     room.png          empty room, transparent outside the diorama
@@ -53,6 +57,7 @@ def parse_args():
     parser.add_argument('--lighting', choices=S.LIGHTINGS, default='day')
     parser.add_argument('--style', choices=tuple(S.ROOM_STYLES), default='default')
     parser.add_argument('--decor-boxes', default='')
+    parser.add_argument('--prop-boxes', default='')
     return parser.parse_args(argv)
 
 
@@ -64,6 +69,16 @@ def decor_boxes(path, lighting):
         data = json.load(fh)
     section = data if lighting == 'day' else data[lighting]
     return {decor_id: entry['bbox'] for decor_id, entry in section['decor'].items()}
+
+
+def prop_boxes(path, lighting):
+    """{prop id: trim box} of one lighting from ps244-blender/placements.json."""
+    if not path:
+        return {}
+    with open(path, encoding='utf-8') as fh:
+        data = json.load(fh)
+    section = data if lighting == 'day' else data[lighting]
+    return {prop_id: entry['bbox'] for prop_id, entry in section['props'].items()}
 
 
 def set_border(scene, box):
@@ -197,9 +212,11 @@ def main():
         obj.is_shadow_catcher = True
         if obj.name not in no_lines.objects:
             no_lines.objects.link(obj)
+    own_boxes = prop_boxes(args.prop_boxes, args.lighting)
     for prop_id, objects in props.items():
         if only and prop_id not in only:
             continue
+        set_border(scene, own_boxes.get(prop_id))
         supports = S.PROP_SUPPORTS.get(prop_id, ())
         occluders = S.PROP_OCCLUDERS.get(prop_id, ())
         for other_id, other in props.items():
@@ -216,6 +233,7 @@ def main():
                 elif not hide_lines and linked:
                     no_lines.objects.unlink(obj)
         render(os.path.join(args.out_dir, f'{prop_id}.png'))
+    set_border(scene, None)
 
     # 3. Each decoration named in --only, alone, with its support (shelf or
     #    desk) as a shadow catcher and every other prop hidden.

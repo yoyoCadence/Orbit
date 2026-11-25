@@ -95,7 +95,12 @@ describe('PS-250E2 room styles', () => {
   });
 
   it('ships exactly the hashed files the pipeline wrote, and resolves every one of them', () => {
-    const onDisk = [...filesUnder('workspace/styles'), ...filesUnder('workspace/pixel/styles')].sort();
+    // PS-260B: the themed sets' rooms are recorded with the sets
+    // (tests/unit/ps260bRoomStyles.test.js) until the picker lists them (PS-260E).
+    const themed = new Set(Object.keys(JSON.parse(readFileSync(
+      join(REPO, 'art-pipeline', 'ps260-sets', 'rooms-outputs.json'), 'utf8')).files));
+    const onDisk = [...filesUnder('workspace/styles'), ...filesUnder('workspace/pixel/styles')]
+      .filter(path => !themed.has(path)).sort();
     expect(onDisk).toEqual(Object.keys(outputs.files).sort());
     for (const [path, entry] of Object.entries(outputs.files)) {
       const data = readFileSync(join(PWA, path));

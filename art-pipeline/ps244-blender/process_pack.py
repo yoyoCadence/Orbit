@@ -25,6 +25,8 @@ Usage:
   same lighting, so every style shares one set of placements; pixels the cut
   drops are counted in ps250-rooms/outputs.json. The files go under
   workspace/styles/<style>/ and the previews into ps250-rooms/previews/.
+  The PS-260 rooms (room_styles.PS260_STYLES) are recorded in
+  ps260-sets/rooms-outputs.json and previewed in ps260-sets/previews/rooms/.
   placements.json and PROP_DEFINITIONS are not touched.
 
 Requires Pillow and numpy.
@@ -358,9 +360,9 @@ def process_style(args):
             os.makedirs(os.path.dirname(target), exist_ok=True)
             with open(target, 'wb') as fh:
                 fh.write(blob)
-        rooms.record(files, clipped)
+        rooms.record(files, clipped, style)
 
-    preview_dir = args.preview_dir if args.preview_dir != os.path.join(HERE, 'previews') else rooms.PREVIEWS
+    preview_dir = args.preview_dir if args.preview_dir != os.path.join(HERE, 'previews') else rooms.previews_for(style)
     os.makedirs(preview_dir, exist_ok=True)
     for progress in PHASES:
         canvas = background.convert('RGBA')
