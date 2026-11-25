@@ -51,15 +51,25 @@ describe('PS-260D pixel protagonists', () => {
     }
   });
 
-  it('uses the PS-250D reduction: the same scale, grid and palette size', () => {
+  it('uses the PS-250D reduction: the same scale, grid, palette size and contact shadow', () => {
     expect(pixel.scale).toBe(ps250d.scale);
     expect(pixel.protagonist.grid * pixel.scale).toBe(368);
     expect(pixel.protagonist.colours).toBe(ps250d.encoding.colours.protagonist);
+    expect(pixel.protagonist.contactShadow).toBe(true);
   });
 
-  it('keeps them as small as the PS-250D ones and precaches none', () => {
+  it('is made from the committed Q-style sprites: re-run process_pixel_sets.py after a re-render', () => {
+    for (const [path, entry] of Object.entries(pixel.files)) {
+      const name = path.slice(DIR.length + 1).replace(/\.png$/, '.webp');
+      expect(entry.source.path, path).toBe(`assets/personal-space/v2/characters/toon/protagonist/${name}`);
+      expect(entry.source.sha256, path).toBe(sets.files[entry.source.path].sha256);
+    }
+  });
+
+  it('keeps each one small (PS-250D: up to 7 KB; these up to about 8 KB) and precaches none', () => {
     const sizes = Object.values(pixel.files).map(entry => entry.bytes);
     expect(Math.max(...sizes)).toBeLessThan(12_000);
+    expect(sizes.reduce((sum, bytes) => sum + bytes, 0)).toBeLessThanOrEqual(900_000);
     const paths = new Set(Object.keys(pixel.files));
     expect(SHELL.filter(path => paths.has(path))).toEqual([]);
     expect(getWorkspaceAssetManifestPaths().filter(path => paths.has(path))).toEqual([]);

@@ -73,3 +73,8 @@ The pixel versions need no render: after changing the Q-style sprites, run
 ```bash
 python3 art-pipeline/ps260-sets/process_pixel_sets.py --write-runtime
 ```
+
+It always writes the previews, by default into the committed `previews/`; for
+a check-only run pass `--preview-dir` with another directory and leave out
+`--write-runtime`. `pixel-outputs.json` records the Q-style sprite each pixel
+one was made from, so a re-render without this step fails the tests.

@@ -12,20 +12,19 @@ anchors and runtime placements are those of the Q style.
 
 - With --write-runtime: the PNGs beside the PS-250D pixel protagonists
   (characters/pixel/protagonist/<id>-<pose>-<facing>.png) and
-  pixel-outputs.json next to this script (sizes and SHA-256).
-- Previews (always, by default into previews/): every pose and facing on one
-  sheet (pixel-protagonists.png) and the ten in idle (pixel-lineup.png).
+  pixel-outputs.json next to this script (sizes and SHA-256, and the path and
+  SHA-256 of the Q-style sprite each was made from).
+- Previews (always, by default into the committed previews/; pass
+  --preview-dir for a check-only run): every pose and facing on one sheet
+  (pixel-protagonists.png) and the ten in idle (pixel-lineup.png).
 
 Requires Pillow and numpy.
 """
 import argparse
 import hashlib
-import io
 import json
 import os
 import sys
-
-from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -35,6 +34,8 @@ import process_pixel as P  # noqa: E402
 import sets_catalog as catalog  # noqa: E402
 
 OUTPUTS = os.path.join(HERE, 'pixel-outputs.json')
+# The PS-250D protagonist reduction; recorded in pixel-outputs.json as used.
+GRID, COLOURS, CONTACT_SHADOW = P.PROTAGONIST_GRID, P.PROTAGONIST_COLOURS, True
 
 
 def pixel_path(spec_id, pose, facing):
@@ -47,16 +48,21 @@ def main():
     parser.add_argument('--preview-dir', default=os.path.join(HERE, 'previews'))
     args = parser.parse_args()
 
-    images, files = {}, {}
+    images, files, sources = {}, {}, {}
     for spec_id in catalog.PROTAGONISTS:
         for pose in catalog.POSES:
             for facing in catalog.FACINGS:
-                source = os.path.join(P.PWA, *catalog.protagonist_path(spec_id, pose, facing).split('/'))
+                source = catalog.protagonist_path(spec_id, pose, facing)
+                source_file = os.path.join(P.PWA, *source.split('/'))
                 # Raises SystemExit if the reduced sprite touches the canvas edge.
-                image = P.process_character(source, P.PROTAGONIST_GRID, P.PROTAGONIST_COLOURS, True)
+                image = P.process_character(source_file, GRID, COLOURS, CONTACT_SHADOW)
                 path = pixel_path(spec_id, pose, facing)
                 images[path] = image
                 files[path] = P.encode(image)
+                # The Q-style sprite it was made from, so a stale pixel set fails
+                # tests/unit/ps260dPixelProtagonists.test.js after a re-render.
+                with open(source_file, 'rb') as fh:
+                    sources[path] = {'path': source, 'sha256': hashlib.sha256(fh.read()).hexdigest()}
 
     if args.write_runtime:
         for path, blob in files.items():
@@ -69,13 +75,14 @@ def main():
             'taskId': 'PS-260D',
             'scale': P.SCALE,
             'protagonist': {
-                'grid': P.PROTAGONIST_GRID,
-                'colours': P.PROTAGONIST_COLOURS,
+                'grid': GRID,
+                'colours': COLOURS,
+                'contactShadow': CONTACT_SHADOW,
                 'ids': list(catalog.PROTAGONISTS),
                 'poses': catalog.POSES,
                 'facings': catalog.FACINGS,
             },
-            'files': {path: {'bytes': len(blob), 'sha256': hashlib.sha256(blob).hexdigest()}
+            'files': {path: {'bytes': len(blob), 'sha256': hashlib.sha256(blob).hexdigest(), 'source': sources[path]}
                       for path, blob in sorted(files.items())},
         }
         with open(OUTPUTS, 'w', encoding='utf-8') as fh:
@@ -87,11 +94,11 @@ def main():
     P.sheet({(row, col): images[pixel_path(spec_id, pose, facing)]
              for row, spec_id in enumerate(catalog.PROTAGONISTS)
              for col, (pose, facing) in enumerate(columns)},
-            len(catalog.PROTAGONISTS), len(columns), 92).save(
+            len(catalog.PROTAGONISTS), len(columns), GRID).save(
         os.path.join(args.preview_dir, 'pixel-protagonists.png'), optimize=True)
     half = len(catalog.SETS) // 2
     P.sheet({(i // half, i % half): images[pixel_path(s['id'], 'idle', 'right' if i % half < half / 2 else 'left')]
-             for i, s in enumerate(catalog.SETS)}, 2, half, 184).save(
+             for i, s in enumerate(catalog.SETS)}, 2, half, 2 * GRID).save(
         os.path.join(args.preview_dir, 'pixel-lineup.png'), optimize=True)
     total = sum(len(blob) for blob in files.values())
     print(f'{len(files)} pixel sprites, {total:,} bytes')
