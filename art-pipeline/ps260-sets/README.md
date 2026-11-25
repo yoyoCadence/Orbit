@@ -31,7 +31,8 @@ proposal and the segment plan are in
 | `outputs.json` | Ids, labels, gender, the set → room → decorations map, and the size and SHA-256 of every sprite. `tests/unit/ps260aCharacterSets.test.js` checks the files against it. |
 | `process_pixel_sets.py` | PS-260D: the pixel protagonists, made from the committed sprites with the PS-250D reduction (`ps250-pixel/process_pixel.process_character`); writes `pixel-outputs.json`. |
 | `pixel-outputs.json` | Size and SHA-256 of every pixel protagonist. `tests/unit/ps260dPixelProtagonists.test.js` checks the files against it. |
-| `previews/` | `protagonists.jpg` (every pose and facing) and `lineup.jpg`; `pixel-protagonists.png` and `pixel-lineup.png` for the pixel versions. |
+| `rooms-outputs.json` | PS-260B: size and SHA-256 of every room file (Q style and pixel, by day and by night) and how many visible pixels the cut of each Q-style prop dropped. Written by `ps244-blender/process_pack.py` and `ps250-pixel/process_pixel.py` for a PS-260 room; `tests/unit/ps260bRoomStyles.test.js` checks it. |
+| `previews/` | `protagonists.jpg` (every pose and facing) and `lineup.jpg`; `pixel-protagonists.png` and `pixel-lineup.png` for the pixel versions; `rooms/` has each room in every project phase, by day and by night, and in pixels. |
 
 ## How the costumes are built
 
@@ -78,3 +79,44 @@ It always writes the previews, by default into the committed `previews/`; for
 a check-only run pass `--preview-dir` with another directory and leave out
 `--write-runtime`. `pixel-outputs.json` records the Q-style sprite each pixel
 one was made from, so a re-render without this step fails the tests.
+
+## Rooms (PS-260B)
+
+Each set's room is a style in `ps244-blender/room_styles.py` (`PS260_STYLES`):
+the PS-244 room, camera, furniture and lights with the set's materials, like
+the PS-250E styles. Two things are new:
+
+- **Its own view out of the window.** A style can name an `exterior`
+  (`scene.build_exterior`): a starfield with a planet or moon (space station,
+  wizard tower), bamboo (dojo), jungle, a garden (greenhouse) or kelp and
+  bubbles (ocean), or PS-244's city in the room's own colours (detective's
+  rainy city, Paris roofs, a pastel city, a smog city with neon lights). The
+  plants and dots are placed along camera rays through the window, inside its
+  edges and under the sightline over the right wall, like the PS-244 towers;
+  a `ground` wedge cut to the window's ray fan fills what the towers used to
+  cover (the camera sees that ground only through the window). PS-244's city
+  path is unchanged, so the default and PS-250E rooms render as before.
+- **Props rendered only where they are kept.** Every style prop is cut to the
+  default prop's box anyway, so `render_pack.py --prop-boxes` renders each
+  prop only inside that box plus 48 px (like `--decor-boxes` for the PS-250F2
+  decorations): about 10 minutes per lighting instead of 30.
+
+The PS-260 rooms are recorded in `rooms-outputs.json` and previewed in
+`previews/rooms/`, not in `ps250-rooms/`, so that record keeps exactly the
+rooms the picker lists until PS-260E adds these. The picker thumbnails
+(`ps250-rooms/thumbnails.py`) are made in PS-260E too.
+
+```bash
+P=art-pipeline/ps244-blender/placements.json
+for style in spacestation dojo noir bistro jungle wizard stage greenhouse cyber ocean; do
+  for lighting in day night; do
+    /tmp/bpyenv/bin/python art-pipeline/ps244-blender/render_pack.py /tmp/rooms/$style-$lighting \
+      --style $style --lighting $lighting --prop-boxes $P
+    /tmp/bpyenv/bin/python art-pipeline/ps244-blender/process_pack.py /tmp/rooms/$style-$lighting \
+      --write-runtime --style $style --lighting $lighting
+    /tmp/bpyenv/bin/python art-pipeline/ps250-pixel/render_pixel.py /tmp/rooms/pixel --style $style --lighting $lighting
+    /tmp/bpyenv/bin/python art-pipeline/ps250-pixel/process_pixel.py /tmp/rooms/pixel \
+      --write-runtime --style $style --lighting $lighting
+  done
+done
+```

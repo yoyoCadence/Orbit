@@ -166,6 +166,8 @@ Each set has several protagonists and Companion forms. Added so far:
 
 - PS-260D: the pixel version of each PS-260A protagonist, made from the Q-style sprites with the PS-250D reduction (92 art pixels, its own 32 colours, a one-pixel outline, scaled x4). Source: `art-pipeline/ps260-sets/process_pixel_sets.py`.
 
+- PS-260B1: the rooms of the five male sets, in both styles, by day and by night: space station (white panels, blue light strips, orange accents), dojo (plaster, dark wood, tatami, vermilion), detective's office (smoky grey, dark wood, oxblood leather), bistro (cream, a green wainscot, copper, terracotta tiles) and jungle camp (canvas, bamboo, olive cloth). Unlike the PS-250E styles, each also has its own view out of the window: a starfield with a ringed planet, a bamboo grove, a rainy city, Paris roofs, the jungle. The window view is part of the room render; PS-251B's morning and evening city views are not laid over these rooms. Source: `art-pipeline/ps244-blender/room_styles.py` (`PS260_STYLES`), `art-pipeline/ps260-sets/`.
+
 - PS-251B: the view outside the window in the morning (05:00–10:00) and the evening (17:00–21:00), in both styles. The skyline keeps its shape; the morning recolours it peach and lilac with few lit windows, the evening purple with a warm far side and many lit windows. Each is an RGBA image of only what the window shows, laid over the room; the five room styles share the window, so one image per style serves them all. By day and at night the view baked into the room stays. Source: `art-pipeline/ps251-window/`.
 
 ### 6.2 Workspace Upgrade Phases

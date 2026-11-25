@@ -3,10 +3,10 @@
  *
  * Each room is the PS-244 scene with the set's materials and its own view
  * out of the window (art-pipeline/ps244-blender/room_styles.py PS260_STYLES),
- * rendered by day and by night in the Q style, with the props cut to the
- * default room's boxes like every PS-250E style. The files are recorded with
- * the sets (art-pipeline/ps260-sets/rooms-outputs.json) and none is precached;
- * the picker lists them in PS-260E, after the pixel versions (PS-260D).
+ * rendered by day and by night in the Q style and in pixels, with the props
+ * cut to the default room's boxes like every PS-250E style. The files are
+ * recorded with the sets (art-pipeline/ps260-sets/rooms-outputs.json) and
+ * none is precached; the picker lists them in PS-260E.
  */
 
 import { createHash } from 'node:crypto';
@@ -14,7 +14,11 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { getWorkspaceAssetManifestPaths } from '../../pwa/js/personalSpace/v2/content/assetManifest.js';
+import {
+  getWorkspaceAssetManifestPaths,
+  getWorkspaceSceneAssets,
+  WORKSPACE_PROJECT_PHASES,
+} from '../../pwa/js/personalSpace/v2/content/assetManifest.js';
 import { ROOM_STYLES } from '../../pwa/js/personalSpace/v2/ui/appearancePicker.js';
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -26,8 +30,8 @@ const placements = JSON.parse(readFileSync(join(REPO, 'art-pipeline', 'ps244-ble
 const SHELL = [...readFileSync(join(PWA, 'sw.js'), 'utf8').match(/const SHELL = \[([\s\S]*?)\];/)[1]
   .matchAll(/'\.\/([^']*)'/g)].map(match => match[1]);
 const PROPS = Object.keys(placements.props);
-// assets/personal-space/v2/workspace/styles/<room>/...
-const RECORDED = [...new Set(Object.keys(rooms.files).map(path => path.split('/')[5]))].sort();
+// assets/personal-space/v2/workspace/[pixel/]styles/<room>/...
+const RECORDED = [...new Set(Object.keys(rooms.files).map(path => path.match(/\/styles\/([^/]+)\//)[1]))].sort();
 
 function pngSize(path) {
   const data = readFileSync(join(PWA, path));
@@ -55,10 +59,12 @@ describe('PS-260B themed rooms', () => {
     for (const room of RECORDED) expect(setRooms, room).toContain(room);
   });
 
-  it('ships each room by day and by night: the background and every prop, as hashed', () => {
+  it('ships each room by day and by night, in both styles: the background and every prop, as hashed', () => {
     const expected = RECORDED.flatMap(room => ['', '-night'].flatMap(suffix => [
       `${V2}/workspace/styles/${room}/background${suffix}.webp`,
       ...PROPS.map(id => `${V2}/workspace/styles/${room}/props/${id}${suffix}.png`),
+      `${V2}/workspace/pixel/styles/${room}/background${suffix}.png`,
+      ...PROPS.map(id => `${V2}/workspace/pixel/styles/${room}/props/${id}${suffix}.png`),
     ]));
     expect(Object.keys(rooms.files).sort()).toEqual(expected.sort());
     for (const [path, entry] of Object.entries(rooms.files)) {
@@ -69,27 +75,35 @@ describe('PS-260B themed rooms', () => {
     }
   });
 
-  it('fits every prop to the default prop of the same lighting, so the shared placements hold', () => {
+  it('fits every prop to the default prop of the same lighting and style, so the shared placements hold', () => {
     for (const room of RECORDED) {
-      for (const [suffix, section] of [['', placements], ['-night', placements.night]]) {
+      for (const [suffix, timeBand] of [['', 'day'], ['-night', 'night']]) {
         expect(webpSize(`${V2}/workspace/styles/${room}/background${suffix}.webp`)).toEqual({ width: 1536, height: 1024 });
-        for (const id of PROPS) {
-          expect(pngSize(`${V2}/workspace/styles/${room}/props/${id}${suffix}.png`), `${room} ${id}${suffix}`)
-            .toEqual(pngSize(section.props[id].path));
+        expect(pngSize(`${V2}/workspace/pixel/styles/${room}/background${suffix}.png`)).toEqual({ width: 1536, height: 1024 });
+        for (const [style, folder] of [['toon', 'styles'], ['pixel', 'pixel/styles']]) {
+          // The default room's props in every phase (single-monitor is gone at 100%).
+          const plain = WORKSPACE_PROJECT_PHASES.flatMap(({ progress }) => (
+            getWorkspaceSceneAssets(progress, {}, { appearance: { style } }, { timeBand }).props));
+          for (const id of PROPS) {
+            const reference = plain.find(entry => entry.id === id);
+            expect(reference, id).toBeDefined();
+            expect(pngSize(`${V2}/workspace/${folder}/${room}/props/${id}${suffix}.png`), `${style} ${room} ${id}${suffix}`)
+              .toEqual(pngSize(reference.path));
+          }
         }
       }
     }
   });
 
-  it('records how many pixels the cut of each prop dropped, and keeps it small', () => {
-    const props = Object.keys(rooms.files).filter(path => path.includes('/props/'));
+  it('records how many pixels the cut of each Q-style prop dropped, and keeps it small', () => {
+    const props = Object.keys(rooms.files).filter(path => path.includes('/props/') && !path.includes('/pixel/'));
     expect(Object.keys(rooms.clipped).sort()).toEqual(props.sort());
     for (const [path, count] of Object.entries(rooms.clipped)) expect(count, path).toBeLessThan(400);
   });
 
-  it('keeps the rooms small: a background under 160 KB, a room by day and night under 1.2 MB', () => {
+  it('keeps the Q-style rooms small: a background under 160 KB, a room by day and night under 1.2 MB', () => {
     for (const room of RECORDED) {
-      const files = Object.entries(rooms.files).filter(([path]) => path.includes(`/styles/${room}/`));
+      const files = Object.entries(rooms.files).filter(([path]) => path.includes(`/workspace/styles/${room}/`));
       for (const [path, entry] of files.filter(([path]) => path.endsWith('.webp'))) {
         expect(entry.bytes, path).toBeLessThan(160_000);
       }

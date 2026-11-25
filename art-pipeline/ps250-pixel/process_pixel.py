@@ -333,8 +333,8 @@ def process_style(args):
             os.makedirs(os.path.dirname(target), exist_ok=True)
             with open(target, 'wb') as fh:
                 fh.write(blob)
-        rooms.record(files)
-    preview_dir = args.preview_dir if args.preview_dir != os.path.join(HERE, 'previews') else rooms.PREVIEWS
+        rooms.record(files, style=style)
+    preview_dir = args.preview_dir if args.preview_dir != os.path.join(HERE, 'previews') else rooms.previews_for(style)
     os.makedirs(preview_dir, exist_ok=True)
     room = images[rooms.background_path(style, lighting, pixel=True)].convert('RGBA')
     for prop_id in sorted((p for p, spec in PROPS.items() if spec['min'] <= 100 <= spec['max']),
