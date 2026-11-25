@@ -89,8 +89,9 @@ the PS-250E styles. Two things are new:
 - **Its own view out of the window.** A style can name an `exterior`
   (`scene.build_exterior`): a starfield with a planet or moon (space station,
   wizard tower), bamboo (dojo), jungle, a garden (greenhouse) or kelp and
-  bubbles (ocean), or PS-244's city in the room's own colours (detective's
-  rainy city, Paris roofs, a pastel city, a smog city with neon lights). The
+  bubbles (ocean), or PS-244's city (the same towers) in the room's own
+  colours (a grey-blue dusk, warm tones, pastels, a dark smog with neon
+  windows). The
   plants and dots are placed along camera rays through the window, inside its
   edges and under the sightline over the right wall, like the PS-244 towers;
   a `ground` wedge cut to the window's ray fan fills what the towers used to
@@ -99,10 +100,19 @@ the PS-250E styles. Two things are new:
 - **Props rendered only where they are kept.** Every style prop is cut to the
   default prop's box anyway, so `render_pack.py --prop-boxes` renders each
   prop only inside that box plus 48 px (like `--decor-boxes` for the PS-250F2
-  decorations): about 10 minutes per lighting instead of 30.
+  decorations): about 10 minutes per lighting instead of 30. The cut count
+  (`clipped`) then sees only the rendered ring, so `process_pack.py` fails a
+  prop that runs onto the ring's outer edge (an edge on the frame's own border
+  does not count); render that prop again without `--prop-boxes`. In B1 the
+  office shelf did so in the dojo by day and night, the bistro at night and
+  the space station at night, and those four use full-frame shelves. The
+  dojo's light plaster caught a wide faint wash from the shelf by day (617
+  pixels past the box), so the dojo's `shadow_floor` is 72 instead of 56.
 
 The PS-260 rooms are recorded in `rooms-outputs.json` and previewed in
-`previews/rooms/`, not in `ps250-rooms/`, so that record keeps exactly the
+`previews/rooms/` (`b1-overview.jpg`, the five B1 rooms side by side, is a
+contact sheet of their `*-phase-100.jpg` for the PR), not in `ps250-rooms/`,
+so that record keeps exactly the
 rooms the picker lists until PS-260E adds these. The picker thumbnails
 (`ps250-rooms/thumbnails.py`) are made in PS-260E too.
 

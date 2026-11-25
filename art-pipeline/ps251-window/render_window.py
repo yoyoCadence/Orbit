@@ -49,8 +49,10 @@ def main():
     parser.add_argument('--band', choices=tuple(BANDS), required=True)
     parser.add_argument('--pixel', action='store_true')
     parser.add_argument('--samples', type=int, default=64)
-    # Only to check that the overlay is the same for every room style (the
-    # styles change materials, never geometry): the runtime uses 'default'.
+    # Only to check that the overlay is the same for every PS-250E room style
+    # (they change materials, never geometry): the runtime uses 'default'. The
+    # PS-260 rooms have their own exterior (scene.build_exterior) and take no
+    # overlay (PS-260E).
     parser.add_argument('--style', choices=tuple(S.ROOM_STYLES), default='default')
     args = parser.parse_args(argv)
 

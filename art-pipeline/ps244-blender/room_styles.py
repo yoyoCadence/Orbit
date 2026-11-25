@@ -192,7 +192,7 @@ PS260_STYLES = {
     # 劍道場: plaster, dark wood, tatami, vermilion; bamboo outside. Darker and
     # more formal than 日式和風 (washitsu).
     'dojo': {
-        'shadow_floor': 56,
+        'shadow_floor': 72,  # light plaster catches a wide faint wash from the shelf (#271 review)
         'pixel_shadow': {'colour': '#5b4630', 'levels': ((50, 44), (110, 84), (None, 128))},
         'outline': '#24160d',
         'world': ('#d4c6a4', 0.9),
@@ -229,7 +229,7 @@ PS260_STYLES = {
                         'night': {'ground': ('#101c12', 0.8), 'near': ('#14241a', 0.8), 'far': ('#22352a', 0.8), 'glints': ('#d8ff7a', 4.0, 0.25)}},
         },
     },
-    # 偵探事務所: smoky grey walls, dark wood, oxblood leather, muted brass; a rainy city.
+    # 偵探事務所: smoky grey walls, dark wood, oxblood leather, muted brass; the city in a grey-blue dusk.
     'noir': {
         'shadow_floor': 40,
         'outline': '#0c0b0d',
@@ -267,7 +267,7 @@ PS260_STYLES = {
                         'night': {'near': ('#0e1118', 0.7), 'far': ('#1a1f2a', 0.7), 'glints': ('#ffcf70', 3.2, 0.35)}},
         },
     },
-    # 法式廚房: cream walls, a green wainscot, copper, red cloth, terracotta tiles; Paris roofs.
+    # 法式廚房: cream walls, a green wainscot, copper, red cloth, terracotta tiles; the city in warm tones.
     'bistro': {
         'shadow_floor': 56,
         'backdrop_night': ('#1f1a16', '#33291f'),

@@ -14,8 +14,10 @@ box of the same lighting, plus DECOR_BOX_PAD pixels; the rest of the frame
 stays transparent. A room style's decoration is cut to that box anyway, so the
 result is the same at a fraction of the time.
 --prop-boxes (PS-260B) does the same for the props of a room style, which
-process_pack.py cuts to the default prop's box of the same lighting: about 8
-minutes per lighting instead of 30. The room itself is always a full frame.
+process_pack.py cuts to the default prop's box of the same lighting: about 10
+minutes per lighting instead of 30. The room itself is always a full frame, and
+the default style always renders full frames (its boxes come from them).
+process_pack.py fails a prop that reaches the edge of the rendered ring.
 
 Writes full-frame RGBA PNGs to <out_dir>:
     room.png          empty room, transparent outside the diorama
@@ -212,6 +214,9 @@ def main():
         obj.is_shadow_catcher = True
         if obj.name not in no_lines.objects:
             no_lines.objects.link(obj)
+    if args.prop_boxes and args.style == 'default':
+        # The default props' trim boxes come from their own full-frame renders.
+        raise SystemExit('--prop-boxes is for room styles; the default props need full frames')
     own_boxes = prop_boxes(args.prop_boxes, args.lighting)
     for prop_id, objects in props.items():
         if only and prop_id not in only:
