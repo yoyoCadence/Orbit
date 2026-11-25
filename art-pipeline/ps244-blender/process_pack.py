@@ -25,6 +25,8 @@ Usage:
   same lighting, so every style shares one set of placements; pixels the cut
   drops are counted in ps250-rooms/outputs.json. The files go under
   workspace/styles/<style>/ and the previews into ps250-rooms/previews/.
+  The PS-260 rooms (room_styles.PS260_STYLES) are recorded in
+  ps260-sets/rooms-outputs.json and previewed in ps260-sets/previews/rooms/.
   placements.json and PROP_DEFINITIONS are not touched.
 
 Requires Pillow and numpy.
@@ -321,6 +323,33 @@ def main():
     print(json.dumps({pid: {k: v for k, v in pl.items() if k != 'bbox'} for pid, pl in placements.items()}, indent=1))
 
 
+# render_pack.py --prop-boxes renders a style prop's default box plus this ring
+# (render_pack.DECOR_BOX_PAD); what lies past it is not rendered.
+RENDERED_RING = 48
+
+
+def cut_unseen(frame, box):
+    """PS-260B: whether a prop rendered inside its box (--prop-boxes) runs onto
+    the outer edge of the rendered ring, so part of it may lie past what was
+    rendered and the cut count would miss it. A full-frame render with pixels
+    past the ring is fine: fit_to_box counts those. A few isolated specks are
+    sampling noise, which trim_prop drops anyway."""
+    alpha = np.array(frame)[:, :, 3]
+    left, top = max(0, box[0] - RENDERED_RING), max(0, box[1] - RENDERED_RING)
+    right = min(FRAME[0], box[2] + RENDERED_RING) - 1
+    bottom = min(FRAME[1], box[3] + RENDERED_RING) - 1
+    outside = alpha.copy()
+    outside[top:bottom + 1, left:right + 1] = 0
+    if int((outside >= ALPHA_FLOOR).sum()) > 0:
+        return False
+    # A ring edge on the frame's own border hides nothing: the frame ends there.
+    edges = [alpha[top, left:right + 1] if top > 0 else None,
+             alpha[bottom, left:right + 1] if bottom < FRAME[1] - 1 else None,
+             alpha[top:bottom + 1, left] if left > 0 else None,
+             alpha[top:bottom + 1, right] if right < FRAME[0] - 1 else None]
+    return sum(int((edge >= ALPHA_FLOOR).sum()) for edge in edges if edge is not None) >= 8
+
+
 def process_style(args):
     """PS-250E2: one room style, cut to the default style's trim boxes."""
     sys.path.insert(0, os.path.join(HERE, '..', 'ps250-rooms'))
@@ -336,13 +365,18 @@ def process_style(args):
     background = backdrop(FRAME, stage).convert('RGBA')
     background.alpha_composite(room)
     background = background.convert('RGB')
-    sprites, clipped = {}, {}
+    sprites, clipped, unseen = {}, {}, []
     for prop_id in PROPS:
         frame = lift_shadow_floor(load_frame(os.path.join(args.render_dir, f'{prop_id}.png')),
                                   colours.get('shadow_floor', 0))
         sprite, own_box = trim_prop(frame)
-        sprites[prop_id], clipped[rooms.prop_path(style, prop_id, lighting)] = fit_to_box(
-            sprite, own_box, tuple(boxes['props'][prop_id]['bbox']))
+        box = tuple(boxes['props'][prop_id]['bbox'])
+        sprites[prop_id], clipped[rooms.prop_path(style, prop_id, lighting)] = fit_to_box(sprite, own_box, box)
+        if cut_unseen(frame, box):
+            unseen.append(prop_id)
+    if unseen:
+        raise SystemExit(f'{style} {lighting}: {", ".join(unseen)} reach the edge of the rendered ring, so the cut '
+                         'count may miss pixels past it; render these props without --prop-boxes.')
 
     if args.write_runtime:
         files = {}
@@ -358,9 +392,9 @@ def process_style(args):
             os.makedirs(os.path.dirname(target), exist_ok=True)
             with open(target, 'wb') as fh:
                 fh.write(blob)
-        rooms.record(files, clipped)
+        rooms.record(files, clipped, style)
 
-    preview_dir = args.preview_dir if args.preview_dir != os.path.join(HERE, 'previews') else rooms.PREVIEWS
+    preview_dir = args.preview_dir if args.preview_dir != os.path.join(HERE, 'previews') else rooms.previews_for(style)
     os.makedirs(preview_dir, exist_ok=True)
     for progress in PHASES:
         canvas = background.convert('RGBA')

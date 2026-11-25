@@ -505,7 +505,7 @@ SKYLINE = {
 }
 
 
-def build_room(b, lighting='day'):
+def build_room(b, lighting='day', style='default'):
     m = b.m
     g = 'room'
     b.box(g, (W, D, 0.1), (0, 0, -0.05), m['floor'])
@@ -558,7 +558,34 @@ def build_room(b, lighting='day'):
 
     build_room_details(b)
 
-    # skyline outside the window (no outlines)
+    build_exterior(b, lighting, style)
+
+    # Holdouts: nothing below the floor line may ever reach the frame. The
+    # background is rendered with a transparent film and composited over a
+    # designed backdrop, so these read as clean empty space around the diorama.
+    under = b.box('holdout', (W + 0.2, D + 0.2, 30), (0.05, 0, -15.02), None)
+    under.is_holdout = True
+    ground = b.box('holdout', (60, 120, 0.02), (RIGHT_X + 30.06, 30, OUTSIDE_GROUND_Z - 0.01), None)
+    ground.is_holdout = True
+
+
+def exterior_spec(lighting, style):
+    """What the window shows: the kind, the sky and the colours outside.
+
+    PS-260B: a room style can name its own exterior (`ROOM_STYLES[style]
+    ['exterior']`): a kind other than PS-244's city, and per-lighting
+    overrides of SKY and SKYLINE. Without one, the PS-244 city stays exactly
+    as it was.
+    """
+    spec = ROOM_STYLES[style].get('exterior', {})
+    sky = {**SKY[lighting], **spec.get('sky', {}).get(lighting, {})}
+    skyline = {**SKYLINE[lighting], **spec.get('skyline', {}).get(lighting, {})}
+    return spec.get('kind', 'city'), sky, skyline, spec
+
+
+def build_exterior(b, lighting='day', style='default'):
+    """The sky plane and what stands outside the window (no outlines)."""
+    kind, sky_spec, skyline, spec = exterior_spec(lighting, style)
     sky = bpy.data.materials.new('sky')
     sky.use_nodes = True
     nt = sky.node_tree
@@ -568,7 +595,6 @@ def build_room(b, lighting='day'):
     coord = nt.nodes.new('ShaderNodeTexCoord')
     sep = nt.nodes.new('ShaderNodeSeparateXYZ')
     ramp = nt.nodes.new('ShaderNodeValToRGB')
-    sky_spec = SKY[lighting]
     ramp.color_ramp.elements[0].color = (*srgb(sky_spec['bottom']), 1)
     ramp.color_ramp.elements[1].color = (*srgb(sky_spec['top']), 1)
     ramp.color_ramp.elements[0].position = 0.35
@@ -588,42 +614,125 @@ def build_room(b, lighting='day'):
         return y_window + (x - RIGHT_X) * slope
     def over_wall_z(x):
         return H - (cam_z - H) / (RIGHT_X - cam_x) * (x - RIGHT_X)
+    def under_sill_z(x):
+        # The ray through the bottom of the window opening (just under the sill).
+        return cam_z + (0.45 - cam_z) * (x - cam_x) / (RIGHT_X - cam_x)
 
     sky_x = RIGHT_X + 9
     y_lo, y_hi = through_window(-D / 2, sky_x), through_window(D / 2, sky_x)
     # Rays through the window reach the sky plane between the bottom of the
     # window ray fan and the over-wall sightline; anything lower is only seen
     # past the cut-away floor edge, so the plane stops there.
-    sky_bottom = cam_z + (0.45 - cam_z) * (sky_x - cam_x) / (RIGHT_X - cam_x)
+    sky_bottom = under_sill_z(sky_x)
     sky_top = over_wall_z(sky_x) - 0.05
     b.box('outside', (0.1, y_hi - y_lo + 4, sky_top - sky_bottom), (sky_x, (y_lo + y_hi) / 2, (sky_top + sky_bottom) / 2), sky)
-    # skyline: flat, hazy silhouettes read as distance; lit windows at night
-    skyline = SKYLINE[lighting]
-    city_near = emission_material('city_near', srgb(skyline['near'][0]), skyline['near'][1])
-    city_far = emission_material('city_far', srgb(skyline['far'][0]), skyline['far'][1])
+    near = emission_material('city_near', srgb(skyline['near'][0]), skyline['near'][1])
+    far_mat = emission_material('city_far', srgb(skyline['far'][0]), skyline['far'][1])
     glints = emission_material('city_glints', srgb(skyline['glints'][0]), skyline['glints'][1])
     lit_share = skyline['glints'][2]
-    rng = random.Random(11)
     span = D - 1.0
-    for i in range(18):
-        x = RIGHT_X + rng.uniform(1.4, 6.5)
-        y = through_window(-span / 2 + (i + rng.uniform(0, 0.8)) * span / 18, x)
-        w = rng.uniform(1.0, 1.6)
-        top = over_wall_z(x) - 0.4 - rng.uniform(0, 1.6)
-        h = top - OUTSIDE_GROUND_Z
-        far = x > RIGHT_X + 4
-        b.box('outside', (1.2, w, h), (x, y, OUTSIDE_GROUND_Z + h / 2), city_far if far else city_near)
-        for k in range(int(h / 0.5)):
-            if rng.random() < lit_share:
-                b.box('outside', (0.02, w * 0.7, 0.05), (x - 0.61, y, OUTSIDE_GROUND_Z + 0.3 + k * 0.5), glints)
+    if kind == 'city':
+        # skyline: flat, hazy silhouettes read as distance; lit windows at night
+        rng = random.Random(11)
+        for i in range(18):
+            x = RIGHT_X + rng.uniform(1.4, 6.5)
+            y = through_window(-span / 2 + (i + rng.uniform(0, 0.8)) * span / 18, x)
+            w = rng.uniform(1.0, 1.6)
+            top = over_wall_z(x) - 0.4 - rng.uniform(0, 1.6)
+            h = top - OUTSIDE_GROUND_Z
+            far = x > RIGHT_X + 4
+            b.box('outside', (1.2, w, h), (x, y, OUTSIDE_GROUND_Z + h / 2), far_mat if far else near)
+            for k in range(int(h / 0.5)):
+                if rng.random() < lit_share:
+                    b.box('outside', (0.02, w * 0.7, 0.05), (x - 0.61, y, OUTSIDE_GROUND_Z + 0.3 + k * 0.5), glints)
+        return
+    rng = random.Random(260)
+    # The plants and dots keep this far inside the window's edges, so nothing
+    # reaches past the cut-away front or the back corner.
+    inner = span / 2 - 0.5
 
-    # Holdouts: nothing below the floor line may ever reach the frame. The
-    # background is rendered with a transparent film and composited over a
-    # designed backdrop, so these read as clean empty space around the diorama.
-    under = b.box('holdout', (W + 0.2, D + 0.2, 30), (0.05, 0, -15.02), None)
-    under.is_holdout = True
-    ground = b.box('holdout', (60, 120, 0.02), (RIGHT_X + 30.06, 30, OUTSIDE_GROUND_Z - 0.01), None)
-    ground.is_holdout = True
+    def ground():
+        """The ground seen through the window, above the holdout: a wedge along
+        the window's ray fan (the over-wall sightline meets the ground about
+        18 m out, so the camera sees it only through the window)."""
+        half = span / 2 + 0.05
+        x0, x1, z = RIGHT_X + 0.3, RIGHT_X + 14, OUTSIDE_GROUND_Z + 0.005
+        verts = [(x0, through_window(-half, x0), z), (x1, through_window(-half, x1), z),
+                 (x1, through_window(half, x1), z), (x0, through_window(half, x0), z)]
+        mesh = bpy.data.meshes.new('outside_ground')
+        mesh.from_pydata(verts, [], [(0, 1, 2, 3)])
+        obj = bpy.data.objects.new('outside_ground', mesh)
+        bpy.context.scene.collection.objects.link(obj)
+        colour, strength = skyline['ground']
+        return b._finish(obj, emission_material('outside_ground', srgb(colour), strength), 'outside')
+
+    def sprinkle(count, x_range, size, material, low=0.0, on_ground=False):
+        """Small glowing dots (stars, bubbles, fireflies) inside the window cone."""
+        for _ in range(count):
+            x = RIGHT_X + rng.uniform(*x_range)
+            y = through_window(rng.uniform(-inner, inner), x)
+            if on_ground:
+                z = OUTSIDE_GROUND_Z + 0.02
+            else:
+                z_lo = max(under_sill_z(x), OUTSIDE_GROUND_Z) + 0.15
+                z = z_lo + (over_wall_z(x) - 0.2 - z_lo) * rng.uniform(low, 1.0)
+            b.sphere('outside', size * rng.uniform(0.6, 1.3), (x, y, z), material, segments=8)
+
+    ground()
+    if kind == 'stars':
+        # Stars on the far plane and on the dark ground below it, and a planet
+        # (or moon) high in the window.
+        sprinkle(int(90 * lit_share) + 20, (8.2, 8.6), 0.035, glints)
+        sprinkle(int(70 * lit_share) + 10, (2.5, 12.0), 0.05, glints, on_ground=True)
+        planet = spec.get('planet')
+        if planet:
+            x = RIGHT_X + 7.5
+            y = through_window(span * planet.get('at', 0.12), x)
+            r = planet['radius']
+            z = over_wall_z(x) - r * 1.6 - 0.3
+            body = emission_material('planet', srgb(planet['color'][lighting]), planet.get('strength', 1.2))
+            b.sphere('outside', r, (x, y, z), body, segments=48)
+            if planet.get('ring'):
+                ring = emission_material('planet_ring', srgb(planet['ring'][lighting]), planet.get('strength', 1.2))
+                b.torus('outside', r * 1.55, r * 0.09, (x, y, z), ring, rot=(math.radians(68), math.radians(-18), 0))
+        return
+    # Plants: trees and hedges (jungle, garden), bamboo, or kelp (sea): a
+    # trunk and round leaves along camera rays, near ones darker.
+    count = {'jungle': 16, 'garden': 12, 'bamboo': 22, 'sea': 18}[kind]
+    for i in range(count):
+        x = RIGHT_X + rng.uniform(1.4, 6.5)
+        y = through_window(-inner + (i + rng.uniform(0, 0.8)) * 2 * inner / count, x)
+        material = far_mat if x > RIGHT_X + 4 else near
+        base = OUTSIDE_GROUND_Z
+        if kind == 'bamboo':
+            r = rng.uniform(0.07, 0.11)
+            top = over_wall_z(x) - 0.5 - rng.uniform(0, 1.2)
+            b.cyl('outside', r, top - base, (x, y, (top + base) / 2), material, verts=12)
+            for k in range(int((top - base) / 0.55)):
+                b.cyl('outside', r * 1.25, 0.04, (x, y, base + 0.4 + k * 0.55), material, verts=12)
+            for _ in range(4):
+                z = top - rng.uniform(0.1, 1.2)
+                b.sphere('outside', 0.2, (x, y + rng.uniform(-0.25, 0.25), z), material,
+                         scale=(0.4, 1.3, 0.35), rot=(rng.uniform(-0.6, 0.6), 0, 0), segments=12)
+        elif kind == 'sea':
+            r = rng.uniform(0.08, 0.14)
+            top = over_wall_z(x) - 0.5 - rng.uniform(0, 1.4)
+            b.cyl('outside', r, top - base, (x, y, (top + base) / 2), material, verts=12)
+            for k in range(int((top - base) / 0.45)):
+                side = 1 if k % 2 else -1
+                b.sphere('outside', 0.16, (x, y + side * 0.14, base + 0.4 + k * 0.45), material,
+                         scale=(0.35, 1.0, 0.45), segments=12)
+            b.sphere('outside', r * 1.3, (x, y, top), material, segments=12)
+        else:
+            trunk = 0.09 if kind == 'jungle' else 0.07
+            crown = rng.uniform(0.5, 0.75) if kind == 'jungle' else rng.uniform(0.45, 0.6)
+            drop = rng.uniform(0, 1.0) if kind == 'jungle' else rng.uniform(0.6, 2.0)
+            top = over_wall_z(x) - 0.25 - crown - drop
+            b.cyl('outside', trunk, top - base, (x, y, (top + base) / 2), material, verts=12)
+            for dy, dz, s in ((0, 0, 1.0), (-0.4, -0.3, 0.75), (0.4, -0.25, 0.8)):
+                b.sphere('outside', crown * s, (x, y + dy * crown, top + dz * crown), material, segments=16)
+    if lit_share > 0:
+        sprinkle(int(60 * lit_share), (1.4, 6.5), 0.03 if kind == 'sea' else 0.025, glints, low=0.1)
 
 
 def build_room_details(b):
@@ -1207,7 +1316,7 @@ def build_scene(width=1536, samples=96, lighting='day', style='default'):
     scene = bpy.context.scene
     materials = build_materials(lighting, style)
     builder = Builder(materials)
-    build_room(builder, lighting)
+    build_room(builder, lighting, style)
     for prop_id in PROP_IDS:
         PROP_BUILDERS[prop_id](builder)
     for decor_id in DECOR_IDS:

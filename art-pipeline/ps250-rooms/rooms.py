@@ -15,6 +15,25 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OUTPUTS = os.path.join(HERE, 'outputs.json')
 PREVIEWS = os.path.join(HERE, 'previews')
 V2 = 'assets/personal-space/v2'
+# PS-260B: the themed sets' rooms are recorded and previewed beside their
+# protagonists, so the PS-250E record keeps exactly the rooms the picker lists
+# (tests/unit/ps250e2RoomStyles.test.js) until PS-260E adds them to it.
+PS260 = os.path.join(HERE, '..', 'ps260-sets')
+PS260_OUTPUTS = os.path.join(PS260, 'rooms-outputs.json')
+PS260_PREVIEWS = os.path.join(PS260, 'previews', 'rooms')
+
+
+def is_ps260(style):
+    from room_styles import PS260_STYLES
+    return style in PS260_STYLES
+
+
+def outputs_for(style):
+    return PS260_OUTPUTS if is_ps260(style) else OUTPUTS
+
+
+def previews_for(style):
+    return PS260_PREVIEWS if is_ps260(style) else PREVIEWS
 
 
 def suffix(lighting):
@@ -36,13 +55,14 @@ def scene_folder(style, lighting):
     return '-'.join(parts)
 
 
-def record(files, clipped=None):
-    """Adds {path: bytes} to outputs.json with sizes and SHA-256, keeping the rest."""
+def record(files, clipped=None, style=None):
+    """Adds {path: bytes} to the style's outputs record with sizes and SHA-256, keeping the rest."""
+    outputs = outputs_for(style)
     try:
-        with open(OUTPUTS, encoding='utf-8') as fh:
+        with open(outputs, encoding='utf-8') as fh:
             data = json.load(fh)
     except FileNotFoundError:
-        data = {'schemaVersion': 1, 'taskId': 'PS-250E2', 'files': {}, 'clipped': {}}
+        data = {'schemaVersion': 1, 'taskId': 'PS-260B' if is_ps260(style) else 'PS-250E2', 'files': {}, 'clipped': {}}
     for path, blob in files.items():
         data['files'][path] = {'bytes': len(blob), 'sha256': hashlib.sha256(blob).hexdigest()}
     data.setdefault('clipped', {})
@@ -50,6 +70,6 @@ def record(files, clipped=None):
         data['clipped'][path] = count
     data['files'] = dict(sorted(data['files'].items()))
     data['clipped'] = dict(sorted(data['clipped'].items()))
-    with open(OUTPUTS, 'w', encoding='utf-8') as fh:
+    with open(outputs, 'w', encoding='utf-8') as fh:
         json.dump(data, fh, ensure_ascii=False, indent=2)
         fh.write('\n')
