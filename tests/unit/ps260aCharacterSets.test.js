@@ -15,11 +15,17 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { getWorkspaceAssetManifestPaths } from '../../pwa/js/personalSpace/v2/content/assetManifest.js';
 import { TOON_FACINGS, TOON_PROTAGONIST_POSES } from '../../pwa/js/personalSpace/v2/content/characterCatalog.js';
+import { DECORATIONS, ROOM_STYLES } from '../../pwa/js/personalSpace/v2/ui/appearancePicker.js';
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const PWA = join(REPO, 'pwa');
 const sets = JSON.parse(readFileSync(join(REPO, 'art-pipeline', 'ps260-sets', 'outputs.json'), 'utf8'));
 const toon = JSON.parse(readFileSync(join(REPO, 'art-pipeline', 'ps250-characters', 'outputs.json'), 'utf8'));
+// The catalog the later segments read (rooms, decorations): sets_catalog.py.
+const CATALOG = readFileSync(join(REPO, 'art-pipeline', 'ps260-sets', 'sets_catalog.py'), 'utf8');
+const CATALOG_SETS = [...CATALOG.matchAll(
+  /\{'id': '([a-z]+)', 'gender': '(male|female)', 'label': '([^']+)',\s*'room': \('([a-z]+)', '[^']+'\),\s*'decor': \(\('(deco-[a-z]+)', '[^']+'\), \('(deco-[a-z]+)', '[^']+'\)\)\}/g,
+)].map(([, id, gender, label, room, first, second]) => ({ id, gender, label, room, decorations: [first, second] }));
 const SHELL = [...readFileSync(join(PWA, 'sw.js'), 'utf8').match(/const SHELL = \[([\s\S]*?)\];/)[1]
   .matchAll(/'\.\/([^']*)'/g)].map(match => match[1]);
 
@@ -46,6 +52,21 @@ describe('PS-260A themed character sets', () => {
     const all = [...ids.map(entry => entry.id), ...toon.protagonist.ids.map(entry => entry.id)];
     expect(new Set(all).size).toBe(all.length);
     for (const entry of ids) expect(entry.label, entry.id).toMatch(/\S/);
+  });
+
+  it('matches sets_catalog.py, which the room and decoration segments read', () => {
+    expect(CATALOG_SETS).toHaveLength(sets.sets.length);
+    expect(CATALOG_SETS.map(({ id, gender, label }) => ({ id, label, gender }))).toEqual(sets.protagonist.ids);
+    expect(CATALOG_SETS.map(({ id, room, decorations }) => ({ protagonist: id, room, decorations }))).toEqual(sets.sets);
+  });
+
+  it('uses room and decoration ids that no PS-250 room or decoration has', () => {
+    const rooms = ROOM_STYLES.map(entry => entry.id);
+    const decorations = DECORATIONS.map(entry => entry.id);
+    for (const entry of sets.sets) {
+      expect(rooms, entry.room).not.toContain(entry.room);
+      for (const id of entry.decorations) expect(decorations, id).not.toContain(id);
+    }
   });
 
   it('gives every set its own room and two decorations', () => {

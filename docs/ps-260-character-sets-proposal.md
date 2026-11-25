@@ -34,7 +34,7 @@
 
 | 段 | 內容 | 改到的地方 | 狀態 |
 |----|------|-----------|------|
-| **PS-260A** | 這份提案；10 個主角（120 張 Q 版 sprite）、`outputs.json`、預覽與測試。sprite 放在 PS-250C 主角旁邊，但 runtime 還不會用到（不在選擇介面、不預先快取）。 | `art-pipeline/ps260-sets/`、`pwa/assets/.../toon/protagonist/`、tests、tasks.md | 本 PR |
+| **PS-260A** | 這份提案；10 個主角（120 張 Q 版 sprite）、`outputs.json`、預覽與測試。sprite 放在 PS-250C 主角旁邊，但 runtime 還不會用到（不在選擇介面、不預先快取）。 | `art-pipeline/ps260-sets/`、`pwa/assets/.../toon/protagonist/`、tests、tasks.md | 完成（#269，v1.41.33） |
 | **PS-260B** | 10 套房間風格，Q 版與像素版、白天＋夜晚；窗外依房間換成星空、竹林、叢林、花園、深海等（風格可覆寫天空與窗外的顏色和形狀）。分成 B1（男性 5 套）與 B2（女性 5 套）兩個 PR。 | `ps244-blender/room_styles.py`、`scene.py`、`workspace/styles/<style>/`、`workspace/pixel/styles/<style>/` | 待做 |
 | **PS-260C** | 裝飾，Q 版與像素版、白天＋夜晚：每個房間 PS-250F 的 6 件裝飾換成該房間的材質（與 PS-250F2 相同），再加上該套組自己的 2 件（共 20 件新模型，只出現在自己的房間）。 | `ps244-blender/decor_sets.py`、`scene.py`、`workspace/[pixel/]decor/styles/<style>/` | 待做 |
 | **PS-260D** | 10 個主角的像素版（PS-250D 的做法）。 | `ps250-pixel/`、`characters/pixel/` | 待做 |
@@ -44,12 +44,12 @@
 
 ## 4. 需要注意的限制
 
-- **PS-243 延後載入 JS 預算**：V2＋Pixi 的 gzip 預算 311,296 B，目前 310,863 B，只剩 433 B。PS-260E 新增的目錄資料與「主題套組」介面一定會超過。依 `tasks.md` 的規則（「之後在個人空間加程式前要先處理預算（另列任務或擁有者調整）」），PS-260E 開始前要先決定：
+- **PS-243 延後載入 JS 預算**：V2＋Pixi（含 `pixi-unsafe-eval.js` 外掛）的 gzip 預算 311,296 B，目前 310,863 B，只剩 433 B。PS-260E 新增的目錄資料與「主題套組」介面一定會超過。依 `tasks.md` 的規則（「之後在個人空間加程式前要先處理預算（另列任務或擁有者調整）」），PS-260E 開始前要先決定：
   - **建議**：把套組資料放在 JSON（素材，不計入 JS 預算，按需載入），JS 只加讀取與介面；預算放寬 4 KB（311,296 → 315,392 B），記錄在 PS-243 驗收紀錄。
   - 這是擁有者的調整，A–D 不受影響，所以先做素材，E 開始前再請擁有者確認。
 - **INFRA-105**：`assetManifest.js`、`characterCatalog.js` 等在啟動路徑上的模組，不能 import 其他模組的新 export；新增的資料要寫在各自的模組裡，以測試確保一致。
 - **快取**：10 套都不預先快取（與 PS-250B 的非預設選項相同），第一次顯示時下載，離線時退回預設；所以 PS-243 的素材預算（首屏 ≤ 1.5 MB、完整預設 ≤ 4 MB）不變。
-- **檔案大小**：每張主角 sprite 約 15–20 KB（上限沿用 PS-250C 的 24 KB），10 套共 120 張約 2 MB，只在選了該套組時下載其中 12 張。
+- **檔案大小**：每張主角 sprite 15.6–22.5 KB（上限沿用 PS-250C 的 24 KB），每套 12 張約 200–250 KB，10 套共 2.25 MB；只在選了該套組時下載那一套。
 
 ## 5. 接手方式
 
