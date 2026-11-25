@@ -40,8 +40,12 @@ function pixelScene(appearance, visual = {}, progress = 0, timeBand = 'day') {
 
 describe('PS-250D pixel set', () => {
   it('ships exactly the hashed files the pipeline wrote, and nothing else', () => {
+    // PS-260D: the themed sets' pixel protagonists are recorded with the sets
+    // (tests/unit/ps260dPixelProtagonists.test.js) until the picker lists them (PS-260E).
+    const themed = new Set(Object.keys(JSON.parse(readFileSync(
+      join(REPO, 'art-pipeline', 'ps260-sets', 'pixel-outputs.json'), 'utf8')).files));
     const onDisk = PIXEL_FOLDERS.flatMap(folder => readdirSync(join(PWA, 'assets', 'personal-space', 'v2', ...folder.split('/')))
-      .map(name => `assets/personal-space/v2/${folder}/${name}`));
+      .map(name => `assets/personal-space/v2/${folder}/${name}`)).filter(path => !themed.has(path));
     expect(onDisk.sort()).toEqual(Object.keys(outputs.files).sort());
     // PS-250E1: the room and props also by night.
     expect(onDisk).toHaveLength((1 + 8) * 2 + 6 * 6 * 2 + 6 * 6);
