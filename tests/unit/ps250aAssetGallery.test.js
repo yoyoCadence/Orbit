@@ -28,8 +28,11 @@ const PIXEL_FOLDERS = [
   'characters/protagonist', 'characters/companion', 'characters/pixel/protagonist', 'characters/pixel/companion',
   'workspace/pixel/backgrounds', 'workspace/pixel/props',
 ];
+// PS-260D: the themed sets' pixel protagonists join the gallery with the picker (PS-260E).
+const THEMED = new Set(Object.keys(JSON.parse(readFileSync(
+  join(V2, '..', '..', '..', '..', 'art-pipeline', 'ps260-sets', 'pixel-outputs.json'), 'utf8')).files));
 const PIXEL_PATHS = PIXEL_FOLDERS.flatMap(folder => readdirSync(join(V2, ...folder.split('/')))
-  .map(name => `assets/personal-space/v2/${folder}/${name}`));
+  .map(name => `assets/personal-space/v2/${folder}/${name}`)).filter(path => !THEMED.has(path));
 // PS-250E2: every room style file, in both character styles.
 const outputsOf = folder => Object.keys(JSON.parse(readFileSync(
   join(V2, '..', '..', '..', '..', 'art-pipeline', folder, 'outputs.json'),
