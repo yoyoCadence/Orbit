@@ -267,7 +267,7 @@ PS260_STYLES = {
                         'night': {'near': ('#0e1118', 0.7), 'far': ('#1a1f2a', 0.7), 'glints': ('#ffcf70', 3.2, 0.35)}},
         },
     },
-    # 法式廚房: cream walls, a green wainscot, copper, red cloth, terracotta tiles; the city in warm tones.
+    # 法式廚房: cream walls, a green wainscot, copper, red cloth, terracotta-coloured boards; the city in warm tones.
     'bistro': {
         'shadow_floor': 56,
         'backdrop_night': ('#1f1a16', '#33291f'),
@@ -345,7 +345,8 @@ PS260_STYLES = {
                         'night': {'ground': ('#0a160c', 0.8), 'near': ('#0c1e12', 0.8), 'far': ('#16301e', 0.8), 'glints': ('#d8ff7a', 4.0, 0.4)}},
         },
     },
-    # 魔法塔: violet stone, dark wood beams, gold, purple velvet, a glowing sill; a moon and stars.
+    # 魔法塔: violet stone, dark wood beams, gold, purple velvet, a glowing sill; a moon and stars
+    # (the moon low in the front bays, clear of the roller blinds: #272 review).
     'wizard': {
         'shadow_floor': 40,
         'outline': '#0c0818',
@@ -380,10 +381,10 @@ PS260_STYLES = {
             'sky': {'day': {'bottom': '#8a74c8', 'top': '#2a1d5a', 'strength': 1.2},
                     'night': {'bottom': '#2a1d5a', 'top': '#07041a'}},
             'skyline': {'day': {'ground': ('#3a2f6a', 1.0), 'glints': ('#fff6d8', 2.4, 0.35)}, 'night': {'ground': ('#0c0820', 1.0), 'glints': ('#fff6d8', 3.2, 0.9)}},
-            'planet': {'radius': 0.55, 'at': 0.2, 'strength': 1.4, 'color': {'day': '#f6f0d6', 'night': '#f3eccb'}},
+            'planet': {'radius': 0.5, 'at': -0.06, 'drop': 2.05, 'strength': 1.4, 'color': {'day': '#f6f0d6', 'night': '#f3eccb'}},
         },
     },
-    # 偶像練習室: pink walls, mirror panels, glossy white boards, pink and cyan neon; a pastel city.
+    # 偶像練習室: pink walls, pale slats, glossy white boards, pink and cyan neon; a pastel city.
     'stage': {
         'shadow_floor': 56,
         'backdrop_night': ('#1c1426', '#33224a'),
@@ -501,7 +502,7 @@ PS260_STYLES = {
                         'night': {'near': ('#05090c', 0.7), 'far': ('#0a1418', 0.7), 'glints': ('#ff3fb0', 3.6, 0.55)}},
         },
     },
-    # 海底研究站: teal walls, aqua light strips, brass portholes, sand-coloured boards; kelp and bubbles.
+    # 海底研究站: teal walls, aqua light strips, brass window frames, sand-coloured boards; kelp and bubbles.
     'ocean': {
         'shadow_floor': 40,
         'outline': '#04121a',

@@ -651,12 +651,12 @@
       "sha256": "c9aea93dc05726a41a1494c1f90a43e4d72f014831599fb789f4a74ee427c6f2"
     },
     "assets/personal-space/v2/workspace/pixel/styles/wizard/background-night.png": {
-      "bytes": 90377,
-      "sha256": "ea7f0755a3464a0969da46b03b0741602da092d07c1c58be7d53c068ec64fbf7"
+      "bytes": 89712,
+      "sha256": "a2c14b1d0aec32cecaa324cc002942b5d8f68a5c582e1b9dc34865046345a6c4"
     },
     "assets/personal-space/v2/workspace/pixel/styles/wizard/background.png": {
-      "bytes": 92264,
-      "sha256": "a2b882d9dea4080ba1b5594c7ce764d33036538d807896f87604ee2fa2c283cd"
+      "bytes": 94279,
+      "sha256": "5df0cd0d6a2ca33e31a36c7c50d258145b5f9864f3391c75870e3c7fdf0a3bff"
     },
     "assets/personal-space/v2/workspace/pixel/styles/wizard/props/corner-desk-night.png": {
       "bytes": 5703,
@@ -667,12 +667,12 @@
       "sha256": "fc2735783ea3b11e87864326eda892e3cca9054179ea103ea07140a88613db94"
     },
     "assets/personal-space/v2/workspace/pixel/styles/wizard/props/desk-lamp-night.png": {
-      "bytes": 581,
-      "sha256": "2b019282f647628893dbc1ee1aa4b6205a13cc3b1bb19d23f62a1be716696f1c"
+      "bytes": 589,
+      "sha256": "2aa1284eb555c646b0e928750b932093175d4abb2d6053a7324f5659aa9722cc"
     },
     "assets/personal-space/v2/workspace/pixel/styles/wizard/props/desk-lamp.png": {
       "bytes": 578,
-      "sha256": "90598e88f90a8cac6255fb57e370f9d203b05f3fe2c482cd1fdf55fc5e0e729b"
+      "sha256": "91a3fb96e41e6b9a1803865458544e3f8b771e89a667a2f99c1e250524307258"
     },
     "assets/personal-space/v2/workspace/pixel/styles/wizard/props/dual-monitor-night.png": {
       "bytes": 2326,
@@ -1371,12 +1371,12 @@
       "sha256": "d24b1df7bbf41b345e7fb0bca3e1f148e81f822e87be44ecb046543fec1c38f1"
     },
     "assets/personal-space/v2/workspace/styles/wizard/background-night.webp": {
-      "bytes": 59616,
-      "sha256": "853fd1abe3cbec3c1163ed708a82af569a76c5580dce44c1728b24b8b720f4a0"
+      "bytes": 60130,
+      "sha256": "f5a43a7cd0628a910d4fc73a70cc395f690d51da0f781b850c0dd9f34a3dcbb0"
     },
     "assets/personal-space/v2/workspace/styles/wizard/background.webp": {
-      "bytes": 77416,
-      "sha256": "5d1aea8bced1f95e0fe2eed510f40082f59d1b7793d55c03a65c11c97faa94d3"
+      "bytes": 77550,
+      "sha256": "d7aae2ef4a997fea98d3ae62b0edfe5e6c190742759ffe6116a37cb5303205ca"
     },
     "assets/personal-space/v2/workspace/styles/wizard/props/corner-desk-night.png": {
       "bytes": 64002,
@@ -1391,8 +1391,8 @@
       "sha256": "ebbb71c621603fe921a89b49fa444c44f48a5b0110245ad50c22ca858b86d69b"
     },
     "assets/personal-space/v2/workspace/styles/wizard/props/desk-lamp.png": {
-      "bytes": 5635,
-      "sha256": "d52d39781164576646ea907f718a140f3a265b3bbb636f250f32015db85ea6af"
+      "bytes": 5632,
+      "sha256": "98ea8d8bbcb5d16425e0826949ccf149ad69c8a3af03e34c5d86549308360703"
     },
     "assets/personal-space/v2/workspace/styles/wizard/props/dual-monitor-night.png": {
       "bytes": 24188,

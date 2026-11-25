@@ -689,7 +689,9 @@ def build_exterior(b, lighting='day', style='default'):
             x = RIGHT_X + 7.5
             y = through_window(span * planet.get('at', 0.12), x)
             r = planet['radius']
-            z = over_wall_z(x) - r * 1.6 - 0.3
+            # 'drop': how far the centre sits under the over-wall sightline;
+            # by default high in the window (the space station's planet).
+            z = over_wall_z(x) - planet.get('drop', r * 1.6 + 0.3)
             body = emission_material('planet', srgb(planet['color'][lighting]), planet.get('strength', 1.2))
             b.sphere('outside', r, (x, y, z), body, segments=48)
             if planet.get('ring'):
