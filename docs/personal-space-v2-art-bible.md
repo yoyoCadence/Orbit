@@ -162,6 +162,8 @@ Each set has several protagonists and Companion forms. Added so far:
 - PS-250G: the Edit Mode picker shows each room as a 216 × 144 thumbnail of its day background (made by `art-pipeline/ps250-rooms/thumbnails.py`), not the full background.
 - PS-250F2: the same six decorations in the other four room styles, with each style's materials (the tray and the trophy's wood and metal follow the room), in both styles, by day and by night. They are cut to the default room's boxes, like the style furniture, so every room shares one set of placements.
 
+- PS-260A (user request, 2026-11-25): ten themed Q-style protagonists, five male and five female (astronaut, samurai, detective, chef, explorer; witch, idol, gardener, hacker, marine), each with six actions in two facings, on the PS-250C rig. They are the first part of ten themed sets; each set also gets its own room and two decorations (PS-260B–C), the pixel versions follow (PS-260D), and the picker offers them only once all of that is in place (PS-260E). Source: `art-pipeline/ps260-sets/`.
+
 - PS-251B: the view outside the window in the morning (05:00–10:00) and the evening (17:00–21:00), in both styles. The skyline keeps its shape; the morning recolours it peach and lilac with few lit windows, the evening purple with a warm far side and many lit windows. Each is an RGBA image of only what the window shows, laid over the room; the five room styles share the window, so one image per style serves them all. By day and at night the view baked into the room stays. Source: `art-pipeline/ps251-window/`.
 
 ### 6.2 Workspace Upgrade Phases

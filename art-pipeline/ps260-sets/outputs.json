@@ -1,0 +1,648 @@
+{
+  "schemaVersion": 1,
+  "taskId": "PS-260",
+  "encoding": {
+    "format": "webp",
+    "quality": 90,
+    "alpha_quality": 100,
+    "method": 6
+  },
+  "protagonist": {
+    "canvas": [
+      512,
+      512
+    ],
+    "ground": [
+      0.5,
+      0.941406
+    ],
+    "ids": [
+      {
+        "id": "astronaut",
+        "label": "太空人",
+        "gender": "male"
+      },
+      {
+        "id": "samurai",
+        "label": "武士",
+        "gender": "male"
+      },
+      {
+        "id": "detective",
+        "label": "偵探",
+        "gender": "male"
+      },
+      {
+        "id": "chef",
+        "label": "主廚",
+        "gender": "male"
+      },
+      {
+        "id": "explorer",
+        "label": "探險家",
+        "gender": "male"
+      },
+      {
+        "id": "witch",
+        "label": "魔法師",
+        "gender": "female"
+      },
+      {
+        "id": "idol",
+        "label": "偶像",
+        "gender": "female"
+      },
+      {
+        "id": "gardener",
+        "label": "園藝師",
+        "gender": "female"
+      },
+      {
+        "id": "hacker",
+        "label": "駭客",
+        "gender": "female"
+      },
+      {
+        "id": "marine",
+        "label": "海洋學家",
+        "gender": "female"
+      }
+    ],
+    "poses": [
+      "idle",
+      "work",
+      "celebrate",
+      "rest",
+      "walk",
+      "inspect"
+    ],
+    "facings": [
+      "left",
+      "right"
+    ]
+  },
+  "sets": [
+    {
+      "protagonist": "astronaut",
+      "room": "spacestation",
+      "decorations": [
+        "deco-rocket",
+        "deco-planet"
+      ]
+    },
+    {
+      "protagonist": "samurai",
+      "room": "dojo",
+      "decorations": [
+        "deco-katana",
+        "deco-bonsai"
+      ]
+    },
+    {
+      "protagonist": "detective",
+      "room": "noir",
+      "decorations": [
+        "deco-typewriter",
+        "deco-hatstand"
+      ]
+    },
+    {
+      "protagonist": "chef",
+      "room": "bistro",
+      "decorations": [
+        "deco-cake",
+        "deco-bread"
+      ]
+    },
+    {
+      "protagonist": "explorer",
+      "room": "jungle",
+      "decorations": [
+        "deco-fern",
+        "deco-lantern"
+      ]
+    },
+    {
+      "protagonist": "witch",
+      "room": "wizard",
+      "decorations": [
+        "deco-crystal",
+        "deco-potions"
+      ]
+    },
+    {
+      "protagonist": "idol",
+      "room": "stage",
+      "decorations": [
+        "deco-mic",
+        "deco-heartlamp"
+      ]
+    },
+    {
+      "protagonist": "gardener",
+      "room": "greenhouse",
+      "decorations": [
+        "deco-flowerpot",
+        "deco-wateringcan"
+      ]
+    },
+    {
+      "protagonist": "hacker",
+      "room": "cyber",
+      "decorations": [
+        "deco-server",
+        "deco-hologram"
+      ]
+    },
+    {
+      "protagonist": "marine",
+      "room": "ocean",
+      "decorations": [
+        "deco-aquarium",
+        "deco-coral"
+      ]
+    }
+  ],
+  "files": {
+    "assets/personal-space/v2/characters/toon/protagonist/astronaut-celebrate-left.webp": {
+      "bytes": 18838,
+      "sha256": "12c52824947cbfd9b5912eaff5baffac8af3d372351b1433809f585004ba0621"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/astronaut-celebrate-right.webp": {
+      "bytes": 17920,
+      "sha256": "f5befa136ccf1416e9303332fb85b7fa549b6d697658a85e7480e135e457b915"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/astronaut-idle-left.webp": {
+      "bytes": 18990,
+      "sha256": "05e2a3c99fff6417b60c35cccd4ca9052decd8ff1eb7d8c86e32c4fe0089917f"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/astronaut-idle-right.webp": {
+      "bytes": 17804,
+      "sha256": "8279a13c3891299c8a2d3de7269eb75e528fa2487170430d991a654d4d903909"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/astronaut-inspect-left.webp": {
+      "bytes": 18154,
+      "sha256": "19ac2cb025879232cd1d63937b3a8eb92f7e69b5eca6e2598b9d6fcf4c723c6a"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/astronaut-inspect-right.webp": {
+      "bytes": 17770,
+      "sha256": "4eddb17e8f3a13e7d59afe6011faaa64306f6ffb7f6ced6736e589af0cd0e508"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/astronaut-rest-left.webp": {
+      "bytes": 17988,
+      "sha256": "ab382a13a71626b601a0a73d0dc900c7516b93b5314c6a62698fc67c42bd9a6f"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/astronaut-rest-right.webp": {
+      "bytes": 16918,
+      "sha256": "8d0ba6feb40bdbdfa280db9748fcaa4909fc1919a93b9587ed0d8fef487c1dde"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/astronaut-walk-left.webp": {
+      "bytes": 18174,
+      "sha256": "0c291d1c2f6c91af8bf10c2b72e684e091e7f3a6480574e96c5970a9ace51bb3"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/astronaut-walk-right.webp": {
+      "bytes": 18730,
+      "sha256": "0e5879144f16bc79155e1178a0dd312588989baa185ddc4dfeb3233f88b7d1dc"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/astronaut-work-left.webp": {
+      "bytes": 18222,
+      "sha256": "50d5e37e273a971652bea23b4ff0f8624e4ae9c223f2eb576cf0e6e3588a9849"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/astronaut-work-right.webp": {
+      "bytes": 17742,
+      "sha256": "f90121d389dae7de4c7502742e98ba26df0508bec005b9104b9c888631a7c2d4"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/chef-celebrate-left.webp": {
+      "bytes": 19582,
+      "sha256": "ffd84ef9877608c0c4fab8663e6f8c86e99d0e7a3e594addd9743010378e2525"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/chef-celebrate-right.webp": {
+      "bytes": 18926,
+      "sha256": "86d57f5d033688a0bfd431608692baeb2e3f291d84a6bfc5431fe23af132165d"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/chef-idle-left.webp": {
+      "bytes": 19346,
+      "sha256": "9dc8b08d68f5fc3f643cc3429cf6504ca80e4b6c3cb401863020e852f3968144"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/chef-idle-right.webp": {
+      "bytes": 18358,
+      "sha256": "8de02041f6ef6808efcd14989b6d3fffedcce3eacbb9db153674f632661e3081"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/chef-inspect-left.webp": {
+      "bytes": 18504,
+      "sha256": "dc86adfb905f424d5f1e7b20a3a5b472d6e66c91cc2b1c82570ae8c644cc6d57"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/chef-inspect-right.webp": {
+      "bytes": 18222,
+      "sha256": "a8f39c15b1a3df322ccce09612f86a616dc969325af0ab23929587bd986422ce"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/chef-rest-left.webp": {
+      "bytes": 17832,
+      "sha256": "4b579604ba52191c0b97cc5ed823da5f892e18badcaa5586075952eb89711d67"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/chef-rest-right.webp": {
+      "bytes": 17608,
+      "sha256": "61643399c224946dc1c471b89c43f7f318564226a85f5bd67e7ca4e6b9fca237"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/chef-walk-left.webp": {
+      "bytes": 17702,
+      "sha256": "0c4002dacbd7657c13de2ee3c7f95f1ed1c49f86c7855011ab1cb2af48915504"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/chef-walk-right.webp": {
+      "bytes": 20726,
+      "sha256": "5fc8b028c81e3cee29c2e9eb5973d9822d194508c77912910f082926f55bb22c"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/chef-work-left.webp": {
+      "bytes": 18330,
+      "sha256": "0e3c6effe568f55a1f1fc00e14fc6553fdc8e878436d5e3c95a362c958db23fb"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/chef-work-right.webp": {
+      "bytes": 18344,
+      "sha256": "197e0b99dca645b4e84182ec98685244330e6b0fb1e77265a3a7b056a4cfed47"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/detective-celebrate-left.webp": {
+      "bytes": 21116,
+      "sha256": "1dc971255fc943d447f7a3ddbfd6b5594e1983c91c6a7fe1fb37d4bce5ae9239"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/detective-celebrate-right.webp": {
+      "bytes": 19234,
+      "sha256": "86ca4f569a5535b905659757da028f4ec9584334826e56631f547f30e03ba848"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/detective-idle-left.webp": {
+      "bytes": 20532,
+      "sha256": "bfbd5380b212280ba7bf99ff0c12be040dec634b5ce1c9fd72ff6498c2c3e7e0"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/detective-idle-right.webp": {
+      "bytes": 18702,
+      "sha256": "318db81b1ad86982b4e7d760d704a71a204ff8033d931d74b4614a4d970f635b"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/detective-inspect-left.webp": {
+      "bytes": 18922,
+      "sha256": "c6c2e7c0753c62a71acdee96d1f7bdee5b71abdf78437e28b8f18e8db4a1d1cf"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/detective-inspect-right.webp": {
+      "bytes": 18390,
+      "sha256": "cd9039f03283126c271ed20c9d8401fb752831b1a89b718eb04b33877d075dbc"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/detective-rest-left.webp": {
+      "bytes": 18290,
+      "sha256": "ed6c8b2757e06b1299a837d4b23e3f8a1c1c5ef75bc5919b64c754d9d6b08c9e"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/detective-rest-right.webp": {
+      "bytes": 17146,
+      "sha256": "33d0d3643f421d7f12142e71cd9d122bcf869d9e0140c2ccde1fd262029fdee5"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/detective-walk-left.webp": {
+      "bytes": 18572,
+      "sha256": "3c823f9b679aba25ea5792a7f3171bdbaaac59ef5809a3fa8beb4f8d6f609788"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/detective-walk-right.webp": {
+      "bytes": 21190,
+      "sha256": "01e901558cc21a75cf4f103ac2b82d8f5c4b7bab72518a5e10feadd3625cfb29"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/detective-work-left.webp": {
+      "bytes": 19006,
+      "sha256": "4b71aa59c2053227518837b22dc4b5f9806c4b685179a83840f33f4f97ac9ce0"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/detective-work-right.webp": {
+      "bytes": 18676,
+      "sha256": "ae9da63770e1a46fb3b4cc765470a023c8acede73945c3a83f9ca1af581a3695"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/explorer-celebrate-left.webp": {
+      "bytes": 18244,
+      "sha256": "3f9f2c6ac6f9662222b49184fbd33aa4926d31b13f6da9735d0bf45eca0e8029"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/explorer-celebrate-right.webp": {
+      "bytes": 18620,
+      "sha256": "5384d032143ac8442b35f41e25fb0caa1a416ce142a22e37faca11e64b702a20"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/explorer-idle-left.webp": {
+      "bytes": 18672,
+      "sha256": "5b2d87ef6bc961ee42f190c4bc5639b27106221de165f0bf33c843c7430aa773"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/explorer-idle-right.webp": {
+      "bytes": 18430,
+      "sha256": "f1851fbfc20451d50ac40f0fceb249c95e154d6bcb78d9b06055ac45286404c9"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/explorer-inspect-left.webp": {
+      "bytes": 18338,
+      "sha256": "015210ad0a1876c98329ef67165c25291dde6300effb45b41b9062a77b28e957"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/explorer-inspect-right.webp": {
+      "bytes": 18260,
+      "sha256": "a465593f8cbf6e67a68bd8c75cd18b7736d1fe91f7ec445b67708ce5519dd707"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/explorer-rest-left.webp": {
+      "bytes": 17588,
+      "sha256": "0f98d14c81d6b004d9a265755526128b1d34b8399bd9b67e84d17e9170ae00fc"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/explorer-rest-right.webp": {
+      "bytes": 17610,
+      "sha256": "eb82d6d5af04143937643a05890fa32382a66c1e31ddc8211dfcf3138cb3057f"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/explorer-walk-left.webp": {
+      "bytes": 17986,
+      "sha256": "e8b575bb1b0c01bc9a952194567f3a66bc3c6199d36b7b6c0ded02359c7253a7"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/explorer-walk-right.webp": {
+      "bytes": 18764,
+      "sha256": "8b7384ff2ff825cd48da4d13110f47f7975cee50ad0f11cf8f4746dd7a3c6a3e"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/explorer-work-left.webp": {
+      "bytes": 18030,
+      "sha256": "c05efd83ceddfbfc0e5e97a5e73795436dd427593363259b8fca7163d13daa6c"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/explorer-work-right.webp": {
+      "bytes": 18206,
+      "sha256": "db9405f79d87a6a2606553620603aacbc50f4da4b204a26b4839fb8cbfbe7373"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/gardener-celebrate-left.webp": {
+      "bytes": 20128,
+      "sha256": "6c310824a40c294fa04069866696645a9148a2b5d3044741bb5de3d0a0ed2037"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/gardener-celebrate-right.webp": {
+      "bytes": 21824,
+      "sha256": "3cb7794c46f04c924505e488b5e1c3aa8c8f4c2f940f081cc63efba3ef41ac73"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/gardener-idle-left.webp": {
+      "bytes": 20756,
+      "sha256": "03044118b345a88b2a55c900a383a7d87b2af86b45182b6da20af6c0145fe35c"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/gardener-idle-right.webp": {
+      "bytes": 20964,
+      "sha256": "6b119133132b6cf640127199920f2593747edb1c4b9cc07c78704688a8a4c2d5"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/gardener-inspect-left.webp": {
+      "bytes": 20546,
+      "sha256": "9f68ec4442e93de69afe1694a55285540c8316d2b70786f408506bda67d71ac1"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/gardener-inspect-right.webp": {
+      "bytes": 20308,
+      "sha256": "ba5444a54e5542f0bc75fd3e0436953023aa5313ab5671c0063a30fd9279d47e"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/gardener-rest-left.webp": {
+      "bytes": 19402,
+      "sha256": "b49314fe1b88e3745e17a485d89527917947f92a6826c42b5d8da8105c913cfe"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/gardener-rest-right.webp": {
+      "bytes": 20886,
+      "sha256": "2e3fcd71181e780c157854d697ea83c62260fa7d0e9bdada2bceb60145e43982"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/gardener-walk-left.webp": {
+      "bytes": 19262,
+      "sha256": "367f35d1803e14d25c3535ad7729a7f2d3f5df4a66f0ca50c8d0b8f6af36b69c"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/gardener-walk-right.webp": {
+      "bytes": 22540,
+      "sha256": "bf99e5f6a1dfd243dfb1f8e7c54cf37c99a98ce6ae3ef5cd8de90667c6f24ec2"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/gardener-work-left.webp": {
+      "bytes": 20358,
+      "sha256": "db220116e71d637d08b7e9c028565ec9b76c48d3904cd4e47dca7e4b310f5527"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/gardener-work-right.webp": {
+      "bytes": 20464,
+      "sha256": "a8942ab86f2486a6fe52e723c889c76b7adb2ff662ba42bf4b15af6d236a8889"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/hacker-celebrate-left.webp": {
+      "bytes": 18214,
+      "sha256": "080fa8b2ad39791db50b0f635f7cd8bd29017eba6a4d4a1c5bfdb2962ab81523"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/hacker-celebrate-right.webp": {
+      "bytes": 17846,
+      "sha256": "6ce410095d0f8709e39e8ce471c6cd166ebac0e1b1cb3de0aca25d409076e78d"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/hacker-idle-left.webp": {
+      "bytes": 17658,
+      "sha256": "c01d0c8e5155240dd1d4824e6cade2141e731f5988965d2ebdbcd3c97c16b0d9"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/hacker-idle-right.webp": {
+      "bytes": 17704,
+      "sha256": "219f7d0f880b65917e9f1a1d2007c8cad152c35bfe6311f6c9da1c7265cfd257"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/hacker-inspect-left.webp": {
+      "bytes": 16912,
+      "sha256": "c8d764491281659330305125fa5b9922923f68681a047a12197329041c04d269"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/hacker-inspect-right.webp": {
+      "bytes": 16794,
+      "sha256": "e83589e3d3bd06064b3307bf0d2b9895fe808b80516c335fd181ee95c1c6d736"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/hacker-rest-left.webp": {
+      "bytes": 16218,
+      "sha256": "617351666149fae5c9efad6c62f1bb1fecfca4e0094101c9925c1b5d484c8cf5"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/hacker-rest-right.webp": {
+      "bytes": 16398,
+      "sha256": "637451fb1fcab7b343128cfe75c86ecdefdc2acb777ba2df180b59cd979884f2"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/hacker-walk-left.webp": {
+      "bytes": 17114,
+      "sha256": "b6ddf407813cfc26563b75ee76964868a9e50d5757a173da63cfc6f733bbd750"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/hacker-walk-right.webp": {
+      "bytes": 18832,
+      "sha256": "4327339d51de7d195c9204e46a923ae8fec34a0343271eb4a604b0dbe9d9d736"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/hacker-work-left.webp": {
+      "bytes": 16926,
+      "sha256": "108f9747fa0bb3ec91120c1394d8e41e542d4adffdb51982de266124cc1e611d"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/hacker-work-right.webp": {
+      "bytes": 17422,
+      "sha256": "e1aa8b7ad94e5257027c29ed9c6bbd476bb136d2cce40b25c5d53032d68d6d5e"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/idol-celebrate-left.webp": {
+      "bytes": 21702,
+      "sha256": "d031eb293dde05143f4e72eb9ccb2a1716e13b4bdc609ad8f6cb1c7d47643041"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/idol-celebrate-right.webp": {
+      "bytes": 20570,
+      "sha256": "c88a89d72a6eed3d88da3b20d5ee6cb8a3507d27c774a81d4321944fc61e617f"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/idol-idle-left.webp": {
+      "bytes": 21360,
+      "sha256": "ef8245e52c7fd90af8468cb0f5ae7acebb447cfcfeb86b65715a47a2d478efd9"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/idol-idle-right.webp": {
+      "bytes": 19726,
+      "sha256": "3f9d898410c9b6df45a43700d5c528b0fcab41bc289bb1733da27c8bbf70a638"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/idol-inspect-left.webp": {
+      "bytes": 21080,
+      "sha256": "a7c2538cadb51e7559635d2fee27feeb172cb9bd2ce90a8b4d5ae1255b6b5d45"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/idol-inspect-right.webp": {
+      "bytes": 20250,
+      "sha256": "08966ba4c77f3940516fd9445eaf278d94828e36da2af4c83fe3a74c470769cf"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/idol-rest-left.webp": {
+      "bytes": 20488,
+      "sha256": "a4fb7ef2e112d34567834fd6a18895e41d62c24cfca7fcc76be863a695206935"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/idol-rest-right.webp": {
+      "bytes": 19364,
+      "sha256": "2b62fd62e1ea18c8880923ae016c7151c6cffc7a553bb0806313ecd8e365eb52"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/idol-walk-left.webp": {
+      "bytes": 20760,
+      "sha256": "9328fbd9b50964caae2f2cc706ea9d36210d5e4f04e44af369b1dfad682f6927"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/idol-walk-right.webp": {
+      "bytes": 21648,
+      "sha256": "08ba03252ba7a1e58f061e793674748e8bb88e6976a34466f86a72504cf514da"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/idol-work-left.webp": {
+      "bytes": 20844,
+      "sha256": "0313ef04d96b15c83d30c15325d77ace844a54a371166a7f20ce6af99cfdf01b"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/idol-work-right.webp": {
+      "bytes": 20332,
+      "sha256": "365cf8fea8092dac772bcaaa4f23c26da130b926ce7a8d97ec1f6b07aa28cfca"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/marine-celebrate-left.webp": {
+      "bytes": 19378,
+      "sha256": "9e2f97cdf7d5467a3c1d60e8c799a7e306775012e4caf5703475d67bc83464db"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/marine-celebrate-right.webp": {
+      "bytes": 19994,
+      "sha256": "063fc31d1048d95248eb16ce1f41e435f4a39cb32f0a8e5eed6bbfb9c40cb583"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/marine-idle-left.webp": {
+      "bytes": 19776,
+      "sha256": "54b6e80f7e892a10cd6f71a52b0e6a784ea894824648e9ed0a2b8f49cd411a0f"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/marine-idle-right.webp": {
+      "bytes": 19908,
+      "sha256": "7e73deedfa56a34e1d2a7826122b7bd5f2d4c9f08dc61e89072fe1d208cb92df"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/marine-inspect-left.webp": {
+      "bytes": 18576,
+      "sha256": "413dbe9fd4c8b8c67f6497d1ef502fb89313ddc54f9b4cbb815130d7ebfdc5db"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/marine-inspect-right.webp": {
+      "bytes": 19786,
+      "sha256": "b50c5b5950b0ae0ae044c9add91de7d1ab7f3478e39d89a3f2a22084ee317ef9"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/marine-rest-left.webp": {
+      "bytes": 18612,
+      "sha256": "a8af68c97817b8450e3f70a17f153b7e2a861ae9dff10e8700d169895596d224"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/marine-rest-right.webp": {
+      "bytes": 18484,
+      "sha256": "024038f633dc2893f8a042db6000a8fd007e9adeddd393a18ecd361f6ccd8767"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/marine-walk-left.webp": {
+      "bytes": 18890,
+      "sha256": "0400e30fa3a83b65a16666f2788d66c69e51b64904c9228ca0022c49df912db4"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/marine-walk-right.webp": {
+      "bytes": 19976,
+      "sha256": "fc433e1432af359b9eb73e99954ff8b797b482c1f4ea71053223f345e6a47393"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/marine-work-left.webp": {
+      "bytes": 18664,
+      "sha256": "39f02e49f095b06831855e13f33b0a20fe72bcbb0536d8720ef91990229eb0de"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/marine-work-right.webp": {
+      "bytes": 19658,
+      "sha256": "948fc8312a06fe0728a740fe0116508d538566881528bd6a9a0d4b4606709f0a"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/samurai-celebrate-left.webp": {
+      "bytes": 18230,
+      "sha256": "c42f8944c056df886e3fc8e21196c47105198230710bf4506a3d735480aa298e"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/samurai-celebrate-right.webp": {
+      "bytes": 17090,
+      "sha256": "8a2f2300ddca1d37b2b0ced19b8e21c03613556e71fbfd2d4e9c66db3f20a18b"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/samurai-idle-left.webp": {
+      "bytes": 16896,
+      "sha256": "bef42ed59d33cd9f51bf44a1d6194bd554f86f7b4bf35aecfe9e194e41c42b55"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/samurai-idle-right.webp": {
+      "bytes": 15612,
+      "sha256": "947b380b0942193f2a59900e6acd954d26843b7aa2ed8f66f31e80e7351ec0db"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/samurai-inspect-left.webp": {
+      "bytes": 17242,
+      "sha256": "ed28eb01bede25f9977fcc60aa207b6b5a8b8c017dfa8ca8702b97f57e7d902a"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/samurai-inspect-right.webp": {
+      "bytes": 15624,
+      "sha256": "bd4a9566c79c9978a5d8de5d658936d678c9d5b78df8020b724197f7d8ee565d"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/samurai-rest-left.webp": {
+      "bytes": 17674,
+      "sha256": "fa0f0a9b6ed634232fcf3e6cef8da1dc4fbe5e9bdc56267212144cae3583ea50"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/samurai-rest-right.webp": {
+      "bytes": 15896,
+      "sha256": "e9b68f9c672365cc5d87fa73d179f32d9719cead269a195861cf5455ed6d20ce"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/samurai-walk-left.webp": {
+      "bytes": 16412,
+      "sha256": "747431f17c7d3944a1971b698311ea79f9fd709f6856ee9dd7fb4e0468612490"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/samurai-walk-right.webp": {
+      "bytes": 17318,
+      "sha256": "1e411e98e0da59eaf970ca12b0a880d39e2ba0d3bb71eaeb0037bd54b088cea0"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/samurai-work-left.webp": {
+      "bytes": 17536,
+      "sha256": "8b3a5e61a6b28bdabdae8b1df085de29c114e6e5547cc1c9973508e9def01374"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/samurai-work-right.webp": {
+      "bytes": 16234,
+      "sha256": "1b0509bdd3c4ddc18b04155af9511b2de74a9ae2a3eb8a1f07b0f405f37c0c7c"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/witch-celebrate-left.webp": {
+      "bytes": 18932,
+      "sha256": "cf28cb9dfb07c0643dafd8ed8c50bace46d611ee09a62b335aeb73735e3cfeaf"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/witch-celebrate-right.webp": {
+      "bytes": 18410,
+      "sha256": "f3cde6a1aa382c1845c92e376e8e9f20597c7ed7c3a14872e862e05f33d1bfcd"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/witch-idle-left.webp": {
+      "bytes": 19320,
+      "sha256": "9f49028a5ce20dc301629a0fb9ae6013b06fae5cec6bb1979e179271b1169f31"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/witch-idle-right.webp": {
+      "bytes": 18034,
+      "sha256": "ee55f3462a8d26ad7d8933f400ecc1283fc498445739884cb712c7cdb30125b0"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/witch-inspect-left.webp": {
+      "bytes": 19568,
+      "sha256": "7a8606db02a4b34cabb17bf048e9c7cd66a689f2f69ec8a64b9608862a88f81a"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/witch-inspect-right.webp": {
+      "bytes": 18960,
+      "sha256": "d0bd62fa22a2c3010ef3c67e3dc2bdd3b1cfd54e416b6801d9e4519b26bb47ce"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/witch-rest-left.webp": {
+      "bytes": 17448,
+      "sha256": "09b8fc71ac4263f76eb3197ecf59fc3a05bfea70adc4d0f5f818d54f02e2bd0a"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/witch-rest-right.webp": {
+      "bytes": 17164,
+      "sha256": "9c8994d99656e1d91fd452086d55b60e22ab64b9ce298f9890103a03ee422339"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/witch-walk-left.webp": {
+      "bytes": 16832,
+      "sha256": "25f0e3b92f1d7527669c150d3a150ffc4627776a2af4638f4c6281b3b7512912"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/witch-walk-right.webp": {
+      "bytes": 19810,
+      "sha256": "9f0598118f2565c6999e9b01188a2b2d2050433cb8a257d4c0e038c95cd42394"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/witch-work-left.webp": {
+      "bytes": 19112,
+      "sha256": "942d7bc883bf0eee8b1e5df924770566cf5474914172a208f341e4ed64bc0b97"
+    },
+    "assets/personal-space/v2/characters/toon/protagonist/witch-work-right.webp": {
+      "bytes": 18996,
+      "sha256": "a8932418ed64850063dab6d573cfebe505aef6afaaa1474893005704b3a79bfc"
+    }
+  }
+}
