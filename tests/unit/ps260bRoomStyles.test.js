@@ -54,8 +54,9 @@ function webpSize(path) {
 describe('PS-260B themed rooms', () => {
   it('records only the rooms of the sets', () => {
     expect(rooms.taskId).toBe('PS-260B');
-    // B1 (#271): the male sets' rooms; B2 adds the female sets'.
-    expect(RECORDED).toEqual(['bistro', 'dojo', 'jungle', 'noir', 'spacestation']);
+    // B1 (#271): the male sets' rooms; B2: the female sets'. Every set's room.
+    expect(RECORDED).toEqual([...sets.sets.map(entry => entry.room)].sort());
+    expect(RECORDED).toHaveLength(10);
     const setRooms = sets.sets.map(entry => entry.room);
     for (const room of RECORDED) expect(setRooms, room).toContain(room);
   });

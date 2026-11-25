@@ -110,8 +110,8 @@ the PS-250E styles. Two things are new:
   pixels past the box), so the dojo's `shadow_floor` is 72 instead of 56.
 
 The PS-260 rooms are recorded in `rooms-outputs.json` and previewed in
-`previews/rooms/` (`b1-overview.jpg`, the five B1 rooms side by side, is a
-contact sheet of their `*-phase-100.jpg` for the PR), not in `ps250-rooms/`,
+`previews/rooms/` (`b1-overview.jpg` and `b2-overview.jpg`, each half's five rooms side by
+side, are contact sheets of their `*-phase-100.jpg` for the PRs), not in `ps250-rooms/`,
 so that record keeps exactly the
 rooms the picker lists until PS-260E adds these. The picker thumbnails
 (`ps250-rooms/thumbnails.py`) are made in PS-260E too.
