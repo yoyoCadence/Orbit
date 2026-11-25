@@ -10,7 +10,7 @@
 - 主角沿用 PS-250C 的骨架、6 個動作（idle／work／celebrate／rest／walk／inspect）與左右兩個方向，runtime 用相同的位置與大小畫出，不需要新的動畫邏輯。
 - 房間沿用 PS-250E 的做法：同一個房間幾何，換材質、地板、描邊、環境光與窗外背景；白天＋夜晚。
 - 裝飾沿用 PS-250F 的做法：新的小家具模型，在各自的房間渲染白天＋夜晚，Edit Mode 的「裝飾」開關可以個別隱藏。
-- 像素版（PS-250D 的做法）在 runtime 之前補齊，讓「全像素」也有這 10 套。
+- 像素版（PS-250D 的做法）與 Q 版在 runtime 之前一起補齊，讓「全像素」也有這 10 套。
 - 不動 Supabase、auth 或部署設定；選擇仍存在本機的 `world.appearance`／`selectedThemeId`。
 
 ## 2. 十套設計
@@ -35,12 +35,12 @@
 | 段 | 內容 | 改到的地方 | 狀態 |
 |----|------|-----------|------|
 | **PS-260A** | 這份提案；10 個主角（120 張 Q 版 sprite）、`outputs.json`、預覽與測試。sprite 放在 PS-250C 主角旁邊，但 runtime 還不會用到（不在選擇介面、不預先快取）。 | `art-pipeline/ps260-sets/`、`pwa/assets/.../toon/protagonist/`、tests、tasks.md | 本 PR |
-| **PS-260B** | 10 套房間風格（Q 版，白天＋夜晚）與選擇介面用的縮圖；窗外依房間換成星空、深海、叢林等（風格可覆寫天空與窗外的顏色和形狀）。房間渲染每個光線約 30 分鐘，分成 B1（男性 5 套）與 B2（女性 5 套）兩個 PR。 | `ps244-blender/room_styles.py`、`scene.py`、`workspace/styles/<style>/`、`workspace/thumbnails/` | 待做 |
-| **PS-260C** | 20 件裝飾的模型，在各自的房間渲染（白天＋夜晚）。 | `ps244-blender/scene.py`（或 `ps260-sets/` 的新模型檔）、`ps250-decor/placements.json`、`workspace/decor/styles/<style>/` | 待做 |
-| **PS-260D** | 像素版：10 個主角、10 個房間、20 件裝飾。 | `ps250-pixel/`、`characters/pixel/`、`workspace/pixel/styles/<style>/` | 待做 |
+| **PS-260B** | 10 套房間風格，Q 版與像素版、白天＋夜晚；窗外依房間換成星空、竹林、叢林、花園、深海等（風格可覆寫天空與窗外的顏色和形狀）。分成 B1（男性 5 套）與 B2（女性 5 套）兩個 PR。 | `ps244-blender/room_styles.py`、`scene.py`、`workspace/styles/<style>/`、`workspace/pixel/styles/<style>/` | 待做 |
+| **PS-260C** | 裝飾，Q 版與像素版、白天＋夜晚：每個房間 PS-250F 的 6 件裝飾換成該房間的材質（與 PS-250F2 相同），再加上該套組自己的 2 件（共 20 件新模型，只出現在自己的房間）。 | `ps244-blender/decor_sets.py`、`scene.py`、`workspace/[pixel/]decor/styles/<style>/` | 待做 |
+| **PS-260D** | 10 個主角的像素版（PS-250D 的做法）。 | `ps250-pixel/`、`characters/pixel/` | 待做 |
 | **PS-260E** | runtime：角色目錄與素材登錄表加入 10 套；Edit Mode 新增「主題套組」一鍵套用主角＋房間＋裝飾，也能各自分開選；單元測試與 e2e。 | `characterCatalog.js`、`assetManifest.js`、`appearancePicker.js`、tests | 待做，先處理 §4 的預算 |
 
-先做完兩種畫風的素材（A–D）再接 runtime（E）：PS-250 也是這個順序，素材的檔名與數量先固定，runtime 的測試才能對照 `outputs.json`；而且選擇介面列出的每個房間都要有 Q 版與像素版（`ps250e2RoomStyles.test.js`），像素版不能晚於 runtime。素材的 PR 只新增檔案與 pipeline，現有的 PS-250 測試改為排除 PS-260 自己的 `outputs.json` 列出的檔案，由 PS-260 的測試檢查。
+先做完兩種畫風的素材（A–D）再接 runtime（E）：PS-250 也是這個順序，素材的檔名與數量先固定，runtime 的測試才能對照 `outputs.json`；而且選擇介面列出的每個房間都要有 Q 版與像素版（`ps250e2RoomStyles.test.js`），像素版不能晚於 runtime。像素房間放在 B：一個房間的像素版只要幾分鐘，而 C 處理裝飾時要用到各房間的像素背景（`process_decor.py` 的預覽）。素材的 PR 只新增檔案與 pipeline，現有的 PS-250 測試改為排除 PS-260 自己的 `outputs.json` 列出的檔案，由 PS-260 的測試檢查。
 
 ## 4. 需要注意的限制
 

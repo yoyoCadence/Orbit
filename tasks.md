@@ -279,10 +279,10 @@
   - 提案與分段：[`docs/ps-260-character-sets-proposal.md`](docs/ps-260-character-sets-proposal.md)。每段一個 PR，合併後才開始下一段；任何 agent 都可以從下一個未完成的段落接手。
   - 十套：太空人／武士／偵探／主廚／探險家（男），魔法師／偶像／園藝師／駭客／海洋學家（女）；房間與裝飾見提案 §2，id 在 `art-pipeline/ps260-sets/sets_catalog.py`。
   - [ ] **PS-260A** 提案＋10 個主角的 Q 版 sprite（120 張）、`outputs.json`、預覽、測試（runtime 還不使用）
-  - [ ] **PS-260B** 10 套房間風格（Q 版，白天＋夜晚）＋選擇介面的縮圖＋各自的窗外；B1（男性 5 套）、B2（女性 5 套）各一個 PR
-  - [ ] **PS-260C** 20 件裝飾（Q 版，白天＋夜晚，在各自的房間）
-  - [ ] **PS-260D** 像素版：10 個主角、10 個房間、20 件裝飾（選擇介面列出的房間都要有兩種畫風，所以在 runtime 之前）
-  - [ ] **PS-260E** runtime：角色目錄、素材登錄表、Edit Mode 的「主題套組」一鍵套用（也能分開選）、測試與 e2e；有自己窗外的房間不疊 PS-251B 的晨昏窗景。**開始前要先處理 PS-243 延後載入 JS 預算**（只剩 433 B；提案 §4 建議資料放 JSON、預算放寬 4 KB，需擁有者確認）
+  - [ ] **PS-260B** 10 套房間風格（Q 版＋像素版，白天＋夜晚）＋各自的窗外；B1（男性 5 套）、B2（女性 5 套）各一個 PR
+  - [ ] **PS-260C** 裝飾（Q 版＋像素版，白天＋夜晚）：每個房間的 6 件 PS-250F 裝飾＋該套組自己的 2 件（20 件新模型）
+  - [ ] **PS-260D** 10 個主角的像素版（選擇介面列出的都要有兩種畫風，所以在 runtime 之前）
+  - [ ] **PS-260E** runtime：角色目錄、素材登錄表、Edit Mode 的「主題套組」一鍵套用（也能分開選）、房間縮圖（`thumbnails.py`）、測試與 e2e；有自己窗外的房間不疊 PS-251B 的晨昏窗景。**開始前要先處理 PS-243 延後載入 JS 預算**（只剩 433 B；提案 §4 建議資料放 JSON、預算放寬 4 KB，需擁有者確認）
 
 - [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
   - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
