@@ -2,6 +2,7 @@
 
 Usage:
     python3 render_sets.py <render_dir> [--samples N] [--protagonists id,...] [--poses id,...]
+        [--facings left,right]
 
 Writes <render_dir>/protagonist/<id>-<pose>-<facing>.png with the PS-250C
 camera, lights, outline and facings (ps250-characters/rig.py), so the new

@@ -46,7 +46,7 @@ def main():
     parser.add_argument('--preview-dir', default=os.path.join(HERE, 'previews'))
     args = parser.parse_args()
 
-    sprites, problems, files = {}, [], {}
+    sprites, problems, files, encoded = {}, [], {}, {}
     for name, path in expected():
         source = os.path.join(args.render_dir, 'protagonist', f'{name}.png')
         if not os.path.exists(source):
@@ -63,17 +63,19 @@ def main():
             if edge_alpha(im) > EDGE_ALPHA:
                 problems.append(f'{name}: touches the canvas edge')
             data = encode(Image.alpha_composite(contact_shadow(im.size), im))
-            if args.write_runtime:
-                target = os.path.join(PWA, path)
-                os.makedirs(os.path.dirname(target), exist_ok=True)
-                with open(target, 'wb') as fh:
-                    fh.write(data)
+            encoded[path] = data
         sprites[name] = Image.open(io.BytesIO(data)).convert('RGBA')
         files[path] = {'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest()}
     if problems:
+        # Nothing is written: the committed sprites stay as outputs.json lists them.
         raise SystemExit('\n'.join(problems))
 
     if args.write_runtime:
+        for path, data in encoded.items():
+            target = os.path.join(PWA, path)
+            os.makedirs(os.path.dirname(target), exist_ok=True)
+            with open(target, 'wb') as fh:
+                fh.write(data)
         outputs = {
             'schemaVersion': 1,
             'taskId': 'PS-260',

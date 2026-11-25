@@ -68,7 +68,7 @@ def lashes(m):
             parent(tube(f'lash_{sx}_{dz}', pts, 0.0045, m['ink']), neck)
 
 
-def skirt(name, m, top_r, bottom_r, top_z, bottom_z, material_key='skirt', tiers=1, tier_key=None):
+def skirt(name, m, top_r, bottom_r, top_z, bottom_z, material_key='top', tiers=1, tier_key=None):
     """A flared skirt or robe hanging from the waist, on the hips joint."""
     hips = joint('hips')
     depth = top_z - bottom_z
@@ -136,7 +136,6 @@ def samurai(m):
 
 
 def detective(m):
-    neck = joint('neck')
     # Trench coat: a long tail with a belt and buttons, a scarf.
     skirt('coat', m, 0.155, 0.19, 0.02, -0.17, material_key='top')
     chest = joint('chest')
@@ -159,7 +158,7 @@ def detective(m):
 
 
 def chef(m):
-    chest, neck = joint('chest'), joint('neck')
+    chest = joint('chest')
     # Double-breasted jacket: two columns of buttons and a neckerchief.
     for z in (0.06, 0.11, 0.16):
         for sx in (1, -1):
@@ -180,7 +179,7 @@ def chef(m):
 
 
 def explorer(m):
-    chest, neck = joint('chest'), joint('neck')
+    chest = joint('chest')
     # A vest with pockets over the shirt, backpack straps.
     for sx in (1, -1):
         parent(rbox(f'vest_{sx}', (0.1, 0.02, 0.22), (sx * 0.08, -0.088, 0.12), m['vest'], 0.012), chest)
@@ -199,7 +198,6 @@ def explorer(m):
 
 
 def witch(m):
-    neck = joint('neck')
     lashes(m)
     # A long robe to the ankles and a star brooch.
     skirt('robe', m, 0.15, 0.25, 0.01, -0.27, material_key='top', tiers=2, tier_key='top_dark')
@@ -372,6 +370,8 @@ SPECS = {
 
 
 def build(spec_id, pose_id):
+    """One character in a fresh scene (rig.protagonist_scene resets it): the
+    joints and materials are found by name, so a scene holds one character."""
     spec = SPECS[spec_id]
     colors = dict(spec['colors'])
     if spec.get('skin'):
@@ -383,7 +383,5 @@ def build(spec_id, pose_id):
         m[key] = mat(f'{spec_id}_{key}', hex_color)
     for key, (hex_color, strength) in spec.get('glow', {}).items():
         m[key] = glow(f'{spec_id}_{key}', hex_color, strength)
-    # Skirts and robes take the outfit colour unless the set names its own.
-    m.setdefault('skirt', m['top'])
     COSTUMES[spec_id](m)
     return root
