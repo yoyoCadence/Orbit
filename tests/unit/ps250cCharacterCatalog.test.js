@@ -79,7 +79,9 @@ describe('PS-250C Q-style character catalog', () => {
     const onDisk = ['protagonist', 'companion'].flatMap(kind => readdirSync(
       join(PWA, 'assets', 'personal-space', 'v2', 'characters', 'toon', kind),
     ).map(name => `assets/personal-space/v2/characters/toon/${kind}/${name}`));
-    expect(onDisk.sort()).toEqual(Object.keys(outputs.files).sort());
+    // The PS-260 sets render beside these (tests/unit/ps260aCharacterSets.test.js).
+    const sets = JSON.parse(readFileSync(join(REPO, 'art-pipeline', 'ps260-sets', 'outputs.json'), 'utf8'));
+    expect(onDisk.sort()).toEqual([...Object.keys(outputs.files), ...Object.keys(sets.files)].sort());
   });
 
   it('keeps the set small: about 17 KB per protagonist and 7 KB per Companion', () => {
