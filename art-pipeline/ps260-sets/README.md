@@ -29,7 +29,9 @@ proposal and the segment plan are in
 | `render_sets.py` | Renders every protagonist sprite with the PS-250C camera, lights, outline and facings. |
 | `process_sets.py` | Clip check, contact shadow, WebP, `outputs.json` and the previews, with the PS-250C helpers. |
 | `outputs.json` | Ids, labels, gender, the set → room → decorations map, and the size and SHA-256 of every sprite. `tests/unit/ps260aCharacterSets.test.js` checks the files against it. |
-| `previews/` | `protagonists.jpg` (every pose and facing) and `lineup.jpg`. |
+| `process_pixel_sets.py` | PS-260D: the pixel protagonists, made from the committed sprites with the PS-250D reduction (`ps250-pixel/process_pixel.process_character`); writes `pixel-outputs.json`. |
+| `pixel-outputs.json` | Size and SHA-256 of every pixel protagonist. `tests/unit/ps260dPixelProtagonists.test.js` checks the files against it. |
+| `previews/` | `protagonists.jpg` (every pose and facing) and `lineup.jpg`; `pixel-protagonists.png` and `pixel-lineup.png` for the pixel versions. |
 
 ## How the costumes are built
 
@@ -65,3 +67,14 @@ render only it (`--protagonists witch`), then run `process_sets.py
 --write-runtime --reuse-committed`: sprites without a render keep their
 committed WebP and hash. For a check-only run, pass `--preview-dir` with another
 directory and leave out `--write-runtime`.
+
+The pixel versions need no render: after changing the Q-style sprites, run
+
+```bash
+python3 art-pipeline/ps260-sets/process_pixel_sets.py --write-runtime
+```
+
+It always writes the previews, by default into the committed `previews/`; for
+a check-only run pass `--preview-dir` with another directory and leave out
+`--write-runtime`. `pixel-outputs.json` records the Q-style sprite each pixel
+one was made from, so a re-render without this step fails the tests.

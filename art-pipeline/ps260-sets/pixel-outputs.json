@@ -1,0 +1,996 @@
+{
+  "schemaVersion": 1,
+  "taskId": "PS-260D",
+  "scale": 4,
+  "protagonist": {
+    "grid": 92,
+    "colours": 32,
+    "contactShadow": true,
+    "ids": [
+      "astronaut",
+      "samurai",
+      "detective",
+      "chef",
+      "explorer",
+      "witch",
+      "idol",
+      "gardener",
+      "hacker",
+      "marine"
+    ],
+    "poses": [
+      "idle",
+      "work",
+      "celebrate",
+      "rest",
+      "walk",
+      "inspect"
+    ],
+    "facings": [
+      "left",
+      "right"
+    ]
+  },
+  "files": {
+    "assets/personal-space/v2/characters/pixel/protagonist/astronaut-celebrate-left.png": {
+      "bytes": 6775,
+      "sha256": "e285ceb5fa4853d70263945ed76fd23b22191421c4f4491e74473e1b3526a0fd",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/astronaut-celebrate-left.webp",
+        "sha256": "12c52824947cbfd9b5912eaff5baffac8af3d372351b1433809f585004ba0621"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/astronaut-celebrate-right.png": {
+      "bytes": 6752,
+      "sha256": "2cdd2c1bd6c53fa02ecdeb8034a081a65e8b79e7d9c0f9763b37e885f27928b0",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/astronaut-celebrate-right.webp",
+        "sha256": "f5befa136ccf1416e9303332fb85b7fa549b6d697658a85e7480e135e457b915"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/astronaut-idle-left.png": {
+      "bytes": 6677,
+      "sha256": "80c4736217f9f920739001bba7f9d72f71a0f3862cf8c2a7b9071b07b2d70cf8",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/astronaut-idle-left.webp",
+        "sha256": "05e2a3c99fff6417b60c35cccd4ca9052decd8ff1eb7d8c86e32c4fe0089917f"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/astronaut-idle-right.png": {
+      "bytes": 6561,
+      "sha256": "cf48a65275679c2a3501bc15b596e7aaf7254b26d7770bb7e8d389dfa9fb7b69",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/astronaut-idle-right.webp",
+        "sha256": "8279a13c3891299c8a2d3de7269eb75e528fa2487170430d991a654d4d903909"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/astronaut-inspect-left.png": {
+      "bytes": 6316,
+      "sha256": "143734268002296eb60a48f45ddd234a245f5d88fe712d8e2ec848f810c3f5fb",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/astronaut-inspect-left.webp",
+        "sha256": "19ac2cb025879232cd1d63937b3a8eb92f7e69b5eca6e2598b9d6fcf4c723c6a"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/astronaut-inspect-right.png": {
+      "bytes": 6358,
+      "sha256": "d0b08c50272e8736d6925085b6620c7e2916d864e135e5211c3429fa7de036f9",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/astronaut-inspect-right.webp",
+        "sha256": "4eddb17e8f3a13e7d59afe6011faaa64306f6ffb7f6ced6736e589af0cd0e508"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/astronaut-rest-left.png": {
+      "bytes": 6481,
+      "sha256": "4689799a23904bcf7b88e842cf80aa6c2e1446946bcd58b0553a08c6299342cf",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/astronaut-rest-left.webp",
+        "sha256": "ab382a13a71626b601a0a73d0dc900c7516b93b5314c6a62698fc67c42bd9a6f"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/astronaut-rest-right.png": {
+      "bytes": 6476,
+      "sha256": "d83c4562fd564899c4f329d57fbedf35f6e7c637b578ad678ea4f33afe76b766",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/astronaut-rest-right.webp",
+        "sha256": "8d0ba6feb40bdbdfa280db9748fcaa4909fc1919a93b9587ed0d8fef487c1dde"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/astronaut-walk-left.png": {
+      "bytes": 6526,
+      "sha256": "d2c255ff99682d35bd6ef76bd63911e30f103c3689708c1b93860d608ad176d0",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/astronaut-walk-left.webp",
+        "sha256": "0c291d1c2f6c91af8bf10c2b72e684e091e7f3a6480574e96c5970a9ace51bb3"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/astronaut-walk-right.png": {
+      "bytes": 6702,
+      "sha256": "58392364a9549e13f0d64aa2a407997e56e1591ca38b966734bc6deed49e693a",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/astronaut-walk-right.webp",
+        "sha256": "0e5879144f16bc79155e1178a0dd312588989baa185ddc4dfeb3233f88b7d1dc"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/astronaut-work-left.png": {
+      "bytes": 6296,
+      "sha256": "df001ab766f4b4f5f6ff5028a45c213d6718ab1d5aa2c5215119e7a03c6ce807",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/astronaut-work-left.webp",
+        "sha256": "50d5e37e273a971652bea23b4ff0f8624e4ae9c223f2eb576cf0e6e3588a9849"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/astronaut-work-right.png": {
+      "bytes": 6523,
+      "sha256": "ee4d0835b4aa9a43499cfc6e24380d99a5e965b20d021581cb97772ef09ab6e9",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/astronaut-work-right.webp",
+        "sha256": "f90121d389dae7de4c7502742e98ba26df0508bec005b9104b9c888631a7c2d4"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/chef-celebrate-left.png": {
+      "bytes": 7368,
+      "sha256": "d968a8f5569df54a7797f8c614bb8ed2faba64c9c77a56abedaa2189d1854554",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/chef-celebrate-left.webp",
+        "sha256": "ffd84ef9877608c0c4fab8663e6f8c86e99d0e7a3e594addd9743010378e2525"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/chef-celebrate-right.png": {
+      "bytes": 7425,
+      "sha256": "be526f095db197795951c68663bd78069eadf3fef871ad9f2a3a938ea2792bff",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/chef-celebrate-right.webp",
+        "sha256": "86d57f5d033688a0bfd431608692baeb2e3f291d84a6bfc5431fe23af132165d"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/chef-idle-left.png": {
+      "bytes": 7392,
+      "sha256": "8a33c191019c8e34162f5756b3cedae525928aa78e54d22d0fa6a9d403df8055",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/chef-idle-left.webp",
+        "sha256": "9dc8b08d68f5fc3f643cc3429cf6504ca80e4b6c3cb401863020e852f3968144"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/chef-idle-right.png": {
+      "bytes": 7448,
+      "sha256": "f1c4fb861565429805bde2b1c33622ac2f919f30d4f2a4af6ea37e50d62cf0d1",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/chef-idle-right.webp",
+        "sha256": "8de02041f6ef6808efcd14989b6d3fffedcce3eacbb9db153674f632661e3081"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/chef-inspect-left.png": {
+      "bytes": 7086,
+      "sha256": "164a215827f5a709a24d9a43edb614092b3b9cc3a66fc7fcef5030f2f566f879",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/chef-inspect-left.webp",
+        "sha256": "dc86adfb905f424d5f1e7b20a3a5b472d6e66c91cc2b1c82570ae8c644cc6d57"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/chef-inspect-right.png": {
+      "bytes": 7005,
+      "sha256": "1f39ffc6cec6daed2cbab361b3a2e95b9b99a3572bdf21cd1f5d848c5565bd59",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/chef-inspect-right.webp",
+        "sha256": "a8f39c15b1a3df322ccce09612f86a616dc969325af0ab23929587bd986422ce"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/chef-rest-left.png": {
+      "bytes": 7161,
+      "sha256": "6a4149638c8e3b19bf11be51697af280299af23edc851a4c4c7ab541f8a834cf",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/chef-rest-left.webp",
+        "sha256": "4b579604ba52191c0b97cc5ed823da5f892e18badcaa5586075952eb89711d67"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/chef-rest-right.png": {
+      "bytes": 7047,
+      "sha256": "1e0cf55b2fd8fdd07e0c6e1ab2e3ce380d10546546650ae8aa7b1ea182421d5e",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/chef-rest-right.webp",
+        "sha256": "61643399c224946dc1c471b89c43f7f318564226a85f5bd67e7ca4e6b9fca237"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/chef-walk-left.png": {
+      "bytes": 7050,
+      "sha256": "5dcfa3dba703ddde4aa8d7602277b9c988ddb8dc5908733761f51e64dfeacc9a",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/chef-walk-left.webp",
+        "sha256": "0c4002dacbd7657c13de2ee3c7f95f1ed1c49f86c7855011ab1cb2af48915504"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/chef-walk-right.png": {
+      "bytes": 7646,
+      "sha256": "4ac38844c348a1466f5fe931bf66f0e659545fd3006298945edc6d2fff8a43ce",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/chef-walk-right.webp",
+        "sha256": "5fc8b028c81e3cee29c2e9eb5973d9822d194508c77912910f082926f55bb22c"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/chef-work-left.png": {
+      "bytes": 7378,
+      "sha256": "ff82af86b63778e867634c57f6c3787a51d9a97522dda37b6ea21be1aebc27f1",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/chef-work-left.webp",
+        "sha256": "0e3c6effe568f55a1f1fc00e14fc6553fdc8e878436d5e3c95a362c958db23fb"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/chef-work-right.png": {
+      "bytes": 7180,
+      "sha256": "68ca2666a4a12aa46def8fafc7d240feeeaf8cdfe03f17205847aed647e394eb",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/chef-work-right.webp",
+        "sha256": "197e0b99dca645b4e84182ec98685244330e6b0fb1e77265a3a7b056a4cfed47"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/detective-celebrate-left.png": {
+      "bytes": 7544,
+      "sha256": "bd20a9ff10f5fcf51e30baa4a35ad0a548d9ff29fa7fb9136fcbbbd0cf5f84a7",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/detective-celebrate-left.webp",
+        "sha256": "1dc971255fc943d447f7a3ddbfd6b5594e1983c91c6a7fe1fb37d4bce5ae9239"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/detective-celebrate-right.png": {
+      "bytes": 6930,
+      "sha256": "7c58993718e862c75d4dea154cfd12d1f4b61631daac99d3bb4476f35aae5297",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/detective-celebrate-right.webp",
+        "sha256": "86ca4f569a5535b905659757da028f4ec9584334826e56631f547f30e03ba848"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/detective-idle-left.png": {
+      "bytes": 7445,
+      "sha256": "f4d9cb86d80e8b179dc99c3813e15a367d3065bd6f08d6c0129e669993b1a748",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/detective-idle-left.webp",
+        "sha256": "bfbd5380b212280ba7bf99ff0c12be040dec634b5ce1c9fd72ff6498c2c3e7e0"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/detective-idle-right.png": {
+      "bytes": 6993,
+      "sha256": "8d78906020804f4f14f50a4838c3f7d8447c7df3e94608c982bf31798dfc7c8c",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/detective-idle-right.webp",
+        "sha256": "318db81b1ad86982b4e7d760d704a71a204ff8033d931d74b4614a4d970f635b"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/detective-inspect-left.png": {
+      "bytes": 7276,
+      "sha256": "0252d7bdc9c0a438a0adea0ed51c4e9fa27e87355a1cc0fae38e79eb3c3d125f",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/detective-inspect-left.webp",
+        "sha256": "c6c2e7c0753c62a71acdee96d1f7bdee5b71abdf78437e28b8f18e8db4a1d1cf"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/detective-inspect-right.png": {
+      "bytes": 7236,
+      "sha256": "9a947d0ddc2902c92f676c419da83d008d5716b085acf37cd2de21cdbd3436b1",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/detective-inspect-right.webp",
+        "sha256": "cd9039f03283126c271ed20c9d8401fb752831b1a89b718eb04b33877d075dbc"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/detective-rest-left.png": {
+      "bytes": 6971,
+      "sha256": "5ed32f78aaf72ffe1fc3487395d6a9e533bfc572be6c7b92f96205686a5c027d",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/detective-rest-left.webp",
+        "sha256": "ed6c8b2757e06b1299a837d4b23e3f8a1c1c5ef75bc5919b64c754d9d6b08c9e"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/detective-rest-right.png": {
+      "bytes": 6596,
+      "sha256": "86b65afa8347f93d923648a66dc8e43781460514061a27f677486fb30af352bb",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/detective-rest-right.webp",
+        "sha256": "33d0d3643f421d7f12142e71cd9d122bcf869d9e0140c2ccde1fd262029fdee5"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/detective-walk-left.png": {
+      "bytes": 7193,
+      "sha256": "5a10954340488228aea8bb1cd1b0b1bcdbe721bd72cb0b2560221323fa4b2c12",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/detective-walk-left.webp",
+        "sha256": "3c823f9b679aba25ea5792a7f3171bdbaaac59ef5809a3fa8beb4f8d6f609788"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/detective-walk-right.png": {
+      "bytes": 7391,
+      "sha256": "7e1b0d019d65c7832c78de06dbb3939a775a46284e46eb25144072fd965fda79",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/detective-walk-right.webp",
+        "sha256": "01e901558cc21a75cf4f103ac2b82d8f5c4b7bab72518a5e10feadd3625cfb29"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/detective-work-left.png": {
+      "bytes": 7280,
+      "sha256": "5c4419dd2e6db8ce1bfaf562c3dc6095f287c04ec08999dfa627dd7d0db7e860",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/detective-work-left.webp",
+        "sha256": "4b71aa59c2053227518837b22dc4b5f9806c4b685179a83840f33f4f97ac9ce0"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/detective-work-right.png": {
+      "bytes": 7196,
+      "sha256": "b44fe1f462eeb3909bc9ca2772ab81a9fe065f5c8b7a77cb2d8682a550598c52",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/detective-work-right.webp",
+        "sha256": "ae9da63770e1a46fb3b4cc765470a023c8acede73945c3a83f9ca1af581a3695"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/explorer-celebrate-left.png": {
+      "bytes": 6738,
+      "sha256": "dc463f093c39046db7e2756ced181893f760612a58a34c8cffc08cbf492e2803",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/explorer-celebrate-left.webp",
+        "sha256": "3f9f2c6ac6f9662222b49184fbd33aa4926d31b13f6da9735d0bf45eca0e8029"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/explorer-celebrate-right.png": {
+      "bytes": 6714,
+      "sha256": "cb2cbb4b9bd03389993961db34509867bd293f94e9a4b36ca9f9ec584553e5f8",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/explorer-celebrate-right.webp",
+        "sha256": "5384d032143ac8442b35f41e25fb0caa1a416ce142a22e37faca11e64b702a20"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/explorer-idle-left.png": {
+      "bytes": 6578,
+      "sha256": "7c610d7e544614210d1ac0394cbb80f83524e2c15ded276dcdb4351ccd451f31",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/explorer-idle-left.webp",
+        "sha256": "5b2d87ef6bc961ee42f190c4bc5639b27106221de165f0bf33c843c7430aa773"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/explorer-idle-right.png": {
+      "bytes": 6660,
+      "sha256": "5cb9ff84111a7e3872d393c7fd1c943b575fc2e5bb8ca2b6809b9980d443600b",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/explorer-idle-right.webp",
+        "sha256": "f1851fbfc20451d50ac40f0fceb249c95e154d6bcb78d9b06055ac45286404c9"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/explorer-inspect-left.png": {
+      "bytes": 6679,
+      "sha256": "87ad072f92813f1264995738dede926196402468c8816dd1ce993a17ef579082",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/explorer-inspect-left.webp",
+        "sha256": "015210ad0a1876c98329ef67165c25291dde6300effb45b41b9062a77b28e957"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/explorer-inspect-right.png": {
+      "bytes": 6681,
+      "sha256": "90b92bd31ec23afae83d8b9ade5de955a29e7fa3ffd2490b5469370ebc2fbf43",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/explorer-inspect-right.webp",
+        "sha256": "a465593f8cbf6e67a68bd8c75cd18b7736d1fe91f7ec445b67708ce5519dd707"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/explorer-rest-left.png": {
+      "bytes": 6483,
+      "sha256": "e36201fd77a40d6375099c7031b4f5e759270b0f21c3ad0fb7ec51203ee09fa2",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/explorer-rest-left.webp",
+        "sha256": "0f98d14c81d6b004d9a265755526128b1d34b8399bd9b67e84d17e9170ae00fc"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/explorer-rest-right.png": {
+      "bytes": 6542,
+      "sha256": "d10f639bf945291cf0e78119e87fbae63037125030e40faefa77410643074e43",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/explorer-rest-right.webp",
+        "sha256": "eb82d6d5af04143937643a05890fa32382a66c1e31ddc8211dfcf3138cb3057f"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/explorer-walk-left.png": {
+      "bytes": 6433,
+      "sha256": "c7e05af05c6c0587a67589082593f1e78e80e8287bfa4ac15ccab85043afec8a",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/explorer-walk-left.webp",
+        "sha256": "e8b575bb1b0c01bc9a952194567f3a66bc3c6199d36b7b6c0ded02359c7253a7"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/explorer-walk-right.png": {
+      "bytes": 6836,
+      "sha256": "4c14c7b72d442500b9651f75fa0af79bf742c5a598e06c651fce470888b6d1f3",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/explorer-walk-right.webp",
+        "sha256": "8b7384ff2ff825cd48da4d13110f47f7975cee50ad0f11cf8f4746dd7a3c6a3e"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/explorer-work-left.png": {
+      "bytes": 6565,
+      "sha256": "b3697af7f5a2995bcf9f1fb55a4403281b999622c322ec2553321b58249ed184",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/explorer-work-left.webp",
+        "sha256": "c05efd83ceddfbfc0e5e97a5e73795436dd427593363259b8fca7163d13daa6c"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/explorer-work-right.png": {
+      "bytes": 6896,
+      "sha256": "8ff68373c6a389066793ab83a0fb622265f9c93c5b179364d32de7f0d269b5dd",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/explorer-work-right.webp",
+        "sha256": "db9405f79d87a6a2606553620603aacbc50f4da4b204a26b4839fb8cbfbe7373"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/gardener-celebrate-left.png": {
+      "bytes": 6247,
+      "sha256": "779666a138e2ef46cad6fe412df4e83ce9db2bd9b2d201aad0b254cc75015ccf",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/gardener-celebrate-left.webp",
+        "sha256": "6c310824a40c294fa04069866696645a9148a2b5d3044741bb5de3d0a0ed2037"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/gardener-celebrate-right.png": {
+      "bytes": 6837,
+      "sha256": "0b5cc42aa8095816f1b4e313c8704e8b2e52c4563fec11ba90f197271ce91d36",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/gardener-celebrate-right.webp",
+        "sha256": "3cb7794c46f04c924505e488b5e1c3aa8c8f4c2f940f081cc63efba3ef41ac73"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/gardener-idle-left.png": {
+      "bytes": 6548,
+      "sha256": "4414ef89d66238295764cf917acf76d942047d9599da068b40306a4792d10724",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/gardener-idle-left.webp",
+        "sha256": "03044118b345a88b2a55c900a383a7d87b2af86b45182b6da20af6c0145fe35c"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/gardener-idle-right.png": {
+      "bytes": 6870,
+      "sha256": "de39798f849689b09a0e9c80159c0259f334ee1aeb1010b62c9a3f8af79e6a4a",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/gardener-idle-right.webp",
+        "sha256": "6b119133132b6cf640127199920f2593747edb1c4b9cc07c78704688a8a4c2d5"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/gardener-inspect-left.png": {
+      "bytes": 6755,
+      "sha256": "1e8837e4891929bb2dc091016b9bcac22b3048b437122b95b29a203e88b7fdfd",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/gardener-inspect-left.webp",
+        "sha256": "9f68ec4442e93de69afe1694a55285540c8316d2b70786f408506bda67d71ac1"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/gardener-inspect-right.png": {
+      "bytes": 6706,
+      "sha256": "b917b0de60358187f4e6417bb03a77b9e654e9e259878bb648d52c72e2b62aed",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/gardener-inspect-right.webp",
+        "sha256": "ba5444a54e5542f0bc75fd3e0436953023aa5313ab5671c0063a30fd9279d47e"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/gardener-rest-left.png": {
+      "bytes": 6181,
+      "sha256": "9af175274f3642f8ace7c70aefe43bad916172a1fecc07a64aa00c4e9b3997d3",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/gardener-rest-left.webp",
+        "sha256": "b49314fe1b88e3745e17a485d89527917947f92a6826c42b5d8da8105c913cfe"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/gardener-rest-right.png": {
+      "bytes": 6683,
+      "sha256": "9771100e1911226821428393beab8d1ae9aacdd41c1516ad3b7d4a1eee672b3d",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/gardener-rest-right.webp",
+        "sha256": "2e3fcd71181e780c157854d697ea83c62260fa7d0e9bdada2bceb60145e43982"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/gardener-walk-left.png": {
+      "bytes": 6215,
+      "sha256": "d2f07d8090ebbef0159c982a01f412c0a776e262aab9b59892d8b5b5975e6c10",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/gardener-walk-left.webp",
+        "sha256": "367f35d1803e14d25c3535ad7729a7f2d3f5df4a66f0ca50c8d0b8f6af36b69c"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/gardener-walk-right.png": {
+      "bytes": 7089,
+      "sha256": "0519c7f4c695cddc592f4a5c43506121dfcdf1eab561d64964ceebe0e495a230",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/gardener-walk-right.webp",
+        "sha256": "bf99e5f6a1dfd243dfb1f8e7c54cf37c99a98ce6ae3ef5cd8de90667c6f24ec2"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/gardener-work-left.png": {
+      "bytes": 6479,
+      "sha256": "b789ea4e429a298fab088725ea10a14e31eeb7f520f81b805904164e75d2907a",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/gardener-work-left.webp",
+        "sha256": "db220116e71d637d08b7e9c028565ec9b76c48d3904cd4e47dca7e4b310f5527"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/gardener-work-right.png": {
+      "bytes": 6759,
+      "sha256": "7fbaf08e6a19638e8ed25b41c9f5c9ba03bc167fce223cec568bad7e34a5adf3",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/gardener-work-right.webp",
+        "sha256": "a8942ab86f2486a6fe52e723c889c76b7adb2ff662ba42bf4b15af6d236a8889"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/hacker-celebrate-left.png": {
+      "bytes": 7450,
+      "sha256": "3edbc2193d54c8ce9de4c7a5a63a61d2d10e08fe294badec3e9252d74a843a44",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/hacker-celebrate-left.webp",
+        "sha256": "080fa8b2ad39791db50b0f635f7cd8bd29017eba6a4d4a1c5bfdb2962ab81523"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/hacker-celebrate-right.png": {
+      "bytes": 7436,
+      "sha256": "99bc79009015ceceaac6d893bde7e98b40732d3872d5a5b62c240402ea61be2f",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/hacker-celebrate-right.webp",
+        "sha256": "6ce410095d0f8709e39e8ce471c6cd166ebac0e1b1cb3de0aca25d409076e78d"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/hacker-idle-left.png": {
+      "bytes": 7661,
+      "sha256": "f1b5b9d4b428c0544badbd234e6549720395fdeccfe1c78ec6b9efa290c83766",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/hacker-idle-left.webp",
+        "sha256": "c01d0c8e5155240dd1d4824e6cade2141e731f5988965d2ebdbcd3c97c16b0d9"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/hacker-idle-right.png": {
+      "bytes": 7517,
+      "sha256": "69533763cb4f7c59f5accdb0a7381a96a0edc4a488fec4180188c0dac07ee5ae",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/hacker-idle-right.webp",
+        "sha256": "219f7d0f880b65917e9f1a1d2007c8cad152c35bfe6311f6c9da1c7265cfd257"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/hacker-inspect-left.png": {
+      "bytes": 6844,
+      "sha256": "1af5f0ceb2d30e770396276e38e7f1e25d583972ad0101e1c872c88d1e6631a3",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/hacker-inspect-left.webp",
+        "sha256": "c8d764491281659330305125fa5b9922923f68681a047a12197329041c04d269"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/hacker-inspect-right.png": {
+      "bytes": 7038,
+      "sha256": "3308def942ffeb653f577255f4ca546fea53d8f144d4490ce07fcb9bc600caef",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/hacker-inspect-right.webp",
+        "sha256": "e83589e3d3bd06064b3307bf0d2b9895fe808b80516c335fd181ee95c1c6d736"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/hacker-rest-left.png": {
+      "bytes": 7248,
+      "sha256": "d005619d702437cff671e917dc33278f462eddd31cd69973743e06b61a28112e",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/hacker-rest-left.webp",
+        "sha256": "617351666149fae5c9efad6c62f1bb1fecfca4e0094101c9925c1b5d484c8cf5"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/hacker-rest-right.png": {
+      "bytes": 7258,
+      "sha256": "4cd1f3c7e80f8ed5c4160d7598789174947ff4a296c1bb95b5b5e7fd4977b774",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/hacker-rest-right.webp",
+        "sha256": "637451fb1fcab7b343128cfe75c86ecdefdc2acb777ba2df180b59cd979884f2"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/hacker-walk-left.png": {
+      "bytes": 7347,
+      "sha256": "9c271b1080d547b5ed12146547571167eedbdf6e8d5dc5fec8ca8d2c118d31f5",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/hacker-walk-left.webp",
+        "sha256": "b6ddf407813cfc26563b75ee76964868a9e50d5757a173da63cfc6f733bbd750"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/hacker-walk-right.png": {
+      "bytes": 7533,
+      "sha256": "8aecb331b4561366c4bb109f2dc8c0069fff75497af9f3a1c5a9e4306f5e8467",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/hacker-walk-right.webp",
+        "sha256": "4327339d51de7d195c9204e46a923ae8fec34a0343271eb4a604b0dbe9d9d736"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/hacker-work-left.png": {
+      "bytes": 7137,
+      "sha256": "24bc294abbef0bd8187237d833be146bf82d22fd9d63eed7097eaae4fcf4f915",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/hacker-work-left.webp",
+        "sha256": "108f9747fa0bb3ec91120c1394d8e41e542d4adffdb51982de266124cc1e611d"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/hacker-work-right.png": {
+      "bytes": 7308,
+      "sha256": "5bf26f6d16ffdec163cba329b50a0798b6c8a53420b107dfd36f8497116b5479",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/hacker-work-right.webp",
+        "sha256": "e1aa8b7ad94e5257027c29ed9c6bbd476bb136d2cce40b25c5d53032d68d6d5e"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/idol-celebrate-left.png": {
+      "bytes": 7092,
+      "sha256": "990647603e080d150c864385e2ef30e86b5b964d23a6052d62ace0c253889064",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/idol-celebrate-left.webp",
+        "sha256": "d031eb293dde05143f4e72eb9ccb2a1716e13b4bdc609ad8f6cb1c7d47643041"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/idol-celebrate-right.png": {
+      "bytes": 6673,
+      "sha256": "34356c2fd2c60633f73a7e4b10cd88c280fe641c7333a5507576a4638b7aae64",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/idol-celebrate-right.webp",
+        "sha256": "c88a89d72a6eed3d88da3b20d5ee6cb8a3507d27c774a81d4321944fc61e617f"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/idol-idle-left.png": {
+      "bytes": 6917,
+      "sha256": "0ddfe708f566e8ee39e53aee0c873f16fc3c12237123e85514a6ae5c9b488ebf",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/idol-idle-left.webp",
+        "sha256": "ef8245e52c7fd90af8468cb0f5ae7acebb447cfcfeb86b65715a47a2d478efd9"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/idol-idle-right.png": {
+      "bytes": 6253,
+      "sha256": "2cce0a29c34de9b6882f3a4a57505dc4d24e73c9dd7a89c3b56f1903d3b1af12",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/idol-idle-right.webp",
+        "sha256": "3f9d898410c9b6df45a43700d5c528b0fcab41bc289bb1733da27c8bbf70a638"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/idol-inspect-left.png": {
+      "bytes": 6644,
+      "sha256": "cfc2d51e4bb79315673292846ef95d24c78ca5fcfece086f07701d54da47cd87",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/idol-inspect-left.webp",
+        "sha256": "a7c2538cadb51e7559635d2fee27feeb172cb9bd2ce90a8b4d5ae1255b6b5d45"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/idol-inspect-right.png": {
+      "bytes": 6510,
+      "sha256": "6e7ecfbaf1a85b749a9ce91abf80f1c6bd09298dd8033867e9c3f78b2a865854",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/idol-inspect-right.webp",
+        "sha256": "08966ba4c77f3940516fd9445eaf278d94828e36da2af4c83fe3a74c470769cf"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/idol-rest-left.png": {
+      "bytes": 6993,
+      "sha256": "e3a6e474edd3e17049bfe6a5869e17c762e90ea9e3171929dcb98b13742ef36d",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/idol-rest-left.webp",
+        "sha256": "a4fb7ef2e112d34567834fd6a18895e41d62c24cfca7fcc76be863a695206935"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/idol-rest-right.png": {
+      "bytes": 6474,
+      "sha256": "1859f1500805b049a01bab7f0d78ac7d7471bd4bd2aaaf8897616cd8e5410ab6",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/idol-rest-right.webp",
+        "sha256": "2b62fd62e1ea18c8880923ae016c7151c6cffc7a553bb0806313ecd8e365eb52"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/idol-walk-left.png": {
+      "bytes": 7009,
+      "sha256": "ebd3abd38cc4a4c2681ffe4f11df50cdb6ad1f43e031cb759453fe1836fefdd9",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/idol-walk-left.webp",
+        "sha256": "9328fbd9b50964caae2f2cc706ea9d36210d5e4f04e44af369b1dfad682f6927"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/idol-walk-right.png": {
+      "bytes": 6623,
+      "sha256": "d23290e09703d99ca3b71089978a709d579dc716a64d7f3234a4c9baa6c1ce13",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/idol-walk-right.webp",
+        "sha256": "08ba03252ba7a1e58f061e793674748e8bb88e6976a34466f86a72504cf514da"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/idol-work-left.png": {
+      "bytes": 6776,
+      "sha256": "e0de296cd8bcbc892577741ec3d4e619f882c278791a948434ef65c2ada3b0ed",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/idol-work-left.webp",
+        "sha256": "0313ef04d96b15c83d30c15325d77ace844a54a371166a7f20ce6af99cfdf01b"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/idol-work-right.png": {
+      "bytes": 6548,
+      "sha256": "3a88b8414b44d941e66295144965fdfb02fe07732841f46957235a4fc8b7b29f",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/idol-work-right.webp",
+        "sha256": "365cf8fea8092dac772bcaaa4f23c26da130b926ce7a8d97ec1f6b07aa28cfca"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/marine-celebrate-left.png": {
+      "bytes": 6688,
+      "sha256": "b647932532548e67d8dfd71ef240a73b4271f6f19fcdaa538a13b41d46ac6894",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/marine-celebrate-left.webp",
+        "sha256": "9e2f97cdf7d5467a3c1d60e8c799a7e306775012e4caf5703475d67bc83464db"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/marine-celebrate-right.png": {
+      "bytes": 6907,
+      "sha256": "3b5193ce910264fc2c2b9d67a7866cef5fdd42f155fd2dbf40b04661bc9a1033",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/marine-celebrate-right.webp",
+        "sha256": "063fc31d1048d95248eb16ce1f41e435f4a39cb32f0a8e5eed6bbfb9c40cb583"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/marine-idle-left.png": {
+      "bytes": 6884,
+      "sha256": "13bb7cb444f95f910463096f9f2ee126250b82fe2332539762afcb68032cb0e9",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/marine-idle-left.webp",
+        "sha256": "54b6e80f7e892a10cd6f71a52b0e6a784ea894824648e9ed0a2b8f49cd411a0f"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/marine-idle-right.png": {
+      "bytes": 6997,
+      "sha256": "a97a2b58dd3a5d1c3a6b822a485f3bdbda2bb1415db604b518a089451ae0abc1",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/marine-idle-right.webp",
+        "sha256": "7e73deedfa56a34e1d2a7826122b7bd5f2d4c9f08dc61e89072fe1d208cb92df"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/marine-inspect-left.png": {
+      "bytes": 6833,
+      "sha256": "abf46c52262ac820400b6c3f3dc8ba9ec816104fd603a7213556e02ed4129d9b",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/marine-inspect-left.webp",
+        "sha256": "413dbe9fd4c8b8c67f6497d1ef502fb89313ddc54f9b4cbb815130d7ebfdc5db"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/marine-inspect-right.png": {
+      "bytes": 6750,
+      "sha256": "54cd822113ab42f32cd31e73d56662c98c5232bcab41945880ed2c343c720d05",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/marine-inspect-right.webp",
+        "sha256": "b50c5b5950b0ae0ae044c9add91de7d1ab7f3478e39d89a3f2a22084ee317ef9"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/marine-rest-left.png": {
+      "bytes": 6744,
+      "sha256": "0832ba87154992efd0545b8f05ac16728358746c7192fb2d2a2d4e0ea860d099",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/marine-rest-left.webp",
+        "sha256": "a8af68c97817b8450e3f70a17f153b7e2a861ae9dff10e8700d169895596d224"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/marine-rest-right.png": {
+      "bytes": 6660,
+      "sha256": "b5e8a4d4ee2ce17350f52b2764ee1237a05ac9f88d733f1141443291aaa5a9cf",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/marine-rest-right.webp",
+        "sha256": "024038f633dc2893f8a042db6000a8fd007e9adeddd393a18ecd361f6ccd8767"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/marine-walk-left.png": {
+      "bytes": 6729,
+      "sha256": "47c37b7838a5b1f0cb77592bfddc0fc6abae49f4c56a83015ec3537dbe3fce61",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/marine-walk-left.webp",
+        "sha256": "0400e30fa3a83b65a16666f2788d66c69e51b64904c9228ca0022c49df912db4"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/marine-walk-right.png": {
+      "bytes": 6831,
+      "sha256": "363c94ef0150825055dc97bcd758ef019cf7e970c496f96562510990adc05746",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/marine-walk-right.webp",
+        "sha256": "fc433e1432af359b9eb73e99954ff8b797b482c1f4ea71053223f345e6a47393"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/marine-work-left.png": {
+      "bytes": 6851,
+      "sha256": "9c4f39612976d55120b39919b230b99948759738bb8acb0d2cbd2a3c478d2dd2",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/marine-work-left.webp",
+        "sha256": "39f02e49f095b06831855e13f33b0a20fe72bcbb0536d8720ef91990229eb0de"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/marine-work-right.png": {
+      "bytes": 6747,
+      "sha256": "ff0395724c98ee6b1198432e8c1b9c301825cf3cdf21ce8186bcd05d1c0375e5",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/marine-work-right.webp",
+        "sha256": "948fc8312a06fe0728a740fe0116508d538566881528bd6a9a0d4b4606709f0a"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/samurai-celebrate-left.png": {
+      "bytes": 6585,
+      "sha256": "f74316f92e89ee663bacfedb0f4651a3554e87cb056e629d0c3fa6933b5ca02d",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/samurai-celebrate-left.webp",
+        "sha256": "c42f8944c056df886e3fc8e21196c47105198230710bf4506a3d735480aa298e"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/samurai-celebrate-right.png": {
+      "bytes": 6266,
+      "sha256": "173f2de528fb605ae3fcba8abc82f934946c7892a09ad2c0e3e3e010f0dccde7",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/samurai-celebrate-right.webp",
+        "sha256": "8a2f2300ddca1d37b2b0ced19b8e21c03613556e71fbfd2d4e9c66db3f20a18b"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/samurai-idle-left.png": {
+      "bytes": 6238,
+      "sha256": "dbfac1e4b31c73f589b46fb6cf3cdb0ee34ba8048b189163713187fecb3c223c",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/samurai-idle-left.webp",
+        "sha256": "bef42ed59d33cd9f51bf44a1d6194bd554f86f7b4bf35aecfe9e194e41c42b55"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/samurai-idle-right.png": {
+      "bytes": 6038,
+      "sha256": "2e922f2c3eaa0450c467924aeb787a930174d1e1e4e2a4e0e295b3b6e80a180b",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/samurai-idle-right.webp",
+        "sha256": "947b380b0942193f2a59900e6acd954d26843b7aa2ed8f66f31e80e7351ec0db"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/samurai-inspect-left.png": {
+      "bytes": 6017,
+      "sha256": "eac6cc02767a5a33299c68df76ec4a1a2edd799278c60eca30ea315969cbed62",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/samurai-inspect-left.webp",
+        "sha256": "ed28eb01bede25f9977fcc60aa207b6b5a8b8c017dfa8ca8702b97f57e7d902a"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/samurai-inspect-right.png": {
+      "bytes": 5665,
+      "sha256": "946fd9afd7f53a2e6b3ecea3112ca25cade9df95f7c2d10d4307cd454a1218c7",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/samurai-inspect-right.webp",
+        "sha256": "bd4a9566c79c9978a5d8de5d658936d678c9d5b78df8020b724197f7d8ee565d"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/samurai-rest-left.png": {
+      "bytes": 6346,
+      "sha256": "a6b0cd85e8a37177cbcc0efebabf887b6dec1c0fd5cf6919690350908d892b53",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/samurai-rest-left.webp",
+        "sha256": "fa0f0a9b6ed634232fcf3e6cef8da1dc4fbe5e9bdc56267212144cae3583ea50"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/samurai-rest-right.png": {
+      "bytes": 5906,
+      "sha256": "121ed7c7122d4cd5241e4879eff8f9b6f66b614f103d386cf0bfac9a67ba2ca9",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/samurai-rest-right.webp",
+        "sha256": "e9b68f9c672365cc5d87fa73d179f32d9719cead269a195861cf5455ed6d20ce"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/samurai-walk-left.png": {
+      "bytes": 6050,
+      "sha256": "52354446331446130595b885e387100c932abb0fe8ba0e3b50ee27bd7a018073",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/samurai-walk-left.webp",
+        "sha256": "747431f17c7d3944a1971b698311ea79f9fd709f6856ee9dd7fb4e0468612490"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/samurai-walk-right.png": {
+      "bytes": 6450,
+      "sha256": "a579fd090e54ff39b39ab6c8ef7d235b0bfb4191e9461f7d1f638c15beb352c9",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/samurai-walk-right.webp",
+        "sha256": "1e411e98e0da59eaf970ca12b0a880d39e2ba0d3bb71eaeb0037bd54b088cea0"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/samurai-work-left.png": {
+      "bytes": 6149,
+      "sha256": "4d08dbedfb5991c495bd8e6977536a5572a8dfd2760e2edebfa9fbbdb1f5fa61",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/samurai-work-left.webp",
+        "sha256": "8b3a5e61a6b28bdabdae8b1df085de29c114e6e5547cc1c9973508e9def01374"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/samurai-work-right.png": {
+      "bytes": 5916,
+      "sha256": "3d1451a860aa72a3d555ce288ae6e8a39fdd44cb8e530f9b1e23cf2e22163dc8",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/samurai-work-right.webp",
+        "sha256": "1b0509bdd3c4ddc18b04155af9511b2de74a9ae2a3eb8a1f07b0f405f37c0c7c"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/witch-celebrate-left.png": {
+      "bytes": 7840,
+      "sha256": "25e7feeadd15d5e6853dd053caf6588f7410d461b1dbfae98138bfefdd87abb3",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/witch-celebrate-left.webp",
+        "sha256": "cf28cb9dfb07c0643dafd8ed8c50bace46d611ee09a62b335aeb73735e3cfeaf"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/witch-celebrate-right.png": {
+      "bytes": 7753,
+      "sha256": "0c1a76dcc0ec4285dfa09c44286781d496f6373e5ab1ce7d048f70d9108f7a1b",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/witch-celebrate-right.webp",
+        "sha256": "f3cde6a1aa382c1845c92e376e8e9f20597c7ed7c3a14872e862e05f33d1bfcd"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/witch-idle-left.png": {
+      "bytes": 7832,
+      "sha256": "84a4ef456722281c13abaa80fdffc99f8298560d2573d002c49e37ffbd3ce9e1",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/witch-idle-left.webp",
+        "sha256": "9f49028a5ce20dc301629a0fb9ae6013b06fae5cec6bb1979e179271b1169f31"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/witch-idle-right.png": {
+      "bytes": 7744,
+      "sha256": "8937b670cb9f89a6502540714098848dd982300ed82cc4d801e2482bd28f5702",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/witch-idle-right.webp",
+        "sha256": "ee55f3462a8d26ad7d8933f400ecc1283fc498445739884cb712c7cdb30125b0"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/witch-inspect-left.png": {
+      "bytes": 8174,
+      "sha256": "5db35aa1dc44b4ad3a3cca35ba505aa5521cddc119627c99279d15731fb2577f",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/witch-inspect-left.webp",
+        "sha256": "7a8606db02a4b34cabb17bf048e9c7cd66a689f2f69ec8a64b9608862a88f81a"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/witch-inspect-right.png": {
+      "bytes": 8106,
+      "sha256": "118a9b02fab482543de71324218d22f6c9453672d0bbcb7ba4885b8315ebb3db",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/witch-inspect-right.webp",
+        "sha256": "d0bd62fa22a2c3010ef3c67e3dc2bdd3b1cfd54e416b6801d9e4519b26bb47ce"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/witch-rest-left.png": {
+      "bytes": 7474,
+      "sha256": "b7ce0d9771b3f59c7198260fd0c65d969a4f183f87df51ab456705a808590b15",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/witch-rest-left.webp",
+        "sha256": "09b8fc71ac4263f76eb3197ecf59fc3a05bfea70adc4d0f5f818d54f02e2bd0a"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/witch-rest-right.png": {
+      "bytes": 7524,
+      "sha256": "8f366b55a9bb7298643eed60aecea4ebf4cd7363e5f14c5f248b73bcfdcd5423",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/witch-rest-right.webp",
+        "sha256": "9c8994d99656e1d91fd452086d55b60e22ab64b9ce298f9890103a03ee422339"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/witch-walk-left.png": {
+      "bytes": 7817,
+      "sha256": "29926d5f9654aa0cd2b4502bcfa36e9026c80e71a799ed12c088c45c13c57af9",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/witch-walk-left.webp",
+        "sha256": "25f0e3b92f1d7527669c150d3a150ffc4627776a2af4638f4c6281b3b7512912"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/witch-walk-right.png": {
+      "bytes": 8179,
+      "sha256": "b4cbd135049a09d9a7e59e0c28577429a8f2d63c1a205e5695c56f55313f0a0d",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/witch-walk-right.webp",
+        "sha256": "9f0598118f2565c6999e9b01188a2b2d2050433cb8a257d4c0e038c95cd42394"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/witch-work-left.png": {
+      "bytes": 7972,
+      "sha256": "76a5448a13fb24501b544a4e8cb2faeeaf11a97b7fb07cf076d384323b445b68",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/witch-work-left.webp",
+        "sha256": "942d7bc883bf0eee8b1e5df924770566cf5474914172a208f341e4ed64bc0b97"
+      }
+    },
+    "assets/personal-space/v2/characters/pixel/protagonist/witch-work-right.png": {
+      "bytes": 8183,
+      "sha256": "6d1951598f76ad6e1f6067ecf461ac9e491b0d20b7f297afe00759f5ab299b91",
+      "source": {
+        "path": "assets/personal-space/v2/characters/toon/protagonist/witch-work-right.webp",
+        "sha256": "a8932418ed64850063dab6d573cfebe505aef6afaaa1474893005704b3a79bfc"
+      }
+    }
+  }
+}
