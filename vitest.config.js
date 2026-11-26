@@ -7,7 +7,8 @@ export default defineConfig({
     environment: 'node',
     coverage: {
       provider: 'v8',
-      include: ['pwa/js/engine.js', 'pwa/js/leveling.js', 'pwa/js/utils.js'],
+      // TEST-004: every app module (pwa/vendor is third-party and not here).
+      include: ['pwa/js/**/*.js'],
       reporter: ['text', 'html'],
     },
   },
