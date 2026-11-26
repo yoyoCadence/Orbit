@@ -132,7 +132,8 @@ to 308 KiB (315,392 bytes) so the picker can offer the ten themed sets (user
 request, 2026-11-25): their protagonists, rooms and decorations and the
 one-tap theme set section add about 2.7 KB gzip to the V2 modules. The
 baseline reads 313,662 of 315,392 bytes (1,730 left); the themed sets' images
-are not precached, so the asset budgets are unchanged.
+are not precached, so the asset budgets are unchanged. PS-260F (v1.42.1, the
+offline fallback of a set room) brings it to 313,946 bytes (1,446 left).
 
 The scene is authored art throughout: a 3:2 background by day and by night,
 12 protagonist state/facing poses, six Companion states, clear/rain overlays,

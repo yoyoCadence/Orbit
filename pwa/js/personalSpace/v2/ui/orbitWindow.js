@@ -609,28 +609,32 @@ function useFallbackWhenImagesFail(root) {
 const EXTERIOR_STYLE = 'position:absolute;inset:0;width:100%;height:100%;max-width:none;'
   + 'object-fit:cover;object-position:center;pointer-events:none;user-select:none';
 
+// PS-260F: a set room has its own view and no image here; the default room
+// drawn when it cannot load has one, which waits hidden (no src, no request).
 function renderPosterExterior(scene, fallback, pixelArt) {
-  if (!scene.exterior) return '';
-  const fallbackSrc = fallback.exterior && fallback.exterior !== scene.exterior
+  const src = scene.exterior;
+  if (!src && !fallback.exterior) return '';
+  const fallbackSrc = fallback.exterior && fallback.exterior !== src
     ? ` data-exterior-fallback="${escapeHtml(fallback.exterior)}"`
     : '';
-  return `<img class="orbit-window-exterior" src="${escapeHtml(scene.exterior)}"${fallbackSrc}${pixelArt} alt="" draggable="false" style="${EXTERIOR_STYLE}">`;
+  return `<img class="orbit-window-exterior"${src ? ` src="${escapeHtml(src)}"` : ' hidden'}${fallbackSrc}${src ? pixelArt : ''} alt="" draggable="false" style="${EXTERIOR_STYLE}">`;
 }
 
 // The view goes when it cannot load: the room's baked-in view shows. It also
 // follows the room: when the background falls back to the Q-style room (a
 // room style or the pixel room not cached), so does the view, put back if its
 // own error came first; the day room used when the night room cannot load
-// keeps the evening view.
+// keeps the evening view. PS-260F: a set room's own decorations have no place
+// in the default room, so they go with it (as in the Pixi scene).
 function followBackgroundWithExterior(root) {
   const exterior = root.querySelector?.('.orbit-window-exterior');
-  if (!exterior) return;
-  exterior.addEventListener('error', () => exterior.remove());
-  const fallbackSrc = exterior.dataset.exteriorFallback;
-  const background = root.querySelector('.orbit-window-background');
-  if (!fallbackSrc || !background) return;
-  background.addEventListener('error', () => {
+  exterior?.addEventListener('error', () => exterior.remove());
+  const fallbackSrc = exterior?.dataset.exteriorFallback;
+  root.querySelector?.('.orbit-window-background')?.addEventListener('error', ({ target: background }) => {
+    root.querySelectorAll('[data-room-only]').forEach(image => image.remove());
+    if (!fallbackSrc) return;
     exterior.removeAttribute('data-pixel-art');
+    exterior.hidden = false;
     exterior.setAttribute('src', fallbackSrc);
     if (!exterior.parentNode) background.after(exterior);
   }, { once: true });
@@ -705,13 +709,16 @@ function normalizeRevealKind(value, direction) {
 }
 
 // A decoration keeps the prop class, so an older style.css still places it.
-function renderPosterProp(entry, fallbackSrc = entry.path, pixelArt = '', day = null, decoration = false) {
+// One the default room does not have (PS-260F) is marked room-only.
+function renderPosterProp(entry, fallbackSrc, pixelArt = '', day = null, decoration = false) {
   const dayAttributes = day
     ? ` data-day-src="${escapeHtml(day.path)}" data-day-style="${placementStyle(day.placement)}"`
     : '';
   const className = decoration ? 'orbit-window-prop orbit-window-decoration' : 'orbit-window-prop';
-  const decorationId = decoration ? ` data-decoration-id="${escapeHtml(entry.id)}"` : '';
-  return `<img class="${className}"${decorationId} src="${escapeHtml(entry.path)}" data-fallback-src="${escapeHtml(fallbackSrc)}"${dayAttributes}${pixelArt} alt="" draggable="false" style="${placementStyle(entry.placement)}">`;
+  const decorationId = decoration
+    ? ` data-decoration-id="${escapeHtml(entry.id)}"${fallbackSrc ? '' : ' data-room-only'}`
+    : '';
+  return `<img class="${className}"${decorationId} src="${escapeHtml(entry.path)}" data-fallback-src="${escapeHtml(fallbackSrc || entry.path)}"${dayAttributes}${pixelArt} alt="" draggable="false" style="${placementStyle(entry.placement)}">`;
 }
 
 function placementStyle(placement = {}) {

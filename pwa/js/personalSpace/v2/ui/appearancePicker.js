@@ -252,7 +252,7 @@ export function renderAppearancePicker(value, roomStyle, hiddenDecorations) {
           })).join('')}
         </ul>
       </fieldset>
-      <p>選擇只存在這台裝置。預設的全 Q 版與藍色工作室可以離線使用；其他房間、角色與全像素的房間、家具第一次顯示時下載，離線時暫時以預設顯示。</p>
+      <p>選擇只存在這台裝置。預設的全 Q 版與藍色工作室可以離線使用；其他房間、角色與全像素的房間、家具第一次顯示時下載，離線時暫時以預設顯示；主題套組房間的專屬裝飾沒有預設，離線時先不顯示。</p>
     </section>
   `;
 }

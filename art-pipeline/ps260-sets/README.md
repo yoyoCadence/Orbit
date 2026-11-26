@@ -196,7 +196,11 @@ sets side by side).
   (`ROOM_DECORATIONS`, the day and night placements of
   `decor-placements.json`). A set decoration stands only in its own room, from
   the start of a project, and has no default-room twin: if its file cannot
-  load, it is left out.
+  load, it is left out. When the room itself cannot load (offline, never
+  downloaded), the default room is drawn with its morning or evening view
+  and without the set's decorations, in the Pixi scene and the poster alike
+  (PS-260F); in the picker, a set decoration's picture that cannot load is an
+  empty frame.
 - These rooms have their own view out of the window, so the runtime lays no
   PS-251B morning or evening city view over them.
 - The picker (`ui/appearancePicker.js`) offers each set as a 「主題套組」:

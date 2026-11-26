@@ -6772,6 +6772,15 @@ html.has-bg[data-ui-skin="modern"] .levelup-box {
   object-fit: contain;
 }
 
+/* PS-260F: a picture that cannot load and has no default (a set's own
+   decoration, offline and never downloaded): an empty frame stands in its
+   place, without the browser's broken-image icon. */
+.personal-space-v2-appearance img[data-unavailable] {
+  content: linear-gradient(transparent, transparent);
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+}
+
 /* PS-250E2: room thumbnails are 3:2. */
 .personal-space-v2-appearance-rooms {
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
