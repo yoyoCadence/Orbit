@@ -142,6 +142,8 @@
 
 ## Next
 
+> 2026-11-26 擁有者：「好啊 繼續做」「不用停 能做就一直做吧」→ 先做 PS-260F（#275 留下的兩個 P3，#276），之後 Next 只剩需要擁有者的項目，agent 依 2026-11-18 的做法列出新的完善項目：TEST-004（補單元測試，完成，見 Done）；BUG-120（註冊後的提示，需核准）。
+
 > 2026-11-18 擁有者要求：「列出幾個你覺得需要完善的事 持續完善」，每完成一段就開 PR 並合併，不必特別詢問（必要時才問）。agent 列出的完善清單如下，依序做；需要核准的另外標明。
 
 - [ ] **HW-112D** 佐證照片：擁有者驗收與後續評估（HW-112C1／C2a／C2b 已完成，見 Done）
@@ -150,6 +152,10 @@
   - ~~評估（#254 第四輪留下的）：清掉沒有對應紀錄的雲端檔案~~ 已於 #263 完成（v1.41.28，擁有者 2026-11-19 同意，見 Done 的 HW-112D (c)）。
   - ~~待辦（#262 第二輪審查 P3 #2）：訪客設定畫面與另一個分頁~~ 已於 #264 完成（v1.41.29，見 Done 的 HW-112D 後續）。
   - 驗收需要擁有者：以兩個測試帳號經 Storage API 實測本人可上傳、讀、刪自己的檔案、不能碰別人的資料夾、超過 200 KB 或不是 JPEG 被拒（agent 沒有測試帳號的密碼）。
+- [ ] **BUG-120** 開啟「確認 email」之前要改：註冊後的提示（TEST-004 寫測試時發現，2026-11-26；屬 auth UI，**需擁有者核准**）
+  - `authFlow.js`：註冊成功後立刻自動登入，自動登入失敗就顯示「註冊成功！請用剛設定的密碼登入。」並切到登入分頁。現在「確認 email」關閉，很少走到這裡；PRO-017RA-Auth 開啟「確認 email」之後，**每一個新註冊**都會走到這裡（Supabase 對還沒確認的帳號回 `Email not confirmed`），使用者照提示登入只會看到英文錯誤，不知道要先到信箱點確認連結。
+  - 建議：`signUp` 成功但沒有 session（`data.session` 為 null，表示要確認 email）時不自動登入，直接說明「確認信已寄到 …，點信中的連結後再登入（也看看垃圾郵件匣）」；登入遇到 `Email not confirmed` 時顯示同樣的說明。`tests/unit/authFlowForms.test.js` 目前固定了現在的訊息，改的時候一起改。
+  - 順序：在 PRO-017RA-Auth 開啟「確認 email」之前完成。
 - [ ] **PRO-017RA-Auth**（擁有者）先完成 INFRA-101（Custom SMTP），再在 Supabase 開啟「確認 email」，並確認匿名登入維持關閉
   - 019 已於 2026-11-13 套用（見 Done 的 PRO-017RA）；這一步只能由擁有者在 Supabase Dashboard 做（agent 的工具改不到 Auth 設定）。
   - Authentication 設定裡（Email provider）開啟 Confirm email（畫面名稱以當時的 Dashboard 為準）。會影響**所有新使用者**的 email 註冊（要先收信確認才能登入）；開啟前確認註冊頁的提示與 email 範本（INFRA-101 的寄件人設定也相關）。Google 登入不受影響。
@@ -281,6 +287,12 @@
 ---
 
 ## Done
+
+- [x] **TEST-004** 補上幾乎沒有單元測試的小模組（擁有者 2026-11-26：「不用停 能做就一直做吧」）
+  - 起因：以 `vitest --coverage` 量 `pwa/js` 全部模組（原本設定只量 3 個檔案）：行覆蓋率 80.3%，`theme.js` 8%、`platform/share.js` 6%、`platform/badge.js` 與 `swUpdate.js` 0%、`authFlow.js` 42%。
+  - 只加測試、不改 app 程式：`theme.test.js`（主題與外觀、Pro 每日隨機主題、背景圖、Liquid Glass 反光：指標緩動、傾斜上限、觸控螢幕 280 ms、iOS Chrome 靜止、iOS 動作權限只問一次）、`platformShareBadge.test.js`（分享與剪貼簿退回、App 徽章、本機提醒）、`swUpdate.test.js`（註冊、首次安裝不顯示、每次更新一個重新整理橫幅）、`authFlowForms.test.js`（登入／註冊訊息、密碼顯示、Google 登入錯誤、忘記密碼與設定新密碼的對話框）。四個模組分別到 99%／100%／100%／100%，`authFlow.js` 到 100%；整體行覆蓋率 81.7%。
+  - `vitest.config.js` 的 coverage 改為 `pwa/js/**/*.js`，`npm run test:coverage` 才看得到全部模組。
+  - 發現：BUG-120（開啟「確認 email」後，註冊後的提示會誤導；需核准，見 Next）。
 
 - [x] **PS-260** 主題套組：10 個 3D 角色（男女各 5）與各自的房間、裝飾（使用者 2026-11-25：「接著請新增3D角色 需要至少10個不同的風格 男女各半 背景等物件也要有對應角色的整套設計 每次完成一個段落就請開PR 並merge避免任務中斷 也讓任何agent可以接手繼續開發 然後持續繼續開發 不用特別問我除非必要」）
   - 完成（2026-11-26，A–E 共 7 個 PR，v1.41.33–v1.42.0）。提案與分段：[`docs/ps-260-character-sets-proposal.md`](docs/ps-260-character-sets-proposal.md)。每段一個 PR，合併後才開始下一段；任何 agent 都可以從下一個未完成的段落接手。
