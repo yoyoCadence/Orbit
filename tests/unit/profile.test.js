@@ -120,6 +120,55 @@ describe('renderProfile: basic rendering', () => {
     expect(c.textContent).toContain('1234');
   });
 
+  it('counts the days since joining, for a guest\'s date and a signed-in account\'s timestamp (BUG-122)', () => {
+    const before = process.env.TZ;
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-01-31T12:00:00Z'));
+    try {
+      const shown = () => {
+        const container = makeContainer();
+        renderProfile(container);
+        const card = [...container.querySelectorAll('.stat-card')]
+          .find(element => element.querySelector('.stat-label')?.textContent === '使用天數');
+        const result = { days: card.querySelector('.stat-value').textContent, joined: container.querySelector('.profile-joined').textContent };
+        container.remove();
+        return result;
+      };
+      // A guest keeps the local date it was set up on, east and west of UTC
+      // (read as UTC midnight, it would be the day before in Los Angeles).
+      for (const zone of ['Asia/Taipei', 'America/Los_Angeles']) {
+        process.env.TZ = zone;
+        mockState.user = freshUser({ createdAt: '2026-01-01' });
+        expect(shown(), zone).toEqual({ days: '31', joined: '加入於 2026-01-01' });
+      }
+      process.env.TZ = 'Asia/Taipei';
+      // An account's created_at is a timestamp (microseconds, as Supabase sends
+      // it): its local date, west and east of UTC.
+      mockState.user = freshUser({ createdAt: '2026-01-01T20:30:00.123456+00:00' });
+      expect(shown()).toEqual({ days: '30', joined: '加入於 2026-01-02' });
+      process.env.TZ = 'America/Los_Angeles';
+      expect(shown()).toEqual({ days: '31', joined: '加入於 2026-01-01' });
+      // Missing or unreadable: today, at least one day.
+      mockState.user = freshUser({ createdAt: undefined });
+      expect(shown().days).toBe('1');
+      mockState.user = freshUser({ createdAt: 'not a date' });
+      expect(shown().days).toBe('1');
+      mockState.user = freshUser({ createdAt: '2026-13-45' });
+      expect(shown()).toEqual({ days: '1', joined: `加入於 ${new Date().toLocaleDateString('sv')}` });
+      // Days are calendar days: one hour after a DST change is no different.
+      process.env.TZ = 'America/Los_Angeles';
+      mockState.user = freshUser({ createdAt: '2026-03-01' });
+      for (const now of ['2026-03-31T07:30:00Z', '2026-03-31T08:30:00Z']) {
+        vi.setSystemTime(new Date(now));
+        expect(shown().days, now).toBe('31');
+      }
+    } finally {
+      vi.useRealTimers();
+      if (before === undefined) delete process.env.TZ;
+      else process.env.TZ = before;
+    }
+  });
+
   it('renders streak days', () => {
     mockState.user.streakDays = 12;
     const c = makeContainer();
