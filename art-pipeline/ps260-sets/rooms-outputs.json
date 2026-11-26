@@ -74,6 +74,78 @@
       "bytes": 1584,
       "sha256": "3909a40a7c7db4fe67179deb53098780b1ed1bdadb6d2571cada5716d46d241f"
     },
+    "assets/personal-space/v2/workspace/pixel/styles/cyber/background-night.png": {
+      "bytes": 74986,
+      "sha256": "26b9ea5b180d0f42381d96800498dd52fdc2a8ac3d6c05dc19fb8982a9e36526"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/cyber/background.png": {
+      "bytes": 76113,
+      "sha256": "4ed5d77b7b512e04d8a051b32b00fa491e550906afda4ac82043636c7e8867b5"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/cyber/props/corner-desk-night.png": {
+      "bytes": 5536,
+      "sha256": "15c51438bcc6424212ceaf6100963d108e40142c7bdd6f0ddcf2d563307bb5ad"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/cyber/props/corner-desk.png": {
+      "bytes": 5307,
+      "sha256": "76c090c59a3be85943338cbbb25a4133b959946db2ca2340ddf3742938f69a11"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/cyber/props/desk-lamp-night.png": {
+      "bytes": 589,
+      "sha256": "3a31ae1c7ad33f35e47a01629f19ad11a984b04639ecf70d3ccada141e7fcea4"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/cyber/props/desk-lamp.png": {
+      "bytes": 602,
+      "sha256": "390e7a921b79233bbaed942715ce93863cbe69f7b9ea4c7643af97f194357d67"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/cyber/props/dual-monitor-night.png": {
+      "bytes": 2237,
+      "sha256": "232c503bc0e67098782ffbc1ff037017a45f5f7f81f6a04908d17090b65daab1"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/cyber/props/dual-monitor.png": {
+      "bytes": 2388,
+      "sha256": "205cf6d000c9b6f253e4ee1dd3f30a432cfb2989812f18e3e4bb31ec46c71e85"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/cyber/props/office-chair-night.png": {
+      "bytes": 2937,
+      "sha256": "0d5272ba48b608abedf42e46626ac602ea9a9647ec2a55767f40e8fafb2275dd"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/cyber/props/office-chair.png": {
+      "bytes": 2707,
+      "sha256": "331e814ad3c7d0f6bc316ad0ead6b5ff6661c8f698b2410828e5a813c56c0b97"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/cyber/props/office-plant-night.png": {
+      "bytes": 3250,
+      "sha256": "81ac0ac45abcfd0f6dce36212965f5de69c34533a3f089f38c6d464113b5c745"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/cyber/props/office-plant.png": {
+      "bytes": 3815,
+      "sha256": "8e53ed3d31d8744c2c0011a6edc4552dbf3e6544731dca48ac562ed3cee70cc4"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/cyber/props/office-shelf-night.png": {
+      "bytes": 10846,
+      "sha256": "7365004272b95ad5a23a3c6490a1a5a793e8318eb95aee548242f4c439eb16fb"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/cyber/props/office-shelf.png": {
+      "bytes": 9109,
+      "sha256": "83888d035ca325490772eae56bedb76e0f8eae3e4a7d2c319443a1f60e366e1c"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/cyber/props/planning-board-night.png": {
+      "bytes": 4178,
+      "sha256": "8740c98bb6892b31441b145c2a899d62152770e5aa0379c602c0ff33470c170c"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/cyber/props/planning-board.png": {
+      "bytes": 4083,
+      "sha256": "88effa02365e19244ed0dca853e3029b09f64f2a5716128638e8644b927e730a"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/cyber/props/single-monitor-night.png": {
+      "bytes": 1516,
+      "sha256": "3078655c48079ac528151b45ca8456b96aa9d633b62c991e722d4bc1ce223384"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/cyber/props/single-monitor.png": {
+      "bytes": 1621,
+      "sha256": "8c4063d30d6909973e716f67f202669f767f830fe9e1cd809cb69aa1e69f9db3"
+    },
     "assets/personal-space/v2/workspace/pixel/styles/dojo/background-night.png": {
       "bytes": 84034,
       "sha256": "850dcf3532a1d2d712ab5d5a3b93ca50f33e42997e6e916173f549f1e2c04e47"
@@ -145,6 +217,78 @@
     "assets/personal-space/v2/workspace/pixel/styles/dojo/props/single-monitor.png": {
       "bytes": 1575,
       "sha256": "81585f18cc868d5bc83bd9e3ed8a2915a07e209a6c97d8e297aecaefc26f659e"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/greenhouse/background-night.png": {
+      "bytes": 82820,
+      "sha256": "618d502c8d50e9423a580d692fc0d222a9e865f6dd8443ace8af8d7a4751086d"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/greenhouse/background.png": {
+      "bytes": 89577,
+      "sha256": "6b423f4d081ae367e3841a5362fe32be372b3830598400454fd54a9ad3f4c6a0"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/greenhouse/props/corner-desk-night.png": {
+      "bytes": 5978,
+      "sha256": "36717ea35f14cf56ed2d6618ac979e432cd38fcb92c7ba4275d33d2d15e8e718"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/greenhouse/props/corner-desk.png": {
+      "bytes": 5858,
+      "sha256": "7d3bbc06ae91c4b8df730d7b10ca7beb2cc311bbfd6b63ebcf1b4f3034d54992"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/greenhouse/props/desk-lamp-night.png": {
+      "bytes": 632,
+      "sha256": "8f234ec7ac5c480cce77cde91dfbca59230fcb13fb480ddbb960f9bc032b3472"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/greenhouse/props/desk-lamp.png": {
+      "bytes": 627,
+      "sha256": "14603a5f8c67cfe11444133c10f7a9a1ac8c687670db5b0c6ff1cf2b831dfb76"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/greenhouse/props/dual-monitor-night.png": {
+      "bytes": 2297,
+      "sha256": "785ee9629e39ed1a15fd3a882a5ba7f153f58e54515cc7f3e34f850047905bb7"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/greenhouse/props/dual-monitor.png": {
+      "bytes": 2447,
+      "sha256": "f2aa4d34135b42dce3e3548c84e08467ac65eb0010bde3a8387609aa924bdd92"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/greenhouse/props/office-chair-night.png": {
+      "bytes": 2943,
+      "sha256": "1b77d1fe3f2fc10fcd76c1cb1baf408faef2170c29b49783c39d42cb8b635f04"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/greenhouse/props/office-chair.png": {
+      "bytes": 2767,
+      "sha256": "f022369a4c99e55f2d39c9d5eab75b32d48840013b93ed6955eb726c889e3445"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/greenhouse/props/office-plant-night.png": {
+      "bytes": 3435,
+      "sha256": "6e809783c2072328830ce411a8a9ec29b94ffa6744d0e9115dc3cacb7eeb309d"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/greenhouse/props/office-plant.png": {
+      "bytes": 3724,
+      "sha256": "c25f7cbb7706cf68b06d4f9e0cbecd280457401c07a8d882f787ad1df6f313a2"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/greenhouse/props/office-shelf-night.png": {
+      "bytes": 12690,
+      "sha256": "be862e1605c796d4f1542f3a1a8f1ce5d0abb9143fd56d4a4bbeafe623239cb6"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/greenhouse/props/office-shelf.png": {
+      "bytes": 9874,
+      "sha256": "0f50211e8b167985e914969151153385a775692e63866f744a40551864faf623"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/greenhouse/props/planning-board-night.png": {
+      "bytes": 4086,
+      "sha256": "9adb7921123bbf6be588c890af1bdbfb7567de164b51e1b2d045f81945162097"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/greenhouse/props/planning-board.png": {
+      "bytes": 3685,
+      "sha256": "26f2482559ee9bf1243c22928e36b2b409639bb98c69323d55667bf53de3d33f"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/greenhouse/props/single-monitor-night.png": {
+      "bytes": 1647,
+      "sha256": "9e473edc7b7ec46dd19257e601c6e411c41be2bcc4ad9be7616e992b6e2de7fa"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/greenhouse/props/single-monitor.png": {
+      "bytes": 1571,
+      "sha256": "f53674642e5f7c4b9568b2554f783ac357d11e0852bb697735875ffe95ac77a1"
     },
     "assets/personal-space/v2/workspace/pixel/styles/jungle/background-night.png": {
       "bytes": 79386,
@@ -290,6 +434,78 @@
       "bytes": 1548,
       "sha256": "4669376bc0b48ba937289434438cfbc9c64a3ab83dfa7d7ff25d40453680c594"
     },
+    "assets/personal-space/v2/workspace/pixel/styles/ocean/background-night.png": {
+      "bytes": 86697,
+      "sha256": "8673383cea267ade2b1cd77788dfe879060440e60f1a42799dd765f6e0bf5e43"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/ocean/background.png": {
+      "bytes": 86505,
+      "sha256": "9f918891dc849f003bf13236a2fe416ddf48b51eb7dc92f94fb59191f2604338"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/ocean/props/corner-desk-night.png": {
+      "bytes": 5438,
+      "sha256": "88e6eae79a21d19a0082a17fa8798a5b01a035e3892267aec05bbc3163575fb4"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/ocean/props/corner-desk.png": {
+      "bytes": 5273,
+      "sha256": "8c4de4f90dbf5fbfc8cb5a0ccf8d5e147d9a36434fd5dbf180cc00d532134e71"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/ocean/props/desk-lamp-night.png": {
+      "bytes": 607,
+      "sha256": "a4c977c6ea6deff107a12a7046bef46d371d091f780472f6d4b5d13b640c7b7b"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/ocean/props/desk-lamp.png": {
+      "bytes": 607,
+      "sha256": "f84a61fdea2bda8f97b9668843f2443a7f23eafcf5350e12263f2ee03c4723ff"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/ocean/props/dual-monitor-night.png": {
+      "bytes": 2240,
+      "sha256": "f8232a928d72ba048d839aaa79e9ca95dca0895a368ccb441fa063ed31e34ea2"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/ocean/props/dual-monitor.png": {
+      "bytes": 2342,
+      "sha256": "1940a841ca61933e115690ebe50f59a454e114caeb18504d00930fe049b94da9"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/ocean/props/office-chair-night.png": {
+      "bytes": 2688,
+      "sha256": "d793d5d6ace4dbc84238b9a86c85c823c54cc3d1ad043bd214f390018bb8f684"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/ocean/props/office-chair.png": {
+      "bytes": 2461,
+      "sha256": "a54c89e74d4afc5ec1ded256cc6c98d1f5ef26c6f437aa01f8132210441961e4"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/ocean/props/office-plant-night.png": {
+      "bytes": 3133,
+      "sha256": "c6675588d4cfb8844e8d7075b34ca0916e6836e8e80a2132668c1c962279d638"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/ocean/props/office-plant.png": {
+      "bytes": 3857,
+      "sha256": "5ddbfbcf1fe7dcfa82945c04ae2348a47bed90123f71b8dc1fda5b369019c9ce"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/ocean/props/office-shelf-night.png": {
+      "bytes": 11235,
+      "sha256": "072ec1a21b1163ae27343890f5683be5c4345d5da34c72f41e78a68b0ab7eccd"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/ocean/props/office-shelf.png": {
+      "bytes": 9229,
+      "sha256": "18dca8ffb6661d9222a290c193534a76f117539f9db9c497714b770db9b63073"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/ocean/props/planning-board-night.png": {
+      "bytes": 4311,
+      "sha256": "325691f700881081666fac7e6cf86186e9c5f9753a43d946925a4f659bc352f3"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/ocean/props/planning-board.png": {
+      "bytes": 4118,
+      "sha256": "36680bb2f2c2558d30b209e7ca6e015ca2265a440abda9678b847460080ed81b"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/ocean/props/single-monitor-night.png": {
+      "bytes": 1599,
+      "sha256": "b07fb3987773f489767eeca8f96d7591c10ce3f05c2fb6c5c8dc5f6a21b62cb5"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/ocean/props/single-monitor.png": {
+      "bytes": 1563,
+      "sha256": "a61ea2df2ac43dbb7d7f85b9ffc8d3c43cc6cf0e4198a93927676c3c66af9931"
+    },
     "assets/personal-space/v2/workspace/pixel/styles/spacestation/background-night.png": {
       "bytes": 95756,
       "sha256": "adb8303cc055f19e8adc131ea42fa1dc2520553384cebddb7c03b54749fb5262"
@@ -361,6 +577,150 @@
     "assets/personal-space/v2/workspace/pixel/styles/spacestation/props/single-monitor.png": {
       "bytes": 1659,
       "sha256": "81de1048e116f425141d3d47556b1f97dd38a751c08778e437f6e459822a1e20"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/stage/background-night.png": {
+      "bytes": 93329,
+      "sha256": "39508255b6036c11ab9cea8623683572046ea1e7df914f63cd11ec818a4022b2"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/stage/background.png": {
+      "bytes": 95445,
+      "sha256": "4307c35cdb4acfadddf2aa0cbaa0aa7b1adf42c84a2118a578b2f4380688c51e"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/stage/props/corner-desk-night.png": {
+      "bytes": 5753,
+      "sha256": "6b5580ca88967a3cba9ea5487f08f7ce3c94193b73cf8c1853de31cd1672bcf2"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/stage/props/corner-desk.png": {
+      "bytes": 5492,
+      "sha256": "7d19e1ffce362fe362f39ece899a6cfc6449ef396558675a6df359e85589362d"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/stage/props/desk-lamp-night.png": {
+      "bytes": 627,
+      "sha256": "b0ee73b454a045946197c5320f7878a25c173eedc296e401b5b00b5b28496d90"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/stage/props/desk-lamp.png": {
+      "bytes": 626,
+      "sha256": "3c9782f4c7e3032e832fb59f772ee08efb93ede43def28dc744fb721d2f9240f"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/stage/props/dual-monitor-night.png": {
+      "bytes": 2313,
+      "sha256": "64523d01076194e88428fbeedd896ba68c1a155399d1aaa34f67cbb980b882f1"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/stage/props/dual-monitor.png": {
+      "bytes": 2466,
+      "sha256": "1ec0c9cbc03a6fe009372fe0df1ec04a903e703bf534c7a27e929afaafcc329f"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/stage/props/office-chair-night.png": {
+      "bytes": 2868,
+      "sha256": "970222200f8eaea01c89491d9faa0cba54b1e7a232e105a081541e34705a562e"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/stage/props/office-chair.png": {
+      "bytes": 2769,
+      "sha256": "d5bf92c88a3f3837431724a5cae59bf97ebb62725927b82edee045dd6867d739"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/stage/props/office-plant-night.png": {
+      "bytes": 3489,
+      "sha256": "ee5cb6d42435cd31e5966133afca0e3cb43f06cf659d319cfd081fe75765d763"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/stage/props/office-plant.png": {
+      "bytes": 3906,
+      "sha256": "6dec4015975dcc3a49eac3f4dac2ca14c87695849c64463a78ff3d901b972607"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/stage/props/office-shelf-night.png": {
+      "bytes": 11518,
+      "sha256": "07aaabca1d4541853d5469a8a7e848863207bce9b3bc9c8b75319cf82fda4b38"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/stage/props/office-shelf.png": {
+      "bytes": 9340,
+      "sha256": "a33d36a0d20cc2dd21d1a0a861e5fcee94f23166421d1b7fcb31b58c4cd6a095"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/stage/props/planning-board-night.png": {
+      "bytes": 3961,
+      "sha256": "b7b47288b9a9020f9560ceb55a4f6b7c043aacf28614e7ca0f96d66ecb19ef1e"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/stage/props/planning-board.png": {
+      "bytes": 3792,
+      "sha256": "108b508dddeb55e7239ec3e1644f87fb1b2ff1b6f7c4aca78566939e654cf262"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/stage/props/single-monitor-night.png": {
+      "bytes": 1623,
+      "sha256": "d46584c190120d412be12fe0b6d66ed7709a1bb1854eaf28bb98ae54901f7401"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/stage/props/single-monitor.png": {
+      "bytes": 1618,
+      "sha256": "c9aea93dc05726a41a1494c1f90a43e4d72f014831599fb789f4a74ee427c6f2"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/wizard/background-night.png": {
+      "bytes": 89712,
+      "sha256": "a2c14b1d0aec32cecaa324cc002942b5d8f68a5c582e1b9dc34865046345a6c4"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/wizard/background.png": {
+      "bytes": 94279,
+      "sha256": "5df0cd0d6a2ca33e31a36c7c50d258145b5f9864f3391c75870e3c7fdf0a3bff"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/wizard/props/corner-desk-night.png": {
+      "bytes": 5703,
+      "sha256": "97c66584f18c0597fe2cbee41cb05bab42e7a823553bb05d3590353bdb5de780"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/wizard/props/corner-desk.png": {
+      "bytes": 5518,
+      "sha256": "fc2735783ea3b11e87864326eda892e3cca9054179ea103ea07140a88613db94"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/wizard/props/desk-lamp-night.png": {
+      "bytes": 589,
+      "sha256": "2aa1284eb555c646b0e928750b932093175d4abb2d6053a7324f5659aa9722cc"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/wizard/props/desk-lamp.png": {
+      "bytes": 578,
+      "sha256": "91a3fb96e41e6b9a1803865458544e3f8b771e89a667a2f99c1e250524307258"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/wizard/props/dual-monitor-night.png": {
+      "bytes": 2326,
+      "sha256": "82c0e2534976858cce2e8890166913023e16fd428627124ec804bc31c22ee7bf"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/wizard/props/dual-monitor.png": {
+      "bytes": 2237,
+      "sha256": "e741d889bced54bb3497970d1f8b915e798ea3b99e4e76430a7fa708ba81c3a4"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/wizard/props/office-chair-night.png": {
+      "bytes": 2529,
+      "sha256": "bac4076541abe7c6bd45caa40712fc04d03753849c37c4328144c0fe27562a1f"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/wizard/props/office-chair.png": {
+      "bytes": 2454,
+      "sha256": "40d37c4d051d07a4653e2738f8a068271b25c024f7878fe4efdb848997950384"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/wizard/props/office-plant-night.png": {
+      "bytes": 3180,
+      "sha256": "6d5019dd289cee97072d11d874760408234cbe6108cfff83249866294f743ab7"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/wizard/props/office-plant.png": {
+      "bytes": 3828,
+      "sha256": "466508649829311e748cc62af9d0c7b9f2d5663d7e63876d81acb5f70339d429"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/wizard/props/office-shelf-night.png": {
+      "bytes": 10941,
+      "sha256": "edca92323bdd89970239feaca35fb671d60f05ba24acb79593284b2fe2f6a174"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/wizard/props/office-shelf.png": {
+      "bytes": 9257,
+      "sha256": "68fa11ac2307acc546abfd13543a6c099c71c75bf66fe841807820252ba4452f"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/wizard/props/planning-board-night.png": {
+      "bytes": 4239,
+      "sha256": "ea00e6bf04a3772727d006c8d12997e36b521e462522fd029f63dddb7cd83be6"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/wizard/props/planning-board.png": {
+      "bytes": 3964,
+      "sha256": "a2de28a87534244ca8b8e6ef949c0be4bcafbc4a5467a60cf8a872da922b026e"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/wizard/props/single-monitor-night.png": {
+      "bytes": 1461,
+      "sha256": "74f6b90b367cdd9320de638b4778a5810f4f583d8e60979a76b06760120c905b"
+    },
+    "assets/personal-space/v2/workspace/pixel/styles/wizard/props/single-monitor.png": {
+      "bytes": 1603,
+      "sha256": "9bcef8c0fb073eed5864a5f064287fc60409b1722ce5d64718dd089a7fa9fffc"
     },
     "assets/personal-space/v2/workspace/styles/bistro/background-night.webp": {
       "bytes": 91210,
@@ -434,6 +794,78 @@
       "bytes": 16177,
       "sha256": "361ec651ff4e5e12e813908c3014bdf17fc715e07497385968cfc708a42ba174"
     },
+    "assets/personal-space/v2/workspace/styles/cyber/background-night.webp": {
+      "bytes": 42842,
+      "sha256": "f71e53538a79587a6dd179b12b4cb04ee3ed9a286cf6af63e835e45c3d3b74d9"
+    },
+    "assets/personal-space/v2/workspace/styles/cyber/background.webp": {
+      "bytes": 53028,
+      "sha256": "01ccd29169e1ca463a6be33b112d4a1847e87fcb7e0ff1dda9a8158c0c3d4d3f"
+    },
+    "assets/personal-space/v2/workspace/styles/cyber/props/corner-desk-night.png": {
+      "bytes": 68162,
+      "sha256": "948447e64100b0e8ff22c57b602578eb6e7e00e4564ea7cfb2416ad5279dd0d3"
+    },
+    "assets/personal-space/v2/workspace/styles/cyber/props/corner-desk.png": {
+      "bytes": 59575,
+      "sha256": "94981847fc2a4ccf821b93d79663aa325a6e6a5c49f20367f618675b454e8965"
+    },
+    "assets/personal-space/v2/workspace/styles/cyber/props/desk-lamp-night.png": {
+      "bytes": 5242,
+      "sha256": "e4fc5d4b79f57c2a49ad5d5e6a6b9b434b632a8325f826e658ab2cdb970ac2bd"
+    },
+    "assets/personal-space/v2/workspace/styles/cyber/props/desk-lamp.png": {
+      "bytes": 5454,
+      "sha256": "6ae02ecb9e76c5e5f5061b91dc487e9559979c46271a51e8bd9c637dd34aef34"
+    },
+    "assets/personal-space/v2/workspace/styles/cyber/props/dual-monitor-night.png": {
+      "bytes": 24181,
+      "sha256": "1cc44039769c99b6e559f59e4b5c72c59d3f881faaa618ec53556ef2996128cb"
+    },
+    "assets/personal-space/v2/workspace/styles/cyber/props/dual-monitor.png": {
+      "bytes": 24671,
+      "sha256": "4c47e2fd0d7edb977a63a22794170c4a3ba73333f5de3bd29aff055c9193dffc"
+    },
+    "assets/personal-space/v2/workspace/styles/cyber/props/office-chair-night.png": {
+      "bytes": 28337,
+      "sha256": "478aa65784862db621f3a6d9879dd254af7ca6ba25b4e6e137218d2406aadb32"
+    },
+    "assets/personal-space/v2/workspace/styles/cyber/props/office-chair.png": {
+      "bytes": 21350,
+      "sha256": "05027fe122749dd491f11dcd09cae2c790190676c7eee3929fbfe92ce82a0347"
+    },
+    "assets/personal-space/v2/workspace/styles/cyber/props/office-plant-night.png": {
+      "bytes": 28232,
+      "sha256": "526cc04f3637fc4b0e2572a9e649ac5b04955a4f44b1b62308557abbebbfe0b8"
+    },
+    "assets/personal-space/v2/workspace/styles/cyber/props/office-plant.png": {
+      "bytes": 50854,
+      "sha256": "79cf23437912f8a1edc85729a0ff298dfaa9f2e20af4a3cb6b25b0c489c2f6f5"
+    },
+    "assets/personal-space/v2/workspace/styles/cyber/props/office-shelf-night.png": {
+      "bytes": 153401,
+      "sha256": "c238dd32933d86dd89462858eb339069f22507de317494c29b19e146d8ab8543"
+    },
+    "assets/personal-space/v2/workspace/styles/cyber/props/office-shelf.png": {
+      "bytes": 91500,
+      "sha256": "a5ded9e9c5f8aa94284a30b58dd74866579a37c05992919915c8360450c98761"
+    },
+    "assets/personal-space/v2/workspace/styles/cyber/props/planning-board-night.png": {
+      "bytes": 49417,
+      "sha256": "37fca702709c4c31c18b69be9e46e17f41c52a36508e3e728158532232430b0f"
+    },
+    "assets/personal-space/v2/workspace/styles/cyber/props/planning-board.png": {
+      "bytes": 45401,
+      "sha256": "2c68884f0f0b953d5eef93d961f482dea83e62306fe77524c888d2fe7c3ee8a1"
+    },
+    "assets/personal-space/v2/workspace/styles/cyber/props/single-monitor-night.png": {
+      "bytes": 14639,
+      "sha256": "069d58b450f3f57f607c8b2357868fa4740eea8386cfabae8faa2743094ab3e5"
+    },
+    "assets/personal-space/v2/workspace/styles/cyber/props/single-monitor.png": {
+      "bytes": 15018,
+      "sha256": "f04663ad7f1703812038758d6ba66d8629a37d7ca392dd17ebb840980913efce"
+    },
     "assets/personal-space/v2/workspace/styles/dojo/background-night.webp": {
       "bytes": 83070,
       "sha256": "239add01ca0938c5b823e9817c3b6f8f73f3663753fd9d8a025ee97c46fb10de"
@@ -505,6 +937,78 @@
     "assets/personal-space/v2/workspace/styles/dojo/props/single-monitor.png": {
       "bytes": 15923,
       "sha256": "4b0f02c4d87bddc0534d482d1c4ad8326e8e591421cd89f6665eb7eb98bc42ad"
+    },
+    "assets/personal-space/v2/workspace/styles/greenhouse/background-night.webp": {
+      "bytes": 85442,
+      "sha256": "56b4d4c8244696d3954b7f7a0a6457cd586598e67f8a1e760b22ebd8c8da7d35"
+    },
+    "assets/personal-space/v2/workspace/styles/greenhouse/background.webp": {
+      "bytes": 74470,
+      "sha256": "01c0081d6a9d136bb128987bc9e3370130835a2e3495cf4a6f43c59023851f01"
+    },
+    "assets/personal-space/v2/workspace/styles/greenhouse/props/corner-desk-night.png": {
+      "bytes": 76513,
+      "sha256": "54dc2a3f5e7a10c423dddbab1587d0f0c54efe7bfd8d7ba37794858df93c55b7"
+    },
+    "assets/personal-space/v2/workspace/styles/greenhouse/props/corner-desk.png": {
+      "bytes": 63234,
+      "sha256": "b0ed6bf9ddafa04139a4f1192654a3b9939a9611d4b00cc58598417cd23f5926"
+    },
+    "assets/personal-space/v2/workspace/styles/greenhouse/props/desk-lamp-night.png": {
+      "bytes": 6073,
+      "sha256": "e820871d7ebe0929ac6de72b2803881e8c016da4d578a5225307777724609beb"
+    },
+    "assets/personal-space/v2/workspace/styles/greenhouse/props/desk-lamp.png": {
+      "bytes": 5984,
+      "sha256": "9cddecf028f41c76cd4d507616f3a544c62509069909a7b4669d15b94eed80dc"
+    },
+    "assets/personal-space/v2/workspace/styles/greenhouse/props/dual-monitor-night.png": {
+      "bytes": 25987,
+      "sha256": "53b8602b80d0cd9139325254a928066eb8850310c5c4fc0e25c3608297c2f617"
+    },
+    "assets/personal-space/v2/workspace/styles/greenhouse/props/dual-monitor.png": {
+      "bytes": 26087,
+      "sha256": "3df7d28506313d93a7f9fcc9f179367d9cd0ee120f8a851d1773c00d2be69eaa"
+    },
+    "assets/personal-space/v2/workspace/styles/greenhouse/props/office-chair-night.png": {
+      "bytes": 28425,
+      "sha256": "6d8d662dc41bcfb18ea2fa2980fa0fd41e77033f0e99a4236ebb9afbadceffaf"
+    },
+    "assets/personal-space/v2/workspace/styles/greenhouse/props/office-chair.png": {
+      "bytes": 24709,
+      "sha256": "6474f902a78046556b2d008bb0e353de8210d605e0fe42b5b8ec97c44fdfd004"
+    },
+    "assets/personal-space/v2/workspace/styles/greenhouse/props/office-plant-night.png": {
+      "bytes": 29614,
+      "sha256": "3a591f777b2c5cabe41b6c960b9a974a7e918a0590c95c7bf52eaae7747aed85"
+    },
+    "assets/personal-space/v2/workspace/styles/greenhouse/props/office-plant.png": {
+      "bytes": 44488,
+      "sha256": "c5ec14ee92cf7837c81e34a8f011e1df826520d2b8e5d1ec7241063d450fa23c"
+    },
+    "assets/personal-space/v2/workspace/styles/greenhouse/props/office-shelf-night.png": {
+      "bytes": 168530,
+      "sha256": "3f5d5e1bc756db186a879168ed45d7bb8d5765c860e34506755940a0492f4fb5"
+    },
+    "assets/personal-space/v2/workspace/styles/greenhouse/props/office-shelf.png": {
+      "bytes": 92314,
+      "sha256": "0a84169dbcaa93b3c793b720aa5b984468e30c7e66456bbb007bef920579a80b"
+    },
+    "assets/personal-space/v2/workspace/styles/greenhouse/props/planning-board-night.png": {
+      "bytes": 47352,
+      "sha256": "d9059cfb23296ab24fc6a2abd3efb3d9ccf76a645045a17bfcdd1b02389936b8"
+    },
+    "assets/personal-space/v2/workspace/styles/greenhouse/props/planning-board.png": {
+      "bytes": 39574,
+      "sha256": "3296844bc913ecaa4ed17959dc82f0eaadb2764eb1ad12c76ec0dda949cd9925"
+    },
+    "assets/personal-space/v2/workspace/styles/greenhouse/props/single-monitor-night.png": {
+      "bytes": 16026,
+      "sha256": "a3a3678deb0ec75decdaf6ddccb2dddd06c011fff809d81b3d074ccbc1e73d41"
+    },
+    "assets/personal-space/v2/workspace/styles/greenhouse/props/single-monitor.png": {
+      "bytes": 16088,
+      "sha256": "b65876649242648dc49ba168982b290544f1af36b057c5bbee60454880afd5af"
     },
     "assets/personal-space/v2/workspace/styles/jungle/background-night.webp": {
       "bytes": 63876,
@@ -650,6 +1154,78 @@
       "bytes": 14852,
       "sha256": "2f5d8e946c93bbb61ca9ad3f88258c6fcc540ff715dbbb4d745577a73a056731"
     },
+    "assets/personal-space/v2/workspace/styles/ocean/background-night.webp": {
+      "bytes": 82328,
+      "sha256": "e0cb0f0e5766c6edd455dc16176d98b724e00919bf829fd53ec36f01ecbc0d5a"
+    },
+    "assets/personal-space/v2/workspace/styles/ocean/background.webp": {
+      "bytes": 90594,
+      "sha256": "01e214375ebf5deb25bac14db65d550985e3ca07df1b53b2b04cbbf1a99c805f"
+    },
+    "assets/personal-space/v2/workspace/styles/ocean/props/corner-desk-night.png": {
+      "bytes": 60965,
+      "sha256": "6972a644ac3372f54d50ef2f9b7a8b27101100909d50fecaecd461a942e9a679"
+    },
+    "assets/personal-space/v2/workspace/styles/ocean/props/corner-desk.png": {
+      "bytes": 61004,
+      "sha256": "163a241569da6212bb5e99f1adc81b9c0de1e1d2fc0aaba0443c10261da6bef9"
+    },
+    "assets/personal-space/v2/workspace/styles/ocean/props/desk-lamp-night.png": {
+      "bytes": 5571,
+      "sha256": "84b9c4becb937c97378115020da73fc482ce4853df939f28d67d752bc1574c8f"
+    },
+    "assets/personal-space/v2/workspace/styles/ocean/props/desk-lamp.png": {
+      "bytes": 5821,
+      "sha256": "4510eef6a0410cc02c59ed50f3d58eee536750c16e1c0c26d0feeb342bd8e369"
+    },
+    "assets/personal-space/v2/workspace/styles/ocean/props/dual-monitor-night.png": {
+      "bytes": 24764,
+      "sha256": "092517a77c50d12df6c689fefbe9761587d3d6f99017490ce3f7f11a274803d9"
+    },
+    "assets/personal-space/v2/workspace/styles/ocean/props/dual-monitor.png": {
+      "bytes": 25047,
+      "sha256": "63b2eff3552f722e443e9bfafb27c4fad24e4fb4492d0bf19d1dd1c3a0842350"
+    },
+    "assets/personal-space/v2/workspace/styles/ocean/props/office-chair-night.png": {
+      "bytes": 21510,
+      "sha256": "368fb2b8f5a2f9ec1416de9a53ce056028594bf6b63a16de55cf4372b4fa0a2a"
+    },
+    "assets/personal-space/v2/workspace/styles/ocean/props/office-chair.png": {
+      "bytes": 22325,
+      "sha256": "dac9bc8fe91e7e39c4cba1120401e70f50fb8f1469dcfdeeae51c6adfa3e5a04"
+    },
+    "assets/personal-space/v2/workspace/styles/ocean/props/office-plant-night.png": {
+      "bytes": 27733,
+      "sha256": "85dab024bbe43b2f6be43c7a4ddf57fe55083a663c9b5a234cf968dda859e904"
+    },
+    "assets/personal-space/v2/workspace/styles/ocean/props/office-plant.png": {
+      "bytes": 54764,
+      "sha256": "4ba5f38cb4da1e7f217a980175351cbf10d737a26764a5a71efa942e1e6e903d"
+    },
+    "assets/personal-space/v2/workspace/styles/ocean/props/office-shelf-night.png": {
+      "bytes": 135830,
+      "sha256": "bc953d9b71ded7eadb000105c75b3a943163c2275fcbdb861983f7c35235dc65"
+    },
+    "assets/personal-space/v2/workspace/styles/ocean/props/office-shelf.png": {
+      "bytes": 97316,
+      "sha256": "45a2284ce25cf8fba592f644870bde0258ac83322f75cb9b93a02ec23d281e30"
+    },
+    "assets/personal-space/v2/workspace/styles/ocean/props/planning-board-night.png": {
+      "bytes": 49990,
+      "sha256": "cdd883209873589e937a91ef400d748b93181579044b2d1352413039ebc849f9"
+    },
+    "assets/personal-space/v2/workspace/styles/ocean/props/planning-board.png": {
+      "bytes": 45090,
+      "sha256": "ddd906d226b7f22e595e9012722fc6851cc14fd605c823c02b4ae2772a9577c4"
+    },
+    "assets/personal-space/v2/workspace/styles/ocean/props/single-monitor-night.png": {
+      "bytes": 15233,
+      "sha256": "f6a9d57c544a87b9ee6a1c540f3316b29bcab5b8d4e0f6aaea8830bc16d69d3e"
+    },
+    "assets/personal-space/v2/workspace/styles/ocean/props/single-monitor.png": {
+      "bytes": 15406,
+      "sha256": "6bcd017c9cc925d0ce381dd4731f733716febbb804c7b98bfc4d7477ac24233c"
+    },
     "assets/personal-space/v2/workspace/styles/spacestation/background-night.webp": {
       "bytes": 76634,
       "sha256": "4b865db32aa203133fa16ec82ff47ea24026e0f1d160d8df34a33ebca68a37fc"
@@ -721,6 +1297,150 @@
     "assets/personal-space/v2/workspace/styles/spacestation/props/single-monitor.png": {
       "bytes": 16218,
       "sha256": "7033c4a698f5fc3e2078e9efd1a890980703c99d909c9bc9b63ade34455ad839"
+    },
+    "assets/personal-space/v2/workspace/styles/stage/background-night.webp": {
+      "bytes": 66556,
+      "sha256": "26a6a5c762b353996728e2ae9d6a1ee1f04f8bf833cdd088871fc7de84f85b7e"
+    },
+    "assets/personal-space/v2/workspace/styles/stage/background.webp": {
+      "bytes": 46484,
+      "sha256": "d8d73f99cfe8f7b85604c2a7215f30a69b642c67bf035affea5bc2be757a69f1"
+    },
+    "assets/personal-space/v2/workspace/styles/stage/props/corner-desk-night.png": {
+      "bytes": 65099,
+      "sha256": "87a110a7badcac9399713ef6e87df24153aaacf8456bc71e63e28856aaad7721"
+    },
+    "assets/personal-space/v2/workspace/styles/stage/props/corner-desk.png": {
+      "bytes": 56263,
+      "sha256": "bc1f7d95f33f24ae5aba4c2111768fe9d8cc828c63dbacc6f61f702fab352946"
+    },
+    "assets/personal-space/v2/workspace/styles/stage/props/desk-lamp-night.png": {
+      "bytes": 6164,
+      "sha256": "bdfd90f60b87400a8e49bd2c163dadc3716fa299cf5887bd6471ab2b74b75f42"
+    },
+    "assets/personal-space/v2/workspace/styles/stage/props/desk-lamp.png": {
+      "bytes": 6087,
+      "sha256": "bb6286cce6c66ce17c9716ae19119e89c8d9e7b5003a1993a07faf9f9f6d06aa"
+    },
+    "assets/personal-space/v2/workspace/styles/stage/props/dual-monitor-night.png": {
+      "bytes": 26230,
+      "sha256": "1a2186e133fa97a641101120526ee6ae8dd1f2ecd8d0a95ef913a483b42c633c"
+    },
+    "assets/personal-space/v2/workspace/styles/stage/props/dual-monitor.png": {
+      "bytes": 26255,
+      "sha256": "d5abbb5410dc60ebc93fcfba498cc89a194ca80d3d7167a1e6efe7c9243c942b"
+    },
+    "assets/personal-space/v2/workspace/styles/stage/props/office-chair-night.png": {
+      "bytes": 25612,
+      "sha256": "b7ff2aa5dd7b04e703f181bfab0ae291e609926b11e3c87a83f0d53cb6f9340e"
+    },
+    "assets/personal-space/v2/workspace/styles/stage/props/office-chair.png": {
+      "bytes": 24167,
+      "sha256": "b4227902ae86ec5a9d4961859d325dbd43bc82f5d4abb230deaea6f49ce6e7ac"
+    },
+    "assets/personal-space/v2/workspace/styles/stage/props/office-plant-night.png": {
+      "bytes": 30669,
+      "sha256": "966cf2a25909810047553b9824e0048ac1b5d884e9f475f5d2e3aeb411624bdd"
+    },
+    "assets/personal-space/v2/workspace/styles/stage/props/office-plant.png": {
+      "bytes": 48563,
+      "sha256": "2222021c53c6de6b404372bf40e835045ec9194882909bbc233bcd7c3b841308"
+    },
+    "assets/personal-space/v2/workspace/styles/stage/props/office-shelf-night.png": {
+      "bytes": 113309,
+      "sha256": "c903fdb2ce2dfa13dc28eb107c6e8e8990c59a75429c943cad8bb103abbcab68"
+    },
+    "assets/personal-space/v2/workspace/styles/stage/props/office-shelf.png": {
+      "bytes": 87092,
+      "sha256": "b20bac517bf6e1cd407a1a393e41b810188107f818d536f440ad8485d212402e"
+    },
+    "assets/personal-space/v2/workspace/styles/stage/props/planning-board-night.png": {
+      "bytes": 46106,
+      "sha256": "a92dc9d3590c6cee261a8150f6c558ece873cbd52b6779c3aad642bca2d49318"
+    },
+    "assets/personal-space/v2/workspace/styles/stage/props/planning-board.png": {
+      "bytes": 38687,
+      "sha256": "79f9f06cdb8c26701e52c9128dd779f220caad40e35af014cd3efb0b4e2246ea"
+    },
+    "assets/personal-space/v2/workspace/styles/stage/props/single-monitor-night.png": {
+      "bytes": 16312,
+      "sha256": "55b79914876abdff36133d43f92ca46f153a55353dc39f37417cd79518f99c6e"
+    },
+    "assets/personal-space/v2/workspace/styles/stage/props/single-monitor.png": {
+      "bytes": 16440,
+      "sha256": "d24b1df7bbf41b345e7fb0bca3e1f148e81f822e87be44ecb046543fec1c38f1"
+    },
+    "assets/personal-space/v2/workspace/styles/wizard/background-night.webp": {
+      "bytes": 60130,
+      "sha256": "f5a43a7cd0628a910d4fc73a70cc395f690d51da0f781b850c0dd9f34a3dcbb0"
+    },
+    "assets/personal-space/v2/workspace/styles/wizard/background.webp": {
+      "bytes": 77550,
+      "sha256": "d7aae2ef4a997fea98d3ae62b0edfe5e6c190742759ffe6116a37cb5303205ca"
+    },
+    "assets/personal-space/v2/workspace/styles/wizard/props/corner-desk-night.png": {
+      "bytes": 64002,
+      "sha256": "f464c67e4b344aad0a712087105d97a78c7813144ede4b96af41f23da85b5107"
+    },
+    "assets/personal-space/v2/workspace/styles/wizard/props/corner-desk.png": {
+      "bytes": 63570,
+      "sha256": "2ec5aeee72c6c18765e9ca39e8f2927241e55193101690c4b1496014316b434d"
+    },
+    "assets/personal-space/v2/workspace/styles/wizard/props/desk-lamp-night.png": {
+      "bytes": 5308,
+      "sha256": "ebbb71c621603fe921a89b49fa444c44f48a5b0110245ad50c22ca858b86d69b"
+    },
+    "assets/personal-space/v2/workspace/styles/wizard/props/desk-lamp.png": {
+      "bytes": 5632,
+      "sha256": "98ea8d8bbcb5d16425e0826949ccf149ad69c8a3af03e34c5d86549308360703"
+    },
+    "assets/personal-space/v2/workspace/styles/wizard/props/dual-monitor-night.png": {
+      "bytes": 24188,
+      "sha256": "ae89288c4f70a0545ca0836aff4cc4c2edd62b2aa189125670cf530c9c2cb3c8"
+    },
+    "assets/personal-space/v2/workspace/styles/wizard/props/dual-monitor.png": {
+      "bytes": 24723,
+      "sha256": "9d7ce4057db2fae4a226469765b01163b039bd33ffdc750ffbdb52b3172e6412"
+    },
+    "assets/personal-space/v2/workspace/styles/wizard/props/office-chair-night.png": {
+      "bytes": 22589,
+      "sha256": "a90f3c94c2e5fb8cb6d1144a632740ef41afdc025fa2c0f192d7d55e49ecb02e"
+    },
+    "assets/personal-space/v2/workspace/styles/wizard/props/office-chair.png": {
+      "bytes": 21741,
+      "sha256": "8a594285f8de5e5414784dc897a3e571790f39996224ca9f84bc172eaed8d589"
+    },
+    "assets/personal-space/v2/workspace/styles/wizard/props/office-plant-night.png": {
+      "bytes": 27470,
+      "sha256": "889165ebbe7a858092e6ea2776aefe5690ff8a4f264bd715f3823c2f20756b23"
+    },
+    "assets/personal-space/v2/workspace/styles/wizard/props/office-plant.png": {
+      "bytes": 52333,
+      "sha256": "40af8890f53d1e0c9fa14205ba98decdc508f70e7ac5ed3e2aec44ba6cc63b45"
+    },
+    "assets/personal-space/v2/workspace/styles/wizard/props/office-shelf-night.png": {
+      "bytes": 115195,
+      "sha256": "ec0647e5d458cc50fae931e2cdb762dc48bd37c7d7aff34345e50384a26bc869"
+    },
+    "assets/personal-space/v2/workspace/styles/wizard/props/office-shelf.png": {
+      "bytes": 96385,
+      "sha256": "b70d73ca70840fb73309dd9c978e3d4b5d9dcae256684a06114a56684889ec56"
+    },
+    "assets/personal-space/v2/workspace/styles/wizard/props/planning-board-night.png": {
+      "bytes": 49290,
+      "sha256": "920c337fc082b826c09b0bb5fb5544c9aecb575f1ea53dc99c62b1108148f5bf"
+    },
+    "assets/personal-space/v2/workspace/styles/wizard/props/planning-board.png": {
+      "bytes": 45266,
+      "sha256": "8af44574b4bd787dd3b37d45adc9d51f4b45418f10fe61b6a8dadfd9d37d9d78"
+    },
+    "assets/personal-space/v2/workspace/styles/wizard/props/single-monitor-night.png": {
+      "bytes": 14676,
+      "sha256": "eaec1b56428a62c8bbe3e48452a3decd58f8491f74e626876d552fd8622375eb"
+    },
+    "assets/personal-space/v2/workspace/styles/wizard/props/single-monitor.png": {
+      "bytes": 15091,
+      "sha256": "b472c50da0ab4081e28fdd9f04f48c717f4ebc417ccc4bb0f0579fb1aea811da"
     }
   },
   "clipped": {
@@ -740,6 +1460,22 @@
     "assets/personal-space/v2/workspace/styles/bistro/props/planning-board.png": 0,
     "assets/personal-space/v2/workspace/styles/bistro/props/single-monitor-night.png": 140,
     "assets/personal-space/v2/workspace/styles/bistro/props/single-monitor.png": 21,
+    "assets/personal-space/v2/workspace/styles/cyber/props/corner-desk-night.png": 0,
+    "assets/personal-space/v2/workspace/styles/cyber/props/corner-desk.png": 0,
+    "assets/personal-space/v2/workspace/styles/cyber/props/desk-lamp-night.png": 0,
+    "assets/personal-space/v2/workspace/styles/cyber/props/desk-lamp.png": 1,
+    "assets/personal-space/v2/workspace/styles/cyber/props/dual-monitor-night.png": 0,
+    "assets/personal-space/v2/workspace/styles/cyber/props/dual-monitor.png": 0,
+    "assets/personal-space/v2/workspace/styles/cyber/props/office-chair-night.png": 0,
+    "assets/personal-space/v2/workspace/styles/cyber/props/office-chair.png": 0,
+    "assets/personal-space/v2/workspace/styles/cyber/props/office-plant-night.png": 120,
+    "assets/personal-space/v2/workspace/styles/cyber/props/office-plant.png": 0,
+    "assets/personal-space/v2/workspace/styles/cyber/props/office-shelf-night.png": 0,
+    "assets/personal-space/v2/workspace/styles/cyber/props/office-shelf.png": 119,
+    "assets/personal-space/v2/workspace/styles/cyber/props/planning-board-night.png": 0,
+    "assets/personal-space/v2/workspace/styles/cyber/props/planning-board.png": 0,
+    "assets/personal-space/v2/workspace/styles/cyber/props/single-monitor-night.png": 0,
+    "assets/personal-space/v2/workspace/styles/cyber/props/single-monitor.png": 1,
     "assets/personal-space/v2/workspace/styles/dojo/props/corner-desk-night.png": 0,
     "assets/personal-space/v2/workspace/styles/dojo/props/corner-desk.png": 0,
     "assets/personal-space/v2/workspace/styles/dojo/props/desk-lamp-night.png": 0,
@@ -756,6 +1492,22 @@
     "assets/personal-space/v2/workspace/styles/dojo/props/planning-board.png": 0,
     "assets/personal-space/v2/workspace/styles/dojo/props/single-monitor-night.png": 106,
     "assets/personal-space/v2/workspace/styles/dojo/props/single-monitor.png": 19,
+    "assets/personal-space/v2/workspace/styles/greenhouse/props/corner-desk-night.png": 36,
+    "assets/personal-space/v2/workspace/styles/greenhouse/props/corner-desk.png": 0,
+    "assets/personal-space/v2/workspace/styles/greenhouse/props/desk-lamp-night.png": 0,
+    "assets/personal-space/v2/workspace/styles/greenhouse/props/desk-lamp.png": 1,
+    "assets/personal-space/v2/workspace/styles/greenhouse/props/dual-monitor-night.png": 17,
+    "assets/personal-space/v2/workspace/styles/greenhouse/props/dual-monitor.png": 14,
+    "assets/personal-space/v2/workspace/styles/greenhouse/props/office-chair-night.png": 0,
+    "assets/personal-space/v2/workspace/styles/greenhouse/props/office-chair.png": 0,
+    "assets/personal-space/v2/workspace/styles/greenhouse/props/office-plant-night.png": 0,
+    "assets/personal-space/v2/workspace/styles/greenhouse/props/office-plant.png": 0,
+    "assets/personal-space/v2/workspace/styles/greenhouse/props/office-shelf-night.png": 0,
+    "assets/personal-space/v2/workspace/styles/greenhouse/props/office-shelf.png": 24,
+    "assets/personal-space/v2/workspace/styles/greenhouse/props/planning-board-night.png": 0,
+    "assets/personal-space/v2/workspace/styles/greenhouse/props/planning-board.png": 0,
+    "assets/personal-space/v2/workspace/styles/greenhouse/props/single-monitor-night.png": 17,
+    "assets/personal-space/v2/workspace/styles/greenhouse/props/single-monitor.png": 19,
     "assets/personal-space/v2/workspace/styles/jungle/props/corner-desk-night.png": 34,
     "assets/personal-space/v2/workspace/styles/jungle/props/corner-desk.png": 0,
     "assets/personal-space/v2/workspace/styles/jungle/props/desk-lamp-night.png": 0,
@@ -788,6 +1540,22 @@
     "assets/personal-space/v2/workspace/styles/noir/props/planning-board.png": 0,
     "assets/personal-space/v2/workspace/styles/noir/props/single-monitor-night.png": 2,
     "assets/personal-space/v2/workspace/styles/noir/props/single-monitor.png": 1,
+    "assets/personal-space/v2/workspace/styles/ocean/props/corner-desk-night.png": 0,
+    "assets/personal-space/v2/workspace/styles/ocean/props/corner-desk.png": 0,
+    "assets/personal-space/v2/workspace/styles/ocean/props/desk-lamp-night.png": 0,
+    "assets/personal-space/v2/workspace/styles/ocean/props/desk-lamp.png": 0,
+    "assets/personal-space/v2/workspace/styles/ocean/props/dual-monitor-night.png": 0,
+    "assets/personal-space/v2/workspace/styles/ocean/props/dual-monitor.png": 0,
+    "assets/personal-space/v2/workspace/styles/ocean/props/office-chair-night.png": 0,
+    "assets/personal-space/v2/workspace/styles/ocean/props/office-chair.png": 0,
+    "assets/personal-space/v2/workspace/styles/ocean/props/office-plant-night.png": 0,
+    "assets/personal-space/v2/workspace/styles/ocean/props/office-plant.png": 0,
+    "assets/personal-space/v2/workspace/styles/ocean/props/office-shelf-night.png": 0,
+    "assets/personal-space/v2/workspace/styles/ocean/props/office-shelf.png": 94,
+    "assets/personal-space/v2/workspace/styles/ocean/props/planning-board-night.png": 0,
+    "assets/personal-space/v2/workspace/styles/ocean/props/planning-board.png": 0,
+    "assets/personal-space/v2/workspace/styles/ocean/props/single-monitor-night.png": 5,
+    "assets/personal-space/v2/workspace/styles/ocean/props/single-monitor.png": 1,
     "assets/personal-space/v2/workspace/styles/spacestation/props/corner-desk-night.png": 0,
     "assets/personal-space/v2/workspace/styles/spacestation/props/corner-desk.png": 0,
     "assets/personal-space/v2/workspace/styles/spacestation/props/desk-lamp-night.png": 0,
@@ -803,6 +1571,38 @@
     "assets/personal-space/v2/workspace/styles/spacestation/props/planning-board-night.png": 0,
     "assets/personal-space/v2/workspace/styles/spacestation/props/planning-board.png": 0,
     "assets/personal-space/v2/workspace/styles/spacestation/props/single-monitor-night.png": 19,
-    "assets/personal-space/v2/workspace/styles/spacestation/props/single-monitor.png": 22
+    "assets/personal-space/v2/workspace/styles/spacestation/props/single-monitor.png": 22,
+    "assets/personal-space/v2/workspace/styles/stage/props/corner-desk-night.png": 0,
+    "assets/personal-space/v2/workspace/styles/stage/props/corner-desk.png": 0,
+    "assets/personal-space/v2/workspace/styles/stage/props/desk-lamp-night.png": 0,
+    "assets/personal-space/v2/workspace/styles/stage/props/desk-lamp.png": 2,
+    "assets/personal-space/v2/workspace/styles/stage/props/dual-monitor-night.png": 15,
+    "assets/personal-space/v2/workspace/styles/stage/props/dual-monitor.png": 15,
+    "assets/personal-space/v2/workspace/styles/stage/props/office-chair-night.png": 0,
+    "assets/personal-space/v2/workspace/styles/stage/props/office-chair.png": 0,
+    "assets/personal-space/v2/workspace/styles/stage/props/office-plant-night.png": 3,
+    "assets/personal-space/v2/workspace/styles/stage/props/office-plant.png": 0,
+    "assets/personal-space/v2/workspace/styles/stage/props/office-shelf-night.png": 0,
+    "assets/personal-space/v2/workspace/styles/stage/props/office-shelf.png": 17,
+    "assets/personal-space/v2/workspace/styles/stage/props/planning-board-night.png": 0,
+    "assets/personal-space/v2/workspace/styles/stage/props/planning-board.png": 0,
+    "assets/personal-space/v2/workspace/styles/stage/props/single-monitor-night.png": 15,
+    "assets/personal-space/v2/workspace/styles/stage/props/single-monitor.png": 17,
+    "assets/personal-space/v2/workspace/styles/wizard/props/corner-desk-night.png": 0,
+    "assets/personal-space/v2/workspace/styles/wizard/props/corner-desk.png": 0,
+    "assets/personal-space/v2/workspace/styles/wizard/props/desk-lamp-night.png": 0,
+    "assets/personal-space/v2/workspace/styles/wizard/props/desk-lamp.png": 1,
+    "assets/personal-space/v2/workspace/styles/wizard/props/dual-monitor-night.png": 0,
+    "assets/personal-space/v2/workspace/styles/wizard/props/dual-monitor.png": 0,
+    "assets/personal-space/v2/workspace/styles/wizard/props/office-chair-night.png": 0,
+    "assets/personal-space/v2/workspace/styles/wizard/props/office-chair.png": 0,
+    "assets/personal-space/v2/workspace/styles/wizard/props/office-plant-night.png": 7,
+    "assets/personal-space/v2/workspace/styles/wizard/props/office-plant.png": 0,
+    "assets/personal-space/v2/workspace/styles/wizard/props/office-shelf-night.png": 0,
+    "assets/personal-space/v2/workspace/styles/wizard/props/office-shelf.png": 0,
+    "assets/personal-space/v2/workspace/styles/wizard/props/planning-board-night.png": 0,
+    "assets/personal-space/v2/workspace/styles/wizard/props/planning-board.png": 0,
+    "assets/personal-space/v2/workspace/styles/wizard/props/single-monitor-night.png": 1,
+    "assets/personal-space/v2/workspace/styles/wizard/props/single-monitor.png": 1
   }
 }
