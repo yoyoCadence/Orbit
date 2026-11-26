@@ -226,8 +226,10 @@ test.describe('PS-250B character style and choice', () => {
     await expect.poll(() => loaded(world.locator('.orbit-window-background'))).toBe(true);
     await expect(world.locator('.orbit-window-protagonist')).toHaveAttribute('src', new RegExp(`${TOON}/protagonist/witch-`));
     await expect.poll(() => loaded(world.locator('.orbit-window-protagonist'))).toBe(true);
-    // Its own view out of the window: no city view over it in the morning.
-    await expect(world.locator('.orbit-window-exterior')).toHaveCount(0);
+    // Its own view out of the window: no city view over it in the morning
+    // (the default room's waits, hidden and not requested).
+    await expect(world.locator('.orbit-window-exterior')).toBeHidden();
+    await expect(world.locator('.orbit-window-exterior')).not.toHaveAttribute('src', /./);
     // Its two decorations stand in the room from the start.
     for (const id of ['deco-crystal', 'deco-potions']) {
       const decoration = world.locator(`[data-decoration-id="${id}"]`);
@@ -254,8 +256,64 @@ test.describe('PS-250B character style and choice', () => {
     await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
     const home = page.locator('[data-orbit-window]');
     await expect(home.locator('.orbit-window-background')).toHaveAttribute('src', /workspace\/styles\/wizard\/background\.webp$/);
-    await expect(home.locator('img.orbit-window-exterior')).toHaveCount(0);
+    await expect(home.locator('img.orbit-window-exterior')).toBeHidden();
     await expect(home.locator('.orbit-window-protagonist')).toHaveAttribute('src', new RegExp(`${TOON}/protagonist/witch-`));
     await expect(home.locator('[data-decoration-id="deco-potions"]')).toHaveCount(1);
+  });
+
+  test('offline, a set room never downloaded is drawn as the default room: its morning view, none of the set\'s decorations (PS-260E)', async ({ page }) => {
+    const morning = new Date(`${TODAY}T00:00:00`);
+    morning.setHours(7);
+    await page.clock.setFixedTime(morning);
+    // The room was never downloaded and the device is offline; its two
+    // decorations load (as if cached), which the default room has no place for.
+    await page.route(/\/workspace\/(pixel\/)?styles\/wizard\/|\/workspace\/(pixel\/)?thumbnails\/wizard\./, route => route.abort('internetdisconnected'));
+    await page.goto('/');
+    await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
+    await page.locator('[data-orbit-open-world]').click();
+    await page.locator('[data-personal-space-v2] [data-v2-mode="edit"]').first().click();
+    await page.locator('[data-v2-appearance="set"][data-value="witch"]').click();
+    await expect(page.locator('[data-v2-appearance="room"][data-value="wizard"]')).toHaveAttribute('aria-pressed', 'true');
+
+    // As the Pixi scene draws it: the default room with its morning view, and
+    // none of the set's decorations.
+    const world = page.locator('[data-personal-space-v2]');
+    const background = world.locator('.orbit-window-background');
+    await expect(background).toHaveAttribute('src', /workspace\/backgrounds\/building-formal-workstation-room-v2\.webp$/);
+    await expect.poll(() => background.evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true);
+    const view = world.locator('.orbit-window-exterior');
+    await expect(view).toHaveAttribute('src', /workspace\/window\/exterior-morning\.webp$/);
+    await expect(view).toBeVisible();
+    await expect.poll(() => view.evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true);
+    await expect(world.locator('[data-room-only]')).toHaveCount(0);
+    await expect(world.locator('[data-decoration-id="deco-crystal"]')).toHaveCount(0);
+    await expect(world.locator('.orbit-window-decoration')).not.toHaveCount(0);
+
+  });
+
+  test('offline, a set\'s own decorations never downloaded are frames in the picker (PS-260E)', async ({ page }) => {
+    await page.route(/\/styles\/wizard\/|\/thumbnails\/wizard\./, route => route.abort('internetdisconnected'));
+    await page.goto('/');
+    await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
+    await page.locator('[data-orbit-open-world]').click();
+    await page.locator('[data-personal-space-v2] [data-v2-mode="edit"]').first().click();
+    await page.locator('[data-v2-appearance="set"][data-value="witch"]').click();
+    // They have no default, so a frame stands in for their pictures; the six
+    // fall back to the default room's.
+    for (const id of ['deco-crystal', 'deco-potions']) {
+      const picture = page.locator(`[data-v2-appearance="decoration"][data-value="${id}"] img`);
+      await picture.scrollIntoViewIfNeeded();
+      await expect(picture).toHaveAttribute('data-unavailable', '');
+      await expect(picture).toBeVisible();
+      const look = await picture.evaluate(image => [getComputedStyle(image).borderTopStyle, getComputedStyle(image).content]);
+      // An empty frame, not the browser's broken-image icon.
+      expect(look[0]).toBe('dashed');
+      expect(look[1]).toContain('linear-gradient');
+    }
+    const beanbag = page.locator('[data-v2-appearance="decoration"][data-value="deco-beanbag"] img');
+    await beanbag.scrollIntoViewIfNeeded();
+    await expect(beanbag).toHaveAttribute('src', /\/workspace\/decor\/deco-beanbag\.png$/);
+    await expect.poll(() => beanbag.evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true);
+    await expect(beanbag).not.toHaveAttribute('data-unavailable', /.*/);
   });
 });

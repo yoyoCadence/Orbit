@@ -14,7 +14,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   getWorkspaceAssetManifestPaths,
   getWorkspaceSceneAssets,
@@ -32,7 +32,7 @@ import {
   saveAppearanceChange,
   THEME_SETS,
 } from '../../pwa/js/personalSpace/v2/ui/appearancePicker.js';
-import { renderOrbitWindow } from '../../pwa/js/personalSpace/v2/ui/orbitWindow.js';
+import { mountOrbitWindow, renderOrbitWindow } from '../../pwa/js/personalSpace/v2/ui/orbitWindow.js';
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const PWA = join(REPO, 'pwa');
@@ -262,23 +262,74 @@ describe('PS-260E theme sets: the picker', () => {
   });
 });
 
+const VIEW = (band, pixel) => (pixel
+  ? `assets/personal-space/v2/workspace/pixel/window/exterior-${band}.png`
+  : `assets/personal-space/v2/workspace/window/exterior-${band}.webp`);
+
+function poster(set, { timeBand = 'morning', style = 'toon', roomStyle = set.room } = {}) {
+  const host = document.createElement('div');
+  host.innerHTML = renderOrbitWindow({
+    activeProject: { progress: 100 },
+    timeBand,
+    selectedThemeId: roomStyle,
+    appearance: { style, protagonistId: set.id },
+  });
+  document.body.append(host);
+  const root = host.querySelector('[data-orbit-window]');
+  mountOrbitWindow(root, { runtime: { mount: vi.fn(() => Promise.resolve()), release: vi.fn() } });
+  return root;
+}
+
 describe('PS-260E theme sets: the Orbit Window poster', () => {
   it('draws a set: its room, protagonist and decorations, and no city view in the morning', () => {
     const set = THEME_SETS[5];
-    const host = document.createElement('div');
-    host.innerHTML = renderOrbitWindow({
-      activeProject: { progress: 100 },
-      timeBand: 'morning',
-      selectedThemeId: set.room,
-      appearance: { protagonistId: set.id },
-    });
-    expect(host.querySelector('.orbit-window-background').getAttribute('src')).toContain(`/styles/${set.room}/background.webp`);
-    expect(host.querySelector('.orbit-window-exterior')).toBe(null);
-    expect(host.querySelector('.orbit-window-protagonist').getAttribute('src')).toContain(`/toon/protagonist/${set.id}-`);
-    const decorations = [...host.querySelectorAll('.orbit-window-decoration')].map(image => image.dataset.decorationId);
+    const root = poster(set);
+    expect(root.querySelector('.orbit-window-background').getAttribute('src')).toContain(`/styles/${set.room}/background.webp`);
+    // The default room's view waits, hidden and not requested (see below).
+    const exterior = root.querySelector('.orbit-window-exterior');
+    expect(exterior.hidden).toBe(true);
+    expect(exterior.hasAttribute('src')).toBe(false);
+    expect(root.querySelector('.orbit-window-protagonist').getAttribute('src')).toContain(`/toon/protagonist/${set.id}-`);
+    const decorations = [...root.querySelectorAll('.orbit-window-decoration')].map(image => image.dataset.decorationId);
     expect(decorations).toEqual([...STANDARD, ...set.decorations]);
-    // A set decoration has no default-room twin: if it cannot load, it is left out.
-    const own = host.querySelector(`.orbit-window-decoration[data-decoration-id="${set.decorations[0]}"]`);
+    // A set decoration has no default-room twin: it is marked as the room's
+    // own, and if it cannot load, it is left out.
+    const roomOnly = [...root.querySelectorAll('[data-room-only]')].map(image => image.dataset.decorationId);
+    expect(roomOnly).toEqual(set.decorations);
+    const own = root.querySelector(`[data-decoration-id="${set.decorations[0]}"]`);
     expect(own.dataset.fallbackSrc).toBe(own.getAttribute('src'));
+    // Only a set room has room-only decorations, and only a set room's view waits.
+    const other = poster(set, { roomStyle: 'nordic' });
+    expect(other.querySelectorAll('[data-room-only]')).toHaveLength(0);
+    expect(other.querySelector('.orbit-window-exterior').getAttribute('src')).toBe(VIEW('morning'));
+    expect(poster(set, { timeBand: 'day' }).querySelector('.orbit-window-exterior')).toBe(null);
+  });
+
+  it('draws the default room as the Pixi scene does when a set room cannot load: its view, none of the set\'s decorations', () => {
+    const set = THEME_SETS[2];
+    for (const [timeBand, style] of [['morning', 'toon'], ['evening', 'pixel']]) {
+      const root = poster(set, { timeBand, style });
+      const background = root.querySelector('.orbit-window-background');
+      const exterior = root.querySelector('.orbit-window-exterior');
+      expect(exterior.dataset.exteriorFallback).toBe(VIEW(timeBand));
+      background.dispatchEvent(new Event('error'));
+      expect(background.getAttribute('src')).toMatch(/workspace\/backgrounds\/building-formal-workstation-room-v2(-night)?\.webp$/);
+      expect(exterior.hidden).toBe(false);
+      expect(exterior.getAttribute('src')).toBe(VIEW(timeBand));
+      expect(exterior.hasAttribute('data-pixel-art')).toBe(false);
+      expect(exterior.previousElementSibling).toBe(background);
+      const decorations = [...root.querySelectorAll('.orbit-window-decoration')].map(image => image.dataset.decorationId);
+      expect(decorations, `${timeBand} ${style}`).toEqual(STANDARD);
+    }
+  });
+
+  it('keeps a set room as it is when only its decorations cannot load', () => {
+    const set = THEME_SETS[0];
+    const root = poster(set);
+    const own = root.querySelector(`[data-decoration-id="${set.decorations[0]}"]`);
+    own.dispatchEvent(new Event('error'));
+    expect(own.getAttribute('src')).toContain(`/decor/styles/${set.room}/`);
+    expect(root.querySelector('.orbit-window-exterior').hidden).toBe(true);
+    expect(root.querySelectorAll('[data-room-only]')).toHaveLength(2);
   });
 });
