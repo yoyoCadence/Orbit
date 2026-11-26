@@ -48,8 +48,8 @@ export function renderProfile(container) {
   }
 
   const joinedDate = _localDateOf(user.createdAt);
-  const joined     = new Date(`${joinedDate}T00:00:00`);
-  const daysActive = Math.max(1, Math.ceil((Date.now() - joined.getTime()) / 86400000));
+  // Calendar days, counting the joining day (a DST change does not shift it).
+  const daysActive = Math.max(1, _dayNumber(new Date().toLocaleDateString('sv')) - _dayNumber(joinedDate) + 1);
   const activeDays = new Set(state.sessions.map(s => s.date)).size;
   const totalSessions = state.sessions.filter(s => s.result !== 'invalid').length;
   const todayStr  = effectiveToday(user.newDayHour ?? 5);
@@ -409,9 +409,17 @@ export function renderProfile(container) {
 // account's is profiles.created_at, a timestamp. Either way, its local date;
 // today when it is missing or unreadable.
 function _localDateOf(value) {
-  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    // Only a real calendar date (not 2026-13-45).
+    return new Date(`${value}T00:00:00`).toLocaleDateString('sv') === value ? value : new Date().toLocaleDateString('sv');
+  }
   const date = value ? new Date(value) : new Date(NaN);
   return (Number.isNaN(date.getTime()) ? new Date() : date).toLocaleDateString('sv');
+}
+
+function _dayNumber(isoDate) {
+  const [year, month, day] = isoDate.split('-').map(Number);
+  return Date.UTC(year, month - 1, day) / 86400000;
 }
 
 function _heatmapHtml(sessions, isPro, newDayHour = 5) {

@@ -58,6 +58,9 @@ describe('growth report weeks (BUG-123)', () => {
     for (const [zone, today] of Object.entries(expected)) {
       process.env.TZ = zone;
       expect(Intl.DateTimeFormat().resolvedOptions().timeZone).toBe(zone);
+      // Each zone's own report: nothing carried over from the last one.
+      captured = '';
+      save.mockClear();
       document.body.innerHTML = '';
       showReportPicker();
       document.querySelector('input[name="rp-range"][value="all"]').checked = true;
@@ -78,7 +81,7 @@ describe('growth report weeks (BUG-123)', () => {
         .filter(element => element.getAttribute('style')?.includes('font-size:9px'))
         .map(element => element.textContent);
       expect(labels, zone).toEqual(['11/2', '11/23', '11/30']);
-      expect(save, zone).toHaveBeenLastCalledWith(`orbit-report-all-${today}.pdf`);
+      expect(save.mock.calls, zone).toEqual([[`orbit-report-all-${today}.pdf`]]);
     }
   });
 });

@@ -134,12 +134,17 @@ describe('renderProfile: basic rendering', () => {
         container.remove();
         return result;
       };
-      // A guest keeps the local date it was set up on.
+      // A guest keeps the local date it was set up on, east and west of UTC
+      // (read as UTC midnight, it would be the day before in Los Angeles).
+      for (const zone of ['Asia/Taipei', 'America/Los_Angeles']) {
+        process.env.TZ = zone;
+        mockState.user = freshUser({ createdAt: '2026-01-01' });
+        expect(shown(), zone).toEqual({ days: '31', joined: '加入於 2026-01-01' });
+      }
       process.env.TZ = 'Asia/Taipei';
-      mockState.user = freshUser({ createdAt: '2026-01-01' });
-      expect(shown()).toEqual({ days: '31', joined: '加入於 2026-01-01' });
-      // An account's created_at is a timestamp: its local date, west and east of UTC.
-      mockState.user = freshUser({ createdAt: '2026-01-01T20:30:00.123+00:00' });
+      // An account's created_at is a timestamp (microseconds, as Supabase sends
+      // it): its local date, west and east of UTC.
+      mockState.user = freshUser({ createdAt: '2026-01-01T20:30:00.123456+00:00' });
       expect(shown()).toEqual({ days: '30', joined: '加入於 2026-01-02' });
       process.env.TZ = 'America/Los_Angeles';
       expect(shown()).toEqual({ days: '31', joined: '加入於 2026-01-01' });
@@ -148,6 +153,15 @@ describe('renderProfile: basic rendering', () => {
       expect(shown().days).toBe('1');
       mockState.user = freshUser({ createdAt: 'not a date' });
       expect(shown().days).toBe('1');
+      mockState.user = freshUser({ createdAt: '2026-13-45' });
+      expect(shown()).toEqual({ days: '1', joined: `加入於 ${new Date().toLocaleDateString('sv')}` });
+      // Days are calendar days: one hour after a DST change is no different.
+      process.env.TZ = 'America/Los_Angeles';
+      mockState.user = freshUser({ createdAt: '2026-03-01' });
+      for (const now of ['2026-03-31T07:30:00Z', '2026-03-31T08:30:00Z']) {
+        vi.setSystemTime(new Date(now));
+        expect(shown().days, now).toBe('31');
+      }
     } finally {
       vi.useRealTimers();
       if (before === undefined) delete process.env.TZ;
