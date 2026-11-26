@@ -138,10 +138,14 @@ describe('duration picker (Pro)', () => {
     mockState.tasks = [{ ...TASK, difficulty: 1.0 }];
     window.startFocus('t1');
     const minimum = Number(picker().querySelector('.focus-dur-hint').textContent.match(/(\d+) 分鐘/)[1]);
-    expect(minimum).toBeGreaterThan(15);
+    // difficulty 1.0: 25 minutes, one of the presets.
+    expect(minimum).toBe(25);
     preset(15).click();
     expect(preset(15).classList.contains('active')).toBe(true);
     expect(warning()).toBe('⚠ 低於建議時間，對成長的實際幫助較低');
+    // The minimum itself is enough.
+    preset(minimum).click();
+    expect(warning()).toBe('');
     preset(90).click();
     expect(preset(15).classList.contains('active')).toBe(false);
     expect(warning()).toBe('');
@@ -150,9 +154,10 @@ describe('duration picker (Pro)', () => {
     $('focus-dur-custom').dispatchEvent(new Event('input'));
     expect(picker().querySelector('.focus-dur-btn.active')).toBe(null);
     expect(warning()).not.toBe('');
-    // And picking a preset clears the typed length.
+    // And picking a preset clears the typed length and its warning.
     preset(45).click();
     expect($('focus-dur-custom').value).toBe('');
+    expect(warning()).toBe('');
   });
 
   it('remembers the chosen length and starts a countdown to it', () => {
@@ -187,7 +192,10 @@ describe('duration picker (Pro)', () => {
   });
 
   it('counts up without a target, and remembers nothing, when the length is skipped or empty', () => {
+    // Skipped even with a length chosen (the remembered one).
+    mockState.user.focusDefaultMinutes = 25;
     window.startFocus('t1');
+    expect(preset(25).classList.contains('active')).toBe(true);
     $('focus-dur-skip').click();
     expect($('focus-timer-mode').textContent).toBe('');
     expect($('focus-timer').textContent).toBe('00:00');
@@ -211,25 +219,44 @@ describe('duration picker (Pro)', () => {
 
 describe('countdown end', () => {
   it('ends by itself at the target with the end chime, and asks how it went', () => {
-    window.startFocus('t1');
-    preset(15).click();
-    $('focus-dur-confirm').click();
-    vi.advanceTimersByTime(15 * 60_000);
-    expect($('focus-overlay').classList.contains('hidden')).toBe(true);
-    expect($('focus-pip').classList.contains('hidden')).toBe(true);
-    expect($('focus-timer').textContent).toBe('00:00');
-    // The minimum (5 minutes) chimed on the way; the end chime has three notes.
-    expect(tones.map(([frequency]) => frequency)).toEqual([528, 660, 528, 660, 784]);
-    const result = $('result-picker');
-    expect(result).not.toBe(null);
-    // Pro: a note goes with the result.
-    result.querySelector('#focus-note-input').value = '  寫完第一節 ';
-    result.querySelector('.result-btn[data-result="partial"]').click();
-    expect(mockSubmit).toHaveBeenCalledWith('t1', 900, 'partial', 15, '寫完第一節');
-    expect($('result-picker')).toBe(null);
-    // The timer stopped: nothing more happens.
-    vi.advanceTimersByTime(60_000);
-    expect(mockSubmit).toHaveBeenCalledTimes(1);
+    // A phone with motion sensors: desk mode listens to them during the session.
+    window.DeviceOrientationEvent = function DeviceOrientationEvent() {};
+    const removed = vi.spyOn(window, 'removeEventListener');
+    try {
+      window.startFocus('t1');
+      preset(15).click();
+      $('focus-dur-confirm').click();
+      vi.advanceTimersByTime(5 * 60_000 + 1000);
+      expect($('focus-timer').textContent).toBe('09:59');
+      // Minimised to the small window on the way.
+      window.minimizeFocus();
+      expect($('focus-pip').classList.contains('hidden')).toBe(false);
+      // The tab slept past the target: it ends at the next tick.
+      vi.setSystemTime(Date.now() + 20 * 60_000);
+      vi.advanceTimersByTime(1000);
+      expect($('focus-overlay').classList.contains('hidden')).toBe(true);
+      expect($('focus-pip').classList.contains('hidden')).toBe(true);
+      expect($('focus-timer').textContent).toBe('00:00');
+      // The motion sensors stop at once, not only after the result is picked.
+      expect(removed).toHaveBeenCalledWith('deviceorientation', expect.any(Function));
+      // The minimum (5 minutes) chimed on the way; the end chime has three notes.
+      expect(tones.map(([frequency]) => frequency)).toEqual([528, 660, 528, 660, 784]);
+      // The timer stopped: no more chimes or result pickers.
+      vi.advanceTimersByTime(60_000);
+      expect(tones).toHaveLength(5);
+      expect(document.querySelectorAll('#result-picker')).toHaveLength(1);
+      // Pro: a note goes with the result, for the target length.
+      const result = $('result-picker');
+      result.querySelector('#focus-note-input').value = '  寫完第一節 ';
+      result.querySelector('.result-btn[data-result="partial"]').click();
+      expect(mockSubmit).toHaveBeenCalledTimes(1);
+      const [taskId, elapsed, outcome, minutes, note] = mockSubmit.mock.calls[0];
+      expect([taskId, outcome, minutes, note]).toEqual(['t1', 'partial', 15, '寫完第一節']);
+      expect(elapsed).toBeGreaterThan(20 * 60);
+      expect($('result-picker')).toBe(null);
+    } finally {
+      delete window.DeviceOrientationEvent;
+    }
   });
 
   it('has no note for a free user', () => {
