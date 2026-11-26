@@ -177,8 +177,12 @@ The six PS-250F decorations render inside their default boxes (about 5
 minutes per lighting); the set's two render in full frame, since they have no
 box yet (about 3 minutes each).
 
-The cut of a PS-250F decoration in a PS-260 room drops at most 757 pixels (the
-faint shadow tail of the bistro's beanbag at night; the PS-250F2 night-owl
-floor lamp drops 729), under the test's limit of 1000. `previews/sets/` shows
+The cut of a PS-250F decoration in a PS-260 room drops at most 908 pixels: the
+cyber room's floor lamp at night, whose pole shadow falls on the near-black
+wall past the box where it cannot be seen (the PS-250F2 night-owl lamp drops
+729 the same way). The pale rooms' beanbag casts a long faint shadow at
+night: 757 in the bistro; the greenhouse's was 1092, so its `shadow_floor` is
+72 (as the dojo's), which brought it to 454 and re-processed its room props
+from the same renders. The test's limit is 1000. `previews/sets/` shows
 each whole set: the room, its props and decorations, the set's protagonist
 and Orbit (`c1-overview.jpg`: the five male sets side by side).

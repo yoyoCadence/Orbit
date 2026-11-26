@@ -42,8 +42,9 @@ const path = (id, suffix, room, pixel) => `${V2}/workspace/${pixel ? 'pixel/' : 
 
 describe('PS-260C decorations of the themed rooms', () => {
   it('places only the rooms of the sets, each with its set\'s two decorations', () => {
-    // C1: the male sets' rooms; C2 adds the female sets'.
-    expect(ROOMS).toEqual(['bistro', 'dojo', 'jungle', 'noir', 'spacestation']);
+    // C1 (#273): the male sets' rooms; C2: the female sets'. Every set's room.
+    expect(ROOMS).toEqual(sets.sets.map(entry => entry.room).sort());
+    expect(ROOMS).toHaveLength(10);
     for (const room of ROOMS) {
       expect(Object.keys(OWN), room).toContain(room);
       expect(Object.keys(placements.rooms[room]).sort()).toEqual([...OWN[room]].sort());
@@ -98,12 +99,14 @@ describe('PS-260C decorations of the themed rooms', () => {
           expect(entry.spot).toBe(placements.rooms[room][id].day.spot);
           if (entry.spot === 'back') {
             expect(entry.z, `${room} ${id}`).toBe(21);
-            expect(entry.y, `${room} ${id}`).toBeLessThan(60);
+            // Its bottom (with the shadow, which at night can fall forward) stays
+            // well above the front spot's.
+            expect(entry.y, `${room} ${id}`).toBeLessThan(65);
             expect(entry.x, `${room} ${id}`).toBeLessThan(62);
           } else {
             expect(entry.spot).toBe('front');
             expect(entry.z, `${room} ${id}`).toBe(32);
-            expect(entry.y, `${room} ${id}`).toBeGreaterThan(65);
+            expect(entry.y, `${room} ${id}`).toBeGreaterThan(70);
           }
         }
       }

@@ -67,6 +67,68 @@
         }
       }
     },
+    "cyber": {
+      "deco-server": {
+        "day": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/cyber/deco-server.png",
+          "x": 55.534,
+          "y": 57.422,
+          "width": 6.641,
+          "z": 21,
+          "spot": "back",
+          "bbox": [
+            802,
+            362,
+            904,
+            588
+          ]
+        },
+        "night": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/cyber/deco-server-night.png",
+          "x": 56.38,
+          "y": 62.402,
+          "width": 8.594,
+          "z": 21,
+          "spot": "back",
+          "bbox": [
+            800,
+            362,
+            932,
+            639
+          ]
+        }
+      },
+      "deco-hologram": {
+        "day": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/cyber/deco-hologram.png",
+          "x": 82.389,
+          "y": 76.074,
+          "width": 14.909,
+          "z": 32,
+          "spot": "front",
+          "bbox": [
+            1151,
+            626,
+            1380,
+            779
+          ]
+        },
+        "night": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/cyber/deco-hologram-night.png",
+          "x": 86.556,
+          "y": 75.586,
+          "width": 6.576,
+          "z": 32,
+          "spot": "front",
+          "bbox": [
+            1279,
+            626,
+            1380,
+            774
+          ]
+        }
+      }
+    },
     "dojo": {
       "deco-katana": {
         "day": {
@@ -125,6 +187,68 @@
             573,
             1406,
             767
+          ]
+        }
+      }
+    },
+    "greenhouse": {
+      "deco-flowerpot": {
+        "day": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/greenhouse/deco-flowerpot.png",
+          "x": 55.566,
+          "y": 54.785,
+          "width": 8.268,
+          "z": 21,
+          "spot": "back",
+          "bbox": [
+            790,
+            359,
+            917,
+            561
+          ]
+        },
+        "night": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/greenhouse/deco-flowerpot-night.png",
+          "x": 55.566,
+          "y": 54.785,
+          "width": 8.268,
+          "z": 21,
+          "spot": "back",
+          "bbox": [
+            790,
+            359,
+            917,
+            561
+          ]
+        }
+      },
+      "deco-wateringcan": {
+        "day": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/greenhouse/deco-wateringcan.png",
+          "x": 87.24,
+          "y": 75.781,
+          "width": 8.464,
+          "z": 32,
+          "spot": "front",
+          "bbox": [
+            1275,
+            671,
+            1405,
+            776
+          ]
+        },
+        "night": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/greenhouse/deco-wateringcan-night.png",
+          "x": 87.24,
+          "y": 75.293,
+          "width": 8.464,
+          "z": 32,
+          "spot": "front",
+          "bbox": [
+            1275,
+            671,
+            1405,
+            771
           ]
         }
       }
@@ -253,6 +377,68 @@
         }
       }
     },
+    "ocean": {
+      "deco-aquarium": {
+        "day": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/ocean/deco-aquarium.png",
+          "x": 55.306,
+          "y": 54.785,
+          "width": 7.227,
+          "z": 21,
+          "spot": "back",
+          "bbox": [
+            794,
+            399,
+            905,
+            561
+          ]
+        },
+        "night": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/ocean/deco-aquarium-night.png",
+          "x": 56.673,
+          "y": 54.883,
+          "width": 10.221,
+          "z": 21,
+          "spot": "back",
+          "bbox": [
+            792,
+            399,
+            949,
+            562
+          ]
+        }
+      },
+      "deco-coral": {
+        "day": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/ocean/deco-coral.png",
+          "x": 81.966,
+          "y": 76.27,
+          "width": 17.708,
+          "z": 32,
+          "spot": "front",
+          "bbox": [
+            1123,
+            629,
+            1395,
+            781
+          ]
+        },
+        "night": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/ocean/deco-coral-night.png",
+          "x": 87.044,
+          "y": 74.707,
+          "width": 7.552,
+          "z": 32,
+          "spot": "front",
+          "bbox": [
+            1279,
+            629,
+            1395,
+            765
+          ]
+        }
+      }
+    },
     "spacestation": {
       "deco-rocket": {
         "day": {
@@ -311,6 +497,130 @@
             560,
             1410,
             764
+          ]
+        }
+      }
+    },
+    "stage": {
+      "deco-mic": {
+        "day": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/stage/deco-mic.png",
+          "x": 55.241,
+          "y": 54.492,
+          "width": 4.883,
+          "z": 21,
+          "spot": "back",
+          "bbox": [
+            811,
+            354,
+            886,
+            558
+          ]
+        },
+        "night": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/stage/deco-mic-night.png",
+          "x": 55.208,
+          "y": 55.664,
+          "width": 4.818,
+          "z": 21,
+          "spot": "back",
+          "bbox": [
+            811,
+            354,
+            885,
+            570
+          ]
+        }
+      },
+      "deco-heartlamp": {
+        "day": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/stage/deco-heartlamp.png",
+          "x": 81.25,
+          "y": 76.758,
+          "width": 20.052,
+          "z": 32,
+          "spot": "front",
+          "bbox": [
+            1094,
+            570,
+            1402,
+            786
+          ]
+        },
+        "night": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/stage/deco-heartlamp-night.png",
+          "x": 87.728,
+          "y": 74.707,
+          "width": 7.096,
+          "z": 32,
+          "spot": "front",
+          "bbox": [
+            1293,
+            570,
+            1402,
+            765
+          ]
+        }
+      }
+    },
+    "wizard": {
+      "deco-crystal": {
+        "day": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/wizard/deco-crystal.png",
+          "x": 80.208,
+          "y": 77.344,
+          "width": 18.62,
+          "z": 32,
+          "spot": "front",
+          "bbox": [
+            1089,
+            585,
+            1375,
+            792
+          ]
+        },
+        "night": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/wizard/deco-crystal-night.png",
+          "x": 86.882,
+          "y": 75.391,
+          "width": 5.273,
+          "z": 32,
+          "spot": "front",
+          "bbox": [
+            1294,
+            585,
+            1375,
+            772
+          ]
+        }
+      },
+      "deco-potions": {
+        "day": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/wizard/deco-potions.png",
+          "x": 55.176,
+          "y": 54.785,
+          "width": 7.357,
+          "z": 21,
+          "spot": "back",
+          "bbox": [
+            791,
+            384,
+            904,
+            561
+          ]
+        },
+        "night": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/wizard/deco-potions-night.png",
+          "x": 56.738,
+          "y": 54.785,
+          "width": 10.612,
+          "z": 21,
+          "spot": "back",
+          "bbox": [
+            790,
+            384,
+            953,
+            561
           ]
         }
       }

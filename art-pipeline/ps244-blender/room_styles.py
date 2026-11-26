@@ -426,7 +426,7 @@ PS260_STYLES = {
     },
     # 溫室花房: mint walls, white iron, terracotta, light wood, yellow cushions; a garden.
     'greenhouse': {
-        'shadow_floor': 56,
+        'shadow_floor': 72,  # pale floor: a long faint beanbag shadow at night (PS-260C2)
         'backdrop_night': ('#14201a', '#24382c'),
         'pixel_shadow': {'colour': '#5a6a52', 'levels': ((50, 40), (110, 76), (None, 118))},
         'outline': '#2f3a30',
