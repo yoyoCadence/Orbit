@@ -54,7 +54,7 @@ async function choose(file = new File(['x'], 'p.jpg', { type: 'image/jpeg' })) {
   input.dispatchEvent(new Event('change'));
   // Until the photo is shown or its failure reported.
   await vi.waitFor(() => expect(
-    !sheet().querySelector('#proof-confirm').disabled || mocks.showToast.mock.calls.length > 0,
+    !sheet().querySelector('#proof-confirm').disabled || sheet().querySelector('#proof-msg').textContent !== '',
   ).toBe(true));
 }
 
@@ -124,7 +124,10 @@ describe('proof sheet', () => {
     mocks.compressImage.mockRejectedValue(new Error('decode'));
     await showProofSheet('s1', '寫報告');
     await choose();
-    expect(mocks.showToast).toHaveBeenCalledWith('圖片處理失敗');
+    // Told inside the sheet: a toast would sit under it (BUG-124).
+    expect(sheet().querySelector('#proof-msg').textContent).toBe('圖片處理失敗，請換一張照片');
+    expect(sheet().querySelector('#proof-msg').getAttribute('role')).toBe('status');
+    expect(mocks.showToast).not.toHaveBeenCalled();
     expect(sheet().querySelector('#proof-confirm').disabled).toBe(true);
     // Confirm does nothing without a photo, even if the button were enabled.
     sheet().querySelector('#proof-confirm').disabled = false;
@@ -227,18 +230,25 @@ describe('proof sheet', () => {
 
   it('says so and keeps the sheet when this device has no room for the photo (BUG-124)', async () => {
     const row = logRow('s1');
-    mocks.saveProof.mockImplementation(() => {
+    mocks.saveProof.mockImplementationOnce(() => {
       throw new window.DOMException('full', 'QuotaExceededError');
     });
     await showProofSheet('s1', '寫報告');
     await choose();
     sheet().querySelector('#proof-confirm').click();
-    expect(mocks.showToast).toHaveBeenLastCalledWith('這台裝置的空間不足，照片沒有存下來');
+    // Told inside the sheet, which stays on top (a toast would sit under it).
+    expect(sheet().querySelector('#proof-msg').textContent).toBe('這台裝置的空間不足，照片沒有存下來');
+    expect(mocks.showToast).not.toHaveBeenCalled();
     // Nothing queued for the cloud, no thumbnail, and the sheet stays for Skip.
     expect(mocks.proofSaved).not.toHaveBeenCalled();
     expect(row.querySelector('.session-proof-thumb-wrap')).toBe(null);
     expect(sheet().classList.contains('pro-sheet-out')).toBe(false);
-    mocks.saveProof.mockReset();
+    // Another photo clears the message; this time it is kept.
+    await choose();
+    expect(sheet().querySelector('#proof-msg').textContent).toBe('');
+    sheet().querySelector('#proof-confirm').click();
+    expect(mocks.saveProof).toHaveBeenLastCalledWith('s1', PHOTO);
+    expect(mocks.showToast).toHaveBeenLastCalledWith('佐證已儲存');
   });
 
   it('adds no second thumbnail, and needs no row on the page', async () => {

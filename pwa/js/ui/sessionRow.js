@@ -104,7 +104,7 @@ export function bindProofThumbs(container, { ownerId = null, onPhotoWallChange }
   if (previous) container.removeEventListener(PROOF_ADDED_EVENT, previous);
   const onProofAdded = event => {
     const wrap = event.target;
-    if (!wrap?.classList?.contains('session-proof-thumb-wrap')) return;
+    if (event.defaultPrevented || !wrap?.classList?.contains('session-proof-thumb-wrap')) return;
     event.preventDefault();
     bindProofControls(wrap, container, { ownerId, onPhotoWallChange });
   };

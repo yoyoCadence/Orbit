@@ -292,8 +292,9 @@
 - [x] **BUG-124** 佐證面板確認後的兩個問題（#283 獨立 review 發現，2026-11-26，已在 main 上）
   - (a) `ui/proofSheet.js` 把新縮圖綁定時以該列為範圍（`bindProofThumbs(logItem, …)`），之後把這張照片設為個人空間展示，其他列原本的 ✓ 不會清掉，首頁 Orbit Window 的成就照片也不會更新（首頁自己的 `onPhotoWallChange` 沒有被呼叫），要等頁面重畫。要改需要讓 `sessionRow.js` 提供「只綁這一個縮圖、範圍是整個列表」的方式，並讓首頁的更新也被呼叫；兩者都是 SHELL 模組，要注意 INFRA-105（不能讓既有 SHELL 模組 import 另一個的新 export），接著設計並修正。
   - (b) `saveProof()` 寫入 localStorage 失敗（空間不足）時會丟出例外，面板停在那裡、沒有任何提示。應該提示「這台裝置的空間不足，照片沒有存下來」並保留面板讓使用者跳過。
-  - 完成（v1.42.4）：(a) 面板放入縮圖後，從縮圖發出可取消的 `orbit:proof-added` 事件；`sessionRow.js` 的 `bindProofThumbs` 在它綁定的列表上接住（每個列表一個 listener，最新一次 render 的設定為準），以整個列表為範圍、用頁面自己的 `onPhotoWallChange` 綁定這個縮圖（首頁因此也會更新 Orbit Window 的成就照片）。沒有頁面接住時（舊的快取 `sessionRow.js`），面板照原本的方式只綁這一列。沒有新增 export，符合 INFRA-105。(b) `saveProof()` 失敗時提示「這台裝置的空間不足，照片沒有存下來」，不排入雲端、不放縮圖，面板留著。
+  - 完成（v1.42.4）：(a) 面板放入縮圖後，從縮圖發出可取消的 `orbit:proof-added` 事件；`sessionRow.js` 的 `bindProofThumbs` 在它綁定的列表上接住（每個列表一個 listener，最新一次 render 的設定為準），以整個列表為範圍、用頁面自己的 `onPhotoWallChange` 綁定這個縮圖（首頁因此也會更新 Orbit Window 的成就照片）。沒有頁面接住時（舊的快取 `sessionRow.js`），面板照原本的方式只綁這一列。沒有新增 export，符合 INFRA-105。(b) `saveProof()` 失敗時在面板裡的 `#proof-msg`（`role="status"`）顯示「這台裝置的空間不足，照片沒有存下來」，不排入雲端、不放縮圖，面板留著；照片處理失敗的提示也改在這裡（「圖片處理失敗，請換一張照片」），選下一張照片時清除。
   - 測試：`sessionRowProofAdded.test.js`（新照片的開關會清掉其他列的 ✓、呼叫頁面的 handler、預覽可開；重複 render 只用最新的 handler 一次；沒有列表時不接）、`proofSheetFlow.test.js`（頁面接住時面板不自己綁定；空間不足時的提示與面板留著）、e2e `bug124-proof-wall.test.js`（首頁實際流程；修正前其他列的 ✓ 不會清掉）。
+  - 審查（#284）：Codex 沒有問題。獨立 review 的 P1：空間不足的 toast（z-index 200、離底部約 84 px）被面板（z-index 500）蓋住，使用者仍然看不到說明，因此改為在面板裡顯示（處理失敗的提示同樣如此）。P3 也補上：已被內層列表接住的事件不再處理（`defaultPrevented`）；測試加上點舊列的開關只切換一次（抓得到重新綁定整個列表）、非縮圖發出的事件不接；空間不足的測試改為 `mockImplementationOnce`，並確認下一張照片會清除訊息後存下；e2e 改為檢查 Orbit Window 的成就照片換成新照片（原本的 toast 檢查在修正前也會通過），並加上空間不足的情況（訊息在 `elementFromPoint` 是最上層、面板留著、略過可關閉）。開 PR 前以改動原始碼驗證，10 個改動都會讓測試失敗。
 
 - [x] **TEST-008** 補上照片佐證的測試（2026-11-26）
   - 只加測試、不改 app 程式：`proofSheetFlow.test.js`——全螢幕照片（點一下淡出後移除）；佐證面板（任務名稱以文字顯示、選照片前不能確認、固定在畫面底部）；選照片（壓縮後預覽、處理失敗的提示、取消選擇）；確認（存在這台裝置；只有登入且有已存 session 的帳號才排入雲端備份；縮圖放進該筆紀錄、在 XP 之前、取代雲端的佔位、不重複，以及個人空間照片牆的提示）；略過或點面板外關閉；拍照模組載入失敗時不開面板。`ui/proofSheet.js` 57% → 100%。

@@ -79,6 +79,10 @@ describe('a photo added from the proof sheet (BUG-124)', () => {
     // Its preview opens the full-screen photo.
     wrap.querySelector('.session-proof-preview-btn').click();
     expect(window._showProofLightbox).toHaveBeenCalledWith(PHOTO);
+    // The older rows were not bound again: one click there is one toggle.
+    wallButton(container, 0).click();
+    expect(getAchievementPhotoSelection(OWNER)).toBe(sid(0));
+    expect(onPhotoWallChange).toHaveBeenCalledTimes(2);
   });
 
   it('uses the handler of the latest render only, once', () => {
@@ -94,6 +98,21 @@ describe('a photo added from the proof sheet (BUG-124)', () => {
     expect(getAchievementPhotoSelection(OWNER)).toBe(sid(1));
     expect(first).not.toHaveBeenCalled();
     expect(latest).toHaveBeenCalledTimes(1);
+  });
+
+  it('answers only for a thumbnail, and only once', () => {
+    const container = page();
+    bindProofThumbs(container, { ownerId: OWNER, onPhotoWallChange: vi.fn() });
+    const other = new window.CustomEvent('orbit:proof-added', { bubbles: true, cancelable: true });
+    container.querySelector('.log-xp').dispatchEvent(other);
+    expect(other.defaultPrevented).toBe(false);
+    // Already taken in by an inner list: left alone.
+    const { wrap } = addFromSheet(container);
+    const again = new window.CustomEvent('orbit:proof-added', { bubbles: true, cancelable: true });
+    again.preventDefault();
+    wrap.dispatchEvent(again);
+    wrap.querySelector('.session-proof-wall-btn').click();
+    expect(getAchievementPhotoSelection(OWNER)).toBe(sid(1));
   });
 
   it('is not answered outside a list, so the sheet binds the row itself', () => {

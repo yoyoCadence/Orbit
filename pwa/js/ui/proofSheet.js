@@ -59,6 +59,7 @@ export async function showProofSheet(sessionId, taskName) {
     <div id="proof-preview" style="display:none;text-align:center;margin-bottom:12px">
       <img id="proof-img" style="max-width:100%;max-height:200px;border-radius:8px;object-fit:contain" alt="佐證預覽">
     </div>
+    <div id="proof-msg" role="status" aria-live="polite" style="font-size:13px;color:#ff6b6b;margin-bottom:8px"></div>
     <div style="display:flex;gap:8px">
       <button class="btn btn-outline" id="proof-skip" style="flex:1">跳過</button>
       <button class="btn btn-primary" id="proof-confirm" style="flex:1" disabled>確認</button>
@@ -66,6 +67,8 @@ export async function showProofSheet(sessionId, taskName) {
   `;
   sheet.querySelector('#proof-task-name').textContent = taskName;
   document.body.append(overlay, sheet);
+  // BUG-124: a problem is told inside the sheet; a toast would sit under it.
+  const say = text => { sheet.querySelector('#proof-msg').textContent = text; };
 
   function close() {
     overlay.classList.add('pro-sheet-overlay-out');
@@ -78,12 +81,13 @@ export async function showProofSheet(sessionId, taskName) {
   sheet.querySelector('#proof-file-input').addEventListener('change', async e => {
     const file = e.target.files?.[0];
     if (!file) return;
+    say('');
     try {
       selectedDataUrl = await compressImage(file);
       sheet.querySelector('#proof-img').src = selectedDataUrl;
       sheet.querySelector('#proof-preview').style.display = 'block';
       sheet.querySelector('#proof-confirm').disabled = false;
-    } catch { showToast('圖片處理失敗'); }
+    } catch { say('圖片處理失敗，請換一張照片'); }
   });
   sheet.querySelector('#proof-confirm').addEventListener('click', () => {
     if (!selectedDataUrl) return;
@@ -91,7 +95,7 @@ export async function showProofSheet(sessionId, taskName) {
       saveProof(sessionId, selectedDataUrl);
     } catch {
       // BUG-124: storage full. Nothing was kept; the sheet stays for Skip.
-      showToast('這台裝置的空間不足，照片沒有存下來');
+      say('這台裝置的空間不足，照片沒有存下來');
       return;
     }
     // HW-112C1: a signed-in account also keeps a copy in its private cloud
