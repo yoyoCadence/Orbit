@@ -609,7 +609,7 @@ function useFallbackWhenImagesFail(root) {
 const EXTERIOR_STYLE = 'position:absolute;inset:0;width:100%;height:100%;max-width:none;'
   + 'object-fit:cover;object-position:center;pointer-events:none;user-select:none';
 
-// PS-260E: a set room has its own view and no image here; the default room
+// PS-260F: a set room has its own view and no image here; the default room
 // drawn when it cannot load has one, which waits hidden (no src, no request).
 function renderPosterExterior(scene, fallback, pixelArt) {
   const src = scene.exterior;
@@ -624,7 +624,7 @@ function renderPosterExterior(scene, fallback, pixelArt) {
 // follows the room: when the background falls back to the Q-style room (a
 // room style or the pixel room not cached), so does the view, put back if its
 // own error came first; the day room used when the night room cannot load
-// keeps the evening view. PS-260E: a set room's own decorations have no place
+// keeps the evening view. PS-260F: a set room's own decorations have no place
 // in the default room, so they go with it (as in the Pixi scene).
 function followBackgroundWithExterior(root) {
   const exterior = root.querySelector?.('.orbit-window-exterior');
@@ -709,7 +709,7 @@ function normalizeRevealKind(value, direction) {
 }
 
 // A decoration keeps the prop class, so an older style.css still places it.
-// One the default room does not have (PS-260E) is marked room-only.
+// One the default room does not have (PS-260F) is marked room-only.
 function renderPosterProp(entry, fallbackSrc, pixelArt = '', day = null, decoration = false) {
   const dayAttributes = day
     ? ` data-day-src="${escapeHtml(day.path)}" data-day-style="${placementStyle(day.placement)}"`

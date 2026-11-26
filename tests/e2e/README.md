@@ -71,7 +71,7 @@ npx playwright test --repeat-each=3 <file>                 # 檢查是否穩定
 
 ### 其他
 
-- 以 `.orbit-window-background` 找房間背景；窗外疊層是 `.orbit-window-exterior`，不要讓新的圖用同一個 class。
+- 以 `.orbit-window-background` 找房間背景；窗外疊層是 `.orbit-window-exterior`，不要讓新的圖用同一個 class。主題套組的房間在早晨／傍晚也有一個 `.orbit-window-exterior`，但它是 `hidden`、沒有 `src`（房間載入失敗退回預設房間時才顯示，PS-260F）：檢查「poster 的圖都載入了」時要排除 `[hidden]`。
 - poster 的圖片都是 `pointer-events: none`，`elementsFromPoint()` 看不到。檢查圖層順序請用 DOM 順序與計算後的 `z-index`。
 - 減少動態效果時每個元素仍有極短的 transition。讀 `visibility` 之類的計算值前要先關掉 transition（PS-211B）。
 - 要檢查「重播」這類一閃而過的狀態，在頁面內以 `MutationObserver` 記錄當下的狀態，不要從測試輪詢（PS-249A）。

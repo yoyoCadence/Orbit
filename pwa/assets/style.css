@@ -6772,7 +6772,7 @@ html.has-bg[data-ui-skin="modern"] .levelup-box {
   object-fit: contain;
 }
 
-/* PS-260E: a picture that cannot load and has no default (a set's own
+/* PS-260F: a picture that cannot load and has no default (a set's own
    decoration, offline and never downloaded): an empty frame stands in its
    place, without the browser's broken-image icon. */
 .personal-space-v2-appearance img[data-unavailable] {

@@ -228,8 +228,9 @@ test.describe('PS-250B character style and choice', () => {
     await expect.poll(() => loaded(world.locator('.orbit-window-protagonist'))).toBe(true);
     // Its own view out of the window: no city view over it in the morning
     // (the default room's waits, hidden and not requested).
+    await expect(world.locator('.orbit-window-exterior')).toHaveCount(1);
     await expect(world.locator('.orbit-window-exterior')).toBeHidden();
-    await expect(world.locator('.orbit-window-exterior')).not.toHaveAttribute('src', /./);
+    expect(await world.locator('.orbit-window-exterior').getAttribute('src')).toBe(null);
     // Its two decorations stand in the room from the start.
     for (const id of ['deco-crystal', 'deco-potions']) {
       const decoration = world.locator(`[data-decoration-id="${id}"]`);
@@ -256,12 +257,13 @@ test.describe('PS-250B character style and choice', () => {
     await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
     const home = page.locator('[data-orbit-window]');
     await expect(home.locator('.orbit-window-background')).toHaveAttribute('src', /workspace\/styles\/wizard\/background\.webp$/);
+    await expect(home.locator('img.orbit-window-exterior')).toHaveCount(1);
     await expect(home.locator('img.orbit-window-exterior')).toBeHidden();
     await expect(home.locator('.orbit-window-protagonist')).toHaveAttribute('src', new RegExp(`${TOON}/protagonist/witch-`));
     await expect(home.locator('[data-decoration-id="deco-potions"]')).toHaveCount(1);
   });
 
-  test('offline, a set room never downloaded is drawn as the default room: its morning view, none of the set\'s decorations (PS-260E)', async ({ page }) => {
+  test('offline, a set room never downloaded is drawn as the default room: its morning view, none of the set\'s decorations (PS-260F)', async ({ page }) => {
     const morning = new Date(`${TODAY}T00:00:00`);
     morning.setHours(7);
     await page.clock.setFixedTime(morning);
@@ -291,7 +293,7 @@ test.describe('PS-250B character style and choice', () => {
 
   });
 
-  test('offline, a set\'s own decorations never downloaded are frames in the picker (PS-260E)', async ({ page }) => {
+  test('offline, a set\'s own decorations never downloaded are frames in the picker (PS-260F)', async ({ page }) => {
     await page.route(/\/styles\/wizard\/|\/thumbnails\/wizard\./, route => route.abort('internetdisconnected'));
     await page.goto('/');
     await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });

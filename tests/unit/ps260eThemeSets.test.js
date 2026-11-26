@@ -56,7 +56,11 @@ function picker(...args) {
   return host;
 }
 
+// What poster() mounts, released after each test.
+const cleanups = [];
+
 afterEach(() => {
+  cleanups.splice(0).forEach(cleanup => cleanup());
   localStorage.clear();
   document.body.innerHTML = '';
 });
@@ -276,7 +280,7 @@ function poster(set, { timeBand = 'morning', style = 'toon', roomStyle = set.roo
   });
   document.body.append(host);
   const root = host.querySelector('[data-orbit-window]');
-  mountOrbitWindow(root, { runtime: { mount: vi.fn(() => Promise.resolve()), release: vi.fn() } });
+  cleanups.push(mountOrbitWindow(root, { runtime: { mount: vi.fn(() => Promise.resolve()), release: vi.fn() } }));
   return root;
 }
 
@@ -312,11 +316,12 @@ describe('PS-260E theme sets: the Orbit Window poster', () => {
       const background = root.querySelector('.orbit-window-background');
       const exterior = root.querySelector('.orbit-window-exterior');
       expect(exterior.dataset.exteriorFallback).toBe(VIEW(timeBand));
+      // The default room's view is the Q-style one, even with pixel characters.
+      expect(exterior.hasAttribute('data-pixel-art')).toBe(false);
       background.dispatchEvent(new Event('error'));
       expect(background.getAttribute('src')).toMatch(/workspace\/backgrounds\/building-formal-workstation-room-v2(-night)?\.webp$/);
       expect(exterior.hidden).toBe(false);
       expect(exterior.getAttribute('src')).toBe(VIEW(timeBand));
-      expect(exterior.hasAttribute('data-pixel-art')).toBe(false);
       expect(exterior.previousElementSibling).toBe(background);
       const decorations = [...root.querySelectorAll('.orbit-window-decoration')].map(image => image.dataset.decorationId);
       expect(decorations, `${timeBand} ${style}`).toEqual(STANDARD);

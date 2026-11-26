@@ -448,7 +448,7 @@ export function renderPersonalSpaceV2(container, options = {}) {
     const image = event.target;
     if (image?.tagName !== 'IMG' || !image.closest('[data-v2-appearance-picker]')) return;
     const fallback = image.dataset.fallbackSrc;
-    // PS-260E: a set's own decoration has no default: a frame stands in
+    // PS-260F: a set's own decoration has no default: a frame stands in
     // (style.css).
     if (!fallback || image.getAttribute('src') === fallback) {
       image.dataset.unavailable = '';

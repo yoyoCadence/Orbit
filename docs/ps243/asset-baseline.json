@@ -405,7 +405,7 @@
         }
       ],
       "rawBytes": 314414,
-      "gzipBytes": 84188
+      "gzipBytes": 84186
     },
     "vendoredPixi": {
       "path": "pwa/vendor/pixi.js",
@@ -417,7 +417,7 @@
       "rawBytes": 16298,
       "gzipBytes": 4332
     },
-    "combinedGzipBytes": 313948,
+    "combinedGzipBytes": 313946,
     "budgetBytes": 315392,
     "result": "PASS"
   }
