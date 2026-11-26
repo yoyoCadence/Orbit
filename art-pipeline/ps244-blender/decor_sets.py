@@ -17,9 +17,11 @@ nothing else, so the shared room render is unchanged. `b.lighting` says
 whether a lamp glows (night) or shows its shade (day).
 """
 import math
+import os
 import random
+import sys
 
-from scene import BACK_Y, RIGHT_X, emission_material, srgb, toon_material
+from scene import BACK_Y, emission_material, srgb, toon_material
 
 D = math.radians
 BACK = (1.1, BACK_Y - 0.42)    # x, y of the back-wall spot
@@ -68,12 +70,12 @@ def build_rocket(b):
 def build_planet(b):
     m, g = b.m, 'deco-planet'
     x, y = FRONT
-    body = glow(b, 'planet-body', '#ef9a4a', 0, 3.0)
+    body = glow(b, 'planet-body', '#ef9a4a', 0, 1.6)
     ring = tm(b, 'planet-ring', '#f3d39a', 0.4, gloss=0.2)
     b.cyl(g, 0.18, 0.05, (x, y, 0.025), m['walnut'])
     b.tube(g, [(x, y + 0.05, 0.05), (x + 0.02, y + 0.12, 0.35), (x, y + 0.02, 0.62)], 0.015, m['brass'])
     b.sphere(g, 0.2, (x, y, 0.74), body, segments=40)
-    b.torus(g, 0.31, 0.022, (x, y, 0.74), ring, rot=(D(70), D(-15), 0))
+    b.torus(g, 0.31, 0.022, (x, y, 0.74), ring, rot=(D(18), D(-12), 0))
     for k in range(3):
         a = D(30 + k * 120)
         b.sphere(g, 0.03, (x + math.cos(a) * 0.28, y + math.sin(a) * 0.28, 0.98 + k * 0.03),
@@ -93,8 +95,11 @@ def build_katana(b):
         b.tube(g, [(x - 0.32, y - 0.04, z), (x, y - 0.05, z + 0.03), (x + 0.32, y - 0.04, z + 0.06)], 0.022, lacquer)
         b.cyl(g, 0.026, 0.12, (x - 0.38, y - 0.04, z - 0.01), cord, rot=(0, D(90), 0), verts=12)
         b.torus(g, 0.03, 0.008, (x - 0.31, y - 0.04, z), m['brass'], rot=(0, D(90), 0))
-    b.box(g, (0.16, 0.03, 0.4), (x, y + 0.12, 0.98), cord, bevel=0.01)
-    b.box(g, (0.18, 0.03, 0.03), (x, y + 0.12, 1.19), m['oak_dark'], bevel=0.005)
+    # A scroll hung from a crossbar on two posts behind the rack.
+    for sx in (-1, 1):
+        b.box(g, (0.03, 0.03, 1.22), (x + sx * 0.13, y + 0.12, 0.61), m['oak_dark'])
+    b.box(g, (0.3, 0.035, 0.03), (x, y + 0.12, 1.21), m['oak_dark'], bevel=0.005)
+    b.box(g, (0.16, 0.02, 0.4), (x, y + 0.115, 0.99), cord, bevel=0.01)
 
 
 def build_bonsai(b):
@@ -214,7 +219,7 @@ def build_fern(b):
     rng = random.Random(7)
     for k in range(22):
         yaw = D(k * 360 / 22 + rng.uniform(-8, 8))
-        pitch = D(rng.uniform(-35, 10))
+        pitch = D(rng.uniform(15, 45))
         b.leaf(g, (x, y, 0.42), rng.uniform(0.6, 0.85), 0.16, yaw, pitch, frond if k % 3 else frond_dark)
 
 
@@ -258,14 +263,19 @@ def build_potions(b):
             colour = colours[(k + int(z * 10)) % len(colours)]
             liquid = glow(b, f'potion-{colour}', colour, 0.6, 2.2)
             r = rng.uniform(0.04, 0.06)
-            hgt = rng.uniform(0.1, 0.2)
+            base = z + 0.03
             if k % 2:
-                b.sphere(g, r * 1.2, (px, y - 0.03, z + 0.03 + r * 1.2), liquid)
+                # A round flask: the neck starts at the top of the sphere.
+                b.sphere(g, r * 1.2, (px, y - 0.03, base + r * 1.2), liquid)
+                top = base + r * 2.4
             else:
-                b.cyl(g, r, hgt, (px, y - 0.03, z + 0.03 + hgt / 2), liquid, verts=16)
-                hgt = hgt - r * 1.2
-            b.cyl(g, 0.016, 0.06, (px, y - 0.03, z + 0.03 + max(hgt, 0) + r * 2.4), m['ceramic'], verts=10)
-            b.cyl(g, 0.019, 0.025, (px, y - 0.03, z + 0.06 + max(hgt, 0) + r * 2.4 + 0.03), m['walnut'], verts=10)
+                hgt = rng.uniform(0.1, 0.2)
+                b.cyl(g, r, hgt, (px, y - 0.03, base + hgt / 2), liquid, verts=16)
+                top = base + hgt
+            # Neck (overlapping the body by 1 cm) and a cork on it; the tallest
+            # bottle stays under the shelf above (0.38 m apart).
+            b.cyl(g, 0.016, 0.06, (px, y - 0.03, top + 0.02), m['ceramic'], verts=10)
+            b.cyl(g, 0.019, 0.025, (px, y - 0.03, top + 0.0625), m['walnut'], verts=10)
             px += r * 2 + 0.035
             k += 1
 
@@ -274,7 +284,7 @@ def build_crystal(b):
     m, g = b.m, 'deco-crystal'
     x, y = FRONT
     stone, orb = tm(b, 'crystal-stone', '#4a4566', 0.7), glow(b, 'crystal-orb', '#b48cff', 1.2, 4.0)
-    core = glow(b, 'crystal-core', '#ffffff', 1.5, 6.0)
+    glint = glow(b, 'crystal-glint', '#ffffff', 1.5, 6.0)
     b.cyl(g, 0.2, 0.06, (x, y, 0.03), stone, verts=8)
     b.cyl(g, 0.12, 0.5, (x, y, 0.31), stone, r2=0.09, verts=8)
     b.cyl(g, 0.17, 0.05, (x, y, 0.585), stone, verts=8)
@@ -283,7 +293,9 @@ def build_crystal(b):
         b.tube(g, [(x + math.cos(a) * 0.12, y + math.sin(a) * 0.12, 0.61),
                    (x + math.cos(a) * 0.13, y + math.sin(a) * 0.13, 0.7)], 0.014, m['brass'])
     b.sphere(g, 0.15, (x, y, 0.78), orb, segments=40)
-    b.sphere(g, 0.05, (x + 0.03, y - 0.04, 0.8), core)
+    # Glints on the side facing the camera (inside the orb they would not show).
+    for gx, gy, gz, gr in ((0.05, -0.13, 0.84, 0.016), (-0.04, -0.14, 0.76, 0.011), (0.08, -0.115, 0.74, 0.008)):
+        b.sphere(g, gr, (x + gx, y + gy, gz), glint, segments=12)
     b.torus(g, 0.13, 0.012, (x, y, 0.66), m['brass'])
 
 
@@ -417,7 +429,12 @@ def build_aquarium(b):
     w, d = 0.7, 0.34
     b.box(g, (w, d, 0.6), (x, y, 0.3), m['oak'], bevel=0.015)
     b.box(g, (w - 0.06, 0.02, 0.5), (x, y - d / 2, 0.3), m['oak_dark'], bevel=0.01)
-    b.box(g, (w - 0.04, d - 0.04, 0.42), (x, y, 0.83), water)
+    # The water glows from the tank's back and sides (an opaque box in front
+    # would hide the fish); a light strip marks the surface at the front.
+    b.box(g, (w - 0.04, 0.02, 0.42), (x, y + d / 2 - 0.03, 0.83), water)
+    for sx in (-1, 1):
+        b.box(g, (0.02, d - 0.06, 0.42), (x + sx * (w / 2 - 0.03), y, 0.83), water)
+    b.box(g, (w - 0.05, 0.015, 0.012), (x, y - d / 2 + 0.02, 1.0), water)
     b.box(g, (w - 0.05, d - 0.05, 0.05), (x, y, 0.645), sand)
     for sx in (-1, 1):
         for sy in (-1, 1):
@@ -467,3 +484,10 @@ DECOR_SETS_BUILDERS = {
     'deco-server': build_server, 'deco-hologram': build_hologram,
     'deco-aquarium': build_aquarium, 'deco-coral': build_coral,
 }
+
+
+# Which free spot each decoration stands in, from ps260-sets/sets_catalog.py
+# (pure Python, so process_decor_sets.py reads the same map without bpy).
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'ps260-sets'))
+from sets_catalog import DECOR_SPOTS as DECOR_SETS_SPOTS  # noqa: E402
+assert set(DECOR_SETS_SPOTS) == set(DECOR_SETS_BUILDERS)

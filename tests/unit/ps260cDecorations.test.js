@@ -42,7 +42,8 @@ const path = (id, suffix, room, pixel) => `${V2}/workspace/${pixel ? 'pixel/' : 
 
 describe('PS-260C decorations of the themed rooms', () => {
   it('places only the rooms of the sets, each with its set\'s two decorations', () => {
-    expect(ROOMS.length).toBeGreaterThan(0);
+    // C1: the male sets' rooms; C2 adds the female sets'.
+    expect(ROOMS).toEqual(['bistro', 'dojo', 'jungle', 'noir', 'spacestation']);
     for (const room of ROOMS) {
       expect(Object.keys(OWN), room).toContain(room);
       expect(Object.keys(placements.rooms[room]).sort()).toEqual([...OWN[room]].sort());
@@ -78,7 +79,9 @@ describe('PS-260C decorations of the themed rooms', () => {
 
   it('places each set decoration by its own trim box, the same in both styles, on the floor', () => {
     for (const room of ROOMS) {
-      for (const [index, id] of OWN[room].entries()) {
+      const spots = OWN[room].map(id => placements.rooms[room][id].day.spot).sort();
+      expect(spots, room).toEqual(['back', 'front']);
+      for (const id of OWN[room]) {
         for (const [suffix, lighting] of LIGHTINGS) {
           const entry = placements.rooms[room][id][lighting];
           expect(entry.path).toBe(path(id, suffix, room, false));
@@ -90,8 +93,18 @@ describe('PS-260C decorations of the themed rooms', () => {
           expect(entry.x).toBeCloseTo(((left + right) / 2 / 1536) * 100, 1);
           expect(entry.y).toBeCloseTo((bottom / 1024) * 100, 1);
           expect(entry.width).toBeCloseTo((size.width / 1536) * 100, 1);
-          // The back-wall one behind the shelf and desk, the front one below the characters.
-          expect(entry.z).toBe(index === 0 ? 21 : 32);
+          // The back-wall one behind the shelf and desk, the front one below
+          // the characters; its z follows its spot, and the spot where it stands.
+          expect(entry.spot).toBe(placements.rooms[room][id].day.spot);
+          if (entry.spot === 'back') {
+            expect(entry.z, `${room} ${id}`).toBe(21);
+            expect(entry.y, `${room} ${id}`).toBeLessThan(60);
+            expect(entry.x, `${room} ${id}`).toBeLessThan(62);
+          } else {
+            expect(entry.spot).toBe('front');
+            expect(entry.z, `${room} ${id}`).toBe(32);
+            expect(entry.y, `${room} ${id}`).toBeGreaterThan(65);
+          }
         }
       }
     }

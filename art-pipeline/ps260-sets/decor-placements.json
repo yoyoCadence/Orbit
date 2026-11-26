@@ -13,6 +13,7 @@
           "y": 55.176,
           "width": 5.664,
           "z": 21,
+          "spot": "back",
           "bbox": [
             807,
             397,
@@ -26,6 +27,7 @@
           "y": 55.273,
           "width": 7.487,
           "z": 21,
+          "spot": "back",
           "bbox": [
             802,
             397,
@@ -41,6 +43,7 @@
           "y": 76.953,
           "width": 17.578,
           "z": 32,
+          "spot": "front",
           "bbox": [
             1120,
             598,
@@ -54,6 +57,7 @@
           "y": 74.609,
           "width": 7.031,
           "z": 32,
+          "spot": "front",
           "bbox": [
             1282,
             598,
@@ -67,14 +71,15 @@
       "deco-katana": {
         "day": {
           "path": "assets/personal-space/v2/workspace/decor/styles/dojo/deco-katana.png",
-          "x": 54.85,
+          "x": 54.883,
           "y": 54.688,
-          "width": 7.096,
+          "width": 7.161,
           "z": 21,
+          "spot": "back",
           "bbox": [
             788,
-            384,
-            897,
+            381,
+            898,
             560
           ]
         },
@@ -84,9 +89,10 @@
           "y": 54.688,
           "width": 8.138,
           "z": 21,
+          "spot": "back",
           "bbox": [
             788,
-            384,
+            381,
             913,
             560
           ]
@@ -99,6 +105,7 @@
           "y": 76.953,
           "width": 20.378,
           "z": 32,
+          "spot": "front",
           "bbox": [
             1093,
             573,
@@ -112,6 +119,7 @@
           "y": 74.902,
           "width": 8.919,
           "z": 32,
+          "spot": "front",
           "bbox": [
             1269,
             573,
@@ -125,28 +133,30 @@
       "deco-fern": {
         "day": {
           "path": "assets/personal-space/v2/workspace/decor/styles/jungle/deco-fern.png",
-          "x": 54.98,
-          "y": 56.543,
-          "width": 13.607,
+          "x": 55.469,
+          "y": 57.324,
+          "width": 15.755,
           "z": 21,
+          "spot": "back",
           "bbox": [
-            740,
-            483,
-            949,
-            579
+            731,
+            446,
+            973,
+            587
           ]
         },
         "night": {
           "path": "assets/personal-space/v2/workspace/decor/styles/jungle/deco-fern-night.png",
-          "x": 55.013,
-          "y": 56.543,
-          "width": 13.672,
+          "x": 55.469,
+          "y": 59.082,
+          "width": 16.276,
           "z": 21,
+          "spot": "back",
           "bbox": [
-            740,
-            483,
-            950,
-            579
+            727,
+            446,
+            977,
+            605
           ]
         }
       },
@@ -157,6 +167,7 @@
           "y": 75.879,
           "width": 14.193,
           "z": 32,
+          "spot": "front",
           "bbox": [
             1176,
             614,
@@ -170,6 +181,7 @@
           "y": 74.805,
           "width": 7.617,
           "z": 32,
+          "spot": "front",
           "bbox": [
             1277,
             614,
@@ -186,7 +198,8 @@
           "x": 81.706,
           "y": 77.148,
           "width": 20.964,
-          "z": 21,
+          "z": 32,
+          "spot": "front",
           "bbox": [
             1094,
             577,
@@ -199,7 +212,8 @@
           "x": 87.24,
           "y": 75.195,
           "width": 9.766,
-          "z": 21,
+          "z": 32,
+          "spot": "front",
           "bbox": [
             1265,
             577,
@@ -214,7 +228,8 @@
           "x": 55.501,
           "y": 54.883,
           "width": 4.622,
-          "z": 32,
+          "z": 21,
+          "spot": "back",
           "bbox": [
             817,
             353,
@@ -227,7 +242,8 @@
           "x": 56.771,
           "y": 54.98,
           "width": 7.161,
-          "z": 32,
+          "z": 21,
+          "spot": "back",
           "bbox": [
             817,
             353,
@@ -245,6 +261,7 @@
           "y": 54.883,
           "width": 3.906,
           "z": 21,
+          "spot": "back",
           "bbox": [
             820,
             398,
@@ -258,6 +275,7 @@
           "y": 54.883,
           "width": 4.427,
           "z": 21,
+          "spot": "back",
           "bbox": [
             820,
             398,
@@ -269,27 +287,29 @@
       "deco-planet": {
         "day": {
           "path": "assets/personal-space/v2/workspace/decor/styles/spacestation/deco-planet.png",
-          "x": 80.794,
-          "y": 77.148,
-          "width": 21.484,
+          "x": 81.315,
+          "y": 77.832,
+          "width": 20.964,
           "z": 32,
+          "spot": "front",
           "bbox": [
-            1076,
-            558,
-            1406,
-            790
+            1088,
+            560,
+            1410,
+            797
           ]
         },
         "night": {
           "path": "assets/personal-space/v2/workspace/decor/styles/spacestation/deco-planet-night.png",
-          "x": 87.467,
+          "x": 87.5,
           "y": 74.609,
-          "width": 8.138,
+          "width": 8.594,
           "z": 32,
+          "spot": "front",
           "bbox": [
-            1281,
-            558,
-            1406,
+            1278,
+            560,
+            1410,
             764
           ]
         }

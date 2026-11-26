@@ -66,3 +66,23 @@ assert len(SETS) >= 10
 assert sum(s['gender'] == 'male' for s in SETS) == sum(s['gender'] == 'female' for s in SETS)
 assert len({s['id'] for s in SETS}) == len(SETS)
 assert len(ROOMS) == len(SETS) and len(DECORATIONS) == 2 * len(SETS)
+
+# PS-260C: the free spot each decoration stands in (ps244-blender/decor_sets.py):
+# 'back' against the back wall under the photo frame (drawn at z 21, behind the
+# desk and the shelf), 'front' on the floor by the window (z 32, in front of
+# the plant and the chair, below the characters). Each set has one of each.
+DECOR_SPOTS = {
+    'deco-rocket': 'back', 'deco-planet': 'front',
+    'deco-katana': 'back', 'deco-bonsai': 'front',
+    'deco-hatstand': 'back', 'deco-typewriter': 'front',
+    'deco-cake': 'back', 'deco-bread': 'front',
+    'deco-fern': 'back', 'deco-lantern': 'front',
+    'deco-potions': 'back', 'deco-crystal': 'front',
+    'deco-mic': 'back', 'deco-heartlamp': 'front',
+    'deco-flowerpot': 'back', 'deco-wateringcan': 'front',
+    'deco-server': 'back', 'deco-hologram': 'front',
+    'deco-aquarium': 'back', 'deco-coral': 'front',
+}
+DECOR_Z = {'back': 21, 'front': 32}
+assert set(DECOR_SPOTS) == set(DECORATIONS)
+assert all(sorted(DECOR_SPOTS[d] for d, _ in s['decor']) == ['back', 'front'] for s in SETS)

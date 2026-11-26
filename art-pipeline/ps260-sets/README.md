@@ -142,6 +142,8 @@ to the default boxes, like PS-250F2) and the set's two decorations
 | back wall (z 21) | the floor against the back wall between the desk and the shelf, under the photo frame (at most about 1.45 m tall) | rocket, sword rack, hat stand with coat and fedora, cake table, fern, potion cabinet, microphone stand, sunflower planter, server rack, aquarium |
 | front right (z 32) | the free floor by the window, in front of the plant, below the characters | planet lamp, bonsai table, typewriter on a side table, bread crate, lantern on a crate, crystal ball, heart lamp, watering can and pots, hologram projector, coral lamp |
 
+Each decoration's spot is `sets_catalog.DECOR_SPOTS`, and its draw order
+follows the spot (`DECOR_Z`), not the order the catalog lists a set's two.
 Lamps, screens, potions and corals glow through emission only (like the
 PS-250F floor lamp), so the shared room render is unchanged. A set decoration
 has no default box: it is trimmed like a prop in its own room, and its box
@@ -157,7 +159,7 @@ lighting); the pixel sprite is cut to the same box.
 ```bash
 B=art-pipeline/ps250-decor/placements.json
 for style in spacestation dojo noir bistro jungle wizard stage greenhouse cyber ocean; do
-  own=deco-rocket,deco-planet   # the set's two, from sets_catalog.py
+  own=$(cd art-pipeline/ps260-sets && python3 -c "import sets_catalog as c; print(','.join(d for s in c.SETS if s['room'][0] == '$style' for d, _ in s['decor']))")
   for lighting in day night; do
     /tmp/bpyenv/bin/python art-pipeline/ps244-blender/render_pack.py /tmp/decor/$style-$lighting \
       --only decor,$own --style $style --lighting $lighting --decor-boxes $B

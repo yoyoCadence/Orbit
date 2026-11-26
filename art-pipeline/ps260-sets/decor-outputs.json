@@ -107,12 +107,12 @@
       "sha256": "c6282e4c2475e77eeaf189c3db8d22e23bb8f8b595c9b91b6523854175b55454"
     },
     "assets/personal-space/v2/workspace/decor/styles/dojo/deco-katana-night.png": {
-      "bytes": 20835,
-      "sha256": "8a4fa22f0130b9f5a3694d892e00c470a51b07bdb062f4f0ec10f19c34fd945d"
+      "bytes": 24517,
+      "sha256": "be2e8228fdc74dc0d50cb097cd7da10aa0dc2795964060d8d43ef15cd9dc4b5b"
     },
     "assets/personal-space/v2/workspace/decor/styles/dojo/deco-katana.png": {
-      "bytes": 19684,
-      "sha256": "32fa717af2f6fbd418b1ae3b3e9177745ada2402f3349813e74cceb1de1c61e4"
+      "bytes": 23729,
+      "sha256": "8858875efb5298cf6ffa42da1cd3373c82a1b27cf8f0011f4fb6fda0f2a56b3a"
     },
     "assets/personal-space/v2/workspace/decor/styles/dojo/deco-succulent-night.png": {
       "bytes": 1610,
@@ -147,12 +147,12 @@
       "sha256": "5d04b2a2400a807af3f4ad065cbe82e844dca30e6640e5ef88b6430fe58ddfa7"
     },
     "assets/personal-space/v2/workspace/decor/styles/jungle/deco-fern-night.png": {
-      "bytes": 32117,
-      "sha256": "9b0a226cc026c6ce0c0e5d422a6ce649dff15e80e83429396c5d5dae1c64816c"
+      "bytes": 43057,
+      "sha256": "683fad588a49ad9981e7e1c49beb7b49209600ec754680197734f68e1aa2450b"
     },
     "assets/personal-space/v2/workspace/decor/styles/jungle/deco-fern.png": {
-      "bytes": 32702,
-      "sha256": "1b398b645bcf24071691dd06a4713d6ecd80776ec52c03f1a38dae3893413063"
+      "bytes": 38324,
+      "sha256": "4e73a7b330d36ed2b606f1e72d2bdc246929eb4a37bcd431abd7f469920fd1d7"
     },
     "assets/personal-space/v2/workspace/decor/styles/jungle/deco-floor-lamp-night.png": {
       "bytes": 16059,
@@ -291,12 +291,12 @@
       "sha256": "532e45e3c0ad6cc6ecc811191d8cd00cb2103e4315def565d0f2491bf732875f"
     },
     "assets/personal-space/v2/workspace/decor/styles/spacestation/deco-planet-night.png": {
-      "bytes": 31126,
-      "sha256": "4e6bfeb7f0063fdcbc72f78d8559c08fc6aca4ab6f8cfbcabbc84c8d8480b7c4"
+      "bytes": 28013,
+      "sha256": "bf43c9169eba2bfa90e543fb6917a485fa81dbc0e74e323bd02775712f124764"
     },
     "assets/personal-space/v2/workspace/decor/styles/spacestation/deco-planet.png": {
-      "bytes": 50173,
-      "sha256": "eae8df0ab74800e3c3b6690be189ebae0467e08a415678bfabb740512331745c"
+      "bytes": 46237,
+      "sha256": "16df56812ef35f5a2f1ed5cbb92ec3ea4f04f1f987b5b5bf11908bff99989357"
     },
     "assets/personal-space/v2/workspace/decor/styles/spacestation/deco-rocket-night.png": {
       "bytes": 14520,
@@ -427,12 +427,12 @@
       "sha256": "45aa9f1227e8656ee8f5f46eb9cdf1c6de4a598c7f411616a2cdb8372342038f"
     },
     "assets/personal-space/v2/workspace/pixel/decor/styles/dojo/deco-katana-night.png": {
-      "bytes": 2094,
-      "sha256": "c4a87da8ab8f8133eea755f12106a1ff01f9ecc32a04188a1d277b104277440a"
+      "bytes": 2373,
+      "sha256": "e2d1a1af678b10557612c8b22cc66e281b7e723aecce99a609a9941e66c5b0d7"
     },
     "assets/personal-space/v2/workspace/pixel/decor/styles/dojo/deco-katana.png": {
-      "bytes": 2124,
-      "sha256": "b01fb2c1c2fba4c8f583ffce7946ee366c5f022bb8e1f4e06910c44337c8a461"
+      "bytes": 2469,
+      "sha256": "107d56059c20d83c78e077da11e4c15c6297d067c4e17ebbe4ecfe70263ead41"
     },
     "assets/personal-space/v2/workspace/pixel/decor/styles/dojo/deco-succulent-night.png": {
       "bytes": 306,
@@ -467,12 +467,12 @@
       "sha256": "35f3f06d72be594f2bb6d78e39313b840ad7d1fd9f71ab84a7dfc83ca83c88ff"
     },
     "assets/personal-space/v2/workspace/pixel/decor/styles/jungle/deco-fern-night.png": {
-      "bytes": 2965,
-      "sha256": "9dbdc1c32066b79ba51fd859ea45cf74b4d1001b1e4309441a0431fc9f056649"
+      "bytes": 3552,
+      "sha256": "02aaab8d116870d78ffdc79515190a32c40c8f268a9690832d9761e25d3e1ba1"
     },
     "assets/personal-space/v2/workspace/pixel/decor/styles/jungle/deco-fern.png": {
-      "bytes": 2947,
-      "sha256": "6a1af951970522b90e787c0034a9998c534e5f01449805cf9fcbfb4414850c9c"
+      "bytes": 3272,
+      "sha256": "4ef96cc1702030b18bba3c60ff35e1b0d57bfceb10fb4eb0410937ceb0a7807e"
     },
     "assets/personal-space/v2/workspace/pixel/decor/styles/jungle/deco-floor-lamp-night.png": {
       "bytes": 1661,
@@ -611,12 +611,12 @@
       "sha256": "4905a19c29cc829766ad32ebd40f1661988db90b0cb4b3e26e7c97bd4a703e71"
     },
     "assets/personal-space/v2/workspace/pixel/decor/styles/spacestation/deco-planet-night.png": {
-      "bytes": 2788,
-      "sha256": "a5715756f67e7da85e4c7fd5245d0c253845e2f137ed1df2e6eadf933230be14"
+      "bytes": 2551,
+      "sha256": "c6a56eed9a6e55fb9db58fe4fc60a15665be16c2f1e31ac7183f97399cbbd307"
     },
     "assets/personal-space/v2/workspace/pixel/decor/styles/spacestation/deco-planet.png": {
-      "bytes": 3529,
-      "sha256": "e10171811ca3f047b2c767a3d221378224844a0285b63bc85f3b2fc0c98ecf79"
+      "bytes": 3290,
+      "sha256": "80aa086396ad484546496a338a55e13314c53338b8f59f815344ef00fb4a7d00"
     },
     "assets/personal-space/v2/workspace/pixel/decor/styles/spacestation/deco-rocket-night.png": {
       "bytes": 1645,

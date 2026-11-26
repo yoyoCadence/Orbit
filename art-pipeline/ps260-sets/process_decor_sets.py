@@ -21,7 +21,7 @@ shadow (process_pixel.process_prop), so both styles share the placement.
   and decor-outputs.json (sizes and SHA-256), both next to this script.
 - Previews (always): the whole set in its room at 100%, by Q style and pixels:
   the room's props, the six PS-250F decorations of that room when they exist,
-  the set's two decorations, its protagonist and Orbit
+  the set's two decorations, the photo frame, its protagonist and Orbit
   (previews/sets/<room>[-night][-pixel].jpg).
 
 Requires Pillow and numpy.
@@ -50,10 +50,6 @@ PLACEMENTS = os.path.join(HERE, 'decor-placements.json')
 OUTPUTS = os.path.join(HERE, 'decor-outputs.json')
 PREVIEWS = os.path.join(HERE, 'previews', 'sets')
 STANDARD_PLACEMENTS = os.path.join(HERE, '..', 'ps250-decor', 'placements.json')
-# decor_sets.py: the first decoration stands against the back wall (behind the
-# desk and the shelf), the second on the front-right floor (in front of the
-# plant and the chair, below the characters).
-Z = (21, 32)
 SET_OF_ROOM = {entry['room'][0]: entry for entry in sets_catalog.SETS}
 
 
@@ -98,8 +94,11 @@ def previews(room, lighting, sprites, pixel_sprites, placements):
                 P.place(canvas, sprite, {**pl, 'anchor': 'center-bottom'})
             else:
                 Q.place(canvas, sprite, pl['x'], pl['y'], pl['width'])
+        Q.draw_photo_frame(canvas, Q.PHOTO_FRAME_NIGHT_BRIGHTNESS if lighting == 'night' else 1.0)
         protagonist = sets_catalog.protagonist_path(entry['id'], 'idle', 'left')
         if pixel:
+            # PS-260D: the set's pixel protagonist.
+            P.place(canvas, load_runtime(f"{P.PROTAGONIST_DIR}/{entry['id']}-idle-left.png"), {**P.PROTAGONIST_PLACEMENT, 'x': 58})
             P.place(canvas, load_runtime(f'{P.COMPANION_DIR}/orbit-observe.png'), {**P.COMPANION_PLACEMENT, 'x': 69})
         else:
             spec = Q.CHARACTERS['protagonist']
@@ -124,12 +123,14 @@ def main():
     decor_ids = [did for did, _ in SET_OF_ROOM[room]['decor']]
 
     sprites, pixel_sprites, placements = {}, {}, {}
-    for z, did in zip(Z, decor_ids):
+    for did in decor_ids:
+        spot = sets_catalog.DECOR_SPOTS[did]
+        z = sets_catalog.DECOR_Z[spot]
         frame = Q.lift_shadow_floor(Q.load_frame(os.path.join(args.render_dir, f'{did}.png')),
                                     colours.get('shadow_floor', 0))
         sprite, box = Q.trim_prop(frame)
         sprites[did] = sprite
-        placements[did] = {**Q.placement_for(box), 'z': z, 'bbox': list(box)}
+        placements[did] = {**Q.placement_for(box), 'z': z, 'spot': spot, 'bbox': list(box)}
         pixel_sprites[did] = P.process_prop(
             args.pixel_render_dir, did, box, lighting, rooms.scene_folder(room, lighting),
             colours.get('pixel_shadow'), colours.get('shadow_floor', 0))

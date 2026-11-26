@@ -70,7 +70,7 @@ def main():
     scene.render.film_transparent = True
     scene.render.use_freestyle = False
 
-    hidden = set(S.PROP_IDS) | set(S.DECOR_IDS)
+    hidden = set(S.PROP_IDS) | set(S.DECOR_IDS) | set(S.DECOR_SETS_IDS)
     for name, objects in groups.items():
         for obj in objects:
             if name in hidden:
