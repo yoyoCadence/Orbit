@@ -922,3 +922,247 @@ describe('renderSettings: Focus Timer Pro settings card', () => {
     expect(c.querySelector('#focus-default-min-select').value).toBe('25');
   });
 });
+
+// ─── BUG-125: the S-task daily limit counts by the local date ───────────────
+
+describe('renderSettings: S-task daily limit (BUG-125)', () => {
+  const zoneBefore = process.env.TZ;
+  afterEach(() => {
+    vi.useRealTimers();
+    if (zoneBefore === undefined) delete process.env.TZ;
+    else process.env.TZ = zoneBefore;
+  });
+
+  /** Add an S task in the task modal; today() is 2026-04-11. */
+  function addSTask(c) {
+    c.querySelector('#add-task-btn').click();
+    const modal = document.querySelector('.modal-overlay');
+    modal.querySelector('#tm-name').value = '新的 S 級任務';
+    modal.querySelector('#tm-nature').value = 'growth';
+    modal.querySelector('#tm-nature').dispatchEvent(new window.Event('change'));
+    modal.querySelector('#tm-value').value = 'S';
+    modal.querySelector('#tm-value').dispatchEvent(new window.Event('change'));
+    modal.querySelector('#tm-reason').value = '原因';
+    modal.querySelector('#tm-success-criteria').value = '標準';
+    modal.querySelector('#tm-save').click();
+  }
+
+  const sTask = (id, createdAt) => makeTask({ id, value: 'S', taskNature: 'growth', createdAt });
+
+  it('counts a task pulled from the cloud (a timestamp) by its local date', () => {
+    window.alert = vi.fn();
+    process.env.TZ = 'Asia/Taipei';
+    expect(Intl.DateTimeFormat().resolvedOptions().timeZone).toBe('Asia/Taipei');
+    // 2026-04-10 17:30 UTC is 01:30 on the 11th in Taipei.
+    mockState.tasks = [sTask('cloud', '2026-04-10T17:30:00.123456+00:00'), sTask('local', '2026-04-11')];
+    const c = makeContainer();
+    renderSettings(c);
+    addSTask(c);
+    expect(window.alert).toHaveBeenCalledWith('今日已新增 2 個 S 級任務（每日上限）。');
+    expect(mockState.tasks).toHaveLength(2);
+    expect(mockStorage.saveTasks).not.toHaveBeenCalled();
+  });
+
+  it('does not count a task added on another local day, whatever its UTC date', () => {
+    window.alert = vi.fn();
+    process.env.TZ = 'America/Los_Angeles';
+    expect(Intl.DateTimeFormat().resolvedOptions().timeZone).toBe('America/Los_Angeles');
+    mockState.tasks = [
+      // 23:30 on the 10th in Los Angeles, though already the 11th in UTC.
+      sTask('yesterday', '2026-04-11T06:30:00.000001+00:00'),
+      // 01:00 on the 11th in Los Angeles: today.
+      sTask('today', '2026-04-11T08:00:00.654321+00:00'),
+      sTask('unreadable', 'not a date'),
+      sTask('none', undefined),
+    ];
+    const c = makeContainer();
+    renderSettings(c);
+    addSTask(c);
+    expect(window.alert).not.toHaveBeenCalled();
+    expect(mockState.tasks).toHaveLength(5);
+    expect(mockState.tasks[4]).toMatchObject({ name: '新的 S 級任務', value: 'S' });
+  });
+
+  it('counts a task dated here by that date, west of UTC too', () => {
+    window.alert = vi.fn();
+    process.env.TZ = 'America/Los_Angeles';
+    expect(Intl.DateTimeFormat().resolvedOptions().timeZone).toBe('America/Los_Angeles');
+    // Read as a time, '2026-04-11' is UTC midnight: the 10th in Los Angeles.
+    mockState.tasks = [sTask('local', '2026-04-11'), sTask('today', '2026-04-11T08:00:00+00:00')];
+    const c = makeContainer();
+    renderSettings(c);
+    addSTask(c);
+    expect(window.alert).toHaveBeenCalledWith('今日已新增 2 個 S 級任務（每日上限）。');
+    expect(mockState.tasks).toHaveLength(2);
+  });
+
+  it('dates a new task by the local date, so it counts that day', () => {
+    window.alert = vi.fn();
+    process.env.TZ = 'Asia/Taipei';
+    vi.useFakeTimers({ toFake: ['Date'] });
+    // Taipei is on the 11th; UTC is still on the 10th.
+    vi.setSystemTime(new Date('2026-04-10T17:30:00Z'));
+    mockState.tasks = [sTask('local', '2026-04-11')];
+    const c = makeContainer();
+    renderSettings(c);
+    addSTask(c);
+    expect(mockState.tasks[1].createdAt).toBe('2026-04-11');
+    addSTask(c);
+    expect(window.alert).toHaveBeenCalledWith('今日已新增 2 個 S 級任務（每日上限）。');
+    expect(mockState.tasks).toHaveLength(2);
+  });
+
+  it('does not count the built-in tasks', () => {
+    window.alert = vi.fn();
+    // A new account's built-in S task is dated today (createDefaultTasks).
+    mockState.tasks = [{ ...sTask('builtin', '2026-04-11'), isDefault: true }, sTask('local', '2026-04-11')];
+    const c = makeContainer();
+    renderSettings(c);
+    addSTask(c);
+    expect(window.alert).not.toHaveBeenCalled();
+    expect(mockState.tasks).toHaveLength(3);
+  });
+
+  it('keeps the date of an edited task, which the daily limit does not stop', () => {
+    window.alert = vi.fn();
+    mockState.user.mode = 'advanced';
+    // Two S tasks already added today: editing one of them is still allowed.
+    mockState.tasks = [
+      { ...sTask('cloud', '2026-04-10T17:30:00.123456+00:00'), reason: '原因', successCriteria: '標準' },
+      sTask('local-1', '2026-04-11'),
+      sTask('local-2', '2026-04-11'),
+    ];
+    const c = makeContainer();
+    renderSettings(c);
+    c.querySelector('[data-edit="cloud"]').click();
+    const modal = document.querySelector('.modal-overlay');
+    modal.querySelector('#tm-name').value = '改過的名字';
+    modal.querySelector('#tm-save').click();
+    expect(window.alert).not.toHaveBeenCalled();
+    expect(mockStorage.saveTasks).toHaveBeenCalledTimes(1);
+    expect(mockState.tasks[0]).toMatchObject({ name: '改過的名字', createdAt: '2026-04-10T17:30:00.123456+00:00' });
+    expect(mockState.tasks).toHaveLength(3);
+  });
+});
+
+// ─── BUG-126: an image that cannot be used says so ──────────────────────────
+
+describe('renderSettings: background and task icon images (BUG-126)', () => {
+  const RealImage = window.Image;
+  const RealFileReader = window.FileReader;
+  const realGetContext = window.HTMLCanvasElement.prototype.getContext;
+  const realToDataURL = window.HTMLCanvasElement.prototype.toDataURL;
+  let canvases;
+
+  /** Images decode (or fail) like a browser's; jsdom does not decode them. */
+  function images({ decodes = true, width = 1600, height = 1200 } = {}) {
+    window.Image = class {
+      set src(value) {
+        this._src = value;
+        this.width = width; this.height = height;
+        setTimeout(() => (decodes ? this.onload?.() : this.onerror?.()), 0);
+      }
+      get src() { return this._src; }
+    };
+    canvases = [];
+    window.HTMLCanvasElement.prototype.getContext = function () {
+      canvases.push(this);
+      return { drawImage: vi.fn() };
+    };
+    window.HTMLCanvasElement.prototype.toDataURL = function (type, quality) {
+      return `data:${type};q=${quality};${this.width}x${this.height}`;
+    };
+  }
+
+  beforeEach(() => { window.showToast = vi.fn(); });
+  afterEach(() => {
+    window.Image = RealImage;
+    window.FileReader = RealFileReader;
+    window.HTMLCanvasElement.prototype.getContext = realGetContext;
+    window.HTMLCanvasElement.prototype.toDataURL = realToDataURL;
+  });
+
+  const settle = () => new Promise(resolve => setTimeout(resolve, 20));
+
+  async function choose(input) {
+    const file = new window.File([new Uint8Array([1, 2, 3])], 'photo.jpg', { type: 'image/jpeg' });
+    Object.defineProperty(input, 'files', { value: [file], configurable: true });
+    input.dispatchEvent(new window.Event('change'));
+    await settle();
+  }
+
+  it('sets the background from a photo, square and at most 900 px', async () => {
+    images();
+    const c = makeContainer();
+    renderSettings(c);
+    await choose(c.querySelector('#bg-input'));
+    const { applyBgImage } = await import('../../pwa/js/theme.js');
+    expect(applyBgImage).toHaveBeenCalledWith('data:image/jpeg;q=0.72;900x900');
+    expect(canvases).toHaveLength(1);
+    expect(window.showToast).not.toHaveBeenCalled();
+  });
+
+  it('says so when the background photo cannot be decoded', async () => {
+    images({ decodes: false });
+    const c = makeContainer();
+    renderSettings(c);
+    await choose(c.querySelector('#bg-input'));
+    const { applyBgImage } = await import('../../pwa/js/theme.js');
+    expect(window.showToast).toHaveBeenCalledWith('圖片處理失敗，請換一張照片');
+    expect(applyBgImage).not.toHaveBeenCalled();
+  });
+
+  it('says so when the file cannot be read', async () => {
+    images();
+    window.FileReader = class {
+      readAsDataURL() { setTimeout(() => this.onerror?.(), 0); }
+    };
+    const c = makeContainer();
+    renderSettings(c);
+    await choose(c.querySelector('#bg-input'));
+    expect(window.showToast).toHaveBeenCalledWith('圖片處理失敗，請換一張照片');
+  });
+
+  it('says so when the photo decodes but cannot be drawn', async () => {
+    images();
+    window.HTMLCanvasElement.prototype.getContext = () => null;
+    const c = makeContainer();
+    renderSettings(c);
+    await choose(c.querySelector('#bg-input'));
+    const { applyBgImage } = await import('../../pwa/js/theme.js');
+    expect(window.showToast).toHaveBeenCalledWith('圖片處理失敗，請換一張照片');
+    expect(applyBgImage).not.toHaveBeenCalled();
+  });
+
+  it('says so when the device has no room for the background', async () => {
+    images();
+    const { applyBgImage } = await import('../../pwa/js/theme.js');
+    applyBgImage.mockImplementationOnce(() => { throw new window.DOMException('full', 'QuotaExceededError'); });
+    const c = makeContainer();
+    renderSettings(c);
+    await choose(c.querySelector('#bg-input'));
+    expect(window.showToast).toHaveBeenCalledWith('這台裝置的空間不足，背景圖片沒有存下來');
+  });
+
+  it('uses a photo as the task icon, and keeps the emoji when it cannot be decoded', async () => {
+    images({ width: 120, height: 300 });
+    const c = makeContainer();
+    renderSettings(c);
+    c.querySelector('#add-task-btn').click();
+    const modal = document.querySelector('.modal-overlay');
+    await choose(modal.querySelector('#tm-icon-input'));
+    expect(modal.querySelector('#tm-icon-preview img').getAttribute('src')).toBe('data:image/jpeg;q=0.82;120x120');
+    expect(modal.querySelector('#tm-emoji-section').style.display).toBe('none');
+
+    // Back to the emoji, then a photo that cannot be decoded.
+    modal.querySelector('#tm-icon-clear-btn').click();
+    images({ decodes: false });
+    await choose(modal.querySelector('#tm-icon-input'));
+    expect(window.showToast).toHaveBeenCalledWith('圖片處理失敗，請換一張照片');
+    expect(modal.querySelector('#tm-icon-preview img')).toBeNull();
+    expect(modal.querySelector('#tm-emoji-section').style.display).toBe('');
+    modal.querySelector('#tm-name').value = '有圖示的任務';
+    modal.querySelector('#tm-save').click();
+    expect(mockState.tasks[0]).toMatchObject({ name: '有圖示的任務', iconImg: null, emoji: '🎯' });
+  });
+});
