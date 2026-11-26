@@ -1613,6 +1613,9 @@ function _showTaskModal(container, task) {
       reason:              modal.querySelector('#tm-reason')?.value.trim() || task?.reason || '',
       successCriteria:     modal.querySelector('#tm-success-criteria')?.value.trim() || task?.successCriteria || '',
       hasDeliverable:      task?.hasDeliverable ?? false,
+      // A built-in task stays built-in when edited (it was dropped, so an edit
+      // made it count toward the S-task limit and synced is_default = false).
+      isDefault:           task?.isDefault ?? false,
       valueConfidence:     task?.valueConfidence ?? 100,
       createdAt:           task?.createdAt ?? todayStr,
       ...(sSince ? { sSince } : {}),

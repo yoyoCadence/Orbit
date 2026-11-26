@@ -244,6 +244,42 @@ describe('loadFromRemote — tasks / sessions / energy rows', () => {
     }]);
   });
 
+  it('keeps the fields this device has no cloud column for, for the same owner (BUG-127)', async () => {
+    const row = (id, value) => ({
+      id, name: id, category: 'focus', impact_type: 'task', task_nature: 'growth', value,
+      difficulty: 1, resistance: 1, emoji: null, daily_xp_cap: 300, cooldown_minutes: 0,
+      min_effective_minutes: 25, is_default: false, reason: 'r', success_criteria: 'c',
+      value_confidence: 100, created_at: '2026-03-01T01:02:03.456789+00:00',
+    });
+    tableData.tasks = [row('still-s', 'S'), row('now-a', 'A'), row('new', 'S')];
+    localStorage.setItem('yoyo_user', JSON.stringify({ id: 'uid-1', name: 'A' }));
+    localStorage.setItem('yoyo_tasks', JSON.stringify([
+      { id: 'still-s', value: 'S', sSince: '2026-04-11', iconImg: 'data:image/jpeg;base64,AAAA' },
+      // Changed back to A on another device: the S mark does not apply now.
+      { id: 'now-a', value: 'S', sSince: '2026-04-11', iconImg: 'data:image/jpeg;base64,BBBB' },
+    ]));
+    await db.loadFromRemote('uid-1');
+    const [stillS, nowA, added] = storage.getTasks();
+    expect(stillS).toMatchObject({ id: 'still-s', value: 'S', sSince: '2026-04-11', iconImg: 'data:image/jpeg;base64,AAAA' });
+    expect(nowA).toMatchObject({ id: 'now-a', value: 'A', iconImg: 'data:image/jpeg;base64,BBBB' });
+    expect(nowA).not.toHaveProperty('sSince');
+    expect(added).not.toHaveProperty('sSince');
+    expect(added).not.toHaveProperty('iconImg');
+  });
+
+  it('does not carry another owner\'s device fields into this account (BUG-127)', async () => {
+    tableData.tasks = [{
+      id: 'shared-id', name: 'x', category: 'focus', impact_type: 'task', task_nature: 'growth', value: 'S',
+      difficulty: 1, resistance: 1, emoji: null, daily_xp_cap: 300, cooldown_minutes: 0, min_effective_minutes: 25,
+      is_default: false, reason: 'r', success_criteria: 'c', value_confidence: 100, created_at: '2026-03-01',
+    }];
+    localStorage.setItem('yoyo_user', JSON.stringify({ id: 'guest-1', name: 'Guest' }));
+    localStorage.setItem('yoyo_tasks', JSON.stringify([{ id: 'shared-id', value: 'S', sSince: '2026-04-11', iconImg: 'data:x' }]));
+    await db.loadFromRemote('uid-1');
+    expect(storage.getTasks()[0]).not.toHaveProperty('sSince');
+    expect(storage.getTasks()[0]).not.toHaveProperty('iconImg');
+  });
+
   it('session row 逐欄映射（本機無資料時 merge 結果＝remote 映射）', async () => {
     tableData.sessions = [{
       id: 's-1', task_id: 't-1', task_name: '深度學習', task_emoji: '📚',

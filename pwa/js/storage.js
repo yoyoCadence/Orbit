@@ -176,6 +176,20 @@ function clearOwnerPendingSession(ownerId, sessionId) {
  * sidecar exists purely to retry the remote write, and a full copy would
  * double the localStorage cost of inline `iconImg` data URLs.
  */
+/**
+ * A task's fields the cloud has no column for, kept on this device (BUG-127):
+ * `sSince` (the day it was changed into S, while it is still S) and `iconImg`.
+ * A pull from the cloud carries them over for the same owner's tasks; without
+ * this a sync would drop them (and let the S-task limit be passed again).
+ */
+function withDeviceTaskFields(task, cached) {
+  if (!cached) return task;
+  const kept = { ...task };
+  if (cached.sSince && task.value === 'S') kept.sSince = cached.sSince;
+  if (cached.iconImg) kept.iconImg = cached.iconImg;
+  return kept;
+}
+
 function syncableTask(task) {
   const slim = {};
   for (const [jsKey, , , write] of TASK_FIELDS) {
@@ -706,7 +720,10 @@ export const db = {
       };
     }
 
-    const canonicalTasks = (tasksRes.data ?? []).map(t => fromRow(TASK_FIELDS, t));
+    const cachedTasks = localUser?.id === userId ? (get('tasks') ?? []) : [];
+    const cachedTaskById = new Map(cachedTasks.filter(t => t?.id).map(t => [t.id, t]));
+    const canonicalTasks = (tasksRes.data ?? [])
+      .map(t => withDeviceTaskFields(fromRow(TASK_FIELDS, t), cachedTaskById.get(t.id)));
     const remoteSessions = filterDeletedSessions(
       (sessionsRes.data ?? []).map(s => fromRow(SESSION_FIELDS, s)),
       deletedSessionIds,

@@ -1067,6 +1067,52 @@ describe('renderSettings: S-task daily limit (BUG-125, BUG-127)', () => {
     expect(mockState.tasks[2].createdAt).toBe('2026-04-11');
   });
 
+  it('counts tasks after a midnight new-day hour as that day (BUG-127)', () => {
+    mockState.user.newDayHour = 0;
+    at('Asia/Taipei', '2026-04-10T18:00:00Z');   // 02:00 on the 11th
+    const c = settingsWith([
+      sTask('half-past', '2026-04-10T16:30:00.000001+00:00'), // 00:30 on the 11th
+      sTask('one', '2026-04-10T17:00:00.000001+00:00'),       // 01:00 on the 11th
+    ]);
+    addSTask(c);
+    expect(window.alert).toHaveBeenCalledWith(LIMIT);
+  });
+
+  it('starts the day exactly at the new-day hour (BUG-127)', () => {
+    at('Asia/Taipei', '2026-04-10T22:00:00Z');   // 06:00 on the 11th
+    const c = settingsWith([
+      sTask('five', '2026-04-10T21:00:00.000000+00:00'),      // 05:00:00 on the 11th
+      sTask('five-too', '2026-04-10T21:00:00.000000+00:00'),
+    ]);
+    addSTask(c);
+    expect(window.alert).toHaveBeenCalledWith(LIMIT);
+  });
+
+  it('counts only S tasks (BUG-127)', () => {
+    const c = settingsWith([
+      makeTask({ id: 'a1', value: 'A', createdAt: '2026-04-11' }),
+      makeTask({ id: 'a2', value: 'A', createdAt: '2026-04-11' }),
+    ]);
+    addSTask(c);
+    expect(window.alert).not.toHaveBeenCalled();
+    expect(mockState.tasks).toHaveLength(3);
+  });
+
+  it('keeps a built-in task built-in when it is edited, so it still does not count', () => {
+    mockState.user.mode = 'advanced';
+    const c = settingsWith([
+      { ...sTask('builtin', '2026-04-11'), isDefault: true, reason: '原因', successCriteria: '標準' },
+      sTask('local', '2026-04-11'),
+    ]);
+    c.querySelector('[data-edit="builtin"]').click();
+    document.querySelector('.modal-overlay #tm-name').value = '改名的預設任務';
+    document.querySelector('.modal-overlay #tm-save').click();
+    expect(mockState.tasks[0]).toMatchObject({ name: '改名的預設任務', isDefault: true });
+    addSTask(c);
+    expect(window.alert).not.toHaveBeenCalled();
+    expect(mockState.tasks).toHaveLength(3);
+  });
+
   it('does not count the built-in tasks', () => {
     // A new account's built-in S task is dated today (createDefaultTasks).
     const c = settingsWith([{ ...sTask('builtin', '2026-04-11'), isDefault: true }, sTask('local', '2026-04-11')]);
