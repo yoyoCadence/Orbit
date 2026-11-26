@@ -15,7 +15,10 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { getWorkspaceAssetManifestPaths } from '../../pwa/js/personalSpace/v2/content/assetManifest.js';
+import {
+  getWorkspaceAssetManifestPaths,
+  getWorkspaceSceneAssets,
+} from '../../pwa/js/personalSpace/v2/content/assetManifest.js';
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const PWA = join(REPO, 'pwa');
@@ -31,6 +34,10 @@ const STANDARD = Object.keys(standard.decor);
 const ROOMS = Object.keys(placements.rooms).sort();
 const OWN = Object.fromEntries(sets.sets.map(entry => [entry.room, entry.decorations]));
 const LIGHTINGS = [['', 'day'], ['-night', 'night']];
+// The default room's draw order at 100% (PS-244 PROP_DEFINITIONS).
+const Z = Object.fromEntries(getWorkspaceSceneAssets(100).props.map(entry => [entry.id, entry.placement.z]));
+Z.shelf = Z['office-shelf'];
+Z.desk = Z['corner-desk'];
 
 function pngSize(path) {
   const data = readFileSync(join(PWA, path));
@@ -42,10 +49,10 @@ const path = (id, suffix, room, pixel) => `${V2}/workspace/${pixel ? 'pixel/' : 
 
 describe('PS-260C decorations of the themed rooms', () => {
   it('places only the rooms of the sets, each with its set\'s two decorations', () => {
-    // C1: the male sets' rooms; C2 adds the female sets'.
-    expect(ROOMS).toEqual(['bistro', 'dojo', 'jungle', 'noir', 'spacestation']);
+    // C1 (#273): the male sets' rooms; C2: the female sets'. Every set's room.
+    expect(ROOMS).toEqual(sets.sets.map(entry => entry.room).sort());
+    expect(ROOMS).toHaveLength(10);
     for (const room of ROOMS) {
-      expect(Object.keys(OWN), room).toContain(room);
       expect(Object.keys(placements.rooms[room]).sort()).toEqual([...OWN[room]].sort());
     }
   });
@@ -93,18 +100,25 @@ describe('PS-260C decorations of the themed rooms', () => {
           expect(entry.x).toBeCloseTo(((left + right) / 2 / 1536) * 100, 1);
           expect(entry.y).toBeCloseTo((bottom / 1024) * 100, 1);
           expect(entry.width).toBeCloseTo((size.width / 1536) * 100, 1);
-          // The back-wall one behind the shelf and desk, the front one below
-          // the characters; its z follows its spot, and the spot where it stands.
+          // Its z follows its spot, and it stands on its spot's floor line:
+          // `base` is its lowest solid row (no shadow), so a piece moved
+          // forward or floating fails.
           expect(entry.spot).toBe(placements.rooms[room][id].day.spot);
           if (entry.spot === 'back') {
-            expect(entry.z, `${room} ${id}`).toBe(21);
-            expect(entry.y, `${room} ${id}`).toBeLessThan(60);
+            // Above the shelf, whose faint night shadow would lie over it, and
+            // below the desk in front of it.
+            expect(entry.z, `${room} ${id}`).toBeGreaterThan(Z.shelf);
+            expect(entry.z, `${room} ${id}`).toBeLessThan(Z.desk);
+            expect(entry.base, `${room} ${id}`).toBeGreaterThan(53.5);
+            expect(entry.base, `${room} ${id}`).toBeLessThan(56);
             expect(entry.x, `${room} ${id}`).toBeLessThan(62);
           } else {
             expect(entry.spot).toBe('front');
             expect(entry.z, `${room} ${id}`).toBe(32);
-            expect(entry.y, `${room} ${id}`).toBeGreaterThan(65);
+            expect(entry.base, `${room} ${id}`).toBeGreaterThan(73.5);
+            expect(entry.base, `${room} ${id}`).toBeLessThan(76);
           }
+          expect(Number.isInteger(entry.z), 'the poster rounds z').toBe(true);
         }
       }
     }

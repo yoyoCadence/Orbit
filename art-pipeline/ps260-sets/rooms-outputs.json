@@ -227,12 +227,12 @@
       "sha256": "6b423f4d081ae367e3841a5362fe32be372b3830598400454fd54a9ad3f4c6a0"
     },
     "assets/personal-space/v2/workspace/pixel/styles/greenhouse/props/corner-desk-night.png": {
-      "bytes": 5978,
-      "sha256": "36717ea35f14cf56ed2d6618ac979e432cd38fcb92c7ba4275d33d2d15e8e718"
+      "bytes": 5910,
+      "sha256": "e16939ea89858b5a45189ae8c956e4b8d44ef2a7633d664118158dae6d4bece3"
     },
     "assets/personal-space/v2/workspace/pixel/styles/greenhouse/props/corner-desk.png": {
-      "bytes": 5858,
-      "sha256": "7d3bbc06ae91c4b8df730d7b10ca7beb2cc311bbfd6b63ebcf1b4f3034d54992"
+      "bytes": 5834,
+      "sha256": "d8f4b3207ad540c449f2ec5bc29b037960c392b1e4d1accdcacbe541de1a7fc7"
     },
     "assets/personal-space/v2/workspace/pixel/styles/greenhouse/props/desk-lamp-night.png": {
       "bytes": 632,
@@ -251,40 +251,40 @@
       "sha256": "f2aa4d34135b42dce3e3548c84e08467ac65eb0010bde3a8387609aa924bdd92"
     },
     "assets/personal-space/v2/workspace/pixel/styles/greenhouse/props/office-chair-night.png": {
-      "bytes": 2943,
-      "sha256": "1b77d1fe3f2fc10fcd76c1cb1baf408faef2170c29b49783c39d42cb8b635f04"
+      "bytes": 2852,
+      "sha256": "9f0f8c9734c71a69400ef5f0beb88762a23c4e702c422a6bda8993385f53bd98"
     },
     "assets/personal-space/v2/workspace/pixel/styles/greenhouse/props/office-chair.png": {
-      "bytes": 2767,
-      "sha256": "f022369a4c99e55f2d39c9d5eab75b32d48840013b93ed6955eb726c889e3445"
+      "bytes": 2746,
+      "sha256": "dcccee3f1d312532bb0b2f32136502b2eb1dbd6fdcdc8471f2a624403fbf1b7f"
     },
     "assets/personal-space/v2/workspace/pixel/styles/greenhouse/props/office-plant-night.png": {
       "bytes": 3435,
       "sha256": "6e809783c2072328830ce411a8a9ec29b94ffa6744d0e9115dc3cacb7eeb309d"
     },
     "assets/personal-space/v2/workspace/pixel/styles/greenhouse/props/office-plant.png": {
-      "bytes": 3724,
-      "sha256": "c25f7cbb7706cf68b06d4f9e0cbecd280457401c07a8d882f787ad1df6f313a2"
+      "bytes": 3703,
+      "sha256": "24c59d0b63db4afe634289284307048eec206a6730f9aeb98012568891b972ad"
     },
     "assets/personal-space/v2/workspace/pixel/styles/greenhouse/props/office-shelf-night.png": {
-      "bytes": 12690,
-      "sha256": "be862e1605c796d4f1542f3a1a8f1ce5d0abb9143fd56d4a4bbeafe623239cb6"
+      "bytes": 12374,
+      "sha256": "58c2d691d9ea3bd62265a1fc15ea44fc4b9da2e68c6020c37d50ff2139d44325"
     },
     "assets/personal-space/v2/workspace/pixel/styles/greenhouse/props/office-shelf.png": {
-      "bytes": 9874,
-      "sha256": "0f50211e8b167985e914969151153385a775692e63866f744a40551864faf623"
+      "bytes": 9846,
+      "sha256": "d0c46da6d6e5b143b9a50ce0783a16f5bcdb293d228ebd7fad4bb375bfcd9f0f"
     },
     "assets/personal-space/v2/workspace/pixel/styles/greenhouse/props/planning-board-night.png": {
-      "bytes": 4086,
-      "sha256": "9adb7921123bbf6be588c890af1bdbfb7567de164b51e1b2d045f81945162097"
+      "bytes": 4083,
+      "sha256": "6cf8a65b9506b68ffba0f2665123cb78beb912e7293019f7a7b7fef78ab1d764"
     },
     "assets/personal-space/v2/workspace/pixel/styles/greenhouse/props/planning-board.png": {
-      "bytes": 3685,
-      "sha256": "26f2482559ee9bf1243c22928e36b2b409639bb98c69323d55667bf53de3d33f"
+      "bytes": 3674,
+      "sha256": "89e685c0ad021029122ad97ccf30f06ff225150efba624071d88932d0c4860c5"
     },
     "assets/personal-space/v2/workspace/pixel/styles/greenhouse/props/single-monitor-night.png": {
-      "bytes": 1647,
-      "sha256": "9e473edc7b7ec46dd19257e601c6e411c41be2bcc4ad9be7616e992b6e2de7fa"
+      "bytes": 1650,
+      "sha256": "61449138ddbb0c8f8e7161eededff1d6224956ab4b50ed8a15abb1415f90702a"
     },
     "assets/personal-space/v2/workspace/pixel/styles/greenhouse/props/single-monitor.png": {
       "bytes": 1571,
@@ -947,12 +947,12 @@
       "sha256": "01c0081d6a9d136bb128987bc9e3370130835a2e3495cf4a6f43c59023851f01"
     },
     "assets/personal-space/v2/workspace/styles/greenhouse/props/corner-desk-night.png": {
-      "bytes": 76513,
-      "sha256": "54dc2a3f5e7a10c423dddbab1587d0f0c54efe7bfd8d7ba37794858df93c55b7"
+      "bytes": 74351,
+      "sha256": "c8bbf8519ae5a15a4dedf7ccb5335fff0fb61650a3b9e09cb9e4dd6790097b5b"
     },
     "assets/personal-space/v2/workspace/styles/greenhouse/props/corner-desk.png": {
-      "bytes": 63234,
-      "sha256": "b0ed6bf9ddafa04139a4f1192654a3b9939a9611d4b00cc58598417cd23f5926"
+      "bytes": 61023,
+      "sha256": "74cb87948cbdfe7eeed29f228fa07759c8581a295a0e2b039f1a97017092a4dd"
     },
     "assets/personal-space/v2/workspace/styles/greenhouse/props/desk-lamp-night.png": {
       "bytes": 6073,
@@ -963,48 +963,48 @@
       "sha256": "9cddecf028f41c76cd4d507616f3a544c62509069909a7b4669d15b94eed80dc"
     },
     "assets/personal-space/v2/workspace/styles/greenhouse/props/dual-monitor-night.png": {
-      "bytes": 25987,
-      "sha256": "53b8602b80d0cd9139325254a928066eb8850310c5c4fc0e25c3608297c2f617"
+      "bytes": 25900,
+      "sha256": "1d1da8826398662677f1a5d15c0a1bfd7479006bc45c753aaa784e45fa109545"
     },
     "assets/personal-space/v2/workspace/styles/greenhouse/props/dual-monitor.png": {
       "bytes": 26087,
       "sha256": "3df7d28506313d93a7f9fcc9f179367d9cd0ee120f8a851d1773c00d2be69eaa"
     },
     "assets/personal-space/v2/workspace/styles/greenhouse/props/office-chair-night.png": {
-      "bytes": 28425,
-      "sha256": "6d8d662dc41bcfb18ea2fa2980fa0fd41e77033f0e99a4236ebb9afbadceffaf"
+      "bytes": 26848,
+      "sha256": "c86590db0a6957aabbc718483e029d6bec68659d05e31904f4cc95c1ad9cbcb6"
     },
     "assets/personal-space/v2/workspace/styles/greenhouse/props/office-chair.png": {
-      "bytes": 24709,
-      "sha256": "6474f902a78046556b2d008bb0e353de8210d605e0fe42b5b8ec97c44fdfd004"
+      "bytes": 24310,
+      "sha256": "9913ef270d660ba508bdaa3ba7d693a2b1542497745a71d9c7929eff00b5b859"
     },
     "assets/personal-space/v2/workspace/styles/greenhouse/props/office-plant-night.png": {
       "bytes": 29614,
       "sha256": "3a591f777b2c5cabe41b6c960b9a974a7e918a0590c95c7bf52eaae7747aed85"
     },
     "assets/personal-space/v2/workspace/styles/greenhouse/props/office-plant.png": {
-      "bytes": 44488,
-      "sha256": "c5ec14ee92cf7837c81e34a8f011e1df826520d2b8e5d1ec7241063d450fa23c"
+      "bytes": 32718,
+      "sha256": "f322dec4cac58513542e6f4a1aeaab560e3c7034f92c68ad3e77b918d11d762b"
     },
     "assets/personal-space/v2/workspace/styles/greenhouse/props/office-shelf-night.png": {
-      "bytes": 168530,
-      "sha256": "3f5d5e1bc756db186a879168ed45d7bb8d5765c860e34506755940a0492f4fb5"
+      "bytes": 132506,
+      "sha256": "6709876ae8db74e8c2785c9eec3b5d3aee3d7b22f942a19e87823dc7be36b2cb"
     },
     "assets/personal-space/v2/workspace/styles/greenhouse/props/office-shelf.png": {
-      "bytes": 92314,
-      "sha256": "0a84169dbcaa93b3c793b720aa5b984468e30c7e66456bbb007bef920579a80b"
+      "bytes": 88470,
+      "sha256": "26b4455dbde39a42359a422f64a703e533f798acea3131d17912f0097715318e"
     },
     "assets/personal-space/v2/workspace/styles/greenhouse/props/planning-board-night.png": {
-      "bytes": 47352,
-      "sha256": "d9059cfb23296ab24fc6a2abd3efb3d9ccf76a645045a17bfcdd1b02389936b8"
+      "bytes": 46782,
+      "sha256": "cc43aba6f1e2322590195423e4c7acb8004ada43a6058230d01c0f5b81cad440"
     },
     "assets/personal-space/v2/workspace/styles/greenhouse/props/planning-board.png": {
-      "bytes": 39574,
-      "sha256": "3296844bc913ecaa4ed17959dc82f0eaadb2764eb1ad12c76ec0dda949cd9925"
+      "bytes": 39294,
+      "sha256": "1a7e90a47ecc7f48534fc0b484e511e8d4cc2b78b3b86c3d487ec94c5a8cbbab"
     },
     "assets/personal-space/v2/workspace/styles/greenhouse/props/single-monitor-night.png": {
-      "bytes": 16026,
-      "sha256": "a3a3678deb0ec75decdaf6ddccb2dddd06c011fff809d81b3d074ccbc1e73d41"
+      "bytes": 15994,
+      "sha256": "5466c3ab5ed135cc2b7d10a9572a88e2a43b06d12125e0d74b7667c12695e960"
     },
     "assets/personal-space/v2/workspace/styles/greenhouse/props/single-monitor.png": {
       "bytes": 16088,
@@ -1492,7 +1492,7 @@
     "assets/personal-space/v2/workspace/styles/dojo/props/planning-board.png": 0,
     "assets/personal-space/v2/workspace/styles/dojo/props/single-monitor-night.png": 106,
     "assets/personal-space/v2/workspace/styles/dojo/props/single-monitor.png": 19,
-    "assets/personal-space/v2/workspace/styles/greenhouse/props/corner-desk-night.png": 36,
+    "assets/personal-space/v2/workspace/styles/greenhouse/props/corner-desk-night.png": 0,
     "assets/personal-space/v2/workspace/styles/greenhouse/props/corner-desk.png": 0,
     "assets/personal-space/v2/workspace/styles/greenhouse/props/desk-lamp-night.png": 0,
     "assets/personal-space/v2/workspace/styles/greenhouse/props/desk-lamp.png": 1,

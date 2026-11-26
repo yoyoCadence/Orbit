@@ -139,7 +139,7 @@ to the default boxes, like PS-250F2) and the set's two decorations
 
 | Spot | Where | Sets' pieces |
 |------|-------|--------------|
-| back wall (z 21) | the floor against the back wall between the desk and the shelf, under the photo frame (at most about 1.45 m tall) | rocket, sword rack, hat stand with coat and fedora, cake table, fern, potion cabinet, microphone stand, sunflower planter, server rack, aquarium |
+| back wall (z 23) | the floor against the back wall between the desk and the shelf, under the photo frame (at most about 1.45 m tall) | rocket, sword rack, hat stand with coat and fedora, cake table, fern, potion cabinet, microphone stand, sunflower planter, server rack, aquarium |
 | front right (z 32) | the free floor by the window, in front of the plant, below the characters | planet lamp, bonsai table, typewriter on a side table, bread crate, lantern on a crate, crystal ball, heart lamp, watering can and pots, hologram projector, coral lamp |
 
 Each decoration's spot is `sets_catalog.DECOR_SPOTS`, and its draw order
@@ -177,8 +177,13 @@ The six PS-250F decorations render inside their default boxes (about 5
 minutes per lighting); the set's two render in full frame, since they have no
 box yet (about 3 minutes each).
 
-The cut of a PS-250F decoration in a PS-260 room drops at most 757 pixels (the
-faint shadow tail of the bistro's beanbag at night; the PS-250F2 night-owl
-floor lamp drops 729), under the test's limit of 1000. `previews/sets/` shows
+The cut of a PS-250F decoration in a PS-260 room drops at most 908 pixels: the
+cyber room's floor lamp at night, whose pole shadow falls on the near-black
+wall past the box where it cannot be seen (the PS-250F2 night-owl lamp drops
+729 the same way). The pale rooms' beanbag casts a long faint shadow at
+night: 757 in the bistro; the greenhouse's was 1092, so its `shadow_floor` is
+72 (as the dojo's), which brought it to 454 and re-processed its room props
+from the same renders. The test's limit is 1000. `previews/sets/` shows
 each whole set: the room, its props and decorations, the set's protagonist
-and Orbit (`c1-overview.jpg`: the five male sets side by side).
+and Orbit (`c1-overview.jpg` and `c2-overview.jpg`: the male and the female
+sets side by side).
