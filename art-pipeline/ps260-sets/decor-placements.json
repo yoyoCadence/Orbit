@@ -1,0 +1,299 @@
+{
+  "schemaVersion": 1,
+  "frame": {
+    "width": 1536,
+    "height": 1024
+  },
+  "rooms": {
+    "bistro": {
+      "deco-cake": {
+        "day": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/bistro/deco-cake.png",
+          "x": 55.371,
+          "y": 55.176,
+          "width": 5.664,
+          "z": 21,
+          "bbox": [
+            807,
+            397,
+            894,
+            565
+          ]
+        },
+        "night": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/bistro/deco-cake-night.png",
+          "x": 55.957,
+          "y": 55.273,
+          "width": 7.487,
+          "z": 21,
+          "bbox": [
+            802,
+            397,
+            917,
+            566
+          ]
+        }
+      },
+      "deco-bread": {
+        "day": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/bistro/deco-bread.png",
+          "x": 81.706,
+          "y": 76.953,
+          "width": 17.578,
+          "z": 32,
+          "bbox": [
+            1120,
+            598,
+            1390,
+            788
+          ]
+        },
+        "night": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/bistro/deco-bread-night.png",
+          "x": 86.979,
+          "y": 74.609,
+          "width": 7.031,
+          "z": 32,
+          "bbox": [
+            1282,
+            598,
+            1390,
+            764
+          ]
+        }
+      }
+    },
+    "dojo": {
+      "deco-katana": {
+        "day": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/dojo/deco-katana.png",
+          "x": 54.85,
+          "y": 54.688,
+          "width": 7.096,
+          "z": 21,
+          "bbox": [
+            788,
+            384,
+            897,
+            560
+          ]
+        },
+        "night": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/dojo/deco-katana-night.png",
+          "x": 55.371,
+          "y": 54.688,
+          "width": 8.138,
+          "z": 21,
+          "bbox": [
+            788,
+            384,
+            913,
+            560
+          ]
+        }
+      },
+      "deco-bonsai": {
+        "day": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/dojo/deco-bonsai.png",
+          "x": 81.348,
+          "y": 76.953,
+          "width": 20.378,
+          "z": 32,
+          "bbox": [
+            1093,
+            573,
+            1406,
+            788
+          ]
+        },
+        "night": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/dojo/deco-bonsai-night.png",
+          "x": 87.077,
+          "y": 74.902,
+          "width": 8.919,
+          "z": 32,
+          "bbox": [
+            1269,
+            573,
+            1406,
+            767
+          ]
+        }
+      }
+    },
+    "jungle": {
+      "deco-fern": {
+        "day": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/jungle/deco-fern.png",
+          "x": 54.98,
+          "y": 56.543,
+          "width": 13.607,
+          "z": 21,
+          "bbox": [
+            740,
+            483,
+            949,
+            579
+          ]
+        },
+        "night": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/jungle/deco-fern-night.png",
+          "x": 55.013,
+          "y": 56.543,
+          "width": 13.672,
+          "z": 21,
+          "bbox": [
+            740,
+            483,
+            950,
+            579
+          ]
+        }
+      },
+      "deco-lantern": {
+        "day": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/jungle/deco-lantern.png",
+          "x": 83.659,
+          "y": 75.879,
+          "width": 14.193,
+          "z": 32,
+          "bbox": [
+            1176,
+            614,
+            1394,
+            777
+          ]
+        },
+        "night": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/jungle/deco-lantern-night.png",
+          "x": 86.947,
+          "y": 74.805,
+          "width": 7.617,
+          "z": 32,
+          "bbox": [
+            1277,
+            614,
+            1394,
+            766
+          ]
+        }
+      }
+    },
+    "noir": {
+      "deco-typewriter": {
+        "day": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/noir/deco-typewriter.png",
+          "x": 81.706,
+          "y": 77.148,
+          "width": 20.964,
+          "z": 21,
+          "bbox": [
+            1094,
+            577,
+            1416,
+            790
+          ]
+        },
+        "night": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/noir/deco-typewriter-night.png",
+          "x": 87.24,
+          "y": 75.195,
+          "width": 9.766,
+          "z": 21,
+          "bbox": [
+            1265,
+            577,
+            1415,
+            770
+          ]
+        }
+      },
+      "deco-hatstand": {
+        "day": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/noir/deco-hatstand.png",
+          "x": 55.501,
+          "y": 54.883,
+          "width": 4.622,
+          "z": 32,
+          "bbox": [
+            817,
+            353,
+            888,
+            562
+          ]
+        },
+        "night": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/noir/deco-hatstand-night.png",
+          "x": 56.771,
+          "y": 54.98,
+          "width": 7.161,
+          "z": 32,
+          "bbox": [
+            817,
+            353,
+            927,
+            563
+          ]
+        }
+      }
+    },
+    "spacestation": {
+      "deco-rocket": {
+        "day": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/spacestation/deco-rocket.png",
+          "x": 55.339,
+          "y": 54.883,
+          "width": 3.906,
+          "z": 21,
+          "bbox": [
+            820,
+            398,
+            880,
+            562
+          ]
+        },
+        "night": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/spacestation/deco-rocket-night.png",
+          "x": 55.599,
+          "y": 54.883,
+          "width": 4.427,
+          "z": 21,
+          "bbox": [
+            820,
+            398,
+            888,
+            562
+          ]
+        }
+      },
+      "deco-planet": {
+        "day": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/spacestation/deco-planet.png",
+          "x": 80.794,
+          "y": 77.148,
+          "width": 21.484,
+          "z": 32,
+          "bbox": [
+            1076,
+            558,
+            1406,
+            790
+          ]
+        },
+        "night": {
+          "path": "assets/personal-space/v2/workspace/decor/styles/spacestation/deco-planet-night.png",
+          "x": 87.467,
+          "y": 74.609,
+          "width": 8.138,
+          "z": 32,
+          "bbox": [
+            1281,
+            558,
+            1406,
+            764
+          ]
+        }
+      }
+    }
+  }
+}

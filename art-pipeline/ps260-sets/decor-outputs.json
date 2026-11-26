@@ -1,0 +1,708 @@
+{
+  "schemaVersion": 1,
+  "taskId": "PS-260C",
+  "files": {
+    "assets/personal-space/v2/workspace/decor/styles/bistro/deco-beanbag-night.png": {
+      "bytes": 26639,
+      "sha256": "4c2534ada375db5bf6395c60633ac7a98495ca4fa5e3a41f1c2861c5848fe4be"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/bistro/deco-beanbag.png": {
+      "bytes": 26011,
+      "sha256": "0f5798eae4459d2181c73894e67589eb8f69a64874c8c4e93a90ffad2f7a3947"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/bistro/deco-bread-night.png": {
+      "bytes": 24767,
+      "sha256": "83730ee23c5f70c8ac94fcaf0410d6364f64e0a799a9545106be60f41761a6bc"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/bistro/deco-bread.png": {
+      "bytes": 39896,
+      "sha256": "cd4582ce80c3c050a8db0cfa98037f971af07dc344e33e6d7b0deac571ee72c7"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/bistro/deco-cake-night.png": {
+      "bytes": 20027,
+      "sha256": "34c2f8a183488ff8cdc01f3cd2b08845e74b73b3c0190cb5e60498ff1f940ba2"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/bistro/deco-cake.png": {
+      "bytes": 16500,
+      "sha256": "7fafd15f5347e38087821dd5ddee906fe7be3fd58e903a0a6f92cb31bb785b49"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/bistro/deco-coffee-night.png": {
+      "bytes": 3824,
+      "sha256": "ffcf09f21fb5c751bcd4292602dfea81023f4591b7c861cdaab17ad83da5c798"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/bistro/deco-coffee.png": {
+      "bytes": 3953,
+      "sha256": "da32707de650d4a0b19f7089bf86e19265b0f1cc4cef4102bb49ef0d63554909"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/bistro/deco-floor-lamp-night.png": {
+      "bytes": 16665,
+      "sha256": "7a4f74ef251e138a86497f23930a787c5f99a89087b275767c00e5da12a3bd72"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/bistro/deco-floor-lamp.png": {
+      "bytes": 17512,
+      "sha256": "364da21ade21af6e0285aac118a0063f3e0f7fa50776bf2859431ccfbae44e63"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/bistro/deco-globe-night.png": {
+      "bytes": 7079,
+      "sha256": "72f026e8be3b3822ceaa0e019542dce866f3e93da4d724590f1c624d01cd0300"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/bistro/deco-globe.png": {
+      "bytes": 3649,
+      "sha256": "8ad752203209a8fb57105ea9b1560625fe067330dc422d2c3776b2ac661285a7"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/bistro/deco-succulent-night.png": {
+      "bytes": 1663,
+      "sha256": "f8089e7359159919b172968b9c780627a1e9f52d15549bea71e6f74a9343c385"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/bistro/deco-succulent.png": {
+      "bytes": 1724,
+      "sha256": "d70fb904654878dd777cefa02403be658744048da35d0e36092a40ac1c5e1823"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/bistro/deco-trophy-night.png": {
+      "bytes": 5748,
+      "sha256": "e6ebb07fb53003973f03f9f3f1328e3133e11f8dcaafcc87fc34885f3d6152f4"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/bistro/deco-trophy.png": {
+      "bytes": 3580,
+      "sha256": "e8524a62a450e5b2e5f9d5cecdbf4280e8e35618af211b1bc52c141d3ee5acb1"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/dojo/deco-beanbag-night.png": {
+      "bytes": 25595,
+      "sha256": "5bf004ff23d15db575eab054b902765f8dac1f0e089c5584ec832ce325e80664"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/dojo/deco-beanbag.png": {
+      "bytes": 25821,
+      "sha256": "b1de5d1a20acef686160c35653ce7932fe781242bce51c399e455880b02316ec"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/dojo/deco-bonsai-night.png": {
+      "bytes": 26278,
+      "sha256": "c42bfdf23872586d4190a723781eb91d7218c928386e4e2f86c2b98833a7dbc9"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/dojo/deco-bonsai.png": {
+      "bytes": 44861,
+      "sha256": "a9d6f0d99ad8417ec150c18f879b59af0732d71de1a2c5274ed7a9e9d1887d87"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/dojo/deco-coffee-night.png": {
+      "bytes": 3762,
+      "sha256": "56d70c0b6fe9b5baab731caa653971de962c349301c2fccc0d05bbce32c3cf94"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/dojo/deco-coffee.png": {
+      "bytes": 3915,
+      "sha256": "592d49113b6c9ca7cd552733a366780f9d3f24fb905275213d18e0315237df0c"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/dojo/deco-floor-lamp-night.png": {
+      "bytes": 15948,
+      "sha256": "4d7b1f7a71859af192a88680b7b0a396adc81acfd848702bf33ade426fb43535"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/dojo/deco-floor-lamp.png": {
+      "bytes": 17000,
+      "sha256": "60a0dd6449c4e4780b05831719fc87b623bb5e74d1e43c488baea31aadb57b3a"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/dojo/deco-globe-night.png": {
+      "bytes": 6580,
+      "sha256": "b804ea9f1614677a628a2a470276dd75cfe0dc85a4b1477e6bbb77f01f42c529"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/dojo/deco-globe.png": {
+      "bytes": 3444,
+      "sha256": "c6282e4c2475e77eeaf189c3db8d22e23bb8f8b595c9b91b6523854175b55454"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/dojo/deco-katana-night.png": {
+      "bytes": 20835,
+      "sha256": "8a4fa22f0130b9f5a3694d892e00c470a51b07bdb062f4f0ec10f19c34fd945d"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/dojo/deco-katana.png": {
+      "bytes": 19684,
+      "sha256": "32fa717af2f6fbd418b1ae3b3e9177745ada2402f3349813e74cceb1de1c61e4"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/dojo/deco-succulent-night.png": {
+      "bytes": 1610,
+      "sha256": "5947c55c55b986f2febe70442816cc44b9d6a63d2223832a09d08baf7f3e43ef"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/dojo/deco-succulent.png": {
+      "bytes": 1716,
+      "sha256": "04283ac79190a9c06cfdcc361b3a8b773fa97ea2b111a0a2513b1331fc0d4cdb"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/dojo/deco-trophy-night.png": {
+      "bytes": 5577,
+      "sha256": "313f1acc295226e261077ebb690acc097b7c2077d26f6211f7a994ee81add456"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/dojo/deco-trophy.png": {
+      "bytes": 3420,
+      "sha256": "718294bd6f7770db8e0cdc6d65874163ca1c85879ee151bf181405bc46694cf7"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/jungle/deco-beanbag-night.png": {
+      "bytes": 26005,
+      "sha256": "80c238a056cd24b12a765da2b090781c6406ea70df138471e4ae234d12054659"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/jungle/deco-beanbag.png": {
+      "bytes": 26189,
+      "sha256": "f83d31b3d3dd6101bb5e95ccbcbfa758d3a778cdf62f4ce04f825bd8906aaf91"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/jungle/deco-coffee-night.png": {
+      "bytes": 3759,
+      "sha256": "155161809d4b642afff13344119f0ba02cfe70accb12567574390647f459bd52"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/jungle/deco-coffee.png": {
+      "bytes": 3909,
+      "sha256": "5d04b2a2400a807af3f4ad065cbe82e844dca30e6640e5ef88b6430fe58ddfa7"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/jungle/deco-fern-night.png": {
+      "bytes": 32117,
+      "sha256": "9b0a226cc026c6ce0c0e5d422a6ce649dff15e80e83429396c5d5dae1c64816c"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/jungle/deco-fern.png": {
+      "bytes": 32702,
+      "sha256": "1b398b645bcf24071691dd06a4713d6ecd80776ec52c03f1a38dae3893413063"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/jungle/deco-floor-lamp-night.png": {
+      "bytes": 16059,
+      "sha256": "b888a0a98d1b28f4b8c81aa3fd8f91661e575839a7caa097204c5102bbca8988"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/jungle/deco-floor-lamp.png": {
+      "bytes": 17193,
+      "sha256": "5f680d2d6bb20c47eefadaec1468734671daedc54fa6cfcd0b2c7d733ca618ee"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/jungle/deco-globe-night.png": {
+      "bytes": 7149,
+      "sha256": "0072d05acda80a57bc7daa241c3be085596d2d974ea13985f00b67c9149d939b"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/jungle/deco-globe.png": {
+      "bytes": 3763,
+      "sha256": "c6ba1a6cf8ca4d2fdfa0baa8aba6b8726fb0f4e2b4f9161b8349405317cdf479"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/jungle/deco-lantern-night.png": {
+      "bytes": 20751,
+      "sha256": "05482e1a5b3df7054222e10d9b4dac77d08259b27812a70ea005d11921cff770"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/jungle/deco-lantern.png": {
+      "bytes": 30714,
+      "sha256": "ec4b758bb4fc8eabdc31e2ae119a526c6c531400def4bdde754f410cf658802e"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/jungle/deco-succulent-night.png": {
+      "bytes": 1618,
+      "sha256": "b1e1e586fc6436a4ced75e8bfe8771c360a0b00b5975b1c1b4e9c152f6b986ee"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/jungle/deco-succulent.png": {
+      "bytes": 1697,
+      "sha256": "b690f799f0593e711822ce5c08b3f710bac231750bad059035db9a22fbc4ae13"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/jungle/deco-trophy-night.png": {
+      "bytes": 5749,
+      "sha256": "58f6efae00dc0005e1a32c6ee7730f8fd2e48dcdc7a28dda45d7a045884ba569"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/jungle/deco-trophy.png": {
+      "bytes": 3566,
+      "sha256": "e6151b43f0e52f2354d319379c7ca7798b307614971dfbff475b35a6b35fe282"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/noir/deco-beanbag-night.png": {
+      "bytes": 24959,
+      "sha256": "58be8532203da040256a0e6deba0fa342300b2a8f86832cf8230243e125605c1"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/noir/deco-beanbag.png": {
+      "bytes": 26143,
+      "sha256": "17cc38061fbc6465501315036a1b179407676a9b58509ea904fedc9600656e1e"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/noir/deco-coffee-night.png": {
+      "bytes": 3420,
+      "sha256": "1c5ec9d4cbcfe35786acd464a6c6cfbcf1f9e05e1efb6ecd5d08b389b0a0c5d2"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/noir/deco-coffee.png": {
+      "bytes": 3645,
+      "sha256": "892b8c3f6583cff384656a5aa8b4e0561964408777f481f726afe11c3595bf44"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/noir/deco-floor-lamp-night.png": {
+      "bytes": 15159,
+      "sha256": "9475031a7756a209f3811b5c0cd1f42a008dbe3e56758ee8ec499514905d0a48"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/noir/deco-floor-lamp.png": {
+      "bytes": 16321,
+      "sha256": "23557ea695b371eadd366a6a028c8a5b7effa55a76460111bcb4ec834fe00d90"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/noir/deco-globe-night.png": {
+      "bytes": 7144,
+      "sha256": "677f7be3f772f82e26fea7191411043833316ff747d98f5b0a57dc152d0fa354"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/noir/deco-globe.png": {
+      "bytes": 3737,
+      "sha256": "baa5abdf478d46c1639d5e7fbe9058152cd9d1832d909802dfda7db8600a84bd"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/noir/deco-hatstand-night.png": {
+      "bytes": 19121,
+      "sha256": "e9029e35a437286421160fda74676a31329bcbf7455a0c126ed6cb9cd8216230"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/noir/deco-hatstand.png": {
+      "bytes": 15927,
+      "sha256": "797afb8a595a646664c995972371fbcae3a7d0dba48f270170ffa2ba184b858d"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/noir/deco-succulent-night.png": {
+      "bytes": 1547,
+      "sha256": "b04f9919f7b02590f5201dfc996db99eef00c4c7f2338d0d1641bd4511b4c72f"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/noir/deco-succulent.png": {
+      "bytes": 1652,
+      "sha256": "409c6a45f766e4b7ce047eb315d6848d8fe130770f78746bbe87cb1c65e27cee"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/noir/deco-trophy-night.png": {
+      "bytes": 5677,
+      "sha256": "a7df92cfa6b21f59e150858918d36c53a53064ceea714f45db0ca5c7e695efb7"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/noir/deco-trophy.png": {
+      "bytes": 5117,
+      "sha256": "8ca298ae68bbb0b6391ff166f91e68b44838a271eb8be5e40e0190e81e065b2b"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/noir/deco-typewriter-night.png": {
+      "bytes": 23223,
+      "sha256": "4bd78beb030b9a9a857a2c7efc964f6ae49785460a2585ea247ee9969cb777b7"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/noir/deco-typewriter.png": {
+      "bytes": 43788,
+      "sha256": "a77f74f43a61f74f2c3b800bb0fedcff3d807169f4384bea0d58185d3886938c"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/spacestation/deco-beanbag-night.png": {
+      "bytes": 26362,
+      "sha256": "c39ae6d7013af32dd44286346360ac6afe250989b9f861e6ddfa2aaf0822502b"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/spacestation/deco-beanbag.png": {
+      "bytes": 26117,
+      "sha256": "f07cea39d0b67c518108ad50a6f9ff28f774929174fb8f69edd4b63f9cdeff3f"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/spacestation/deco-coffee-night.png": {
+      "bytes": 3941,
+      "sha256": "53f017638352bc50bfc3224222adff7af5d0e6adf66120d7432d5eeb8bcc8a1a"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/spacestation/deco-coffee.png": {
+      "bytes": 3991,
+      "sha256": "2ba68829eadd44ff326b3c492c7b3e1bbaa5c2f3c15abcd7acc1f09396cba65a"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/spacestation/deco-floor-lamp-night.png": {
+      "bytes": 17019,
+      "sha256": "b5b3364e1786b0926707a7e1c506fab08ececba479b2e778dd754232d5178683"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/spacestation/deco-floor-lamp.png": {
+      "bytes": 17746,
+      "sha256": "81951238bdd4790ba765ac4f4308c5657b69de410347e493185272e942ddcf66"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/spacestation/deco-globe-night.png": {
+      "bytes": 6700,
+      "sha256": "b147e4888646cbdbdcd970773e2f2e2c810a00f4b55f1b7d20c5c69745fac8de"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/spacestation/deco-globe.png": {
+      "bytes": 3817,
+      "sha256": "532e45e3c0ad6cc6ecc811191d8cd00cb2103e4315def565d0f2491bf732875f"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/spacestation/deco-planet-night.png": {
+      "bytes": 31126,
+      "sha256": "4e6bfeb7f0063fdcbc72f78d8559c08fc6aca4ab6f8cfbcabbc84c8d8480b7c4"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/spacestation/deco-planet.png": {
+      "bytes": 50173,
+      "sha256": "eae8df0ab74800e3c3b6690be189ebae0467e08a415678bfabb740512331745c"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/spacestation/deco-rocket-night.png": {
+      "bytes": 14520,
+      "sha256": "0e231a3e27d0204cb83c48c1cb9d89b6118963d5bd5fe6310f45e1f633b04fcf"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/spacestation/deco-rocket.png": {
+      "bytes": 13255,
+      "sha256": "edfaa1c212a693d12f89ed499c9edb8d6bfdddd941bee0892e9ffbbe8aec5bb9"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/spacestation/deco-succulent-night.png": {
+      "bytes": 1617,
+      "sha256": "7790cd895aafa4797c1d94d5dad96a0587d771ab198064a4e585ce18db05ac0c"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/spacestation/deco-succulent.png": {
+      "bytes": 1649,
+      "sha256": "60be6695dc8d99161fce478cffd296f01dc2ff756446704dd2cd58aa30118149"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/spacestation/deco-trophy-night.png": {
+      "bytes": 5826,
+      "sha256": "f89955a3576336ca9ddb3b8638877972c64a71409aff0407876f4e889fd7b772"
+    },
+    "assets/personal-space/v2/workspace/decor/styles/spacestation/deco-trophy.png": {
+      "bytes": 3709,
+      "sha256": "d93dea3630d32cffe8238bb1ab1e78372341ba9fb12c6da0148af2b6176218f3"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/bistro/deco-beanbag-night.png": {
+      "bytes": 2982,
+      "sha256": "fc21021821cffd9f0e118fe03b3796958f1156c930c470ca36bc498421286162"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/bistro/deco-beanbag.png": {
+      "bytes": 2963,
+      "sha256": "540065ee5d201d3f4641fc89ffed11ecf74c2acf94822d347a0f4bf94eca937c"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/bistro/deco-bread-night.png": {
+      "bytes": 2833,
+      "sha256": "3a7820a6c712809bf86e70faceab4a0cce00a029ff8c8ca4071772955b4d8350"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/bistro/deco-bread.png": {
+      "bytes": 3439,
+      "sha256": "73e0bee24f4b157516dbe9c523030d11d2e1d0579770aea0ec1b0cb9211ec18d"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/bistro/deco-cake-night.png": {
+      "bytes": 1883,
+      "sha256": "64009e90a47dfb232bde65c414e2882a2e1d5ff2a95839a18f4b2399b298322b"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/bistro/deco-cake.png": {
+      "bytes": 1716,
+      "sha256": "549feb8efbe13dbabf3b32594751d8d2a2f70c67988e1d8a71f5e05b93c2b3bd"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/bistro/deco-coffee-night.png": {
+      "bytes": 515,
+      "sha256": "1308547b281ddc1f32dbb69ecaa9420277226ad9142d70e0ab8369d272c70c40"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/bistro/deco-coffee.png": {
+      "bytes": 512,
+      "sha256": "5afb4eb93158a62b64cbcfda87414ec4c5b24a874b32cba4a15e6b57b110bb2a"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/bistro/deco-floor-lamp-night.png": {
+      "bytes": 1576,
+      "sha256": "e7fab1d49ac81a21efc665f95795e5d5890f07bcfc64f9ac1e7bc9aa3d4bb262"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/bistro/deco-floor-lamp.png": {
+      "bytes": 1678,
+      "sha256": "b036eae117ff45f87a747e01c46e8fe0eda0ece12cefd973f50af164bc4e7882"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/bistro/deco-globe-night.png": {
+      "bytes": 711,
+      "sha256": "1e1dbfed119cd373ea2811c8c5ec8276d6e60e283a9d38ec557abb33b8086e5e"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/bistro/deco-globe.png": {
+      "bytes": 527,
+      "sha256": "635141dab0981dc9d45f03ee788f883e09958be92b7530cfd2a7754613649f8c"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/bistro/deco-succulent-night.png": {
+      "bytes": 311,
+      "sha256": "3c2d46cd82e97a60d56e3a45c8e37d87f552734883ee721b4f462347493c854d"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/bistro/deco-succulent.png": {
+      "bytes": 293,
+      "sha256": "1a73aad182f47ba4657a9733ffb831ecb853adae8ecd66c81553b92da59b56ef"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/bistro/deco-trophy-night.png": {
+      "bytes": 511,
+      "sha256": "a3de3dddf5686135f1374adebc9a56f4ee200c4f2e901c087a0df7add7c8264f"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/bistro/deco-trophy.png": {
+      "bytes": 490,
+      "sha256": "02106092a7d7c7048f11c022e2049ee3450c6eaf090efa3563311a9a82acdfbd"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/dojo/deco-beanbag-night.png": {
+      "bytes": 2852,
+      "sha256": "96f42a519795044c707c60902b29a87a7106ae60c66ca5a447acb5f932426313"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/dojo/deco-beanbag.png": {
+      "bytes": 2901,
+      "sha256": "5f77511ff32cfa3f082418e8a4b5e6ec09610e0047b1050ad9237450a7c2426c"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/dojo/deco-bonsai-night.png": {
+      "bytes": 2801,
+      "sha256": "6004c81c23a04d94a56225d3012341700cfa981497441179f4d563cad3ad2c35"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/dojo/deco-bonsai.png": {
+      "bytes": 3268,
+      "sha256": "961c07d55edb5bddda97e240938d6a5c7a8f3a828c0551057219432f7c8bac2d"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/dojo/deco-coffee-night.png": {
+      "bytes": 521,
+      "sha256": "7e179ed7c78be19eeb743cec6fc297760b06c30eb5902e11684eefe6857db7f2"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/dojo/deco-coffee.png": {
+      "bytes": 519,
+      "sha256": "d97e5868346fc09910a3a450248647b89c6e9f0bc9955f73d71e81ff7f71f304"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/dojo/deco-floor-lamp-night.png": {
+      "bytes": 1632,
+      "sha256": "1d7cbc3da8c99cef0bce8ccf1e7e029b94a0e2423ca6499da05de42f6c99cb91"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/dojo/deco-floor-lamp.png": {
+      "bytes": 1668,
+      "sha256": "060ef6ee5b0aa7c626fbdba5e15acad2e96d489561ae1d3c7fc70df0c884428f"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/dojo/deco-globe-night.png": {
+      "bytes": 673,
+      "sha256": "ebce6cde859d7d00ee8db37c4357291cb03a24cc23d095e82adff9c82753c088"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/dojo/deco-globe.png": {
+      "bytes": 537,
+      "sha256": "45aa9f1227e8656ee8f5f46eb9cdf1c6de4a598c7f411616a2cdb8372342038f"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/dojo/deco-katana-night.png": {
+      "bytes": 2094,
+      "sha256": "c4a87da8ab8f8133eea755f12106a1ff01f9ecc32a04188a1d277b104277440a"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/dojo/deco-katana.png": {
+      "bytes": 2124,
+      "sha256": "b01fb2c1c2fba4c8f583ffce7946ee366c5f022bb8e1f4e06910c44337c8a461"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/dojo/deco-succulent-night.png": {
+      "bytes": 306,
+      "sha256": "93abe905d44b9a898534fffc23ab41392986e55bbc136061b579a7c8f6b68fc0"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/dojo/deco-succulent.png": {
+      "bytes": 291,
+      "sha256": "40b9883159b0f448a2add0b10c51f8126461718d2da1cd1523245619e8cd5829"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/dojo/deco-trophy-night.png": {
+      "bytes": 491,
+      "sha256": "1d8b7799d01770217eadfc2e201b2e7fd1ea64e47c462fda0283a58a0a04df5c"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/dojo/deco-trophy.png": {
+      "bytes": 483,
+      "sha256": "4ccdf4964fbd91b9da703dd4fb42bd76bc53d90fc8468c0f3904a0f8a5a1d774"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/jungle/deco-beanbag-night.png": {
+      "bytes": 2929,
+      "sha256": "564075fb1a2fb2b5f742e304c8785468f752c35591619dde10e5006a770763a2"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/jungle/deco-beanbag.png": {
+      "bytes": 3019,
+      "sha256": "06642721d72e1130cc1a0b79910fa5665a843b77e124167f8f35a0ff90034ada"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/jungle/deco-coffee-night.png": {
+      "bytes": 515,
+      "sha256": "a7d3c3f752e1139bb0199b293e072a617dfdbb17044ab645d0ba32c067b6e955"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/jungle/deco-coffee.png": {
+      "bytes": 495,
+      "sha256": "35f3f06d72be594f2bb6d78e39313b840ad7d1fd9f71ab84a7dfc83ca83c88ff"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/jungle/deco-fern-night.png": {
+      "bytes": 2965,
+      "sha256": "9dbdc1c32066b79ba51fd859ea45cf74b4d1001b1e4309441a0431fc9f056649"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/jungle/deco-fern.png": {
+      "bytes": 2947,
+      "sha256": "6a1af951970522b90e787c0034a9998c534e5f01449805cf9fcbfb4414850c9c"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/jungle/deco-floor-lamp-night.png": {
+      "bytes": 1661,
+      "sha256": "5ea4b570a73b5cde680c617fe125afd2bc38023272b06342ee5a49a5b49d5999"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/jungle/deco-floor-lamp.png": {
+      "bytes": 1692,
+      "sha256": "878cd89007930be4ba490ee12c3807bcb4f824ea4c33e7ee5900c05df3c202fc"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/jungle/deco-globe-night.png": {
+      "bytes": 730,
+      "sha256": "c1910bd49ec326b1affa404b90cce03688745bd078c8a5b32dbde642c3d1607a"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/jungle/deco-globe.png": {
+      "bytes": 529,
+      "sha256": "1e3e7a6f1b81de7adfe21bdbd4265bca6a78fd85965b3a86a455fc920bb86319"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/jungle/deco-lantern-night.png": {
+      "bytes": 2148,
+      "sha256": "0c17b863f3a1a71b9d4276533300bb19b5b51b3fe54f64a75dc64c26ae4f37fb"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/jungle/deco-lantern.png": {
+      "bytes": 2613,
+      "sha256": "847904bdeb21c06a761ae408b892da835e21d33476a30afa58371335f21ba268"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/jungle/deco-succulent-night.png": {
+      "bytes": 282,
+      "sha256": "7c028ca29ef21e6ea794bd02a258bfcacfc611677e8369eb331e627ef0beecff"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/jungle/deco-succulent.png": {
+      "bytes": 293,
+      "sha256": "aac09f0b939e7d57ae1ac6d9786c5079913f69285eab4c081052d6b9361742b1"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/jungle/deco-trophy-night.png": {
+      "bytes": 522,
+      "sha256": "113942e88527a234609c0a70b1d69aad736b68f156d1e32569acc1f17350ec2d"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/jungle/deco-trophy.png": {
+      "bytes": 488,
+      "sha256": "f62adf9e23f6c1e6d84f34558673e4a2fa87ea402c5f014fe98ad788162b7f54"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/noir/deco-beanbag-night.png": {
+      "bytes": 2789,
+      "sha256": "497bb8074f39ae185c0cfc33df8c3b2190e4f6abb6e38f300bd03c9eeb7d0081"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/noir/deco-beanbag.png": {
+      "bytes": 2837,
+      "sha256": "2399a61c0eb84c3f13486d8b6f1a6bc616059c4ba5f54993078a36403b5cb1a7"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/noir/deco-coffee-night.png": {
+      "bytes": 501,
+      "sha256": "ce5997cc79c425fdad22ff4cab5b94dc7fed7468d78906753e90f045eda95f7b"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/noir/deco-coffee.png": {
+      "bytes": 500,
+      "sha256": "87ad237fa4e2a18fe37353ef5327e554011f8cffcee82c70293a3ff541968697"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/noir/deco-floor-lamp-night.png": {
+      "bytes": 1634,
+      "sha256": "cf2a70e410dd648c1bbc6b835bc55c678900df01191a3c9c617f6cc8435841e8"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/noir/deco-floor-lamp.png": {
+      "bytes": 1722,
+      "sha256": "e2683102b74ec39640a32467056340d689519b1d0dbffbc5713e2db5ef9edc74"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/noir/deco-globe-night.png": {
+      "bytes": 705,
+      "sha256": "3e2adb7cc9e68f652e8d24a9651f936c9af8c1ea6f7fb0437fa479d9b10c2e55"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/noir/deco-globe.png": {
+      "bytes": 530,
+      "sha256": "f69da1b3c45b7a7ef57505a890bb74dae013a958afbd0109b9e93705c21393f1"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/noir/deco-hatstand-night.png": {
+      "bytes": 1913,
+      "sha256": "22b41560283be8b7afc84d3d34da4deb6f7bed132a375d7592bc2d9c0dc01d09"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/noir/deco-hatstand.png": {
+      "bytes": 1799,
+      "sha256": "acebf9fdfc3c75f7828382f4ef674d2301d43e3381866a197e00093bb3c9cb2c"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/noir/deco-succulent-night.png": {
+      "bytes": 271,
+      "sha256": "186510a9507e9dc42e0a9f2c235b3a0b682b95ef54854316c329084ca493f2b2"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/noir/deco-succulent.png": {
+      "bytes": 284,
+      "sha256": "f705f3bc5e89fe105fcc1d5ff5050b37283ceb29b7eb7809b43dc1b97db4849b"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/noir/deco-trophy-night.png": {
+      "bytes": 527,
+      "sha256": "8d27292e99e76a4709d8d219f9d3f04d6bfc061f3916b3c5ce2782eebcb4e3bc"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/noir/deco-trophy.png": {
+      "bytes": 478,
+      "sha256": "ad461a0dd90c8d1c0419f8ec22a226709b11187640788a53ca930b4a3b35222f"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/noir/deco-typewriter-night.png": {
+      "bytes": 2267,
+      "sha256": "16341bd85eae80f8e4f63b769df5d321fad44865380aeca00abdcd664152cbad"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/noir/deco-typewriter.png": {
+      "bytes": 3251,
+      "sha256": "6ce6dcb6cb430f545068b45299c4593b019adcbd265cefc05dd38c193a12de26"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/spacestation/deco-beanbag-night.png": {
+      "bytes": 2851,
+      "sha256": "8cbe4f7a90b208022e470335bb6ebd1a7a1acf84cf3907cc92e20e186d082e93"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/spacestation/deco-beanbag.png": {
+      "bytes": 2868,
+      "sha256": "eb8c0a95fd084f6a1446ea471b17cdc95a42f3cf2111a01e0a68582e3aa1d10f"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/spacestation/deco-coffee-night.png": {
+      "bytes": 543,
+      "sha256": "c7230ce6fcd3db4962396427dde9c1671e3c6c442d40b4d9977ee52bc5bfcd1b"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/spacestation/deco-coffee.png": {
+      "bytes": 509,
+      "sha256": "f6115313dc9f94c460d23ee772a27eb569b4547ad9bc321ac131a7c5a6d98cff"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/spacestation/deco-floor-lamp-night.png": {
+      "bytes": 1641,
+      "sha256": "61a745cd0126e9ce48b45d187fe91350448bc4fef381899e53eecc2e16ee7e5a"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/spacestation/deco-floor-lamp.png": {
+      "bytes": 1611,
+      "sha256": "a7c596c04d105d1e6f1f625c6a2bf1b47b1d3690040aef97e6a5272acc42203c"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/spacestation/deco-globe-night.png": {
+      "bytes": 733,
+      "sha256": "852d5fb80acc4dd2b965454a1a728bbe7797f1fc69f9b8aa589f6fc0306fe1d8"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/spacestation/deco-globe.png": {
+      "bytes": 553,
+      "sha256": "4905a19c29cc829766ad32ebd40f1661988db90b0cb4b3e26e7c97bd4a703e71"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/spacestation/deco-planet-night.png": {
+      "bytes": 2788,
+      "sha256": "a5715756f67e7da85e4c7fd5245d0c253845e2f137ed1df2e6eadf933230be14"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/spacestation/deco-planet.png": {
+      "bytes": 3529,
+      "sha256": "e10171811ca3f047b2c767a3d221378224844a0285b63bc85f3b2fc0c98ecf79"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/spacestation/deco-rocket-night.png": {
+      "bytes": 1645,
+      "sha256": "5226a3c49a3e447f5bc726510723e149fc34bd8f07de0646671d3ad8af810c4b"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/spacestation/deco-rocket.png": {
+      "bytes": 1503,
+      "sha256": "a5016e8c4d1d2e0ddcbefd81869a0ffc83f5df3e388a12a2b4461126b7fd798f"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/spacestation/deco-succulent-night.png": {
+      "bytes": 314,
+      "sha256": "b1e4126d946223164c6420a4bfad875446550c799fe9248b85f2410be42acf34"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/spacestation/deco-succulent.png": {
+      "bytes": 300,
+      "sha256": "22400da529870ebb3d08210f280c0958a622408bfdb5d21cdc373738b5914885"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/spacestation/deco-trophy-night.png": {
+      "bytes": 512,
+      "sha256": "02827f8d4d6993e63b80586d673555fba3c7374c24fd84a930634466c4891c5b"
+    },
+    "assets/personal-space/v2/workspace/pixel/decor/styles/spacestation/deco-trophy.png": {
+      "bytes": 489,
+      "sha256": "b5676c0839af1ad705c77c3138cd4e69ed23362f6c6b875d3a5bb7b4f069493a"
+    }
+  },
+  "clipped": {
+    "assets/personal-space/v2/workspace/decor/styles/bistro/deco-beanbag-night.png": 757,
+    "assets/personal-space/v2/workspace/decor/styles/bistro/deco-beanbag.png": 26,
+    "assets/personal-space/v2/workspace/decor/styles/bistro/deco-coffee-night.png": 105,
+    "assets/personal-space/v2/workspace/decor/styles/bistro/deco-coffee.png": 16,
+    "assets/personal-space/v2/workspace/decor/styles/bistro/deco-floor-lamp-night.png": 0,
+    "assets/personal-space/v2/workspace/decor/styles/bistro/deco-floor-lamp.png": 0,
+    "assets/personal-space/v2/workspace/decor/styles/bistro/deco-globe-night.png": 0,
+    "assets/personal-space/v2/workspace/decor/styles/bistro/deco-globe.png": 0,
+    "assets/personal-space/v2/workspace/decor/styles/bistro/deco-succulent-night.png": 70,
+    "assets/personal-space/v2/workspace/decor/styles/bistro/deco-succulent.png": 17,
+    "assets/personal-space/v2/workspace/decor/styles/bistro/deco-trophy-night.png": 0,
+    "assets/personal-space/v2/workspace/decor/styles/bistro/deco-trophy.png": 0,
+    "assets/personal-space/v2/workspace/decor/styles/dojo/deco-beanbag-night.png": 24,
+    "assets/personal-space/v2/workspace/decor/styles/dojo/deco-beanbag.png": 22,
+    "assets/personal-space/v2/workspace/decor/styles/dojo/deco-coffee-night.png": 90,
+    "assets/personal-space/v2/workspace/decor/styles/dojo/deco-coffee.png": 17,
+    "assets/personal-space/v2/workspace/decor/styles/dojo/deco-floor-lamp-night.png": 0,
+    "assets/personal-space/v2/workspace/decor/styles/dojo/deco-floor-lamp.png": 0,
+    "assets/personal-space/v2/workspace/decor/styles/dojo/deco-globe-night.png": 0,
+    "assets/personal-space/v2/workspace/decor/styles/dojo/deco-globe.png": 0,
+    "assets/personal-space/v2/workspace/decor/styles/dojo/deco-succulent-night.png": 67,
+    "assets/personal-space/v2/workspace/decor/styles/dojo/deco-succulent.png": 17,
+    "assets/personal-space/v2/workspace/decor/styles/dojo/deco-trophy-night.png": 0,
+    "assets/personal-space/v2/workspace/decor/styles/dojo/deco-trophy.png": 0,
+    "assets/personal-space/v2/workspace/decor/styles/jungle/deco-beanbag-night.png": 314,
+    "assets/personal-space/v2/workspace/decor/styles/jungle/deco-beanbag.png": 23,
+    "assets/personal-space/v2/workspace/decor/styles/jungle/deco-coffee-night.png": 79,
+    "assets/personal-space/v2/workspace/decor/styles/jungle/deco-coffee.png": 7,
+    "assets/personal-space/v2/workspace/decor/styles/jungle/deco-floor-lamp-night.png": 0,
+    "assets/personal-space/v2/workspace/decor/styles/jungle/deco-floor-lamp.png": 1,
+    "assets/personal-space/v2/workspace/decor/styles/jungle/deco-globe-night.png": 0,
+    "assets/personal-space/v2/workspace/decor/styles/jungle/deco-globe.png": 0,
+    "assets/personal-space/v2/workspace/decor/styles/jungle/deco-succulent-night.png": 50,
+    "assets/personal-space/v2/workspace/decor/styles/jungle/deco-succulent.png": 15,
+    "assets/personal-space/v2/workspace/decor/styles/jungle/deco-trophy-night.png": 0,
+    "assets/personal-space/v2/workspace/decor/styles/jungle/deco-trophy.png": 0,
+    "assets/personal-space/v2/workspace/decor/styles/noir/deco-beanbag-night.png": 15,
+    "assets/personal-space/v2/workspace/decor/styles/noir/deco-beanbag.png": 0,
+    "assets/personal-space/v2/workspace/decor/styles/noir/deco-coffee-night.png": 9,
+    "assets/personal-space/v2/workspace/decor/styles/noir/deco-coffee.png": 0,
+    "assets/personal-space/v2/workspace/decor/styles/noir/deco-floor-lamp-night.png": 5,
+    "assets/personal-space/v2/workspace/decor/styles/noir/deco-floor-lamp.png": 0,
+    "assets/personal-space/v2/workspace/decor/styles/noir/deco-globe-night.png": 0,
+    "assets/personal-space/v2/workspace/decor/styles/noir/deco-globe.png": 0,
+    "assets/personal-space/v2/workspace/decor/styles/noir/deco-succulent-night.png": 2,
+    "assets/personal-space/v2/workspace/decor/styles/noir/deco-succulent.png": 0,
+    "assets/personal-space/v2/workspace/decor/styles/noir/deco-trophy-night.png": 0,
+    "assets/personal-space/v2/workspace/decor/styles/noir/deco-trophy.png": 0,
+    "assets/personal-space/v2/workspace/decor/styles/spacestation/deco-beanbag-night.png": 456,
+    "assets/personal-space/v2/workspace/decor/styles/spacestation/deco-beanbag.png": 27,
+    "assets/personal-space/v2/workspace/decor/styles/spacestation/deco-coffee-night.png": 11,
+    "assets/personal-space/v2/workspace/decor/styles/spacestation/deco-coffee.png": 0,
+    "assets/personal-space/v2/workspace/decor/styles/spacestation/deco-floor-lamp-night.png": 22,
+    "assets/personal-space/v2/workspace/decor/styles/spacestation/deco-floor-lamp.png": 7,
+    "assets/personal-space/v2/workspace/decor/styles/spacestation/deco-globe-night.png": 0,
+    "assets/personal-space/v2/workspace/decor/styles/spacestation/deco-globe.png": 0,
+    "assets/personal-space/v2/workspace/decor/styles/spacestation/deco-succulent-night.png": 27,
+    "assets/personal-space/v2/workspace/decor/styles/spacestation/deco-succulent.png": 14,
+    "assets/personal-space/v2/workspace/decor/styles/spacestation/deco-trophy-night.png": 0,
+    "assets/personal-space/v2/workspace/decor/styles/spacestation/deco-trophy.png": 0
+  }
+}

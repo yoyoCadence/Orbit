@@ -1179,6 +1179,12 @@ DECOR_BUILDERS = {
 }
 assert tuple(DECOR_BUILDERS) == DECOR_IDS
 
+# PS-260C: the themed sets' decorations (decor_sets.py), two per PS-260 room.
+# Built in every scene and hidden like the PS-250F ones; each is rendered only
+# in its own room.
+from decor_sets import DECOR_SETS_BUILDERS  # noqa: E402
+DECOR_SETS_IDS = tuple(DECOR_SETS_BUILDERS)
+
 
 PROP_BUILDERS = {
     'corner-desk': build_desk,
@@ -1318,11 +1324,14 @@ def build_scene(width=1536, samples=96, lighting='day', style='default'):
     scene = bpy.context.scene
     materials = build_materials(lighting, style)
     builder = Builder(materials)
+    builder.lighting = lighting
     build_room(builder, lighting, style)
     for prop_id in PROP_IDS:
         PROP_BUILDERS[prop_id](builder)
     for decor_id in DECOR_IDS:
         DECOR_BUILDERS[decor_id](builder)
+    for decor_id in DECOR_SETS_IDS:
+        DECOR_SETS_BUILDERS[decor_id](builder)
     build_lighting(scene, lighting, style)
     build_camera(scene)
     configure_render(scene, width, samples)
