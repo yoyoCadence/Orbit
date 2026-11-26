@@ -10,7 +10,7 @@ The room styles the user chose on 2026-10-21, each in the Q style and in pixels,
 | `nightowl` | 夜貓工作室 | Deep navy, cyan neon on the rails and crown, magenta accents. |
 | `study` | 深木書房 | Ink green, dark wood, gold trim, a burgundy rug. The palette was kept for Mastery in the art bible; the user chose to offer it now. |
 
-The ten rooms of the PS-260 themed sets use the same pipeline; they are listed, recorded and previewed in `art-pipeline/ps260-sets/` (README, `rooms-outputs.json`) until the picker offers them (PS-260E).
+The ten rooms of the PS-260 themed sets use the same pipeline; they are listed, recorded and previewed in `art-pipeline/ps260-sets/` (README, `rooms-outputs.json`). The picker offers them after these five (PS-260E), and their thumbnails are made here with the others (`thumbnails.py`).
 
 Each style is the PS-244 scene with other materials: the same geometry, camera, furniture shapes and lights. The style table is `art-pipeline/ps244-blender/room_styles.py`. A style can change the colour, roughness, metal and gloss of the plain toon materials in `scene.build_materials()`, or make one glow; it also sets the floor planks, the outline colour, the daylight ambient colour, the backdrop behind the cut-away room and the shadow handling below. The cork board, screens, books, lamp bulb and (at night) the glowing sconce shades are the same in every style, and the night lighting is shared by every style.
 

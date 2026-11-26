@@ -8,7 +8,8 @@
  * without importing this module (it is on the boot path).
  *
  * Mirrors catalog.py in the pipeline; tests/unit/ps250cCharacterCatalog.test.js
- * checks every path and label against its outputs.json.
+ * checks every path and label against its outputs.json (PS-260's against
+ * art-pipeline/ps260-sets/outputs.json).
  */
 const TOON_ROOT = 'assets/personal-space/v2/characters/toon';
 
@@ -19,6 +20,18 @@ export const TOON_PROTAGONISTS = Object.freeze([
   Object.freeze({ id: 'sporty', label: '運動馬尾' }),
   Object.freeze({ id: 'scientist', label: '科學家' }),
   Object.freeze({ id: 'artist', label: '畫家' }),
+  // PS-260E: the ten themed sets' protagonists (art-pipeline/ps260-sets,
+  // checked against its outputs.json), five male then five female.
+  Object.freeze({ id: 'astronaut', label: '太空人' }),
+  Object.freeze({ id: 'samurai', label: '武士' }),
+  Object.freeze({ id: 'detective', label: '偵探' }),
+  Object.freeze({ id: 'chef', label: '主廚' }),
+  Object.freeze({ id: 'explorer', label: '探險家' }),
+  Object.freeze({ id: 'witch', label: '魔法師' }),
+  Object.freeze({ id: 'idol', label: '偶像' }),
+  Object.freeze({ id: 'gardener', label: '園藝師' }),
+  Object.freeze({ id: 'hacker', label: '駭客' }),
+  Object.freeze({ id: 'marine', label: '海洋學家' }),
 ]);
 
 export const TOON_COMPANIONS = Object.freeze([

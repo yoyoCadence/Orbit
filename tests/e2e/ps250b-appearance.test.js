@@ -67,7 +67,8 @@ test.describe('PS-250B character style and choice', () => {
     ));
     await expect.poll(() => loadedPixel(protagonist)).toBe(true);
     await expect.poll(() => loadedPixel(page.locator('[data-personal-space-v2] .orbit-window-background'))).toBe(true);
-    await expect(page.locator('[data-v2-appearance="protagonist"]')).toHaveCount(7);
+    // The classic office worker, PS-250C's six and (PS-260E) the ten themed sets'.
+    await expect(page.locator('[data-v2-appearance="protagonist"]')).toHaveCount(17);
 
     // The classic pixel office worker is an option of its own.
     await page.locator('[data-v2-appearance="protagonist"][data-value="default"]').click();
@@ -88,9 +89,9 @@ test.describe('PS-250B character style and choice', () => {
     const room = page.locator('[data-personal-space-v2] .orbit-window-background');
     await expect(room).toHaveAttribute('src', /workspace\/styles\/nordic\/background(-night)?\.webp$/);
     await expect.poll(() => room.evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true);
-    // The thumbnail of each room loads too.
+    // The thumbnail of each room loads too (PS-260E: and the ten themed rooms).
     const thumbnails = page.locator('[data-v2-appearance="room"] img');
-    await expect(thumbnails).toHaveCount(5);
+    await expect(thumbnails).toHaveCount(15);
     for (const thumbnail of await thumbnails.all()) {
       await thumbnail.scrollIntoViewIfNeeded();
       await expect.poll(() => thumbnail.evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true);
@@ -130,7 +131,7 @@ test.describe('PS-250B character style and choice', () => {
     await page.locator('[data-orbit-open-world]').click();
     await page.locator('[data-personal-space-v2] [data-v2-mode="edit"]').first().click();
     const thumbnails = page.locator('[data-v2-appearance="room"] img');
-    await expect(thumbnails).toHaveCount(5);
+    await expect(thumbnails).toHaveCount(15);
     for (const thumbnail of await thumbnails.all()) {
       await thumbnail.scrollIntoViewIfNeeded();
       await expect(thumbnail).toHaveAttribute('src', /\/workspace\/thumbnails\/[a-z]+\.webp$/);
@@ -145,7 +146,8 @@ test.describe('PS-250B character style and choice', () => {
     await page.locator('[data-v2-appearance="room"][data-value="nightowl"]').click();
     await page.locator('[data-v2-appearance="style"][data-value="pixel"]').click();
     const pictures = page.locator('[data-v2-appearance="room"] img, [data-v2-appearance="decoration"] img');
-    await expect(pictures).toHaveCount(11);
+    // 15 rooms and the night owl room's six decorations.
+    await expect(pictures).toHaveCount(21);
     for (const picture of await pictures.all()) {
       await picture.scrollIntoViewIfNeeded();
       await expect.poll(() => picture.evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true);
@@ -192,5 +194,62 @@ test.describe('PS-250B character style and choice', () => {
     await beanbag.click();
     await expect(beanbag).toHaveAttribute('aria-pressed', 'true');
     await expect(worldBeanbag).toHaveCount(1);
+  });
+
+  test('applies a theme set in one tap, on home too, and keeps its parts adjustable (PS-260E)', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
+    await page.locator('[data-orbit-open-world]').click();
+    await page.locator('[data-personal-space-v2] [data-v2-mode="edit"]').first().click();
+    const sets = page.locator('[data-v2-appearance="set"]');
+    await expect(sets).toHaveCount(10);
+    for (const picture of await page.locator('[data-v2-appearance="set"] img').all()) {
+      await picture.scrollIntoViewIfNeeded();
+      await expect.poll(() => picture.evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true);
+    }
+
+    const witch = page.locator('[data-v2-appearance="set"][data-value="witch"]');
+    await expect(witch).toContainText('魔法師・魔法塔');
+    await witch.click();
+    await expect(witch).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('[data-v2-appearance="protagonist"][data-value="witch"]')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('[data-v2-appearance="room"][data-value="wizard"]')).toHaveAttribute('aria-pressed', 'true');
+
+    const world = page.locator('[data-personal-space-v2]');
+    const loaded = locator => locator.evaluate(image => image.complete && image.naturalWidth > 0);
+    await expect(world.locator('.orbit-window-background')).toHaveAttribute('src', /workspace\/styles\/wizard\/background(-night)?\.webp$/);
+    await expect.poll(() => loaded(world.locator('.orbit-window-background'))).toBe(true);
+    await expect(world.locator('.orbit-window-protagonist')).toHaveAttribute('src', new RegExp(`${TOON}/protagonist/witch-`));
+    await expect.poll(() => loaded(world.locator('.orbit-window-protagonist'))).toBe(true);
+    // Its own view out of the window at every time of day: no city view over it.
+    await expect(world.locator('.orbit-window-exterior')).toHaveCount(0);
+    // Its two decorations stand in the room from the start.
+    for (const id of ['deco-crystal', 'deco-potions']) {
+      const decoration = world.locator(`[data-decoration-id="${id}"]`);
+      await expect(decoration).toHaveAttribute('src', new RegExp(`/workspace/decor/styles/wizard/${id}(-night)?\\.png$`));
+      await expect.poll(() => loaded(decoration)).toBe(true);
+    }
+    // The room's switches: the six and the set's two.
+    await expect(page.locator('[data-v2-appearance="decoration"]')).toHaveCount(8);
+
+    // A part can be adjusted on its own; pressing the set again restores it.
+    const crystal = page.locator('[data-v2-appearance="decoration"][data-value="deco-crystal"]');
+    await crystal.click();
+    await expect(crystal).toHaveAttribute('aria-pressed', 'false');
+    await expect(world.locator('[data-decoration-id="deco-crystal"]')).toHaveCount(0);
+    await expect(witch).toHaveAttribute('aria-pressed', 'false');
+    await witch.click();
+    await expect(witch).toHaveAttribute('aria-pressed', 'true');
+    await expect(crystal).toHaveAttribute('aria-pressed', 'true');
+    await expect(world.locator('[data-decoration-id="deco-crystal"]')).toHaveCount(1);
+
+    // Home draws the set too.
+    await page.locator('[data-personal-space-v2] [data-v2-mode="full-world"]').first().click();
+    await page.goto('/');
+    await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
+    const home = page.locator('[data-orbit-window]');
+    await expect(home.locator('.orbit-window-background')).toHaveAttribute('src', /workspace\/styles\/wizard\/background(-night)?\.webp$/);
+    await expect(home.locator('.orbit-window-protagonist')).toHaveAttribute('src', new RegExp(`${TOON}/protagonist/witch-`));
+    await expect(home.locator('[data-decoration-id="deco-potions"]')).toHaveCount(1);
   });
 });

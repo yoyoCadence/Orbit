@@ -6,12 +6,52 @@
     144
   ],
   "files": {
+    "assets/personal-space/v2/workspace/pixel/thumbnails/bistro.webp": {
+      "bytes": 4862,
+      "sha256": "e4ab094a6317334da04e18995adbb62938d04d9349b0c5ba8a019ded5a170ec0",
+      "source": {
+        "path": "assets/personal-space/v2/workspace/pixel/styles/bistro/background.png",
+        "sha256": "cc0cad7fb742eed9e54a57b4c31d35bd8c9d3d6938abb88148b6c861f6eb263e"
+      }
+    },
+    "assets/personal-space/v2/workspace/pixel/thumbnails/cyber.webp": {
+      "bytes": 3538,
+      "sha256": "f027f1edf65468d8f551a592c23390836242437f4ef119c3d3386099cb1f80c8",
+      "source": {
+        "path": "assets/personal-space/v2/workspace/pixel/styles/cyber/background.png",
+        "sha256": "4ed5d77b7b512e04d8a051b32b00fa491e550906afda4ac82043636c7e8867b5"
+      }
+    },
     "assets/personal-space/v2/workspace/pixel/thumbnails/default.webp": {
       "bytes": 5364,
       "sha256": "4c9df9c5f9b52e5974fd6e2387314297d4d089312d3134bcca54d2a9fc8a2886",
       "source": {
         "path": "assets/personal-space/v2/workspace/pixel/backgrounds/building-formal-workstation-room-pixel.png",
         "sha256": "949bfd997ca82800e4e7791522177d915461bed57467fc47d96160de8da35113"
+      }
+    },
+    "assets/personal-space/v2/workspace/pixel/thumbnails/dojo.webp": {
+      "bytes": 5300,
+      "sha256": "a29e9a7ebfe751f430b15ff8138284b5a1ffe7051aa04a98fc2526c230105844",
+      "source": {
+        "path": "assets/personal-space/v2/workspace/pixel/styles/dojo/background.png",
+        "sha256": "7de88b7527d68c2ddeb1c906cb782354a1843c1940b8dc3515c1fb10959d6f8d"
+      }
+    },
+    "assets/personal-space/v2/workspace/pixel/thumbnails/greenhouse.webp": {
+      "bytes": 3124,
+      "sha256": "ce48de0cea495ae3ec131f9c2c04d744fde465b79d0dcfaed8468735054867c9",
+      "source": {
+        "path": "assets/personal-space/v2/workspace/pixel/styles/greenhouse/background.png",
+        "sha256": "6b423f4d081ae367e3841a5362fe32be372b3830598400454fd54a9ad3f4c6a0"
+      }
+    },
+    "assets/personal-space/v2/workspace/pixel/thumbnails/jungle.webp": {
+      "bytes": 4468,
+      "sha256": "a7e6e0906228aa985229106fe607a566d895b29292f1f220911ff4694110c239",
+      "source": {
+        "path": "assets/personal-space/v2/workspace/pixel/styles/jungle/background.png",
+        "sha256": "3931370a7a0fe89d643c0ad9890921283aa55e50777e4f7e8ab4eaaae31fa223"
       }
     },
     "assets/personal-space/v2/workspace/pixel/thumbnails/nightowl.webp": {
@@ -22,12 +62,44 @@
         "sha256": "631e7c8e0633b3db2505bbde3e7e7358580f7c81d069febaf994a8691d285d01"
       }
     },
+    "assets/personal-space/v2/workspace/pixel/thumbnails/noir.webp": {
+      "bytes": 3588,
+      "sha256": "e3066019b9cad3d43c274c6488dbc771c41e951c307515be09348fe7507ab889",
+      "source": {
+        "path": "assets/personal-space/v2/workspace/pixel/styles/noir/background.png",
+        "sha256": "979cb81fe07ac41f7a317bed74aa44128a111247ce406b3991fd68ad6124bb7b"
+      }
+    },
     "assets/personal-space/v2/workspace/pixel/thumbnails/nordic.webp": {
       "bytes": 2974,
       "sha256": "a126b2379ec73fe1ce0731f4500285a101f345512794fe819e6dc709c002b39c",
       "source": {
         "path": "assets/personal-space/v2/workspace/pixel/styles/nordic/background.png",
         "sha256": "d97c676c9d1d1bb3c4b7539ec4da89f69c9d82827ba3ea1f5f2ec03c1e6f0e62"
+      }
+    },
+    "assets/personal-space/v2/workspace/pixel/thumbnails/ocean.webp": {
+      "bytes": 5052,
+      "sha256": "519d0be08d7f83726ecd6be350f1b768f6710067104292ac49be9e7e037c02e5",
+      "source": {
+        "path": "assets/personal-space/v2/workspace/pixel/styles/ocean/background.png",
+        "sha256": "9f918891dc849f003bf13236a2fe416ddf48b51eb7dc92f94fb59191f2604338"
+      }
+    },
+    "assets/personal-space/v2/workspace/pixel/thumbnails/spacestation.webp": {
+      "bytes": 3664,
+      "sha256": "08a217905dd218ed04aa40a8f0a24d79e03e910b2a24f8c15b9383a9a8bc918e",
+      "source": {
+        "path": "assets/personal-space/v2/workspace/pixel/styles/spacestation/background.png",
+        "sha256": "dc97c2d5bfd45faa865c5318c800ec6623879211842f5a359f86e4f5a3ca57aa"
+      }
+    },
+    "assets/personal-space/v2/workspace/pixel/thumbnails/stage.webp": {
+      "bytes": 2570,
+      "sha256": "4361328ede8e13e619e47bbbb255cafe8d0c79d37154abc9ef3e00a8328b4772",
+      "source": {
+        "path": "assets/personal-space/v2/workspace/pixel/styles/stage/background.png",
+        "sha256": "4307c35cdb4acfadddf2aa0cbaa0aa7b1adf42c84a2118a578b2f4380688c51e"
       }
     },
     "assets/personal-space/v2/workspace/pixel/thumbnails/study.webp": {
@@ -46,12 +118,60 @@
         "sha256": "574dde510f4c70cc9965ca3ec3af4b73678c4b5d6a9cd14a89f5f0eca2860297"
       }
     },
+    "assets/personal-space/v2/workspace/pixel/thumbnails/wizard.webp": {
+      "bytes": 4292,
+      "sha256": "b6f8cc3f0541d29f5d2b530950865d8cd6069c3e50dc047ff7d3f57d21ce5614",
+      "source": {
+        "path": "assets/personal-space/v2/workspace/pixel/styles/wizard/background.png",
+        "sha256": "5df0cd0d6a2ca33e31a36c7c50d258145b5f9864f3391c75870e3c7fdf0a3bff"
+      }
+    },
+    "assets/personal-space/v2/workspace/thumbnails/bistro.webp": {
+      "bytes": 3816,
+      "sha256": "7e1face215d296394fda35ac84ca63216154f33a0854f81ce89f38ad1e3abdb6",
+      "source": {
+        "path": "assets/personal-space/v2/workspace/styles/bistro/background.webp",
+        "sha256": "eae77d05d5942427429ab3373de50bd6ed197b2bc8be9b5b75370a8902dc313b"
+      }
+    },
+    "assets/personal-space/v2/workspace/thumbnails/cyber.webp": {
+      "bytes": 3454,
+      "sha256": "8720d06c49e6eb79b4238537093858576aebeb9bef0c1cb008e60d638e75a527",
+      "source": {
+        "path": "assets/personal-space/v2/workspace/styles/cyber/background.webp",
+        "sha256": "01ccd29169e1ca463a6be33b112d4a1847e87fcb7e0ff1dda9a8158c0c3d4d3f"
+      }
+    },
     "assets/personal-space/v2/workspace/thumbnails/default.webp": {
       "bytes": 4276,
       "sha256": "b733c635b2bd6aaa42c80afacc34b6cd6ca39a2e0e8ce4c5c3bf8797c779178c",
       "source": {
         "path": "assets/personal-space/v2/workspace/backgrounds/building-formal-workstation-room-v2.webp",
         "sha256": "31ccec5e879864b0c647200ec9f09a65807e64d0ba42ea082fd29d14830b340e"
+      }
+    },
+    "assets/personal-space/v2/workspace/thumbnails/dojo.webp": {
+      "bytes": 4228,
+      "sha256": "570cdfd7b360816a452113e9d677ffb048c4f35fce30a666c173d0ceb054113c",
+      "source": {
+        "path": "assets/personal-space/v2/workspace/styles/dojo/background.webp",
+        "sha256": "30d1c3235428ba46cdf8252ab7c849f6dae22c3f4c6f1c743050b192597dc36c"
+      }
+    },
+    "assets/personal-space/v2/workspace/thumbnails/greenhouse.webp": {
+      "bytes": 2352,
+      "sha256": "b485682b73c5f438f6b1d596415838b1fce21714a3c198ad2c398b82341f070a",
+      "source": {
+        "path": "assets/personal-space/v2/workspace/styles/greenhouse/background.webp",
+        "sha256": "01c0081d6a9d136bb128987bc9e3370130835a2e3495cf4a6f43c59023851f01"
+      }
+    },
+    "assets/personal-space/v2/workspace/thumbnails/jungle.webp": {
+      "bytes": 3402,
+      "sha256": "b06dcaecdbaac8e8e47bce4aa7dac1724ea920031c64540421e3ee56d466a059",
+      "source": {
+        "path": "assets/personal-space/v2/workspace/styles/jungle/background.webp",
+        "sha256": "88ff5ccebd545617f78c6c263d6b3f69fb70ae9e7f0767a9ccf5ba33f3dfae9d"
       }
     },
     "assets/personal-space/v2/workspace/thumbnails/nightowl.webp": {
@@ -62,12 +182,44 @@
         "sha256": "11d428e20b9cf5b5e51562f5666e9103aff1401028f70b13ec862bda371a90aa"
       }
     },
+    "assets/personal-space/v2/workspace/thumbnails/noir.webp": {
+      "bytes": 2942,
+      "sha256": "1545bc4ea343db75eb32ccfa5bf5b925dd0d92430c0a1beac0ceeb66ff56bfe5",
+      "source": {
+        "path": "assets/personal-space/v2/workspace/styles/noir/background.webp",
+        "sha256": "6285ffbbed6dc0fd18ebab618e7985fd1eaa761a6c7430ea7a2cb9447437a900"
+      }
+    },
     "assets/personal-space/v2/workspace/thumbnails/nordic.webp": {
       "bytes": 2162,
       "sha256": "1e59569d6f19c2de8f9ef80bf56fbba0abf6752359983bd726de31ba0ec6d1a5",
       "source": {
         "path": "assets/personal-space/v2/workspace/styles/nordic/background.webp",
         "sha256": "2a0d683d464b350352099957bf4389ae838c11b429484dbfc9bffe83877474d5"
+      }
+    },
+    "assets/personal-space/v2/workspace/thumbnails/ocean.webp": {
+      "bytes": 4010,
+      "sha256": "da0d2e98cfaf7afb92509a1038c15831169b49640d48d006c01ec08d01d9ea7f",
+      "source": {
+        "path": "assets/personal-space/v2/workspace/styles/ocean/background.webp",
+        "sha256": "01e214375ebf5deb25bac14db65d550985e3ca07df1b53b2b04cbbf1a99c805f"
+      }
+    },
+    "assets/personal-space/v2/workspace/thumbnails/spacestation.webp": {
+      "bytes": 3044,
+      "sha256": "140ed45be288f5f7677a001c3cd9f4763e5b1b141d87620fe21973f4130dfe29",
+      "source": {
+        "path": "assets/personal-space/v2/workspace/styles/spacestation/background.webp",
+        "sha256": "658758951f4a4c79905e919f12d56469a439ee817bae8d9b254f7090a9ba1565"
+      }
+    },
+    "assets/personal-space/v2/workspace/thumbnails/stage.webp": {
+      "bytes": 1906,
+      "sha256": "6bba872437584880269319a8273016e0ed302361c36de215891c7d3ad0d1a419",
+      "source": {
+        "path": "assets/personal-space/v2/workspace/styles/stage/background.webp",
+        "sha256": "d8d73f99cfe8f7b85604c2a7215f30a69b642c67bf035affea5bc2be757a69f1"
       }
     },
     "assets/personal-space/v2/workspace/thumbnails/study.webp": {
@@ -84,6 +236,14 @@
       "source": {
         "path": "assets/personal-space/v2/workspace/styles/washitsu/background.webp",
         "sha256": "ff297f2974dd8b1268c0a562f7be0b293098fa95421680834b65b22760bcbbd9"
+      }
+    },
+    "assets/personal-space/v2/workspace/thumbnails/wizard.webp": {
+      "bytes": 3484,
+      "sha256": "f99d6e28fa62f676fad154a9f5243dc61ce715ce48a3fd5d4f17458149f58907",
+      "source": {
+        "path": "assets/personal-space/v2/workspace/styles/wizard/background.webp",
+        "sha256": "d7aae2ef4a997fea98d3ae62b0edfe5e6c190742759ffe6116a37cb5303205ca"
       }
     }
   }

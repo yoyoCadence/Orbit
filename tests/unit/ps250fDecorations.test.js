@@ -39,7 +39,12 @@ const outputs = JSON.parse(readFileSync(join(DECOR, 'outputs.json'), 'utf8'));
 const placements = JSON.parse(readFileSync(join(DECOR, 'placements.json'), 'utf8'));
 const SHELL = [...readFileSync(join(PWA, 'sw.js'), 'utf8').match(/const SHELL = \[([\s\S]*?)\];/)[1]
   .matchAll(/'\.\/([^']*)'/g)].map(match => match[1]);
-const IDS = DECORATIONS.map(entry => entry.id);
+// PS-260E: the picker also lists the themed rooms' own decorations
+// (tests/unit/ps260eThemeSets.test.js); these tests are about PS-250F's six.
+const SET_DECORATIONS = new Set(JSON.parse(readFileSync(join(REPO, 'art-pipeline', 'ps260-sets', 'outputs.json'), 'utf8'))
+  .sets.flatMap(entry => entry.decorations));
+const PS250F_DECORATIONS = DECORATIONS.filter(entry => !SET_DECORATIONS.has(entry.id));
+const IDS = PS250F_DECORATIONS.map(entry => entry.id);
 const ROOM_STYLES = ['nordic', 'washitsu', 'nightowl', 'study'];
 const ON_SHELF = ['deco-trophy', 'deco-globe'];
 const ON_DESK = ['deco-succulent', 'deco-coffee'];
@@ -79,7 +84,7 @@ afterEach(() => {
 
 describe('PS-250F1 decorations: assets', () => {
   it('has the six decorations the user chose, the same in the pipeline, the scene and the picker', () => {
-    expect(DECORATIONS).toEqual([
+    expect(PS250F_DECORATIONS).toEqual([
       { id: 'deco-trophy', label: '獎盃' },
       { id: 'deco-globe', label: '地球儀' },
       { id: 'deco-beanbag', label: '懶骨頭' },
@@ -146,7 +151,7 @@ describe('PS-250F1 decorations: assets', () => {
 
   it('ships exactly the hashed files the pipeline wrote, in both character styles and every room', () => {
     // PS-260C: the themed sets' rooms keep their decorations with the sets
-    // (tests/unit/ps260cDecorations.test.js) until the picker lists them (PS-260E).
+    // (tests/unit/ps260cDecorations.test.js checks those files).
     const themed = new Set(Object.keys(JSON.parse(readFileSync(
       join(REPO, 'art-pipeline', 'ps260-sets', 'decor-outputs.json'), 'utf8')).files));
     const onDisk = [...filesUnder('workspace/decor'), ...filesUnder('workspace/pixel/decor')]
@@ -202,8 +207,10 @@ describe('PS-250F1 decorations: assets', () => {
     const catalog = buildAssetCatalog();
     const listed = catalog.flatMap(group => group.assets.map(asset => asset.path));
     for (const path of Object.keys(outputs.files)) expect(listed).toContain(path);
-    expect(catalog.find(group => group.label === '裝飾').assets).toHaveLength(12 * 5);
-    expect(catalog.find(group => group.label === '像素裝飾').assets).toHaveLength(12 * 5);
+    // Six decorations by day and night in the five PS-250 rooms, and (PS-260E)
+    // in each themed room the six and its own two.
+    expect(catalog.find(group => group.label === '裝飾').assets).toHaveLength(12 * 5 + 16 * 10);
+    expect(catalog.find(group => group.label === '像素裝飾').assets).toHaveLength(12 * 5 + 16 * 10);
   });
 });
 
@@ -384,7 +391,7 @@ describe('PS-250F1 decoration switches', () => {
     expect(host.querySelector('.personal-space-v2-appearance-decorations').closest('fieldset').querySelector('legend').textContent)
       .toBe('裝飾');
     expect(switches.map(button => button.dataset.value)).toEqual(IDS);
-    expect(switches.map(button => button.textContent.trim())).toEqual(DECORATIONS.map(entry => entry.label));
+    expect(switches.map(button => button.textContent.trim())).toEqual(PS250F_DECORATIONS.map(entry => entry.label));
     expect(switches.filter(button => button.getAttribute('aria-pressed') === 'false').map(button => button.dataset.value))
       .toEqual(['deco-globe']);
     expect(switches[0].querySelector('img').getAttribute('src')).toBe(placements.decor['deco-trophy'].path);

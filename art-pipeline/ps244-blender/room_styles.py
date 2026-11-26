@@ -147,7 +147,8 @@ ROOM_STYLES = {
 # fireflies or bubbles; their share sets how many). Every kind but 'city' also
 # needs a 'ground' (colour, strength): what the window shows below the plants,
 # where PS-244's towers stood on a transparent holdout. The runtime does not
-# lay PS-251B's city morning and evening views over these rooms (PS-260E).
+# lay PS-251B's city morning and evening views over these rooms
+# (assetManifest.js SET_ROOM_IDS, PS-260E).
 PS260_STYLES = {
     # 太空站: white and grey panels, blue light strips, orange accents; stars and a ringed planet.
     'spacestation': {

@@ -28,17 +28,17 @@ const PIXEL_FOLDERS = [
   'characters/protagonist', 'characters/companion', 'characters/pixel/protagonist', 'characters/pixel/companion',
   'workspace/pixel/backgrounds', 'workspace/pixel/props',
 ];
-// PS-260D: the themed sets' pixel protagonists join the gallery with the picker (PS-260E).
-const THEMED = new Set(Object.keys(JSON.parse(readFileSync(
-  join(V2, '..', '..', '..', '..', 'art-pipeline', 'ps260-sets', 'pixel-outputs.json'), 'utf8')).files));
 const PIXEL_PATHS = PIXEL_FOLDERS.flatMap(folder => readdirSync(join(V2, ...folder.split('/')))
-  .map(name => `assets/personal-space/v2/${folder}/${name}`)).filter(path => !THEMED.has(path));
+  .map(name => `assets/personal-space/v2/${folder}/${name}`));
 // PS-250E2: every room style file, in both character styles.
 const outputsOf = folder => Object.keys(JSON.parse(readFileSync(
   join(V2, '..', '..', '..', '..', 'art-pipeline', folder, 'outputs.json'),
   'utf8',
 )).files);
 const ROOM_STYLE_PATHS = outputsOf('ps250-rooms');
+// PS-260E: the themed sets' rooms and decorations, which the picker offers.
+const SET_PATHS = ['rooms-outputs', 'decor-outputs'].flatMap(name => Object.keys(JSON.parse(readFileSync(
+  join(V2, '..', '..', '..', '..', 'art-pipeline', 'ps260-sets', `${name}.json`), 'utf8')).files));
 // PS-250F: every decoration, in both character styles.
 const DECOR_PATHS = outputsOf('ps250-decor');
 // PS-251B: the views outside the window, in both character styles.
@@ -48,6 +48,7 @@ const ALL_PATHS = [...new Set([
   ...getToonCharacterPaths(),
   ...PIXEL_PATHS,
   ...ROOM_STYLE_PATHS,
+  ...SET_PATHS,
   ...DECOR_PATHS,
   ...WINDOW_PATHS,
 ])].sort();
@@ -62,8 +63,9 @@ describe('PS-250A developer asset gallery', () => {
     const catalog = buildAssetCatalog();
     const listed = catalog.flatMap(group => group.assets.map(asset => asset.path));
 
-    // The pixel room and props by day and by night (PS-250E1).
-    expect(PIXEL_PATHS).toHaveLength(6 * 2 + 6 + 6 * 6 * 2 + 6 * 6 + (1 + 8) * 2);
+    // The pixel room and props by day and by night (PS-250E1), and (PS-260E) the
+    // themed sets' pixel protagonists after PS-250D's six.
+    expect(PIXEL_PATHS).toHaveLength(6 * 2 + 6 + (6 + 10) * 6 * 2 + 6 * 6 + (1 + 8) * 2);
     expect(listed.sort()).toEqual(ALL_PATHS);
     expect(new Set(listed).size).toBe(listed.length);
     expect(catalog.map(group => group.label)).toEqual([

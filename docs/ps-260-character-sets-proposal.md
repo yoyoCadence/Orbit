@@ -38,7 +38,7 @@
 | **PS-260B** | 10 套房間風格，Q 版與像素版、白天＋夜晚；窗外依房間換成星空、竹林、叢林、花園、深海等（風格可覆寫天空與窗外的顏色和形狀）。分成 B1（男性 5 套）與 B2（女性 5 套）兩個 PR。 | `ps244-blender/room_styles.py`、`scene.py`、`workspace/styles/<style>/`、`workspace/pixel/styles/<style>/` | 完成：B1（#271，v1.41.35）、B2（v1.41.36） |
 | **PS-260C** | 裝飾，Q 版與像素版、白天＋夜晚：每個房間 PS-250F 的 6 件裝飾換成該房間的材質（與 PS-250F2 相同），再加上該套組自己的 2 件（共 20 件新模型，只出現在自己的房間）。 | `ps244-blender/decor_sets.py`、`scene.py`、`workspace/[pixel/]decor/styles/<style>/` | 完成：C1（#273，v1.41.37）、C2（v1.41.38） |
 | **PS-260D** | 10 個主角的像素版（PS-250D 的做法，不需要渲染）。 | `ps260-sets/process_pixel_sets.py`、`characters/pixel/protagonist/` | 完成（#270，v1.41.34） |
-| **PS-260E** | runtime：角色目錄與素材登錄表加入 10 套；Edit Mode 新增「主題套組」一鍵套用主角＋房間＋裝飾，也能各自分開選；單元測試與 e2e。 | `characterCatalog.js`、`assetManifest.js`、`appearancePicker.js`、tests | 待做，先處理 §4 的預算 |
+| **PS-260E** | runtime：角色目錄與素材登錄表加入 10 套；Edit Mode 新增「主題套組」一鍵套用主角＋房間＋裝飾，也能各自分開選；單元測試與 e2e。 | `characterCatalog.js`、`assetManifest.js`、`appearancePicker.js`、`assetGallery.js`、`ps250-rooms/thumbnails.py`、tests | 完成（v1.42.0） |
 
 先做完兩種畫風的素材（A–D）再接 runtime（E）：PS-250 也是這個順序，素材的檔名與數量先固定，runtime 的測試才能對照 `outputs.json`；而且選擇介面列出的每個房間都要有 Q 版與像素版（`ps250e2RoomStyles.test.js`），像素版不能晚於 runtime。像素房間放在 B：一個房間的像素版只要幾分鐘，而 C 處理裝飾時要用到各房間的像素背景（`process_decor.py` 的預覽）。素材的 PR 只新增檔案與 pipeline，現有的 PS-250 測試改為排除 PS-260 自己的記錄（`ps260-sets/` 的 `outputs.json`、`pixel-outputs.json`、`rooms-outputs.json`、`decor-outputs.json`）列出的檔案，由 PS-260 的測試檢查。
 
@@ -47,6 +47,7 @@
 - **PS-243 延後載入 JS 預算**：V2＋Pixi（含 `pixi-unsafe-eval.js` 外掛）的 gzip 預算 311,296 B，目前 310,863 B，只剩 433 B。PS-260E 新增的目錄資料與「主題套組」介面一定會超過。依 `tasks.md` 的規則（「之後在個人空間加程式前要先處理預算（另列任務或擁有者調整）」），PS-260E 開始前要先決定：
   - **建議**：把套組資料放在 JSON（素材，不計入 JS 預算，按需載入），JS 只加讀取與介面；預算放寬 4 KB（311,296 → 315,392 B），記錄在 PS-243 驗收紀錄。
   - 這是擁有者的調整，A–D 不受影響，所以先做素材，E 開始前再請擁有者確認。
+  - **結果**（2026-11-26）：擁有者同意放寬 4 KB（308 KB）。實作時套組資料與「主題套組」介面共 +2,768 B gzip，放在 JS 模組裡不需要另外下載、離線也能用，所以沒有拆成 JSON；目前 313,631 / 315,392 B，剩 1,761 B（`docs/ps-243-production-acceptance.md`）。
 - **INFRA-105**：`assetManifest.js`、`characterCatalog.js` 等在啟動路徑上的模組，不能 import 其他模組的新 export；新增的資料要寫在各自的模組裡，以測試確保一致。
 - **快取**：10 套都不預先快取（與 PS-250B 的非預設選項相同），第一次顯示時下載，離線時退回預設；所以 PS-243 的素材預算（首屏 ≤ 1.5 MB、完整預設 ≤ 4 MB）不變。
 - **檔案大小**：每張主角 sprite 15.6–22.5 KB（上限沿用 PS-250C 的 24 KB），每套 12 張約 200–250 KB，10 套共 2.25 MB；像素版每張 5.7–8.2 KB、共 829 KB。只在選了該套組時下載那一套。

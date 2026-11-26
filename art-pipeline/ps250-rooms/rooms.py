@@ -16,8 +16,8 @@ OUTPUTS = os.path.join(HERE, 'outputs.json')
 PREVIEWS = os.path.join(HERE, 'previews')
 V2 = 'assets/personal-space/v2'
 # PS-260B: the themed sets' rooms are recorded and previewed beside their
-# protagonists, so the PS-250E record keeps exactly the rooms the picker lists
-# (tests/unit/ps250e2RoomStyles.test.js) until PS-260E adds them to it.
+# protagonists (ps260-sets/rooms-outputs.json); since PS-260E the picker offers
+# them too, and tests/unit/ps250e2RoomStyles.test.js reads both records.
 PS260 = os.path.join(HERE, '..', 'ps260-sets')
 PS260_OUTPUTS = os.path.join(PS260, 'rooms-outputs.json')
 PS260_PREVIEWS = os.path.join(PS260, 'previews', 'rooms')

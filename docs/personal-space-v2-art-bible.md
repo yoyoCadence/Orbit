@@ -174,6 +174,8 @@ Each set has several protagonists and Companion forms. Added so far:
 
 - PS-260C2: the decorations of the five female sets' rooms, the same way: a potion cabinet and a crystal ball on a pedestal, a microphone stand with glow sticks and a heart lamp on a stool, a sunflower planter and a watering can with small pots on a step, a server rack with status lights and a hologram projector, an aquarium on a cabinet (its water glows from the back and sides) and a coral lamp. With them every set is complete: protagonist, room and decorations, in both styles, by day and by night.
 
+- PS-260E: the picker offers the ten sets. A 「主題套組」 applies a set's protagonist and room and shows its two decorations in one tap, keeping the chosen style and Companion; each part can also be chosen on its own, after the PS-250 options. A set's room keeps its own view out of the window at every time of day (no PS-251B city view is laid over it), and its two decorations appear only in that room.
+
 - PS-251B: the view outside the window in the morning (05:00–10:00) and the evening (17:00–21:00), in both styles. The skyline keeps its shape; the morning recolours it peach and lilac with few lit windows, the evening purple with a warm far side and many lit windows. Each is an RGBA image of only what the window shows, laid over the room; the five room styles share the window, so one image per style serves them all. By day and at night the view baked into the room stays. Source: `art-pipeline/ps251-window/`.
 
 ### 6.2 Workspace Upgrade Phases

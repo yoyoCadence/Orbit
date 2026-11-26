@@ -31,7 +31,7 @@ sys.path.insert(0, os.path.join(HERE, '..', 'ps250-pixel'))
 import rooms  # noqa: E402
 from process_pack import BACKGROUND_PATHS, PWA  # noqa: E402
 from process_pixel import ROOM_PATHS  # noqa: E402
-from room_styles import PS260_STYLES, ROOM_STYLES  # noqa: E402
+from room_styles import ROOM_STYLES  # noqa: E402
 
 SIZE = (216, 144)
 QUALITY = 82
@@ -50,8 +50,7 @@ def thumbnail_path(room, pixel):
 
 def main():
     files = {}
-    # The PS-260 rooms join the picker, with their thumbnails, in PS-260E.
-    for room in [room for room in ROOM_STYLES if room not in PS260_STYLES]:
+    for room in ROOM_STYLES:
         for pixel in (False, True):
             image = Image.open(os.path.join(PWA, *source_path(room, pixel).split('/'))).convert('RGB')
             buffer = io.BytesIO()

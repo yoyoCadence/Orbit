@@ -28,6 +28,9 @@ import {
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const PWA = join(REPO, 'pwa');
 const outputs = JSON.parse(readFileSync(join(REPO, 'art-pipeline', 'ps250-characters', 'outputs.json'), 'utf8'));
+// PS-260E: the ten themed sets' protagonists follow PS-250C's six in the same
+// list and folder (tests/unit/ps260aCharacterSets.test.js checks their files).
+const sets = JSON.parse(readFileSync(join(REPO, 'art-pipeline', 'ps260-sets', 'outputs.json'), 'utf8'));
 const SHELL = [...readFileSync(join(PWA, 'sw.js'), 'utf8').match(/const SHELL = \[([\s\S]*?)\];/)[1]
   .matchAll(/'\.\/([^']*)'/g)].map(match => match[1]);
 
@@ -47,12 +50,15 @@ describe('PS-250C Q-style character catalog', () => {
   it('lists exactly the sprites the pipeline wrote', () => {
     const paths = getToonCharacterPaths();
     expect(new Set(paths).size).toBe(paths.length);
-    expect([...paths].sort()).toEqual(Object.keys(outputs.files).sort());
-    expect(paths).toHaveLength(6 * 6 * 2 + 6 * 6);
+    expect([...paths].sort()).toEqual([...Object.keys(outputs.files), ...Object.keys(sets.files)].sort());
+    expect(paths).toHaveLength((6 + 10) * 6 * 2 + 6 * 6);
   });
 
   it('uses the pipeline ids and labels, and every state the runtime draws', () => {
-    expect(TOON_PROTAGONISTS).toEqual(outputs.protagonist.ids);
+    expect(TOON_PROTAGONISTS).toEqual([
+      ...outputs.protagonist.ids,
+      ...sets.protagonist.ids.map(({ id, label }) => ({ id, label })),
+    ]);
     expect(TOON_COMPANIONS).toEqual(outputs.companion.ids);
     expect(TOON_PROTAGONIST_POSES).toEqual(outputs.protagonist.poses);
     expect(TOON_FACINGS).toEqual(outputs.protagonist.facings);
@@ -80,7 +86,6 @@ describe('PS-250C Q-style character catalog', () => {
       join(PWA, 'assets', 'personal-space', 'v2', 'characters', 'toon', kind),
     ).map(name => `assets/personal-space/v2/characters/toon/${kind}/${name}`));
     // The PS-260 sets render beside these (tests/unit/ps260aCharacterSets.test.js).
-    const sets = JSON.parse(readFileSync(join(REPO, 'art-pipeline', 'ps260-sets', 'outputs.json'), 'utf8'));
     expect(onDisk.sort()).toEqual([...Object.keys(outputs.files), ...Object.keys(sets.files)].sort());
   });
 

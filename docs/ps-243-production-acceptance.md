@@ -127,6 +127,13 @@ deferred budget to 304 KiB (311,296 bytes) for Pixi's unsafe-eval add-on
 CSP drop `'unsafe-eval'`. The baseline now counts it as its own row: V2 JS
 79,728 + Pixi 225,428 + add-on 4,332 = 309,488 of 311,296 bytes (1,808 left).
 
+Updated 2026-11-26 (PS-260E): the owner approved raising the deferred budget
+to 308 KiB (315,392 bytes) so the picker can offer the ten themed sets (user
+request, 2026-11-25): their protagonists, rooms and decorations and the
+one-tap theme set section add about 2.7 KB gzip to the V2 modules. The
+baseline reads 313,631 of 315,392 bytes (1,761 left); the themed sets' images
+are not precached, so the asset budgets are unchanged.
+
 The scene is authored art throughout: a 3:2 background by day and by night,
 12 protagonist state/facing poses, six Companion states, clear/rain overlays,
 and the props and decorations, all through the same runtime manifest contract.

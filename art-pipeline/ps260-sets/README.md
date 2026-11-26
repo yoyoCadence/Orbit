@@ -110,11 +110,11 @@ the PS-250E styles. Two things are new:
   pixels past the box), so the dojo's `shadow_floor` is 72 instead of 56.
 
 The PS-260 rooms are recorded in `rooms-outputs.json` and previewed in
-`previews/rooms/` (`b1-overview.jpg` and `b2-overview.jpg`, each half's five rooms side by
-side, are contact sheets of their `*-phase-100.jpg` for the PRs), not in `ps250-rooms/`,
-so that record keeps exactly the
-rooms the picker lists until PS-260E adds these. The picker thumbnails
-(`ps250-rooms/thumbnails.py`) are made in PS-260E too.
+`previews/rooms/` (`b1-overview.jpg` and `b2-overview.jpg`, each half's five
+rooms side by side, are contact sheets of their `*-phase-100.jpg` for the PRs),
+not in `ps250-rooms/`, beside the sets' other records; the picker offers them
+since PS-260E, and their thumbnails are made with the PS-250E ones
+(`ps250-rooms/thumbnails.py`).
 
 ```bash
 P=art-pipeline/ps244-blender/placements.json
@@ -187,3 +187,23 @@ from the same renders. The test's limit is 1000. `previews/sets/` shows
 each whole set: the room, its props and decorations, the set's protagonist
 and Orbit (`c1-overview.jpg` and `c2-overview.jpg`: the male and the female
 sets side by side).
+
+## In the app (PS-260E)
+
+- `pwa/js/personalSpace/v2/content/characterCatalog.js` lists the ten
+  protagonists after PS-250C's six; `assetManifest.js` resolves their sprites
+  in both styles, their rooms (`SET_ROOM_IDS`) and each room's two decorations
+  (`ROOM_DECORATIONS`, the day and night placements of
+  `decor-placements.json`). A set decoration stands only in its own room, from
+  the start of a project, and has no default-room twin: if its file cannot
+  load, it is left out.
+- These rooms have their own view out of the window, so the runtime lays no
+  PS-251B morning or evening city view over them.
+- The picker (`ui/appearancePicker.js`) offers each set as a 「主題套組」:
+  one tap chooses its protagonist and room and shows its two decorations,
+  keeping the chosen style and Companion. The protagonist, room and
+  decorations are also offered one by one, after the PS-250 ones.
+- Nothing of a set is precached; it is downloaded the first time it is shown
+  (PS-250B). `tests/unit/ps260eThemeSets.test.js` checks the sets against
+  `outputs.json` and `decor-placements.json`, so after re-processing a set's
+  decorations, copy the new placements into `ROOM_DECORATIONS`.

@@ -44,7 +44,10 @@ const EXTERIOR_TIME_BANDS = Object.freeze(['morning', 'evening']);
 // cut to the default room's trim boxes, so they share PROP_DEFINITIONS.
 // Callers pass the style as an option, like the time band; anything unknown
 // (including legacy theme ids such as 'night') is the default room.
-const ROOM_STYLE_IDS = Object.freeze(['default', 'nordic', 'washitsu', 'nightowl', 'study']);
+// PS-260E: the rooms of the ten themed sets (art-pipeline/ps260-sets), each
+// with its own view out of the window, so no PS-251B view is laid over them.
+const SET_ROOM_IDS = Object.freeze(['spacestation', 'dojo', 'noir', 'bistro', 'jungle', 'wizard', 'stage', 'greenhouse', 'cyber', 'ocean']);
+const ROOM_STYLE_IDS = Object.freeze(['default', 'nordic', 'washitsu', 'nightowl', 'study', ...SET_ROOM_IDS]);
 const DEFAULT_ROOM_STYLE = 'default';
 
 // PS-250B: two switchable styles; the first id of each list is that style's
@@ -55,7 +58,9 @@ const DEFAULT_ROOM_STYLE = 'default';
 // characterCatalog.js, which this module must not import: it is on the boot
 // path (app.js → pixiSceneRuntime.js), and an older cache may not have that
 // module (INFRA-105). ps250bAppearance and ps250dPixelSet tests keep them in sync.
-const TOON_PROTAGONISTS = Object.freeze(['office', 'hoodie', 'sweater', 'sporty', 'scientist', 'artist']);
+const TOON_PROTAGONISTS = Object.freeze(['office', 'hoodie', 'sweater', 'sporty', 'scientist', 'artist',
+  // PS-260E: the ten themed sets' protagonists (PS-260A, pixel: PS-260D).
+  'astronaut', 'samurai', 'detective', 'chef', 'explorer', 'witch', 'idol', 'gardener', 'hacker', 'marine']);
 const TOON_COMPANIONS = Object.freeze(['orbit', 'catbot', 'owl', 'cube', 'jelly', 'fox']);
 const CHARACTER_STYLES = Object.freeze({
   toon: Object.freeze({
@@ -169,6 +174,42 @@ const DECOR_DEFINITIONS = Object.freeze([
     { x: 45.898, y: 50.977, width: 3.385 }),
 ]);
 
+// PS-260C/E: each themed room's own two decorations, on the floor, shown only
+// in that room (after the six above) and switched off like them. Placements
+// from art-pipeline/ps260-sets/decor-placements.json (test-enforced).
+const ROOM_DECORATIONS = Object.freeze({
+  spacestation: Object.freeze([
+    setDecoration('deco-rocket', [55.339, 54.883, 3.906, 23], [55.599, 54.883, 4.427]),
+    setDecoration('deco-planet', [81.315, 77.832, 20.964, 32], [87.5, 74.609, 8.594])]),
+  dojo: Object.freeze([
+    setDecoration('deco-katana', [54.883, 54.688, 7.161, 23], [55.371, 54.688, 8.138]),
+    setDecoration('deco-bonsai', [81.348, 76.953, 20.378, 32], [87.077, 74.902, 8.919])]),
+  noir: Object.freeze([
+    setDecoration('deco-typewriter', [81.706, 77.148, 20.964, 32], [87.24, 75.195, 9.766]),
+    setDecoration('deco-hatstand', [55.501, 54.883, 4.622, 23], [56.771, 54.98, 7.161])]),
+  bistro: Object.freeze([
+    setDecoration('deco-cake', [55.371, 55.176, 5.664, 23], [55.957, 55.273, 7.487]),
+    setDecoration('deco-bread', [81.706, 76.953, 17.578, 32], [86.979, 74.609, 7.031])]),
+  jungle: Object.freeze([
+    setDecoration('deco-fern', [55.469, 57.324, 15.755, 23], [55.469, 59.082, 16.276]),
+    setDecoration('deco-lantern', [83.659, 75.879, 14.193, 32], [86.947, 74.805, 7.617])]),
+  wizard: Object.freeze([
+    setDecoration('deco-crystal', [80.208, 77.344, 18.62, 32], [86.882, 75.391, 5.273]),
+    setDecoration('deco-potions', [55.176, 54.785, 7.357, 23], [56.738, 54.785, 10.612])]),
+  stage: Object.freeze([
+    setDecoration('deco-mic', [55.241, 54.492, 4.883, 23], [55.208, 55.664, 4.818]),
+    setDecoration('deco-heartlamp', [81.738, 76.465, 18.945, 32], [87.695, 74.707, 7.031])]),
+  greenhouse: Object.freeze([
+    setDecoration('deco-flowerpot', [55.566, 54.785, 8.268, 23], [55.566, 54.785, 8.268]),
+    setDecoration('deco-wateringcan', [87.24, 75.781, 8.464, 32], [87.24, 75.293, 8.464])]),
+  cyber: Object.freeze([
+    setDecoration('deco-server', [55.534, 56.836, 6.641, 23], [56.413, 59.082, 8.659]),
+    setDecoration('deco-hologram', [82.389, 76.074, 14.909, 32], [86.556, 75.586, 6.576])]),
+  ocean: Object.freeze([
+    setDecoration('deco-aquarium', [55.306, 54.785, 7.227, 23], [56.673, 54.883, 10.221]),
+    setDecoration('deco-coral', [81.966, 76.27, 17.708, 32], [87.044, 74.707, 7.552])]),
+});
+
 export const WORKSPACE_PROJECT_PHASES = Object.freeze([
   phase(0, '空白工作角', '完成一次 Main Quest，建立基本書桌。'),
   phase(25, '基本書桌', '再完成一次 Main Quest，加入燈具與收納。'),
@@ -269,7 +310,7 @@ export function getWorkspaceSceneAssets(progress = 0, placementOverrides = {}, v
   return {
     ...WORKSPACE_V2_ASSETS,
     background: room.backgrounds[lighting],
-    exterior: EXTERIOR_TIME_BANDS.includes(options?.timeBand)
+    exterior: EXTERIOR_TIME_BANDS.includes(options?.timeBand) && !SET_ROOM_IDS.includes(roomStyle)
       ? CHARACTER_STYLES[resolvedVisuals.appearance.style].exteriorPath(options.timeBand)
       : null,
     lighting,
@@ -296,7 +337,7 @@ export function getWorkspaceSceneAssets(progress = 0, placementOverrides = {}, v
     // PS-250F: a list of its own, so a caller that predates it draws none and
     // a caller can leave out one that cannot load without losing the room.
     decorations: room.decorPath
-      ? DECOR_DEFINITIONS
+      ? [...DECOR_DEFINITIONS, ...(ROOM_DECORATIONS[roomStyle] || [])]
         .filter(entry => normalized >= entry.minProgress && !hiddenDecorations.includes(entry.id))
         .map(({ nightPlacement, ...entry }) => ({
           ...entry,
@@ -406,6 +447,11 @@ function decoration(id, support, minProgress, placement, nightPlacement) {
     placement: Object.freeze({ anchor: 'center-bottom', ...placement }),
     nightPlacement: Object.freeze({ anchor: 'center-bottom', ...nightPlacement, z: placement.z }),
   });
+}
+
+// PS-260E: a themed room's decoration stands on the floor from the start.
+function setDecoration(id, [x, y, width, z], [nx, ny, nwidth]) {
+  return decoration(id, null, 0, { x, y, width, z }, { x: nx, y: ny, width: nwidth });
 }
 
 // What a decoration moves with: its support prop, or itself on the floor.
