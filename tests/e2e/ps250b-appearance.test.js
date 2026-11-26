@@ -4,7 +4,7 @@
  * never downloaded). The failed loads are simulated by aborting the requests.
  */
 import { expect, test } from '@playwright/test';
-import { GUEST_USER, mockSupabase, seedStorage } from './support/seed.js';
+import { GUEST_USER, mockSupabase, seedStorage, TODAY } from './support/seed.js';
 
 const TOON = 'assets/personal-space/v2/characters/toon';
 
@@ -197,8 +197,13 @@ test.describe('PS-250B character style and choice', () => {
   });
 
   test('applies a theme set in one tap, on home too, and keeps its parts adjustable (PS-260E)', async ({ page }) => {
+    // Morning, when the default room has PS-251B's city view over its window.
+    const morning = new Date(`${TODAY}T00:00:00`);
+    morning.setHours(7);
+    await page.clock.setFixedTime(morning);
     await page.goto('/');
     await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
+    await expect(page.locator('[data-orbit-window] img.orbit-window-exterior')).toHaveCount(1);
     await page.locator('[data-orbit-open-world]').click();
     await page.locator('[data-personal-space-v2] [data-v2-mode="edit"]').first().click();
     const sets = page.locator('[data-v2-appearance="set"]');
@@ -217,16 +222,16 @@ test.describe('PS-250B character style and choice', () => {
 
     const world = page.locator('[data-personal-space-v2]');
     const loaded = locator => locator.evaluate(image => image.complete && image.naturalWidth > 0);
-    await expect(world.locator('.orbit-window-background')).toHaveAttribute('src', /workspace\/styles\/wizard\/background(-night)?\.webp$/);
+    await expect(world.locator('.orbit-window-background')).toHaveAttribute('src', /workspace\/styles\/wizard\/background\.webp$/);
     await expect.poll(() => loaded(world.locator('.orbit-window-background'))).toBe(true);
     await expect(world.locator('.orbit-window-protagonist')).toHaveAttribute('src', new RegExp(`${TOON}/protagonist/witch-`));
     await expect.poll(() => loaded(world.locator('.orbit-window-protagonist'))).toBe(true);
-    // Its own view out of the window at every time of day: no city view over it.
+    // Its own view out of the window: no city view over it in the morning.
     await expect(world.locator('.orbit-window-exterior')).toHaveCount(0);
     // Its two decorations stand in the room from the start.
     for (const id of ['deco-crystal', 'deco-potions']) {
       const decoration = world.locator(`[data-decoration-id="${id}"]`);
-      await expect(decoration).toHaveAttribute('src', new RegExp(`/workspace/decor/styles/wizard/${id}(-night)?\\.png$`));
+      await expect(decoration).toHaveAttribute('src', new RegExp(`/workspace/decor/styles/wizard/${id}\\.png$`));
       await expect.poll(() => loaded(decoration)).toBe(true);
     }
     // The room's switches: the six and the set's two.
@@ -248,7 +253,8 @@ test.describe('PS-250B character style and choice', () => {
     await page.goto('/');
     await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
     const home = page.locator('[data-orbit-window]');
-    await expect(home.locator('.orbit-window-background')).toHaveAttribute('src', /workspace\/styles\/wizard\/background(-night)?\.webp$/);
+    await expect(home.locator('.orbit-window-background')).toHaveAttribute('src', /workspace\/styles\/wizard\/background\.webp$/);
+    await expect(home.locator('img.orbit-window-exterior')).toHaveCount(0);
     await expect(home.locator('.orbit-window-protagonist')).toHaveAttribute('src', new RegExp(`${TOON}/protagonist/witch-`));
     await expect(home.locator('[data-decoration-id="deco-potions"]')).toHaveCount(1);
   });

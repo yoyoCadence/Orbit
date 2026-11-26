@@ -31,9 +31,10 @@ const NIGHT_TIME_BANDS = Object.freeze(['evening', 'night']);
 // PS-251B: the view outside the window for the morning and the evening (user
 // decision, 2026-10-23), an image of only what the window shows, drawn above
 // the room background and below the furniture. The day and night views are
-// baked into the room backgrounds. Every room style shares the window, so
-// there is one per character style. A property of the scene, not an export:
-// a caller that predates it draws the baked view (INFRA-105).
+// baked into the room backgrounds. Every PS-250E room style shares the
+// window, so there is one per character style; the PS-260 rooms have their own
+// view and none (SET_ROOM_IDS). A property of the scene, not an export: a
+// caller that predates it draws the baked view (INFRA-105).
 const EXTERIOR_TIME_BANDS = Object.freeze(['morning', 'evening']);
 
 // PS-250E2: room styles (user decision, 2026-10-21), chosen in Edit Mode and
