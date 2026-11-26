@@ -125,15 +125,17 @@ describe('login screen', () => {
     expect(authMock.signIn).not.toHaveBeenCalled();
   });
 
-  it('signs in right after signing up; when that fails, asks to sign in and switches to the sign-in tab', async () => {
+  it('signs in right after signing up; when that fails, switches to the sign-in tab with its message hidden (BUG-120)', async () => {
     window.switchAuthTab('signup');
     authMock.signIn.mockResolvedValue({ error: new Error('Email not confirmed') });
     await submit();
     expect(authMock.signUp).toHaveBeenCalledWith('user@example.com', 'secret123');
     expect(authMock.signIn).toHaveBeenCalledWith('user@example.com', 'secret123');
-    // Today's message. With "Confirm email" on (PRO-017RA-Auth) this is every
-    // sign-up, and the person must confirm the email first (BUG-120).
+    // Today the message is written, then hidden again by the switch to the
+    // sign-in tab: the person sees no message at all (BUG-120). With "Confirm
+    // email" on (PRO-017RA-Auth) this is every sign-up.
     expect($('auth-error').textContent).toBe('註冊成功！請用剛設定的密碼登入。');
+    expect($('auth-error').classList.contains('hidden')).toBe(true);
     expect($('tab-signin').classList.contains('active')).toBe(true);
     expect($('auth-submit').textContent).toBe('登入');
     expect($('auth-submit').disabled).toBe(false);

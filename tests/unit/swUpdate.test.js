@@ -11,13 +11,19 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 function stubServiceWorker({ controller = null, register = () => Promise.resolve({}) } = {}) {
   const listeners = {};
+  const registered = [];
   const serviceWorker = {
     controller,
-    register: vi.fn(register),
-    addEventListener: vi.fn((type, listener) => { (listeners[type] ||= []).push(listener); }),
+    // A plain function: a vi.fn handles the promise it returns itself, so a
+    // rejection would never go unhandled even without swUpdate.js's catch.
+    register: (...args) => {
+      registered.push(args);
+      return register();
+    },
+    addEventListener: (type, listener) => { (listeners[type] ||= []).push(listener); },
   };
   Object.defineProperty(window.navigator, 'serviceWorker', { value: serviceWorker, configurable: true });
-  return { serviceWorker, fire: type => (listeners[type] || []).forEach(listener => listener()) };
+  return { registered, fire: type => (listeners[type] || []).forEach(listener => listener()) };
 }
 
 async function load() {
@@ -33,13 +39,16 @@ afterEach(() => {
 
 describe('swUpdate.js', () => {
   it('registers sw.js, and ignores a failed registration', async () => {
-    const { serviceWorker } = stubServiceWorker({ register: () => Promise.reject(new Error('insecure')) });
+    const { registered } = stubServiceWorker({ register: () => Promise.reject(new Error('insecure')) });
     const unhandled = vi.fn();
     process.on('unhandledRejection', unhandled);
-    await load();
-    await new Promise(resolve => setTimeout(resolve, 0));
-    process.off('unhandledRejection', unhandled);
-    expect(serviceWorker.register).toHaveBeenCalledWith('sw.js');
+    try {
+      await load();
+      await new Promise(resolve => setTimeout(resolve, 0));
+    } finally {
+      process.off('unhandledRejection', unhandled);
+    }
+    expect(registered).toEqual([['sw.js']]);
     expect(unhandled).not.toHaveBeenCalled();
   });
 
@@ -53,6 +62,7 @@ describe('swUpdate.js', () => {
   it('offers a reload once when a new worker replaces the old one, and can be closed', async () => {
     const { fire } = stubServiceWorker({ controller: {} });
     await load();
+    document.body.innerHTML = '<main id="app"></main>';
     fire('controllerchange');
     fire('controllerchange');
     const banners = document.querySelectorAll('#update-banner');
@@ -72,6 +82,7 @@ describe('swUpdate.js', () => {
     // A later update shows it again.
     fire('controllerchange');
     expect(document.getElementById('update-banner')).not.toBe(null);
+    expect(document.getElementById('app')).not.toBe(null);
   });
 
   it('reloads the page from the banner', async () => {

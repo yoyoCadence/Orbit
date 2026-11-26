@@ -124,7 +124,6 @@ describe('Liquid Glass reflection', () => {
   function stubPlatform({ coarse = false, ua = 'Mozilla/5.0', requestPermission } = {}) {
     const frames = [];
     vi.stubGlobal('requestAnimationFrame', vi.fn(callback => frames.push(callback)));
-    window.requestAnimationFrame = globalThis.requestAnimationFrame;
     window.matchMedia = vi.fn(() => ({ matches: coarse }));
     vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue(ua);
     window.DeviceOrientationEvent = requestPermission ? { requestPermission } : function DeviceOrientationEvent() {};
@@ -167,10 +166,14 @@ describe('Liquid Glass reflection', () => {
     window.innerHeight = 800;
     fire('pointermove', { clientX: 1000, clientY: 0 });
     expect(frames).toHaveLength(1);
-    // Frames closer than 32 ms wait; later ones ease toward the pointer.
-    runFrames(frames, [100, 110]);
-    const first = parseFloat(glassVars()['--glass-sheen-x']);
-    expect(first).toBeGreaterThan(50);
+    runFrames(frames, [100]);
+    const first = glassVars()['--glass-sheen-x'];
+    expect(parseFloat(first)).toBeGreaterThan(50);
+    // A frame closer than 32 ms to the last one waits for the next.
+    runFrames(frames, [110]);
+    expect(glassVars()['--glass-sheen-x']).toBe(first);
+    expect(frames).toHaveLength(1);
+    // Later ones ease toward the pointer.
     runFrames(frames, Array.from({ length: 200 }, (_, index) => 150 + index * 40));
     expect(frames).toHaveLength(0);
     // Settled on the target (sheen x 50 + 24), within the clamps.
@@ -178,7 +181,7 @@ describe('Liquid Glass reflection', () => {
     expect(parseFloat(glassVars()['--glass-angle'])).toBeLessThanOrEqual(165);
   });
 
-  it('follows the tilt, clamped, and stops when the theme changes', async () => {
+  it('follows the tilt, capped, eases back to rest without a reading, and stops when the theme changes', async () => {
     const { initLiquidGlassReflection } = await freshTheme();
     const { frames, fire } = stubPlatform();
     initLiquidGlassReflection();
@@ -192,10 +195,18 @@ describe('Liquid Glass reflection', () => {
     expect(parseFloat(vars['--glass-angle'])).toBeCloseTo(162.88, 0);
     expect(parseFloat(vars['--glass-sheen-x'])).toBeCloseTo(76.04, 0);
     expect(parseFloat(vars['--glass-rim-strength'])).toBeCloseTo(0.82, 1);
-    // A missing reading counts as level.
+    // A missing reading counts as level: the reflection eases back to rest.
     fire('deviceorientation', { gamma: null, beta: undefined });
+    runFrames(frames, Array.from({ length: 200 }, (_, index) => 9000 + index * 40));
+    expect(parseFloat(glassVars()['--glass-sheen-x'])).toBeCloseTo(50, 0);
+    expect(parseFloat(glassVars()['--glass-angle'])).toBeCloseTo(136, 0);
+    // Another theme: a queued frame stops, and the tilt is no longer followed.
+    fire('deviceorientation', { gamma: 30, beta: 0 });
+    expect(frames).toHaveLength(1);
     root.dataset.theme = 'light';
-    runFrames(frames, [99999]);
+    runFrames(frames, [20000]);
+    expect(frames).toHaveLength(0);
+    fire('deviceorientation', { gamma: -30, beta: 0 });
     expect(frames).toHaveLength(0);
   });
 

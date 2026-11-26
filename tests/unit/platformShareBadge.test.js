@@ -104,8 +104,9 @@ describe('badge.js', () => {
     }
     vi.stubGlobal('Notification', FakeNotification);
     scheduleLocalReminder({ title: '休息一下', body: '專注 25 分鐘了', delayMs: 1000 });
+    vi.advanceTimersByTime(999);
     expect(shown).toEqual([]);
-    vi.advanceTimersByTime(1000);
+    vi.advanceTimersByTime(1);
     expect(shown).toEqual([['休息一下', { body: '專注 25 分鐘了' }]]);
     scheduleLocalReminder();
     vi.advanceTimersByTime(0);
