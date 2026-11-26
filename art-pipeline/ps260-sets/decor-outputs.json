@@ -107,12 +107,12 @@
       "sha256": "b088a6a0f624b5ef996b8b8f25c2a6241ae23baf4783b02a860d0d9bfae33e06"
     },
     "assets/personal-space/v2/workspace/decor/styles/cyber/deco-server-night.png": {
-      "bytes": 31034,
-      "sha256": "3c56d2631d2c38b506563d42bc95dc3cea7c9e0361d82a703b1abcc19430eedd"
+      "bytes": 29609,
+      "sha256": "1f1cf2b92efef709bce69bc10462b02494894e9afc166ad01434566ebcf7c695"
     },
     "assets/personal-space/v2/workspace/decor/styles/cyber/deco-server.png": {
-      "bytes": 25948,
-      "sha256": "d88fc52ceb89c7346bd46e9cb10f41ba0f9297ff7cd5036e3ade4c431a631046"
+      "bytes": 26471,
+      "sha256": "a3ed7c5f579038abd49f99154a5a44483c906a0ae366db045376870914076123"
     },
     "assets/personal-space/v2/workspace/decor/styles/cyber/deco-succulent-night.png": {
       "bytes": 1532,
@@ -547,12 +547,12 @@
       "sha256": "f7531203ef2e3ac2eb9bee6f28fdff94d4d74bd4ef2a19f889f631b855f3242e"
     },
     "assets/personal-space/v2/workspace/decor/styles/stage/deco-heartlamp-night.png": {
-      "bytes": 22852,
-      "sha256": "c4c2062649871f45264116ae74c7306937df23922d404f1c54b272a02cc87587"
+      "bytes": 21840,
+      "sha256": "8f41d04d38df6fa0eda1dd3013982262b6dc6753c3d8764e118014ea1fd8de8c"
     },
     "assets/personal-space/v2/workspace/decor/styles/stage/deco-heartlamp.png": {
-      "bytes": 39586,
-      "sha256": "7a797ef04e9d8ecd868bf7bae71606671f1536d990c5a979c2d0fd32bdf007b7"
+      "bytes": 36390,
+      "sha256": "fa10a4fad631cda19d186cec8b7dca08546336c8128744d1d1f477e4313c585b"
     },
     "assets/personal-space/v2/workspace/decor/styles/stage/deco-mic-night.png": {
       "bytes": 15827,
@@ -747,12 +747,12 @@
       "sha256": "c17aa724ca64510633771a4b4eae08ea773a3bec34f766a84ea8d659cc8476ab"
     },
     "assets/personal-space/v2/workspace/pixel/decor/styles/cyber/deco-server-night.png": {
-      "bytes": 3009,
-      "sha256": "bd46ea137ad9a62ad4df5d564cc05bb76979dec7b5af7479f29fb68e0578c188"
+      "bytes": 3069,
+      "sha256": "d1a5ea495c8fc510d1c1f7ae6867767a5ae179738e1a2637935370fa9722b1be"
     },
     "assets/personal-space/v2/workspace/pixel/decor/styles/cyber/deco-server.png": {
-      "bytes": 3003,
-      "sha256": "20acdcb1cab3e6e83ceb76f18847eb299e9f2fa6af2ae2521b04157414119ab6"
+      "bytes": 3187,
+      "sha256": "7a36631bd51fe1e9b84f5f624dbb5c18afbf72cc434508225faae78595c2184d"
     },
     "assets/personal-space/v2/workspace/pixel/decor/styles/cyber/deco-succulent-night.png": {
       "bytes": 272,
@@ -1187,12 +1187,12 @@
       "sha256": "6c5fd6e7b625d874dd793bcc2bbb73f18829d53a8a2078e4e048750b0d9ad04a"
     },
     "assets/personal-space/v2/workspace/pixel/decor/styles/stage/deco-heartlamp-night.png": {
-      "bytes": 2250,
-      "sha256": "8f092d1b86f5eaabba3a37ccc798a4a9a9893b5dafc9d5e4af4878493158fb97"
+      "bytes": 2180,
+      "sha256": "c2fc9040708f0c32c1837bb19477ad559799089bb6f4091281ea6cfc1417554b"
     },
     "assets/personal-space/v2/workspace/pixel/decor/styles/stage/deco-heartlamp.png": {
-      "bytes": 2911,
-      "sha256": "41af367b650eaf75b6fd4175902d47c3c47efdd6452e51c27ab429bdd8c4bfb7"
+      "bytes": 2918,
+      "sha256": "ecbcb7dd9141fa9e7ae07b36a78dfcbee4d8778d4bb87869b1287127e8f5120c"
     },
     "assets/personal-space/v2/workspace/pixel/decor/styles/stage/deco-mic-night.png": {
       "bytes": 1471,

@@ -32,6 +32,7 @@ import json
 import os
 import sys
 
+import numpy as np
 from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -130,7 +131,11 @@ def main():
                                     colours.get('shadow_floor', 0))
         sprite, box = Q.trim_prop(frame)
         sprites[did] = sprite
-        placements[did] = {**Q.placement_for(box), 'z': z, 'spot': spot, 'bbox': list(box)}
+        # The lowest solid row (alpha >= 200) in % of the frame: where the piece
+        # stands, without its shadow (the test checks it against its spot).
+        solid = np.nonzero(np.array(sprite)[:, :, 3] >= 200)[0]
+        base = round((box[1] + int(solid.max()) + 1) / Q.FRAME[1] * 100, 3)
+        placements[did] = {**Q.placement_for(box), 'z': z, 'spot': spot, 'base': base, 'bbox': list(box)}
         pixel_sprites[did] = P.process_prop(
             args.pixel_render_dir, did, box, lighting, rooms.scene_folder(room, lighting),
             colours.get('pixel_shadow'), colours.get('shadow_floor', 0))

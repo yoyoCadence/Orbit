@@ -326,10 +326,13 @@ def build_heartlamp(b):
     heart = glow(b, 'heart', '#ff6fa8', 0, 4.0)
     b.cyl(g, 0.2, 0.42, (x, y, 0.21), tm(b, 'heart-stool', '#f7f2f5', 0.35, gloss=0.3), r2=0.16, verts=32)
     b.torus(g, 0.2, 0.015, (x, y, 0.42), m['brass'])
-    hz = 0.68
+    # Two lobes and a point, as deep as the lobes (the point would poke out
+    # between them) and seated on the stool (its tip on the seat).
+    hz = 0.615
     for sx in (-1, 1):
         b.sphere(g, 0.13, (x + sx * 0.09, y, hz + 0.08), heart, scale=(1, 0.6, 1))
-    b.cyl(g, 0.175, 0.24, (x, y, hz - 0.06), heart, rot=(D(180), 0, 0), r2=0.0, verts=4)
+    point = b.cyl(g, 0.175, 0.24, (x, y, hz - 0.06), heart, rot=(D(180), 0, 0), r2=0.0, verts=4)
+    point.scale = (1, 0.45, 1)
     for k in range(3):
         a = D(30 + k * 70)
         b.sphere(g, 0.02, (x + math.cos(a) * 0.3, y - 0.05, hz + 0.25 + k * 0.05), glow(b, 'heart-spark', '#ffffff', 0.6, 2.5))
@@ -393,7 +396,8 @@ def build_server(b):
         z = 0.12 + k * 0.13
         b.box(g, (w - 0.08, 0.02, 0.1), (x, y - d / 2 - 0.005, z), unit, bevel=0.005)
         for n in range(rng.randint(2, 5)):
-            b.sphere(g, 0.009, (x - w / 2 + 0.08 + n * 0.035, y - d / 2 - 0.02, z + 0.02), rng.choice(leds), segments=8)
+            # Big enough to survive the pixel version's reduction.
+            b.sphere(g, 0.014, (x - w / 2 + 0.08 + n * 0.035, y - d / 2 - 0.02, z + 0.02), rng.choice(leds), segments=8)
         b.box(g, (0.18, 0.006, 0.02), (x + 0.14, y - d / 2 - 0.018, z - 0.02), m['bezel'])
     b.tube(g, [(x + w / 2, y + 0.1, 1.2), (x + w / 2 + 0.1, y + 0.15, 0.7), (x + w / 2 + 0.05, y + 0.2, 0.04)], 0.012,
            leds[2])
