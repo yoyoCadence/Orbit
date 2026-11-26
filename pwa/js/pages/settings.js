@@ -2,7 +2,7 @@ import { state }                      from '../state.js';
 import { db, storage }                 from '../storage.js';
 import { applyTheme, applyUiSkin, applyBgImage, removeBgImage, applyRandomThemeForToday } from '../theme.js';
 import { APP_VERSION } from '../version.js';
-import { uid, today, escHtml }         from '../utils.js';
+import { uid, effectiveToday, escHtml } from '../utils.js';
 import { exportSessionsCSV, showReportPicker } from '../export.js';
 import { previewBaseXP }                       from '../engine.js';
 import { goToProCard }                         from '../ui/proNav.js';
@@ -1542,6 +1542,7 @@ function _showTaskModal(container, task) {
 
   // ── Save ──────────────────────────────────────────────────────────────────
   modal.querySelector('#tm-save').addEventListener('click', () => {
+    const newDayHour = state.user?.newDayHour ?? 5;
     const name     = modal.querySelector('#tm-name').value.trim();
     const category = modal.querySelector('#tm-category').value;
     const nature   = modal.querySelector('#tm-nature').value;
@@ -1570,13 +1571,23 @@ function _showTaskModal(container, task) {
       }
     }
 
-    // S daily limit check (new tasks only)
-    if (!isEdit && value === 'S') {
-      const todayStr = today();
-      // Tasks the user added today; the built-in ones are not counted.
-      const todayS = state.tasks.filter(t => t.value === 'S' && !t.isDefault && _localDateOf(t.createdAt) === todayStr).length;
+    // S daily limit: a new S task, or (BUG-127) a task changed into S, counts
+    // as one added today. The day is the one Sessions and the plan use.
+    const todayStr = effectiveToday(newDayHour);
+    const becomesS = value === 'S' && task?.value !== 'S';
+    if (becomesS) {
+      // Tasks the user made S today: added today (built-in tasks are dated the
+      // day they are seeded, which is not adding them) or changed into S today.
+      const todayS = state.tasks.filter(t =>
+        t.value === 'S' &&
+        (t.sSince === todayStr || (!t.isDefault && _dayOf(t.createdAt, newDayHour) === todayStr)),
+      ).length;
       if (todayS >= 2) { alert('今日已新增 2 個 S 級任務（每日上限）。'); return; }
     }
+
+    // BUG-127: the day an existing task was changed into S. Kept on this device
+    // only (there is no cloud column), so a pull from the cloud drops it.
+    const sSince = value !== 'S' ? null : isEdit && becomesS ? todayStr : task?.sSince;
 
     const impactType =
       nature === 'recovery'      ? 'recovery' :
@@ -1603,8 +1614,12 @@ function _showTaskModal(container, task) {
       reason:              modal.querySelector('#tm-reason')?.value.trim() || task?.reason || '',
       successCriteria:     modal.querySelector('#tm-success-criteria')?.value.trim() || task?.successCriteria || '',
       hasDeliverable:      task?.hasDeliverable ?? false,
+      // A built-in task stays built-in when edited (it was dropped, so an edit
+      // made it count toward the S-task limit and synced is_default = false).
+      isDefault:           task?.isDefault ?? false,
       valueConfidence:     task?.valueConfidence ?? 100,
-      createdAt:           task?.createdAt ?? today(),
+      createdAt:           task?.createdAt ?? todayStr,
+      ...(sSince ? { sSince } : {}),
     };
 
     if (isEdit) {
@@ -1620,12 +1635,15 @@ function _showTaskModal(container, task) {
   });
 }
 
-// BUG-125: the local date a task was added. Tasks added here keep YYYY-MM-DD;
-// tasks pulled from the cloud carry tasks.created_at, a timestamptz.
-function _localDateOf(value) {
+// BUG-125/127: the day a task was added, counted like Sessions (a day starts
+// at newDayHour). Tasks added here keep that day as YYYY-MM-DD; tasks pulled
+// from the cloud carry tasks.created_at, a timestamptz.
+function _dayOf(value, newDayHour) {
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date.toLocaleDateString('sv');
+  if (Number.isNaN(date.getTime())) return null;
+  if (date.getHours() < newDayHour) date.setDate(date.getDate() - 1);
+  return date.toLocaleDateString('sv');
 }
 
 // ── Image compression ────────────────────────────────────────────────────────

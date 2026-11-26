@@ -923,17 +923,33 @@ describe('renderSettings: Focus Timer Pro settings card', () => {
   });
 });
 
-// ─── BUG-125: the S-task daily limit counts by the local date ───────────────
+// ─── BUG-125/127: the S-task daily limit counts the app's day ──────────────
+// A day starts at newDayHour (default 05:00), as for Sessions and the plan.
 
-describe('renderSettings: S-task daily limit (BUG-125)', () => {
+describe('renderSettings: S-task daily limit (BUG-125, BUG-127)', () => {
   const zoneBefore = process.env.TZ;
+  const LIMIT = '今日已新增 2 個 S 級任務（每日上限）。';
+
+  /** The clock and time zone of this device. */
+  function at(zone, iso) {
+    process.env.TZ = zone;
+    expect(Intl.DateTimeFormat().resolvedOptions().timeZone).toBe(zone);
+    vi.setSystemTime(new Date(iso));
+  }
+
+  beforeEach(() => {
+    window.alert = vi.fn();
+    vi.useFakeTimers({ toFake: ['Date'] });
+    // 10:00 on 2026-04-11 in Taipei.
+    at('Asia/Taipei', '2026-04-11T02:00:00Z');
+  });
   afterEach(() => {
     vi.useRealTimers();
     if (zoneBefore === undefined) delete process.env.TZ;
     else process.env.TZ = zoneBefore;
   });
 
-  /** Add an S task in the task modal; today() is 2026-04-11. */
+  /** Add an S task in the task modal. */
   function addSTask(c) {
     c.querySelector('#add-task-btn').click();
     const modal = document.querySelector('.modal-overlay');
@@ -945,38 +961,39 @@ describe('renderSettings: S-task daily limit (BUG-125)', () => {
     modal.querySelector('#tm-reason').value = '原因';
     modal.querySelector('#tm-success-criteria').value = '標準';
     modal.querySelector('#tm-save').click();
+    // A blocked save leaves the modal open.
+    document.querySelector('.modal-overlay')?.remove();
   }
 
   const sTask = (id, createdAt) => makeTask({ id, value: 'S', taskNature: 'growth', createdAt });
 
-  it('counts a task pulled from the cloud (a timestamp) by its local date', () => {
-    window.alert = vi.fn();
-    process.env.TZ = 'Asia/Taipei';
-    expect(Intl.DateTimeFormat().resolvedOptions().timeZone).toBe('Asia/Taipei');
-    // 2026-04-10 17:30 UTC is 01:30 on the 11th in Taipei.
-    mockState.tasks = [sTask('cloud', '2026-04-10T17:30:00.123456+00:00'), sTask('local', '2026-04-11')];
+  function settingsWith(tasks) {
+    mockState.tasks = tasks;
     const c = makeContainer();
     renderSettings(c);
+    return c;
+  }
+
+  it('counts a task pulled from the cloud (a timestamp) by its day here', () => {
+    // 06:30 on the 11th in Taipei (the 10th in UTC).
+    const c = settingsWith([sTask('cloud', '2026-04-10T22:30:00.123456+00:00'), sTask('local', '2026-04-11')]);
     addSTask(c);
-    expect(window.alert).toHaveBeenCalledWith('今日已新增 2 個 S 級任務（每日上限）。');
+    expect(window.alert).toHaveBeenCalledWith(LIMIT);
     expect(mockState.tasks).toHaveLength(2);
     expect(mockStorage.saveTasks).not.toHaveBeenCalled();
   });
 
-  it('does not count a task added on another local day, whatever its UTC date', () => {
-    window.alert = vi.fn();
-    process.env.TZ = 'America/Los_Angeles';
-    expect(Intl.DateTimeFormat().resolvedOptions().timeZone).toBe('America/Los_Angeles');
-    mockState.tasks = [
+  it('does not count a task added on another day here, whatever its UTC date', () => {
+    // 12:00 on the 11th in Los Angeles.
+    at('America/Los_Angeles', '2026-04-11T19:00:00Z');
+    const c = settingsWith([
       // 23:30 on the 10th in Los Angeles, though already the 11th in UTC.
       sTask('yesterday', '2026-04-11T06:30:00.000001+00:00'),
-      // 01:00 on the 11th in Los Angeles: today.
-      sTask('today', '2026-04-11T08:00:00.654321+00:00'),
+      // 08:00 on the 11th in Los Angeles: today.
+      sTask('today', '2026-04-11T15:00:00.654321+00:00'),
       sTask('unreadable', 'not a date'),
       sTask('none', undefined),
-    ];
-    const c = makeContainer();
-    renderSettings(c);
+    ]);
     addSTask(c);
     expect(window.alert).not.toHaveBeenCalled();
     expect(mockState.tasks).toHaveLength(5);
@@ -984,56 +1001,213 @@ describe('renderSettings: S-task daily limit (BUG-125)', () => {
   });
 
   it('counts a task dated here by that date, west of UTC too', () => {
-    window.alert = vi.fn();
-    process.env.TZ = 'America/Los_Angeles';
-    expect(Intl.DateTimeFormat().resolvedOptions().timeZone).toBe('America/Los_Angeles');
+    at('America/Los_Angeles', '2026-04-11T19:00:00Z');
     // Read as a time, '2026-04-11' is UTC midnight: the 10th in Los Angeles.
-    mockState.tasks = [sTask('local', '2026-04-11'), sTask('today', '2026-04-11T08:00:00+00:00')];
-    const c = makeContainer();
-    renderSettings(c);
+    const c = settingsWith([sTask('local', '2026-04-11'), sTask('today', '2026-04-11T15:00:00.654321+00:00')]);
     addSTask(c);
-    expect(window.alert).toHaveBeenCalledWith('今日已新增 2 個 S 級任務（每日上限）。');
+    expect(window.alert).toHaveBeenCalledWith(LIMIT);
     expect(mockState.tasks).toHaveLength(2);
   });
 
-  it('dates a new task by the local date, so it counts that day', () => {
-    window.alert = vi.fn();
-    process.env.TZ = 'Asia/Taipei';
-    vi.useFakeTimers({ toFake: ['Date'] });
-    // Taipei is on the 11th; UTC is still on the 10th.
-    vi.setSystemTime(new Date('2026-04-10T17:30:00Z'));
-    mockState.tasks = [sTask('local', '2026-04-11')];
-    const c = makeContainer();
-    renderSettings(c);
+  it('dates a new task by the app\'s day, not the UTC date', () => {
+    // 06:30 on the 11th in Taipei; UTC is still on the 10th.
+    at('Asia/Taipei', '2026-04-10T22:30:00Z');
+    const c = settingsWith([]);
+    addSTask(c);
+    expect(mockState.tasks[0].createdAt).toBe('2026-04-11');
+    // Its day is its creation date; the changed-into-S mark is for edits only.
+    expect(mockState.tasks[0]).not.toHaveProperty('sSince');
+    // 01:30 on the 12th, before the new-day hour: still the 11th's day.
+    at('Asia/Taipei', '2026-04-11T17:30:00Z');
     addSTask(c);
     expect(mockState.tasks[1].createdAt).toBe('2026-04-11');
-    addSTask(c);
-    expect(window.alert).toHaveBeenCalledWith('今日已新增 2 個 S 級任務（每日上限）。');
-    expect(mockState.tasks).toHaveLength(2);
   });
 
-  it('does not count the built-in tasks', () => {
-    window.alert = vi.fn();
-    // A new account's built-in S task is dated today (createDefaultTasks).
-    mockState.tasks = [{ ...sTask('builtin', '2026-04-11'), isDefault: true }, sTask('local', '2026-04-11')];
-    const c = makeContainer();
-    renderSettings(c);
+  it('keeps counting the night before until the new-day hour (BUG-127)', () => {
+    // 23:00 on the 10th in Taipei: two S tasks.
+    at('Asia/Taipei', '2026-04-10T15:00:00Z');
+    const c = settingsWith([]);
+    addSTask(c);
+    addSTask(c);
+    expect(mockState.tasks.map(t => t.createdAt)).toEqual(['2026-04-10', '2026-04-10']);
+    // 00:30 on the 11th: still the 10th's day, so a third is not added.
+    at('Asia/Taipei', '2026-04-10T16:30:00Z');
+    addSTask(c);
+    expect(window.alert).toHaveBeenCalledWith(LIMIT);
+    expect(mockState.tasks).toHaveLength(2);
+    // 05:30 on the 11th: a new day.
+    window.alert.mockClear();
+    at('Asia/Taipei', '2026-04-10T21:30:00Z');
+    addSTask(c);
+    expect(window.alert).not.toHaveBeenCalled();
+    expect(mockState.tasks[2].createdAt).toBe('2026-04-11');
+  });
+
+  it('counts a cloud task from before the new-day hour as the day before (BUG-127)', () => {
+    // 02:00 on the 11th in Taipei: still the 10th's day.
+    at('Asia/Taipei', '2026-04-10T18:00:00Z');
+    const c = settingsWith([
+      sTask('evening', '2026-04-10T14:00:00.000001+00:00'),   // 22:00 on the 10th
+      sTask('night', '2026-04-10T17:00:00.000001+00:00'),     // 01:00 on the 11th
+    ]);
+    addSTask(c);
+    expect(window.alert).toHaveBeenCalledWith(LIMIT);
+  });
+
+  it('uses the user\'s own new-day hour (BUG-127)', () => {
+    // A day that starts at midnight: at 02:00 on the 11th it is the 11th.
+    mockState.user.newDayHour = 0;
+    at('Asia/Taipei', '2026-04-10T18:00:00Z');
+    const c = settingsWith([
+      sTask('evening', '2026-04-10T14:00:00.000001+00:00'),   // the 10th
+      sTask('night', '2026-04-10T17:00:00.000001+00:00'),     // the 11th
+    ]);
+    addSTask(c);
+    expect(window.alert).not.toHaveBeenCalled();
+    expect(mockState.tasks[2].createdAt).toBe('2026-04-11');
+  });
+
+  it('counts tasks after a midnight new-day hour as that day (BUG-127)', () => {
+    mockState.user.newDayHour = 0;
+    at('Asia/Taipei', '2026-04-10T18:00:00Z');   // 02:00 on the 11th
+    const c = settingsWith([
+      sTask('half-past', '2026-04-10T16:30:00.000001+00:00'), // 00:30 on the 11th
+      sTask('one', '2026-04-10T17:00:00.000001+00:00'),       // 01:00 on the 11th
+    ]);
+    addSTask(c);
+    expect(window.alert).toHaveBeenCalledWith(LIMIT);
+  });
+
+  it('starts the day exactly at the new-day hour (BUG-127)', () => {
+    at('Asia/Taipei', '2026-04-10T22:00:00Z');   // 06:00 on the 11th
+    const c = settingsWith([
+      sTask('five', '2026-04-10T21:00:00.000000+00:00'),      // 05:00:00 on the 11th
+      sTask('five-too', '2026-04-10T21:00:00.000000+00:00'),
+    ]);
+    addSTask(c);
+    expect(window.alert).toHaveBeenCalledWith(LIMIT);
+  });
+
+  it('counts only S tasks (BUG-127)', () => {
+    const c = settingsWith([
+      makeTask({ id: 'a1', value: 'A', createdAt: '2026-04-11' }),
+      makeTask({ id: 'a2', value: 'A', createdAt: '2026-04-11' }),
+    ]);
     addSTask(c);
     expect(window.alert).not.toHaveBeenCalled();
     expect(mockState.tasks).toHaveLength(3);
   });
 
+  it('counts a built-in task changed into S (BUG-127)', () => {
+    mockState.user.mode = 'advanced';
+    const builtin = id => makeTask({ id, value: 'A', isDefault: true, createdAt: '2026-04-11' });
+    const c = settingsWith([builtin('b1'), builtin('b2'), builtin('b3')]);
+    editIntoS(c, 'b1');
+    editIntoS(c, 'b2');
+    expect(mockState.tasks.slice(0, 2)).toEqual([
+      expect.objectContaining({ value: 'S', isDefault: true, sSince: '2026-04-11' }),
+      expect.objectContaining({ value: 'S', isDefault: true, sSince: '2026-04-11' }),
+    ]);
+    editIntoS(c, 'b3');
+    expect(window.alert).toHaveBeenCalledWith(LIMIT);
+    expect(mockState.tasks[2].value).toBe('A');
+  });
+
+  it('keeps a built-in task built-in when it is edited, so it still does not count', () => {
+    mockState.user.mode = 'advanced';
+    const c = settingsWith([
+      { ...sTask('builtin', '2026-04-11'), isDefault: true, reason: '原因', successCriteria: '標準' },
+      sTask('local', '2026-04-11'),
+    ]);
+    c.querySelector('[data-edit="builtin"]').click();
+    document.querySelector('.modal-overlay #tm-name').value = '改名的預設任務';
+    document.querySelector('.modal-overlay #tm-save').click();
+    expect(mockState.tasks[0]).toMatchObject({ name: '改名的預設任務', isDefault: true });
+    addSTask(c);
+    expect(window.alert).not.toHaveBeenCalled();
+    expect(mockState.tasks).toHaveLength(3);
+  });
+
+  it('does not count the built-in tasks', () => {
+    // A new account's built-in S task is dated today (createDefaultTasks).
+    const c = settingsWith([{ ...sTask('builtin', '2026-04-11'), isDefault: true }, sTask('local', '2026-04-11')]);
+    addSTask(c);
+    expect(window.alert).not.toHaveBeenCalled();
+    expect(mockState.tasks).toHaveLength(3);
+  });
+
+  /** Edit a task into S (advanced mode edits any task). */
+  function editIntoS(c, id) {
+    c.querySelector(`[data-edit="${id}"]`).click();
+    const modal = document.querySelector('.modal-overlay');
+    modal.querySelector('#tm-nature').value = 'growth';
+    modal.querySelector('#tm-nature').dispatchEvent(new window.Event('change'));
+    modal.querySelector('#tm-value').value = 'S';
+    modal.querySelector('#tm-value').dispatchEvent(new window.Event('change'));
+    modal.querySelector('#tm-reason').value = '原因';
+    modal.querySelector('#tm-success-criteria').value = '標準';
+    modal.querySelector('#tm-save').click();
+    document.querySelector('.modal-overlay')?.remove();
+  }
+
+  it('counts a task changed into S as one added today (BUG-127)', () => {
+    mockState.user.mode = 'advanced';
+    const old = id => makeTask({ id, value: 'A', createdAt: '2026-03-01' });
+    const c = settingsWith([old('a1'), old('a2'), old('a3')]);
+    editIntoS(c, 'a1');
+    editIntoS(c, 'a2');
+    expect(mockState.tasks.map(t => [t.value, t.sSince, t.createdAt])).toEqual([
+      ['S', '2026-04-11', '2026-03-01'],
+      ['S', '2026-04-11', '2026-03-01'],
+      ['A', undefined, '2026-03-01'],
+    ]);
+    // A third is the limit, by edit or by adding.
+    editIntoS(c, 'a3');
+    expect(window.alert).toHaveBeenLastCalledWith(LIMIT);
+    expect(mockState.tasks[2].value).toBe('A');
+    window.alert.mockClear();
+    addSTask(c);
+    expect(window.alert).toHaveBeenLastCalledWith(LIMIT);
+    expect(mockState.tasks).toHaveLength(3);
+    // The next day it can be changed.
+    window.alert.mockClear();
+    at('Asia/Taipei', '2026-04-12T02:00:00Z');
+    editIntoS(c, 'a3');
+    expect(window.alert).not.toHaveBeenCalled();
+    expect(mockState.tasks[2]).toMatchObject({ value: 'S', sSince: '2026-04-12' });
+  });
+
+  it('does not stop a change into S on a day with room, and keeps the day through later edits', () => {
+    mockState.user.mode = 'advanced';
+    const c = settingsWith([sTask('today', '2026-04-11'), makeTask({ id: 'a1', value: 'A', createdAt: '2026-03-01' })]);
+    editIntoS(c, 'a1');
+    expect(window.alert).not.toHaveBeenCalled();
+    expect(mockState.tasks[1]).toMatchObject({ value: 'S', sSince: '2026-04-11' });
+    // Renamed the next day: still S, still counted for the 11th, not again.
+    at('Asia/Taipei', '2026-04-12T02:00:00Z');
+    c.querySelector('[data-edit="a1"]').click();
+    document.querySelector('.modal-overlay #tm-name').value = '改名';
+    document.querySelector('.modal-overlay #tm-save').click();
+    expect(mockState.tasks[1]).toMatchObject({ name: '改名', value: 'S', sSince: '2026-04-11' });
+    // Changed back to A: the mark goes with it.
+    c.querySelector('[data-edit="a1"]').click();
+    const modal = document.querySelector('.modal-overlay');
+    modal.querySelector('#tm-value').value = 'A';
+    modal.querySelector('#tm-value').dispatchEvent(new window.Event('change'));
+    window.confirm = vi.fn(() => true);
+    modal.querySelector('#tm-save').click();
+    expect(mockState.tasks[1].value).toBe('A');
+    expect(mockState.tasks[1]).not.toHaveProperty('sSince');
+  });
+
   it('keeps the date of an edited task, which the daily limit does not stop', () => {
-    window.alert = vi.fn();
     mockState.user.mode = 'advanced';
     // Two S tasks already added today: editing one of them is still allowed.
-    mockState.tasks = [
+    const c = settingsWith([
       { ...sTask('cloud', '2026-04-10T17:30:00.123456+00:00'), reason: '原因', successCriteria: '標準' },
       sTask('local-1', '2026-04-11'),
       sTask('local-2', '2026-04-11'),
-    ];
-    const c = makeContainer();
-    renderSettings(c);
+    ]);
     c.querySelector('[data-edit="cloud"]').click();
     const modal = document.querySelector('.modal-overlay');
     modal.querySelector('#tm-name').value = '改過的名字';

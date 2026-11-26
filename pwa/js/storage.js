@@ -172,6 +172,20 @@ function clearOwnerPendingSession(ownerId, sessionId) {
 }
 
 /**
+ * A task's fields the cloud has no column for, kept on this device (BUG-127):
+ * `sSince` (the day it was changed into S, while it is still S) and `iconImg`.
+ * A pull from the cloud carries them over for the same owner's tasks; without
+ * this a sync would drop them (and let the S-task limit be passed again).
+ */
+function withDeviceTaskFields(task, cached) {
+  if (!cached) return task;
+  const kept = { ...task };
+  if (cached.sSince && task.value === 'S') kept.sSince = cached.sSince;
+  if (cached.iconImg) kept.iconImg = cached.iconImg;
+  return kept;
+}
+
+/**
  * Trims a task down to the fields `upsertTasks` actually writes. The pending
  * sidecar exists purely to retry the remote write, and a full copy would
  * double the localStorage cost of inline `iconImg` data URLs.
@@ -706,7 +720,7 @@ export const db = {
       };
     }
 
-    const canonicalTasks = (tasksRes.data ?? []).map(t => fromRow(TASK_FIELDS, t));
+    const remoteTasks = (tasksRes.data ?? []).map(t => fromRow(TASK_FIELDS, t));
     const remoteSessions = filterDeletedSessions(
       (sessionsRes.data ?? []).map(s => fromRow(SESSION_FIELDS, s)),
       deletedSessionIds,
@@ -747,6 +761,12 @@ export const db = {
     // flight. Re-check immediately before the synchronous canonical writes so
     // an obsolete owner can never repopulate the shared local cache.
     await this._assertOwner(userId);
+    // Read the cache only now, with nothing awaited before the write, so an
+    // edit made while the pull ran keeps its device-only fields.
+    const cachedTasks = localUser?.id === userId ? get('tasks') : null;
+    const cachedTaskById = new Map((Array.isArray(cachedTasks) ? cachedTasks : [])
+      .filter(t => t?.id).map(t => [t.id, t]));
+    const canonicalTasks = remoteTasks.map(t => withDeviceTaskFields(t, cachedTaskById.get(t.id)));
     if (canonicalUser) set('user', canonicalUser);
     else if (localUser?.id !== userId) remove('user');
     set('tasks', canonicalTasks);
