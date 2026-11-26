@@ -84,6 +84,16 @@ describe('weekly consistency bonus', () => {
     expect(state.user.totalXP).toBe(160);
   });
 
+  it('gives it again the next week, and counts from zero when there is no XP yet', () => {
+    at(MONDAY);
+    state.user.lastWeeklyBonusDate = '2026-11-16';
+    delete state.user.totalXP;
+    state.sessions = [1, 2, 3, 4, 5].map(back => session(day(MONDAY, -back)));
+    checkWeeklyBonus();
+    expect(state.user.totalXP).toBe(60);
+    expect(state.user.lastWeeklyBonusDate).toBe(MONDAY);
+  });
+
   it('gives nothing for four effective days, or for days outside the week', () => {
     at(MONDAY);
     // Today and eight days ago do not count.
@@ -122,9 +132,11 @@ describe('cross-day watcher', () => {
     state.energy.lastResetDate = '2026-11-26';
     storageMock.getDailyPlan.mockReturnValue([{ id: 'p1' }]);
     const setInterval = vi.spyOn(globalThis, 'setInterval');
+    // Started once per page; this module keeps that, so this test runs once per file.
     startDayWatcher();
     startDayWatcher();
     expect(setInterval).toHaveBeenCalledTimes(1);
+    expect(setInterval).toHaveBeenCalledWith(expect.any(Function), 60_000);
 
     // Still the same day: nothing.
     vi.advanceTimersByTime(60_000);
@@ -136,6 +148,9 @@ describe('cross-day watcher', () => {
     expect(state.dailyPlan).toEqual([{ id: 'p1' }]);
     expect(themeMock.applyRandomThemeForToday).toHaveBeenCalledTimes(1);
     expect(document.getElementById('daily-report-modal')).not.toBe(null);
+    // The report leads to the morning check-in.
+    document.getElementById('rpt-next-btn').click();
+    expect(document.getElementById('morning-modal')).not.toBe(null);
 
     // The same new day again: nothing more.
     vi.advanceTimersByTime(60_000);
@@ -153,6 +168,10 @@ describe('cross-day watcher', () => {
     // still moves on, nothing is shown.
     state.user = null;
     vi.setSystemTime(new Date('2026-11-29T06:00:30'));
+    vi.advanceTimersByTime(60_000);
+    expect(themeMock.applyRandomThemeForToday).toHaveBeenCalledTimes(2);
+    // Signed in again the same day: that day was already seen.
+    state.user = { id: 'u1', name: 'Tester', newDayHour: 0, streakDays: 0, totalXP: 100 };
     vi.advanceTimersByTime(60_000);
     expect(themeMock.applyRandomThemeForToday).toHaveBeenCalledTimes(2);
   });
@@ -189,13 +208,14 @@ describe('morning report about yesterday', () => {
     const { badge, tips } = report({
       sessions: [
         session(YESTERDAY, { value: 'B', finalXP: 30 }),
-        session(YESTERDAY, { impactType: 'entertainment', isProductiveXP: false, finalXP: 0, durationMinutes: 150, value: 'C' }),
+        session(YESTERDAY, { impactType: 'entertainment', isProductiveXP: false, finalXP: 0, durationMinutes: 130, value: 'C' }),
       ],
     });
     expect(badge).toBe('⬆️ 成長中');
     expect(tips).toEqual([
       '🎯今天安排一個 A 或 S 級的重要任務',
-      '⚖️昨天娛樂時間 2.5hr，今天保持平衡',
+      // 130 minutes, to one decimal.
+      '⚖️昨天娛樂時間 2.2hr，今天保持平衡',
       '📈再 20 XP 就達有效日，今天衝一波！',
     ]);
   });
@@ -204,6 +224,13 @@ describe('morning report about yesterday', () => {
     let result = report({ streak: 4, sessions: [session(YESTERDAY)] });
     expect(result.badge).toBe('✅ 有效日');
     expect(result.tips).toEqual(['🔥4 天連勝中！繼續保持節奏']);
+    document.body.innerHTML = '';
+    result = report({ streak: 1, sessions: [session(YESTERDAY)] });
+    expect(result.tips).toEqual(['🔥1 天連勝中！繼續保持節奏']);
+    document.body.innerHTML = '';
+    // Not effective, but a streak is still running (a shield, or the day not over): no fresh start.
+    result = report({ streak: 3, sessions: [session(YESTERDAY, { finalXP: 20 })] });
+    expect(result.tips).toEqual(['📈再 30 XP 就達有效日，今天衝一波！']);
     document.body.innerHTML = '';
     result = report({ streak: 0, sessions: [session(YESTERDAY, { value: 'A', finalXP: 20 })] });
     expect(result.tips).toEqual(['📈再 30 XP 就達有效日，今天衝一波！', '💪今天重新出發，完成一個有效日！']);
@@ -235,9 +262,20 @@ describe('morning report about yesterday', () => {
     });
     expect(stats).toEqual(['185', '5', '2🔥']);
     expect(chips).toEqual(['S×1', 'A×2', 'B×1', 'C×1']);
-    expect([...modal.querySelectorAll('.rpt-task-row')].map(row => row.querySelector('.rpt-task-name').textContent))
-      .toEqual(['大報告', '讀書', '整理']);
-    expect(modal.querySelector('.rpt-task-row .rpt-task-xp').textContent).toBe('+90 XP');
+    const rows = [...modal.querySelectorAll('.rpt-task-row')];
+    expect(rows.map(row => row.querySelector('.rpt-task-name').textContent)).toEqual(['大報告', '讀書', '整理']);
+    // 讀書 twice: its XP is summed.
+    expect(rows.map(row => row.querySelector('.rpt-task-xp').textContent)).toEqual(['+90 XP', '+80 XP', '+10 XP']);
+  });
+
+  it('leaves an invalid session out of the top tasks', () => {
+    const { modal } = report({
+      sessions: [
+        session(YESTERDAY, { taskId: 'a', taskName: '讀書', finalXP: 40 }),
+        session(YESTERDAY, { taskId: 'x', taskName: '分心', finalXP: 0, result: 'invalid' }),
+      ],
+    });
+    expect([...modal.querySelectorAll('.rpt-task-name')].map(name => name.textContent)).toEqual(['讀書']);
   });
 
   it('reads yesterday from the user\'s own day: before their new-day hour, today is still yesterday', () => {
@@ -287,6 +325,7 @@ describe('streak shield', () => {
     expect(popovers).toHaveLength(1);
     expect(popovers[0].textContent).toContain('每月自動重置為 2 張');
     expect(popovers[0].style.top).toBe('126px');
+    expect(popovers[0].style.zIndex).toBe('9999');
     // Kept 8 px from the left edge.
     expect(popovers[0].style.left).toBe('8px');
     // The tap that opened it does not close it.
@@ -295,6 +334,10 @@ describe('streak shield', () => {
     vi.advanceTimersByTime(10);
     document.body.click();
     expect(document.querySelector('.shield-info-popover')).toBe(null);
+    // Further from the edge it opens 100 px left of the button.
+    anchor.getBoundingClientRect = () => ({ bottom: 120, left: 300 });
+    window.showShieldInfo(anchor);
+    expect(document.querySelector('.shield-info-popover').style.left).toBe('200px');
   });
 });
 
