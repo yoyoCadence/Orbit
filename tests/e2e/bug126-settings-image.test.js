@@ -32,6 +32,8 @@ test('a background or task icon that cannot be decoded is told, and a real photo
   await page.locator('#bg-input').setInputFiles(BROKEN);
   await expect(toast).toHaveText('圖片處理失敗，請換一張照片');
   expect(await page.evaluate(() => localStorage.getItem('yoyo_bgImage'))).toBeNull();
+  // Cleared, so choosing the same file again is a change the page hears.
+  expect(await page.locator('#bg-input').evaluate(input => input.files.length)).toBe(0);
 
   // A photo the browser can decode becomes the background.
   const jpeg = Buffer.from(await page.evaluate(() => {
@@ -45,10 +47,17 @@ test('a background or task icon that cannot be decoded is told, and a real photo
   await expect(page.locator('#bg-thumb img')).toHaveAttribute('src', /^data:image\/jpeg;base64,/);
   expect(await page.evaluate(() => localStorage.getItem('yoyo_bgImage'))).toMatch(/^data:image\/jpeg;base64,/);
 
-  // The task icon picker, in the add-task window.
+  // The task icon picker, in the add-task window. The earlier toast is gone
+  // first, so the one checked here is the icon picker's own.
+  await page.evaluate(() => document.querySelectorAll('.toast').forEach(el => el.remove()));
   await page.click('#add-task-btn');
   await page.locator('#tm-icon-input').setInputFiles(BROKEN);
   await expect(toast).toHaveText('圖片處理失敗，請換一張照片');
+  expect(await page.locator('#tm-icon-input').evaluate(input => input.files.length)).toBe(0);
   await expect(page.locator('#tm-icon-preview img')).toHaveCount(0);
   await expect(page.locator('#tm-emoji-section')).toBeVisible();
+  // A photo that decodes becomes the icon.
+  await page.locator('#tm-icon-input').setInputFiles({ name: 'photo.jpg', mimeType: 'image/jpeg', buffer: jpeg });
+  await expect(page.locator('#tm-icon-preview img')).toHaveAttribute('src', /^data:image\/jpeg;base64,/);
+  await expect(page.locator('#tm-emoji-section')).toBeHidden();
 });

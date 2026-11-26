@@ -1573,7 +1573,8 @@ function _showTaskModal(container, task) {
     // S daily limit check (new tasks only)
     if (!isEdit && value === 'S') {
       const todayStr = today();
-      const todayS = state.tasks.filter(t => t.value === 'S' && _localDateOf(t.createdAt) === todayStr).length;
+      // Tasks the user added today; the built-in ones are not counted.
+      const todayS = state.tasks.filter(t => t.value === 'S' && !t.isDefault && _localDateOf(t.createdAt) === todayStr).length;
       if (todayS >= 2) { alert('今日已新增 2 個 S 級任務（每日上限）。'); return; }
     }
 
@@ -1637,15 +1638,19 @@ function _compressImage(file, maxPx, quality) {
       const img = new Image();
       img.onerror = () => reject(new Error('decode'));
       img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const min = Math.min(img.width, img.height);
-        const size = Math.min(min, maxPx);
-        canvas.width = size; canvas.height = size;
-        const ctx = canvas.getContext('2d');
-        const sx = (img.width  - min) / 2;
-        const sy = (img.height - min) / 2;
-        ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size);
-        resolve(canvas.toDataURL('image/jpeg', quality));
+        try {
+          const canvas = document.createElement('canvas');
+          const min = Math.min(img.width, img.height);
+          const size = Math.min(min, maxPx);
+          canvas.width = size; canvas.height = size;
+          const ctx = canvas.getContext('2d');
+          const sx = (img.width  - min) / 2;
+          const sy = (img.height - min) / 2;
+          ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        } catch (err) {
+          reject(err);
+        }
       };
       img.src = e.target.result;
     };

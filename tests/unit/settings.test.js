@@ -954,7 +954,7 @@ describe('renderSettings: S-task daily limit (BUG-125)', () => {
     process.env.TZ = 'Asia/Taipei';
     expect(Intl.DateTimeFormat().resolvedOptions().timeZone).toBe('Asia/Taipei');
     // 2026-04-10 17:30 UTC is 01:30 on the 11th in Taipei.
-    mockState.tasks = [sTask('cloud', '2026-04-10T17:30:00.123+00:00'), sTask('local', '2026-04-11')];
+    mockState.tasks = [sTask('cloud', '2026-04-10T17:30:00.123456+00:00'), sTask('local', '2026-04-11')];
     const c = makeContainer();
     renderSettings(c);
     addSTask(c);
@@ -969,9 +969,9 @@ describe('renderSettings: S-task daily limit (BUG-125)', () => {
     expect(Intl.DateTimeFormat().resolvedOptions().timeZone).toBe('America/Los_Angeles');
     mockState.tasks = [
       // 23:30 on the 10th in Los Angeles, though already the 11th in UTC.
-      sTask('yesterday', '2026-04-11T06:30:00+00:00'),
+      sTask('yesterday', '2026-04-11T06:30:00.000001+00:00'),
       // 01:00 on the 11th in Los Angeles: today.
-      sTask('today', '2026-04-11T08:00:00+00:00'),
+      sTask('today', '2026-04-11T08:00:00.654321+00:00'),
       sTask('unreadable', 'not a date'),
       sTask('none', undefined),
     ];
@@ -1012,10 +1012,26 @@ describe('renderSettings: S-task daily limit (BUG-125)', () => {
     expect(mockState.tasks).toHaveLength(2);
   });
 
-  it('keeps the date of an edited task', () => {
+  it('does not count the built-in tasks', () => {
+    window.alert = vi.fn();
+    // A new account's built-in S task is dated today (createDefaultTasks).
+    mockState.tasks = [{ ...sTask('builtin', '2026-04-11'), isDefault: true }, sTask('local', '2026-04-11')];
+    const c = makeContainer();
+    renderSettings(c);
+    addSTask(c);
+    expect(window.alert).not.toHaveBeenCalled();
+    expect(mockState.tasks).toHaveLength(3);
+  });
+
+  it('keeps the date of an edited task, which the daily limit does not stop', () => {
     window.alert = vi.fn();
     mockState.user.mode = 'advanced';
-    mockState.tasks = [{ ...sTask('cloud', '2026-04-10T17:30:00.123+00:00'), reason: '原因', successCriteria: '標準' }];
+    // Two S tasks already added today: editing one of them is still allowed.
+    mockState.tasks = [
+      { ...sTask('cloud', '2026-04-10T17:30:00.123456+00:00'), reason: '原因', successCriteria: '標準' },
+      sTask('local-1', '2026-04-11'),
+      sTask('local-2', '2026-04-11'),
+    ];
     const c = makeContainer();
     renderSettings(c);
     c.querySelector('[data-edit="cloud"]').click();
@@ -1024,7 +1040,8 @@ describe('renderSettings: S-task daily limit (BUG-125)', () => {
     modal.querySelector('#tm-save').click();
     expect(window.alert).not.toHaveBeenCalled();
     expect(mockStorage.saveTasks).toHaveBeenCalledTimes(1);
-    expect(mockState.tasks[0]).toMatchObject({ name: '改過的名字', createdAt: '2026-04-10T17:30:00.123+00:00' });
+    expect(mockState.tasks[0]).toMatchObject({ name: '改過的名字', createdAt: '2026-04-10T17:30:00.123456+00:00' });
+    expect(mockState.tasks).toHaveLength(3);
   });
 });
 
@@ -1104,6 +1121,17 @@ describe('renderSettings: background and task icon images (BUG-126)', () => {
     renderSettings(c);
     await choose(c.querySelector('#bg-input'));
     expect(window.showToast).toHaveBeenCalledWith('圖片處理失敗，請換一張照片');
+  });
+
+  it('says so when the photo decodes but cannot be drawn', async () => {
+    images();
+    window.HTMLCanvasElement.prototype.getContext = () => null;
+    const c = makeContainer();
+    renderSettings(c);
+    await choose(c.querySelector('#bg-input'));
+    const { applyBgImage } = await import('../../pwa/js/theme.js');
+    expect(window.showToast).toHaveBeenCalledWith('圖片處理失敗，請換一張照片');
+    expect(applyBgImage).not.toHaveBeenCalled();
   });
 
   it('says so when the device has no room for the background', async () => {
