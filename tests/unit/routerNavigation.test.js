@@ -75,12 +75,25 @@ describe('page change', () => {
     expect(active()).toEqual(['home']);
     expect(content().classList.contains('page-slide-right')).toBe(true);
     expect(content().dataset.route).toBe('home');
+    content().dispatchEvent(new Event('animationend'));
+    // The same page again: no slide.
+    await renderPage('home');
+    expect(content().className).toBe('');
+    // A page outside the order counts as the first one for the next slide.
+    await renderPage('somewhere');
+    content().dispatchEvent(new Event('animationend'));
+    await renderPage('goals');
+    expect(content().classList.contains('page-slide-left')).toBe(true);
   });
 
   it('shows the home page with a message when a page cannot load', async () => {
+    vi.useFakeTimers();
     await renderPage('leaderboard');
     expect(mocks.showToast).toHaveBeenCalledWith('頁面載入失敗，請稍後再試');
     expect(mocks.renderHome).toHaveBeenCalledWith(content());
+    expect(content().textContent).toBe('home');
+    // The placeholder's timer was cleared: it does not cover the home page later.
+    await vi.advanceTimersByTimeAsync(300);
     expect(content().textContent).toBe('home');
   });
 
@@ -95,6 +108,11 @@ describe('page change', () => {
     vi.useRealTimers();
     await rendering;
     expect(mocks.renderPersonalSpace).toHaveBeenCalledWith(content());
+    expect(content().textContent).toBe('space');
+    // Loaded again (now cached) within 200 ms: no placeholder over it later.
+    vi.useFakeTimers();
+    await renderPage('personalSpace');
+    await vi.advanceTimersByTimeAsync(300);
     expect(content().textContent).toBe('space');
   });
 });
@@ -127,9 +145,11 @@ describe('swipe navigation', () => {
     target.dispatchEvent(event);
   }
 
+  // Starts near the top: a swipe in a text field resets the start to (0, 0),
+  // which must still read as horizontal, so only the guards stop it.
   function swipe(dx, dy = 0, target = document.body) {
-    touch('touchstart', 200, 300, target);
-    touch('touchend', 200 + dx, 300 + dy, target);
+    touch('touchstart', 300, 20, target);
+    touch('touchend', 300 + dx, 20 + dy, target);
   }
 
   it('goes to the next page on a swipe left and the previous one on a swipe right', () => {

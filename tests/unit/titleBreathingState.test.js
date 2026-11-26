@@ -163,6 +163,8 @@ describe('info modal', () => {
     expect(root.querySelector('.br-row-active .br-td-name').textContent).toContain(BREATHING_FLOWS[title.flow].label);
     expect(root.textContent).toContain(`${data.sessionCount} 筆有效任務`);
     // Below Lv.50 the sun flow is locked, and the unlock rule is explained.
+    const sun = rows.find(row => row.querySelector('.br-flow-name').textContent.includes(BREATHING_FLOWS.sun.label));
+    expect(sun.querySelector('.br-flow-name').textContent).toContain('🔒');
     expect(root.querySelector('.br-locked-badge')).not.toBe(null);
     expect(root.querySelector('.br-note-row').textContent).toContain('日之呼吸解鎖條件');
   });
@@ -171,13 +173,17 @@ describe('info modal', () => {
     const data = profile(history(), 50);
     showBreathingInfoModal({
       profile: data,
-      titleResult: { flow: 'mist', flow2: 'stone', displayTitle: '霞岩之呼吸・壹之型', reason: '差距 <b>9%</b>' },
+      titleResult: { flow: 'mist', flow2: 'stone', displayTitle: '霞岩之呼吸・壹之型', reason: '差距 <b>9%</b> &lt;' },
     });
     const root = modal();
     expect(root.querySelector('.br-sub-flow').textContent).toBe(`副流派：${BREATHING_FLOWS.stone.label}`);
     expect(root.querySelector('.br-bar-sub')).not.toBe(null);
-    // Text from the title is escaped, not markup.
-    expect(root.querySelector('.br-reason').innerHTML).toBe('差距 &lt;b&gt;9%&lt;/b&gt;');
+    const stone = [...root.querySelectorAll('.br-flow-name')].find(name => name.textContent.includes(BREATHING_FLOWS.stone.label));
+    expect(stone.textContent).toContain('☆');
+    expect([...root.querySelectorAll('.br-row-active .br-td-name')].map(cell => cell.textContent).sort())
+      .toEqual([BREATHING_FLOWS.mist.label, BREATHING_FLOWS.stone.label].sort());
+    // Text from the title is shown as text, not markup or entities.
+    expect(root.querySelector('.br-reason').textContent).toBe('差距 <b>9%</b> &lt;');
     // Unlocked: no lock and no unlock note.
     expect(root.querySelector('.br-note-row')).toBe(null);
 
