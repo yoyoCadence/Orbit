@@ -60,13 +60,15 @@ describe('PS-260A themed character sets', () => {
     expect(CATALOG_SETS.map(({ id, room, decorations }) => ({ protagonist: id, room, decorations }))).toEqual(sets.sets);
   });
 
-  it('uses room and decoration ids that no PS-250 room or decoration has', () => {
+  it('uses room and decoration ids that no PS-250 room or decoration has, each offered once (PS-260E)', () => {
     const rooms = ROOM_STYLES.map(entry => entry.id);
     const decorations = DECORATIONS.map(entry => entry.id);
-    for (const entry of sets.sets) {
-      expect(rooms, entry.room).not.toContain(entry.room);
-      for (const id of entry.decorations) expect(decorations, id).not.toContain(id);
-    }
+    expect(new Set(rooms).size).toBe(rooms.length);
+    expect(new Set(decorations).size).toBe(decorations.length);
+    // The PS-250 ones come first and are not set ones.
+    expect(rooms.slice(0, 5)).toEqual(['default', 'nordic', 'washitsu', 'nightowl', 'study']);
+    expect(rooms.slice(5)).toEqual(sets.sets.map(entry => entry.room));
+    expect(decorations.slice(6)).toEqual(sets.sets.flatMap(entry => entry.decorations));
   });
 
   it('gives every set its own room and two decorations', () => {

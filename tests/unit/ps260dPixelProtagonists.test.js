@@ -4,7 +4,7 @@
  *
  * Each is the PS-250D treatment of the committed PS-260A sprite, so it has
  * the PS-250D pixel canvas and every pose and facing of the Q style. None is
- * precached; the picker offers them in PS-260E.
+ * precached; the picker offers them since PS-260E.
  */
 
 import { createHash } from 'node:crypto';

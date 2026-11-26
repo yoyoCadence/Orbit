@@ -7,7 +7,7 @@
  * that room and are placed by their own trim boxes. Both in the Q style and in
  * pixels, by day and by night. The files are recorded with the sets
  * (art-pipeline/ps260-sets/decor-outputs.json, decor-placements.json); none
- * is precached and the picker lists them in PS-260E.
+ * is precached and the picker offers them since PS-260E.
  */
 
 import { createHash } from 'node:crypto';

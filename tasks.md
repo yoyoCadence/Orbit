@@ -275,8 +275,15 @@
 
 ## In Progress
 
-- [ ] **PS-260** 主題套組：10 個 3D 角色（男女各 5）與各自的房間、裝飾（使用者 2026-11-25：「接著請新增3D角色 需要至少10個不同的風格 男女各半 背景等物件也要有對應角色的整套設計 每次完成一個段落就請開PR 並merge避免任務中斷 也讓任何agent可以接手繼續開發 然後持續繼續開發 不用特別問我除非必要」）
-  - 提案與分段：[`docs/ps-260-character-sets-proposal.md`](docs/ps-260-character-sets-proposal.md)。每段一個 PR，合併後才開始下一段；任何 agent 都可以從下一個未完成的段落接手。
+- [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
+  - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
+
+---
+
+## Done
+
+- [x] **PS-260** 主題套組：10 個 3D 角色（男女各 5）與各自的房間、裝飾（使用者 2026-11-25：「接著請新增3D角色 需要至少10個不同的風格 男女各半 背景等物件也要有對應角色的整套設計 每次完成一個段落就請開PR 並merge避免任務中斷 也讓任何agent可以接手繼續開發 然後持續繼續開發 不用特別問我除非必要」）
+  - 完成（2026-11-26，A–E 共 7 個 PR，v1.41.33–v1.42.0）。提案與分段：[`docs/ps-260-character-sets-proposal.md`](docs/ps-260-character-sets-proposal.md)。每段一個 PR，合併後才開始下一段；任何 agent 都可以從下一個未完成的段落接手。
   - 十套：太空人／武士／偵探／主廚／探險家（男），魔法師／偶像／園藝師／駭客／海洋學家（女）；房間與裝飾見提案 §2，id 在 `art-pipeline/ps260-sets/sets_catalog.py`。
   - [x] **PS-260A** 提案＋10 個主角的 Q 版 sprite（120 張）、`outputs.json`、預覽、測試（runtime 還不使用）。完成（#269，v1.41.33）：每張 15.6–22.5 KB、共 2.25 MB；試渲染時修正了胸前印花透出、圍裙浮空、鞋底讓人站低、帽尖碰到畫布上緣。
   - [x] **PS-260B** 10 套房間風格（Q 版＋像素版，白天＋夜晚）＋各自的窗外；B1（男性 5 套）、B2（女性 5 套）各一個 PR
@@ -286,14 +293,10 @@
     - [x] **PS-260C1** 男性 5 套房間的裝飾（太空站、劍道場、偵探事務所、法式廚房、叢林營地）（v1.41.37）。10 件新模型在 `ps244-blender/decor_sets.py`，兩個固定位置（後牆、右前方地板 z 32；後牆的 z 在 #274 review 改為 23，畫在書架之上，避免書架夜晚的淡影子蓋在上面）；夜晚會發光的部分只用自發光材質，不改共用的房間渲染。6 件 PS-250F 裝飾以 `--decor-boxes` 渲染、裁到預設框，裁掉的像素最多 757（法式廚房夜晚懶骨頭的淡影子尾端，與 PS-250F2 夜貓工作室落地燈的 729 同類；上限 1000）。`previews/sets/` 有每套主角＋房間＋裝飾的完整預覽。
     - [x] **PS-260C2** 女性 5 套房間的裝飾（魔法塔、偶像練習室、溫室花房、賽博空間、海底研究站）（v1.41.38）。#273 review 修正的魔藥瓶與水族箱在渲染前就修好；魔法塔的 2 件在修正後重新渲染。溫室花房夜晚懶骨頭的淡影子在框外裁掉 1092 像素，溫室的 `shadow_floor` 改為 72（降到 454，與劍道場相同做法），並用原本的渲染重新處理溫室房間的家具；最大的裁切是賽博空間夜晚落地燈的 908（燈桿影子落在框外近黑的牆上，看不到；PS-250F2 夜貓工作室的落地燈同樣是 729）。
   - [x] **PS-260D** 10 個主角的像素版（選擇介面列出的都要有兩種畫風，所以在 runtime 之前）。完成（#270，v1.41.34）：不需要渲染，由 PS-260A 的 sprite 依 PS-250D 的方式縮小（92 格、32 色、1 px 描邊、×4），每張 5.7–8.2 KB、共 829 KB；只依賴 A，所以比 B、C 先合併。`pixel-outputs.json` 記錄每張的 Q 版來源與 SHA-256，Q 版重新渲染而沒有重做像素版時測試會失敗。
-  - [ ] **PS-260E** runtime：角色目錄、素材登錄表、Edit Mode 的「主題套組」一鍵套用（也能分開選）、房間縮圖（`thumbnails.py`）、測試與 e2e；有自己窗外的房間不疊 PS-251B 的晨昏窗景。**開始前要先處理 PS-243 延後載入 JS 預算**（只剩 433 B；提案 §4 建議資料放 JSON、預算放寬 4 KB，需擁有者確認）
-
-- [ ] **PS-243** Complete device performance, accessibility, and telemetry acceptance
-  - In progress: establish a reproducible browser acceptance baseline and evidence matrix for responsive viewports, 200% zoom, keyboard flow, reduced motion, route/runtime lifecycle, privacy-safe local telemetry, and simulated performance. Real iOS／Android／standalone PWA measurements and two-account verification remain explicit human-device gates.
-
----
-
-## Done
+  - [x] **PS-260E** runtime（v1.42.0）：10 個主角加入角色目錄（`characterCatalog.js`），10 個房間加入房間清單（`SET_ROOM_IDS`），每個房間的 2 件裝飾只在自己的房間出現（`ROOM_DECORATIONS`，白天與夜晚的位置取自 `decor-placements.json`，測試會比對；載入失敗時不畫，因為預設房間沒有對應的裝飾）。Edit Mode 新增「主題套組」：一鍵換成該套的主角與房間、並顯示房間的 2 件裝飾，畫風與 Companion 不變；主角、房間、裝飾也都能分開選，列在 PS-250 的選項之後。有自己窗外的房間不疊 PS-251B 的晨昏窗景。房間縮圖由 `thumbnails.py` 產生（Q 版與像素版各 10 張）。都不預先快取，第一次顯示時才下載。
+    - PS-243 延後載入 JS 預算：擁有者 2026-11-26 同意放寬 4 KB（304 → 308 KB，315,392 B）。提案 §4 建議把套組資料放 JSON，實作時套組資料與介面共 +2,799 B gzip，放在 JS 模組裡不需要另外下載、離線也能用，所以沒有拆成 JSON；目前 313,662 B，剩 1,730 B，下一個加大個人空間 JS 的任務仍要先看預算。
+  - 實機上看 10 套的效果（iPhone、Android、主畫面 PWA）屬於 PS-243 的人工驗收。
+  - 已知、沒有改（#275 獨立 review 的 P3）：離線又沒下載過套組房間時，首頁的圖片退回預設房間但早晨／傍晚沒有城市窗景（Pixi 場景有），已快取的專屬裝飾也可能仍畫在預設房間上；Edit Mode 裡專屬裝飾的開關沒有離線替代圖（只顯示名稱）。要改的話：`renderPosterExterior` 在 `scene.exterior` 為 null 而 `fallback.exterior` 存在時先放隱藏的窗景、背景載入失敗時再顯示，並在退回預設房間時拿掉專屬裝飾（約數百 B，要先看 PS-243 預算）。
 
 - [x] **UI-204** 主畫面圖示改為「上升的軌道」（擁有者 2026-11-21：「都有開PR 並merge吧」；v1.41.32）
   - 起因：以 iPhone 圖示 skill（yoyoCadence/Iphone_Icon_AI-skill）實測 Orbit。UI-203 的圖示在 29pt 辨識度沒問題，但「紫色行星加環」是任何叫 Orbit 的 app 都能用的圖（VPN、瀏覽器、天文），看不出 Orbit 的核心「成長」；三顆星在 40pt 以下只是雜點，環伸到圖示的 88%。

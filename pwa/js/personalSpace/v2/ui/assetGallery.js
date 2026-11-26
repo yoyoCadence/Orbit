@@ -53,7 +53,9 @@ const OTHER_GROUP = Object.freeze({ folder: '', label: '其他', source: '' });
 // ROOM_STYLE_IDS in assetManifest.js and ROOM_STYLES in appearancePicker.js;
 // importing a new export of those cached modules could fail to link
 // (INFRA-105). ps250e2RoomStyles.test.js keeps the three in sync.
-const ROOM_STYLE_IDS = Object.freeze(['nordic', 'washitsu', 'nightowl', 'study']);
+const ROOM_STYLE_IDS = Object.freeze(['nordic', 'washitsu', 'nightowl', 'study',
+  // PS-260E: the themed sets' rooms.
+  'spacestation', 'dojo', 'noir', 'bistro', 'jungle', 'wizard', 'stage', 'greenhouse', 'cyber', 'ocean']);
 
 // The same rule as the developer panel in Settings: local hosts, ngrok, or the
 // panel turned on explicitly. Turning the panel off also hides the gallery.

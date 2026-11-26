@@ -6,7 +6,7 @@
  * rendered by day and by night in the Q style and in pixels, with the props
  * cut to the default room's boxes like every PS-250E style. The files are
  * recorded with the sets (art-pipeline/ps260-sets/rooms-outputs.json) and
- * none is precached; the picker lists them in PS-260E.
+ * none is precached; the picker offers them since PS-260E.
  */
 
 import { createHash } from 'node:crypto';
@@ -111,11 +111,11 @@ describe('PS-260B themed rooms', () => {
     }
   });
 
-  it('is not precached, not in the default manifest, and not offered by the picker yet', () => {
+  it('is not precached and not in the default manifest, and the picker offers every room (PS-260E)', () => {
     const paths = new Set(Object.keys(rooms.files));
     expect(SHELL.filter(path => paths.has(path))).toEqual([]);
     expect(getWorkspaceAssetManifestPaths().filter(path => paths.has(path))).toEqual([]);
     const offered = ROOM_STYLES.map(entry => entry.id);
-    for (const room of RECORDED) expect(offered).not.toContain(room);
+    for (const room of RECORDED) expect(offered).toContain(room);
   });
 });

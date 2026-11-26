@@ -162,6 +162,8 @@
 51. **PRO-014H：完成**（2026-11-11，v1.41.15，#238）：`REPO_PRO_ENTITLEMENT_SOURCE` 為 `server`。切換前只讀檢查：SUB-16 用過 0 筆、012 回填 0 筆、§7 0 筆，8 個帳號中兩種規則各 4 個有效，沒有人權限改變。`startTrial()` 成功後立刻 refresh（否則新帳號要到下次 refresh 才看到試用）；回到前景時上次結果超過一小時就 refresh（`pwa/js/proResume.js`，app 留在記憶體超過 24 小時否則會失去 Pro）；refresh 之後重跑依賴 Pro 的畫面（`_applyProDependentUi()`）。**兩個 legacy 寫回與 `FLAG_STREAK_UNLOCK_NEW` 先保留**（回退只需改旗標；開機與試用進度條還讀試用開始時間），移除是 PRO-014HB。測試預設 `server`，legacy 測試以 mock `isServerProEntitlementEnabled()` 保留為回退路徑；e2e 的 Pro 用 `seedProSnapshot()`。回退與真機驗證：`docs/pro-014h-cutover.md`；真機驗證是 PRO-014HA（擁有者）。
 52. **下一步**：六份提案（HW-112、PRO-014E、PRO-014S、PRO-014G、PRO-017、AI-015，只寫文件，使用者 2026-11-11 要求）。等擁有者：BUG-117A、PRO-014HA（真機）。使用者原則：以「任務確實完成」為準，合併是後話；做不到的先寫進 `tasks.md`。
 
+53. **PS-260：完成**（2026-11-25～26，#269–#274 與 PS-260E，v1.41.33–v1.42.0）：使用者要求的 10 套主題角色（男女各 5），每套有自己的主角、房間（含自己的窗外）與 2 件裝飾，Q 版與像素版、白天與夜晚；Edit Mode 的「主題套組」一鍵套用。素材與重現方式：`art-pipeline/ps260-sets/README.md`；分段與決定：`docs/ps-260-character-sets-proposal.md`。PS-243 延後載入 JS 預算經擁有者同意放寬為 308 KB，**只剩 1,730 B**：下一個加大 V2 JS 的任務要先看預算。
+
 其他：
 
 - **CI e2e 間歇性逾時（2026-10-19）**：`tests/e2e/flows.test.js` 的「Focus 計時流程」提前結束兩個測試（:175、:189）在 CI 上偶發 `Test timeout of 15000ms exceeded`，與 PR 內容無關（只改版本號的 commit 也失敗、重跑通過）；本機（完整 Chromium、headless shell、`CI=1`、2 workers、CPU 滿載）都無法重現。當時 CI 沒有上傳 Playwright artifact，看不到卡在哪一步。INFRA-102（使用者核准）之後 e2e 失敗時會上傳 `playwright-test-results` artifact（`test-results/`，保留 7 天），下次遇到先下載看 error-context。遇到時依規則只重跑一次，第二次失敗要查。

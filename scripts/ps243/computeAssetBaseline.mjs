@@ -32,7 +32,10 @@ export const BUDGETS = Object.freeze({
   completeProofScene: { targetBytes: 4 * MB, hardThresholdBytes: 6 * MB },
   // INFRA-114 (approved 2026-11-04): 300 → 304 KB for Pixi's unsafe-eval add-on
   // (about 4.2 KB gzip), so the CSP needs no 'unsafe-eval'.
-  deferredBundle: { budgetBytes: 304 * KB },
+  // PS-260E (approved 2026-11-26): 304 → 308 KB for the ten themed sets in the
+  // picker (about 2.7 KB gzip: their characters, rooms, decorations and the
+  // theme set section).
+  deferredBundle: { budgetBytes: 308 * KB },
 });
 
 // Deterministic gzip estimate. Level 6 is Node's default; it is an estimate, not

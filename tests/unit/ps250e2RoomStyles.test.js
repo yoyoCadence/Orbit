@@ -33,7 +33,14 @@ import { renderOrbitWindow } from '../../pwa/js/personalSpace/v2/ui/orbitWindow.
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const PWA = join(REPO, 'pwa');
-const outputs = JSON.parse(readFileSync(join(REPO, 'art-pipeline', 'ps250-rooms', 'outputs.json'), 'utf8'));
+// PS-260E: the picker also lists the themed sets' rooms, recorded with the sets
+// (art-pipeline/ps260-sets/rooms-outputs.json); every room it lists is checked
+// against the two records together.
+const record = name => JSON.parse(readFileSync(join(REPO, 'art-pipeline', ...name.split('/')), 'utf8'));
+const outputs = [record('ps250-rooms/outputs.json'), record('ps260-sets/rooms-outputs.json')].reduce((all, part) => ({
+  files: { ...all.files, ...part.files },
+  clipped: { ...all.clipped, ...part.clipped },
+}), { files: {}, clipped: {} });
 const placements = JSON.parse(readFileSync(join(REPO, 'art-pipeline', 'ps244-blender', 'placements.json'), 'utf8'));
 const SHELL = [...readFileSync(join(PWA, 'sw.js'), 'utf8').match(/const SHELL = \[([\s\S]*?)\];/)[1]
   .matchAll(/'\.\/([^']*)'/g)].map(match => match[1]);
@@ -95,12 +102,7 @@ describe('PS-250E2 room styles', () => {
   });
 
   it('ships exactly the hashed files the pipeline wrote, and resolves every one of them', () => {
-    // PS-260B: the themed sets' rooms are recorded with the sets
-    // (tests/unit/ps260bRoomStyles.test.js) until the picker lists them (PS-260E).
-    const themed = new Set(Object.keys(JSON.parse(readFileSync(
-      join(REPO, 'art-pipeline', 'ps260-sets', 'rooms-outputs.json'), 'utf8')).files));
-    const onDisk = [...filesUnder('workspace/styles'), ...filesUnder('workspace/pixel/styles')]
-      .filter(path => !themed.has(path)).sort();
+    const onDisk = [...filesUnder('workspace/styles'), ...filesUnder('workspace/pixel/styles')].sort();
     expect(onDisk).toEqual(Object.keys(outputs.files).sort());
     for (const [path, entry] of Object.entries(outputs.files)) {
       const data = readFileSync(join(PWA, path));

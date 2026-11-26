@@ -24,6 +24,8 @@ import { TOON_COMPANIONS, TOON_PROTAGONISTS } from '../../pwa/js/personalSpace/v
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const PWA = join(REPO, 'pwa');
 const outputs = JSON.parse(readFileSync(join(REPO, 'art-pipeline', 'ps250-pixel', 'outputs.json'), 'utf8'));
+// PS-260E: the themed sets' pixel protagonists (PS-260D) follow these in the same list.
+const setPixels = JSON.parse(readFileSync(join(REPO, 'art-pipeline', 'ps260-sets', 'pixel-outputs.json'), 'utf8'));
 const SHELL = [...readFileSync(join(PWA, 'sw.js'), 'utf8').match(/const SHELL = \[([\s\S]*?)\];/)[1]
   .matchAll(/'\.\/([^']*)'/g)].map(match => match[1]);
 const PIXEL_FOLDERS = ['workspace/pixel/backgrounds', 'workspace/pixel/props', 'characters/pixel/protagonist', 'characters/pixel/companion'];
@@ -41,7 +43,7 @@ function pixelScene(appearance, visual = {}, progress = 0, timeBand = 'day') {
 describe('PS-250D pixel set', () => {
   it('ships exactly the hashed files the pipeline wrote, and nothing else', () => {
     // PS-260D: the themed sets' pixel protagonists are recorded with the sets
-    // (tests/unit/ps260dPixelProtagonists.test.js) until the picker lists them (PS-260E).
+    // (tests/unit/ps260dPixelProtagonists.test.js checks those files).
     const themed = new Set(Object.keys(JSON.parse(readFileSync(
       join(REPO, 'art-pipeline', 'ps260-sets', 'pixel-outputs.json'), 'utf8')).files));
     const onDisk = PIXEL_FOLDERS.flatMap(folder => readdirSync(join(PWA, 'assets', 'personal-space', 'v2', ...folder.split('/')))
@@ -57,7 +59,7 @@ describe('PS-250D pixel set', () => {
   });
 
   it('covers the same characters as the Q style', () => {
-    expect(outputs.protagonist.ids).toEqual(TOON_PROTAGONISTS.map(entry => entry.id));
+    expect([...outputs.protagonist.ids, ...setPixels.protagonist.ids]).toEqual(TOON_PROTAGONISTS.map(entry => entry.id));
     expect(outputs.companion.ids).toEqual(TOON_COMPANIONS.map(entry => entry.id));
   });
 
@@ -82,7 +84,7 @@ describe('PS-250D pixel set', () => {
         resolved.add(pixelScene({ companionId: id }, { companion: { state } }).companion.path);
       }
     }
-    expect([...resolved].sort()).toEqual(Object.keys(outputs.files).sort());
+    expect([...resolved].sort()).toEqual([...Object.keys(outputs.files), ...Object.keys(setPixels.files)].sort());
   });
 
   it('keeps each pixel prop the size of its Q-style twin, so they share the placement', () => {

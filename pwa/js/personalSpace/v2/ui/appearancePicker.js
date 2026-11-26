@@ -46,6 +46,17 @@ export const ROOM_STYLES = Object.freeze([
   Object.freeze({ id: 'washitsu', label: '日式和風' }),
   Object.freeze({ id: 'nightowl', label: '夜貓工作室' }),
   Object.freeze({ id: 'study', label: '深木書房' }),
+  // PS-260E: the ten themed sets' rooms.
+  Object.freeze({ id: 'spacestation', label: '太空站' }),
+  Object.freeze({ id: 'dojo', label: '劍道場' }),
+  Object.freeze({ id: 'noir', label: '偵探事務所' }),
+  Object.freeze({ id: 'bistro', label: '法式廚房' }),
+  Object.freeze({ id: 'jungle', label: '叢林營地' }),
+  Object.freeze({ id: 'wizard', label: '魔法塔' }),
+  Object.freeze({ id: 'stage', label: '偶像練習室' }),
+  Object.freeze({ id: 'greenhouse', label: '溫室花房' }),
+  Object.freeze({ id: 'cyber', label: '賽博空間' }),
+  Object.freeze({ id: 'ocean', label: '海底研究站' }),
 ]);
 
 // PS-250F: decorations (user decision, 2026-10-22), switched on and off in
@@ -58,7 +69,49 @@ export const DECORATIONS = Object.freeze([
   Object.freeze({ id: 'deco-floor-lamp', label: '落地燈' }),
   Object.freeze({ id: 'deco-succulent', label: '多肉盆栽' }),
   Object.freeze({ id: 'deco-coffee', label: '咖啡杯組' }),
+  // PS-260E: the themed rooms' own decorations; each room shows its two.
+  Object.freeze({ id: 'deco-rocket', label: '火箭模型' }),
+  Object.freeze({ id: 'deco-planet', label: '行星燈' }),
+  Object.freeze({ id: 'deco-katana', label: '刀架' }),
+  Object.freeze({ id: 'deco-bonsai', label: '盆景' }),
+  Object.freeze({ id: 'deco-typewriter', label: '打字機' }),
+  Object.freeze({ id: 'deco-hatstand', label: '衣帽架' }),
+  Object.freeze({ id: 'deco-cake', label: '蛋糕架' }),
+  Object.freeze({ id: 'deco-bread', label: '麵包籃' }),
+  Object.freeze({ id: 'deco-fern', label: '蕨類盆栽' }),
+  Object.freeze({ id: 'deco-lantern', label: '探險油燈' }),
+  Object.freeze({ id: 'deco-crystal', label: '水晶球' }),
+  Object.freeze({ id: 'deco-potions', label: '魔藥瓶' }),
+  Object.freeze({ id: 'deco-mic', label: '麥克風架' }),
+  Object.freeze({ id: 'deco-heartlamp', label: '愛心燈' }),
+  Object.freeze({ id: 'deco-flowerpot', label: '花盆' }),
+  Object.freeze({ id: 'deco-wateringcan', label: '澆花壺' }),
+  Object.freeze({ id: 'deco-server', label: '伺服器機櫃' }),
+  Object.freeze({ id: 'deco-hologram', label: '全像投影' }),
+  Object.freeze({ id: 'deco-aquarium', label: '水族箱' }),
+  Object.freeze({ id: 'deco-coral', label: '珊瑚燈' }),
 ]);
+
+// PS-260E: the ten themed sets (user request, 2026-11-25), five male then five
+// female: a protagonist, its room and the room's two decorations, applied in
+// one tap. The ids are the protagonist's; the labels are the protagonist's and
+// the room's (art-pipeline/ps260-sets/sets_catalog.py, test-enforced).
+export const THEME_SETS = Object.freeze([
+  themeSet('astronaut', 'spacestation', 'deco-rocket', 'deco-planet'),
+  themeSet('samurai', 'dojo', 'deco-katana', 'deco-bonsai'),
+  themeSet('detective', 'noir', 'deco-typewriter', 'deco-hatstand'),
+  themeSet('chef', 'bistro', 'deco-cake', 'deco-bread'),
+  themeSet('explorer', 'jungle', 'deco-fern', 'deco-lantern'),
+  themeSet('witch', 'wizard', 'deco-crystal', 'deco-potions'),
+  themeSet('idol', 'stage', 'deco-mic', 'deco-heartlamp'),
+  themeSet('gardener', 'greenhouse', 'deco-flowerpot', 'deco-wateringcan'),
+  themeSet('hacker', 'cyber', 'deco-server', 'deco-hologram'),
+  themeSet('marine', 'ocean', 'deco-aquarium', 'deco-coral'),
+]);
+
+function themeSet(id, room, ...decorations) {
+  return Object.freeze({ id, room, decorations: Object.freeze(decorations) });
+}
 
 // PS-250G: each room's 216 x 144 thumbnail (art-pipeline/ps250-rooms/
 // thumbnails.py), instead of its full 1536 x 1024 background.
@@ -125,6 +178,26 @@ export function renderAppearancePicker(value, roomStyle, hiddenDecorations) {
             </button>
           `).join('')}
         </div>
+      </fieldset>
+      <fieldset>
+        <legend>主題套組</legend>
+        <ul class="personal-space-v2-appearance-options">
+          ${THEME_SETS.map(set => optionMarkup('set', {
+            id: set.id,
+            label: `${labelOf(TOON_PROTAGONISTS, set.id)}・${labelOf(ROOM_STYLES, set.room)}`,
+          }, {
+            // Applied while its protagonist, its room and its decorations are
+            // all shown; pressing it again shows a decoration switched off.
+            selected: set.id === choice.protagonistId && set.room === room
+              && !set.decorations.some(id => hidden?.includes(id)),
+            stored: false,
+            src: thumbnail({ ...choice, protagonistId: set.id }).protagonist,
+            fallbackSrc: defaults.protagonist,
+            pixelArt,
+            describedBy: 'personal-space-v2-sets-hint',
+          })).join('')}
+        </ul>
+        <small id="personal-space-v2-sets-hint">一次換成這套的主角、房間與房間裡的裝飾；之後也能分開調整。</small>
       </fieldset>
       <fieldset>
         <legend>房間</legend>
@@ -211,6 +284,13 @@ export function readAppearanceChange(button) {
   const shown = button.getAttribute?.('aria-pressed') === 'true';
   // PS-250F: a decoration switch turns that decoration off or on.
   if (kind === 'decoration') return shown ? { hideDecoration: value } : { showDecoration: value };
+  // PS-260E: a theme set is its protagonist, its room and its decorations shown.
+  if (kind === 'set') {
+    const set = THEME_SETS.find(entry => entry.id === value);
+    return set && !shown
+      ? { protagonistId: set.id, selectedThemeId: set.room, showDecorations: set.decorations }
+      : null;
+  }
   if (shown && (kind === 'style' || kind === 'room' || button.hasAttribute?.('data-stored'))) return null;
   if (kind === 'room') return { selectedThemeId: value };
   const field = { style: 'style', protagonist: 'protagonistId', companion: 'companionId' }[kind];
@@ -230,19 +310,24 @@ export function saveAppearanceChange(ownerId, change) {
   // The room style is its own field; a room change leaves an unchosen
   // appearance (null, which follows the default) as it is. So are the hidden
   // decorations: ids this version does not know stay hidden.
-  const { selectedThemeId, hideDecoration, showDecoration, ...appearance } = change;
+  const { selectedThemeId, hideDecoration, showDecoration, showDecorations = [], ...appearance } = change;
   const hidden = new Set(Array.isArray(world.hiddenDecorations) ? world.hiddenDecorations : []);
   if (hideDecoration) hidden.add(hideDecoration);
-  if (showDecoration) hidden.delete(showDecoration);
+  for (const id of [showDecoration, ...showDecorations]) hidden.delete(id);
+  const decorationsChanged = Boolean(hideDecoration || showDecoration || showDecorations.length);
   return savePersonalSpaceV2State(ownerId, {
     ...state,
     world: {
       ...world,
       ...(selectedThemeId === undefined ? {} : { selectedThemeId }),
-      ...(hideDecoration || showDecoration ? { hiddenDecorations: [...hidden] } : {}),
+      ...(decorationsChanged ? { hiddenDecorations: [...hidden] } : {}),
       ...(Object.keys(appearance).length ? { appearance: { ...world.appearance, ...appearance } } : {}),
     },
   });
+}
+
+function labelOf(options, id) {
+  return options.find(option => option.id === id)?.label || id;
 }
 
 function escapeHtml(value) {
