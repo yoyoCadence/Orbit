@@ -305,7 +305,7 @@ test.describe('PS-250B character style and choice', () => {
       await picture.scrollIntoViewIfNeeded();
       await expect(picture).toHaveAttribute('data-unavailable', '');
       await expect(picture).toBeVisible();
-      const look = await picture.evaluate(image => [getComputedStyle(image).borderTopStyle, getComputedStyle(image).content]);
+      const look = await picture.evaluate(image => [window.getComputedStyle(image).borderTopStyle, window.getComputedStyle(image).content]);
       // An empty frame, not the browser's broken-image icon.
       expect(look[0]).toBe('dashed');
       expect(look[1]).toContain('linear-gradient');
