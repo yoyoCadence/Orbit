@@ -3,6 +3,13 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.42.2] - 2026-11-26
+
+### Fixed
+- 晨間報告「昨日總結」的日期在 UTC 以西的時區（例如美洲）會少一天（BUG-121）：昨天是 11 月 25 日卻顯示 11 月 24 日。現在依裝置所在時區的昨天顯示；台灣不受影響。
+
+---
+
 ## [1.42.1] - 2026-11-26
 
 ### Fixed

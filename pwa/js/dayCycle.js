@@ -291,7 +291,8 @@ export function showDailyReport(onDone) {
     ? '<span class="rpt-badge rpt-badge-rest">😴 休息日</span>'
     : '<span class="rpt-badge rpt-badge-partial">⬆️ 成長中</span>';
 
-  const dateDisplay = new Date(yStr).toLocaleDateString('zh-TW',
+  // BUG-121: local midnight; a bare 'YYYY-MM-DD' is UTC, the day before west of UTC.
+  const dateDisplay = new Date(`${yStr}T00:00:00`).toLocaleDateString('zh-TW',
     { month: 'long', day: 'numeric', weekday: 'short' });
 
   const modal = document.createElement('div');

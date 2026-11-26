@@ -278,6 +278,24 @@ describe('morning report about yesterday', () => {
     expect([...modal.querySelectorAll('.rpt-task-name')].map(name => name.textContent)).toEqual(['讀書']);
   });
 
+  it('dates the header by yesterday in any time zone (BUG-121)', () => {
+    const before = process.env.TZ;
+    try {
+      // West of UTC a bare 'YYYY-MM-DD' is the evening before; Kiritimati (Kiribati) is UTC+14.
+      for (const zone of ['America/Los_Angeles', 'Pacific/Pago_Pago', 'UTC', 'Asia/Taipei', 'Pacific/Kiritimati']) {
+        process.env.TZ = zone;
+        // Only a test pool where this takes effect can check anything.
+        expect(Intl.DateTimeFormat().resolvedOptions().timeZone).toBe(zone);
+        document.body.innerHTML = '';
+        const { modal } = report({ sessions: [session(YESTERDAY)] });
+        expect(modal.querySelector('.rpt-date').textContent, zone).toMatch(/^11月25日/);
+      }
+    } finally {
+      if (before === undefined) delete process.env.TZ;
+      else process.env.TZ = before;
+    }
+  });
+
   it('reads yesterday from the user\'s own day: before their new-day hour, today is still yesterday', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(`${TODAY}T03:00:00`));
