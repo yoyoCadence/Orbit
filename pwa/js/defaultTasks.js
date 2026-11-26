@@ -1,8 +1,9 @@
 // Built-in task templates — seeded on first launch
-import { uid } from './utils.js';
+import { today, uid } from './utils.js';
 
 export function createDefaultTasks() {
-  const now = new Date().toISOString().slice(0, 10);
+  // BUG-125: the local date, like tasks added in Settings.
+  const now = today();
 
   return [
     // ── High-value growth ──────────────────────────────────────────────────────

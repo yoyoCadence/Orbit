@@ -76,7 +76,8 @@ export function exportSessionsCSV() {
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href     = url;
-  a.download = `orbit-sessions-${new Date().toISOString().slice(0, 10)}.csv`;
+  // BUG-125: the local date (toISOString is UTC: a day early east of UTC in the morning).
+  a.download = `orbit-sessions-${new Date().toLocaleDateString('sv')}.csv`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

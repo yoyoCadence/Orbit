@@ -5,10 +5,11 @@
  * 這些任務在普通模式下不可編輯（isDefault:true 是鎖定機制的關鍵）。
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 
 // ─── mock uid / utils（不依賴 Date.now randomness） ──────────────────────────
-vi.mock('../../pwa/js/utils.js', () => ({
+vi.mock('../../pwa/js/utils.js', async importOriginal => ({
+  ...(await importOriginal()),
   uid: () => 'mock-uid-' + Math.random().toString(36).slice(2, 8),
 }));
 
@@ -66,5 +67,25 @@ describe('createDefaultTasks()', () => {
       .forEach(t => {
         expect(t.minEffectiveMinutes).toBe(0);
       });
+  });
+});
+
+describe('createDefaultTasks() dates (BUG-125)', () => {
+  const zoneBefore = process.env.TZ;
+  afterEach(() => {
+    vi.useRealTimers();
+    if (zoneBefore === undefined) delete process.env.TZ;
+    else process.env.TZ = zoneBefore;
+  });
+
+  it('dates the tasks by the local date, as the S-task daily limit counts them', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    // 2026-04-10 17:30 UTC: the 11th in Taipei, still the 10th in Los Angeles.
+    vi.setSystemTime(new Date('2026-04-10T17:30:00Z'));
+    for (const [zone, date] of [['Asia/Taipei', '2026-04-11'], ['America/Los_Angeles', '2026-04-10']]) {
+      process.env.TZ = zone;
+      expect(Intl.DateTimeFormat().resolvedOptions().timeZone).toBe(zone);
+      expect(new Set(createDefaultTasks().map(t => t.createdAt)), zone).toEqual(new Set([date]));
+    }
   });
 });

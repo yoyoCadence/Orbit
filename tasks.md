@@ -289,6 +289,15 @@
 
 ## Done
 
+- [x] **BUG-125** S 級任務的每日上限算錯日期（TEST-009 檢查設定頁時發現，2026-11-26）
+  - `pages/settings.js` 以 `t.createdAt === today()`（當地日期）計算今天新增的 S 級任務，但新任務的 `createdAt` 是 `toISOString().slice(0, 10)`（UTC 日期，台灣 00:00–08:00 是前一天），從雲端拉下來的任務則是 `tasks.created_at`（timestamptz，完整時間戳記）。兩者都不會被算到，登入帳號同步後每天都能再新增 S 級任務。`defaultTasks.js` 的建立日期與 `export.js` 的 CSV 檔名也用 UTC 日期。不涉及 auth／schema（只讀 `created_at`，不寫入），接著修正。
+  - 完成（v1.42.5）：`settings.js` 的 `_localDateOf()`：`YYYY-MM-DD` 照用，時間戳記取當地日期，無法讀取時不算；新任務與預設任務的建立日期用 `today()`，CSV 檔名用 `toLocaleDateString('sv')`。`settings.test.js` 在台北與洛杉磯檢查：雲端時間戳記依當地日期計算（UTC 已是隔天但當地還是前一天的不算）、本機日期在 UTC 以西也照算、新任務以當地日期建立並計入上限、編輯任務保留原本的日期；`defaultTasks.test.js`、`exportWeeks.test.js` 檢查台北、UTC、洛杉磯的日期。helper 留在 `settings.js` 內，沒有新增 export（INFRA-105）。
+
+- [x] **BUG-126** 設定頁的背景圖片與任務圖示選到無法讀取的照片時沒有任何反應（TEST-009 檢查設定頁時發現，2026-11-26）
+  - `settings.js` 的 `_compressImage()` 沒有 `onerror`：照片無法解碼（例如電腦版 Chrome 的 HEIC）或讀取失敗時 Promise 永遠不會結束，畫面沒有任何提示。背景圖片寫入 localStorage 失敗（空間不足）時也會丟出未處理的例外。
+  - 完成（v1.42.5）：讀取或解碼失敗時 reject，兩個選擇器都提示「圖片處理失敗，請換一張照片」，任務圖示維持 Emoji；背景圖片存不下來時提示「這台裝置的空間不足，背景圖片沒有存下來」；失敗後清空 input，可以再選同一個檔案。任務視窗的 z-index 是 50，toast 是 200，所以 toast 看得到（與 BUG-124 的面板不同）。`settings.test.js` 檢查成功（正方形、最多 900／200 px、品質 0.72／0.82）、無法解碼、無法讀取、空間不足；e2e `bug126-settings-image.test.js` 在真的瀏覽器用無法解碼的檔案與真的 JPEG 檢查（修正前找不到提示而失敗）。
+  - 開 PR 前以改動原始碼驗證：12 個改動都會讓測試失敗。其中兩個一開始沒被抓到：日期字串的捷徑在台北拿掉也會通過（UTC 午夜在台北同一天），已加上洛杉磯；編輯任務的測試因為 S 級缺少原因而沒有真的存檔，已補上原因並檢查有存。另一個沒被抓到的是多餘的型別檢查，已移除。
+
 - [x] **BUG-124** 佐證面板確認後的兩個問題（#283 獨立 review 發現，2026-11-26，已在 main 上）
   - (a) `ui/proofSheet.js` 把新縮圖綁定時以該列為範圍（`bindProofThumbs(logItem, …)`），之後把這張照片設為個人空間展示，其他列原本的 ✓ 不會清掉，首頁 Orbit Window 的成就照片也不會更新（首頁自己的 `onPhotoWallChange` 沒有被呼叫），要等頁面重畫。要改需要讓 `sessionRow.js` 提供「只綁這一個縮圖、範圍是整個列表」的方式，並讓首頁的更新也被呼叫；兩者都是 SHELL 模組，要注意 INFRA-105（不能讓既有 SHELL 模組 import 另一個的新 export），接著設計並修正。
   - (b) `saveProof()` 寫入 localStorage 失敗（空間不足）時會丟出例外，面板停在那裡、沒有任何提示。應該提示「這台裝置的空間不足，照片沒有存下來」並保留面板讓使用者跳過。

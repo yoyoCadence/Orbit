@@ -1057,8 +1057,21 @@ function _setupListeners(container) {
   container.querySelector('#bg-input')?.addEventListener('change', async e => {
     const file = e.target.files[0];
     if (!file) return;
-    const compressed = await _compressImage(file, 900, 0.72);
-    applyBgImage(compressed);
+    // BUG-126: the same file can be chosen again after a failure.
+    e.target.value = '';
+    let compressed;
+    try {
+      compressed = await _compressImage(file, 900, 0.72);
+    } catch {
+      window.showToast('圖片處理失敗，請換一張照片');
+      return;
+    }
+    try {
+      applyBgImage(compressed);
+    } catch {
+      window.showToast('這台裝置的空間不足，背景圖片沒有存下來');
+      return;
+    }
     _renderView(container);
   });
   const bgClear = container.querySelector('#bg-clear-btn');
@@ -1446,7 +1459,14 @@ function _showTaskModal(container, task) {
   modal.querySelector('#tm-icon-input').addEventListener('change', async e => {
     const file = e.target.files[0];
     if (!file) return;
-    selectedIconImg = await _compressImage(file, 200, 0.82);
+    // BUG-126: the same file can be chosen again after a failure.
+    e.target.value = '';
+    try {
+      selectedIconImg = await _compressImage(file, 200, 0.82);
+    } catch {
+      window.showToast('圖片處理失敗，請換一張照片');
+      return;
+    }
     previewEl.innerHTML = `<img src="${selectedIconImg}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
     emojiSec.style.display = 'none';
     clearImgBtn.style.display = '';
@@ -1553,7 +1573,7 @@ function _showTaskModal(container, task) {
     // S daily limit check (new tasks only)
     if (!isEdit && value === 'S') {
       const todayStr = today();
-      const todayS = state.tasks.filter(t => t.value === 'S' && t.createdAt === todayStr).length;
+      const todayS = state.tasks.filter(t => t.value === 'S' && _localDateOf(t.createdAt) === todayStr).length;
       if (todayS >= 2) { alert('今日已新增 2 個 S 級任務（每日上限）。'); return; }
     }
 
@@ -1583,7 +1603,7 @@ function _showTaskModal(container, task) {
       successCriteria:     modal.querySelector('#tm-success-criteria')?.value.trim() || task?.successCriteria || '',
       hasDeliverable:      task?.hasDeliverable ?? false,
       valueConfidence:     task?.valueConfidence ?? 100,
-      createdAt:           task?.createdAt ?? new Date().toISOString().slice(0, 10),
+      createdAt:           task?.createdAt ?? today(),
     };
 
     if (isEdit) {
@@ -1599,12 +1619,23 @@ function _showTaskModal(container, task) {
   });
 }
 
+// BUG-125: the local date a task was added. Tasks added here keep YYYY-MM-DD;
+// tasks pulled from the cloud carry tasks.created_at, a timestamptz.
+function _localDateOf(value) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toLocaleDateString('sv');
+}
+
 // ── Image compression ────────────────────────────────────────────────────────
 function _compressImage(file, maxPx, quality) {
-  return new Promise(resolve => {
+  return new Promise((resolve, reject) => {
     const reader = new FileReader();
+    // BUG-126: a file that cannot be read or decoded fails instead of never settling.
+    reader.onerror = () => reject(reader.error || new Error('read'));
     reader.onload = e => {
       const img = new Image();
+      img.onerror = () => reject(new Error('decode'));
       img.onload = () => {
         const canvas = document.createElement('canvas');
         const min = Math.min(img.width, img.height);

@@ -20,7 +20,7 @@ vi.mock('../../pwa/js/state.js', () => ({
 }));
 vi.mock('../../pwa/js/storage.js', () => ({ storage: { getSessions: () => SESSIONS } }));
 
-const { showReportPicker } = await import('../../pwa/js/export.js');
+const { exportSessionsCSV, showReportPicker } = await import('../../pwa/js/export.js');
 
 const flush = () => new Promise(resolve => setTimeout(resolve, 0));
 const before = process.env.TZ;
@@ -83,5 +83,25 @@ describe('growth report weeks (BUG-123)', () => {
       expect(labels, zone).toEqual(['11/2', '11/23', '11/30']);
       expect(save.mock.calls, zone).toEqual([[`orbit-report-all-${today}.pdf`]]);
     }
+  });
+});
+
+describe('sessions CSV file name (BUG-125)', () => {
+  it('carries the local date in any time zone', () => {
+    const names = [];
+    const click = vi.spyOn(window.HTMLAnchorElement.prototype, 'click').mockImplementation(function () { names.push(this.download); });
+    window.URL.createObjectURL = vi.fn(() => 'blob:csv');
+    window.URL.revokeObjectURL = vi.fn();
+    vi.useFakeTimers({ toFake: ['Date'] });
+    // 2026-11-26 20:00 UTC: already the 27th in Taipei, still the 26th in Los Angeles.
+    vi.setSystemTime(new Date('2026-11-26T20:00:00Z'));
+    const expected = { 'Asia/Taipei': '2026-11-27', UTC: '2026-11-26', 'America/Los_Angeles': '2026-11-26' };
+    for (const zone of Object.keys(expected)) {
+      process.env.TZ = zone;
+      expect(Intl.DateTimeFormat().resolvedOptions().timeZone).toBe(zone);
+      exportSessionsCSV();
+    }
+    expect(names).toEqual(Object.values(expected).map(date => `orbit-sessions-${date}.csv`));
+    click.mockRestore();
   });
 });
