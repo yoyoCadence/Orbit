@@ -145,7 +145,12 @@ describe('PS-250F1 decorations: assets', () => {
   });
 
   it('ships exactly the hashed files the pipeline wrote, in both character styles and every room', () => {
-    const onDisk = [...filesUnder('workspace/decor'), ...filesUnder('workspace/pixel/decor')].sort();
+    // PS-260C: the themed sets' rooms keep their decorations with the sets
+    // (tests/unit/ps260cDecorations.test.js) until the picker lists them (PS-260E).
+    const themed = new Set(Object.keys(JSON.parse(readFileSync(
+      join(REPO, 'art-pipeline', 'ps260-sets', 'decor-outputs.json'), 'utf8')).files));
+    const onDisk = [...filesUnder('workspace/decor'), ...filesUnder('workspace/pixel/decor')]
+      .filter(path => !themed.has(path)).sort();
     expect(onDisk).toEqual(Object.keys(outputs.files).sort());
     // Six decorations, by day and by night, Q style and pixel, in five rooms.
     expect(onDisk).toHaveLength(6 * 2 * 2 * 5);

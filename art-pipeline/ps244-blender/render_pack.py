@@ -195,7 +195,7 @@ def main():
     room = groups['room'] + groups.get('ceiling', [])
     outside = groups.get('outside', [])
     props = {prop_id: groups[prop_id] for prop_id in S.PROP_IDS}
-    decor = {decor_id: groups[decor_id] for decor_id in S.DECOR_IDS}
+    decor = {decor_id: groups[decor_id] for decor_id in S.DECOR_IDS + S.DECOR_SETS_IDS}
     # PS-250F: decorations stay out of the room and prop renders.
     for objects in decor.values():
         set_visible(objects, False)

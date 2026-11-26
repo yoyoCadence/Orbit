@@ -13,6 +13,8 @@ The six decorations the user chose on 2026-10-22, each switched on and off in Ed
 
 The models are in `ps244-blender/scene.py` (`DECOR_IDS`, `DECOR_BUILDERS`), next to the furniture they stand on, so they share its camera, lights and toon materials. `render_pack.py` renders each one alone.
 
+The PS-260 rooms use the same six decorations (rendered and processed here with `--style`, recorded in `art-pipeline/ps260-sets/decor-outputs.json`) and each adds its set's two (`ps244-blender/decor_sets.py`, processed by `ps260-sets/process_decor_sets.py`); see `art-pipeline/ps260-sets/README.md`.
+
 ## Files
 
 | File | Role |

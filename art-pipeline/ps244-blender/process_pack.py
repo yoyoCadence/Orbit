@@ -42,7 +42,7 @@ import sys
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
-from room_styles import ROOM_STYLES
+from room_styles import PS260_STYLES, ROOM_STYLES  # noqa: F401  (PS260_STYLES: process_decor)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, '..', '..'))

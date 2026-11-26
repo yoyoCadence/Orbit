@@ -130,3 +130,55 @@ for style in spacestation dojo noir bistro jungle wizard stage greenhouse cyber 
   done
 done
 ```
+
+## Decorations (PS-260C)
+
+Each set's room shows the six PS-250F decorations in its own materials (cut
+to the default boxes, like PS-250F2) and the set's two decorations
+(`ps244-blender/decor_sets.py`), which stand only in that room:
+
+| Spot | Where | Sets' pieces |
+|------|-------|--------------|
+| back wall (z 21) | the floor against the back wall between the desk and the shelf, under the photo frame (at most about 1.45 m tall) | rocket, sword rack, hat stand with coat and fedora, cake table, fern, potion cabinet, microphone stand, sunflower planter, server rack, aquarium |
+| front right (z 32) | the free floor by the window, in front of the plant, below the characters | planet lamp, bonsai table, typewriter on a side table, bread crate, lantern on a crate, crystal ball, heart lamp, watering can and pots, hologram projector, coral lamp |
+
+Each decoration's spot is `sets_catalog.DECOR_SPOTS`, and its draw order
+follows the spot (`DECOR_Z`), not the order the catalog lists a set's two.
+Lamps, screens, potions and corals glow through emission only (like the
+PS-250F floor lamp), so the shared room render is unchanged. A set decoration
+has no default box: it is trimmed like a prop in its own room, and its box
+gives its placement (`decor-placements.json`, by room, decoration and
+lighting); the pixel sprite is cut to the same box.
+
+| File | Purpose |
+|------|---------|
+| `process_decor_sets.py` | The set's two decorations: trim, placements, both styles, records, and a preview of the whole set in its room (`previews/sets/`). |
+| `decor-placements.json` | Placement (x, y, width in % of the frame; z) and trim box of each set decoration, by day and by night. |
+| `decor-outputs.json` | Size and SHA-256 of every decoration file of the PS-260 rooms (the six PS-250F ones too, written by `ps250-decor/process_decor.py --style`), and how many pixels the cut of each PS-250F one dropped. `tests/unit/ps260cDecorations.test.js` checks both files. |
+
+```bash
+B=art-pipeline/ps250-decor/placements.json
+for style in spacestation dojo noir bistro jungle wizard stage greenhouse cyber ocean; do
+  own=$(cd art-pipeline/ps260-sets && python3 -c "import sets_catalog as c; print(','.join(d for s in c.SETS if s['room'][0] == '$style' for d, _ in s['decor']))")
+  for lighting in day night; do
+    /tmp/bpyenv/bin/python art-pipeline/ps244-blender/render_pack.py /tmp/decor/$style-$lighting \
+      --only decor,$own --style $style --lighting $lighting --decor-boxes $B
+    /tmp/bpyenv/bin/python art-pipeline/ps250-pixel/render_pixel.py /tmp/decor/pixel \
+      --only decor,$own --style $style --lighting $lighting --decor-boxes $B
+    /tmp/bpyenv/bin/python art-pipeline/ps250-decor/process_decor.py /tmp/decor/$style-$lighting /tmp/decor/pixel \
+      --style $style --lighting $lighting --write-runtime
+    /tmp/bpyenv/bin/python art-pipeline/ps260-sets/process_decor_sets.py /tmp/decor/$style-$lighting /tmp/decor/pixel \
+      --style $style --lighting $lighting --write-runtime
+  done
+done
+```
+
+The six PS-250F decorations render inside their default boxes (about 5
+minutes per lighting); the set's two render in full frame, since they have no
+box yet (about 3 minutes each).
+
+The cut of a PS-250F decoration in a PS-260 room drops at most 757 pixels (the
+faint shadow tail of the bistro's beanbag at night; the PS-250F2 night-owl
+floor lamp drops 729), under the test's limit of 1000. `previews/sets/` shows
+each whole set: the room, its props and decorations, the set's protagonist
+and Orbit (`c1-overview.jpg`: the five male sets side by side).

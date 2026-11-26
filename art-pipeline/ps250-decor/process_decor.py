@@ -32,7 +32,9 @@ and <pixel_render_dir> the pixel renders of
   ("clipped"); the pixel ones get the style's pixel_shadow. The files go under
   workspace/decor/styles/<style>/ and workspace/pixel/decor/styles/<style>/.
   placements.json and DECOR_DEFINITIONS are not touched. The renders only need
-  the default boxes (render_pack.py --decor-boxes placements.json).
+  the default boxes (render_pack.py --decor-boxes placements.json). A PS-260
+  room's decorations are recorded in ps260-sets/decor-outputs.json and
+  previewed in ps260-sets/previews/decor/.
 
 Requires Pillow and numpy.
 """
@@ -55,6 +57,8 @@ import process_pixel as P  # noqa: E402
 PLACEMENTS = os.path.join(HERE, 'placements.json')
 OUTPUTS = os.path.join(HERE, 'outputs.json')
 PREVIEWS = os.path.join(HERE, 'previews')
+PS260_OUTPUTS = os.path.join(HERE, '..', 'ps260-sets', 'decor-outputs.json')
+PS260_PREVIEWS = os.path.join(HERE, '..', 'ps260-sets', 'previews', 'decor')
 V2 = 'assets/personal-space/v2'
 
 # In scene.DECOR_IDS order (the user's order: shelf, floor, desk). A
@@ -126,20 +130,27 @@ def sync_asset_manifest(data):
         fh.write(updated)
 
 
-def record(files, clipped=None):
-    """Adds {path: bytes} to outputs.json with sizes and SHA-256 (and, for a
-    room style, the pixels each cut dropped), keeping the rest."""
+def outputs_for(style):
+    """PS-260C: a themed set's room is recorded with the sets, so this record
+    keeps exactly the rooms the picker lists (tests/unit/ps250fDecorations)."""
+    return PS260_OUTPUTS if style in Q.PS260_STYLES else OUTPUTS
+
+
+def record(files, clipped=None, style='default'):
+    """Adds {path: bytes} to the style's outputs record with sizes and SHA-256
+    (and, for a room style, the pixels each cut dropped), keeping the rest."""
+    outputs = outputs_for(style)
     try:
-        with open(OUTPUTS, encoding='utf-8') as fh:
+        with open(outputs, encoding='utf-8') as fh:
             data = json.load(fh)
     except FileNotFoundError:
-        data = {'schemaVersion': 1, 'taskId': 'PS-250F', 'files': {}}
+        data = {'schemaVersion': 1, 'taskId': 'PS-260C' if outputs == PS260_OUTPUTS else 'PS-250F', 'files': {}}
     for path, blob in files.items():
         data['files'][path] = {'bytes': len(blob), 'sha256': hashlib.sha256(blob).hexdigest()}
     data['files'] = dict(sorted(data['files'].items()))
     if clipped:
         data['clipped'] = dict(sorted({**data.get('clipped', {}), **clipped}.items()))
-    with open(OUTPUTS, 'w', encoding='utf-8') as fh:
+    with open(outputs, 'w', encoding='utf-8') as fh:
         json.dump(data, fh, ensure_ascii=False, indent=2)
         fh.write('\n')
 
@@ -232,14 +243,15 @@ def process_style(args):
             files[decor_path(decor_id, lighting, style=style)] = P.encode(sprites[decor_id])
             files[decor_path(decor_id, lighting, pixel=True, style=style)] = P.encode(pixel_sprites[decor_id])
         write_files(files)
-        record(files, clipped)
+        record(files, clipped, style)
 
     # Previews: the committed style room at 100% with its decorations, both styles.
     with open(Q.PLACEMENTS, encoding='utf-8') as fh:
         room = json.load(fh)
     room = room if lighting == 'day' else room[lighting]
     suffix = '-night' if lighting == 'night' else ''
-    os.makedirs(PREVIEWS, exist_ok=True)
+    preview_dir = PS260_PREVIEWS if style in Q.PS260_STYLES else PREVIEWS
+    os.makedirs(preview_dir, exist_ok=True)
     for pixel in (False, True):
         canvas = load_runtime(rooms.background_path(style, lighting, pixel=pixel))
         layers = [(spec['z'], 0, pid, room['props'][pid], load_runtime(rooms.prop_path(style, pid, lighting, pixel=pixel)))
@@ -259,7 +271,7 @@ def process_style(args):
                         spec['anchor'])
         name = f"{style}{suffix}{'-pixel' if pixel else ''}-phase-100.jpg"
         canvas.convert('RGB').resize((768, 512), Image.NEAREST if pixel else Image.LANCZOS).save(
-            os.path.join(PREVIEWS, name), quality=86)
+            os.path.join(preview_dir, name), quality=86)
     print(json.dumps({path: count for path, count in clipped.items() if count}, indent=1))
 
 
