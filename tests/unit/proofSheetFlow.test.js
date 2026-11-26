@@ -52,9 +52,10 @@ async function choose(file = new File(['x'], 'p.jpg', { type: 'image/jpeg' })) {
   const input = sheet().querySelector('#proof-file-input');
   Object.defineProperty(input, 'files', { value: file ? [file] : [], configurable: true });
   input.dispatchEvent(new Event('change'));
-  await vi.waitFor(() => expect(mocks.compressImage.mock.calls.length + (file ? 0 : 1)).toBeGreaterThan(0));
-  await Promise.resolve();
-  await Promise.resolve();
+  // Until the photo is shown or its failure reported.
+  await vi.waitFor(() => expect(
+    !sheet().querySelector('#proof-confirm').disabled || mocks.showToast.mock.calls.length > 0,
+  ).toBe(true));
 }
 
 beforeEach(() => {
@@ -74,15 +75,20 @@ describe('full-screen photo', () => {
     vi.useFakeTimers();
     showProofLightbox(PHOTO);
     const lightbox = document.querySelector('.proof-lightbox');
-    // PS-249A finds full-screen overlays by this class.
+    // PS-249A finds full-screen overlays by this class. It covers the whole
+    // screen, above the proof sheet (z-index 500).
     expect(lightbox.style.position).toBe('fixed');
+    expect(lightbox.style.inset).toBe('0px');
+    expect(Number(lightbox.style.zIndex)).toBe(600);
     const image = lightbox.querySelector('img');
     expect(image.getAttribute('src')).toBe(PHOTO);
     expect(image.alt).toBe('佐證');
     lightbox.click();
     expect(lightbox.style.animation).toContain('proFadeOut');
+    // Left on the page until its 180 ms fade has finished.
+    vi.advanceTimersByTime(199);
     expect(document.querySelector('.proof-lightbox')).not.toBe(null);
-    vi.advanceTimersByTime(200);
+    vi.advanceTimersByTime(1);
     expect(document.querySelector('.proof-lightbox')).toBe(null);
     // Kept on window for the rows' inline-free handlers.
     expect(window._showProofLightbox).toBe(showProofLightbox);
@@ -96,8 +102,12 @@ describe('proof sheet', () => {
     expect(sheet().querySelector('#proof-task-name b')).toBe(null);
     expect(sheet().querySelector('#proof-confirm').disabled).toBe(true);
     expect(sheet().querySelector('#proof-preview').style.display).toBe('none');
-    // Anchored at the bottom even where a theme makes sheets relative.
+    // Anchored at the bottom, under the full-screen photo, even where a theme
+    // makes sheets relative.
     expect(sheet().style.position).toBe('fixed');
+    expect(sheet().style.bottom).toBe('0px');
+    expect(sheet().style.top).toBe('');
+    expect(Number(sheet().style.zIndex)).toBe(500);
   });
 
   it('previews the chosen photo, compressed, and allows confirming it', async () => {
@@ -143,7 +153,11 @@ describe('proof sheet', () => {
     // It slides away, then leaves the page.
     expect(sheet().classList.contains('pro-sheet-out')).toBe(true);
     expect(overlay().classList.contains('pro-sheet-overlay-out')).toBe(true);
-    vi.advanceTimersByTime(300);
+    // Left on the page until the slide has finished.
+    vi.advanceTimersByTime(299);
+    expect(sheet()).not.toBe(null);
+    expect(overlay()).not.toBe(null);
+    vi.advanceTimersByTime(1);
     expect(sheet()).toBe(null);
     expect(overlay()).toBe(null);
   });
@@ -166,7 +180,12 @@ describe('proof sheet', () => {
   });
 
   it('puts the thumbnail into the session\'s row, before its XP, in place of a cloud placeholder', async () => {
+    // The home list: other rows, one above with a placeholder of its own and
+    // one below with a photo already.
+    const before = logRow('s0', '<span class="session-proof-cloud"></span>');
     const row = logRow('s1', '<span class="session-proof-cloud"></span>');
+    const after = logRow('s2', '<span class="session-proof-thumb-wrap" data-session-id="s2"></span>');
+    const untouched = [before.innerHTML, after.innerHTML];
     await showProofSheet('s1', '寫報告');
     await choose();
     sheet().querySelector('#proof-confirm').click();
@@ -174,6 +193,8 @@ describe('proof sheet', () => {
     const thumb = row.querySelector('.session-proof-thumb-wrap');
     expect(thumb.dataset.sessionId).toBe('s1');
     expect(thumb.nextElementSibling.classList.contains('log-xp')).toBe(true);
+    expect(row.querySelectorAll('.session-proof-thumb-wrap')).toHaveLength(1);
+    expect([before.innerHTML, after.innerHTML]).toEqual(untouched);
     expect(mocks.proofControlsHtml).toHaveBeenCalledWith('s1', { ownerId: 'u1', taskName: '寫報告' });
     expect(mocks.bindProofThumbs).toHaveBeenCalledWith(row, expect.objectContaining({ ownerId: 'u1' }));
     // Choosing it for the Personal Space photo wall reports back.
@@ -182,7 +203,8 @@ describe('proof sheet', () => {
     expect(mocks.showToast).toHaveBeenLastCalledWith('已展示到個人空間');
     onPhotoWallChange({ selected: false });
     expect(mocks.showToast).toHaveBeenLastCalledWith('已取消個人空間展示');
-    onPhotoWallChange({ error: new Error('quota') });
+    // sessionRow.js reports a failure with the rest of the change too.
+    onPhotoWallChange({ error: new Error('quota'), ownerId: 'u1', sessionId: 's1', selected: false, taskName: '寫報告' });
     expect(mocks.showToast).toHaveBeenLastCalledWith('無法更新個人空間展示');
   });
 
@@ -225,6 +247,8 @@ describe('without the photo pipeline', () => {
       const fresh = await import('../../pwa/js/ui/proofSheet.js');
       await expect(fresh.showProofSheet('s1', '寫報告')).resolves.toBeUndefined();
       expect(sheet()).toBe(null);
+      // Proof is optional: no error shown either.
+      expect(mocks.showToast).not.toHaveBeenCalled();
     } finally {
       vi.doUnmock('../../pwa/js/platform/proofCapture.js');
     }
