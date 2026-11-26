@@ -125,7 +125,8 @@ function _weekStart(dateStr) {
   const d   = new Date(dateStr + 'T00:00:00');
   const day = d.getDay(); // 0 = Sun
   d.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
-  return d.toISOString().slice(0, 10);
+  // BUG-123: the local date (toISOString() is the UTC one, a day early east of UTC).
+  return d.toLocaleDateString('sv');
 }
 
 // ── HTML helpers (inline styles throughout for html2canvas compatibility) ─────
@@ -344,7 +345,7 @@ async function _generatePDF(rangeKey, dateLabel) {
     }
 
     const fileName = rangeKey === 'all'
-      ? `orbit-report-all-${new Date().toISOString().slice(0, 10)}.pdf`
+      ? `orbit-report-all-${new Date().toLocaleDateString('sv')}.pdf`
       : `orbit-report-${rangeKey}.pdf`;
     pdf.save(fileName);
 
