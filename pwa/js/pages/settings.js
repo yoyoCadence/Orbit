@@ -1576,10 +1576,11 @@ function _showTaskModal(container, task) {
     const todayStr = effectiveToday(newDayHour);
     const becomesS = value === 'S' && task?.value !== 'S';
     if (becomesS) {
-      // Tasks the user made S today; the built-in ones are not counted.
+      // Tasks the user made S today: added today (built-in tasks are dated the
+      // day they are seeded, which is not adding them) or changed into S today.
       const todayS = state.tasks.filter(t =>
-        t.value === 'S' && !t.isDefault &&
-        (_dayOf(t.createdAt, newDayHour) === todayStr || t.sSince === todayStr),
+        t.value === 'S' &&
+        (t.sSince === todayStr || (!t.isDefault && _dayOf(t.createdAt, newDayHour) === todayStr)),
       ).length;
       if (todayS >= 2) { alert('今日已新增 2 個 S 級任務（每日上限）。'); return; }
     }

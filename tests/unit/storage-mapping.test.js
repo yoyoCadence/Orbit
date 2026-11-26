@@ -267,6 +267,18 @@ describe('loadFromRemote — tasks / sessions / energy rows', () => {
     expect(added).not.toHaveProperty('iconImg');
   });
 
+  it('still pulls when the cached task list is not a list', async () => {
+    tableData.tasks = [{
+      id: 't', name: 'x', category: 'focus', impact_type: 'task', task_nature: 'growth', value: 'S',
+      difficulty: 1, resistance: 1, emoji: null, daily_xp_cap: 300, cooldown_minutes: 0, min_effective_minutes: 25,
+      is_default: false, reason: 'r', success_criteria: 'c', value_confidence: 100, created_at: '2026-03-01',
+    }];
+    localStorage.setItem('yoyo_user', JSON.stringify({ id: 'uid-1', name: 'A' }));
+    localStorage.setItem('yoyo_tasks', JSON.stringify({ broken: true }));
+    await db.loadFromRemote('uid-1');
+    expect(storage.getTasks()).toEqual([expect.objectContaining({ id: 't', value: 'S' })]);
+  });
+
   it('does not carry another owner\'s device fields into this account (BUG-127)', async () => {
     tableData.tasks = [{
       id: 'shared-id', name: 'x', category: 'focus', impact_type: 'task', task_nature: 'growth', value: 'S',

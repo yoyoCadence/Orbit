@@ -1098,6 +1098,21 @@ describe('renderSettings: S-task daily limit (BUG-125, BUG-127)', () => {
     expect(mockState.tasks).toHaveLength(3);
   });
 
+  it('counts a built-in task changed into S (BUG-127)', () => {
+    mockState.user.mode = 'advanced';
+    const builtin = id => makeTask({ id, value: 'A', isDefault: true, createdAt: '2026-04-11' });
+    const c = settingsWith([builtin('b1'), builtin('b2'), builtin('b3')]);
+    editIntoS(c, 'b1');
+    editIntoS(c, 'b2');
+    expect(mockState.tasks.slice(0, 2)).toEqual([
+      expect.objectContaining({ value: 'S', isDefault: true, sSince: '2026-04-11' }),
+      expect.objectContaining({ value: 'S', isDefault: true, sSince: '2026-04-11' }),
+    ]);
+    editIntoS(c, 'b3');
+    expect(window.alert).toHaveBeenCalledWith(LIMIT);
+    expect(mockState.tasks[2].value).toBe('A');
+  });
+
   it('keeps a built-in task built-in when it is edited, so it still does not count', () => {
     mockState.user.mode = 'advanced';
     const c = settingsWith([

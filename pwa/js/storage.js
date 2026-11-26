@@ -172,11 +172,6 @@ function clearOwnerPendingSession(ownerId, sessionId) {
 }
 
 /**
- * Trims a task down to the fields `upsertTasks` actually writes. The pending
- * sidecar exists purely to retry the remote write, and a full copy would
- * double the localStorage cost of inline `iconImg` data URLs.
- */
-/**
  * A task's fields the cloud has no column for, kept on this device (BUG-127):
  * `sSince` (the day it was changed into S, while it is still S) and `iconImg`.
  * A pull from the cloud carries them over for the same owner's tasks; without
@@ -190,6 +185,11 @@ function withDeviceTaskFields(task, cached) {
   return kept;
 }
 
+/**
+ * Trims a task down to the fields `upsertTasks` actually writes. The pending
+ * sidecar exists purely to retry the remote write, and a full copy would
+ * double the localStorage cost of inline `iconImg` data URLs.
+ */
 function syncableTask(task) {
   const slim = {};
   for (const [jsKey, , , write] of TASK_FIELDS) {
@@ -720,10 +720,7 @@ export const db = {
       };
     }
 
-    const cachedTasks = localUser?.id === userId ? (get('tasks') ?? []) : [];
-    const cachedTaskById = new Map(cachedTasks.filter(t => t?.id).map(t => [t.id, t]));
-    const canonicalTasks = (tasksRes.data ?? [])
-      .map(t => withDeviceTaskFields(fromRow(TASK_FIELDS, t), cachedTaskById.get(t.id)));
+    const remoteTasks = (tasksRes.data ?? []).map(t => fromRow(TASK_FIELDS, t));
     const remoteSessions = filterDeletedSessions(
       (sessionsRes.data ?? []).map(s => fromRow(SESSION_FIELDS, s)),
       deletedSessionIds,
@@ -764,6 +761,12 @@ export const db = {
     // flight. Re-check immediately before the synchronous canonical writes so
     // an obsolete owner can never repopulate the shared local cache.
     await this._assertOwner(userId);
+    // Read the cache only now, with nothing awaited before the write, so an
+    // edit made while the pull ran keeps its device-only fields.
+    const cachedTasks = localUser?.id === userId ? get('tasks') : null;
+    const cachedTaskById = new Map((Array.isArray(cachedTasks) ? cachedTasks : [])
+      .filter(t => t?.id).map(t => [t.id, t]));
+    const canonicalTasks = remoteTasks.map(t => withDeviceTaskFields(t, cachedTaskById.get(t.id)));
     if (canonicalUser) set('user', canonicalUser);
     else if (localUser?.id !== userId) remove('user');
     set('tasks', canonicalTasks);
