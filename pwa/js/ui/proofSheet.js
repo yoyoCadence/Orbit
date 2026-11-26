@@ -87,7 +87,13 @@ export async function showProofSheet(sessionId, taskName) {
   });
   sheet.querySelector('#proof-confirm').addEventListener('click', () => {
     if (!selectedDataUrl) return;
-    saveProof(sessionId, selectedDataUrl);
+    try {
+      saveProof(sessionId, selectedDataUrl);
+    } catch {
+      // BUG-124: storage full. Nothing was kept; the sheet stays for Skip.
+      showToast('這台裝置的空間不足，照片沒有存下來');
+      return;
+    }
     // HW-112C1: a signed-in account also keeps a copy in its private cloud
     // folder (queued, sent in the background; guests stay on this device).
     if (state.user?.id && hasStoredSession()) proofSaved(state.user.id, sessionId);
@@ -108,7 +114,12 @@ export async function showProofSheet(sessionId, taskName) {
         const xpSpan = logItem.querySelector('.log-xp');
         if (xpSpan && wrap) {
           xpSpan.before(wrap);
-          bindProofThumbs(logItem, {
+          // BUG-124: the list takes it in like its own rows (sessionRow.js),
+          // so its Personal Space switch updates the whole list and the
+          // page's own handler runs. A page that does not answer (an older
+          // cached sessionRow.js) leaves the binding to this row alone.
+          const taken = !wrap.dispatchEvent(new window.CustomEvent('orbit:proof-added', { bubbles: true, cancelable: true }));
+          if (!taken) bindProofThumbs(logItem, {
             ownerId: state.user?.id,
             onPhotoWallChange: change => showToast(
               change.error

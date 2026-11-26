@@ -96,6 +96,20 @@ export function proofControlsHtml(sessionId, { ownerId = null, taskName = '' } =
  */
 export function bindProofThumbs(container, { ownerId = null, onPhotoWallChange } = {}) {
   bindProofControls(container, container, { ownerId, onPhotoWallChange });
+  // BUG-124: a photo the proof sheet (ui/proofSheet.js) puts into a row is
+  // taken in like the list's own, so its Personal Space switch updates the
+  // whole list and runs this page's handler. One listener per container (a
+  // page renders into the same one again); the latest render's options win.
+  const previous = PROOF_ADDED_LISTENERS.get(container);
+  if (previous) container.removeEventListener(PROOF_ADDED_EVENT, previous);
+  const onProofAdded = event => {
+    const wrap = event.target;
+    if (!wrap?.classList?.contains('session-proof-thumb-wrap')) return;
+    event.preventDefault();
+    bindProofControls(wrap, container, { ownerId, onPhotoWallChange });
+  };
+  PROOF_ADDED_LISTENERS.set(container, onProofAdded);
+  container.addEventListener(PROOF_ADDED_EVENT, onProofAdded);
   observeCloudProofs(container, ownerId, sentinel => {
     const shell = document.createElement('div');
     shell.innerHTML = proofControlsHtml(sentinel.dataset.proofCloudSessionId, {
@@ -108,6 +122,10 @@ export function bindProofThumbs(container, { ownerId = null, onPhotoWallChange }
     bindProofControls(wrap, container, { ownerId, onPhotoWallChange });
   });
 }
+
+// The event ui/proofSheet.js sends from a thumbnail it inserted (BUG-124).
+const PROOF_ADDED_EVENT = 'orbit:proof-added';
+const PROOF_ADDED_LISTENERS = new WeakMap();
 
 // Binds the controls inside `target`; a selection change updates every
 // photo-wall button in `scope` (the whole list).

@@ -208,6 +208,39 @@ describe('proof sheet', () => {
     expect(mocks.showToast).toHaveBeenLastCalledWith('無法更新個人空間展示');
   });
 
+  it('leaves the thumbnail to the page when the page takes it in (BUG-124)', async () => {
+    const row = logRow('s1');
+    const asked = [];
+    // What sessionRow.js's bindProofThumbs does for the list it rendered.
+    document.body.addEventListener('orbit:proof-added', event => {
+      asked.push({ target: event.target, cancelable: event.cancelable });
+      event.preventDefault();
+    });
+    await showProofSheet('s1', '寫報告');
+    await choose();
+    sheet().querySelector('#proof-confirm').click();
+    const thumb = row.querySelector('.session-proof-thumb-wrap');
+    expect(asked).toEqual([{ target: thumb, cancelable: true }]);
+    expect(mocks.bindProofThumbs).not.toHaveBeenCalled();
+    expect(mocks.showToast).toHaveBeenLastCalledWith('佐證已儲存');
+  });
+
+  it('says so and keeps the sheet when this device has no room for the photo (BUG-124)', async () => {
+    const row = logRow('s1');
+    mocks.saveProof.mockImplementation(() => {
+      throw new window.DOMException('full', 'QuotaExceededError');
+    });
+    await showProofSheet('s1', '寫報告');
+    await choose();
+    sheet().querySelector('#proof-confirm').click();
+    expect(mocks.showToast).toHaveBeenLastCalledWith('這台裝置的空間不足，照片沒有存下來');
+    // Nothing queued for the cloud, no thumbnail, and the sheet stays for Skip.
+    expect(mocks.proofSaved).not.toHaveBeenCalled();
+    expect(row.querySelector('.session-proof-thumb-wrap')).toBe(null);
+    expect(sheet().classList.contains('pro-sheet-out')).toBe(false);
+    mocks.saveProof.mockReset();
+  });
+
   it('adds no second thumbnail, and needs no row on the page', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout'] });
     const row = logRow('s1', '<span class="session-proof-thumb-wrap"></span>');
