@@ -130,6 +130,52 @@ describe('data-action dispatcher', () => {
     expect(window.signOut).not.toHaveBeenCalled();
   });
 
+  // TEST-014: each listed action calls its own window function, with the
+  // argument where it takes one (a mix-up would only show when tapped).
+  it.each([
+    ['switchAuthTab', 'switchAuthTab', 'signup', ['signup']],
+    ['loginWithGoogle', 'loginWithGoogle', undefined, []],
+    ['togglePasswordVisibility', 'togglePasswordVisibility', undefined, []],
+    ['showForgotPassword', 'showForgotPassword', undefined, []],
+    ['continueAsGuest', 'continueAsGuest', undefined, []],
+    ['navigate', 'navigate', 'settings', ['settings']],
+    ['dismissTrialBanner', '_dismissTrialBanner', undefined, []],
+    ['dismissStatusBarNotice', '_dismissStatusBarNotice', undefined, []],
+    ['checkStatusBarSync', '_checkStatusBarSync', undefined, []],
+    ['minimizeFocus', 'minimizeFocus', undefined, []],
+    ['togglePauseFocus', 'togglePauseFocus', undefined, []],
+    ['endFocus', 'endFocus', undefined, []],
+    ['skipFocus', 'skipFocus', undefined, []],
+    ['restoreFocus', 'restoreFocus', undefined, []],
+    ['closeLevelUp', 'closeLevelUp', undefined, []],
+    ['reviewSetMode', '_reviewSetMode', 'month', ['month']],
+    ['reviewPrevMonth', '_reviewPrevMonth', undefined, []],
+    ['reviewNextMonth', '_reviewNextMonth', undefined, []],
+    ['reshowShieldBanner', 'reshowShieldBanner', undefined, []],
+  ])('%s → window.%s', (action, fn, arg, expected) => {
+    for (const name of DOM_ACTION_NAMES) window[name] = vi.fn();
+    window[fn] = vi.fn();
+    document.body.innerHTML = `<button data-action="${action}"${arg ? ` data-action-arg="${arg}"` : ''}>x</button>`;
+    click(document.querySelector('button'));
+    expect(window[fn]).toHaveBeenCalledTimes(1);
+    expect(window[fn]).toHaveBeenCalledWith(...expected);
+  });
+
+  it('covers every listed action in the table above', () => {
+    // showShieldInfo is checked above (it takes the element).
+    const tested = new Set(['switchAuthTab', 'loginWithGoogle', 'togglePasswordVisibility',
+      'showForgotPassword', 'continueAsGuest', 'navigate', 'dismissTrialBanner',
+      'dismissStatusBarNotice', 'checkStatusBarSync', 'minimizeFocus', 'togglePauseFocus',
+      'endFocus', 'skipFocus', 'restoreFocus', 'closeLevelUp', 'reviewSetMode',
+      'reviewPrevMonth', 'reviewNextMonth', 'reshowShieldBanner', 'showShieldInfo']);
+    expect([...DOM_ACTION_NAMES].sort()).toEqual([...tested].sort());
+  });
+
+  it('does nothing for a click outside any element (no closest, e.g. the document)', () => {
+    expect(() => handleActionClick({ target: document })).not.toThrow();
+    expect(() => handleActionClick({ target: null })).not.toThrow();
+  });
+
   it('is installed on the document', () => {
     window.closeLevelUp = vi.fn();
     document.body.innerHTML = '<button data-action="closeLevelUp">ok</button>';

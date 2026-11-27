@@ -590,7 +590,9 @@ async function loadAndStart(session) {
 // a write this boot made after the load (the day rollover), still in flight.
 function _reportBootLoadLeftovers(ownerId) {
   const { sessions = 0, deletions = 0 } = storage.getPendingSyncSummary(ownerId);
-  if (sessions + deletions > 0) _showSyncFailure();
+  // The count too: a snapshot still in flight would read as a failure, and
+  // online nothing refreshes the banner once it lands (#297 review).
+  if (sessions + deletions > 0) _showSyncFailure(sessions + deletions);
 }
 
 // PRO-014L2: SUB-16 is granted by the server (streakUnlock.js). Asked only
@@ -780,9 +782,9 @@ function _pendingSyncCount() {
   return storage.getPendingSyncSummary(_currentSession?.user?.id ?? null).total;
 }
 
-function _showSyncFailure() {
+function _showSyncFailure(pending = _pendingSyncCount()) {
   _needsResync = true;
-  showSyncBanner(isOnline() ? 'error' : 'offline', { pending: _pendingSyncCount() });
+  showSyncBanner(isOnline() ? 'error' : 'offline', { pending });
 }
 
 // BUG-140: the banner and the reconnect flag are about the account shown, and
@@ -821,7 +823,9 @@ async function _syncAfterReconnect() {
   _reconnectSync = run;
   run.done = (async () => {
     try {
-      // Never two loads at once (see _loadRemote): wait for that one to stop.
+      // Not alongside that one (see _loadRemote): wait for it to stop. Only
+      // reconnect syncs wait here; loadAndStart() does not, so signing in to
+      // the same account again while one runs still loads twice (as before).
       if (previous) await previous.done;
       if (_remoteSync) await _remoteSync;
       if (_currentSession !== session) return;
