@@ -67,7 +67,6 @@ describe('page change', () => {
     const active = () => [...document.querySelectorAll('.nav-item.active')].map(item => item.dataset.page);
     await renderPage('somewhere');
     content().dispatchEvent(new Event('animationend'));
-    content().className = '';
     await renderPage('goals');
     expect(active()).toEqual(['goals']);
     expect(content().classList.contains('page-slide-left')).toBe(true);
@@ -90,6 +89,16 @@ describe('page change', () => {
     content().dispatchEvent(new Event('animationend'));
     await renderPage('goals');
     expect(content().classList.contains('page-slide-left')).toBe(true);
+  });
+
+  it('a page change before the slide has ended replaces it (TEST-017)', async () => {
+    await renderPage('somewhere');
+    content().dispatchEvent(new Event('animationend'));
+    await renderPage('review');
+    expect(content().classList.contains('page-slide-left')).toBe(true);
+    // No animationend yet: the next page slides the other way, alone.
+    await renderPage('goals');
+    expect([...content().classList]).toEqual(['page-slide-right']);
   });
 
   it('shows the home page with a message when a page cannot load', async () => {
