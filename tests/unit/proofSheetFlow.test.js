@@ -215,17 +215,24 @@ describe('proof sheet', () => {
     const row = logRow('s1');
     const asked = [];
     // What sessionRow.js's bindProofThumbs does for the list it rendered.
-    document.body.addEventListener('orbit:proof-added', event => {
+    const takeIn = event => {
       asked.push({ target: event.target, cancelable: event.cancelable });
       event.preventDefault();
-    });
-    await showProofSheet('s1', '寫報告');
-    await choose();
-    sheet().querySelector('#proof-confirm').click();
-    const thumb = row.querySelector('.session-proof-thumb-wrap');
-    expect(asked).toEqual([{ target: thumb, cancelable: true }]);
-    expect(mocks.bindProofThumbs).not.toHaveBeenCalled();
-    expect(mocks.showToast).toHaveBeenLastCalledWith('佐證已儲存');
+    };
+    // On <body>, which outlives the test: removed after it (TEST-016), or the
+    // next test's page would seem to take its thumbnail in too.
+    document.body.addEventListener('orbit:proof-added', takeIn);
+    try {
+      await showProofSheet('s1', '寫報告');
+      await choose();
+      sheet().querySelector('#proof-confirm').click();
+      const thumb = row.querySelector('.session-proof-thumb-wrap');
+      expect(asked).toEqual([{ target: thumb, cancelable: true }]);
+      expect(mocks.bindProofThumbs).not.toHaveBeenCalled();
+      expect(mocks.showToast).toHaveBeenLastCalledWith('佐證已儲存');
+    } finally {
+      document.body.removeEventListener('orbit:proof-added', takeIn);
+    }
   });
 
   it('says so and keeps the sheet when this device has no room for the photo (BUG-124)', async () => {
@@ -293,7 +300,12 @@ describe('without the photo pipeline', () => {
       // Proof is optional: no error shown either.
       expect(mocks.showToast).not.toHaveBeenCalled();
     } finally {
-      vi.doUnmock('../../pwa/js/platform/proofCapture.js');
+      // TEST-016: put back what the other tests use. The fresh module took
+      // window._showProofLightbox, and doUnmock() would also drop the mock
+      // above: the first module loads the capture module lazily, so a later
+      // test would get the real one (seen with --sequence.shuffle).
+      vi.doMock('../../pwa/js/platform/proofCapture.js', () => ({ compressImage: mocks.compressImage }));
+      window._showProofLightbox = showProofLightbox;
     }
   });
 });

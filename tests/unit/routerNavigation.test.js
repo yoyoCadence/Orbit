@@ -60,12 +60,18 @@ afterEach(() => {
 });
 
 describe('page change', () => {
-  // The router remembers the last page, so these run in order.
-  it('marks the page in the bottom bar and slides toward it, but not on the first render', async () => {
+  // The first render (no slide) is in routerFirstRender.test.js: the router
+  // remembers the last page across tests, so here it starts from a known one
+  // (a page outside the order counts as home) whatever ran before (TEST-016).
+  it('marks the page in the bottom bar and slides toward it', async () => {
     const active = () => [...document.querySelectorAll('.nav-item.active')].map(item => item.dataset.page);
+    await renderPage('somewhere');
+    content().dispatchEvent(new Event('animationend'));
+    content().className = '';
     await renderPage('goals');
     expect(active()).toEqual(['goals']);
-    expect(content().className).toBe('');
+    expect(content().classList.contains('page-slide-left')).toBe(true);
+    content().dispatchEvent(new Event('animationend'));
     await renderPage('review');
     expect(active()).toEqual(['review']);
     expect(content().classList.contains('page-slide-left')).toBe(true);

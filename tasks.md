@@ -142,7 +142,7 @@
 
 ## Next
 
-> 2026-11-26 擁有者：「好啊 繼續做」「不用停 能做就一直做吧」→ 先做 PS-260F（#275 留下的兩個 P3，#276），之後 Next 只剩需要擁有者的項目，agent 依 2026-11-18 的做法列出新的完善項目：TEST-004～TEST-012（補單元測試，完成，見 Done）；BUG-121～127（review 找到的問題，完成）；BUG-129～132（#287 review 找到的設定頁問題，完成）；BUG-133（同時跑兩次同步，完成）；BUG-134（首頁重畫時累積監聽，完成）；BUG-135（拖曳後吃掉下一次點擊，完成）；BUG-136～137（拖曳的邊界情況，完成）；BUG-138～139（個人頁，完成）；TEST-013＋BUG-140（`app.js`；登出時收起同步橫幅，完成）；BUG-142～143（#296 記下的兩個同步狀態問題，完成）；TEST-014＋BUG-144～145（導覽、DOM 動作、auth 包裝與 utils 的測試；導覽跳過、完成紀錄的有效日，完成）；BUG-146（週回顧、個人頁與首頁的日期改用有效日，完成）；TEST-015（到期就會失敗的測試，完成）；BUG-120（註冊後自動登入失敗時沒有說明，需核准）；BUG-141（帳號載入失敗後改用訪客，仍以帳號同步，需核准）。
+> 2026-11-26 擁有者：「好啊 繼續做」「不用停 能做就一直做吧」→ 先做 PS-260F（#275 留下的兩個 P3，#276），之後 Next 只剩需要擁有者的項目，agent 依 2026-11-18 的做法列出新的完善項目：TEST-004～TEST-012（補單元測試，完成，見 Done）；BUG-121～127（review 找到的問題，完成）；BUG-129～132（#287 review 找到的設定頁問題，完成）；BUG-133（同時跑兩次同步，完成）；BUG-134（首頁重畫時累積監聽，完成）；BUG-135（拖曳後吃掉下一次點擊，完成）；BUG-136～137（拖曳的邊界情況，完成）；BUG-138～139（個人頁，完成）；TEST-013＋BUG-140（`app.js`；登出時收起同步橫幅，完成）；BUG-142～143（#296 記下的兩個同步狀態問題，完成）；TEST-014＋BUG-144～145（導覽、DOM 動作、auth 包裝與 utils 的測試；導覽跳過、完成紀錄的有效日，完成）；BUG-146（週回顧、個人頁與首頁的日期改用有效日，完成）；TEST-015（到期就會失敗的測試，完成）；TEST-016（依執行順序才會通過的測試，完成）；BUG-120（註冊後自動登入失敗時沒有說明，需核准）；BUG-141（帳號載入失敗後改用訪客，仍以帳號同步，需核准）。
 
 > 2026-11-18 擁有者要求：「列出幾個你覺得需要完善的事 持續完善」，每完成一段就開 PR 並合併，不必特別詢問（必要時才問）。agent 列出的完善清單如下，依序做；需要核准的另外標明。
 
@@ -302,6 +302,17 @@
 ---
 
 ## Done
+
+- [x] **TEST-016** 依執行順序才會通過的測試（#300 獨立 review 發現，2026-11-27，main 上原本就有）
+  - 以 `npx vitest run --sequence.shuffle --sequence.seed=N` 打亂測試順序（檔案內與檔案間），seed 1～8 有 1～14 個失敗，來自 6 個檔案。都是測試之間互相影響，app 程式沒有問題：
+    - `streakUnlock.test.js`：兩個授權成功的測試沒有等 `delayMs: 0` 的慶祝視窗，計時器在下一個測試裡觸發，使它的視窗次數多一次。改為 `afterEach` 先等一輪再還原時鐘。
+    - `proofSheetFlow.test.js`（TEST-008 寫的）：「沒有照片處理模組」的測試 `vi.doUnmock()` 拿掉了照片處理模組的 mock（第一份 `proofSheet.js` 延後載入它，之後的測試拿到真的），新載入的模組也取代了 `window._showProofLightbox`；改為還原 mock 與 window 函式。另一個測試把 `orbit:proof-added` 的 listener 留在 `<body>` 上，之後的測試都像頁面已接手縮圖；改為測試結束時移除。
+    - `review.test.js`：模組記住目前看的月份，測試以 `afterAll` 補回自己往前翻的月數，換了順序就錯；改為每個測試開始時回到本月（`resetToCurrentMonth()`）。
+    - `routerNavigation.test.js`：「第一次畫面不滑動」只在它剛好第一個跑時成立（router 記住上一頁）；移到新的 `routerFirstRender.test.js`（每個檔案各有一份模組），原本的測試從已知的頁面開始。
+    - `appShell.test.js`：「導覽載入失敗」靠 mock factory 讀旗標，但 mock 的模組在任何測試載入過一次後就留在快取（`vi.resetModules()` 也不會重跑 factory）；改為在測試裡 `vi.doMock()` 換成會失敗的模組，結束時換回。
+    - `profile.test.js`：`vi.clearAllMocks()` 不清掉 `mockReturnValue()`，前一個測試的 Pro 狀態留到後面；改為每個測試開始時是免費，「新增自訂主題」的測試自己設成 Pro。
+  - 修正後以 seed 1～24 打亂整套全部通過（2371 個），照原本順序也通過。之後新增測試時可以用同一個指令跑幾個 seed 檢查；要不要在 CI 加一個打亂順序的工作屬 CI 設定，沒有改（需要時再提出）。
+  - 一併處理 #300 的 P3：`futureClock.config.js` 的範例加上 `TZ=UTC`（`03:00Z` 在台灣是 11 點，碰不到換日前的時段）；`futureClock.setup.js` 註明不會被移動的地方（不加 `new` 的 `Date()`、不帶日期的 `Intl.DateTimeFormat().format()`、`performance.timeOrigin`、`vi.getRealSystemTime()`、`structuredClone(date)`）；`exportPdf.test.js` 的選單測試還原整個 user，而不只是 `newDayHour`。
 
 - [x] **TEST-015** 測試裡寫死的日期：到期後 CI 會變紅（#299 獨立 review 發現，2026-11-27，main 上原本就有）
   - `streakUnlock.test.js` 的「server source（PRO-014H）：付費授權後重新整理的 projection 讓帳號成為 Pro」以 `SERVER_END = '2026-12-10T08:00:00.000Z'` 當作伺服器的到期時間，卻用真的時鐘判斷是否還在 Pro：**2026-12-10 08:00 UTC 之後每個 PR 的 CI 都會失敗**。改為整個檔案把時鐘固定在 `2026-11-10T09:00Z`（與檔案中 mock 的日期 `2026-11-10` 一致；只假 `Date`，計時器照常）。
