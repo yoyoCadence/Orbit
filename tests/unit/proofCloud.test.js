@@ -884,3 +884,49 @@ describe('BUG-154：快取打不開一次，不會一直當作沒有', () => {
     expect(await cachedOnThisDevice(sid(2))).toBe(true);
   });
 });
+
+describe('#310 review：丟掉的連線會關掉', () => {
+  afterEach(() => { vi.restoreAllMocks(); });
+
+  it('快取寫入一直失敗（例如空間不足）時，不會留下一堆打開的連線', async () => {
+    const realOpen = indexedDB.open.bind(indexedDB);
+    const connections = [];
+    vi.spyOn(indexedDB, 'open').mockImplementation((...args) => {
+      const request = realOpen(...args);
+      request.addEventListener('success', () => {
+        const db = request.result;
+        const entry = { open: true };
+        const close = db.close.bind(db);
+        db.close = () => { entry.open = false; close(); };
+        connections.push(entry);
+      });
+      return request;
+    });
+    // A photo whose bytes cannot be read: the cache write fails every time.
+    const unreadable = jpeg();
+    unreadable.arrayBuffer = () => Promise.reject(new window.DOMException('quota', 'QuotaExceededError'));
+    mockDownload.mockResolvedValue({ data: unreadable, error: null });
+    signIn();
+    for (let i = 1; i <= 4; i++) {
+      expect(await cloud.loadCloudProof(OWNER, sid(i))).not.toBeNull();   // still shown
+    }
+    expect(connections.length).toBeGreaterThan(1);           // reopened after each failure
+    expect(connections.filter(c => c.open).length).toBeLessThanOrEqual(1);
+  });
+
+  it('打開被擋住而放棄後，晚到的成功會把那個連線關掉', async () => {
+    const close = vi.fn();
+    let request;
+    vi.spyOn(indexedDB, 'open').mockImplementation(() => {
+      request = {};
+      setTimeout(() => request.onblocked?.(), 0);
+      return request;
+    });
+    signIn();
+    expect(await cloud.loadCloudProof(OWNER, sid(1))).toBe('blob:orbit/1');   // memory only
+    // The other tab lets go: the open finishes after all.
+    request.result = { close };
+    request.onsuccess?.();
+    expect(close).toHaveBeenCalled();
+  });
+});
