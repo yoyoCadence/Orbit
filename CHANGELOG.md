@@ -3,6 +3,13 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.42.12] - 2026-11-27
+
+### Fixed
+- 個人頁（BUG-138）：頭像上傳或改名同步完成時，若已切到其他頁面，不會再把個人頁畫到那一頁上；若這段期間登出並換了帳號，結果（或失敗時的還原）不會寫進另一個帳號的資料。
+
+---
+
 ## [1.42.11] - 2026-11-27
 
 ### Fixed

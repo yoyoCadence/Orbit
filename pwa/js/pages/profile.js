@@ -294,6 +294,13 @@ export function renderProfile(container) {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = async ev => {
+      // BUG-138: the upload outlives this page. Its result belongs to the
+      // account it was started for, and is drawn only where Profile still is.
+      const isSameAccount = _sameAccountAs(state.user);
+      const redraw = () => {
+        if (_profileShown(container)) renderProfile(container);
+        updateHeader();
+      };
       const previousAvatar = state.user.avatar;
       const previousAvatarPath = state.user.avatarPath || null;
       state.user.avatar = ev.target.result;
@@ -304,17 +311,19 @@ export function renderProfile(container) {
       _setProfileSyncStatus('avatar-sync-status', '頭像上傳中...');
       try {
         const uploaded = await db.uploadAvatar(file);
+        if (!isSameAccount()) return;
         state.user.avatar = uploaded.url || state.user.avatar;
         state.user.avatarPath = uploaded.path;
         const synced = await storage.saveUserAndSync(state.user);
-        renderProfile(container);
-        updateHeader();
+        if (!isSameAccount()) return;
+        redraw();
         _setProfileSyncStatus('avatar-sync-status', synced ? '頭像已同步' : '頭像已儲存在此裝置，登入後可同步');
       } catch (err) {
+        // Another account now: its avatar is not this one's to keep or undo.
+        if (!isSameAccount()) return;
         if (err?.message === 'Not authenticated') {
           storage.saveUserLocal(state.user);
-          renderProfile(container);
-          updateHeader();
+          redraw();
           _setProfileSyncStatus('avatar-sync-status', '頭像已儲存在此裝置，登入後可同步');
           return;
         }
@@ -322,8 +331,7 @@ export function renderProfile(container) {
         state.user.avatar = previousAvatar;
         state.user.avatarPath = previousAvatarPath;
         storage.saveUserLocal(state.user);
-        renderProfile(container);
-        updateHeader();
+        redraw();
         _setProfileSyncStatus('avatar-sync-status', '頭像上傳失敗，請稍後再試', true);
       }
     };
@@ -721,6 +729,12 @@ function showNameModal(container) {
   modal.querySelector('#name-save-btn').addEventListener('click', async () => {
     const name = input.value.trim();
     if (!name) return;
+    // BUG-138: as for the avatar, the sync outlives the page it started on.
+    const isSameAccount = _sameAccountAs(state.user);
+    const redraw = () => {
+      if (_profileShown(container)) renderProfile(container);
+      updateHeader();
+    };
     const previousName = state.user.name;
     const btn = modal.querySelector('#name-save-btn');
     const status = modal.querySelector('#name-save-status');
@@ -733,6 +747,7 @@ function showNameModal(container) {
     updateHeader();
     try {
       const synced = await storage.saveUserAndSync(state.user);
+      if (!isSameAccount()) { modal.remove(); return; }
       status.classList.remove('error');
       if (synced) {
         status.textContent = '✓ 同步完成';
@@ -742,9 +757,10 @@ function showNameModal(container) {
         btn.disabled = false;
         btn.textContent = '儲存';
       }
-      renderProfile(container);
-      updateHeader();
+      redraw();
     } catch (err) {
+      // Another account now: its name is not this one's to undo.
+      if (!isSameAccount()) { modal.remove(); return; }
       console.error('Name sync failed:', err);
       state.user.name = previousName;
       storage.saveUserLocal(state.user);
@@ -752,10 +768,21 @@ function showNameModal(container) {
       btn.textContent = '儲存';
       status.textContent = '同步失敗，請稍後再試';
       status.classList.add('error');
-      renderProfile(container);
-      updateHeader();
+      redraw();
     }
   });
+}
+
+// BUG-138: true while the stored user is still the account `user` was (a
+// sync may replace the object; sign-out or another account changes the id).
+function _sameAccountAs(user) {
+  const ownerId = user?.id ?? null;
+  return () => Boolean(state.user) && (state.user.id ?? null) === ownerId;
+}
+
+// The router reuses the page container: Profile is drawn only while shown.
+function _profileShown(container) {
+  return container.isConnected && Boolean(container.querySelector('#avatar-wrap'));
 }
 
 async function _syncUserPreference() {
