@@ -494,7 +494,14 @@ function _closeProofOverlays() {
 
 async function loadAndStart(session) {
   // Another account signing in here (or in another tab) replaces the one shown.
-  if (state.user?.id && state.user.id !== session?.user?.id) _closeProofOverlays();
+  const replacesShown = Boolean(state.user?.id) && state.user.id !== session?.user?.id;
+  if (replacesShown) _closeProofOverlays();
+  // BUG-140: its sync status goes too, and so does that of an account whose
+  // load failed here and left the login screen up (no user shown, but its
+  // session and failure banner stay; #296 review).
+  if (replacesShown || (_currentSession && _currentSession.user?.id !== session?.user?.id)) {
+    _clearSyncStatus();
+  }
   const operation = authOperationGuard.begin(session);
   _currentSession = session;
   let remoteLoaded = false;
@@ -597,6 +604,7 @@ function handleSignOut() {
   // floating above the login screen with a null state.user behind them.
   clearDayCycleModals();
   _closeProofOverlays();
+  _clearSyncStatus();
   if (!_currentSession && !storage.getUser()) return; // already signed out
   // HW-112C2a/b: this account's downloaded proof photos leave with it, and so
   // do its local photos that are surely in the cloud (§5.5, §9.5 B); photos
@@ -762,6 +770,20 @@ function _pendingSyncCount() {
 function _showSyncFailure() {
   _needsResync = true;
   showSyncBanner(isOnline() ? 'error' : 'offline', { pending: _pendingSyncCount() });
+}
+
+// BUG-140: the banner and the reconnect flag are about the account shown, and
+// go with it. The banner keeps 'offline', 'error' or 'syncing' until the next
+// status (ui/feedback.js), and a successful loadAndStart() shows none, so the
+// next account would see the previous one's "N 筆待同步". The flag is reset for
+// the same reason; a browser sends 'online' only after 'offline', which sets it
+// again, so that half changes nothing a user can see today.
+function _clearSyncStatus() {
+  _needsResync = false;
+  const banner = document.getElementById('sync-banner');
+  if (!banner) return;
+  banner.className = 'hidden';
+  banner.textContent = '';
 }
 
 /** Keeps the offline banner's pending count current after local writes. */
