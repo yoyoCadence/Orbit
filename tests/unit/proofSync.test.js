@@ -648,7 +648,8 @@ describe('TEST-022：出錯與退而求其次的路徑', () => {
     saveProof(sid(1), `data:image/png;base64,${btoa('png-bytes')}`);
     const jpeg = new Blob([new Uint8Array([0xff, 0xd8])], { type: 'image/jpeg' });
     const close = vi.fn();
-    vi.stubGlobal('createImageBitmap', vi.fn(async () => ({ width: 4, height: 3, close })));
+    const bitmap = { width: 4, height: 3, close };
+    vi.stubGlobal('createImageBitmap', vi.fn(async () => bitmap));
     vi.stubGlobal('OffscreenCanvas', undefined);
     const drawImage = vi.fn();
     const blobbed = [];
@@ -660,7 +661,8 @@ describe('TEST-022：出錯與退而求其次的路徑', () => {
     expect(await uploadProof(OWNER, sid(1))).toBe('uploaded');
     expect(mockUpload.mock.calls[0][1]).toBe(jpeg);
     expect(blobbed).toEqual([[4, 3, 'image/jpeg', 0.5]]);
-    expect(drawImage).toHaveBeenCalledWith(expect.objectContaining({ width: 4, height: 3 }), 0, 0);
+    // The bitmap itself: the 4×3 canvas would match a { width, height } pattern too (#307 review).
+    expect(drawImage).toHaveBeenCalledWith(bitmap, 0, 0);
     expect(close).toHaveBeenCalled();
   });
 
@@ -683,8 +685,8 @@ describe('TEST-022：出錯與退而求其次的路徑', () => {
     await flushProofSync(OWNER);
     expect(mockRemove).toHaveBeenCalled();
     expect(pendingProofRemovals(OWNER)).toEqual([sid(1)]);
-    // Handled where it is thrown, not by stopping the whole sync.
-    expect(warn).not.toHaveBeenCalledWith(expect.stringContaining('Proof sync stopped'), expect.anything());
+    // Handled where it is thrown, not by stopping the whole sync (which warns).
+    expect(warn).not.toHaveBeenCalled();
 
     mockRemove.mockResolvedValue({ data: [], error: null });
     await flushProofSync(OWNER);
