@@ -141,18 +141,9 @@ function _showDurationPicker(taskId, task) {
 function _ensureFocusDeskButton() {
   const box = document.querySelector('#focus-overlay .focus-box');
   if (!box) return;
-  const existing = document.getElementById('focus-desk-btn');
-  if (existing) {
-    existing.onclick = event => {
-      event.preventDefault();
-      event.stopPropagation();
-      const now = Date.now();
-      if (now - _focusDeskToggleAt < 350) return;
-      _focusDeskToggleAt = now;
-      window.toggleFocusDeskMode();
-    };
-    return;
-  }
+  // Made once; its listeners below stay with it for later sessions (an extra
+  // onclick set here ran a fourth handler per tap, #304 review).
+  if (document.getElementById('focus-desk-btn')) return;
   const skipBtn = box.querySelector('.focus-skip-btn');
   const btn = document.createElement('button');
   btn.id = 'focus-desk-btn';
@@ -191,12 +182,15 @@ function _setFocusDeskMode(enabled, source = 'manual') {
 }
 
 function _looksLikePhoneRestingFlat(event) {
+  // No reading is null (Number(null) would be 0, i.e. flat; BUG-153).
+  if (event.beta == null || event.gamma == null) return false;
   const beta = Number(event.beta);
   const gamma = Number(event.gamma);
   if (!Number.isFinite(beta) || !Number.isFinite(gamma)) return false;
   const flatScreenUp = Math.abs(beta) < 18 && Math.abs(gamma) < 18;
-  const flatLandscape = Math.abs(Math.abs(beta) - 90) < 12 && Math.abs(gamma) < 12;
-  return flatScreenUp || flatLandscape;
+  // Standing upright in portrait (e.g. against a stand); the name said landscape.
+  const uprightPortrait = Math.abs(Math.abs(beta) - 90) < 12 && Math.abs(gamma) < 12;
+  return flatScreenUp || uprightPortrait;
 }
 
 function _startFocusDeskSensors() {
@@ -210,6 +204,12 @@ function _startFocusDeskSensors() {
     rafId = requestAnimationFrame(() => {
       rafId = 0;
       if (!focus.active || !lastEvent) return;
+      // Minimised (BUG-153): not behind the hidden overlay, and the 1.2 s
+      // start over once it is back.
+      if (document.getElementById('focus-overlay')?.classList.contains('hidden')) {
+        focus.deskStableSince = 0;
+        return;
+      }
       if (_looksLikePhoneRestingFlat(lastEvent)) {
         focus.deskStableSince ||= Date.now();
         if (!focus.deskAutoSuppressed && !focus.deskMode && Date.now() - focus.deskStableSince > 1200) {
@@ -237,6 +237,8 @@ async function _requestFocusDeskSensors() {
       const result = await OrientationEvent.requestPermission();
       if (result !== 'granted') return;
     } catch { return; }
+    // The session may have ended while iOS asked (BUG-153): no listener for it.
+    if (!focus.active) return;
   }
   _startFocusDeskSensors();
 }
@@ -262,6 +264,7 @@ function _stopFocusDeskMode() {
 window.toggleFocusDeskMode = async function () {
   if (!focus.active) return;
   await _requestFocusDeskSensors();
+  if (!focus.active) return;   // ended while iOS asked (BUG-153)
   _setFocusDeskMode(!focus.deskMode, 'manual');
 };
 

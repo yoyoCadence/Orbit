@@ -102,8 +102,8 @@ describe('Personal Space V2 reward session rules', () => {
     })))).toEqual([]);
   });
 
-  // TEST-020: the other questEngine.js helpers (the reconciler only uses the
-  // winners and the index today).
+  // TEST-020: the other questEngine.js helpers (the app only uses
+  // selectDailyMainQuestWinners, in reconciler.js, today).
   it('winner ids, the winner check and the day\'s quest state agree with the winners', () => {
     const later = makeSession({ id: 'later', completedAt: `${EPOCH_DATE}T11:00:00.000Z` });
     const earlier = makeSession({ id: 'earlier', completedAt: `${EPOCH_DATE}T09:00:00.000Z` });
@@ -116,6 +116,8 @@ describe('Personal Space V2 reward session rules', () => {
     expect(isDailyMainQuestWinner({ original: { id: 'earlier', date: EPOCH_DATE } }, sessions)).toBe(true);
     expect(isDailyMainQuestWinner(null, sessions)).toBe(false);
     expect(isDailyMainQuestWinner({ id: 'earlier' }, sessions)).toBe(false);
+    // The winner's id on another day is not that day's winner.
+    expect(isDailyMainQuestWinner({ id: 'earlier', date: offsetDate(1) }, sessions)).toBe(false);
 
     expect(getDailyMainQuestState(sessions, EPOCH_DATE)).toEqual({
       id: `daily-main-quest:${EPOCH_DATE}`,

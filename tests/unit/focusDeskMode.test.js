@@ -74,6 +74,8 @@ async function startFocus() {
 }
 
 function endFocus() {
+  // Minimised counts as running too: bring it back first (#304 review).
+  if (!document.getElementById('focus-pip').classList.contains('hidden')) window.restoreFocus();
   if (overlay().classList.contains('hidden')) return;
   window.skipFocus();
   document.querySelector('#skip-confirm #skip-yes')?.click();
@@ -102,9 +104,25 @@ beforeEach(() => {
 afterEach(async () => {
   endFocus();
   await flush();
+  vi.restoreAllMocks();
   delete window.DeviceOrientationEvent;
   vi.useRealTimers();
 });
+
+/** The deviceorientation handlers added and removed while `run` runs. */
+async function orientationListeners(run) {
+  const added = vi.spyOn(window, 'addEventListener');
+  const removed = vi.spyOn(window, 'removeEventListener');
+  // Read before mockRestore(), which clears the recorded calls.
+  const of = spy => spy.mock.calls.filter(([type]) => type === 'deviceorientation').map(([, fn]) => fn);
+  try {
+    await run();
+    return { added: of(added), removed: of(removed) };
+  } finally {
+    added.mockRestore();
+    removed.mockRestore();
+  }
+}
 
 await import('../../pwa/js/focusTimer.js');
 
@@ -116,6 +134,16 @@ describe('按鈕', () => {
     expect(btn.getAttribute('aria-pressed')).toBe('false');
     expect(btn.textContent).toBe('桌面模式');
     expect(inDeskMode()).toBe(false);
+  });
+
+  it('手機上 click 比 touchend 晚到（約 300 ms）也只算一次', async () => {
+    await startFocus();
+    deskBtn().dispatchEvent(new Event('touchend', { bubbles: true, cancelable: true }));
+    await vi.advanceTimersByTimeAsync(300);
+    deskBtn().dispatchEvent(new Event('click', { bubbles: true, cancelable: true }));
+    await flush();
+    expect(inDeskMode()).toBe(true);
+    expect(taps()).toBe(1);
   });
 
   it('一次點擊（pointerup＋touchend＋click）只切換一次；稍後再點關閉', async () => {
@@ -194,23 +222,47 @@ describe('手機平放時自動開啟', () => {
     expect(inDeskMode()).toBe(true);
   });
 
-  it('結束專注時關閉，之後的方向變化不再理會', async () => {
-    await startFocus();
-    await hold(0, 0, 1400);
-    expect(inDeskMode()).toBe(true);
-    const removed = vi.spyOn(window, 'removeEventListener');
-    endFocus();
+  it('結束專注時關閉，並移除自己加上的那個監聽', async () => {
+    const listeners = await orientationListeners(async () => {
+      await startFocus();
+      await hold(0, 0, 1400);
+      expect(inDeskMode()).toBe(true);
+      endFocus();
+    });
     expect(inDeskMode()).toBe(false);
-    expect(removed.mock.calls.some(([type]) => type === 'deviceorientation')).toBe(true);
-    removed.mockRestore();
+    expect(listeners.added).toHaveLength(1);
+    expect(listeners.removed).toEqual(listeners.added);
+
+    // The next session, without permission this time: nothing left listening.
+    window.DeviceOrientationEvent.requestPermission = vi.fn(() => Promise.resolve('denied'));
+    await vi.advanceTimersByTimeAsync(400);
+    await startFocus();
     await hold(0, 0, 2000);
     expect(inDeskMode()).toBe(false);
   });
 
-  it('沒有 beta／gamma 的事件不算平放', async () => {
+  it('BUG-153：沒有讀數（beta／gamma 為 null）的事件不算平放', async () => {
     await startFocus();
-    await hold(null, undefined, 2000);
+    await hold(null, null, 2000);
     expect(inDeskMode()).toBe(false);
+    await hold(NaN, 0, 2000);
+    expect(inDeskMode()).toBe(false);
+  });
+
+  it('BUG-153：縮小時關閉，縮小期間平放也不開啟；回來後再平放 1.2 秒才開啟', async () => {
+    await startFocus();
+    await hold(0, 0, 1400);
+    expect(inDeskMode()).toBe(true);
+    window.minimizeFocus();
+    expect(inDeskMode()).toBe(false);
+    await hold(0, 0, 3000);
+    expect(inDeskMode()).toBe(false);
+
+    window.restoreFocus();
+    await hold(0, 0, 1100);
+    expect(inDeskMode()).toBe(false);
+    await hold(0, 0, 300);
+    expect(inDeskMode()).toBe(true);
   });
 });
 
@@ -242,10 +294,25 @@ describe('iOS 的方向感測器權限', () => {
 
   it('沒有方向感測器的瀏覽器：不監看', async () => {
     delete window.DeviceOrientationEvent;
-    const added = vi.spyOn(window, 'addEventListener');
-    await startFocus();
-    expect(added.mock.calls.some(([type]) => type === 'deviceorientation')).toBe(false);
+    const listeners = await orientationListeners(() => startFocus());
+    expect(listeners.added).toEqual([]);
     await hold(0, 0, 2000);
     expect(inDeskMode()).toBe(false);
+  });
+
+  it('BUG-153：iOS 還在詢問時專注就結束了：允許後不監看，也不切換', async () => {
+    let answer;
+    window.DeviceOrientationEvent.requestPermission = vi.fn(() => new Promise(resolve => { answer = resolve; }));
+    const listeners = await orientationListeners(async () => {
+      await startFocus();
+      tap();                      // also waits for the same answer
+      await flush();
+      endFocus();                 // e.g. the countdown ended meanwhile
+      answer('granted');
+      await flush();
+    });
+    expect(listeners.added).toEqual([]);
+    expect(inDeskMode()).toBe(false);
+    expect(taps()).toBe(0);
   });
 });
