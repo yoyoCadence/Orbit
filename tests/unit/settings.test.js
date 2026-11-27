@@ -1228,8 +1228,16 @@ describe('renderSettings: background and task icon images (BUG-126)', () => {
   const realToDataURL = window.HTMLCanvasElement.prototype.toDataURL;
   let canvases;
 
-  /** Images decode (or fail) like a browser's; jsdom does not decode them. */
+  /** Images decode (or fail) like a browser's; jsdom does not decode them.
+   * Files are read on a timer too (jsdom reads them for real, which can take
+   * longer than the wait below on a busy machine), so every step finishes
+   * before `settle()` does. */
   function images({ decodes = true, width = 1600, height = 1200 } = {}) {
+    window.FileReader = class {
+      readAsDataURL() {
+        setTimeout(() => this.onload?.({ target: { result: 'data:image/jpeg;base64,AQID' } }), 0);
+      }
+    };
     window.Image = class {
       set src(value) {
         this._src = value;

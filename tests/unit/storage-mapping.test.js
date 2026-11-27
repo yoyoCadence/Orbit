@@ -267,6 +267,46 @@ describe('loadFromRemote — tasks / sessions / energy rows', () => {
     expect(added).not.toHaveProperty('iconImg');
   });
 
+  it('uses this device\'s tasks as they are when the pull is written, not when it began (#286 review)', async () => {
+    const row = id => ({
+      id, name: id, category: 'focus', impact_type: 'task', task_nature: 'growth', value: 'S',
+      difficulty: 1, resistance: 1, emoji: null, daily_xp_cap: 300, cooldown_minutes: 0,
+      min_effective_minutes: 25, is_default: false, reason: 'r', success_criteria: 'c',
+      value_confidence: 100, created_at: '2026-03-01T01:02:03.456789+00:00',
+    });
+    let queried = false;
+    Object.defineProperty(tableData, 'tasks', {
+      configurable: true, enumerable: true,
+      get() { queried = true; return [row('icon'), row('made-s')]; },
+    });
+    localStorage.setItem('yoyo_user', JSON.stringify({ id: 'uid-1', name: 'A' }));
+    localStorage.setItem('yoyo_tasks', JSON.stringify([
+      { id: 'icon', value: 'S', iconImg: 'data:image/jpeg;base64,OLD' },
+      { id: 'made-s', value: 'A' },
+    ]));
+    // While the pull runs (after the queries, before the write), the user
+    // removes one task's icon and changes the other into S.
+    const assertOwner = db._assertOwner;
+    const spy = vi.spyOn(db, '_assertOwner').mockImplementation(async function (...args) {
+      if (queried) {
+        localStorage.setItem('yoyo_tasks', JSON.stringify([
+          { id: 'icon', value: 'S', iconImg: null },
+          { id: 'made-s', value: 'S', sSince: '2026-04-11' },
+        ]));
+      }
+      return assertOwner.apply(this, args);
+    });
+    try {
+      await db.loadFromRemote('uid-1');
+    } finally {
+      spy.mockRestore();
+      delete tableData.tasks;
+    }
+    const [icon, madeS] = storage.getTasks();
+    expect(icon).not.toHaveProperty('iconImg');
+    expect(madeS).toMatchObject({ id: 'made-s', value: 'S', sSince: '2026-04-11' });
+  });
+
   it('still pulls when the cached task list is not a list', async () => {
     tableData.tasks = [{
       id: 't', name: 'x', category: 'focus', impact_type: 'task', task_nature: 'growth', value: 'S',
