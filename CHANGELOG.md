@@ -3,6 +3,13 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.42.9] - 2026-11-27
+
+### Fixed
+- 首頁（BUG-134）：每次首頁重新畫出來，都會在頁面上多加一個「點外面關閉」的監聽，用久了點一下就要跑很多次；現在每次重畫都只留一個。
+
+---
+
 ## [1.42.8] - 2026-11-27
 
 ### Fixed

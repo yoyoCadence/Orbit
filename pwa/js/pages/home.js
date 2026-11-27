@@ -658,6 +658,11 @@ function showTaskDetail(task) {
 // (|dx| > |dy| × 1.5 and |dx| > 12 px threshold) and adds swipe-open class.
 // Tap anywhere outside the detail button closes open cards.
 
+// BUG-134: the router draws home into the same page container again and
+// again; its tap-outside listener is kept per container so a drawing replaces
+// the last one's instead of adding another.
+const _outsideTapListeners = new WeakMap();
+
 function _setupCardSwipe(container) {
   let _swipeOpen    = null;  // currently open card
   let _horizSwiped  = false; // block page-switch touchend on document
@@ -708,7 +713,9 @@ function _setupCardSwipe(container) {
   });
 
   // Close swipe / exit edit-mode on tap outside
-  container.addEventListener('click', e => {
+  const previousOutsideTap = _outsideTapListeners.get(container);
+  if (previousOutsideTap) container.removeEventListener('click', previousOutsideTap);
+  const onOutsideTap = e => {
     if (_swipeOpen && !e.target.closest('.task-card')) _closeSwipe();
 
     // Exit all active edit-mode sections when clicking outside them
@@ -720,7 +727,9 @@ function _setupCardSwipe(container) {
         if (btn) btn.textContent = '編輯';
       });
     }
-  });
+  };
+  _outsideTapListeners.set(container, onOutsideTap);
+  container.addEventListener('click', onOutsideTap);
 }
 
 // ─── Drag & Drop (reorder tasks within sections) ──────────────────────────────
