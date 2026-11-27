@@ -306,6 +306,18 @@ describe('iOS 的方向感測器權限', () => {
     expect(inDeskMode()).toBe(false);
   });
 
+  it('縮小期間才允許：照樣監看，回來後平放 1.2 秒開啟（縮小不算停止，#304 review）', async () => {
+    let answer;
+    window.DeviceOrientationEvent.requestPermission = vi.fn(() => new Promise(resolve => { answer = resolve; }));
+    await startFocus();
+    window.minimizeFocus();
+    answer('granted');
+    await flush();
+    window.restoreFocus();
+    await hold(0, 0, 1400);
+    expect(inDeskMode()).toBe(true);
+  });
+
   it('BUG-153：iOS 還在詢問時專注就結束了：允許後不監看，也不切換', async () => {
     let answer;
     window.DeviceOrientationEvent.requestPermission = vi.fn(() => new Promise(resolve => { answer = resolve; }));
