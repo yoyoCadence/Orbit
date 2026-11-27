@@ -10,16 +10,21 @@
  *      <script> 讓第二次直接「成功」，函式庫卻不存在，只能重新開啟 app。
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { effectiveToday } from '../../pwa/js/utils.js';
 
-const TODAY = new Date().toLocaleDateString('sv');
+// The picker's default is the effective month (BUG-146): a calendar date would
+// fall outside it on the 1st before 5 am.
+const TODAY = effectiveToday(5);
 
-vi.mock('../../pwa/js/state.js', () => ({
-  state: { user: { name: 'Tester', totalXP: 120, streakDays: 2, titleTemplate: 'rpg' } },
+const mockState = vi.hoisted(() => ({
+  user: { name: 'Tester', totalXP: 120, streakDays: 2, titleTemplate: 'rpg' },
 }));
+vi.mock('../../pwa/js/state.js', () => ({ state: mockState }));
+const fixture = vi.hoisted(() => ({ sessions: null }));
 vi.mock('../../pwa/js/storage.js', () => ({
   storage: {
-    getSessions: () => [{
+    getSessions: () => fixture.sessions ?? [{
       id: 's1', date: TODAY, taskName: '讀書', taskEmoji: '📚', finalXP: 30,
       result: 'valid', value: 'A', completedAt: `${TODAY}T09:00:00`,
     }],
@@ -86,5 +91,36 @@ describe('PDF report libraries', () => {
     expect(save).toHaveBeenCalledWith(`orbit-report-${TODAY.slice(0, 7)}.pdf`);
     expect(document.querySelectorAll('script[src*="html2canvas"]')).toHaveLength(1);
     expect(document.querySelector('#report-picker-modal')).toBeNull();
+  });
+});
+
+describe('報告的「本月」（BUG-146）', () => {
+  const rangeValues = () => [...document.querySelectorAll('input[name="rp-range"]')].map(input => input.value);
+  const sessionOn = date => ({ id: `s-${date}`, date, finalXP: 10, result: 'valid', value: 'A' });
+
+  function pickAt(time, user = {}) {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(time));
+    Object.assign(mockState.user, user);
+    showReportPicker();
+  }
+
+  afterEach(() => {
+    vi.useRealTimers();
+    fixture.sessions = null;
+    delete mockState.user.newDayHour;
+  });
+
+  it('月初凌晨 2 點：本月是有效日所在的月份，上個月是再往前一個月', () => {
+    fixture.sessions = [sessionOn('2026-04-30'), sessionOn('2026-03-15')];
+    pickAt('2026-05-01T02:00:00');
+    expect(rangeValues().slice(0, 2)).toEqual(['2026-04', '2026-03']);
+    expect(document.querySelector('input[name="rp-range"]:checked').value).toBe('2026-04');
+  });
+
+  it('依使用者的換日時間：0 點換日時凌晨 2 點已是新的月份', () => {
+    fixture.sessions = [sessionOn('2026-04-30')];
+    pickAt('2026-05-01T02:00:00', { newDayHour: 0 });
+    expect(rangeValues().slice(0, 2)).toEqual(['2026-05', '2026-04']);
   });
 });

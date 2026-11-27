@@ -47,7 +47,7 @@ vi.mock('../../pwa/js/supabase.js', () => {
       },
       insert: (payload) => {
         (captured.inserts[table] ??= []).push(payload);
-        // Like Postgres: `sessions.task_id` is a uuid (BUG-142).
+        // Like Postgres: `sessions.task_id` is a uuid (BUG-147).
         const taskId = table === 'sessions' ? payload?.task_id : null;
         if (taskId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(taskId)) {
           return Promise.resolve({ error: { code: '22P02', message: `invalid input syntax for type uuid: "${taskId}"` } });
@@ -498,7 +498,7 @@ describe('upsertTasks / insertSession / upsertEnergy payloads', () => {
   });
 });
 
-describe('a session whose task can never be linked (BUG-142/143)', () => {
+describe('a session whose task can never be linked (BUG-147/148)', () => {
   const OWNER = 'uid-1';
   const GONE_TASK = '9d1e7b3a-6c2f-4e8a-b5d4-0f3a2c1e7b96';
   const linkMissing = {

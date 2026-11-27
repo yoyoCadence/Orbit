@@ -190,7 +190,9 @@ export function renderHome(container) {
   const counts = {};
   todaySess.forEach(s => { counts[s.taskId] = (counts[s.taskId] || 0) + 1; });
 
-  const dateLabel = new Date().toLocaleDateString('zh-TW', {
+  // The day the stats below are for: until newDayHour that is still the
+  // previous calendar day (BUG-146).
+  const dateLabel = new Date(todayStr + 'T00:00:00').toLocaleDateString('zh-TW', {
     month: 'long', day: 'numeric', weekday: 'long',
   });
 

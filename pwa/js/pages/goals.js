@@ -1,6 +1,6 @@
 import { state }                    from '../state.js';
 import { storage }                   from '../storage.js';
-import { formatDate, sortSessionsNewestFirst } from '../utils.js';
+import { effectiveToday, formatDate, sortSessionsNewestFirst } from '../utils.js';
 import { goToProCard } from '../ui/proNav.js';
 import { sessionRowHtml, bindProofThumbs } from '../ui/sessionRow.js';
 import { showToast } from '../ui/feedback.js';
@@ -22,8 +22,12 @@ export function renderGoals(container) {
     return;
   }
 
+  // Session dates are effective days: between midnight and newDayHour the
+  // calendar date is already the next one (BUG-145).
+  const todayStr = effectiveToday(state.user?.newDayHour ?? 5);
+
   // Calculate free-tier cutoff (YYYY-MM-DD, local time)
-  const cutoffDate = new Date();
+  const cutoffDate = new Date(todayStr + 'T00:00:00');
   cutoffDate.setDate(cutoffDate.getDate() - FREE_DAYS);
   const cutoff = cutoffDate.toLocaleDateString('sv');
 
@@ -50,7 +54,7 @@ export function renderGoals(container) {
     return `
       <div class="date-group">
         <div class="date-group-header">
-          <span class="date-group-label">${formatDate(date)}</span>
+          <span class="date-group-label">${formatDate(date, todayStr)}</span>
           <span class="date-group-xp">+${totalXP} XP · ${sessions.length} 次</span>
         </div>
         <div class="card" style="margin:0">${rowsHtml}</div>

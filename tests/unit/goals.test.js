@@ -42,16 +42,10 @@ vi.mock('../../pwa/js/storage.js', () => ({ storage: mockStorage, db: {} }));
 
 vi.mock('../../pwa/js/utils.js', async (importOriginal) => ({
   ...(await importOriginal()),
-  today:      () => '2026-04-16',
   formatTime: () => '10:00',
   sortSessionsNewestFirst: sessions => [...sessions].sort(
     (a, b) => Date.parse(b.completedAt) - Date.parse(a.completedAt)
   ),
-  formatDate: (d) => {
-    if (d === '2026-04-16') return '今天';
-    if (d === '2026-04-15') return '昨天';
-    return d;
-  },
 }));
 
 // ─── Import after mocks ───────────────────────────────────────────────────────
@@ -86,6 +80,7 @@ beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date('2026-04-16T12:00:00'));
   mockState.sessions = [];
+  delete mockState.user;
   container = document.createElement('div');
   document.body.appendChild(container);
 });
@@ -292,5 +287,58 @@ describe('renderGoals — 免費版歷史限制', () => {
     renderGoals(container);
     expect(container.querySelector('.date-group')).not.toBeNull();
     expect(container.querySelector('.history-lock-card')).toBeNull();
+  });
+});
+
+// ─── BUG-145：日期標籤與免費版的範圍以有效日為準 ───────────────────────────────
+
+describe('renderGoals — 有效日（BUG-145）', () => {
+  const labels = () => [...container.querySelectorAll('.date-group-label')].map(el => el.textContent);
+
+  it('午夜到換日時間之間：剛完成的紀錄（有效日是前一天）標為「今天」', () => {
+    vi.setSystemTime(new Date('2026-04-16T02:00:00'));
+    mockState.user = { id: 'u1', newDayHour: 5 };
+    mockState.sessions = [
+      makeSession({ id: 'tonight', date: '2026-04-15', completedAt: '2026-04-16T01:30:00' }),
+      makeSession({ id: 'before', date: '2026-04-14', completedAt: '2026-04-14T20:00:00' }),
+    ];
+    renderGoals(container);
+    expect(labels()).toEqual(['今天', '昨天']);
+  });
+
+  it('換日時間是 0 點時照日曆日期', () => {
+    vi.setSystemTime(new Date('2026-04-16T02:00:00'));
+    mockState.user = { id: 'u1', newDayHour: 0 };
+    mockState.sessions = [
+      makeSession({ id: 'tonight', date: '2026-04-16', completedAt: '2026-04-16T01:30:00' }),
+      makeSession({ id: 'before', date: '2026-04-15', completedAt: '2026-04-15T20:00:00' }),
+    ];
+    renderGoals(container);
+    expect(labels()).toEqual(['今天', '昨天']);
+  });
+
+  it('沒有使用者設定時以 5 點換日', () => {
+    vi.setSystemTime(new Date('2026-04-16T04:59:00'));
+    mockState.sessions = [makeSession({ date: '2026-04-15', completedAt: '2026-04-16T04:00:00' })];
+    renderGoals(container);
+    expect(labels()).toEqual(['今天']);
+  });
+
+  it('免費版的 30 天從有效日算起（午夜後不會少一天）', () => {
+    mockStorage.isProUser.mockReturnValue(false);
+    vi.setSystemTime(new Date('2026-04-16T02:00:00'));
+    mockState.user = { id: 'u1', newDayHour: 5 };
+    // Effective today 2026-04-15; 30 days before it is 2026-03-16.
+    mockState.sessions = [
+      makeSession({ id: 'edge', date: '2026-03-16', completedAt: '2026-03-16T10:00:00' }),
+      makeSession({ id: 'old', date: '2026-03-15', completedAt: '2026-03-15T10:00:00' }),
+    ];
+    try {
+      renderGoals(container);
+      expect(container.querySelectorAll('.date-group')).toHaveLength(1);
+      expect(container.querySelector('.history-lock-title').textContent).toContain('還有 1 筆更早的紀錄');
+    } finally {
+      mockStorage.isProUser.mockReturnValue(true);
+    }
   });
 });

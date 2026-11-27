@@ -127,6 +127,8 @@ let _backdrop = null;
 let _spot     = null;
 let _tooltip  = null;
 let _observer = null;
+let _advanceTimer = null;
+let _generation = 0;   // bumped by _clear(): a step drawn after it is stale
 
 // ─── Public API ──────────────────────────────────────────────────────────────
 
@@ -138,7 +140,7 @@ export function startTour() {
   _whenNoBlockingModal(_showStep);
 }
 
-// BUG-144: setup asks a new user for the morning state (dayCycle.js) right
+// BUG-149: setup asks a new user for the morning state (dayCycle.js) right
 // before the tour starts, and the tour went over that modal while it was still
 // waiting for an answer. The tour starts once it is closed.
 const BLOCKING_MODAL = '#morning-modal';
@@ -171,8 +173,13 @@ function _showStep() {
   // Navigate to the required page first, then wait two animation frames
   // so renderPage() has time to update the DOM before we measure anything.
   if (s.page) {
+    const generation = _generation;
     window.navigate?.(s.page);
-    requestAnimationFrame(() => requestAnimationFrame(() => _renderStep(s)));
+    // Not if the tour was skipped or restarted meanwhile: that would draw a
+    // second backdrop over the page (#298 review).
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (generation === _generation) _renderStep(s);
+    }));
   } else {
     _renderStep(s);
   }
@@ -218,7 +225,7 @@ function _renderStep(s) {
     const target = document.querySelector(s.selector);
     if (!target) { _step++; _showStep(); return; }
 
-    // BUG-144: on a phone the tour's task card is far below the fold (Home
+    // BUG-149: on a phone the tour's task card is far below the fold (Home
     // shows the plan, the Orbit Window and the growth tasks first). Measured
     // there, the spotlight was off screen and the whole page went dark under a
     // tip pointing at nothing. Bring it to the middle first.
@@ -255,8 +262,12 @@ function _renderStep(s) {
     _watchFor(s.waitFor, () => {
       if (s.cleanup) _removeTutorialTask();
       _step++;
-      // Small delay so the user sees the success state (e.g. count badge)
-      setTimeout(() => _showStep(), 600);
+      // Small delay so the user sees the success state (e.g. count badge).
+      // The step stays up meanwhile: skipping it cancels this (BUG-144).
+      _advanceTimer = setTimeout(() => {
+        _advanceTimer = null;
+        _showStep();
+      }, 600);
     });
   }
 }
@@ -322,4 +333,7 @@ function _clear() {
   _spot?.remove();     _spot     = null;
   _tooltip?.remove();  _tooltip  = null;
   if (_observer) { _observer.disconnect(); _observer = null; }
+  clearTimeout(_advanceTimer);
+  _advanceTimer = null;
+  _generation++;
 }

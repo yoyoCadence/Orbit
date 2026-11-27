@@ -575,9 +575,26 @@ async function loadAndStart(session) {
   if (remoteLoaded) {
     const isCurrent = () => authOperationGuard.isCurrent(operation);
     Promise.resolve(loaded?.backfilled).then(() => {
-      if (isCurrent()) _askStreakUnlock(session.user.id, isCurrent);
+      if (!isCurrent()) return;
+      _reportBootLoadLeftovers(session.user.id);
+      _askStreakUnlock(session.user.id, isCurrent);
     }, () => {});
   }
+}
+
+// BUG-142: a sign-in whose load succeeded shows no banner, but one whose
+// Session backfills or Session deletions failed says so (and flags the next
+// reconnect), as the cached-user sync does through _reportSyncResult(). Only
+// those two count: the profile, task and Energy snapshots are pushed before
+// the pull, which throws if they fail (the catch above), so one queued now is
+// a write this boot made after the load (the day rollover), still in flight.
+function _reportBootLoadLeftovers(ownerId) {
+  const { sessions = 0, deletions = 0 } = storage.getPendingSyncSummary(ownerId);
+  // The count too: a snapshot still in flight would read as a failure, and
+  // online nothing refreshes the banner once it lands (#297 review).
+  // Offline, though, a snapshot is not in flight but queued, and the offline
+  // banner counts it after the next write (_refreshOfflineHint, #298 review).
+  if (sessions + deletions > 0) _showSyncFailure(isOnline() ? sessions + deletions : undefined);
 }
 
 // PRO-014L2: SUB-16 is granted by the server (streakUnlock.js). Asked only
@@ -767,9 +784,9 @@ function _pendingSyncCount() {
   return storage.getPendingSyncSummary(_currentSession?.user?.id ?? null).total;
 }
 
-function _showSyncFailure() {
+function _showSyncFailure(pending = _pendingSyncCount()) {
   _needsResync = true;
-  showSyncBanner(isOnline() ? 'error' : 'offline', { pending: _pendingSyncCount() });
+  showSyncBanner(isOnline() ? 'error' : 'offline', { pending });
 }
 
 // BUG-140: the banner and the reconnect flag are about the account shown, and
@@ -797,10 +814,21 @@ function _refreshOfflineHint() {
 // instead, and loadFromRemote() itself rejects when the owner changes.
 async function _syncAfterReconnect() {
   const session = _currentSession;
-  if (!session || _reconnectSync) return;
+  // BUG-143: only a sync for this session stands in for this one. One still
+  // running for the account before it (signed out or switched mid-sync) stops
+  // at its next check without syncing anything; skipping on it left this
+  // account's queue waiting for the next time the connection dropped.
+  const previous = _reconnectSync;
+  if (!session || previous?.session === session) return;
   showSyncBanner('syncing');
-  _reconnectSync = (async () => {
+  const run = { session, done: null };
+  _reconnectSync = run;
+  run.done = (async () => {
     try {
+      // Not alongside that one (see _loadRemote): wait for it to stop. Only
+      // reconnect syncs wait here; loadAndStart() does not, so signing in to
+      // the same account again while one runs still loads twice (as before).
+      if (previous) await previous.done;
       if (_remoteSync) await _remoteSync;
       if (_currentSession !== session) return;
       const loaded = await _loadRemote(session.user.id);
@@ -817,10 +845,10 @@ async function _syncAfterReconnect() {
       console.warn('Reconnect sync failed; pending changes stay queued:', error);
       _showSyncFailure();
     } finally {
-      _reconnectSync = null;
+      if (_reconnectSync === run) _reconnectSync = null;
     }
   })();
-  await _reconnectSync;
+  await run.done;
 }
 
 onConnectivityChange(online => {

@@ -481,7 +481,7 @@ function toRow(fields, obj) {
   return row;
 }
 
-// BUG-142/143: `sessions.task_id` is a uuid referencing tasks(id). An id that
+// BUG-147/148: `sessions.task_id` is a uuid referencing tasks(id). An id that
 // is not a uuid (the tour's 'tour-task') can never be stored, and a task
 // deleted before its session reached the server (offline) can never be
 // referenced: the insert failed every time and the session stayed "待同步"
@@ -896,9 +896,9 @@ export const db = {
     if (!authSession || (expectedOwnerId && authSession.user.id !== expectedOwnerId)) return false;
     const ownerId = expectedOwnerId || authSession.user.id;
     const row = { user_id: ownerId, ...toRow(SESSION_FIELDS, session) };
-    if (row.task_id && !UUID_PATTERN.test(row.task_id)) row.task_id = null;   // BUG-142
+    if (row.task_id && !UUID_PATTERN.test(row.task_id)) row.task_id = null;   // BUG-147
     let { error } = await supabase.from('sessions').insert(row);
-    // BUG-143: once, and only for a task this device no longer has.
+    // BUG-148: once, and only for a task this device no longer has.
     if (error && row.task_id && isTaskLinkMissing(error) && isTaskGoneHere(ownerId, row.task_id)) {
       ({ error } = await supabase.from('sessions').insert({ ...row, task_id: null }));
     }
@@ -1167,7 +1167,7 @@ export const storage = {
    */
   saveTasks:  (tasks, expectedOwnerId) => {
     if (refusesStoredOwner(expectedOwnerId, 'tasks')) return false;
-    // BUG-142: the tour's task lives only in memory while the tour shows it
+    // BUG-147: the tour's task lives only in memory while the tour shows it
     // (tour.js). A save meanwhile (a drag on Home, an edit) would store it and
     // send its 'tour-task' id, which no uuid column takes: the pending upload
     // would fail before every pull from then on.
