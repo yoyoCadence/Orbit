@@ -625,3 +625,48 @@ describe('saves that outlive the page, continued (BUG-139)', () => {
     expect(mockState.user.avatar).toBe('signed-a');
   });
 });
+
+// ─── The title-template editor across a page change (BUG-139) ───────────────
+
+describe('the title-template editor left open across a page change', () => {
+  beforeEach(() => { mockStorage.isProUser.mockReturnValue(true); });
+
+  it('saves without drawing Profile over the page shown now', () => {
+    const c = makeContainer();
+    renderProfile(c);
+    c.querySelector('[data-edit-template="rpg"]').click();
+    const modal = document.getElementById('template-editor-modal');
+    c.innerHTML = '<div id="other-page">首頁</div>';   // swiped to Home
+    modal.querySelector('#tmpl-name').value = 'RPG 改版';
+    modal.querySelector('#tmpl-save-btn').click();
+    expect(c.innerHTML).toBe('<div id="other-page">首頁</div>');
+    expect(mockState.user.customTemplates.rpg.name).toBe('RPG 改版');
+    expect(modal.isConnected).toBe(false);
+  });
+
+  it('deletes without drawing Profile over the page shown now', () => {
+    window.confirm = vi.fn(() => true);
+    mockState.user = freshUser({
+      titleTemplate: 'custom_abc',
+      customTemplates: { custom_abc: { name: '自訂', icon: '✨', tiers: [[1, 'A']] } },
+    });
+    const c = makeContainer();
+    renderProfile(c);
+    c.querySelector('[data-edit-template="custom_abc"]').click();
+    const modal = document.getElementById('template-editor-modal');
+    c.innerHTML = '<div id="other-page">首頁</div>';
+    modal.querySelector('#tmpl-delete-btn').click();
+    expect(c.innerHTML).toBe('<div id="other-page">首頁</div>');
+    expect(mockState.user.customTemplates).not.toHaveProperty('custom_abc');
+    expect(mockState.user.titleTemplate).toBe('rpg');
+  });
+
+  it('still draws Profile again when it is the page shown', () => {
+    const c = makeContainer();
+    renderProfile(c);
+    const before = c.querySelector('#avatar-wrap');
+    c.querySelector('[data-edit-template="rpg"]').click();
+    document.getElementById('template-editor-modal').querySelector('#tmpl-save-btn').click();
+    expect(c.querySelector('#avatar-wrap')).not.toBe(before);
+  });
+});
