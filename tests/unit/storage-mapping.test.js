@@ -11,7 +11,7 @@
  * 環境：jsdom（需要 localStorage）；supabase 全 mock。
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ─── Supabase mock ────────────────────────────────────────────────────────────
 
@@ -487,5 +487,73 @@ describe('upsertTasks / insertSession / upsertEnergy payloads', () => {
       user_id: 'uid-1', current_energy: 50, max_energy: 100, last_reset_date: null,
     });
     expect(captured.upserts.energy[0].opts).toEqual({ onConflict: 'user_id' });
+  });
+});
+
+describe('manual sync (BUG-133)', () => {
+  afterEach(() => { vi.restoreAllMocks(); });
+
+  it('runs one load at a time: a second request meanwhile shares the first', async () => {
+    let finish;
+    const load = vi.spyOn(db, 'loadFromRemote').mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+    const first = storage.syncFromRemote();
+    const second = storage.syncFromRemote();
+    expect(second).toBe(first);
+    expect(storage.currentManualSync()).toBe(first);
+    await vi.waitFor(() => expect(load).toHaveBeenCalledTimes(1));
+    finish({ backfilled: Promise.resolve([]) });
+    await expect(first).resolves.toBeUndefined();
+    expect(load).toHaveBeenCalledTimes(1);
+    expect(storage.currentManualSync()).toBeNull();
+    // It counted once: the next request is inside the 10 s cooldown.
+    await expect(storage.syncFromRemote()).rejects.toThrow(/^cooldown:\d+$/);
+    expect(load).toHaveBeenCalledTimes(1);
+  });
+
+  it('a failed sync is shared too, and leaves no cooldown, so it can be tried again', async () => {
+    const load = vi.spyOn(db, 'loadFromRemote').mockRejectedValueOnce(new Error('offline'));
+    const first = storage.syncFromRemote();
+    const second = storage.syncFromRemote();
+    await expect(first).rejects.toThrow('offline');
+    await expect(second).rejects.toThrow('offline');
+    expect(storage.currentManualSync()).toBeNull();
+    load.mockResolvedValueOnce({ backfilled: Promise.resolve([]) });
+    await expect(storage.syncFromRemote()).resolves.toBeUndefined();
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+
+  it('a load that throws at once is still a failed sync, and is cleared', async () => {
+    vi.spyOn(storage, '_syncFromRemoteNow').mockImplementationOnce(() => { throw new Error('boom'); });
+    await expect(storage.syncFromRemote()).rejects.toThrow('boom');
+    expect(storage.currentManualSync()).toBeNull();
+  });
+
+  it('belongs to the account it was started for', async () => {
+    localStorage.setItem('yoyo_user', JSON.stringify({ id: 'uid-1', name: 'A' }));
+    const finishes = [];
+    const load = vi.spyOn(db, 'loadFromRemote').mockImplementation(() => new Promise(resolve => { finishes.push(resolve); }));
+    const first = storage.syncFromRemote();
+    expect(storage.currentManualSync()).toBe(first);
+    // Signed out and another account in, while A's sync still runs.
+    localStorage.setItem('yoyo_user', JSON.stringify({ id: 'uid-2', name: 'B' }));
+    expect(storage.currentManualSync()).toBeNull();
+    // B's own request is not A's.
+    const second = storage.syncFromRemote();
+    expect(second).not.toBe(first);
+    await vi.waitFor(() => expect(load).toHaveBeenCalledTimes(2));
+    finishes[0]({ backfilled: Promise.resolve([]) });
+    await first;
+    // A's sync ending does not clear B's.
+    expect(storage.currentManualSync()).toBe(second);
+    finishes[1]({ backfilled: Promise.resolve([]) });
+    await second;
+    expect(storage.currentManualSync()).toBeNull();
+  });
+
+  it('is already cleared when its result is seen', async () => {
+    vi.spyOn(db, 'loadFromRemote').mockResolvedValue({ backfilled: Promise.resolve([]) });
+    let seen = 'unset';
+    await storage.syncFromRemote().then(() => { seen = storage.currentManualSync(); });
+    expect(seen).toBeNull();
   });
 });

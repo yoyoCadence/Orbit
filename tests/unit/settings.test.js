@@ -46,6 +46,7 @@ const mockStorage = vi.hoisted(() => ({
   getTrialDaysRemaining: vi.fn(() => 0),
   getProExpiry:          vi.fn(() => null),
   syncFromRemote:        vi.fn(() => Promise.resolve()),
+  currentManualSync:     vi.fn(() => null),
 }));
 
 const mockApplyTheme        = vi.hoisted(() => vi.fn());

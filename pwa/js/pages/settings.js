@@ -1001,7 +1001,9 @@ function _renderView(container) {
         <button class="btn btn-outline btn-sm" id="signout-btn">登出</button>
       </div>
       <div class="account-divider"></div>
-      <button class="btn btn-outline btn-sm" id="sync-btn" style="margin-bottom:10px;width:100%">↻ 從雲端同步資料</button>
+      ${storage.currentManualSync?.()
+        ? '<button class="btn btn-outline btn-sm btn-syncing" id="sync-btn" style="margin-bottom:10px;width:100%" disabled>同步中…</button>'
+        : '<button class="btn btn-outline btn-sm" id="sync-btn" style="margin-bottom:10px;width:100%">↻ 從雲端同步資料</button>'}
       <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px">版本 ${APP_VERSION}</div>
       <button class="btn btn-outline btn-sm" id="tour-btn" style="margin-bottom:10px;width:100%">重啟新手教學</button>
       ${_proofButtonsHtml()}
@@ -1213,6 +1215,15 @@ function _setupListeners(container) {
     if (!storage.isProUser()) { _goToProCard(); return; }
     showReportPicker();
   });
+
+  // BUG-133: Settings drawn again while a sync runs (left and back, or a task
+  // saved): the button stays disabled and comes back when that sync ends.
+  const inFlightSync = storage.currentManualSync?.();
+  if (inFlightSync) {
+    inFlightSync.then(() => {}, () => {}).then(() => {
+      if (container.isConnected && container.querySelector('#sync-btn')?.disabled) _renderView(container);
+    });
+  }
 
   // Cloud sync
   container.querySelector('#sync-btn')?.addEventListener('click', async () => {

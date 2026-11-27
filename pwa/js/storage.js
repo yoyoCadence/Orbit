@@ -22,6 +22,10 @@ import {
 } from './platform/sessionDeletionLog.js';
 
 const PREFIX = 'yoyo_';
+// BUG-133: the manual sync in progress (Settings' button) and the stored
+// account it was started for, shared by a second request from that account
+// instead of starting another load.
+let _manualSync = null;
 // Not exported (INFRA-105): app.js listens for the same name.
 const STORED_ACCOUNT_CHANGED_EVENT = 'orbit:stored-account-changed';
 // The leaderboard caches belong to leaderboardPublic.js (PRO-014E2); sign-out
@@ -1323,7 +1327,28 @@ export const storage = {
 
   // ── Manual cloud sync ────────────────────────────────────────────────────────
   // Two-tier rate limit: 10 s cooldown between clicks, 3 times per rolling hour.
-  async syncFromRemote() {
+  // BUG-133: one at a time; a request made meanwhile gets the same result.
+  syncFromRemote() {
+    const running = this.currentManualSync();
+    if (running) return running;
+    // Started on a later microtask, so even a synchronous throw is a rejection
+    // of `sync`; cleared before the result is seen, so what runs next sees no
+    // sync.
+    const sync = Promise.resolve()
+      .then(() => this._syncFromRemoteNow())
+      .finally(() => { if (_manualSync?.promise === sync) _manualSync = null; });
+    _manualSync = { ownerId: get('user')?.id ?? null, promise: sync };
+    return sync;
+  },
+
+  /** The manual sync in progress for the stored account, or null. A sync
+   * started before an account switch is not this account's: it does not
+   * disable this account's button (and it is not joined). */
+  currentManualSync: () => (
+    _manualSync && _manualSync.ownerId === (get('user')?.id ?? null) ? _manualSync.promise : null
+  ),
+
+  async _syncFromRemoteNow() {
     const COOLDOWN_KEY = 'orbit_sync_last';
     const HISTORY_KEY  = 'orbit_sync_history';
     const COOLDOWN_MS  = 10_000;

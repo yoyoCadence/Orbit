@@ -487,7 +487,9 @@ function planCardHtml(task, countToday) {
   // XP 只發給 impactType==='task'（engine.calcBaseXP）——恢復/娛樂型不顯示 +XP 承諾
   const xpLabel   = task.impactType === 'task' && task.value !== 'D'
     ? `+${xpPreview(task)}${isFocus ? '+' : ''} XP`
-    : task.impactType === 'recovery' && task.value !== 'D' ? '回能' : '';
+    // A recovery task regains energy at any value (engine.calcEnergyGain), D too,
+    // as the task card below says (#288 review).
+    : task.impactType === 'recovery' ? '回能' : '';
   const doneClass = countToday > 0 ? 'plan-card-done' : '';
   return `
     <div class="plan-card ${doneClass}" data-task-id="${task.id}" data-category="${task.category}">

@@ -49,6 +49,7 @@ const mockStorage = vi.hoisted(() => ({
   getTrialDaysRemaining: vi.fn(() => 0),
   getProExpiry:          vi.fn(() => null),
   syncFromRemote:        vi.fn(() => Promise.resolve()),
+  currentManualSync:     vi.fn(() => null),
 }));
 
 const mockApplyTheme        = vi.hoisted(() => vi.fn());
@@ -1015,5 +1016,89 @@ describe('the XP preview for natures that earn none (BUG-132)', () => {
     change(modal.querySelector('#tm-nature'), 'obligation');
     change(modal.querySelector('#tm-value'), 'B');
     expect(preview()).toBe('預估 XP：+17（完成）/ +10（部分完成）');
+  });
+});
+
+describe('Settings drawn again while a manual sync runs (BUG-133)', () => {
+  beforeEach(() => {
+    window.showToast = vi.fn();
+    mockStorage.currentManualSync.mockReturnValue(null);
+  });
+  afterEach(() => { mockStorage.currentManualSync.mockReturnValue(null); });
+
+  it('keeps the button disabled, and brings it back when the sync ends', async () => {
+    let finish;
+    const running = new Promise(resolve => { finish = resolve; });
+    mockStorage.syncFromRemote.mockImplementationOnce(() => running);
+    const c = makeContainer();
+    renderSettings(c);
+    c.querySelector('#sync-btn').click();
+    expect(mockStorage.syncFromRemote).toHaveBeenCalledTimes(1);
+
+    // Left and back (or a task saved): the page is drawn again meanwhile.
+    mockStorage.currentManualSync.mockReturnValue(running);
+    renderSettings(c);
+    const btn = c.querySelector('#sync-btn');
+    expect(btn.disabled).toBe(true);
+    expect(btn.textContent).toBe('同步中…');
+    expect(btn.classList.contains('btn-syncing')).toBe(true);
+    btn.click();
+    expect(mockStorage.syncFromRemote).toHaveBeenCalledTimes(1);
+
+    mockStorage.currentManualSync.mockReturnValue(null);
+    finish();
+    await vi.waitFor(() => expect(c.querySelector('#sync-btn').disabled).toBe(false));
+    expect(c.querySelector('#sync-btn').textContent).toBe('↻ 從雲端同步資料');
+    expect(window.showToast).toHaveBeenCalledWith('資料已更新');
+  });
+
+  it('draws Settings once when the sync ends, however many times it was drawn meanwhile', async () => {
+    let finish;
+    const running = new Promise(resolve => { finish = resolve; });
+    mockStorage.syncFromRemote.mockImplementationOnce(() => running);
+    const c = makeContainer();
+    renderSettings(c);
+    c.querySelector('#sync-btn').click();
+    mockStorage.currentManualSync.mockReturnValue(running);
+    renderSettings(c);
+    renderSettings(c);
+    mockStorage.currentManualSync.mockReturnValue(null);
+    // Each render reads the theme once: count renders from here.
+    mockStorage.getTheme.mockClear();
+    finish();
+    await vi.waitFor(() => expect(c.querySelector('#sync-btn').disabled).toBe(false));
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(mockStorage.getTheme).toHaveBeenCalledTimes(1);
+  });
+
+  it('brings the button back when that sync fails too (the first page\'s button is gone)', async () => {
+    let fail;
+    const running = new Promise((_, reject) => { fail = reject; });
+    mockStorage.syncFromRemote.mockImplementationOnce(() => running);
+    const c = makeContainer();
+    renderSettings(c);
+    c.querySelector('#sync-btn').click();
+    mockStorage.currentManualSync.mockReturnValue(running);
+    renderSettings(c);
+    expect(c.querySelector('#sync-btn').disabled).toBe(true);
+    mockStorage.currentManualSync.mockReturnValue(null);
+    fail(new Error('Failed to fetch'));
+    await vi.waitFor(() => expect(c.querySelector('#sync-btn').disabled).toBe(false));
+    expect(c.querySelector('#sync-btn').textContent).toBe('↻ 從雲端同步資料');
+    expect(window.showToast).toHaveBeenCalledWith('同步失敗，請確認網路連線');
+  });
+
+  it('does not draw Settings over the page shown when the sync ends', async () => {
+    let finish;
+    const running = new Promise((_, reject) => { finish = reject; });
+    mockStorage.currentManualSync.mockReturnValue(running);
+    const c = makeContainer();
+    renderSettings(c);
+    expect(c.querySelector('#sync-btn').disabled).toBe(true);
+    c.innerHTML = '<div id="other-page">首頁</div>';
+    mockStorage.currentManualSync.mockReturnValue(null);
+    finish(new Error('offline'));
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(c.innerHTML).toBe('<div id="other-page">首頁</div>');
   });
 });
