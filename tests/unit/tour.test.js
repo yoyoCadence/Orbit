@@ -340,7 +340,7 @@ describe('等待畫面更新時跳過或重新開始（#298 review）', () => {
   });
 });
 
-describe('BUG-149：手機上第一次看到導覽', () => {
+describe('BUG-152：手機上第一次看到導覽', () => {
   afterEach(() => {
     delete window.Element.prototype.scrollIntoView;
   });

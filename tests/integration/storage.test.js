@@ -1229,7 +1229,7 @@ describe('db.insertSession()', () => {
   });
 
   it('calls sessions.insert with snake_case field mapping', async () => {
-    // A real task id is a uuid (`sessions.task_id`; BUG-147 sends any other as null).
+    // A real task id is a uuid (`sessions.task_id`; BUG-150 sends any other as null).
     const TASK_ID = '0b6f4e2a-8c1d-4a7e-9f3b-5d2c1e0a9b84';
     mockGetSession.mockResolvedValue({ data: { session: FAKE_SESSION } });
     const chain = makeChain();

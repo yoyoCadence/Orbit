@@ -140,7 +140,7 @@ export function startTour() {
   _whenNoBlockingModal(_showStep);
 }
 
-// BUG-149: setup asks a new user for the morning state (dayCycle.js) right
+// BUG-152: setup asks a new user for the morning state (dayCycle.js) right
 // before the tour starts, and the tour went over that modal while it was still
 // waiting for an answer. The tour starts once it is closed.
 const BLOCKING_MODAL = '#morning-modal';
@@ -225,7 +225,7 @@ function _renderStep(s) {
     const target = document.querySelector(s.selector);
     if (!target) { _step++; _showStep(); return; }
 
-    // BUG-149: on a phone the tour's task card is far below the fold (Home
+    // BUG-152: on a phone the tour's task card is far below the fold (Home
     // shows the plan, the Orbit Window and the growth tasks first). Measured
     // there, the spotlight was off screen and the whole page went dark under a
     // tip pointing at nothing. Bring it to the middle first.
