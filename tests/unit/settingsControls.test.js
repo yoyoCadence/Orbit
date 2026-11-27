@@ -200,15 +200,24 @@ describe('Pro feature info popovers', () => {
     expect(pop.querySelector('.pro-feat-pop-title').textContent).toBe('📤 CSV 匯出');
     expect(pop.querySelector('.pro-feat-pop-body').textContent).toContain('一鍵匯出所有打卡紀錄為 CSV');
     expect(pop.style.left).toBe('12px');
-    expect(pop.style.top).toBe(`${100 + window.scrollY + 8}px`);
+    expect(pop.style.top).toBe('108px');
 
-    // Another button replaces it, at the right edge kept inside too.
+    // Another button replaces it, at the right edge kept inside too; on a
+    // scrolled page it sits under the button, not under the top of the page.
     buttons[0].getBoundingClientRect = () => ({ left: window.innerWidth - 10, width: 20, bottom: 50 });
-    buttons[0].click();
+    const scrollY = Object.getOwnPropertyDescriptor(window, 'scrollY');
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 300 });
+    try {
+      buttons[0].click();
+    } finally {
+      if (scrollY) Object.defineProperty(window, 'scrollY', scrollY);
+      else delete window.scrollY;
+    }
     expect(document.querySelectorAll('#pro-feat-popover')).toHaveLength(1);
     const next = document.getElementById('pro-feat-popover');
     expect(next.querySelector('.pro-feat-pop-title').textContent).toBe('∞ 完整歷史紀錄');
     expect(next.style.left).toBe(`${window.innerWidth - 240 - 12}px`);
+    expect(next.style.top).toBe('358px');
 
     // A click anywhere closes it (once the opening click has passed).
     vi.advanceTimersByTime(0);
@@ -294,11 +303,16 @@ describe('going to the Pro card from a locked control', () => {
     expect(card.classList.contains('pro-card-highlight')).toBe(false);
     content.dispatchEvent(new window.Event('scrollend'));
     expect(card.classList.contains('pro-card-highlight')).toBe(true);
-    // Shown once: the flag is used up, and the fallback does not flash again.
+    // Shown once, for 2 s: the flag is used up, and the fallback does not flash again.
     expect(sessionStorage.getItem('orbit_pro_highlight')).toBeNull();
-    vi.advanceTimersByTime(2000);
+    vi.advanceTimersByTime(1999);
+    expect(card.classList.contains('pro-card-highlight')).toBe(true);
+    vi.advanceTimersByTime(1);
     expect(card.classList.contains('pro-card-highlight')).toBe(false);
     vi.advanceTimersByTime(600);
+    expect(card.classList.contains('pro-card-highlight')).toBe(false);
+    // Later scrolls of the page do not flash it again.
+    content.dispatchEvent(new window.Event('scrollend'));
     expect(card.classList.contains('pro-card-highlight')).toBe(false);
   });
 
@@ -355,6 +369,14 @@ describe('preferences', () => {
     expect(mockStorage.saveUser).toHaveBeenLastCalledWith(mockState.user);
   });
 
+  it('has the focus sound on until it is turned off', () => {
+    mockStorage.isProUser.mockReturnValue(true);
+    const c = makeContainer();
+    renderSettings(c);
+    expect(c.querySelector('#focus-sound-toggle').checked).toBe(true);
+    expect(c.querySelector('#focus-default-min-select').value).toBe('');
+  });
+
   it('shows the saved choices when the page opens', () => {
     mockStorage.isProUser.mockReturnValue(true);
     mockState.user = { ...mockState.user, focusSoundEnabled: false, focusDefaultMinutes: 90, newDayHour: 3 };
@@ -366,6 +388,7 @@ describe('preferences', () => {
   });
 
   it('saves nothing without a user (a page left open after signing out)', () => {
+    window.confirm = vi.fn(() => true);
     mockStorage.isProUser.mockReturnValue(true);
     const c = makeContainer();
     renderSettings(c);
@@ -374,6 +397,7 @@ describe('preferences', () => {
     change(c.querySelector('#focus-default-min-select'), '25');
     change(c.querySelector('#new-day-hour-select'), '2');
     change(c.querySelector('#mode-toggle'), true);
+    expect(window.confirm).not.toHaveBeenCalled();
     expect(mockStorage.saveUser).not.toHaveBeenCalled();
   });
 
@@ -396,8 +420,8 @@ describe('task list', () => {
     renderSettings(c);
     const extra = c.querySelector('#tasks-extra');
     const shown = [...c.querySelectorAll('#tasks-list [data-del]')].filter(b => !extra.contains(b));
-    expect(shown.length).toBeGreaterThan(0);
-    expect(shown.length + extra.querySelectorAll('[data-del]').length).toBe(9);
+    expect(shown.map(b => b.dataset.del)).toEqual(['t0', 't1', 't2', 't3']);
+    expect(extra.querySelectorAll('[data-del]')).toHaveLength(5);
     expect(extra.classList.contains('hidden')).toBe(true);
     expect(c.querySelector('#tasks-expand-btn').textContent).toBe('展開全部（共 9 項）');
     c.querySelector('#tasks-expand-btn').click();
@@ -406,7 +430,7 @@ describe('task list', () => {
   });
 
   it('has no expander when every task fits', () => {
-    mockState.tasks = [makeTask()];
+    mockState.tasks = Array.from({ length: 4 }, (_, i) => makeTask({ id: `t${i}` }));
     const c = makeContainer();
     renderSettings(c);
     expect(c.querySelector('#tasks-expand-btn')).toBeNull();
@@ -506,6 +530,8 @@ describe('proof-photo buttons', () => {
     expect(window.confirm.mock.calls[0][0]).toContain('拍的 3 張，約 120 KB');
     expect(proof.clearDeviceProofs).toHaveBeenCalledWith('user-1', mockState.sessions, { signedIn: true });
     expect(window.showToast).toHaveBeenCalledWith('已清除這台裝置的佐證照片（3 張與下載的副本）');
+    // The page is drawn again with what is left.
+    expect(c.querySelector('#proof-clear-btn')).not.toBe(btn);
   });
 
   it('says how many it kept because they are not uploaded yet', () => {
@@ -662,7 +688,10 @@ describe('task window', () => {
     // New tasks start at B, medium difficulty, low resistance: 20 × 1.2 × 0.7 × 1.0.
     expect($(modal, '#tm-xp-preview').textContent).toBe('預估 XP：+17（完成）/ +10（部分完成）');
     change($(modal, '#tm-value'), 'S');
+    // 20 × 3.2 × 0.7 × 1.0
+    expect($(modal, '#tm-xp-preview').textContent).toBe('預估 XP：+45（完成）/ +27（部分完成）');
     change($(modal, '#tm-difficulty'), '1.0');
+    expect($(modal, '#tm-xp-preview').textContent).toBe('預估 XP：+64（完成）/ +38（部分完成）');
     change($(modal, '#tm-resistance'), '1.4');
     expect($(modal, '#tm-xp-preview').textContent).toBe('預估 XP：+90（完成）/ +54（部分完成）');
     change($(modal, '#tm-nature'), 'entertainment');
@@ -691,14 +720,35 @@ describe('task window', () => {
 
   it('opens an edited task with the values its nature allows', () => {
     mockState.user.mode = 'advanced';
-    mockState.tasks = [makeTask({ id: 'fun', taskNature: 'entertainment', value: 'D' })];
+    mockState.tasks = [
+      makeTask({ id: 'fun', taskNature: 'entertainment', value: 'D' }),
+      makeTask({ id: 'chore', taskNature: 'maintenance', value: 'B' }),
+    ];
     const c = makeContainer();
     renderSettings(c);
     c.querySelector('[data-edit="fun"]').click();
-    const modal = document.querySelector('.modal-overlay');
+    let modal = document.querySelector('.modal-overlay');
     expect($(modal, '.modal-title').textContent).toBe('編輯任務');
     expect(enabledValues(modal)).toEqual(['D']);
     expect($(modal, '#tm-save').textContent).toBe('儲存變更');
+    modal.remove();
+    c.querySelector('[data-edit="chore"]').click();
+    modal = document.querySelector('.modal-overlay');
+    expect(enabledValues(modal)).toEqual(['A', 'B', 'D']);
+    expect($(modal, '#tm-value').value).toBe('B');
+  });
+
+  it('does not ask again when an A task is edited', () => {
+    mockState.user.mode = 'advanced';
+    mockState.tasks = [makeTask({ id: 'a', value: 'A' })];
+    const c = makeContainer();
+    renderSettings(c);
+    c.querySelector('[data-edit="a"]').click();
+    document.querySelector('.modal-overlay #tm-name').value = '改名';
+    document.querySelector('.modal-overlay #tm-save').click();
+    expect(window.confirm).not.toHaveBeenCalled();
+    expect(mockState.tasks[0]).toMatchObject({ id: 'a', name: '改名', value: 'A' });
+    expect(mockStorage.saveTasks).toHaveBeenCalledWith(mockState.tasks, 'user-1');
   });
 
   it('asks before making a new task A, and keeps the window open when cancelled', () => {
@@ -712,6 +762,7 @@ describe('task window', () => {
     window.confirm = vi.fn(() => true);
     $(modal, '#tm-save').click();
     expect(mockState.tasks[0]).toMatchObject({ name: '讀書', value: 'A', dailyXpCap: 200 });
+    expect(mockStorage.saveTasks).toHaveBeenCalledWith(mockState.tasks, 'user-1');
     expect(modal.isConnected).toBe(false);
   });
 
@@ -733,6 +784,7 @@ describe('task window', () => {
     expect(mockState.tasks[0]).toMatchObject({
       value: 'S', reason: '原因', successCriteria: '標準', requiresReasonIfS: true, dailyXpCap: 300,
     });
+    expect(mockStorage.saveTasks).toHaveBeenCalledTimes(1);
   });
 
   it.each([
@@ -766,6 +818,7 @@ describe('task window', () => {
     document.querySelector('.modal-overlay #tm-save').click();
     expect(mockState.tasks[0]).toMatchObject({ id: 'mine', cooldownMinutes: 45, dailyXpCap: 60, valueConfidence: 70 });
     expect(mockState.tasks).toHaveLength(1);
+    expect(mockStorage.saveTasks).toHaveBeenCalledWith(mockState.tasks, 'user-1');
   });
 
   it('picks an emoji, and shows each field\'s tip on ⓘ', () => {
@@ -793,6 +846,11 @@ describe('task window', () => {
     mockState.tasks = [makeTask({ id: 'pic', value: 'B', emoji: '🎸', iconImg: 'data:image/jpeg;base64,AAAA' })];
     const c = makeContainer();
     renderSettings(c);
+    // Saved as it is, the photo icon is kept.
+    c.querySelector('[data-edit="pic"]').click();
+    document.querySelector('.modal-overlay #tm-save').click();
+    expect(mockState.tasks[0]).toMatchObject({ emoji: '🎸', iconImg: 'data:image/jpeg;base64,AAAA' });
+    expect(mockStorage.saveTasks).toHaveBeenLastCalledWith(mockState.tasks, 'user-1');
     c.querySelector('[data-edit="pic"]').click();
     const modal = document.querySelector('.modal-overlay');
     expect($(modal, '#tm-emoji-section').style.display).toBe('none');
