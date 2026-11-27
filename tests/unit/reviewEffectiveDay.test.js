@@ -97,6 +97,24 @@ describe('月視圖', () => {
     expect(todayCell()).toBe('30');
   });
 
+  it('本月時不能再往後；月初凌晨的本月是有效日所在的月份', async () => {
+    await render(new Date('2026-05-01T02:00:00'), { mode: 'month' });
+    expect(container.querySelector('[data-action="reviewNextMonth"]').disabled).toBe(true);
+    window._reviewPrevMonth();
+    expect(container.querySelector('[data-action="reviewNextMonth"]').disabled).toBe(false);
+  });
+
+  it('打開的月份在第一次畫出時才決定（import 時還沒有使用者的換日時間）', async () => {
+    vi.setSystemTime(new Date('2026-05-01T02:00:00'));
+    mockState.user = null;          // the router imports review.js before sign-in
+    const { renderReview } = await import('../../pwa/js/pages/review.js');
+    mockState.user = { id: 'u1', name: 'Tester', newDayHour: 0 };
+    window._reviewSetMode('month');
+    renderReview(container);
+    // newDayHour 0: the calendar month, May — not April from the default 5 am.
+    expect(monthLabel()).toBe(new Date(2026, 4, 1).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long' }));
+  });
+
   it('免費版的月份限制從有效月份算（月初凌晨不會少一個月）', async () => {
     const label = month => new Date(2026, month, 1).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long' });
     await render(new Date('2026-05-01T02:00:00'), { mode: 'month' });

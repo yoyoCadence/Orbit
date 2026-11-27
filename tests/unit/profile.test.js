@@ -692,6 +692,10 @@ describe('renderProfile: advanced dashboard', () => {
 
   it('dashboard completion rate reflects complete sessions', () => {
     mockStorage.isProUser.mockReturnValue(true);
+    // Midday: before newDayHour the window ends on the previous day (BUG-146),
+    // so the calendar date would fall outside it (#299 review).
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-04-16T12:00:00'));
     const today = new Date().toLocaleDateString('sv');
     mockState.sessions = [
       { date: today, impactType: 'task', value: 'A', result: 'complete',
@@ -702,9 +706,13 @@ describe('renderProfile: advanced dashboard', () => {
         completedAt: today + 'T11:00:00Z' },
     ];
     const c = makeContainer();
-    renderProfile(c);
-    const metrics = c.querySelectorAll('.dash-metric-val');
-    expect(metrics[0].textContent).toBe('50%');
+    try {
+      renderProfile(c);
+      const metrics = c.querySelectorAll('.dash-metric-val');
+      expect(metrics[0].textContent).toBe('50%');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

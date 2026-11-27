@@ -6,9 +6,9 @@
  * 環境：jsdom
  *
  * 注意事項：
- * - 週視圖的日期以本地日期（toLocaleDateString('sv')）計算，
- *   與 app 其餘日期欄位一致。測試 sessions 的 date 欄位以此對齊。
- * - 月視圖的 _viewYear / _viewMonth 為模組層級狀態，以當前日期初始化。
+ * - 週視圖的日期以有效日計算；這裡把 effectiveToday() mock 成日曆日期，
+ *   測試 sessions 的 date 欄位以此對齊（有效日本身見 reviewEffectiveDay.test.js）。
+ * - 月視圖的 _viewYear / _viewMonth 為模組層級狀態，第一次畫出時以有效日初始化。
  * - _viewMode、_viewYear、_viewMonth 在測試間持續存在；
  *   每個 beforeEach 透過 window._reviewSetMode('week') 重置。
  */
@@ -45,11 +45,10 @@ vi.mock('../../pwa/js/supabase.js', () => ({
 vi.mock('../../pwa/js/state.js',   () => ({ state: mockState }));
 vi.mock('../../pwa/js/storage.js', () => ({ storage: mockStorage, db: {} }));
 
-// Mock utils — today() returns real local date so month calendar aligns with
-// the module's _viewYear/_viewMonth (both initialized from new Date())
+// Mock utils — the effective day is the calendar date here, so the month
+// calendar and the module's _viewYear/_viewMonth line up with new Date().
 vi.mock('../../pwa/js/utils.js', async (importOriginal) => ({
   ...(await importOriginal()),
-  today:          () => new Date().toLocaleDateString('sv'),
   effectiveToday: () => new Date().toLocaleDateString('sv'),
   formatTime:     () => '10:00',
   formatDate:     (d) => d,
