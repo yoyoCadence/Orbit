@@ -1228,13 +1228,21 @@ describe('renderSettings: background and task icon images (BUG-126)', () => {
   const realToDataURL = window.HTMLCanvasElement.prototype.toDataURL;
   let canvases;
 
-  /** Images decode (or fail) like a browser's; jsdom does not decode them. */
+  /** Images decode (or fail) like a browser's; jsdom does not decode them.
+   * Files are read by a stub too (jsdom reads them for real, which can take
+   * longer than any wait on a busy machine). Both answer on a microtask, so
+   * the whole pick finishes before any timer, `settle()`'s included. */
   function images({ decodes = true, width = 1600, height = 1200 } = {}) {
+    window.FileReader = class {
+      readAsDataURL() {
+        window.queueMicrotask(() => this.onload?.({ target: { result: 'data:image/jpeg;base64,AQID' } }));
+      }
+    };
     window.Image = class {
       set src(value) {
         this._src = value;
         this.width = width; this.height = height;
-        setTimeout(() => (decodes ? this.onload?.() : this.onerror?.()), 0);
+        window.queueMicrotask(() => (decodes ? this.onload?.() : this.onerror?.()));
       }
       get src() { return this._src; }
     };
@@ -1289,7 +1297,7 @@ describe('renderSettings: background and task icon images (BUG-126)', () => {
   it('says so when the file cannot be read', async () => {
     images();
     window.FileReader = class {
-      readAsDataURL() { setTimeout(() => this.onerror?.(), 0); }
+      readAsDataURL() { window.queueMicrotask(() => this.onerror?.()); }
     };
     const c = makeContainer();
     renderSettings(c);
