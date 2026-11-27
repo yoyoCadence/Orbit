@@ -474,6 +474,8 @@ export function renderHome(container) {
 
   return () => {
     if (_container === container) _container = null;
+    // BUG-137: leaving Home mid-drag ends the drag, as a new drawing does.
+    _abandonDrags();
     // BUG-134: leaving Home, its tap-outside listener leaves the shared
     // page container too.
     const outsideTap = _outsideTapListeners.get(container);
@@ -769,6 +771,8 @@ function _setupPlanDragAndDrop(container) {
     handle.addEventListener('pointerdown', e => {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       e.preventDefault();                          // prevent text selection & click
+      // BUG-137: one drag at a time (a second finger on another handle).
+      if (_drag.active || _planDrag.active) return;
       const card = handle.closest('.plan-card');
       if (!card) return;
 
@@ -848,7 +852,8 @@ function _endPlanDrag(planList, { cancelled = false } = {}) {
 
   setTimeout(() => {
     _planDrag.wasDragging = false;
-    window._isDragging = false;
+    // BUG-137: a drag started in the meantime keeps page swipes off.
+    if (!_drag.active && !_planDrag.active) window._isDragging = false;
   }, 50);
 }
 
@@ -892,6 +897,8 @@ function _setupDragAndDrop(container) {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       e.preventDefault();
       e.stopPropagation();
+      // BUG-137: one drag at a time (a second finger on another handle).
+      if (_drag.active || _planDrag.active) return;
       const rect = card.getBoundingClientRect();
       _activateDrag({
         card,
@@ -997,7 +1004,7 @@ function _endDrag(container, { cancelled = false } = {}) {
   // click after it (most touch drags, or a drop that redraws the list) must
   // not swallow a later tap: the flag ends with the drag, as the plan's does.
   setTimeout(() => {
-    window._isDragging = false;
+    if (!_drag.active && !_planDrag.active) window._isDragging = false;
     _drag.wasDragging = false;
   }, 50);
 }
