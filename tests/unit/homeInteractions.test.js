@@ -126,9 +126,9 @@ function layOut(cards) {
   [...cards].forEach((card, i) => { card.getBoundingClientRect = () => rect(i * 60); });
 }
 
-function pointer(el, type, { x = 10, y = 0, pointerType = 'touch', button = 0 } = {}) {
+function pointer(el, type, { x = 10, y = 0, pointerType = 'touch', button = 0, pointerId = 7 } = {}) {
   const event = new window.PointerEvent(type, {
-    bubbles: true, cancelable: true, clientX: x, clientY: y, pointerType, button, pointerId: 7,
+    bubbles: true, cancelable: true, clientX: x, clientY: y, pointerType, button, pointerId,
   });
   el.dispatchEvent(event);
   return event;
@@ -626,6 +626,76 @@ describe('drag edge cases (BUG-136)', () => {
     expect(floating(c, 'plan-card')).toHaveLength(1);
     expect(floating(c, 'task-card')).toHaveLength(0);
     expect(c.querySelector('.task-card[data-task-id="p2"]').classList.contains('drag-placeholder')).toBe(false);
+  });
+
+  it('in the plan, a second finger neither starts a drag nor moves the first (BUG-137)', () => {
+    vi.useFakeTimers();
+    mockState.tasks = ['p1', 'p2', 'p3'].map(growth);
+    mockState.dailyPlan = ['p1', 'p2', 'p3'];
+    const c = makeContainer();
+    renderHome(c);
+    layOut(c.querySelectorAll('.plan-card'));
+    const first = c.querySelector('.plan-card[data-task-id="p1"] .plan-drag-handle');
+    const second = c.querySelector('.plan-card[data-task-id="p3"] .plan-drag-handle');
+    pointer(first, 'pointerdown', { y: 25 });
+    pointer(second, 'pointerdown', { y: 145, pointerId: 8 });
+    expect(floating(c, 'plan-card')).toHaveLength(1);
+    pointer(second, 'pointermove', { y: 100, pointerId: 8 });
+    pointer(second, 'pointerup', { y: 100, pointerId: 8 });
+    pointer(second, 'pointercancel', { pointerId: 8 });
+    expect(mockStorage.saveDailyPlan).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(50);
+    expect(window._isDragging).toBe(true);
+    expect(floating(c, 'plan-card')).toHaveLength(1);
+    // The first finger still drives its own drag.
+    pointer(first, 'pointermove', { y: 100 });
+    pointer(first, 'pointerup', { y: 100 });
+    expect(mockState.dailyPlan).toEqual(['p2', 'p1', 'p3']);
+    vi.advanceTimersByTime(50);
+    expect(window._isDragging).toBe(false);
+  });
+
+  it('in the task list, a second finger neither starts a drag nor moves the first (BUG-137)', async () => {
+    vi.useFakeTimers();
+    const { reorderTasks } = await import('../../pwa/js/engine.js');
+    const c = page({ tasks: [growth('t1'), growth('t2'), growth('t3')] });
+    const first = c.querySelector('.task-card[data-task-id="t3"] .task-drag-handle');
+    const second = c.querySelector('.task-card[data-task-id="t2"] .task-drag-handle');
+    pointer(first, 'pointerdown', { x: 10, y: 125 });
+    pointer(second, 'pointerdown', { x: 10, y: 80, pointerId: 8 });
+    expect(floating(c, 'task-card')).toHaveLength(1);
+    expect(c.querySelector('.task-card[data-task-id="t2"]').classList.contains('drag-placeholder')).toBe(false);
+    pointer(second, 'pointermove', { x: 10, y: 10, pointerId: 8 });
+    pointer(second, 'pointerup', { x: 10, y: 10, pointerId: 8 });
+    pointer(second, 'pointercancel', { pointerId: 8 });
+    expect(reorderTasks).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(50);
+    expect(window._isDragging).toBe(true);
+    pointer(first, 'pointermove', { x: 10, y: 10 });
+    pointer(first, 'pointerup', { x: 10, y: 10 });
+    expect(reorderTasks).toHaveBeenCalledWith(expect.any(Array), 't3', 't1');
+  });
+
+  it('a plan drag right after another keeps page swipes off (BUG-137)', () => {
+    vi.useFakeTimers();
+    const c = page({ plan: ['p1', 'p2'], tasks: [growth('p1'), growth('p2')] });
+    const handle = c.querySelector('.plan-card[data-task-id="p1"] .plan-drag-handle');
+    pointer(handle, 'pointerdown', { y: 25 });
+    pointer(handle, 'pointerup', { y: 25 });
+    pointer(c.querySelector('.plan-card[data-task-id="p2"] .plan-drag-handle'), 'pointerdown', { y: 85 });
+    vi.advanceTimersByTime(50);
+    expect(window._isDragging).toBe(true);
+  });
+
+  it('a task drag right after another keeps page swipes off (BUG-137)', () => {
+    vi.useFakeTimers();
+    const c = page({ tasks: [growth('t1'), growth('t2')] });
+    const handle = c.querySelector('.task-card[data-task-id="t1"] .task-drag-handle');
+    pointer(handle, 'pointerdown', { x: 10, y: 25 });
+    pointer(handle, 'pointerup', { x: 10, y: 25 });
+    pointer(c.querySelector('.task-card[data-task-id="t2"] .task-drag-handle'), 'pointerdown', { x: 10, y: 80 });
+    vi.advanceTimersByTime(50);
+    expect(window._isDragging).toBe(true);
   });
 
   it('a plan drag started within 50 ms of a task drop keeps page swipes off (BUG-137)', () => {

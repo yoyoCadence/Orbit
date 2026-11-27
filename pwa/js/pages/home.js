@@ -754,6 +754,7 @@ function _setupCardSwipe(container) {
 const _planDrag = {
   active:      false,
   wasDragging: false,
+  pointerId:   null,  // BUG-137: only the finger that started it moves it
   taskId:      null,
   card:        null,
   clone:       null,
@@ -782,6 +783,7 @@ function _setupPlanDragAndDrop(container) {
       _planDrag.card   = card;
       _planDrag.offY   = e.clientY - rect.top;
       _planDrag.lastY  = e.clientY;
+      _planDrag.pointerId = e.pointerId;
 
       const clone = card.cloneNode(true);
       clone.style.cssText = [
@@ -800,8 +802,10 @@ function _setupPlanDragAndDrop(container) {
       handle.setPointerCapture(e.pointerId);
     });
 
+    // BUG-137: another finger's events (it started no drag) leave this one be.
+    const ownsPlanDrag = e => _planDrag.active && e.pointerId === _planDrag.pointerId;
     handle.addEventListener('pointermove', e => {
-      if (!_planDrag.active) return;
+      if (!ownsPlanDrag(e)) return;
       _planDrag.lastY = e.clientY;
       _planDrag.clone.style.top = (e.clientY - _planDrag.offY) + 'px';
       _clearPlanDragOver(planList);
@@ -816,11 +820,11 @@ function _setupPlanDragAndDrop(container) {
       }
     }, { passive: false });
 
-    handle.addEventListener('pointerup',     () => { if (_planDrag.active) _endPlanDrag(planList); });
+    handle.addEventListener('pointerup',     e => { if (ownsPlanDrag(e)) _endPlanDrag(planList); });
     // pointercancel never fires a subsequent click, so clear the flag
     // immediately; BUG-136 (b): and a cancelled drag puts the task back.
-    handle.addEventListener('pointercancel', () => {
-      if (_planDrag.active) { _endPlanDrag(planList, { cancelled: true }); _planDrag.wasDragging = false; }
+    handle.addEventListener('pointercancel', e => {
+      if (ownsPlanDrag(e)) { _endPlanDrag(planList, { cancelled: true }); _planDrag.wasDragging = false; }
     });
   });
 }
@@ -877,6 +881,7 @@ function _clearPlanDragOver(planList) {
 const _drag = {
   active:      false,
   wasDragging: false,  // suppresses the click that follows pointerup
+  pointerId:   null,   // BUG-137: only the finger that started it moves it
   taskId:      null,
   card:        null,
   clone:       null,
@@ -885,6 +890,9 @@ const _drag = {
   lastX:       0,
   lastY:       0,
 };
+
+// BUG-137: another finger's events (it started no drag) leave this one be.
+const ownsDrag = e => _drag.active && e.pointerId === _drag.pointerId;
 
 function _setupDragAndDrop(container) {
   container.querySelectorAll('.task-drag-handle').forEach(handle => {
@@ -912,7 +920,7 @@ function _setupDragAndDrop(container) {
     });
 
     handle.addEventListener('pointermove', e => {
-      if (!_drag.active) return;
+      if (!ownsDrag(e)) return;
       _drag.lastX = e.clientX;
       _drag.lastY = e.clientY;
       _drag.clone.style.left = (e.clientX - _drag.offX) + 'px';
@@ -922,13 +930,13 @@ function _setupDragAndDrop(container) {
       if (under && under !== _drag.card) under.classList.add('drag-over');
     });
 
-    handle.addEventListener('pointerup', () => {
-      if (_drag.active) _endDrag(container);
+    handle.addEventListener('pointerup', e => {
+      if (ownsDrag(e)) _endDrag(container);
     });
 
     // BUG-136 (b): a cancelled drag puts the task back.
-    handle.addEventListener('pointercancel', () => {
-      if (_drag.active) _endDrag(container, { cancelled: true });
+    handle.addEventListener('pointercancel', e => {
+      if (ownsDrag(e)) _endDrag(container, { cancelled: true });
     });
   });
 }
@@ -945,6 +953,7 @@ function _activateDrag(pressData) {
   _drag.offY   = offY;
   _drag.lastX  = clientX;
   _drag.lastY  = clientY;
+  _drag.pointerId = pointerId;
 
   const clone = card.cloneNode(true);
   clone.style.cssText = `
