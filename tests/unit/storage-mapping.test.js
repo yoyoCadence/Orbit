@@ -522,6 +522,34 @@ describe('manual sync (BUG-133)', () => {
     expect(load).toHaveBeenCalledTimes(2);
   });
 
+  it('a load that throws at once is still a failed sync, and is cleared', async () => {
+    vi.spyOn(storage, '_syncFromRemoteNow').mockImplementationOnce(() => { throw new Error('boom'); });
+    await expect(storage.syncFromRemote()).rejects.toThrow('boom');
+    expect(storage.currentManualSync()).toBeNull();
+  });
+
+  it('belongs to the account it was started for', async () => {
+    localStorage.setItem('yoyo_user', JSON.stringify({ id: 'uid-1', name: 'A' }));
+    const finishes = [];
+    const load = vi.spyOn(db, 'loadFromRemote').mockImplementation(() => new Promise(resolve => { finishes.push(resolve); }));
+    const first = storage.syncFromRemote();
+    expect(storage.currentManualSync()).toBe(first);
+    // Signed out and another account in, while A's sync still runs.
+    localStorage.setItem('yoyo_user', JSON.stringify({ id: 'uid-2', name: 'B' }));
+    expect(storage.currentManualSync()).toBeNull();
+    // B's own request is not A's.
+    const second = storage.syncFromRemote();
+    expect(second).not.toBe(first);
+    await vi.waitFor(() => expect(load).toHaveBeenCalledTimes(2));
+    finishes[0]({ backfilled: Promise.resolve([]) });
+    await first;
+    // A's sync ending does not clear B's.
+    expect(storage.currentManualSync()).toBe(second);
+    finishes[1]({ backfilled: Promise.resolve([]) });
+    await second;
+    expect(storage.currentManualSync()).toBeNull();
+  });
+
   it('is already cleared when its result is seen', async () => {
     vi.spyOn(db, 'loadFromRemote').mockResolvedValue({ backfilled: Promise.resolve([]) });
     let seen = 'unset';

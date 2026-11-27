@@ -1052,6 +1052,25 @@ describe('Settings drawn again while a manual sync runs (BUG-133)', () => {
     expect(window.showToast).toHaveBeenCalledWith('資料已更新');
   });
 
+  it('draws Settings once when the sync ends, however many times it was drawn meanwhile', async () => {
+    let finish;
+    const running = new Promise(resolve => { finish = resolve; });
+    mockStorage.syncFromRemote.mockImplementationOnce(() => running);
+    const c = makeContainer();
+    renderSettings(c);
+    c.querySelector('#sync-btn').click();
+    mockStorage.currentManualSync.mockReturnValue(running);
+    renderSettings(c);
+    renderSettings(c);
+    mockStorage.currentManualSync.mockReturnValue(null);
+    // Each render reads the theme once: count renders from here.
+    mockStorage.getTheme.mockClear();
+    finish();
+    await vi.waitFor(() => expect(c.querySelector('#sync-btn').disabled).toBe(false));
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(mockStorage.getTheme).toHaveBeenCalledTimes(1);
+  });
+
   it('brings the button back when that sync fails too (the first page\'s button is gone)', async () => {
     let fail;
     const running = new Promise((_, reject) => { fail = reject; });
