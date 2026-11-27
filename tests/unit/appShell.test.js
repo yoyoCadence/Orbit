@@ -1108,3 +1108,214 @@ describe('啟動與 auth 事件', () => {
     expect(dayCycle.showDailyReport).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('BUG-142：登入時的補傳失敗', () => {
+  let pending;
+  const summary = (sessions = 0, deletions = 0, snapshots = 0) => ({
+    sessions, deletions, tasks: snapshots > 0, profile: false, energy: false,
+    total: sessions + deletions + snapshots,
+  });
+
+  /** No cache: signs owner-a in through loadAndStart(); its load resolves with `backfilled`. */
+  async function signInWithBackfills(backfilled) {
+    cache.user = null;
+    auth.getSession.mockResolvedValue(null);
+    await import('../../pwa/js/app.js');
+    await flush();
+    db.loadFromRemote.mockImplementationOnce(async () => {
+      seedCachedUser('owner-a');
+      return { backfilled };
+    });
+    await auth.callback('SIGNED_IN', sessionFor('owner-a'));
+    await flush();
+  }
+
+  beforeEach(() => {
+    pending = summary();
+    storage.getPendingSyncSummary.mockImplementation(() => pending);
+  });
+
+  it('補傳失敗時顯示「同步暫停」與待同步數，並在連線恢復時再同步', async () => {
+    await signInWithBackfills(Promise.resolve().then(() => { pending = summary(2); }));
+
+    expect(document.getElementById('main-app').classList.contains('hidden')).toBe(false);
+    expect(syncBanner().textContent).toBe('⚠️ 同步暫停，將於下次連線重試 · 2 筆待同步');
+    expect(storage.getPendingSyncSummary).toHaveBeenCalledWith('owner-a');
+
+    // 直接送 online：檢查標記本身（瀏覽器只在 offline 之後送 online）。
+    db.loadFromRemote.mockImplementationOnce(async () => { pending = summary(); });
+    await network.emit(true);
+    await flush();
+    expect(db.loadFromRemote).toHaveBeenCalledTimes(2);
+    expect(syncBanner().textContent).toBe('✓ 已更新');
+  });
+
+  it('刪除紀錄沒有確認時也顯示', async () => {
+    pending = summary(0, 1);
+    await signInWithBackfills(Promise.resolve([]));
+    expect(syncBanner().textContent).toBe('⚠️ 同步暫停，將於下次連線重試 · 1 筆待同步');
+  });
+
+  it('離線時顯示「離線中」', async () => {
+    await signInWithBackfills(Promise.resolve().then(() => {
+      network.online = false;
+      pending = summary(1);
+    }));
+    expect(syncBanner().textContent).toBe('📴 離線中 · 1 筆待同步，連線後自動同步');
+  });
+
+  it('等補傳結束才讀待同步：補傳成功時不顯示', async () => {
+    pending = summary(1);
+    let finish;
+    await signInWithBackfills(new Promise(resolve => { finish = resolve; }));
+    expect(syncBanner().classList.contains('hidden')).toBe(true);
+
+    pending = summary();
+    finish([]);
+    await flush();
+    expect(syncBanner().classList.contains('hidden')).toBe(true);
+    expect(streakUnlock.requestStreakUnlock).toHaveBeenCalledWith('owner-a', expect.anything());
+  });
+
+  it('只剩這次開機自己寫的資料（例如換日寫的 profile，還在送出）時不顯示', async () => {
+    pending = summary(0, 0, 1);
+    await signInWithBackfills(Promise.resolve([]));
+    expect(syncBanner().classList.contains('hidden')).toBe(true);
+    expect(syncBanner().textContent).toBe('');
+  });
+
+  it('補傳結束前已登出：不顯示，也不詢問 SUB-16', async () => {
+    let fail;
+    await signInWithBackfills(new Promise(resolve => { fail = resolve; }));
+    auth.callback('SIGNED_OUT', null);
+    pending = summary(1);
+    fail([]);
+    await flush();
+
+    expect(syncBanner().classList.contains('hidden')).toBe(true);
+    expect(streakUnlock.requestStreakUnlock).not.toHaveBeenCalled();
+  });
+});
+
+describe('BUG-143：前一個帳號的連線恢復同步不擋住下一個帳號', () => {
+  async function signInAs(id) {
+    db.loadFromRemote.mockImplementationOnce(async () => { seedCachedUser(id); });
+    await auth.callback('SIGNED_IN', sessionFor(id));
+    await flush();
+  }
+  const loadsOf = id => db.loadFromRemote.mock.calls.filter(([owner]) => owner === id).length;
+
+  /** owner-a's reconnect sync hangs in its load; returns what settles it. */
+  async function hangReconnectOf(id) {
+    await bootSignedIn(id);
+    await network.emit(false);
+    let finish;
+    db.loadFromRemote.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    const syncing = network.emit(true);
+    await flush();
+    expect(loadsOf(id)).toBe(2);
+    return { syncing, finish: () => finish() };
+  }
+
+  it.each([
+    ['換成另一個帳號', 'owner-b'],
+    ['登出後再登入同一個帳號', 'owner-a'],
+  ])('%s後恢復連線：等前一個停下，再以新的 session 同步', async (_label, next) => {
+    const stale = await hangReconnectOf('owner-a');
+    auth.callback('SIGNED_OUT', null);
+    await signInAs(next);
+    const before = loadsOf(next);
+
+    await network.emit(false);
+    const syncing = network.emit(true);
+    await flush();
+    // 兩個載入不同時進行（_loadRemote）：前一個還沒停下，這一個先等。
+    expect(loadsOf(next)).toBe(before);
+    expect(syncBanner().textContent).toBe('☁️ 同步中…');
+
+    stale.finish();
+    await stale.syncing;
+    await syncing;
+    await flush();
+
+    expect(loadsOf(next)).toBe(before + 1);
+    expect(db.loadFromRemote).toHaveBeenLastCalledWith(next);
+    expect(syncBanner().textContent).toBe('✓ 已更新');
+  });
+
+  it('同一個 session 的同步還在進行時不再開一個', async () => {
+    const running = await hangReconnectOf('owner-a');
+    await network.emit(false);
+    const again = network.emit(true);
+    await flush();
+    expect(loadsOf('owner-a')).toBe(2);
+
+    running.finish();
+    await running.syncing;
+    await again;
+    await flush();
+    expect(loadsOf('owner-a')).toBe(2);
+    expect(syncBanner().textContent).toBe('✓ 已更新');
+  });
+
+  it('等待前一個時又登出：不再同步', async () => {
+    const stale = await hangReconnectOf('owner-a');
+    auth.callback('SIGNED_OUT', null);
+    await signInAs('owner-b');
+    await network.emit(false);
+    const syncing = network.emit(true);
+    await flush();
+
+    auth.callback('SIGNED_OUT', null);
+    stale.finish();
+    await stale.syncing;
+    await syncing;
+    await flush();
+
+    expect(loadsOf('owner-b')).toBe(1);
+    expect(syncBanner().classList.contains('hidden')).toBe(true);
+  });
+
+  it('前一個結束時不會清掉新帳號那個還在進行的同步', async () => {
+    const stale = await hangReconnectOf('owner-a');
+    auth.callback('SIGNED_OUT', null);
+    await signInAs('owner-b');
+    await network.emit(false);
+    let finishB;
+    db.loadFromRemote.mockImplementationOnce(() => new Promise(resolve => { finishB = resolve; }));
+    const first = network.emit(true);
+    stale.finish();
+    await stale.syncing;
+    await flush();
+    expect(loadsOf('owner-b')).toBe(2);
+
+    await network.emit(false);
+    const again = network.emit(true);
+    await flush();
+    expect(loadsOf('owner-b')).toBe(2);
+
+    finishB();
+    await first;
+    await again;
+    await flush();
+    expect(loadsOf('owner-b')).toBe(2);
+  });
+
+  it('前一個結束後，下一次恢復連線照常同步（不留下「進行中」）', async () => {
+    const stale = await hangReconnectOf('owner-a');
+    auth.callback('SIGNED_OUT', null);
+    await signInAs('owner-b');
+    await network.emit(false);
+    const first = network.emit(true);
+    stale.finish();
+    await stale.syncing;
+    await first;
+    await flush();
+    expect(loadsOf('owner-b')).toBe(2);
+
+    await network.emit(false);
+    await network.emit(true);
+    await flush();
+    expect(loadsOf('owner-b')).toBe(3);
+  });
+});

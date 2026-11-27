@@ -630,6 +630,10 @@ describe('saves that outlive the page, continued (BUG-139)', () => {
 
 describe('the title-template editor left open across a page change', () => {
   beforeEach(() => { mockStorage.isProUser.mockReturnValue(true); });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    mockStorage.isProUser.mockReturnValue(false);
+  });
 
   it('saves without drawing Profile over the page shown now', () => {
     const c = makeContainer();
@@ -645,7 +649,7 @@ describe('the title-template editor left open across a page change', () => {
   });
 
   it('deletes without drawing Profile over the page shown now', () => {
-    window.confirm = vi.fn(() => true);
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
     mockState.user = freshUser({
       titleTemplate: 'custom_abc',
       customTemplates: { custom_abc: { name: '自訂', icon: '✨', tiers: [[1, 'A']] } },
@@ -661,12 +665,19 @@ describe('the title-template editor left open across a page change', () => {
     expect(mockState.user.titleTemplate).toBe('rpg');
   });
 
-  it('still draws Profile again when it is the page shown', () => {
+  it('still draws Profile again when it is the page shown, after a save and after a delete', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    mockState.user = freshUser({ customTemplates: { custom_abc: { name: '自訂', icon: '✨', tiers: [[1, 'A']] } } });
     const c = makeContainer();
     renderProfile(c);
-    const before = c.querySelector('#avatar-wrap');
+    let before = c.querySelector('#avatar-wrap');
     c.querySelector('[data-edit-template="rpg"]').click();
     document.getElementById('template-editor-modal').querySelector('#tmpl-save-btn').click();
     expect(c.querySelector('#avatar-wrap')).not.toBe(before);
+    before = c.querySelector('#avatar-wrap');
+    c.querySelector('[data-edit-template="custom_abc"]').click();
+    document.getElementById('template-editor-modal').querySelector('#tmpl-delete-btn').click();
+    expect(c.querySelector('#avatar-wrap')).not.toBe(before);
+    expect(c.querySelector('[data-edit-template="custom_abc"]')).toBeNull();
   });
 });
