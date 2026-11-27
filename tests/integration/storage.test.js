@@ -1229,12 +1229,14 @@ describe('db.insertSession()', () => {
   });
 
   it('calls sessions.insert with snake_case field mapping', async () => {
+    // A real task id is a uuid (`sessions.task_id`; BUG-142 sends any other as null).
+    const TASK_ID = '0b6f4e2a-8c1d-4a7e-9f3b-5d2c1e0a9b84';
     mockGetSession.mockResolvedValue({ data: { session: FAKE_SESSION } });
     const chain = makeChain();
     mockFrom.mockImplementation(() => chain);
 
     await db.insertSession({
-      id: 's1', taskId: 't1', taskName: '深度學習', taskEmoji: '🧠',
+      id: 's1', taskId: TASK_ID, taskName: '深度學習', taskEmoji: '🧠',
       date: '2026-04-13',
       startedAt: '2026-04-13T10:00:00Z', completedAt: '2026-04-13T10:30:00Z',
       durationMinutes: 30, result: 'complete',
@@ -1249,7 +1251,7 @@ describe('db.insertSession()', () => {
       expect.objectContaining({
         id:               's1',
         user_id:          'user-abc',
-        task_id:          't1',
+        task_id:          TASK_ID,
         task_name:        '深度學習',
         duration_minutes: 30,
         final_xp:         22,

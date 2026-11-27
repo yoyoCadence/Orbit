@@ -133,8 +133,28 @@ let _observer = null;
 export function startTour() {
   // Clean up any leftover tutorial task from a previous interrupted run
   _removeTutorialTask();
+  _clear();
   _step = 0;
-  _showStep();
+  _whenNoBlockingModal(_showStep);
+}
+
+// BUG-144: setup asks a new user for the morning state (dayCycle.js) right
+// before the tour starts, and the tour went over that modal while it was still
+// waiting for an answer. The tour starts once it is closed.
+const BLOCKING_MODAL = '#morning-modal';
+let _modalWaiter = null;
+
+function _whenNoBlockingModal(callback) {
+  _modalWaiter?.disconnect();
+  _modalWaiter = null;
+  if (!document.querySelector(BLOCKING_MODAL)) { callback(); return; }
+  _modalWaiter = new MutationObserver(() => {
+    if (document.querySelector(BLOCKING_MODAL)) return;
+    _modalWaiter.disconnect();
+    _modalWaiter = null;
+    callback();
+  });
+  _modalWaiter.observe(document.body, { childList: true, subtree: true });
 }
 
 // ─── Core ─────────────────────────────────────────────────────────────────────
@@ -197,6 +217,15 @@ function _renderStep(s) {
   if (s.selector) {
     const target = document.querySelector(s.selector);
     if (!target) { _step++; _showStep(); return; }
+
+    // BUG-144: on a phone the tour's task card is far below the fold (Home
+    // shows the plan, the Orbit Window and the growth tasks first). Measured
+    // there, the spotlight was off screen and the whole page went dark under a
+    // tip pointing at nothing. Bring it to the middle first.
+    const before = target.getBoundingClientRect();
+    if (before.top < 0 || before.bottom > window.innerHeight) {
+      target.scrollIntoView?.({ block: 'center' });
+    }
 
     const PAD = 6;
     const r   = target.getBoundingClientRect();

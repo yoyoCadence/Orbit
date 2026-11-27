@@ -481,6 +481,28 @@ function toRow(fields, obj) {
   return row;
 }
 
+// BUG-142/143: `sessions.task_id` is a uuid referencing tasks(id). An id that
+// is not a uuid (the tour's 'tour-task') can never be stored, and a task
+// deleted before its session reached the server (offline) can never be
+// referenced: the insert failed every time and the session stayed "待同步"
+// for good. Such a session is kept without the link, as the schema's
+// ON DELETE SET NULL does when a task is deleted later.
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isTaskLinkMissing(error) {
+  if (error?.code !== '23503') return false;
+  return /task_id/.test(`${error.message ?? ''} ${error.details ?? ''}`);
+}
+
+// Only a task this device no longer has is gone: one it still has may just
+// not be uploaded yet (it is pushed before the next pull), so its session
+// waits for it. Another account's cache here says nothing either way.
+function isTaskGoneHere(ownerId, taskId) {
+  if (!isCachedOwner(ownerId)) return false;
+  const tasks = get('tasks');
+  return Array.isArray(tasks) && !tasks.some(task => task?.id === taskId);
+}
+
 // ─── Supabase async operations ────────────────────────────────────────────────
 
 export class OwnerSessionChangedError extends Error {
@@ -872,10 +894,14 @@ export const db = {
   async insertSession(session, expectedOwnerId = null) {
     const authSession = await this._session();
     if (!authSession || (expectedOwnerId && authSession.user.id !== expectedOwnerId)) return false;
-    const { error } = await supabase.from('sessions').insert({
-      user_id: expectedOwnerId || authSession.user.id,
-      ...toRow(SESSION_FIELDS, session),
-    });
+    const ownerId = expectedOwnerId || authSession.user.id;
+    const row = { user_id: ownerId, ...toRow(SESSION_FIELDS, session) };
+    if (row.task_id && !UUID_PATTERN.test(row.task_id)) row.task_id = null;   // BUG-142
+    let { error } = await supabase.from('sessions').insert(row);
+    // BUG-143: once, and only for a task this device no longer has.
+    if (error && row.task_id && isTaskLinkMissing(error) && isTaskGoneHere(ownerId, row.task_id)) {
+      ({ error } = await supabase.from('sessions').insert({ ...row, task_id: null }));
+    }
     if (error) throw error;
     return true;
   },
@@ -1139,8 +1165,13 @@ export const storage = {
    * @param {string|null} [expectedOwnerId] the account the tasks in memory belong to
    * @returns {boolean} false only when refused: the stored account is another one.
    */
-  saveTasks:  (t, expectedOwnerId) => {
+  saveTasks:  (tasks, expectedOwnerId) => {
     if (refusesStoredOwner(expectedOwnerId, 'tasks')) return false;
+    // BUG-142: the tour's task lives only in memory while the tour shows it
+    // (tour.js). A save meanwhile (a drag on Home, an edit) would store it and
+    // send its 'tour-task' id, which no uuid column takes: the pending upload
+    // would fail before every pull from then on.
+    const t = Array.isArray(tasks) ? tasks.filter(task => !task?.isTutorial) : tasks;
     const prev = get('tasks') ?? [];
     set('tasks', t);
     const ownerId = get('user')?.id;

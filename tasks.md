@@ -142,7 +142,7 @@
 
 ## Next
 
-> 2026-11-26 擁有者：「好啊 繼續做」「不用停 能做就一直做吧」→ 先做 PS-260F（#275 留下的兩個 P3，#276），之後 Next 只剩需要擁有者的項目，agent 依 2026-11-18 的做法列出新的完善項目：TEST-004～TEST-012（補單元測試，完成，見 Done）；BUG-121～127（review 找到的問題，完成）；BUG-129～132（#287 review 找到的設定頁問題，完成）；BUG-133（同時跑兩次同步，完成）；BUG-134（首頁重畫時累積監聽，完成）；BUG-135（拖曳後吃掉下一次點擊，完成）；BUG-136～137（拖曳的邊界情況，完成）；BUG-138～139（個人頁，完成）；TEST-013＋BUG-140（`app.js`；登出時收起同步橫幅，完成）；BUG-120（註冊後自動登入失敗時沒有說明，需核准）；BUG-141（帳號載入失敗後改用訪客，仍以帳號同步，需核准）。
+> 2026-11-26 擁有者：「好啊 繼續做」「不用停 能做就一直做吧」→ 先做 PS-260F（#275 留下的兩個 P3，#276），之後 Next 只剩需要擁有者的項目，agent 依 2026-11-18 的做法列出新的完善項目：TEST-004～TEST-012（補單元測試，完成，見 Done）；BUG-121～127（review 找到的問題，完成）；BUG-129～132（#287 review 找到的設定頁問題，完成）；BUG-133（同時跑兩次同步，完成）；BUG-134（首頁重畫時累積監聽，完成）；BUG-135（拖曳後吃掉下一次點擊，完成）；BUG-136～137（拖曳的邊界情況，完成）；BUG-138～139（個人頁，完成）；TEST-013＋BUG-140（`app.js`；登出時收起同步橫幅，完成）；TEST-014＋BUG-142～144（導覽；教學任務的紀錄上傳不了、刪掉的任務的紀錄、導覽在手機上看不到目標，完成）；BUG-120（註冊後自動登入失敗時沒有說明，需核准）；BUG-141（帳號載入失敗後改用訪客，仍以帳號同步，需核准）。
 
 > 2026-11-18 擁有者要求：「列出幾個你覺得需要完善的事 持續完善」，每完成一段就開 PR 並合併，不必特別詢問（必要時才問）。agent 列出的完善清單如下，依序做；需要核准的另外標明。
 
@@ -160,6 +160,9 @@
   - PRO-017RA-Auth 開啟「確認 email」之後：**每一個新註冊**都會走到這裡（Supabase 對還沒確認的帳號回 `Email not confirmed`），使用者沒有任何提示，再登入只會看到英文錯誤，不知道要先到信箱點確認連結。另外，依 Supabase 文件，開啟後用已註冊的 email 再註冊不會回 `User already registered`（回傳看起來成功的結果，以免洩漏帳號是否存在），「此 Email 已註冊，請直接登入」不會再出現，也會落到同一段。
   - 建議：`signUp` 成功但 `data.session` 為 null（需要確認 email）時不自動登入，切到登入分頁**之後**再顯示「確認信已寄到 …，點信中的連結後再登入；若這個 Email 已註冊過，請直接登入或重設密碼」；登入遇到 `Email not confirmed` 時顯示同樣的說明。`tests/unit/authFlowForms.test.js` 目前固定了現況（訊息被隱藏），改的時候一起改。
   - 順序：在 PRO-017RA-Auth 開啟「確認 email」之前完成。
+- [ ] **TEST-015** `hw112c2-cloud-proof` 的 e2e 偶爾在重新載入後失敗（TEST-014 跑 e2e 時發現，2026-11-27，main 上原本就有）
+  - `tests/e2e/hw112c2-cloud-proof.test.js:116`：`page.reload()` 之後等到 `#main-app` 出現就 `scrollIntoViewIfNeeded()` 那一列，偶爾得到 `Element is not attached to the DOM`：重新載入後背景同步（這個測試的 REST 一律回 500）結束時頁面又畫了一次，那一列被換掉。本機 6 個 worker 時 main 上 120 次失敗 1 次、TEST-014 的 branch 上約 80 次失敗 3 次（這個路徑沒有走到 TEST-014 改的程式）。CI 會重跑一次，所以沒有擋住合併，但不是可以略過的 flake：測試要先等同步結束（例如同步橫幅變成「同步暫停」）再找那一列。只改測試，下一段做。
+
 - [ ] **BUG-141** 帳號載入失敗後改用訪客，app 仍以那個帳號同步（TEST-013 檢查 `app.js` 時發現，2026-11-27，main 上原本就有；屬 auth 流程，**需擁有者核准**）
   - 根本原因：登入後雲端資料載入失敗（例如離線或 500），而這台裝置沒有這個帳號的快取時，`loadAndStart()` 回到登入畫面並提示「無法載入雲端資料，請檢查連線後重新整理。」（`app.js` 的 fail-closed return），但 `_currentSession` 仍是那個帳號，Supabase 的 session 也還在，`_showSyncFailure()` 也已設定 `_needsResync`。之後：
     - (a) 按「以遊客身份繼續」：訪客的畫面上方一打開就是**那個帳號**的同步失敗橫幅（線上時也是，來自 `_showSyncFailure()`）；離線時完成紀錄，橫幅是那個帳號的「N 筆待同步」（`_refreshOfflineHint()` 只看 `_currentSession`）。
@@ -169,7 +172,7 @@
     - (e) 下次打開 app：快取分支的 `getSession()` 拿到那個帳號，以它載入（同 (b)）。
     - 登入另一個帳號時上一個帳號的橫幅已由 BUG-140 收起（#296 review）。
     - 確認方式：寫 TEST-013 時以 `appShell.test.js` 的 mock 暫時測過 (a)(b)，#296 的獨立 review 另外測過 (b)(c)(d)；這些暫時的測試**沒有提交**（會固定錯誤的行為）。資料被取代是依 `storage.js` 的程式碼。
-  - 建議（都屬 auth 流程，需核准）：(A) fail-closed return 時忘掉 `_currentSession`（`authOperationGuard.invalidate()`、清掉 `_needsResync` 與橫幅），解決 (c)(d)，並讓這次開啟期間不再以帳號同步；再加上：有帳號 session 時選「以遊客身份繼續」，先結束這台裝置上的 Supabase session（`signOut({ scope: 'local' })`），解決 (a)(b)(e)。這和設定頁的登出不同：不跑 `storage.clearAll()` 與 `signOutProofCleanup()`（快取不是這個帳號的，訪客要用的是這台裝置的本機資料）。(B) 有帳號 session 時不提供訪客，改為「重試」。agent 建議 (A)（訪客本來就只存在本機；要回到帳號就重新登入）。只做 (A) 的第一半（不登出）只能擋住這次開啟期間，下次開啟仍會以帳號載入，所以沒有先做。
+  - 建議（都屬 auth 流程，需核准）：(A) fail-closed return 時忘掉 `_currentSession`（`authOperationGuard.invalidate()`、清掉 `_needsResync` 與橫幅），解決 (c)(d)，並讓這次開啟期間不再以帳號同步；再加上：有帳號 session 時選「以遊客身份繼續」，先結束這台裝置上的 Supabase session（`signOut({ scope: 'local' })`），解決 (a)(b)(e)。這和設定頁的登出不同：不跑 `storage.clearAll()` 與 `signOutProofCleanup()`（快取不是這個帳號的，訪客要用的是這台裝置的本機資料）。注意（#296 第二輪 review）：`signOut({ scope: 'local' })` 會送出 `SIGNED_OUT`（`auth.js` 的 `forgetLocalSession` 註解），`onAuthStateChange` 會因此跑 `handleSignOut()`；這台裝置有本機使用者時，它會跑 `signOutProofCleanup()`、`storage.clearAll()` 並回到登入畫面——正好是不要的。所以要能分辨這次的 `SIGNED_OUT`（例如呼叫前設一個旗標，`handleSignOut()` 看到就只清 `_currentSession`）。(B) 有帳號 session 時不提供訪客，改為「重試」。agent 建議 (A)（訪客本來就只存在本機；要回到帳號就重新登入）。只做 (A) 的第一半（不登出）只能擋住這次開啟期間，下次開啟仍會以帳號載入，所以沒有先做。
   - 改的時候一併確認：`tests/unit/appBootSequence.test.js` 的「帳號載入失敗後改用遊客，設定頁不會沿用該帳號的 id」等測試仍成立。
 - [ ] **PRO-017RA-Auth**（擁有者）先完成 INFRA-101（Custom SMTP），再在 Supabase 開啟「確認 email」，並確認匿名登入維持關閉
   - 019 已於 2026-11-13 套用（見 Done 的 PRO-017RA）；這一步只能由擁有者在 Supabase Dashboard 做（agent 的工具改不到 Auth 設定）。
@@ -302,6 +305,25 @@
 ---
 
 ## Done
+
+- [x] **TEST-014** 補上新使用者導覽（`tour.js`）的測試（2026-11-27）
+  - 新的 `tour.test.js`（jsdom、假計時器；以一個極簡的首頁依 state 畫出任務卡、計畫卡與次數標記，模擬把教學任務加入計畫、完成它）：6 個步驟的標題、計數、「下一步」／「完成 ✓」、互動步驟沒有「下一步」且背景讓點擊通過；教學任務放在最前面、加入計畫後 600 ms 前進、看到次數標記就從記憶體的任務與計畫拿掉；換頁後等兩個 frame 才量畫面；每一步只留一組畫面；最後一步置中、完成後收起並記下已完成；跳過（拿掉教學任務、收起、記下已完成，之後不再前進）；重新開始時拿掉上次留下的教學任務；目標不在畫面上時跳過那一步；要等的元素已經在畫面上時直接前進；聚焦框與說明的位置（比目標大 6 px、不超出畫面、下方放不下改放上方、上方放不下改放下方、左右與上下邊界）。`tour.js` 0% → 100%（行）。
+  - 開 PR 前以改動原始碼驗證：`tour.js` 33 個改動中 32 個會讓測試失敗；剩下的（加入教學任務前先檢查有沒有）與原本等價：每次開始都會先拿掉教學任務。`storage.js` 的 11 個改動都會讓測試失敗。
+  - 一併做 #296 第二輪 review 的 P3：`loadAndStart()` 換帳號時收起佐證照片大圖的那一行原本沒有測試（main 上就是如此），`appShell.test.js` 補上（另一個帳號登入時收起、同一個帳號早到的 `SIGNED_IN` 不收）；BUG-141 的建議補上 `signOut({ scope: 'local' })` 會觸發 `handleSignOut()` 的注意事項。
+  - 找到的問題：BUG-142、BUG-143、BUG-144（都已修，見下）。另外兩個小地方沒有改：同一天第二次走導覽時，教學任務今天已有次數標記，第 3 步一出現就前進（只停 600 ms）；教學任務卡顯示「+10 XP」，實際只有 1 XP（每日上限 1）。
+  - 下一步：`focusTimer.js`、`sessionFlow.js`（各 89%，先跑 `npm run test:coverage`）。
+
+- [x] **BUG-142** 完成導覽的教學任務後，那筆紀錄永遠上傳不了（TEST-014 檢查 `tour.js` 時發現，2026-11-27，main 上原本就有）
+  - 教學任務的 id 是 `'tour-task'`，完成它的紀錄以這個 `taskId` 上傳；`sessions.task_id` 是 uuid（`pwa/db/001_schema.sql`），每次都被拒（`invalid input syntax for type uuid`，以本機 PostgreSQL 套用 repo 的 migration 確認）。這筆紀錄一直是待同步，每次同步後都顯示「同步暫停 · 1 筆待同步」。所有在登入狀態下完成導覽的新使用者都會遇到。另外，導覽進行中若存了任務清單（首頁拖曳、編輯任務），教學任務會被存進去並以 `'tour-task'` 上傳，任務的待上傳資料從此每次都失敗，整個同步（拉取之前會先推送）都會失敗。不涉及 auth／schema，接著修正。
+  - 完成（v1.42.15）：`db.insertSession()` 上傳不是 uuid 的 `taskId` 時改為 `null`（這種 id 不可能對應到雲端的任務；已經卡住的會在下次同步補上）；`storage.saveTasks()` 不存、不上傳教學任務（`isTutorial`，它只存在記憶體裡）。本機的紀錄仍保留 `'tour-task'`（首頁的次數標記以它計算）。沒有新增 export（INFRA-105）。測試在 `storage-mapping.test.js`（supabase 的 mock 像 Postgres 一樣拒絕不是 uuid 的 `task_id`）：教學任務的紀錄只上傳一次、`task_id` 為 null，完成後不再待同步；包含 uuid 但不是 uuid 的 id 也是 null；任務清單與待上傳資料不含教學任務，從記憶體拿掉它也不會要求刪除。既有的「Session 補傳」測試原本用不是 uuid 的 id，在新的 mock 下修正前會失敗。
+
+- [x] **BUG-143** 離線時完成任務再刪掉它，那筆紀錄永遠上傳不了（TEST-014 檢查同步時發現，2026-11-27，main 上原本就有）
+  - `sessions.task_id` 參照 `tasks(id)`。離線時完成任務 X、再刪掉 X：連線後 `loadFromRemote()` 先推送任務的刪除，再補傳那筆紀錄，`task_id` 已不存在而被外鍵擋下（以本機 PostgreSQL 確認），每次都一樣。不涉及 auth／schema，接著修正。
+  - 完成（v1.42.15）：`db.insertSession()` 遇到 `task_id` 的外鍵錯誤（`23503`，訊息或細節提到 `task_id`），而且這台裝置上這個帳號的任務清單已沒有這個任務時，以 `task_id: null` 再送一次（與之後才刪任務時資料庫的 `ON DELETE SET NULL` 相同）。任務還在這台裝置上（只是還沒上傳）時不重送，等它上傳；這台裝置是另一個帳號、或沒有任務清單時也不重送。測試：刪掉的任務重送一次且只有 `task_id` 不同；還在的任務、另一個帳號、沒有清單、profile 的外鍵錯誤、權限錯誤都不重送；只在細節提到也算；重送也失敗時丟出那個錯誤、不送第三次。
+
+- [x] **BUG-144** 新使用者導覽在手機上看不到要點的教學任務卡，且疊在「今天的狀態？」上面（TEST-014 以 Playwright 實際走一次時發現，2026-11-27，main 上原本就有）
+  - 以真的 app（訪客、建立 profile）在 375×667、390×844、430×932 量：教學任務卡（維持／必要區）在畫面頂端以下約 1150–1190 px，第 2 步量到的聚焦框在畫面外、高度 0，整個畫面變暗，說明寫「點擊這個任務小卡 👇」卻看不到卡片；使用者捲動時聚焦框（`position: fixed`）也不會跟著。另外建立 profile 後 `showMorningModal()` 與 600 ms 後的導覽同時出現，導覽疊在還沒回答的晨間視窗上。不涉及 auth／schema，接著修正。
+  - 完成（v1.42.15，只改 `tour.js`）：要聚焦的元素不完全在畫面內時，先 `scrollIntoView({ block: 'center' })` 再量；`#morning-modal` 還在時等它關掉才開始（新的開始會取代還在等的那一次，並先收起畫面上的導覽）。以 Playwright 再走一次：回答晨間視窗前沒有導覽；第 2 步卡片在畫面中間（390×844：364–484 px）、聚焦框 132 px 高；加入計畫、完成、前進到週回顧都正常，任務清單沒有存進教學任務。測試在 `tour.test.js`：捲到中間後才量、目標在上方之外也捲回來、已在畫面裡或剛好貼著下緣不捲、晨間視窗關掉才開始（其他畫面變化不算）、等待中再開始只有一組、進行中重新開始先收起。仍未處理：使用者自己捲動時聚焦框不跟著（目標已在中間，通常不需要捲）。
 
 - [x] **TEST-013** 補上 `app.js` 的測試（2026-11-27）
   - 新的 `appShell.test.js`（與 `appBootSequence.test.js` 相同的 mock，另外 mock 暖身載入的導覽、徽章與排行榜；同步橫幅用真的 `feedback.js` 畫在畫面上；每次 import 加上的 window／document listener 在測試結束時移除）：試用橫幅（剩 5 天以內才顯示、不是試用、今天已關閉、✕ 記下今天、refresh 之後才變成試用）；登出（清掉資料與登入欄位、auth 登出失敗仍在這台裝置登出、已經登出時不再清、登出中途載入才完成不開機）；連線恢復同步與換帳號（同步途中或載入完成前登出、OwnerSessionChangedError、refresh 之後才換帳號；loadAndStart 的同樣情況與 refresh 期間換成另一個帳號）；SUB-16 狀態改變時更新 header、正在輸入時不重畫；清理雲端照片出錯不影響同步；今日計畫（重複不加入、加入時存檔並重畫）；導覽載入失敗的提示；App 圖示的徽章（今天的有效紀錄、完成後重算、登出時清掉、沒有 `requestIdleCallback` 時 500 ms 後）；離線時待同步數量跟著更新；點 header 回到頂端；文字欄位的鍵盤編輯狀態與高度；另一個分頁換了帳號（提示 3 秒內只一次、bfcache 回來與回到前景重新載入、自己正在換成它時不會、無法解析的資料、重新載入後只提示一次）；啟動（沒有快取也沒有 session、沒有快取但有 session、`getSession()` 失敗或沒有 session 時以本機完成移轉、失敗前已換帳號不覆蓋）；`PASSWORD_RECOVERY`；沒有 session 的 `SIGNED_IN`；遊客直接開機；沒有快取時 `SIGNED_IN` 比 `getSession()` 先到只載入一次、refresh 之後才套用隨機主題；啟動同步還沒結束時恢復連線又登出、不再以前一個帳號載入；遊客離線時不顯示待同步。共 52 個測試。`app.js` 69% → 80%（行）；剩下的主要是狀態列提示的畫面（BUG-118，`tests/e2e/bug118-status-bar-notice.test.js` 涵蓋）與設定頁的頭像。
