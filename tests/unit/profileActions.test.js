@@ -108,8 +108,6 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-// ─── Basic rendering ──────────────────────────────────────────────────────────
-
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 const flush = async () => { for (let i = 0; i < 5; i += 1) await Promise.resolve(); };
@@ -463,5 +461,167 @@ describe('Pro links', () => {
     c.querySelector('.hm-upgrade-btn').click();
     c.querySelector('.dash-upgrade-btn').click();
     expect(proNav.goToProCard).toHaveBeenCalledTimes(2);
+  });
+});
+
+// ─── BUG-139: the rest of the windows the #293 review found ─────────────────
+
+describe('saves that outlive the page, continued (BUG-139)', () => {
+  async function header() {
+    return (await import('../../pwa/js/ui/header.js')).updateHeader;
+  }
+
+  it('a photo picked for A and read after B signed in is not uploaded into B', async () => {
+    mockState.user = freshUser({ id: 'owner-a' });
+    let finishRead;
+    window.FileReader = class {
+      readAsDataURL() { finishRead = () => this.onload({ target: { result: 'data:image/png;base64,A' } }); }
+    };
+    const c = makeContainer();
+    renderProfile(c);
+    pickAvatar();
+    mockState.user = freshUser({ id: 'owner-b', avatar: 'b.png' });
+    finishRead();
+    await flush();
+    expect(mockState.user.avatar).toBe('b.png');
+    expect(mockDb.uploadAvatar).not.toHaveBeenCalled();
+  });
+
+  it('a photo read after the page changed does not draw Profile over it', async () => {
+    mockState.user = freshUser({ id: 'owner-a' });
+    let finishRead;
+    window.FileReader = class {
+      readAsDataURL() { finishRead = () => this.onload({ target: { result: 'data:image/png;base64,A' } }); }
+    };
+    const c = makeContainer();
+    renderProfile(c);
+    pickAvatar();
+    c.innerHTML = '<div id="other-page">首頁</div>';
+    finishRead();
+    await flush();
+    expect(c.innerHTML).toBe('<div id="other-page">首頁</div>');
+    // Still this account's photo.
+    expect(mockState.user.avatar).toBe('signed-avatar-url');
+  });
+
+  it("\"not signed in\" after an account switch says nothing on the new account's page", async () => {
+    mockState.user = freshUser({ id: 'owner-a' });
+    const upload = deferred();
+    mockDb.uploadAvatar.mockReturnValueOnce(upload.promise);
+    const c = makeContainer();
+    renderProfile(c);
+    pickAvatar();
+    // The "uploading" note is written on the next frame, long before a switch.
+    await new Promise(resolve => window.requestAnimationFrame(resolve));
+    mockState.user = freshUser({ id: 'owner-b', name: 'B' });
+    renderProfile(c);   // B's Profile is shown now
+    mockStorage.saveUserLocal.mockClear();
+    upload.reject(new Error('Not authenticated'));
+    await flush();
+    await new Promise(resolve => window.requestAnimationFrame(resolve));
+    expect(document.getElementById('avatar-sync-status').textContent).toBe('');
+    expect(mockStorage.saveUserLocal).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['not signed in', new Error('Not authenticated')],
+    ['a failed upload', new Error('network')],
+  ])('%s while another page is shown does not draw Profile over it', async (_, error) => {
+    mockState.user = freshUser({ id: 'owner-a' });
+    const upload = deferred();
+    mockDb.uploadAvatar.mockReturnValueOnce(upload.promise);
+    const quiet = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const c = makeContainer();
+    renderProfile(c);
+    pickAvatar();
+    c.innerHTML = '<div id="other-page">首頁</div>';
+    upload.reject(error);
+    await flush();
+    expect(c.innerHTML).toBe('<div id="other-page">首頁</div>');
+    quiet.mockRestore();
+  });
+
+  it('a failed name sync while another page is shown does not draw Profile over it', async () => {
+    mockState.user = freshUser({ id: 'owner-a' });
+    const sync = deferred();
+    mockStorage.saveUserAndSync.mockReturnValueOnce(sync.promise);
+    const quiet = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const c = makeContainer();
+    renderProfile(c);
+    document.getElementById('profile-name-display').click();
+    const modal = document.getElementById('name-modal');
+    modal.querySelector('#name-input').value = '新名';
+    modal.querySelector('#name-save-btn').click();
+    c.innerHTML = '<div id="other-page">首頁</div>';
+    sync.reject(new Error('network'));
+    await flush();
+    expect(c.innerHTML).toBe('<div id="other-page">首頁</div>');
+    quiet.mockRestore();
+  });
+
+  it('a name saved from a window left open after a page change does not draw Profile over it', () => {
+    mockState.user = freshUser({ id: 'owner-a' });
+    const c = makeContainer();
+    renderProfile(c);
+    document.getElementById('profile-name-display').click();
+    c.innerHTML = '<div id="other-page">首頁</div>';   // swiped to Home
+    const modal = document.getElementById('name-modal');
+    modal.querySelector('#name-input').value = '新名';
+    modal.querySelector('#name-save-btn').click();
+    expect(c.innerHTML).toBe('<div id="other-page">首頁</div>');
+    expect(mockState.user.name).toBe('新名');
+  });
+
+  it('the header shows the old photo again after a failed upload, and the old name after a failed sync', async () => {
+    const updateHeader = await header();
+    const quiet = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockState.user = freshUser({ id: 'owner-a', avatar: 'old.png', name: '舊名' });
+    mockDb.uploadAvatar.mockRejectedValueOnce(new Error('network'));
+    const c = makeContainer();
+    renderProfile(c);
+    pickAvatar();
+    updateHeader.mockClear();
+    await flush();
+    expect(mockState.user.avatar).toBe('old.png');
+    expect(updateHeader).toHaveBeenCalled();
+
+    mockStorage.saveUserAndSync.mockRejectedValueOnce(new Error('network'));
+    document.getElementById('profile-name-display').click();
+    const modal = document.getElementById('name-modal');
+    modal.querySelector('#name-input').value = '新名';
+    modal.querySelector('#name-save-btn').click();
+    updateHeader.mockClear();
+    await flush();
+    expect(mockState.user.name).toBe('舊名');
+    expect(updateHeader).toHaveBeenCalled();
+    quiet.mockRestore();
+  });
+
+  it('a sign-out during an upload ends it quietly', async () => {
+    mockState.user = freshUser({ id: 'owner-a' });
+    const upload = deferred();
+    mockDb.uploadAvatar.mockReturnValueOnce(upload.promise);
+    const c = makeContainer();
+    renderProfile(c);
+    pickAvatar();
+    mockState.user = null;   // signed out
+    upload.resolve({ path: 'owner-a/avatar.jpg', url: 'signed-a' });
+    await flush();
+    expect(mockState.user).toBeNull();
+    expect(mockStorage.saveUserAndSync).not.toHaveBeenCalled();
+  });
+
+  it('a page container taken off the document is not drawn into', async () => {
+    mockState.user = freshUser({ id: 'owner-a' });
+    const upload = deferred();
+    mockDb.uploadAvatar.mockReturnValueOnce(upload.promise);
+    const c = makeContainer();
+    renderProfile(c);
+    pickAvatar();
+    c.remove();
+    upload.resolve({ path: 'owner-a/avatar.jpg', url: 'signed-a' });
+    await flush();
+    // Drawing a detached Profile would throw (its buttons are found by id).
+    expect(mockState.user.avatar).toBe('signed-a');
   });
 });

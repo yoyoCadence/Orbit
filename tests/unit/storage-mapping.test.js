@@ -557,3 +557,23 @@ describe('manual sync (BUG-133)', () => {
     expect(seen).toBeNull();
   });
 });
+
+describe('saveUserAndSync after an account switch (BUG-139)', () => {
+  afterEach(() => { vi.restoreAllMocks(); });
+
+  it('marks the user to push later only while that account is still the one stored', async () => {
+    vi.spyOn(db, 'upsertProfile').mockImplementationOnce(async () => {
+      // Signed out and another account in while A's write was out.
+      localStorage.setItem('yoyo_user', JSON.stringify({ id: 'uid-b', name: 'B' }));
+      return false;
+    });
+    await expect(storage.saveUserAndSync({ id: 'uid-a', name: 'A' })).resolves.toBe(false);
+    expect(storage.getUser()).toEqual({ id: 'uid-b', name: 'B' });
+  });
+
+  it('still marks this account to push later when it is not signed in', async () => {
+    vi.spyOn(db, 'upsertProfile').mockResolvedValueOnce(false);
+    await storage.saveUserAndSync({ id: 'uid-a', name: 'A' });
+    expect(storage.getUser()).toEqual({ id: 'uid-a', name: 'A', _syncPending: true });
+  });
+});
