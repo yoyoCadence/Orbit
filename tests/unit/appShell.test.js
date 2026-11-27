@@ -1111,9 +1111,9 @@ describe('啟動與 auth 事件', () => {
 
 describe('BUG-142：登入時的補傳失敗', () => {
   let pending;
-  const summary = (sessions = 0, deletions = 0, snapshots = 0) => ({
-    sessions, deletions, tasks: snapshots > 0, profile: false, energy: false,
-    total: sessions + deletions + snapshots,
+  const summary = (sessions = 0, deletions = 0, profile = false) => ({
+    sessions, deletions, tasks: false, profile, energy: false,
+    total: sessions + deletions + Number(profile),
   });
 
   /** No cache: signs owner-a in through loadAndStart(); its load resolves with `backfilled`. */
@@ -1132,7 +1132,8 @@ describe('BUG-142：登入時的補傳失敗', () => {
 
   beforeEach(() => {
     pending = summary();
-    storage.getPendingSyncSummary.mockImplementation(() => pending);
+    // Keyed by owner: the check must ask about the account that signed in.
+    storage.getPendingSyncSummary.mockImplementation(owner => (owner === 'owner-a' ? pending : summary()));
   });
 
   it('補傳失敗時顯示「同步暫停」與待同步數，並在連線恢復時再同步', async () => {
@@ -1148,6 +1149,11 @@ describe('BUG-142：登入時的補傳失敗', () => {
     await flush();
     expect(db.loadFromRemote).toHaveBeenCalledTimes(2);
     expect(syncBanner().textContent).toBe('✓ 已更新');
+  });
+
+  it('待同步數只算補傳與刪除：還在送出的 profile 不算（#297 review）', async () => {
+    await signInWithBackfills(Promise.resolve().then(() => { pending = summary(1, 0, true); }));
+    expect(syncBanner().textContent).toBe('⚠️ 同步暫停，將於下次連線重試 · 1 筆待同步');
   });
 
   it('刪除紀錄沒有確認時也顯示', async () => {
@@ -1178,7 +1184,7 @@ describe('BUG-142：登入時的補傳失敗', () => {
   });
 
   it('只剩這次開機自己寫的資料（例如換日寫的 profile，還在送出）時不顯示', async () => {
-    pending = summary(0, 0, 1);
+    pending = summary(0, 0, true);
     await signInWithBackfills(Promise.resolve([]));
     expect(syncBanner().classList.contains('hidden')).toBe(true);
     expect(syncBanner().textContent).toBe('');

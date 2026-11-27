@@ -127,6 +127,7 @@ let _backdrop = null;
 let _spot     = null;
 let _tooltip  = null;
 let _observer = null;
+let _advanceTimer = null;
 
 // ─── Public API ──────────────────────────────────────────────────────────────
 
@@ -226,8 +227,12 @@ function _renderStep(s) {
     _watchFor(s.waitFor, () => {
       if (s.cleanup) _removeTutorialTask();
       _step++;
-      // Small delay so the user sees the success state (e.g. count badge)
-      setTimeout(() => _showStep(), 600);
+      // Small delay so the user sees the success state (e.g. count badge).
+      // The step stays up meanwhile: skipping it cancels this (BUG-144).
+      _advanceTimer = setTimeout(() => {
+        _advanceTimer = null;
+        _showStep();
+      }, 600);
     });
   }
 }
@@ -293,4 +298,6 @@ function _clear() {
   _spot?.remove();     _spot     = null;
   _tooltip?.remove();  _tooltip  = null;
   if (_observer) { _observer.disconnect(); _observer = null; }
+  clearTimeout(_advanceTimer);
+  _advanceTimer = null;
 }

@@ -42,13 +42,17 @@ export function formatTime(iso) {
   return new Date(iso).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
 }
 
-export function formatDate(dateStr) {
-  const d = new Date(dateStr + 'T00:00:00');
-  const todayStr = today();
+/**
+ * 「今天」／「昨天」／月日 for a YYYY-MM-DD date. Session dates are effective
+ * days (effectiveToday), so callers labelling them pass that day as `todayStr`
+ * (BUG-145): between midnight and newDayHour the calendar date is a day ahead.
+ */
+export function formatDate(dateStr, todayStr = today()) {
   if (dateStr === todayStr) return '今天';
-  const yesterday = new Date();
+  const yesterday = new Date(todayStr + 'T00:00:00');
   yesterday.setDate(yesterday.getDate() - 1);
   if (dateStr === yesterday.toLocaleDateString('sv')) return '昨天';
+  const d = new Date(dateStr + 'T00:00:00');
   return d.toLocaleDateString('zh-TW', { month: 'long', day: 'numeric', weekday: 'short' });
 }
 
