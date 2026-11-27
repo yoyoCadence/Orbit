@@ -289,6 +289,9 @@ describe('proof sheet', () => {
 
 describe('without the photo pipeline', () => {
   it('opens nothing when the capture module cannot load (offline, old cache)', async () => {
+    // Whatever the first module set, so the lightbox test still checks that
+    // proofSheet.js sets it (writing showProofLightbox back would pass for it).
+    const lightbox = window._showProofLightbox;
     vi.resetModules();
     vi.doMock('../../pwa/js/platform/proofCapture.js', () => {
       throw new Error('Failed to fetch dynamically imported module');
@@ -305,7 +308,7 @@ describe('without the photo pipeline', () => {
       // above: the first module loads the capture module lazily, so a later
       // test would get the real one (seen with --sequence.shuffle).
       vi.doMock('../../pwa/js/platform/proofCapture.js', () => ({ compressImage: mocks.compressImage }));
-      window._showProofLightbox = showProofLightbox;
+      window._showProofLightbox = lightbox;
     }
   });
 });

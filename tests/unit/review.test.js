@@ -9,8 +9,8 @@
  * - 週視圖的日期以有效日計算；這裡把 effectiveToday() mock 成日曆日期，
  *   測試 sessions 的 date 欄位以此對齊（有效日本身見 reviewEffectiveDay.test.js）。
  * - 月視圖的 _viewYear / _viewMonth 為模組層級狀態，第一次畫出時以有效日初始化。
- * - _viewMode、_viewYear、_viewMonth 在測試間持續存在；
- *   每個 beforeEach 透過 window._reviewSetMode('week') 重置。
+ * - _viewMode、_viewYear、_viewMonth 在測試間持續存在；每個 beforeEach
+ *   以 resetToCurrentMonth() 回到本月、以 window._reviewSetMode('week') 回到週視圖。
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';

@@ -457,6 +457,16 @@ describe('requestStreakUnlock(): when to ask', () => {
     expect(grantCalls()).toBe(1);
   });
 
+  it('signed out or switched before the celebration shows: it is not shown (TEST-017)', async () => {
+    seedUser();
+    answer({});
+    let current = true;
+    await expect(requestStreakUnlock(OWNER, { isCurrent: () => current, delayMs: 0 })).resolves.toBe('granted');
+    current = false;            // during the delay before the celebration
+    await flush();
+    expect(modal).not.toHaveBeenCalled();
+  });
+
   it('signed out or switched meanwhile: no screen update, no celebration', async () => {
     seedUser();
     answer({ status: 'not_eligible', granted: false, is_active: false, paid_active: false, expires_at: null, granted_at: null });
