@@ -1124,8 +1124,10 @@ export const storage = {
     const synced = await db.upsertProfile(u, u?.id);
     if (synced && pendingKey) {
       clearPendingSnapshot(pendingKey, pending);
-    } else if (!synced) {
-      // No active session — mark so loadFromRemote can push before pulling
+    } else if (!synced && (get('user')?.id ?? null) === (u?.id ?? null)) {
+      // No active session — mark so loadFromRemote can push before pulling.
+      // BUG-139: only while this account is still the one stored here; a
+      // late result must not put one account's user over another's.
       set('user', { ...u, _syncPending: true });
     }
     return synced;

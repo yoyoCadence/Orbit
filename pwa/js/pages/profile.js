@@ -292,22 +292,23 @@ export function renderProfile(container) {
   document.getElementById('avatar-input').addEventListener('change', e => {
     const file = e.target.files[0];
     if (!file) return;
+    // BUG-138: the upload outlives this page. Its result belongs to the
+    // account the photo was picked for (BUG-139: from the pick, not from
+    // when the file has been read), and is drawn only where Profile still is.
+    const isSameAccount = _sameAccountAs(state.user);
+    const redraw = () => {
+      if (_profileShown(container)) renderProfile(container);
+      updateHeader();
+    };
     const reader = new FileReader();
     reader.onload = async ev => {
-      // BUG-138: the upload outlives this page. Its result belongs to the
-      // account it was started for, and is drawn only where Profile still is.
-      const isSameAccount = _sameAccountAs(state.user);
-      const redraw = () => {
-        if (_profileShown(container)) renderProfile(container);
-        updateHeader();
-      };
+      if (!isSameAccount()) return;
       const previousAvatar = state.user.avatar;
       const previousAvatarPath = state.user.avatarPath || null;
       state.user.avatar = ev.target.result;
       state.user.avatarPath = null;
       storage.saveUserLocal(state.user);
-      renderProfile(container);
-      updateHeader();
+      redraw();
       _setProfileSyncStatus('avatar-sync-status', '頭像上傳中...');
       try {
         const uploaded = await db.uploadAvatar(file);
@@ -682,7 +683,9 @@ function showTemplateEditor(container, editKey) {
     storage.saveUserLocal(state.user);
     _syncUserPreference();
     modal.remove();
-    renderProfile(container);
+    // BUG-139: the window outlives a page change; Profile is drawn only
+    // while it is the page shown.
+    if (_profileShown(container)) renderProfile(container);
     updateHeader();
   });
 
@@ -694,7 +697,9 @@ function showTemplateEditor(container, editKey) {
     storage.saveUserLocal(state.user);
     _syncUserPreference();
     modal.remove();
-    renderProfile(container);
+    // BUG-139: the window outlives a page change; Profile is drawn only
+    // while it is the page shown.
+    if (_profileShown(container)) renderProfile(container);
     updateHeader();
   });
 }
@@ -743,8 +748,7 @@ function showNameModal(container) {
     status.textContent = '本機已儲存，同步中…';
     state.user.name = name;
     storage.saveUserLocal(state.user);
-    renderProfile(container);
-    updateHeader();
+    redraw();
     try {
       const synced = await storage.saveUserAndSync(state.user);
       if (!isSameAccount()) { modal.remove(); return; }
