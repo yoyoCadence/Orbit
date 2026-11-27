@@ -512,6 +512,20 @@ describe('BUG-140：同步橫幅跟著帳號走', () => {
     expect(syncBanner().classList.contains('hidden')).toBe(true);
   });
 
+  it('另一個帳號登入時收起前一個帳號的佐證照片大圖；同一個帳號（BUG-106 的早到 SIGNED_IN）不收（#296 review）', async () => {
+    await bootCached('owner-a');
+    const lightbox = document.createElement('div');
+    lightbox.className = 'proof-lightbox';
+    document.body.append(lightbox);
+
+    await auth.callback('SIGNED_IN', sessionFor('owner-a'));
+    await flush();
+    expect(lightbox.isConnected).toBe(true);
+
+    await signInAs('owner-b');
+    expect(lightbox.isConnected).toBe(false);
+  });
+
   it('同一個帳號照常：同步失敗的橫幅留著，連線恢復後同步', async () => {
     await bootOffline('owner-a', 2);
     db.loadFromRemote.mockImplementationOnce(async () => {

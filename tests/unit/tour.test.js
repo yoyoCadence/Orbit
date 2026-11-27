@@ -339,3 +339,184 @@ describe('等待畫面更新時跳過或重新開始（#298 review）', () => {
     expect(overlays()).toBe(0);
   });
 });
+
+describe('BUG-152：手機上第一次看到導覽', () => {
+  afterEach(() => {
+    delete window.Element.prototype.scrollIntoView;
+  });
+
+  /**
+   * #content as the page's scroller (68 px under the header, 700 px tall: its
+   * middle is at 418), and a card whose box follows its scrollTop.
+   */
+  function scrollingPage({ cardTop, cardHeight = 120, scrollTop = 0 }) {
+    const content = document.getElementById('content');
+    let top = scrollTop;
+    Object.defineProperty(content, 'scrollTop', { configurable: true, get: () => top, set: value => { top = value; } });
+    place(content, { top: 68, left: 0, width: 1024, height: 700 });
+    // scrollIntoView() would also scroll the page root (#302 review): never used.
+    window.Element.prototype.scrollIntoView = vi.fn();
+    window.navigate = vi.fn(page => {
+      if (page !== 'home') return;
+      renderHome();
+      const card = document.querySelector(`.task-card[data-task-id="${TUTORIAL}"]`);
+      card.getBoundingClientRect = () => rect({ left: 16, top: cardTop - top, width: 174, height: cardHeight });
+    });
+    return { content, scrollTop: () => top };
+  }
+
+  it('教學任務卡在第一屏以下：只捲 #content，把它捲到中間，再聚光與放提示框', () => {
+    const page = scrollingPage({ cardTop: 1162 });
+    tour.startTour();
+    clickNext();
+
+    // 卡片中間 1222 → #content 中間 418
+    expect(page.scrollTop()).toBe(804);
+    expect(window.Element.prototype.scrollIntoView).not.toHaveBeenCalled();
+    const spot = document.querySelector('.tour-spot').style;
+    expect([spot.top, spot.height]).toEqual(['352px', '132px']);
+    // 478 + 6 + 14
+    expect(tooltip().style.top).toBe('498px');
+  });
+
+  it('卡片在畫面上方之外（使用者往下捲過）：捲回來', () => {
+    const page = scrollingPage({ cardTop: 700, scrollTop: 1000 });
+    tour.startTour();
+    clickNext();
+
+    // 卡片在 −300（中間 −240）→ 418
+    expect(page.scrollTop()).toBe(342);
+    expect(document.querySelector('.tour-spot').style.top).toBe('352px');
+  });
+
+  it('卡片已在 #content 裡、剛好貼著它的上緣或下緣：不捲動', () => {
+    const page = scrollingPage({ cardTop: 768 - 120 });
+    tour.startTour();
+    clickNext();
+    expect(page.scrollTop()).toBe(0);
+    expect(title()).toBe('加入今日計劃');
+  });
+
+  it('卡片貼著 #content 的上緣：不捲動', () => {
+    const page = scrollingPage({ cardTop: 68 });
+    tour.startTour();
+    clickNext();
+    expect(page.scrollTop()).toBe(0);
+  });
+
+  it('卡片在視窗裡、但有一部分被 header 蓋住：也捲到中間（#302 review）', () => {
+    // 已往下捲 500：卡片在 30–87，上半部在 header（0–68）底下
+    const page = scrollingPage({ cardTop: 530, cardHeight: 57, scrollTop: 500 });
+    tour.startTour();
+    clickNext();
+
+    // 卡片中間 58.5 → 418
+    expect(page.scrollTop()).toBe(140.5);
+    expect(document.querySelector('.tour-spot').style.top).toBe('383.5px');
+  });
+
+  it('卡片在視窗裡、但下緣被底部導覽列蓋住：也捲到中間', () => {
+    // #content 下緣在 768（底部導覽列由此開始）；視窗加高到 900，卡片 740–860 都在視窗裡
+    vi.stubGlobal('innerHeight', 900);
+    const page = scrollingPage({ cardTop: 740 });
+    tour.startTour();
+    clickNext();
+
+    expect(page.scrollTop()).toBe(382);
+  });
+
+  it('不在 #content 裡的目標（header、底部導覽列）不捲動；下半部在畫面外時聚光到畫面下緣為止', () => {
+    const page = scrollingPage({ cardTop: 300 });
+    place(document.getElementById('header'), { top: 700, left: 0, width: 1024, height: 100 });
+    tour.startTour();
+
+    expect(page.scrollTop()).toBe(0);
+    expect(window.Element.prototype.scrollIntoView).not.toHaveBeenCalled();
+    const spot = document.querySelector('.tour-spot').style;
+    // 694 到 min(768, 806)
+    expect([spot.top, spot.height]).toEqual(['694px', '74px']);
+  });
+
+  function morningModal() {
+    const modal = document.createElement('div');
+    modal.id = 'morning-modal';
+    modal.className = 'modal-overlay';
+    document.body.appendChild(modal);
+    return modal;
+  }
+
+  it('「今天的狀態？」還開著：導覽等它關掉才開始（其他畫面變化不算）', async () => {
+    const modal = morningModal();
+    tour.startTour();
+    expect(tooltip()).toBeNull();
+
+    document.getElementById('content').innerHTML = '<p>首頁</p>';
+    await settleObserver();
+    expect(tooltip()).toBeNull();
+
+    modal.remove();
+    await settleObserver();
+    expect(title()).toBe('你的成長指標');
+  });
+
+  it('等待中登出（晨間視窗被收起、app 隱藏）：不在登入畫面上開始（#302 review）', async () => {
+    const app = document.createElement('div');
+    app.id = 'main-app';
+    document.body.appendChild(app);
+    const modal = morningModal();
+    tour.startTour();
+
+    // What handleSignOut() does, in one go: close the day-cycle modals, hide the app.
+    modal.remove();
+    app.classList.add('hidden');
+    await settleObserver();
+    expect(overlays()).toBe(0);
+
+    // It stops waiting: later changes (signing in again) do not start it either.
+    app.classList.remove('hidden');
+    document.getElementById('content').innerHTML = '<p>首頁</p>';
+    await settleObserver();
+    expect(overlays()).toBe(0);
+  });
+
+  it('晨間視窗回答後 app 仍顯示：照常開始', async () => {
+    const app = document.createElement('div');
+    app.id = 'main-app';
+    document.body.appendChild(app);
+    const modal = morningModal();
+    tour.startTour();
+
+    modal.remove();
+    await settleObserver();
+    expect(title()).toBe('你的成長指標');
+  });
+
+  it('等待中再開始一次：只畫一次（前一次的等待已取消）', async () => {
+    const modal = morningModal();
+    tour.startTour();
+    tour.startTour();
+    const drawn = vi.spyOn(document.body, 'appendChild');
+    modal.remove();
+    await settleObserver();
+
+    expect(drawn.mock.calls.filter(([node]) => node.classList?.contains('tour-tooltip'))).toHaveLength(1);
+    drawn.mockRestore();
+    expect(document.querySelectorAll('.tour-tooltip')).toHaveLength(1);
+    expect(overlays()).toBe(3);
+  });
+
+  it('導覽進行中晨間視窗出現（例如過了換日時間）又重新開始：先收起原本的一組再等', async () => {
+    tour.startTour();
+    clickNext();
+    expect(title()).toBe('加入今日計劃');
+    const modal = morningModal();
+
+    tour.startTour();
+    expect(overlays()).toBe(0);
+    expect(mockState.tasks.some(t => t.id === TUTORIAL)).toBe(false);
+
+    modal.remove();
+    await settleObserver();
+    expect(title()).toBe('你的成長指標');
+  });
+});
