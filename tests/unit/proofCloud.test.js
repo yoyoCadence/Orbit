@@ -8,7 +8,7 @@
  * achievement photo.
  */
 
-/* global Blob, indexedDB -- jsdom and fake-indexeddb provide them */
+/* global Blob, indexedDB, IDBDatabase -- jsdom and fake-indexeddb provide them */
 
 import 'fake-indexeddb/auto';
 import { forceCloseDatabase } from 'fake-indexeddb';
@@ -861,7 +861,7 @@ describe('BUG-154：快取打不開一次，不會一直當作沒有', () => {
     expect(await cachedOnThisDevice(sid(1))).toBe(false);
   });
 
-  it('打開失敗後，下一張照片照樣存進快取', async () => {
+  it('讀取時打開失敗，同一張照片寫入時照樣存進快取', async () => {
     signIn();
     failNextOpens(1);
     await cloud.loadCloudProof(OWNER, sid(1));   // read: open fails; write: opens
@@ -928,5 +928,73 @@ describe('#310 review：丟掉的連線會關掉', () => {
     request.result = { close };
     request.onsuccess?.();
     expect(close).toHaveBeenCalled();
+  });
+});
+
+describe('TEST-026：舊連線晚一步失敗時，不清掉新的連線', () => {
+  afterEach(() => { vi.restoreAllMocks(); });
+
+  /** Wraps indexedDB.open(): every connection it hands out, with whether it is still open. */
+  function trackConnections() {
+    const realOpen = indexedDB.open.bind(indexedDB);
+    const connections = [];
+    const open = vi.spyOn(indexedDB, 'open').mockImplementation((...args) => {
+      const request = realOpen(...args);
+      request.addEventListener('success', () => {
+        const db = request.result;
+        const entry = { db, open: true };
+        const close = db.close.bind(db);
+        db.close = () => { entry.open = false; close(); };
+        connections.push(entry);
+      });
+      return request;
+    });
+    return { connections, open };
+  }
+
+  it('慢的寫入在已失效的連線上失敗時，已換上的新連線照樣使用', async () => {
+    const { connections, open } = trackConnections();
+    signIn();
+    await cloud.loadCloudProof(OWNER, sid(1));            // connection 1
+    expect(open).toHaveBeenCalledTimes(1);
+
+    // sid(2): its write takes the connection, then waits for the bytes.
+    let release;
+    const slow = jpeg();
+    slow.arrayBuffer = () => new Promise(resolve => { release = () => resolve(new ArrayBuffer(8)); });
+    mockDownload.mockResolvedValueOnce({ data: slow, error: null });
+    const second = cloud.loadCloudProof(OWNER, sid(2));
+    await vi.waitFor(() => expect(release).toBeTypeOf('function'));
+
+    // Connection 1 dies without a close event; sid(3) moves on to connection 2.
+    const first = connections[0].db;
+    first.close();
+    await cloud.loadCloudProof(OWNER, sid(3));
+    expect(open).toHaveBeenCalledTimes(2);
+
+    // The slow write now fails on connection 1: connection 2 stays in use.
+    release();
+    await second;
+    await cloud.loadCloudProof(OWNER, sid(4));
+    expect(open).toHaveBeenCalledTimes(2);
+    expect(connections.filter(c => c.open)).toHaveLength(1);
+  });
+
+  it('讀取在正常的連線上出錯時，那個連線會關掉（不會留著）', async () => {
+    const { connections } = trackConnections();
+    let failed = false;
+    const realTransaction = IDBDatabase.prototype.transaction;
+    vi.spyOn(IDBDatabase.prototype, 'transaction').mockImplementation(function (...args) {
+      // The app's read (readwrite on photos + meta), not fake-indexeddb's own.
+      if (!failed && args[1] === 'readwrite') {
+        failed = true;
+        throw new window.DOMException('read failed', 'UnknownError');
+      }
+      return realTransaction.apply(this, args);
+    });
+    signIn();
+    expect(await cloud.loadCloudProof(OWNER, sid(1))).toBe('blob:orbit/1');  // read fails, write reopens
+    expect(connections.length).toBe(2);
+    expect(connections.filter(c => c.open)).toHaveLength(1);
   });
 });
