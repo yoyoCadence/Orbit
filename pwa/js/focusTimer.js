@@ -26,6 +26,7 @@ const focus = {
   deskStableSince:   0,
   deskMotionCleanup: null,
   deskAutoSuppressed: false,
+  deskGeneration:    0,      // bumps when desk mode stops, like ambientRequest
   ambient:           null,   // HW-106 monitor handle while the microphone is open
   ambientRequest:    0,      // bumps on stop so a late permission grant is discarded
   ambientPending:    false,  // permission prompt open; pressing again cancels it
@@ -141,18 +142,9 @@ function _showDurationPicker(taskId, task) {
 function _ensureFocusDeskButton() {
   const box = document.querySelector('#focus-overlay .focus-box');
   if (!box) return;
-  const existing = document.getElementById('focus-desk-btn');
-  if (existing) {
-    existing.onclick = event => {
-      event.preventDefault();
-      event.stopPropagation();
-      const now = Date.now();
-      if (now - _focusDeskToggleAt < 350) return;
-      _focusDeskToggleAt = now;
-      window.toggleFocusDeskMode();
-    };
-    return;
-  }
+  // Made once; its listeners below stay with it for later sessions (an extra
+  // onclick set here ran a fourth handler per tap, #304 review).
+  if (document.getElementById('focus-desk-btn')) return;
   const skipBtn = box.querySelector('.focus-skip-btn');
   const btn = document.createElement('button');
   btn.id = 'focus-desk-btn';
@@ -191,12 +183,15 @@ function _setFocusDeskMode(enabled, source = 'manual') {
 }
 
 function _looksLikePhoneRestingFlat(event) {
+  // No reading is null (Number(null) would be 0, i.e. flat; BUG-153).
+  if (event.beta == null || event.gamma == null) return false;
   const beta = Number(event.beta);
   const gamma = Number(event.gamma);
   if (!Number.isFinite(beta) || !Number.isFinite(gamma)) return false;
   const flatScreenUp = Math.abs(beta) < 18 && Math.abs(gamma) < 18;
-  const flatLandscape = Math.abs(Math.abs(beta) - 90) < 12 && Math.abs(gamma) < 12;
-  return flatScreenUp || flatLandscape;
+  // Standing upright in portrait (e.g. against a stand); the name said landscape.
+  const uprightPortrait = Math.abs(Math.abs(beta) - 90) < 12 && Math.abs(gamma) < 12;
+  return flatScreenUp || uprightPortrait;
 }
 
 function _startFocusDeskSensors() {
@@ -210,6 +205,12 @@ function _startFocusDeskSensors() {
     rafId = requestAnimationFrame(() => {
       rafId = 0;
       if (!focus.active || !lastEvent) return;
+      // Minimised (BUG-153): not behind the hidden overlay, and the 1.2 s
+      // start over once it is back.
+      if (document.getElementById('focus-overlay')?.classList.contains('hidden')) {
+        focus.deskStableSince = 0;
+        return;
+      }
       if (_looksLikePhoneRestingFlat(lastEvent)) {
         focus.deskStableSince ||= Date.now();
         if (!focus.deskAutoSuppressed && !focus.deskMode && Date.now() - focus.deskStableSince > 1200) {
@@ -230,6 +231,7 @@ function _startFocusDeskSensors() {
 }
 
 async function _requestFocusDeskSensors() {
+  const generation = focus.deskGeneration;
   const OrientationEvent = window.DeviceOrientationEvent;
   if (typeof OrientationEvent !== 'undefined' &&
       typeof OrientationEvent.requestPermission === 'function') {
@@ -237,6 +239,10 @@ async function _requestFocusDeskSensors() {
       const result = await OrientationEvent.requestPermission();
       if (result !== 'granted') return;
     } catch { return; }
+    // Desk mode may have stopped while iOS asked (BUG-153): the session ended
+    // (skip, end, the countdown; `active` stays true until a result is
+    // picked), so no listener for it.
+    if (generation !== focus.deskGeneration || !focus.active) return;
   }
   _startFocusDeskSensors();
 }
@@ -250,6 +256,7 @@ function _prepareFocusDeskMode() {
 }
 
 function _stopFocusDeskMode() {
+  focus.deskGeneration += 1;
   _setFocusDeskMode(false, 'reset');
   focus.deskStableSince = 0;
   focus.deskAutoSuppressed = false;
@@ -261,7 +268,10 @@ function _stopFocusDeskMode() {
 
 window.toggleFocusDeskMode = async function () {
   if (!focus.active) return;
+  const generation = focus.deskGeneration;
   await _requestFocusDeskSensors();
+  // Stopped while iOS asked (BUG-153), even if `active` is still true.
+  if (generation !== focus.deskGeneration || !focus.active) return;
   _setFocusDeskMode(!focus.deskMode, 'manual');
 };
 

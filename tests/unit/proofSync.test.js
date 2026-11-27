@@ -55,7 +55,9 @@ function ownSessions(...ids) {
 
 beforeEach(() => {
   localStorage.clear();
-  vi.clearAllMocks();
+  // resetAllMocks(): clearAllMocks() keeps queued *Once results, which a
+  // failing test would hand to the next one (TEST-023, #306 review).
+  vi.resetAllMocks();
   auth.userId = null;
   local.user = null;
   local.sessions = [];
@@ -66,6 +68,9 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  // Spies on Storage / HTMLCanvasElement, even when a test failed before its
+  // own restore.
+  vi.restoreAllMocks();
 });
 
 describe('upload', () => {
@@ -172,13 +177,22 @@ describe('upload', () => {
     ownSessions(sid(1));
     saveProof(sid(1), `data:image/png;base64,${btoa('png-bytes')}`);
     const jpeg = new Blob([new Uint8Array([0xff, 0xd8])], { type: 'image/jpeg' });
-    vi.stubGlobal('createImageBitmap', vi.fn(async () => ({ width: 4, height: 3, close: vi.fn() })));
+    const bitmap = { width: 4, height: 3, close: vi.fn() };
+    const drawImage = vi.fn();
+    const made = [];
+    vi.stubGlobal('createImageBitmap', vi.fn(async () => bitmap));
     vi.stubGlobal('OffscreenCanvas', class {
-      getContext() { return { drawImage: vi.fn() }; }
-      convertToBlob(options) { expect(options).toEqual({ type: 'image/jpeg', quality: 0.5 }); return Promise.resolve(jpeg); }
+      constructor(width, height) { made.push({ width, height }); }
+      getContext() { return { drawImage }; }
+      // Recorded, checked after the call: an expect() in here would only be
+      // swallowed by the re-encode's catch (#306 review).
+      convertToBlob(options) { made.push(options); return Promise.resolve(jpeg); }
     });
     expect(await uploadProof(OWNER, sid(1))).toBe('uploaded');
     expect(mockUpload.mock.calls[0][1]).toBe(jpeg);
+    expect(made).toEqual([{ width: 4, height: 3 }, { type: 'image/jpeg', quality: 0.5 }]);
+    expect(drawImage).toHaveBeenCalledWith(bitmap, 0, 0);
+    expect(bitmap.close).toHaveBeenCalled();
   });
 
   it('skips a PNG it cannot re-encode (no canvas support)', async () => {
@@ -561,5 +575,133 @@ describe('deleting a session', () => {
     expect(localStorage.getItem(`orbit_proof_${sid(1)}`)).toBeNull();
     expect(mockRemove).not.toHaveBeenCalled();
     expect(pendingProofRemovals('guest-id')).toEqual([]);
+  });
+});
+
+// ─── TEST-022: error and fallback paths ─────────────────────────────────────
+
+describe('TEST-022：出錯與退而求其次的路徑', () => {
+  const sessionOf = id => ({ data: { session: id ? { user: { id } } : null } });
+  const proofKey = id => `orbit_proof_${id}`;
+
+  it('壞掉的佇列資料當作空的，之後照常排入', async () => {
+    localStorage.setItem(`orbit_proofsync_upload:${OWNER}`, '{not json');
+    expect(pendingProofUploads(OWNER)).toEqual([]);
+    expect(queueProofUpload(OWNER, sid(1))).toBe(true);
+    expect(pendingProofUploads(OWNER)).toEqual([sid(1)]);
+  });
+
+  it('取得 session 出錯時當作沒有登入：不上傳', async () => {
+    const { supabase } = await import('../../pwa/js/supabase.js');
+    supabase.auth.getSession.mockRejectedValueOnce(new Error('storage unavailable'));
+    signIn();
+    ownSessions(sid(1));
+    saveProof(sid(1), jpegDataUrl());
+    expect(await uploadProof(OWNER, sid(1))).toBe('failed');
+    expect(mockUpload).not.toHaveBeenCalled();
+  });
+
+  it('準備照片時換了帳號：不上傳', async () => {
+    const { supabase } = await import('../../pwa/js/supabase.js');
+    signIn();
+    ownSessions(sid(1));
+    saveProof(sid(1), jpegDataUrl());
+    supabase.auth.getSession
+      .mockResolvedValueOnce(sessionOf(OWNER))
+      .mockResolvedValueOnce(sessionOf(OTHER));
+    expect(await uploadProof(OWNER, sid(1))).toBe('failed');
+    expect(mockUpload).not.toHaveBeenCalled();
+  });
+
+  it('上傳時丟出例外（例如連線中斷）算失敗，留在佇列', async () => {
+    signIn();
+    ownSessions(sid(1));
+    saveProof(sid(1), jpegDataUrl());
+    mockUpload.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    expect(await uploadProof(OWNER, sid(1))).toBe('failed');
+    expect(mockUpload).toHaveBeenCalledTimes(1);
+
+    // Through the queue: still waiting afterwards.
+    mockUpload.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    queueProofUpload(OWNER, sid(1));
+    await flushProofSync(OWNER);
+    expect(mockUpload).toHaveBeenCalledTimes(2);
+    expect(pendingProofUploads(OWNER)).toEqual([sid(1)]);
+  });
+
+  it('讀不到這台裝置上的照片（storage 出錯）就略過', async () => {
+    signIn();
+    ownSessions(sid(1));
+    saveProof(sid(1), jpegDataUrl());
+    const getItem = Storage.prototype.getItem;
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(function (key) {
+      if (key === proofKey(sid(1))) throw new Error('SecurityError');
+      return getItem.call(this, key);
+    });
+    expect(await uploadProof(OWNER, sid(1))).toBe('skipped');
+    expect(mockUpload).not.toHaveBeenCalled();
+  });
+
+  it('沒有 OffscreenCanvas 時用 <canvas> 轉成 JPEG', async () => {
+    signIn();
+    ownSessions(sid(1));
+    saveProof(sid(1), `data:image/png;base64,${btoa('png-bytes')}`);
+    const jpeg = new Blob([new Uint8Array([0xff, 0xd8])], { type: 'image/jpeg' });
+    const close = vi.fn();
+    vi.stubGlobal('createImageBitmap', vi.fn(async () => ({ width: 4, height: 3, close })));
+    vi.stubGlobal('OffscreenCanvas', undefined);
+    const drawImage = vi.fn();
+    const blobbed = [];
+    vi.spyOn(window.HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ drawImage });
+    vi.spyOn(window.HTMLCanvasElement.prototype, 'toBlob').mockImplementation(function (callback, type, quality) {
+      blobbed.push([this.width, this.height, type, quality]);
+      callback(jpeg);
+    });
+    expect(await uploadProof(OWNER, sid(1))).toBe('uploaded');
+    expect(mockUpload.mock.calls[0][1]).toBe(jpeg);
+    expect(blobbed).toEqual([[4, 3, 'image/jpeg', 0.5]]);
+    expect(drawImage).toHaveBeenCalledWith(expect.objectContaining({ width: 4, height: 3 }), 0, 0);
+    expect(close).toHaveBeenCalled();
+  });
+
+  it('轉檔出錯（例如圖片解不開）就略過，不擋住佇列', async () => {
+    signIn();
+    ownSessions(sid(1));
+    saveProof(sid(1), `data:image/png;base64,${btoa('png-bytes')}`);
+    vi.stubGlobal('createImageBitmap', vi.fn(async () => { throw new window.DOMException('bad image', 'InvalidStateError'); }));
+    expect(await uploadProof(OWNER, sid(1))).toBe('skipped');
+    expect(mockUpload).not.toHaveBeenCalled();
+  });
+
+  it('雲端刪除丟出例外（不是回傳錯誤）時留著，下次同步再試', async () => {
+    signIn();
+    ownSessions(sid(2));
+    // Thrown while the deletion is tried (proofSessionDeleted starts a sync).
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mockRemove.mockRejectedValue(new TypeError('Failed to fetch'));
+    proofSessionDeleted(OWNER, sid(1), { signedIn: true });
+    await flushProofSync(OWNER);
+    expect(mockRemove).toHaveBeenCalled();
+    expect(pendingProofRemovals(OWNER)).toEqual([sid(1)]);
+    // Handled where it is thrown, not by stopping the whole sync.
+    expect(warn).not.toHaveBeenCalledWith(expect.stringContaining('Proof sync stopped'), expect.anything());
+
+    mockRemove.mockResolvedValue({ data: [], error: null });
+    await flushProofSync(OWNER);
+    expect(pendingProofRemovals(OWNER)).toEqual([]);
+  });
+
+  it('讀不到「已補傳過」的標記時（storage 出錯）不再補傳舊照片', async () => {
+    signIn();
+    ownSessions(sid(1));
+    saveProof(sid(1), jpegDataUrl());
+    const getItem = Storage.prototype.getItem;
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(function (key) {
+      if (key.startsWith('orbit_proofsync_backfilled:')) throw new Error('SecurityError');
+      return getItem.call(this, key);
+    });
+    await flushProofSync(OWNER);
+    vi.restoreAllMocks();
+    expect(mockUpload).not.toHaveBeenCalled();
   });
 });

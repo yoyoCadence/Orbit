@@ -417,6 +417,38 @@ describe('BUG-152：手機上第一次看到導覽', () => {
     expect(title()).toBe('你的成長指標');
   });
 
+  it('等待中登出（晨間視窗被收起、app 隱藏）：不在登入畫面上開始（#302 review）', async () => {
+    const app = document.createElement('div');
+    app.id = 'main-app';
+    document.body.appendChild(app);
+    const modal = morningModal();
+    tour.startTour();
+
+    // What handleSignOut() does, in one go: close the day-cycle modals, hide the app.
+    modal.remove();
+    app.classList.add('hidden');
+    await settleObserver();
+    expect(overlays()).toBe(0);
+
+    // It stops waiting: later changes (signing in again) do not start it either.
+    app.classList.remove('hidden');
+    document.getElementById('content').innerHTML = '<p>首頁</p>';
+    await settleObserver();
+    expect(overlays()).toBe(0);
+  });
+
+  it('晨間視窗回答後 app 仍顯示：照常開始', async () => {
+    const app = document.createElement('div');
+    app.id = 'main-app';
+    document.body.appendChild(app);
+    const modal = morningModal();
+    tour.startTour();
+
+    modal.remove();
+    await settleObserver();
+    expect(title()).toBe('你的成長指標');
+  });
+
   it('等待中再開始一次：只出現一組', async () => {
     const modal = morningModal();
     tour.startTour();

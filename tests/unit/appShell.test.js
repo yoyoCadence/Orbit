@@ -176,11 +176,8 @@ const badge = vi.hoisted(() => ({
 }));
 vi.mock('../../pwa/js/platform/badge.js', () => badge);
 vi.mock('../../pwa/js/pages/leaderboard.js', () => ({}));
-const tour = vi.hoisted(() => ({ startTour: vi.fn(), fail: false }));
-vi.mock('../../pwa/js/tour.js', () => {
-  if (tour.fail) throw new Error('chunk failed to load');
-  return { startTour: tour.startTour };
-});
+const tour = vi.hoisted(() => ({ startTour: vi.fn() }));
+vi.mock('../../pwa/js/tour.js', () => ({ startTour: tour.startTour }));
 
 // ─── Harness ──────────────────────────────────────────────────────────────────
 
@@ -264,7 +261,6 @@ beforeEach(async () => {
   network.online = true;
   network.handlers = [];
   sessionFlow.badgeUpdater = null;
-  tour.fail = false;
   sessionStorage.clear();
   // Keeps warmEnhancementModules() from loading anything unless a test runs it.
   window.requestIdleCallback = () => 0;
@@ -747,10 +743,16 @@ describe('今日計畫', () => {
 describe('導覽與暖身載入', () => {
   it('導覽載入失敗時提示，不丟出錯誤', async () => {
     await bootCached('owner-a');
-    tour.fail = true;
+    // A mock's module stays cached once a test has imported it, even across
+    // vi.resetModules(): a flag read by the factory only worked while no
+    // earlier test had loaded the tour (TEST-016). Replace the module instead.
     vi.resetModules();
-
-    await window.startTour();
+    vi.doMock('../../pwa/js/tour.js', () => { throw new Error('chunk failed to load'); });
+    try {
+      await window.startTour();
+    } finally {
+      vi.doMock('../../pwa/js/tour.js', () => ({ startTour: tour.startTour }));
+    }
 
     expect(feedback.showToast).toHaveBeenCalledWith('導覽載入失敗');
     expect(tour.startTour).not.toHaveBeenCalled();

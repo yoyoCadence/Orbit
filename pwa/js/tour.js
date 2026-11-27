@@ -154,6 +154,10 @@ function _whenNoBlockingModal(callback) {
     if (document.querySelector(BLOCKING_MODAL)) return;
     _modalWaiter.disconnect();
     _modalWaiter = null;
+    // A sign-out also closes it (app.js handleSignOut: clearDayCycleModals(),
+    // then the app is hidden before this observer runs): no tour over the
+    // login screen (#302 review).
+    if (document.getElementById('main-app')?.classList.contains('hidden')) return;
     callback();
   });
   _modalWaiter.observe(document.body, { childList: true, subtree: true });

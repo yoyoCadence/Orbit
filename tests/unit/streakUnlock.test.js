@@ -108,7 +108,11 @@ beforeEach(() => {
   day.value = '2026-11-10';
 });
 
-afterEach(() => {
+afterEach(async () => {
+  // A granted ask shows its celebration after `delayMs` (0 here): let it fire
+  // inside its own test, not in the next one's modal count (TEST-016; seen
+  // with --sequence.shuffle).
+  await flush();
   vi.useRealTimers();
 });
 
@@ -451,6 +455,16 @@ describe('requestStreakUnlock(): when to ask', () => {
     ]);
     expect([a, b]).toEqual(['granted', 'granted']);
     expect(grantCalls()).toBe(1);
+  });
+
+  it('signed out or switched before the celebration shows: it is not shown (TEST-017)', async () => {
+    seedUser();
+    answer({});
+    let current = true;
+    await expect(requestStreakUnlock(OWNER, { isCurrent: () => current, delayMs: 0 })).resolves.toBe('granted');
+    current = false;            // during the delay before the celebration
+    await flush();
+    expect(modal).not.toHaveBeenCalled();
   });
 
   it('signed out or switched meanwhile: no screen update, no celebration', async () => {
