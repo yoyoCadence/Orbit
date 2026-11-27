@@ -173,6 +173,9 @@ function handleMainQuestAction(mainQuest) {
 // ─── Main render ──────────────────────────────────────────────────────────────
 
 export function renderHome(container) {
+  // BUG-136 (a): drawn again mid-drag (a sync finishing, say), the handle
+  // leaves the page and its drag could never end.
+  _abandonDrags();
   _orbitWindowCleanup?.();
   _orbitWindowCleanup = null;
   _container = container;
@@ -761,7 +764,10 @@ function _setupPlanDragAndDrop(container) {
   if (!planList) return;
 
   planList.querySelectorAll('.plan-drag-handle').forEach(handle => {
+    // BUG-136 (c): the same guards as the task list's handle.
+    handle.addEventListener('contextmenu', e => e.preventDefault());
     handle.addEventListener('pointerdown', e => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
       e.preventDefault();                          // prevent text selection & click
       const card = handle.closest('.plan-card');
       if (!card) return;
@@ -785,6 +791,8 @@ function _setupPlanDragAndDrop(container) {
       document.body.appendChild(clone);
       _planDrag.clone = clone;
       card.classList.add('plan-drag-placeholder');
+      // A sideways drag is not also a page switch (router.js).
+      window._isDragging = true;
       handle.setPointerCapture(e.pointerId);
     });
 
@@ -805,22 +813,30 @@ function _setupPlanDragAndDrop(container) {
     }, { passive: false });
 
     handle.addEventListener('pointerup',     () => { if (_planDrag.active) _endPlanDrag(planList); });
-    // pointercancel never fires a subsequent click, so clear the flag immediately
-    handle.addEventListener('pointercancel', () => { if (_planDrag.active) { _endPlanDrag(planList); _planDrag.wasDragging = false; } });
+    // pointercancel never fires a subsequent click, so clear the flag
+    // immediately; BUG-136 (b): and a cancelled drag puts the task back.
+    handle.addEventListener('pointercancel', () => {
+      if (_planDrag.active) { _endPlanDrag(planList, { cancelled: true }); _planDrag.wasDragging = false; }
+    });
   });
 }
 
-function _endPlanDrag(planList) {
+function _endPlanDrag(planList, { cancelled = false } = {}) {
+  const { card, clone, taskId: dragId, lastY } = _planDrag;
+  // Over before the drop redraws the page, so that drawing has no drag to abandon.
+  _planDrag.active = false;
+  _planDrag.taskId = null;
+  _planDrag.card   = null;
+  _planDrag.clone  = null;
   _planDrag.wasDragging = true;
-  _planDrag.clone.remove();
-  _planDrag.card.classList.remove('plan-drag-placeholder');
+  clone.remove();
+  card.classList.remove('plan-drag-placeholder');
   _clearPlanDragOver(planList);
 
-  const target = _planCardUnderY(planList, _planDrag.lastY);
-  if (target && target !== _planDrag.card) {
+  const target = cancelled ? null : _planCardUnderY(planList, lastY);
+  if (target && target !== card) {
     const mid        = target.getBoundingClientRect();
-    const before     = _planDrag.lastY < mid.top + mid.height / 2;
-    const dragId     = _planDrag.taskId;
+    const before     = lastY < mid.top + mid.height / 2;
     const targetId   = target.dataset.taskId;
     const plan       = storage.currentDailyPlan(state.dailyPlan).filter(id => id !== dragId);
     const idx        = plan.indexOf(targetId);
@@ -830,11 +846,10 @@ function _endPlanDrag(planList) {
     if (_container) renderHome(_container);
   }
 
-  _planDrag.active = false;
-  _planDrag.taskId = null;
-  _planDrag.card   = null;
-  _planDrag.clone  = null;
-  setTimeout(() => { _planDrag.wasDragging = false; }, 50);
+  setTimeout(() => {
+    _planDrag.wasDragging = false;
+    window._isDragging = false;
+  }, 50);
 }
 
 function _planCardUnderY(planList, y) {
@@ -904,8 +919,9 @@ function _setupDragAndDrop(container) {
       if (_drag.active) _endDrag(container);
     });
 
+    // BUG-136 (b): a cancelled drag puts the task back.
     handle.addEventListener('pointercancel', () => {
-      if (_drag.active) _endDrag(container);
+      if (_drag.active) _endDrag(container, { cancelled: true });
     });
   });
 }
@@ -941,18 +957,24 @@ function _activateDrag(pressData) {
   handle.setPointerCapture(pointerId);
 }
 
-function _endDrag(container) {
+function _endDrag(container, { cancelled = false } = {}) {
   if (!_drag.active) return;
+  const { card, clone, taskId: dragId, lastX, lastY } = _drag;
+  // Over before the drop redraws the page, so that drawing has no drag to abandon.
+  _drag.active = false;
+  _drag.taskId = null;
   _drag.wasDragging = true; // suppress the click event that follows pointerup
 
-  _drag.clone.remove();
-  _drag.card.classList.remove('drag-placeholder');
+  clone.remove();
+  card.classList.remove('drag-placeholder');
   _clearDragOver(container);
 
   // Use last known pointer position for hit testing (reliable vs. pointerup coords)
-  const target = _cardUnderPoint(container, _drag.lastX, _drag.lastY);
-  if (target && target !== _drag.card && _drag.taskId) {
-    const newTasks = reorderTasks(state.tasks, _drag.taskId, target.dataset.taskId);
+  const target = cancelled ? null : _cardUnderPoint(container, lastX, lastY);
+  _drag.card  = null;
+  _drag.clone = null;
+  if (target && target !== card && dragId) {
+    const newTasks = reorderTasks(state.tasks, dragId, target.dataset.taskId);
     state.tasks.splice(0, state.tasks.length, ...newTasks);
     storage.saveTasks(state.tasks, state.user?.id ?? null);
 
@@ -971,10 +993,6 @@ function _endDrag(container) {
     });
   }
 
-  _drag.active = false;
-  _drag.taskId = null;
-  _drag.card   = null;
-  _drag.clone  = null;
   // BUG-135: the click right after the drop is suppressed, but a drop with no
   // click after it (most touch drags, or a drop that redraws the list) must
   // not swallow a later tap: the flag ends with the drag, as the plan's does.
@@ -984,6 +1002,27 @@ function _endDrag(container) {
   }, 50);
 }
 
+// BUG-136 (a): a drag whose page was drawn again: its handle is gone, so its
+// pointerup never comes. Its floating copy goes and page swipes come back.
+function _abandonDrags() {
+  if (_drag.active) {
+    _drag.clone?.remove();
+    _drag.active = false;
+    _drag.taskId = null;
+    _drag.card   = null;
+    _drag.clone  = null;
+    window._isDragging = false;
+  }
+  if (_planDrag.active) {
+    _planDrag.clone?.remove();
+    _planDrag.active = false;
+    _planDrag.taskId = null;
+    _planDrag.card   = null;
+    _planDrag.clone  = null;
+    window._isDragging = false;
+  }
+}
+
 /**
  * Find the task card whose bounding rect contains (x, y), ignoring the
  * drag clone (which has pointer-events:none but its rect still exists).
@@ -991,7 +1030,10 @@ function _endDrag(container) {
  * can miss elements behind fixed-position overlays.
  */
 function _cardUnderPoint(container, x, y) {
-  const cards = container.querySelectorAll('.task-card');
+  // BUG-136 (d): only cards of the dragged card's section; a drop on another
+  // section's card would reorder this one's tasks at random.
+  const grid = _drag.card?.closest('.task-grid');
+  const cards = (grid || container).querySelectorAll('.task-card');
   for (const card of cards) {
     if (card === _drag.card) continue;
     const r = card.getBoundingClientRect();
