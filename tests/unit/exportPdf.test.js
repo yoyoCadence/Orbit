@@ -11,8 +11,11 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { effectiveToday } from '../../pwa/js/utils.js';
 
-const TODAY = new Date().toLocaleDateString('sv');
+// The picker's default is the effective month (BUG-146): a calendar date would
+// fall outside it on the 1st before 5 am.
+const TODAY = effectiveToday(5);
 
 vi.mock('../../pwa/js/state.js', () => ({
   state: { user: { name: 'Tester', totalXP: 120, streakDays: 2, titleTemplate: 'rpg' } },
@@ -86,5 +89,20 @@ describe('PDF report libraries', () => {
     expect(save).toHaveBeenCalledWith(`orbit-report-${TODAY.slice(0, 7)}.pdf`);
     expect(document.querySelectorAll('script[src*="html2canvas"]')).toHaveLength(1);
     expect(document.querySelector('#report-picker-modal')).toBeNull();
+  });
+});
+
+describe('報告的「本月」（BUG-146）', () => {
+  it('月初凌晨 2 點：本月是有效日所在的月份，上個月是再往前一個月', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      vi.setSystemTime(new Date('2026-05-01T02:00:00'));
+      showReportPicker();
+      const values = [...document.querySelectorAll('input[name="rp-range"]')].map(input => input.value);
+      expect(values[0]).toBe('2026-04');
+      expect(document.querySelector('input[name="rp-range"]:checked').value).toBe('2026-04');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

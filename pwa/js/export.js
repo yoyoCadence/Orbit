@@ -3,6 +3,7 @@ import { storage }         from './storage.js';
 import { state }            from './state.js';
 import { getLevelInfo }     from './leveling.js';
 import { getDisplayTitle }  from './leveling.js';
+import { effectiveToday }   from './utils.js';
 
 // Lazy-loaded CDN libs (only when user generates a PDF). The integrity hashes
 // are the sha512 of the npm packages' dist files, which cdnjs serves byte for
@@ -364,7 +365,9 @@ export function showReportPicker() {
   const monthSet    = new Set(allSessions.map(s => s.date?.slice(0, 7)).filter(Boolean));
   const months      = [...monthSet].sort().reverse();
 
-  const now       = new Date();
+  // The effective month (BUG-146): on the 1st before newDayHour the calendar
+  // month is the new, still empty one.
+  const now       = new Date(effectiveToday(state.user?.newDayHour ?? 5) + 'T00:00:00');
   const curMonth  = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const prevDate  = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const prevMonth = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;

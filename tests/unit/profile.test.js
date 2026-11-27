@@ -692,6 +692,10 @@ describe('renderProfile: advanced dashboard', () => {
 
   it('dashboard completion rate reflects complete sessions', () => {
     mockStorage.isProUser.mockReturnValue(true);
+    // Midday: before newDayHour the window ends on the previous day (BUG-146),
+    // so the calendar date would fall outside it (#299 review).
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-04-16T12:00:00'));
     const today = new Date().toLocaleDateString('sv');
     mockState.sessions = [
       { date: today, impactType: 'task', value: 'A', result: 'complete',
@@ -702,9 +706,13 @@ describe('renderProfile: advanced dashboard', () => {
         completedAt: today + 'T11:00:00Z' },
     ];
     const c = makeContainer();
-    renderProfile(c);
-    const metrics = c.querySelectorAll('.dash-metric-val');
-    expect(metrics[0].textContent).toBe('50%');
+    try {
+      renderProfile(c);
+      const metrics = c.querySelectorAll('.dash-metric-val');
+      expect(metrics[0].textContent).toBe('50%');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
@@ -810,5 +818,30 @@ describe('renderProfile: createdAt null safety', () => {
     renderProfile(c);
     const statValues = c.querySelectorAll('.stat-value');
     expect(statValues[3].textContent).not.toContain('NaN');
+  });
+});
+
+// ─── BUG-146：近 30 天從有效日算起 ──────────────────────────────────────────────
+
+describe('renderProfile: 近 30 天的任務效率以有效日計算（BUG-146）', () => {
+  afterEach(() => { vi.useRealTimers(); });
+
+  it('凌晨 2 點：第 30 天（有效日往前 29 天）的紀錄算進完成率與平均 XP', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-16T02:00:00'));
+    mockStorage.isProUser.mockReturnValue(true);
+    mockState.user = freshUser({ newDayHour: 5 });
+    // Effective today 2026-04-15; the 30 days run back to 2026-03-17.
+    mockState.sessions = [
+      { date: '2026-03-17', impactType: 'task', value: 'A', result: 'complete',
+        isProductiveXP: true, finalXP: 90, durationMinutes: 30, completedAt: '2026-03-17T10:00:00' },
+      { date: '2026-03-16', impactType: 'task', value: 'A', result: 'invalid',
+        isProductiveXP: false, finalXP: 0, durationMinutes: 5, completedAt: '2026-03-16T10:00:00' },
+    ];
+    const c = makeContainer();
+    renderProfile(c);
+    const metrics = c.querySelectorAll('.dash-metric-val');
+    expect(metrics[0].textContent).toBe('100%');
+    expect(metrics[1].textContent).toBe('3');
   });
 });

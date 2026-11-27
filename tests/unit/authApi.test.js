@@ -130,6 +130,8 @@ describe('登出時 SDK 出錯（BUG-116 的補充）', () => {
     expect(client.auth.storage.removeItem).toHaveBeenCalledWith('sb-test-auth-token');
     expect(client.auth.signOut).toHaveBeenCalledTimes(1);
     expect(client.auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
+    expect(client.auth.storage.removeItem.mock.invocationCallOrder[0])
+      .toBeLessThan(client.auth.signOut.mock.invocationCallOrder[0]);
   });
 
   it('離線：刪除 session 失敗（已經不在）也照樣以 local 登出', async () => {

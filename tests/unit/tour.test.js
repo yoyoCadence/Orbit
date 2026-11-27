@@ -304,3 +304,38 @@ describe('提示框的位置', () => {
     expect(tooltip().style.top).toBe('40px');
   });
 });
+
+describe('等待畫面更新時跳過或重新開始（#298 review）', () => {
+  let frames;
+  const runFrames = () => {
+    while (frames.length) frames.shift()(0);
+  };
+
+  beforeEach(() => {
+    frames = [];
+    vi.stubGlobal('requestAnimationFrame', cb => { frames.push(cb); return frames.length; });
+  });
+
+  it('重新開始時，前一步還沒畫出來的那次不會再畫一層', () => {
+    tour.startTour();
+    clickNext();                 // step 1a: navigates, waits two frames
+    expect(overlays()).toBe(0);
+
+    tour.startTour();            // e.g. 設定 → 重啟教學 meanwhile
+    runFrames();
+    expect(document.querySelectorAll('.tour-backdrop')).toHaveLength(1);
+    expect(document.querySelectorAll('.tour-tooltip')).toHaveLength(1);
+    expect(title()).toBe('你的成長指標');
+  });
+
+  it('等待中導覽已收起（跳過或完成）時，不再畫出那一步', () => {
+    tour.startTour();
+    clickNext();
+    // The skip button of the previous step is gone; restarting and skipping
+    // stands in for any _clear() while the frames are pending.
+    tour.startTour();
+    clickSkip();
+    runFrames();
+    expect(overlays()).toBe(0);
+  });
+});
