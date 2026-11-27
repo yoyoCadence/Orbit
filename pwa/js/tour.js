@@ -135,8 +135,32 @@ let _generation = 0;   // bumped by _clear(): a step drawn after it is stale
 export function startTour() {
   // Clean up any leftover tutorial task from a previous interrupted run
   _removeTutorialTask();
+  _clear();
   _step = 0;
-  _showStep();
+  _whenNoBlockingModal(_showStep);
+}
+
+// BUG-152: setup asks a new user for the morning state (dayCycle.js) right
+// before the tour starts, and the tour went over that modal while it was still
+// waiting for an answer. The tour starts once it is closed.
+const BLOCKING_MODAL = '#morning-modal';
+let _modalWaiter = null;
+
+function _whenNoBlockingModal(callback) {
+  _modalWaiter?.disconnect();
+  _modalWaiter = null;
+  if (!document.querySelector(BLOCKING_MODAL)) { callback(); return; }
+  _modalWaiter = new MutationObserver(() => {
+    if (document.querySelector(BLOCKING_MODAL)) return;
+    _modalWaiter.disconnect();
+    _modalWaiter = null;
+    // A sign-out also closes it (app.js handleSignOut: clearDayCycleModals(),
+    // then the app is hidden before this observer runs): no tour over the
+    // login screen (#302 review).
+    if (document.getElementById('main-app')?.classList.contains('hidden')) return;
+    callback();
+  });
+  _modalWaiter.observe(document.body, { childList: true, subtree: true });
 }
 
 // ─── Core ─────────────────────────────────────────────────────────────────────
@@ -205,6 +229,12 @@ function _renderStep(s) {
     const target = document.querySelector(s.selector);
     if (!target) { _step++; _showStep(); return; }
 
+    // BUG-152: on a phone the tour's task card is far below the fold (Home
+    // shows the plan, the Orbit Window and the growth tasks first). Measured
+    // there, the spotlight was off screen and the whole page went dark under a
+    // tip pointing at nothing. Bring it to the middle first.
+    _bringIntoView(target);
+
     const PAD = 6;
     const r   = target.getBoundingClientRect();
 
@@ -241,6 +271,22 @@ function _renderStep(s) {
       }, 600);
     });
   }
+}
+
+// Scrolls only the page (#content): scrollIntoView() would also scroll any
+// other ancestor that overflows, and the app shell can be taller than the
+// window (appHeight.js adds the bottom inset), so the root, which nothing
+// scrolls back, moved and cut the header off (#302 review). Targets outside
+// #content (the header, the bottom bar) are fixed and always on screen.
+function _bringIntoView(target) {
+  const scroller = target.closest('#content');
+  if (!scroller) return;
+  const box = target.getBoundingClientRect();
+  const view = scroller.getBoundingClientRect();
+  // On screen means inside #content: under the header or the bottom bar it
+  // is covered (430×932: the plan card under the header, #302 review).
+  if (box.top >= view.top && box.bottom <= view.bottom) return;
+  scroller.scrollTop += (box.top + box.height / 2) - (view.top + view.height / 2);
 }
 
 // ─── DOM watcher ─────────────────────────────────────────────────────────────

@@ -16,14 +16,25 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 // ─── Supabase mock ────────────────────────────────────────────────────────────
 
 const tableData = vi.hoisted(() => ({}));           // table → rows/row for reads
-const captured  = vi.hoisted(() => ({ upserts: {}, inserts: {}, updates: {}, updateError: null, updateRows: 1 }));
+const captured  = vi.hoisted(() => ({ upserts: {}, inserts: {}, updates: {}, deletes: {}, updateError: null, updateRows: 1, insertErrors: [] }));
+// Like Postgres, a uuid column refuses any other id (BUG-150).
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const notUuid = id => ({ code: '22P02', message: `invalid input syntax for type uuid: "${id}"` });
 
 vi.mock('../../pwa/js/supabase.js', () => {
   function chain(table) {
     const self = {
       select: () => self,
       eq:     () => self,
-      in:     () => Promise.resolve({ error: null }),
+      // delete().in('id', ids).eq('user_id', …)
+      in: (column, values) => {
+        (captured.deletes[table] ??= []).push(values);
+        const bad = table === 'tasks' ? values.find(id => !UUID.test(id)) : null;
+        const result = { error: bad ? notUuid(bad) : null };
+        const done = Promise.resolve(result);
+        done.eq = () => Promise.resolve(result);
+        return done;
+      },
       delete: () => self,
       update: (payload) => {
         (captured.updates[table] ??= []).push(payload);
@@ -43,11 +54,14 @@ vi.mock('../../pwa/js/supabase.js', () => {
       order:  () => Promise.resolve({ data: tableData[table] ?? null, error: null }),
       upsert: (payload, opts) => {
         (captured.upserts[table] ??= []).push({ payload, opts });
-        return Promise.resolve({ error: null });
+        const bad = table === 'tasks' ? [payload].flat().find(row => row?.id && !UUID.test(row.id)) : null;
+        return Promise.resolve({ error: bad ? notUuid(bad.id) : null });
       },
       insert: (payload) => {
         (captured.inserts[table] ??= []).push(payload);
-        return Promise.resolve({ error: null });
+        const taskId = table === 'sessions' ? payload?.task_id : null;
+        if (taskId && !UUID.test(taskId)) return Promise.resolve({ error: notUuid(taskId) });
+        return Promise.resolve({ error: captured.insertErrors.shift() ?? null });
       },
     };
     return self;
@@ -77,6 +91,8 @@ beforeEach(() => {
   captured.updates = {};
   captured.updateError = null;
   captured.updateRows = 1;
+  captured.insertErrors = [];
+  captured.deletes = {};
 });
 
 // ─── 讀取方向：loadFromRemote → localStorage cache ───────────────────────────
@@ -355,7 +371,7 @@ describe('loadFromRemote — tasks / sessions / energy rows', () => {
   it('回傳的 backfilled 等本機待補傳的 Session 寫入後才完成，並清掉待同步標記（HW-110）', async () => {
     localStorage.setItem('yoyo_user', JSON.stringify({ id: 'uid-1' }));
     localStorage.setItem('yoyo_sessions', JSON.stringify([{
-      id: 's-local', taskId: 't-1', date: '2026-07-06',
+      id: 's-local', taskId: '7c3e9a51-2b4d-4f6a-8e1c-9d0b2a4f6e83', date: '2026-07-06',
       completedAt: '2026-07-06T02:00:00Z', _syncPending: true,
     }]));
 
@@ -363,6 +379,7 @@ describe('loadFromRemote — tasks / sessions / energy rows', () => {
     await result.backfilled;
 
     expect(captured.inserts.sessions).toHaveLength(1);
+    expect(captured.inserts.sessions[0].task_id).toBe('7c3e9a51-2b4d-4f6a-8e1c-9d0b2a4f6e83');
     expect(storage.getSessions().find(s => s.id === 's-local')._syncPending).toBeUndefined();
   });
 
@@ -444,14 +461,16 @@ describe('upsertProfile — user object → DB payload', () => {
   });
 });
 
+const TASK_UUID = '5f0c2a8e-3b1d-4c6e-9a7f-2d8b4e6c1a30';
+
 describe('upsertTasks / insertSession / upsertEnergy payloads', () => {
   it('task 寫入預設值（daily_xp_cap ?? 100、is_default ?? false、value_confidence ?? 100）', async () => {
     await db.upsertTasks([{
-      id: 't-1', name: '極簡任務', category: 'instant', impactType: 'task',
+      id: TASK_UUID, name: '極簡任務', category: 'instant', impactType: 'task',
       taskNature: 'maintenance', value: 'B', difficulty: 0.4, resistance: 1,
     }]);
     expect(captured.upserts.tasks[0].payload).toEqual([{
-      id: 't-1', user_id: 'uid-1', name: '極簡任務', category: 'instant',
+      id: TASK_UUID, user_id: 'uid-1', name: '極簡任務', category: 'instant',
       impact_type: 'task', task_nature: 'maintenance', value: 'B',
       difficulty: 0.4, resistance: 1,
       emoji: null, daily_xp_cap: 100, cooldown_minutes: 0,
@@ -463,7 +482,7 @@ describe('upsertTasks / insertSession / upsertEnergy payloads', () => {
 
   it('session 寫入欄位集合固定（note / taskIconImg / _syncPending 不上雲）', async () => {
     await db.insertSession({
-      id: 's-1', taskId: 't-1', taskName: '深度學習', taskEmoji: '📚',
+      id: 's-1', taskId: TASK_UUID, taskName: '深度學習', taskEmoji: '📚',
       taskIconImg: 'data:image/png;base64,icon', date: '2026-07-06',
       startedAt: '2026-07-06T01:00:00Z', completedAt: '2026-07-06T02:00:00Z',
       durationMinutes: 60, result: 'complete', baseXP: 90, finalXP: 120,
@@ -472,7 +491,7 @@ describe('upsertTasks / insertSession / upsertEnergy payloads', () => {
       note: '本機備注', _syncPending: true,
     });
     expect(captured.inserts.sessions[0]).toEqual({
-      id: 's-1', user_id: 'uid-1', task_id: 't-1', task_name: '深度學習',
+      id: 's-1', user_id: 'uid-1', task_id: TASK_UUID, task_name: '深度學習',
       task_emoji: '📚', date: '2026-07-06',
       started_at: '2026-07-06T01:00:00Z', completed_at: '2026-07-06T02:00:00Z',
       duration_minutes: 60, result: 'complete', base_xp: 90, final_xp: 120,
@@ -487,6 +506,225 @@ describe('upsertTasks / insertSession / upsertEnergy payloads', () => {
       user_id: 'uid-1', current_energy: 50, max_energy: 100, last_reset_date: null,
     });
     expect(captured.upserts.energy[0].opts).toEqual({ onConflict: 'user_id' });
+  });
+});
+
+describe('a session whose task can never be linked (BUG-150/151)', () => {
+  const OWNER = 'uid-1';
+  const GONE_TASK = '9d1e7b3a-6c2f-4e8a-b5d4-0f3a2c1e7b96';
+  const linkMissing = {
+    code: '23503',
+    message: 'insert or update on table "sessions" violates foreign key constraint "sessions_task_id_fkey"',
+    details: `Key (task_id)=(${GONE_TASK}) is not present in table "tasks".`,
+  };
+
+  function session(taskId, id = 's-1') {
+    return {
+      id, taskId, taskName: '完成你的第一個任務', taskEmoji: '⭐', date: '2026-11-27',
+      startedAt: '2026-11-27T01:00:00Z', completedAt: '2026-11-27T01:00:00Z',
+      durationMinutes: 0, result: 'instant', baseXP: 10, finalXP: 1, energyCost: 0,
+      energyGain: 0, impactType: 'task', taskNature: 'maintenance', value: 'B',
+      resistance: 1, isProductiveXP: false,
+    };
+  }
+
+  function cacheOwner(tasks = []) {
+    localStorage.setItem('yoyo_user', JSON.stringify({ id: OWNER, name: 'U' }));
+    localStorage.setItem('yoyo_tasks', JSON.stringify(tasks));
+  }
+
+  const settle = () => new Promise(resolve => { setTimeout(resolve, 0); });
+
+  it('the tour\'s task (not a uuid) goes up without the link, in one insert', async () => {
+    await expect(db.insertSession(session('tour-task'), OWNER)).resolves.toBe(true);
+    expect(captured.inserts.sessions).toHaveLength(1);
+    expect(captured.inserts.sessions[0]).toMatchObject({ id: 's-1', task_id: null, task_name: '完成你的第一個任務' });
+  });
+
+  it('a uuid task id goes up as it is; one that only contains a uuid does not', async () => {
+    await db.insertSession(session(TASK_UUID), OWNER);
+    await db.insertSession(session(`${TASK_UUID}-copy`, 's-2'), OWNER);
+    await db.insertSession(session(`x${TASK_UUID}`, 's-3'), OWNER);
+    expect(captured.inserts.sessions.map(row => row.task_id)).toEqual([TASK_UUID, null, null]);
+  });
+
+  it('a task this device no longer has (deleted offline): retried once without the link', async () => {
+    cacheOwner([{ id: TASK_UUID }]);
+    captured.insertErrors = [linkMissing];
+
+    await expect(db.insertSession(session(GONE_TASK), OWNER)).resolves.toBe(true);
+
+    expect(captured.inserts.sessions.map(row => row.task_id)).toEqual([GONE_TASK, null]);
+    expect(captured.inserts.sessions[1]).toEqual({ ...captured.inserts.sessions[0], task_id: null });
+  });
+
+  it('a task this device still has (not uploaded yet): no retry, the session waits for it', async () => {
+    cacheOwner([{ id: GONE_TASK }]);
+    captured.insertErrors = [linkMissing];
+
+    await expect(db.insertSession(session(GONE_TASK), OWNER)).rejects.toBe(linkMissing);
+    expect(captured.inserts.sessions).toHaveLength(1);
+  });
+
+  it('another account cached here: no retry (this device cannot tell)', async () => {
+    localStorage.setItem('yoyo_user', JSON.stringify({ id: 'uid-other' }));
+    localStorage.setItem('yoyo_tasks', JSON.stringify([]));
+    captured.insertErrors = [linkMissing];
+
+    await expect(db.insertSession(session(GONE_TASK), OWNER)).rejects.toBe(linkMissing);
+    expect(captured.inserts.sessions).toHaveLength(1);
+  });
+
+  it('no task list stored: no retry', async () => {
+    localStorage.setItem('yoyo_user', JSON.stringify({ id: OWNER }));
+    captured.insertErrors = [linkMissing];
+
+    await expect(db.insertSession(session(GONE_TASK), OWNER)).rejects.toBe(linkMissing);
+    expect(captured.inserts.sessions).toHaveLength(1);
+  });
+
+  it('other errors are not retried: a missing profile, a permission error', async () => {
+    cacheOwner([]);
+    const profileMissing = {
+      code: '23503',
+      message: 'insert or update on table "sessions" violates foreign key constraint "sessions_user_id_fkey"',
+      details: 'Key (user_id)=(uid-1) is not present in table "profiles".',
+    };
+    const denied = { code: '42501', message: 'new row violates row-level security policy for table "sessions" (task_id)' };
+    captured.insertErrors = [profileMissing];
+    await expect(db.insertSession(session(GONE_TASK), OWNER)).rejects.toBe(profileMissing);
+    captured.insertErrors = [denied];
+    await expect(db.insertSession(session(GONE_TASK, 's-2'), OWNER)).rejects.toBe(denied);
+
+    expect(captured.inserts.sessions).toHaveLength(2);
+  });
+
+  it('the link named only in the details still counts', async () => {
+    cacheOwner([]);
+    captured.insertErrors = [{ code: '23503', message: 'foreign key violation', details: linkMissing.details }];
+
+    await expect(db.insertSession(session(GONE_TASK), OWNER)).resolves.toBe(true);
+    expect(captured.inserts.sessions.map(row => row.task_id)).toEqual([GONE_TASK, null]);
+  });
+
+  it('the retry failing too: that error, and no third insert', async () => {
+    cacheOwner([]);
+    const offline = { code: '', message: 'Failed to fetch' };
+    captured.insertErrors = [linkMissing, offline];
+
+    await expect(db.insertSession(session(GONE_TASK), OWNER)).rejects.toBe(offline);
+    expect(captured.inserts.sessions).toHaveLength(2);
+  });
+
+  it('a completed tour task is no longer left waiting to sync', async () => {
+    cacheOwner([]);
+    storage.saveSessions([session('tour-task')], OWNER);
+    expect(storage.getSessions()[0]._syncPending).toBe(true);
+
+    await settle();
+
+    expect(captured.inserts.sessions[0].task_id).toBeNull();
+    expect(storage.getSessions()[0]._syncPending).toBeUndefined();
+    expect(storage.getPendingSyncSummary(OWNER).sessions).toBe(0);
+  });
+
+  it('the tour\'s task is never stored or uploaded with the task list', async () => {
+    cacheOwner([]);
+    const tutorial = { id: 'tour-task', name: '完成你的第一個任務', isTutorial: true };
+    const kept = { id: TASK_UUID, name: '閱讀', category: 'instant', impactType: 'task', taskNature: 'growth', value: 'A', difficulty: 0.7, resistance: 1 };
+
+    expect(storage.saveTasks([tutorial, kept], OWNER)).toBe(true);
+
+    // The upload is still on its way: what waits for it is stored already.
+    const pending = Object.keys(localStorage).filter(key => key.startsWith('yoyo_taskSyncPending'));
+    expect(pending).toHaveLength(1);
+    expect(localStorage.getItem(pending[0])).toContain(TASK_UUID);
+    expect(localStorage.getItem(pending[0])).not.toContain('tour-task');
+
+    await settle();
+    expect(JSON.parse(localStorage.getItem('yoyo_tasks')).map(task => task.id)).toEqual([TASK_UUID]);
+    expect(captured.upserts.tasks[0].payload.map(row => row.id)).toEqual([TASK_UUID]);
+  });
+
+  it('removing the tour\'s task from memory deletes nothing on the server', async () => {
+    cacheOwner([]);
+    const kept = { id: TASK_UUID, name: '閱讀', category: 'instant', impactType: 'task', taskNature: 'growth', value: 'A', difficulty: 0.7, resistance: 1 };
+    storage.saveTasks([{ id: 'tour-task', isTutorial: true }, kept], OWNER);
+    await settle();
+
+    const deleted = vi.spyOn(db, 'deleteTasks');
+    storage.saveTasks([kept], OWNER);
+    await settle();
+
+    expect(deleted).toHaveBeenCalledWith([], OWNER);
+    deleted.mockRestore();
+  });
+
+  const READING = { id: TASK_UUID, name: '閱讀', category: 'instant', impactType: 'task', taskNature: 'growth', value: 'A', difficulty: 0.7, resistance: 1 };
+  const pendingKey = `yoyo_taskSyncPending:${OWNER}`;
+
+  it('the settings page drops `isTutorial` when it saves an edit: still known by its id', async () => {
+    cacheOwner([]);
+    storage.saveTasks([{ id: 'tour-task', name: '改過的名字', value: 'B' }, READING], OWNER);
+    await settle();
+
+    expect(JSON.parse(localStorage.getItem('yoyo_tasks')).map(task => task.id)).toEqual([TASK_UUID]);
+    expect(captured.upserts.tasks[0].payload.map(row => row.id)).toEqual([TASK_UUID]);
+  });
+
+  it('a list saved with the tour\'s task before 1.42.19: the next pull goes through and the stuck session uploads', async () => {
+    // As syncableTask() wrote it: without `isTutorial` (#302 review).
+    const legacyTour = { id: 'tour-task', name: '完成你的第一個任務', value: 'B' };
+    cacheOwner([legacyTour, READING]);
+    localStorage.setItem(pendingKey, JSON.stringify({
+      ownerId: OWNER, value: [legacyTour, READING], deletedIds: ['tour-task'],
+    }));
+    localStorage.setItem('yoyo_sessions', JSON.stringify([{ ...session('tour-task', 's-tour'), _syncPending: true }]));
+
+    const result = await db.loadFromRemote(OWNER);
+    await result.backfilled;
+
+    expect(captured.upserts.tasks[0].payload.map(row => row.id)).toEqual([TASK_UUID]);
+    expect(captured.deletes.tasks ?? []).toEqual([]);
+    expect(localStorage.getItem(pendingKey)).toBeNull();
+    expect(captured.inserts.sessions.map(row => [row.id, row.task_id])).toEqual([['s-tour', null]]);
+    expect(storage.getPendingSyncSummary(OWNER).total).toBe(0);
+  });
+
+  it('a cache that still holds the tour\'s task: saving without it deletes nothing for it, and the upload clears', async () => {
+    const OTHER = 'a8d4c2e6-1f3b-4c5d-9e7a-6b2f0c8d4e19';
+    cacheOwner([{ id: 'tour-task', isTutorial: true }, READING, { ...READING, id: OTHER }]);
+
+    storage.saveTasks([READING], OWNER);
+    await settle();
+
+    // Only the real task that was removed is deleted on the server.
+    expect(captured.deletes.tasks).toEqual([[OTHER]]);
+    expect(localStorage.getItem(pendingKey)).toBeNull();
+  });
+
+  it('BUG-151 through a pull: a session of a task deleted offline is backfilled without the link', async () => {
+    cacheOwner([READING]);
+    localStorage.setItem('yoyo_sessions', JSON.stringify([{ ...session(GONE_TASK, 's-gone'), _syncPending: true }]));
+    tableData.tasks = [{ id: TASK_UUID, user_id: OWNER, name: '閱讀', category: 'instant', impact_type: 'task', task_nature: 'growth', value: 'A', difficulty: 0.7, resistance: 1 }];
+    captured.insertErrors = [linkMissing];
+
+    const result = await db.loadFromRemote(OWNER);
+    await result.backfilled;
+
+    expect(captured.inserts.sessions.map(row => row.task_id)).toEqual([GONE_TASK, null]);
+    expect(storage.getSessions().find(s => s.id === 's-gone')._syncPending).toBeUndefined();
+  });
+
+  it('a task only in the list waiting to upload (the cache write failed) is not gone: no retry', async () => {
+    cacheOwner([READING]);
+    localStorage.setItem(pendingKey, JSON.stringify({
+      ownerId: OWNER, value: [READING, { ...READING, id: GONE_TASK }], deletedIds: [],
+    }));
+    captured.insertErrors = [linkMissing];
+
+    await expect(db.insertSession(session(GONE_TASK), OWNER)).rejects.toBe(linkMissing);
+    expect(captured.inserts.sessions).toHaveLength(1);
   });
 });
 
