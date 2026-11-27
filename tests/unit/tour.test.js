@@ -345,51 +345,66 @@ describe('BUG-152：手機上第一次看到導覽', () => {
     delete window.Element.prototype.scrollIntoView;
   });
 
-  /** A target whose box moves to `centered` once scrolled into view. */
-  function movable(element, { top, centered, left = 0, width = 1024, height = 56 }) {
-    const box = { top };
-    element.getBoundingClientRect = () => rect({ left, top: box.top, width, height });
-    element.scrollIntoView = vi.fn(() => { box.top = centered; });
-    return element;
-  }
-
-  it('教學任務卡在第一屏以下：先捲到畫面中間，再聚光與放提示框', () => {
+  /**
+   * #content as the page's scroller (68 px under the header, 700 px tall: its
+   * middle is at 418), and a card whose box follows its scrollTop.
+   */
+  function scrollingPage({ cardTop, cardHeight = 120, scrollTop = 0 }) {
+    const content = document.getElementById('content');
+    let top = scrollTop;
+    Object.defineProperty(content, 'scrollTop', { configurable: true, get: () => top, set: value => { top = value; } });
+    place(content, { top: 68, left: 0, width: 1024, height: 700 });
+    // scrollIntoView() would also scroll the page root (#302 review): never used.
+    window.Element.prototype.scrollIntoView = vi.fn();
     window.navigate = vi.fn(page => {
       if (page !== 'home') return;
       renderHome();
-      movable(document.querySelector(`.task-card[data-task-id="${TUTORIAL}"]`),
-        { top: 1162, centered: 324, left: 16, width: 174, height: 120 });
+      const card = document.querySelector(`.task-card[data-task-id="${TUTORIAL}"]`);
+      card.getBoundingClientRect = () => rect({ left: 16, top: cardTop - top, width: 174, height: cardHeight });
     });
+    return { content, scrollTop: () => top };
+  }
+
+  it('教學任務卡在第一屏以下：只捲 #content，把它捲到中間，再聚光與放提示框', () => {
+    const page = scrollingPage({ cardTop: 1162 });
     tour.startTour();
     clickNext();
 
-    const card = document.querySelector(`.task-card[data-task-id="${TUTORIAL}"]`);
-    expect(card.scrollIntoView).toHaveBeenCalledWith({ block: 'center' });
+    // 卡片中間 1222 → #content 中間 418
+    expect(page.scrollTop()).toBe(804);
+    expect(window.Element.prototype.scrollIntoView).not.toHaveBeenCalled();
     const spot = document.querySelector('.tour-spot').style;
-    expect([spot.top, spot.height]).toEqual(['318px', '132px']);
-    // 444 + 6 + 14
-    expect(tooltip().style.top).toBe('464px');
+    expect([spot.top, spot.height]).toEqual(['352px', '132px']);
+    // 478 + 6 + 14
+    expect(tooltip().style.top).toBe('498px');
   });
 
-  it('目標在畫面上方之外（使用者往下捲過）：也捲回來', () => {
-    const header = movable(document.getElementById('header'), { top: -300, centered: 0 });
+  it('卡片在畫面上方之外（使用者往下捲過）：捲回來', () => {
+    const page = scrollingPage({ cardTop: 700, scrollTop: 1000 });
     tour.startTour();
+    clickNext();
 
-    expect(header.scrollIntoView).toHaveBeenCalledTimes(1);
-    expect(document.querySelector('.tour-spot').style.height).toBe('62px');
+    // 卡片在 −300（中間 −240）→ 418
+    expect(page.scrollTop()).toBe(342);
+    expect(document.querySelector('.tour-spot').style.top).toBe('352px');
   });
 
-  it('目標已在畫面裡、或剛好貼著下緣：不捲動', () => {
-    const header = movable(document.getElementById('header'), { top: 768 - 56, centered: 0 });
+  it('卡片已在畫面裡、或剛好貼著下緣：不捲動', () => {
+    const page = scrollingPage({ cardTop: 768 - 120 });
     tour.startTour();
-    expect(header.scrollIntoView).not.toHaveBeenCalled();
-    expect(title()).toBe('你的成長指標');
+    clickNext();
+
+    expect(page.scrollTop()).toBe(0);
+    expect(title()).toBe('加入今日計劃');
   });
 
-  it('目標下半部在畫面外（沒有 scrollIntoView 的瀏覽器）：聚光到畫面下緣為止', () => {
+  it('不在 #content 裡的目標（header、底部導覽列）不捲動；下半部在畫面外時聚光到畫面下緣為止', () => {
+    const page = scrollingPage({ cardTop: 300 });
     place(document.getElementById('header'), { top: 700, left: 0, width: 1024, height: 100 });
     tour.startTour();
 
+    expect(page.scrollTop()).toBe(0);
+    expect(window.Element.prototype.scrollIntoView).not.toHaveBeenCalled();
     const spot = document.querySelector('.tour-spot').style;
     // 694 到 min(768, 806)
     expect([spot.top, spot.height]).toEqual(['694px', '74px']);
@@ -449,13 +464,15 @@ describe('BUG-152：手機上第一次看到導覽', () => {
     expect(title()).toBe('你的成長指標');
   });
 
-  it('等待中再開始一次：只出現一組', async () => {
+  it('等待中再開始一次：只畫一次（前一次的等待已取消）', async () => {
     const modal = morningModal();
     tour.startTour();
     tour.startTour();
+    const drawn = vi.spyOn(document.body, 'appendChild');
     modal.remove();
     await settleObserver();
 
+    expect(drawn.mock.calls.filter(([node]) => node.classList?.contains('tour-tooltip'))).toHaveLength(1);
     expect(document.querySelectorAll('.tour-tooltip')).toHaveLength(1);
     expect(overlays()).toBe(3);
   });

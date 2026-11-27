@@ -233,10 +233,7 @@ function _renderStep(s) {
     // shows the plan, the Orbit Window and the growth tasks first). Measured
     // there, the spotlight was off screen and the whole page went dark under a
     // tip pointing at nothing. Bring it to the middle first.
-    const before = target.getBoundingClientRect();
-    if (before.top < 0 || before.bottom > window.innerHeight) {
-      target.scrollIntoView?.({ block: 'center' });
-    }
+    _bringIntoView(target);
 
     const PAD = 6;
     const r   = target.getBoundingClientRect();
@@ -274,6 +271,20 @@ function _renderStep(s) {
       }, 600);
     });
   }
+}
+
+// Scrolls only the page (#content): scrollIntoView() would also scroll any
+// other ancestor that overflows, and the app shell can be taller than the
+// window (appHeight.js adds the bottom inset), so the root, which nothing
+// scrolls back, moved and cut the header off (#302 review). Targets outside
+// #content (the header, the bottom bar) are fixed and always on screen.
+function _bringIntoView(target) {
+  const scroller = target.closest('#content');
+  if (!scroller) return;
+  const box = target.getBoundingClientRect();
+  if (box.top >= 0 && box.bottom <= window.innerHeight) return;
+  const view = scroller.getBoundingClientRect();
+  scroller.scrollTop += (box.top + box.height / 2) - (view.top + view.height / 2);
 }
 
 // ─── DOM watcher ─────────────────────────────────────────────────────────────

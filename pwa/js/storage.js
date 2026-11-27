@@ -481,7 +481,7 @@ function toRow(fields, obj) {
   return row;
 }
 
-// BUG-150/148: `sessions.task_id` is a uuid referencing tasks(id). An id that
+// BUG-150/151: `sessions.task_id` is a uuid referencing tasks(id). An id that
 // is not a uuid (the tour's 'tour-task') can never be stored, and a task
 // deleted before its session reached the server (offline) can never be
 // referenced: the insert failed every time and the session stayed "待同步"
@@ -500,8 +500,18 @@ function isTaskLinkMissing(error) {
 function isTaskGoneHere(ownerId, taskId) {
   if (!isCachedOwner(ownerId)) return false;
   const tasks = get('tasks');
-  return Array.isArray(tasks) && !tasks.some(task => task?.id === taskId);
+  if (!Array.isArray(tasks) || tasks.some(task => task?.id === taskId)) return false;
+  // The list waiting to upload counts too: the cache write can fail (quota)
+  // while the upload still sends the task (#302 review).
+  const pending = loadOwnerPendingSnapshot(TASK_SYNC_PENDING_KEY, ownerId).snapshot?.value;
+  return !(Array.isArray(pending) && pending.some(task => task?.id === taskId));
 }
+
+// BUG-150: the tour's task ('tour-task', tour.js) lives only in memory while
+// the tour shows it, and no uuid column takes its id. Known by its id as well:
+// the settings page rebuilds an edited task without `isTutorial`.
+const TOUR_TASK_ID = 'tour-task';
+const isTourTask = task => task?.isTutorial === true || task?.id === TOUR_TASK_ID;
 
 // ─── Supabase async operations ────────────────────────────────────────────────
 
@@ -863,9 +873,12 @@ export const db = {
     return data?.signedUrl || null;
   },
 
-  async upsertTasks(tasks, expectedOwnerId = null) {
+  async upsertTasks(allTasks, expectedOwnerId = null) {
     const session = await this._session();
     if (!session || (expectedOwnerId && session.user.id !== expectedOwnerId)) return false;
+    // BUG-150: a list saved with the tour's task before 1.42.19 still waits to
+    // upload; sent as is, it failed (and so did every pull after it).
+    const tasks = allTasks.filter(task => !isTourTask(task));
     if (!tasks.length) return true;
     // Unchecked before: a rejected write (RLS, CHECK constraint, PostgREST
     // error) resolved as success, so `saveTasks`'s catch never fired and the
@@ -878,9 +891,12 @@ export const db = {
     return true;
   },
 
-  async deleteTasks(ids, expectedOwnerId = null) {
+  async deleteTasks(allIds, expectedOwnerId = null) {
     const session = await this._session();
     if (!session || (expectedOwnerId && session.user.id !== expectedOwnerId)) return false;
+    // BUG-150: the tour's task, dropped from a cache that held it, is no row,
+    // and its id (not a uuid) in the list failed the whole delete.
+    const ids = allIds.filter(id => id !== TOUR_TASK_ID);
     if (!ids.length) return true;
     // Unchecked before, exactly like `upsertTasks`: a rejected delete looked
     // like success, so the tombstone was dropped and the task came back.
@@ -1167,11 +1183,10 @@ export const storage = {
    */
   saveTasks:  (tasks, expectedOwnerId) => {
     if (refusesStoredOwner(expectedOwnerId, 'tasks')) return false;
-    // BUG-150: the tour's task lives only in memory while the tour shows it
-    // (tour.js). A save meanwhile (a drag on Home, an edit) would store it and
-    // send its 'tour-task' id, which no uuid column takes: the pending upload
-    // would fail before every pull from then on.
-    const t = Array.isArray(tasks) ? tasks.filter(task => !task?.isTutorial) : tasks;
+    // BUG-150: a save while the tour shows its task (a drag on Home, an edit)
+    // would store it and send its 'tour-task' id: the pending upload would
+    // fail before every pull from then on.
+    const t = Array.isArray(tasks) ? tasks.filter(task => !isTourTask(task)) : tasks;
     const prev = get('tasks') ?? [];
     set('tasks', t);
     const ownerId = get('user')?.id;

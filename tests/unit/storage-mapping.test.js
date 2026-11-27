@@ -16,14 +16,25 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 // ─── Supabase mock ────────────────────────────────────────────────────────────
 
 const tableData = vi.hoisted(() => ({}));           // table → rows/row for reads
-const captured  = vi.hoisted(() => ({ upserts: {}, inserts: {}, updates: {}, updateError: null, updateRows: 1, insertErrors: [] }));
+const captured  = vi.hoisted(() => ({ upserts: {}, inserts: {}, updates: {}, deletes: {}, updateError: null, updateRows: 1, insertErrors: [] }));
+// Like Postgres, a uuid column refuses any other id (BUG-150).
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const notUuid = id => ({ code: '22P02', message: `invalid input syntax for type uuid: "${id}"` });
 
 vi.mock('../../pwa/js/supabase.js', () => {
   function chain(table) {
     const self = {
       select: () => self,
       eq:     () => self,
-      in:     () => Promise.resolve({ error: null }),
+      // delete().in('id', ids).eq('user_id', …)
+      in: (column, values) => {
+        (captured.deletes[table] ??= []).push(values);
+        const bad = table === 'tasks' ? values.find(id => !UUID.test(id)) : null;
+        const result = { error: bad ? notUuid(bad) : null };
+        const done = Promise.resolve(result);
+        done.eq = () => Promise.resolve(result);
+        return done;
+      },
       delete: () => self,
       update: (payload) => {
         (captured.updates[table] ??= []).push(payload);
@@ -43,15 +54,13 @@ vi.mock('../../pwa/js/supabase.js', () => {
       order:  () => Promise.resolve({ data: tableData[table] ?? null, error: null }),
       upsert: (payload, opts) => {
         (captured.upserts[table] ??= []).push({ payload, opts });
-        return Promise.resolve({ error: null });
+        const bad = table === 'tasks' ? [payload].flat().find(row => row?.id && !UUID.test(row.id)) : null;
+        return Promise.resolve({ error: bad ? notUuid(bad.id) : null });
       },
       insert: (payload) => {
         (captured.inserts[table] ??= []).push(payload);
-        // Like Postgres: `sessions.task_id` is a uuid (BUG-150).
         const taskId = table === 'sessions' ? payload?.task_id : null;
-        if (taskId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(taskId)) {
-          return Promise.resolve({ error: { code: '22P02', message: `invalid input syntax for type uuid: "${taskId}"` } });
-        }
+        if (taskId && !UUID.test(taskId)) return Promise.resolve({ error: notUuid(taskId) });
         return Promise.resolve({ error: captured.insertErrors.shift() ?? null });
       },
     };
@@ -83,6 +92,7 @@ beforeEach(() => {
   captured.updateError = null;
   captured.updateRows = 1;
   captured.insertErrors = [];
+  captured.deletes = {};
 });
 
 // ─── 讀取方向：loadFromRemote → localStorage cache ───────────────────────────
@@ -361,7 +371,7 @@ describe('loadFromRemote — tasks / sessions / energy rows', () => {
   it('回傳的 backfilled 等本機待補傳的 Session 寫入後才完成，並清掉待同步標記（HW-110）', async () => {
     localStorage.setItem('yoyo_user', JSON.stringify({ id: 'uid-1' }));
     localStorage.setItem('yoyo_sessions', JSON.stringify([{
-      id: 's-local', taskId: 't-1', date: '2026-07-06',
+      id: 's-local', taskId: '7c3e9a51-2b4d-4f6a-8e1c-9d0b2a4f6e83', date: '2026-07-06',
       completedAt: '2026-07-06T02:00:00Z', _syncPending: true,
     }]));
 
@@ -369,6 +379,7 @@ describe('loadFromRemote — tasks / sessions / energy rows', () => {
     await result.backfilled;
 
     expect(captured.inserts.sessions).toHaveLength(1);
+    expect(captured.inserts.sessions[0].task_id).toBe('7c3e9a51-2b4d-4f6a-8e1c-9d0b2a4f6e83');
     expect(storage.getSessions().find(s => s.id === 's-local')._syncPending).toBeUndefined();
   });
 
@@ -455,11 +466,11 @@ const TASK_UUID = '5f0c2a8e-3b1d-4c6e-9a7f-2d8b4e6c1a30';
 describe('upsertTasks / insertSession / upsertEnergy payloads', () => {
   it('task 寫入預設值（daily_xp_cap ?? 100、is_default ?? false、value_confidence ?? 100）', async () => {
     await db.upsertTasks([{
-      id: 't-1', name: '極簡任務', category: 'instant', impactType: 'task',
+      id: TASK_UUID, name: '極簡任務', category: 'instant', impactType: 'task',
       taskNature: 'maintenance', value: 'B', difficulty: 0.4, resistance: 1,
     }]);
     expect(captured.upserts.tasks[0].payload).toEqual([{
-      id: 't-1', user_id: 'uid-1', name: '極簡任務', category: 'instant',
+      id: TASK_UUID, user_id: 'uid-1', name: '極簡任務', category: 'instant',
       impact_type: 'task', task_nature: 'maintenance', value: 'B',
       difficulty: 0.4, resistance: 1,
       emoji: null, daily_xp_cap: 100, cooldown_minutes: 0,
@@ -498,7 +509,7 @@ describe('upsertTasks / insertSession / upsertEnergy payloads', () => {
   });
 });
 
-describe('a session whose task can never be linked (BUG-150/148)', () => {
+describe('a session whose task can never be linked (BUG-150/151)', () => {
   const OWNER = 'uid-1';
   const GONE_TASK = '9d1e7b3a-6c2f-4e8a-b5d4-0f3a2c1e7b96';
   const linkMissing = {
@@ -647,6 +658,71 @@ describe('a session whose task can never be linked (BUG-150/148)', () => {
 
     expect(deleted).toHaveBeenCalledWith([], OWNER);
     deleted.mockRestore();
+  });
+
+  const READING = { id: TASK_UUID, name: '閱讀', category: 'instant', impactType: 'task', taskNature: 'growth', value: 'A', difficulty: 0.7, resistance: 1 };
+  const pendingKey = `yoyo_taskSyncPending:${OWNER}`;
+
+  it('the settings page drops `isTutorial` when it saves an edit: still known by its id', async () => {
+    cacheOwner([]);
+    storage.saveTasks([{ id: 'tour-task', name: '改過的名字', value: 'B' }, READING], OWNER);
+    await settle();
+
+    expect(JSON.parse(localStorage.getItem('yoyo_tasks')).map(task => task.id)).toEqual([TASK_UUID]);
+    expect(captured.upserts.tasks[0].payload.map(row => row.id)).toEqual([TASK_UUID]);
+  });
+
+  it('a list saved with the tour\'s task before 1.42.19: the next pull goes through and the stuck session uploads', async () => {
+    cacheOwner([{ id: 'tour-task', isTutorial: true }, READING]);
+    localStorage.setItem(pendingKey, JSON.stringify({
+      ownerId: OWNER, value: [{ id: 'tour-task', isTutorial: true }, READING], deletedIds: ['tour-task'],
+    }));
+    localStorage.setItem('yoyo_sessions', JSON.stringify([{ ...session('tour-task', 's-tour'), _syncPending: true }]));
+
+    const result = await db.loadFromRemote(OWNER);
+    await result.backfilled;
+
+    expect(captured.upserts.tasks[0].payload.map(row => row.id)).toEqual([TASK_UUID]);
+    expect(captured.deletes.tasks ?? []).toEqual([]);
+    expect(localStorage.getItem(pendingKey)).toBeNull();
+    expect(captured.inserts.sessions.map(row => [row.id, row.task_id])).toEqual([['s-tour', null]]);
+    expect(storage.getPendingSyncSummary(OWNER).total).toBe(0);
+  });
+
+  it('a cache that still holds the tour\'s task: saving without it deletes nothing for it, and the upload clears', async () => {
+    const OTHER = 'a8d4c2e6-1f3b-4c5d-9e7a-6b2f0c8d4e19';
+    cacheOwner([{ id: 'tour-task', isTutorial: true }, READING, { ...READING, id: OTHER }]);
+
+    storage.saveTasks([READING], OWNER);
+    await settle();
+
+    // Only the real task that was removed is deleted on the server.
+    expect(captured.deletes.tasks).toEqual([[OTHER]]);
+    expect(localStorage.getItem(pendingKey)).toBeNull();
+  });
+
+  it('BUG-151 through a pull: a session of a task deleted offline is backfilled without the link', async () => {
+    cacheOwner([READING]);
+    localStorage.setItem('yoyo_sessions', JSON.stringify([{ ...session(GONE_TASK, 's-gone'), _syncPending: true }]));
+    tableData.tasks = [{ id: TASK_UUID, user_id: OWNER, name: '閱讀', category: 'instant', impact_type: 'task', task_nature: 'growth', value: 'A', difficulty: 0.7, resistance: 1 }];
+    captured.insertErrors = [linkMissing];
+
+    const result = await db.loadFromRemote(OWNER);
+    await result.backfilled;
+
+    expect(captured.inserts.sessions.map(row => row.task_id)).toEqual([GONE_TASK, null]);
+    expect(storage.getSessions().find(s => s.id === 's-gone')._syncPending).toBeUndefined();
+  });
+
+  it('a task only in the list waiting to upload (the cache write failed) is not gone: no retry', async () => {
+    cacheOwner([READING]);
+    localStorage.setItem(pendingKey, JSON.stringify({
+      ownerId: OWNER, value: [READING, { ...READING, id: GONE_TASK }], deletedIds: [],
+    }));
+    captured.insertErrors = [linkMissing];
+
+    await expect(db.insertSession(session(GONE_TASK), OWNER)).rejects.toBe(linkMissing);
+    expect(captured.inserts.sessions).toHaveLength(1);
   });
 });
 
