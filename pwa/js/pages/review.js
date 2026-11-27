@@ -1,28 +1,48 @@
 import { state }               from '../state.js';
 import { storage }             from '../storage.js';
-import { today, escHtml }      from '../utils.js';
+import { effectiveToday, escHtml } from '../utils.js';
 import { goToProCard }         from '../ui/proNav.js';
 import { calcDailyStats, calcValueConfidence } from '../engine.js';
 
 const FREE_MONTHS = 3; // free tier month-view depth
 
+// BUG-146: session dates are effective days (newDayHour), so "today", the
+// week and the month here are counted from the effective day too: between
+// midnight and newDayHour the calendar date is already the next one.
+function _todayStr() {
+  return effectiveToday(state.user?.newDayHour ?? 5);
+}
+
+function _todayDate() {
+  return new Date(_todayStr() + 'T00:00:00');
+}
+
 // ─── Module-level view state ──────────────────────────────────────────────────
 let _viewMode  = 'week';
-let _viewYear  = new Date().getFullYear();
-let _viewMonth = new Date().getMonth(); // 0-indexed
+let _viewYear  = null;  // the effective month, set on first use (needs the user)
+let _viewMonth = null;  // 0-indexed
+
+function _ensureViewMonth() {
+  if (_viewYear !== null) return;
+  const d = _todayDate();
+  _viewYear = d.getFullYear();
+  _viewMonth = d.getMonth();
+}
 
 // Expose navigation handlers on window so the data-action buttons (domActions.js) can reach them
 window._reviewSetMode = (mode) => { _viewMode = mode; _rerender(); };
 window._reviewPrevMonth = () => {
+  _ensureViewMonth();
   let m = _viewMonth - 1, y = _viewYear;
   if (m < 0) { m = 11; y--; }
-  const now = new Date();
+  const now = _todayDate();
   const monthsAgo = (now.getFullYear() - y) * 12 + (now.getMonth() - m);
   if (!storage.isProUser() && monthsAgo > FREE_MONTHS) return;
   _viewMonth = m; _viewYear = y;
   _rerender();
 };
 window._reviewNextMonth = () => {
+  _ensureViewMonth();
   _viewMonth++;
   if (_viewMonth > 11) { _viewMonth = 0; _viewYear++; }
   _rerender();
@@ -36,6 +56,7 @@ function _rerender() {
 // ─── Entry point ──────────────────────────────────────────────────────────────
 export function renderReview(container) {
   _container = container;
+  _ensureViewMonth();
 
   const toggleHtml = `
     <div class="review-toggle">
@@ -58,9 +79,10 @@ export function renderReview(container) {
 // ─── Week view ────────────────────────────────────────────────────────────────
 function buildWeekView() {
   const dates = [];
+  const todayDate = _todayDate();
   for (let i = 6; i >= 0; i--) {
-    const d = new Date(); d.setDate(d.getDate() - i);
-    dates.push(d.toLocaleDateString('sv')); // local date — sessions record local dates
+    const d = new Date(todayDate); d.setDate(d.getDate() - i);
+    dates.push(d.toLocaleDateString('sv')); // local effective days, as sessions record
   }
 
   const weekSessions = state.sessions.filter(s => dates.includes(s.date));
@@ -228,7 +250,7 @@ function buildMonthView() {
   const month = _viewMonth; // 0-indexed
 
   // Lock check for free users
-  const now = new Date();
+  const now = _todayDate();
   const monthsAgo = (now.getFullYear() - year) * 12 + (now.getMonth() - month);
   const isPro = storage.isProUser();
   const isLocked = !isPro && monthsAgo >= FREE_MONTHS;
@@ -306,7 +328,7 @@ function buildMonthView() {
 
   const emptyCells = Array(leadingEmpties).fill('<div class="cal-cell cal-cell-empty"></div>').join('');
 
-  const todayStr = today();
+  const todayStr = _todayStr();
 
   const dayCells = allDates.map(dateStr => {
     const ds  = statsMap[dateStr];

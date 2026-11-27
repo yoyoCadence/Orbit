@@ -592,7 +592,9 @@ function _reportBootLoadLeftovers(ownerId) {
   const { sessions = 0, deletions = 0 } = storage.getPendingSyncSummary(ownerId);
   // The count too: a snapshot still in flight would read as a failure, and
   // online nothing refreshes the banner once it lands (#297 review).
-  if (sessions + deletions > 0) _showSyncFailure(sessions + deletions);
+  // Offline, though, a snapshot is not in flight but queued, and the offline
+  // banner counts it after the next write (_refreshOfflineHint, #298 review).
+  if (sessions + deletions > 0) _showSyncFailure(isOnline() ? sessions + deletions : undefined);
 }
 
 // PRO-014L2: SUB-16 is granted by the server (streakUnlock.js). Asked only

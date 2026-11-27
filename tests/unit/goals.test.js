@@ -42,7 +42,6 @@ vi.mock('../../pwa/js/storage.js', () => ({ storage: mockStorage, db: {} }));
 
 vi.mock('../../pwa/js/utils.js', async (importOriginal) => ({
   ...(await importOriginal()),
-  today:      () => '2026-04-16',
   formatTime: () => '10:00',
   sortSessionsNewestFirst: sessions => [...sessions].sort(
     (a, b) => Date.parse(b.completedAt) - Date.parse(a.completedAt)
@@ -334,9 +333,12 @@ describe('renderGoals — 有效日（BUG-145）', () => {
       makeSession({ id: 'edge', date: '2026-03-16', completedAt: '2026-03-16T10:00:00' }),
       makeSession({ id: 'old', date: '2026-03-15', completedAt: '2026-03-15T10:00:00' }),
     ];
-    renderGoals(container);
-    expect(container.querySelectorAll('.date-group')).toHaveLength(1);
-    expect(container.querySelector('.history-lock-title').textContent).toContain('還有 1 筆更早的紀錄');
-    mockStorage.isProUser.mockReturnValue(true);
+    try {
+      renderGoals(container);
+      expect(container.querySelectorAll('.date-group')).toHaveLength(1);
+      expect(container.querySelector('.history-lock-title').textContent).toContain('還有 1 筆更早的紀錄');
+    } finally {
+      mockStorage.isProUser.mockReturnValue(true);
+    }
   });
 });

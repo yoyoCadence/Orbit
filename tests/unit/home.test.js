@@ -213,6 +213,26 @@ describe('renderHome: mandatory Personal Space V2 Orbit Window', () => {
     }
   });
 
+  it('BUG-146: the date badge shows the effective day (the day the stats are for)', () => {
+    vi.useFakeTimers();
+    // 02:00 on the 12th; effectiveToday() is mocked to the 11th in this file.
+    vi.setSystemTime(new Date(2026, 3, 12, 2, 0, 0));
+    mockState.user = { id: 'owner-date', name: 'Tester', totalXP: 0, streakDays: 0, newDayHour: 5 };
+    const c = makeContainer();
+    let cleanup;
+    try {
+      cleanup = renderHome(c);
+      const badge = c.querySelector('.date-badge').textContent;
+      expect(badge).toContain('4月11日');
+      expect(badge).toContain('星期六');
+    } finally {
+      cleanup?.();
+      vi.clearAllTimers();
+      vi.useRealTimers();
+      c.remove();
+    }
+  });
+
   it('AI-203B: rebuilds the card into the reminder when the daily window opens', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 6, 17, 11, 59, 30));

@@ -494,9 +494,11 @@ function _dashboardHtml(sessions, isPro, user) {
   }
 
   // --- Task efficiency (last 30 days) ---
+  // From the effective day, as session dates are (BUG-146).
   const last30 = new Set();
+  const todayDate = new Date(effectiveToday(user.newDayHour ?? 5) + 'T00:00:00');
   for (let i = 0; i < 30; i++) {
-    const d = new Date(); d.setDate(d.getDate() - i);
+    const d = new Date(todayDate); d.setDate(d.getDate() - i);
     last30.add(d.toLocaleDateString('sv'));
   }
   const recent     = sessions.filter(s => last30.has(s.date));

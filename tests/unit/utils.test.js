@@ -107,6 +107,12 @@ describe('formatDate()', () => {
     expect(formatDate('2026-04-15', effective)).not.toMatch(/今天|昨天/);
   });
 
+  it('沒有傳入時以日曆日期為今天（不是有效日）', () => {
+    vi.setSystemTime(new Date('2026-04-15T02:00:00'));
+    expect(formatDate('2026-04-15')).toBe('今天');
+    expect(formatDate('2026-04-14')).toBe('昨天');
+  });
+
   it('跨月與跨年的昨天', () => {
     expect(formatDate('2026-02-28', '2026-03-01')).toBe('昨天');
     expect(formatDate('2025-12-31', '2026-01-01')).toBe('昨天');

@@ -128,6 +128,7 @@ let _spot     = null;
 let _tooltip  = null;
 let _observer = null;
 let _advanceTimer = null;
+let _generation = 0;   // bumped by _clear(): a step drawn after it is stale
 
 // ─── Public API ──────────────────────────────────────────────────────────────
 
@@ -152,8 +153,13 @@ function _showStep() {
   // Navigate to the required page first, then wait two animation frames
   // so renderPage() has time to update the DOM before we measure anything.
   if (s.page) {
+    const generation = _generation;
     window.navigate?.(s.page);
-    requestAnimationFrame(() => requestAnimationFrame(() => _renderStep(s)));
+    // Not if the tour was skipped or restarted meanwhile: that would draw a
+    // second backdrop over the page (#298 review).
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (generation === _generation) _renderStep(s);
+    }));
   } else {
     _renderStep(s);
   }
@@ -300,4 +306,5 @@ function _clear() {
   if (_observer) { _observer.disconnect(); _observer = null; }
   clearTimeout(_advanceTimer);
   _advanceTimer = null;
+  _generation++;
 }

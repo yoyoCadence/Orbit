@@ -1170,6 +1170,14 @@ describe('BUG-142：登入時的補傳失敗', () => {
     expect(syncBanner().textContent).toBe('📴 離線中 · 1 筆待同步，連線後自動同步');
   });
 
+  it('離線時待同步數算全部（profile 是排隊中，不是送出中；之後的更新也這樣算，#298 review）', async () => {
+    await signInWithBackfills(Promise.resolve().then(() => {
+      network.online = false;
+      pending = summary(1, 0, true);
+    }));
+    expect(syncBanner().textContent).toBe('📴 離線中 · 2 筆待同步，連線後自動同步');
+  });
+
   it('等補傳結束才讀待同步：補傳成功時不顯示', async () => {
     pending = summary(1);
     let finish;
