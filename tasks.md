@@ -161,12 +161,15 @@
   - 建議：`signUp` 成功但 `data.session` 為 null（需要確認 email）時不自動登入，切到登入分頁**之後**再顯示「確認信已寄到 …，點信中的連結後再登入；若這個 Email 已註冊過，請直接登入或重設密碼」；登入遇到 `Email not confirmed` 時顯示同樣的說明。`tests/unit/authFlowForms.test.js` 目前固定了現況（訊息被隱藏），改的時候一起改。
   - 順序：在 PRO-017RA-Auth 開啟「確認 email」之前完成。
 - [ ] **BUG-141** 帳號載入失敗後改用訪客，app 仍以那個帳號同步（TEST-013 檢查 `app.js` 時發現，2026-11-27，main 上原本就有；屬 auth 流程，**需擁有者核准**）
-  - 現況：登入後雲端資料載入失敗（例如離線），而這台裝置沒有這個帳號的快取時，`loadAndStart()` 回到登入畫面並提示「無法載入雲端資料，請檢查連線後重新整理。」，但 `_currentSession` 仍是那個帳號，Supabase 的 session 也還在。這時按「以遊客身份繼續」：
-    - 訪客的畫面上方顯示**那個帳號**的「離線中 · N 筆待同步」（`_refreshOfflineHint()` 只看 `_currentSession`）。
-    - 連線恢復時 `_syncAfterReconnect()` 以那個帳號 `loadFromRemote()`（`_assertOwner` 看的是 Supabase 的 session，所以會通過）；`storage.js` 以帳號的雲端資料取代這台裝置的 `user`、`tasks`、`sessions`（訪客的紀錄不是這個帳號的，不會被合併），訪客在這段期間記下的資料就不見了，畫面也悄悄變成那個帳號。
-    - 下次打開 app 也一樣：快取分支的 `getSession()` 拿到那個帳號，以它載入。
-    - 以單元測試的 mock 確認前兩點（訪客的橫幅是帳號的待同步數量、連線恢復時以帳號載入）；資料被取代是依 `storage.js` 的程式碼。
-  - 建議：(A) 有帳號 session 時選「以遊客身份繼續」，先在這台裝置登出那個帳號（與設定頁的登出相同：清掉 session、`_currentSession`、`_needsResync`），之後就是真正的訪客。(B) 有帳號 session 時不提供訪客，改為「重試」。agent 建議 (A)（訪客本來就只存在本機；要回到帳號就重新登入）。只清 `_currentSession` 而不登出（不需核准的部分）只能擋住這次開啟期間的同步，下次開啟仍會以帳號載入，所以沒有先做。
+  - 根本原因：登入後雲端資料載入失敗（例如離線或 500），而這台裝置沒有這個帳號的快取時，`loadAndStart()` 回到登入畫面並提示「無法載入雲端資料，請檢查連線後重新整理。」（`app.js` 的 fail-closed return），但 `_currentSession` 仍是那個帳號，Supabase 的 session 也還在，`_showSyncFailure()` 也已設定 `_needsResync`。之後：
+    - (a) 按「以遊客身份繼續」：訪客的畫面上方一打開就是**那個帳號**的同步失敗橫幅（線上時也是，來自 `_showSyncFailure()`）；離線時完成紀錄，橫幅是那個帳號的「N 筆待同步」（`_refreshOfflineHint()` 只看 `_currentSession`）。
+    - (b) 連線恢復時 `_syncAfterReconnect()` 以那個帳號 `loadFromRemote()`（`_assertOwner` 看的是 Supabase 的 session，所以會通過）；`storage.js` 以帳號的雲端資料取代這台裝置的 `user`、`tasks`、`sessions`、`energy`（本機的 user 不是這個帳號，所以訪客的紀錄與任務不會被合併），訪客在這段期間記下的資料就不見了，畫面也悄悄變成那個帳號。訪客的寫入不會到帳號的雲端（`db.*` 的擁有者檢查會拒絕），只留在以訪客 id 區分的待同步資料裡。
+    - (c) 沒有選訪客、停在登入畫面：連線恢復時一樣在背景以那個帳號同步（隱藏的 `#main-app` 後面重畫，橫幅顯示「✓ 已更新」）。
+    - (d) 在那個登入畫面再登入同一個帳號：`SIGNED_IN` 因為 `_currentSession` 已是它而被略過，按鈕停在「登入中…」，要重新整理（提示也是這樣說）。
+    - (e) 下次打開 app：快取分支的 `getSession()` 拿到那個帳號，以它載入（同 (b)）。
+    - 登入另一個帳號時上一個帳號的橫幅已由 BUG-140 收起（#296 review）。
+    - 確認方式：寫 TEST-013 時以 `appShell.test.js` 的 mock 暫時測過 (a)(b)，#296 的獨立 review 另外測過 (b)(c)(d)；這些暫時的測試**沒有提交**（會固定錯誤的行為）。資料被取代是依 `storage.js` 的程式碼。
+  - 建議（都屬 auth 流程，需核准）：(A) fail-closed return 時忘掉 `_currentSession`（`authOperationGuard.invalidate()`、清掉 `_needsResync` 與橫幅），解決 (c)(d)，並讓這次開啟期間不再以帳號同步；再加上：有帳號 session 時選「以遊客身份繼續」，先結束這台裝置上的 Supabase session（`signOut({ scope: 'local' })`），解決 (a)(b)(e)。這和設定頁的登出不同：不跑 `storage.clearAll()` 與 `signOutProofCleanup()`（快取不是這個帳號的，訪客要用的是這台裝置的本機資料）。(B) 有帳號 session 時不提供訪客，改為「重試」。agent 建議 (A)（訪客本來就只存在本機；要回到帳號就重新登入）。只做 (A) 的第一半（不登出）只能擋住這次開啟期間，下次開啟仍會以帳號載入，所以沒有先做。
   - 改的時候一併確認：`tests/unit/appBootSequence.test.js` 的「帳號載入失敗後改用遊客，設定頁不會沿用該帳號的 id」等測試仍成立。
 - [ ] **PRO-017RA-Auth**（擁有者）先完成 INFRA-101（Custom SMTP），再在 Supabase 開啟「確認 email」，並確認匿名登入維持關閉
   - 019 已於 2026-11-13 套用（見 Done 的 PRO-017RA）；這一步只能由擁有者在 Supabase Dashboard 做（agent 的工具改不到 Auth 設定）。
@@ -301,14 +304,15 @@
 ## Done
 
 - [x] **TEST-013** 補上 `app.js` 的測試（2026-11-27）
-  - 新的 `appShell.test.js`（與 `appBootSequence.test.js` 相同的 mock，另外 mock 暖身載入的導覽、徽章與排行榜；同步橫幅用真的 `feedback.js` 畫在畫面上；每次 import 加上的 window／document listener 在測試結束時移除）：試用橫幅（剩 5 天以內才顯示、不是試用、今天已關閉、✕ 記下今天、refresh 之後才變成試用）；登出（清掉資料與登入欄位、auth 登出失敗仍在這台裝置登出、已經登出時不再清、登出中途載入才完成不開機）；連線恢復同步與換帳號（同步途中或載入完成前登出、OwnerSessionChangedError、refresh 之後才換帳號；loadAndStart 的同樣情況與 refresh 期間換成另一個帳號）；SUB-16 狀態改變時更新 header、正在輸入時不重畫；清理雲端照片出錯不影響同步；今日計畫（重複不加入、加入時存檔並重畫）；導覽載入失敗的提示；App 圖示的徽章（今天的有效紀錄、完成後重算、登出時清掉、沒有 `requestIdleCallback` 時 500 ms 後）；離線時待同步數量跟著更新；點 header 回到頂端；文字欄位的鍵盤編輯狀態與高度；另一個分頁換了帳號（提示 3 秒內只一次、bfcache 回來與回到前景重新載入、自己正在換成它時不會、無法解析的資料、重新載入後只提示一次）；啟動（沒有快取也沒有 session、沒有快取但有 session、`getSession()` 失敗或沒有 session 時以本機完成移轉、失敗前已換帳號不覆蓋）；`PASSWORD_RECOVERY`；沒有 session 的 `SIGNED_IN`；遊客直接開機。`app.js` 69% → 80%（行）；剩下的主要是狀態列提示的畫面（BUG-118，`tests/e2e/bug118-status-bar-notice.test.js` 涵蓋）與設定頁的頭像。
+  - 新的 `appShell.test.js`（與 `appBootSequence.test.js` 相同的 mock，另外 mock 暖身載入的導覽、徽章與排行榜；同步橫幅用真的 `feedback.js` 畫在畫面上；每次 import 加上的 window／document listener 在測試結束時移除）：試用橫幅（剩 5 天以內才顯示、不是試用、今天已關閉、✕ 記下今天、refresh 之後才變成試用）；登出（清掉資料與登入欄位、auth 登出失敗仍在這台裝置登出、已經登出時不再清、登出中途載入才完成不開機）；連線恢復同步與換帳號（同步途中或載入完成前登出、OwnerSessionChangedError、refresh 之後才換帳號；loadAndStart 的同樣情況與 refresh 期間換成另一個帳號）；SUB-16 狀態改變時更新 header、正在輸入時不重畫；清理雲端照片出錯不影響同步；今日計畫（重複不加入、加入時存檔並重畫）；導覽載入失敗的提示；App 圖示的徽章（今天的有效紀錄、完成後重算、登出時清掉、沒有 `requestIdleCallback` 時 500 ms 後）；離線時待同步數量跟著更新；點 header 回到頂端；文字欄位的鍵盤編輯狀態與高度；另一個分頁換了帳號（提示 3 秒內只一次、bfcache 回來與回到前景重新載入、自己正在換成它時不會、無法解析的資料、重新載入後只提示一次）；啟動（沒有快取也沒有 session、沒有快取但有 session、`getSession()` 失敗或沒有 session 時以本機完成移轉、失敗前已換帳號不覆蓋）；`PASSWORD_RECOVERY`；沒有 session 的 `SIGNED_IN`；遊客直接開機；沒有快取時 `SIGNED_IN` 比 `getSession()` 先到只載入一次、refresh 之後才套用隨機主題；啟動同步還沒結束時恢復連線又登出、不再以前一個帳號載入；遊客離線時不顯示待同步。共 52 個測試。`app.js` 69% → 80%（行）；剩下的主要是狀態列提示的畫面（BUG-118，`tests/e2e/bug118-status-bar-notice.test.js` 涵蓋）與設定頁的頭像。
   - 開 PR 前以改動原始碼驗證：53 個改動都會讓測試失敗（一開始沒被抓到的兩個——連線恢復同步在載入完成後才發現登出、loadAndStart 在 refresh 之後換帳號時不再套用主題——已補上測試）。
   - 找到的問題：BUG-140（已修，見下）；BUG-141（帳號載入失敗後改用訪客，仍以帳號同步，屬 auth 流程，需核准，見 Next）。
+  - 審查（#296）：Codex 沒有問題。獨立 review 沒有 P1；P2：BUG-140 漏了「帳號沒有快取、載入失敗回到登入畫面，再登入另一個帳號」（畫面上沒有使用者，只有 `_currentSession` 還是前一個帳號），已修並加測試。P3 也一併處理：`_needsResync` 的說明（瀏覽器只在 offline 之後送 online，清掉這個標記使用者看不出差別，CHANGELOG 與這裡已更正，測試也改為直接檢查標記）；BUG-141 的紀錄補上 (a)～(e) 與根本原因；3 個沒被抓到的改動（上一段新增的三個測試）；測試名稱「遊客與線上時不顯示」只測了線上（遊客另成一個測試）；`clearAllMocks()` 不清掉排隊的 `*Once`，改為先 `mockReset()` db 與 auth 的 mock。review 的 40 個改動與這次新增的 7 個中，存活的都與原本等價（例如換帳號時只看「畫面上的使用者」那一半：沒有 `_currentSession` 時不會有同步橫幅）。沒有在這裡改的既有問題：`loadAndStart()` 不回報 Session 補傳的失敗（沒有 `_reportSyncResult`，補傳失敗時沒有橫幅也沒有標記）；前一個帳號還在進行的連線恢復同步，會擋住新帳號的連線恢復同步直到它結束。
   - 下一步：`dayCycle.js`、`focusTimer.js` 等其他覆蓋率低的模組（先跑 `npm run test:coverage` 看最新的數字）。
 
 - [x] **BUG-140** 登出或換帳號後，同步橫幅仍顯示上一個帳號的狀態（TEST-013 檢查 `app.js` 時發現，2026-11-27，main 上原本就有）
-  - `#sync-banner` 的「離線中 · N 筆待同步」、「同步暫停」、「同步中…」會一直留到下一次狀態更新，而 `loadAndStart()` 載入成功時不顯示任何狀態：離線或同步失敗時登出、再登入另一個帳號（或同一個帳號），新帳號的畫面上方仍是上一個帳號的同步狀態與待同步數量。`_needsResync` 也留著，新帳號下一次網路切換（已在線上）會多跑一次載入。不涉及 auth 流程（只收起畫面上的橫幅、不改登入或登出的行為），接著修正。
-  - 完成（v1.42.14）：`handleSignOut()` 與 `loadAndStart()` 換成另一個帳號時（與收起佐證照片的條件相同）收起同步橫幅並清掉 `_needsResync`。沒有新增 export（INFRA-105；直接改 `#sync-banner`，與 `feedback.js` 的寫法相同）。測試在 `appShell.test.js`：離線時登出再登入另一個帳號、同步失敗後登出再登入同一個帳號、沒有登出直接換帳號、新帳號網路切換不多載入、同一個帳號照常保留橫幅並在連線恢復後同步、同步途中登出時橫幅收起。修正前其中 5 個測試失敗。
+  - `#sync-banner` 的「離線中 · N 筆待同步」、「同步暫停」、「同步中…」會一直留到下一次狀態更新，而 `loadAndStart()` 載入成功時不顯示任何狀態：離線或同步失敗時登出、再登入另一個帳號（或同一個帳號），新帳號的畫面上方仍是上一個帳號的同步狀態與待同步數量。`_needsResync` 也留著（瀏覽器只在 offline 之後送 online，offline 會再設定一次，所以使用者看不出差別）。不涉及 auth 流程（只收起畫面上的橫幅、不改登入或登出的行為），接著修正。
+  - 完成（v1.42.14）：`handleSignOut()` 與 `loadAndStart()` 換成另一個帳號時（畫面上的使用者或 `_currentSession` 是另一個帳號：後者是帳號載入失敗回到登入畫面的情況，#296 review）收起同步橫幅並清掉 `_needsResync`。沒有新增 export（INFRA-105；直接改 `#sync-banner`，與 `feedback.js` 的寫法相同）。測試在 `appShell.test.js`：離線時登出再登入另一個帳號、同步失敗後登出再登入同一個帳號、沒有登出直接換帳號、帳號載入失敗回到登入畫面後登入另一個帳號、登出時清掉標記、同一個帳號照常保留橫幅並在連線恢復後同步、同步途中登出時橫幅收起。修正前其中 6 個測試失敗。
 
 - [x] **TEST-012** 稱號主題編輯視窗在換頁後的儲存與刪除（2026-11-27）
   - 只加測試、不改 app 程式：`profileActions.test.js` 加上稱號主題編輯視窗在換頁後才按「儲存」與「刪除」：個人頁不會畫到那一頁上、主題照常存下或刪除（刪除選中的主題時改回 RPG）；仍在個人頁時照常重畫。#294 獨立 review 指出 BUG-139 的這兩個檢查沒有測試（把檢查拿掉也會通過），補上後兩個改動都會讓測試失敗。

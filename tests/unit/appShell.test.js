@@ -230,6 +230,9 @@ function recordListeners(target) {
 beforeEach(async () => {
   vi.resetModules();
   vi.clearAllMocks();
+  // clearAllMocks() keeps queued *Once values: one a failed test never used
+  // would reach the next test (#296 review).
+  [...Object.values(db), auth.getSession, auth.signOut].forEach(fn => fn.mockReset());
   added = [];
   recordListeners(window);
   recordListeners(document);
@@ -468,18 +471,37 @@ describe('BUG-140：同步橫幅跟著帳號走', () => {
     expect(syncBanner().classList.contains('hidden')).toBe(true);
   });
 
-  it('上一個帳號要求的「連線恢復後同步」不會在新帳號登入後多跑一次', async () => {
+  it('登出時也清掉上一個帳號的「連線恢復後同步」標記', async () => {
     await bootOffline('owner-a', 1);
     await window.signOut();
     storage.getPendingSyncSummary.mockImplementation(() => ({ total: 0 }));
     await signInAs('owner-b');
     const loads = db.loadFromRemote.mock.calls.length;
 
-    // 已在線上時的網路切換（例如 Wi-Fi 換成行動網路）
+    // 瀏覽器只在 offline 之後送 online（offline 會再設一次標記），所以使用者
+    // 看不出差別；這裡直接送 online，檢查標記本身已清掉。
     await network.emit(true);
     await flush();
 
     expect(db.loadFromRemote.mock.calls.length).toBe(loads);
+    expect(syncBanner().classList.contains('hidden')).toBe(true);
+  });
+
+  it('帳號沒有快取、載入失敗回到登入畫面後，登入另一個帳號：不顯示前一個帳號的「同步暫停」（#296 review）', async () => {
+    cache.user = null;
+    auth.getSession.mockResolvedValue(null);
+    await import('../../pwa/js/app.js');
+    await flush();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    db.loadFromRemote.mockRejectedValueOnce(new Error('500'));
+    await auth.callback('SIGNED_IN', sessionFor('owner-a'));
+    await flush();
+    expect(authFlow.showLoginScreen).toHaveBeenCalledTimes(2);
+    expect(syncBanner().textContent).toContain('同步暫停');
+
+    await signInAs('owner-b');
+
+    expect(document.getElementById('main-app').classList.contains('hidden')).toBe(false);
     expect(syncBanner().classList.contains('hidden')).toBe(true);
   });
 
@@ -551,6 +573,22 @@ describe('連線恢復同步與換帳號', () => {
 
     expect(db.refreshProEntitlement.mock.calls.length).toBe(refreshes);
     expect(controller.refreshCanonicalStateAndReconcilePersonalSpaceV2.mock.calls.length).toBe(loadsOfState);
+  });
+
+  it('啟動同步還沒結束時恢復連線、又在它結束前登出：不再以前一個帳號載入', async () => {
+    let finishStartup;
+    db.loadFromRemote.mockImplementationOnce(() => new Promise(resolve => { finishStartup = resolve; }));
+    await bootSignedIn('owner-a');
+    await network.emit(false);
+    const syncing = network.emit(true);
+    await flush();
+
+    auth.callback('SIGNED_OUT', null);
+    finishStartup();
+    await syncing;
+    await flush();
+
+    expect(db.loadFromRemote).toHaveBeenCalledTimes(1);
   });
 
   it('同步時 storage 回報帳號已換（OwnerSessionChangedError）：不顯示同步失敗', async () => {
@@ -759,7 +797,23 @@ describe('導覽與暖身載入', () => {
     expect(badge.setBadge).not.toHaveBeenCalled();
   });
 
-  it('HW-110：離線時完成或刪除紀錄，橫幅的待同步數量跟著更新；遊客與線上時不顯示', async () => {
+  it('HW-110：遊客離線時完成紀錄不顯示待同步（沒有帳號可以同步）', async () => {
+    network.online = false;
+    storage.getPendingSyncSummary.mockImplementation(() => ({ total: 2 }));
+    cache.user = null;
+    auth.getSession.mockResolvedValue(null);
+    await import('../../pwa/js/app.js');
+    await flush();
+    seedCachedUser('guest-1');
+    window.continueAsGuest();
+
+    sessionFlow.badgeUpdater();
+
+    expect(syncBanner().classList.contains('hidden')).toBe(true);
+    expect(syncBanner().textContent).toBe('');
+  });
+
+  it('HW-110：離線時完成或刪除紀錄，橫幅的待同步數量跟著更新；回到線上後不再更新', async () => {
     network.online = false;
     db.loadFromRemote.mockRejectedValueOnce(new Error('Failed to fetch'));
     storage.getPendingSyncSummary.mockImplementation(() => ({ total: 1 }));
@@ -932,6 +986,40 @@ describe('啟動與 auth 事件', () => {
 
     expect(authFlow.showLoginScreen).toHaveBeenCalledTimes(1);
     expect(db.loadFromRemote).not.toHaveBeenCalled();
+  });
+
+  it('沒有快取：SIGNED_IN 比 getSession() 先到時只載入一次', async () => {
+    cache.user = null;
+    auth.getSession.mockImplementation(
+      () => new Promise(resolve => { auth.sessionResolve = resolve; }),
+    );
+    db.loadFromRemote.mockImplementationOnce(async () => { seedCachedUser('owner-a'); });
+    await import('../../pwa/js/app.js');
+    await flush();
+
+    const signingIn = auth.callback('SIGNED_IN', sessionFor('owner-a'));
+    auth.sessionResolve(sessionFor('owner-a'));
+    await signingIn;
+    await flush();
+
+    expect(db.loadFromRemote).toHaveBeenCalledTimes(1);
+    expect(dayCycle.processYesterdayStreak).toHaveBeenCalledTimes(1);
+  });
+
+  it('沒有快取：refresh 之後才套用隨機主題（PRO-014H；開機時 Pro 狀態還不明）', async () => {
+    cache.user = null;
+    auth.getSession.mockResolvedValue(null);
+    await import('../../pwa/js/app.js');
+    await flush();
+    const theme = await import('../../pwa/js/theme.js');
+    db.loadFromRemote.mockImplementationOnce(async () => { seedCachedUser('owner-a'); });
+
+    await auth.callback('SIGNED_IN', sessionFor('owner-a'));
+    await flush();
+
+    const refreshAt = db.refreshProEntitlement.mock.invocationCallOrder.at(-1);
+    expect(refreshAt).toBeDefined();
+    expect(theme.applyRandomThemeForToday.mock.invocationCallOrder.some(order => order > refreshAt)).toBe(true);
   });
 
   it('沒有快取但有 session：載入那個帳號；之後同一個帳號的 SIGNED_IN 不再載入', async () => {

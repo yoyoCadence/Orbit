@@ -494,8 +494,12 @@ function _closeProofOverlays() {
 
 async function loadAndStart(session) {
   // Another account signing in here (or in another tab) replaces the one shown.
-  if (state.user?.id && state.user.id !== session?.user?.id) {
-    _closeProofOverlays();
+  const replacesShown = Boolean(state.user?.id) && state.user.id !== session?.user?.id;
+  if (replacesShown) _closeProofOverlays();
+  // BUG-140: its sync status goes too, and so does that of an account whose
+  // load failed here and left the login screen up (no user shown, but its
+  // session and failure banner stay; #296 review).
+  if (replacesShown || (_currentSession && _currentSession.user?.id !== session?.user?.id)) {
     _clearSyncStatus();
   }
   const operation = authOperationGuard.begin(session);
@@ -771,8 +775,9 @@ function _showSyncFailure() {
 // BUG-140: the banner and the reconnect flag are about the account shown, and
 // go with it. The banner keeps 'offline', 'error' or 'syncing' until the next
 // status (ui/feedback.js), and a successful loadAndStart() shows none, so the
-// next account would see the previous one's "N 筆待同步"; the flag would run
-// one more load for it at the next network change.
+// next account would see the previous one's "N 筆待同步". The flag is reset for
+// the same reason; a browser sends 'online' only after 'offline', which sets it
+// again, so that half changes nothing a user can see today.
 function _clearSyncStatus() {
   _needsResync = false;
   const banner = document.getElementById('sync-banner');
