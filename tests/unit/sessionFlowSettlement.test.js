@@ -124,6 +124,28 @@ describe('session settlement safety', () => {
     }
   });
 
+  it('BUG-131: a B task left at a cap of 0 still earns XP, up to B\'s 100 a day', () => {
+    vi.useFakeTimers();
+    try {
+      const task = {
+        id: 'task-stuck', name: '整理房間', category: 'instant', impactType: 'task', taskNature: 'maintenance',
+        value: 'B', difficulty: 0.4, resistance: 1, dailyXpCap: 0, cooldownMinutes: 0, minEffectiveMinutes: 0,
+      };
+      state.tasks = [task];
+      window.completeInstant('task-stuck');
+      vi.advanceTimersByTime(1000);
+      expect(state.sessions).toHaveLength(1);
+      expect(state.sessions[0].finalXP).toBeGreaterThan(0);
+      // A custom cap is still a cap.
+      state.tasks = [{ ...task, id: 'task-capped', dailyXpCap: 1 }];
+      window.completeInstant('task-capped');
+      vi.advanceTimersByTime(1000);
+      expect(state.sessions.find(s => s.taskId === 'task-capped').finalXP).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('HW-112D (b): its own account: saves name the owner the data belongs to', () => {
     expect(commitSession(session({ finalXP: 5 }))).toBe(true);
     expect(mocks.saveSessions).toHaveBeenCalledWith(state.sessions, 'owner-1');

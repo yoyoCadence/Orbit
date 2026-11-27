@@ -65,7 +65,9 @@ export function getTodayEntertainmentMinutes() {
 function applyDailyCap(task, finalXP, todayStr) {
   if (task.value !== 'B') return finalXP;
   const alreadyToday = getDailyTaskXP(state.sessions, task.id, todayStr);
-  const taskCap = task.dailyXpCap ?? 100;
+  // BUG-131: no B task is meant to have a cap of 0; one left at D's 0 by an
+  // older edit (D → B kept the cap) counts as having none.
+  const taskCap = task.dailyXpCap || 100;
   if (alreadyToday >= taskCap) return 0;
   return Math.min(finalXP, taskCap - alreadyToday);
 }
