@@ -471,6 +471,13 @@ export function renderHome(container) {
 
   return () => {
     if (_container === container) _container = null;
+    // BUG-134: leaving Home, its tap-outside listener leaves the shared
+    // page container too.
+    const outsideTap = _outsideTapListeners.get(container);
+    if (outsideTap) {
+      container.removeEventListener('click', outsideTap);
+      _outsideTapListeners.delete(container);
+    }
     try {
       _orbitWindowCleanup?.();
     } finally {
@@ -658,6 +665,11 @@ function showTaskDetail(task) {
 // (|dx| > |dy| × 1.5 and |dx| > 12 px threshold) and adds swipe-open class.
 // Tap anywhere outside the detail button closes open cards.
 
+// BUG-134: the router draws home into the same page container again and
+// again; its tap-outside listener is kept per container so a drawing replaces
+// the last one's instead of adding another.
+const _outsideTapListeners = new WeakMap();
+
 function _setupCardSwipe(container) {
   let _swipeOpen    = null;  // currently open card
   let _horizSwiped  = false; // block page-switch touchend on document
@@ -708,7 +720,9 @@ function _setupCardSwipe(container) {
   });
 
   // Close swipe / exit edit-mode on tap outside
-  container.addEventListener('click', e => {
+  const previousOutsideTap = _outsideTapListeners.get(container);
+  if (previousOutsideTap) container.removeEventListener('click', previousOutsideTap);
+  const onOutsideTap = e => {
     if (_swipeOpen && !e.target.closest('.task-card')) _closeSwipe();
 
     // Exit all active edit-mode sections when clicking outside them
@@ -720,7 +734,9 @@ function _setupCardSwipe(container) {
         if (btn) btn.textContent = '編輯';
       });
     }
-  });
+  };
+  _outsideTapListeners.set(container, onOutsideTap);
+  container.addEventListener('click', onOutsideTap);
 }
 
 // ─── Drag & Drop (reorder tasks within sections) ──────────────────────────────
@@ -959,7 +975,13 @@ function _endDrag(container) {
   _drag.taskId = null;
   _drag.card   = null;
   _drag.clone  = null;
-  setTimeout(() => { window._isDragging = false; }, 50);
+  // BUG-135: the click right after the drop is suppressed, but a drop with no
+  // click after it (most touch drags, or a drop that redraws the list) must
+  // not swallow a later tap: the flag ends with the drag, as the plan's does.
+  setTimeout(() => {
+    window._isDragging = false;
+    _drag.wasDragging = false;
+  }, 50);
 }
 
 /**
