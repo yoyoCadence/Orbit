@@ -10,7 +10,7 @@
  * Real storage.js / proRollover.js / proEntitlement.js; the network, the day
  * and the modal are mocked.
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const rpc = vi.hoisted(() => vi.fn());
 const upsert = vi.hoisted(() => vi.fn(() => Promise.resolve({ error: null })));
@@ -85,7 +85,14 @@ const flush = () => new Promise(resolve => setTimeout(resolve, 0));
 /** grant_streak_unlock() calls (PRO-014H: a grant also refreshes my_pro_status()). */
 const grantCalls = () => rpc.mock.calls.filter(call => call[0] === 'grant_streak_unlock').length;
 
+// TEST-015: the fixtures are dated around 2026-11-10 (the mocked day, the
+// grant, the server's end a month later). Without a fixed clock the paid-grant
+// test read SERVER_END as already past from 2026-12-10 08:00 UTC on.
+const NOW = '2026-11-10T09:00:00.000Z';
+
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date(NOW));
   localStorage.clear();
   sessionStorage.clear();
   resetProEntitlementStorageState();
@@ -99,6 +106,10 @@ beforeEach(() => {
   modal.mockReset();
   session.ownerId = OWNER;
   day.value = '2026-11-10';
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe('db.grantStreakUnlock(): write-back to the legacy profile', () => {
