@@ -389,13 +389,40 @@ describe('BUG-152：手機上第一次看到導覽', () => {
     expect(document.querySelector('.tour-spot').style.top).toBe('352px');
   });
 
-  it('卡片已在畫面裡、或剛好貼著下緣：不捲動', () => {
+  it('卡片已在 #content 裡、剛好貼著它的上緣或下緣：不捲動', () => {
     const page = scrollingPage({ cardTop: 768 - 120 });
     tour.startTour();
     clickNext();
-
     expect(page.scrollTop()).toBe(0);
     expect(title()).toBe('加入今日計劃');
+  });
+
+  it('卡片貼著 #content 的上緣：不捲動', () => {
+    const page = scrollingPage({ cardTop: 68 });
+    tour.startTour();
+    clickNext();
+    expect(page.scrollTop()).toBe(0);
+  });
+
+  it('卡片在視窗裡、但有一部分被 header 蓋住：也捲到中間（#302 review）', () => {
+    // 已往下捲 500：卡片在 30–87，上半部在 header（0–68）底下
+    const page = scrollingPage({ cardTop: 530, cardHeight: 57, scrollTop: 500 });
+    tour.startTour();
+    clickNext();
+
+    // 卡片中間 58.5 → 418
+    expect(page.scrollTop()).toBe(140.5);
+    expect(document.querySelector('.tour-spot').style.top).toBe('383.5px');
+  });
+
+  it('卡片在視窗裡、但下緣被底部導覽列蓋住：也捲到中間', () => {
+    // #content 下緣在 768（底部導覽列由此開始）；視窗加高到 900，卡片 740–860 都在視窗裡
+    vi.stubGlobal('innerHeight', 900);
+    const page = scrollingPage({ cardTop: 740 });
+    tour.startTour();
+    clickNext();
+
+    expect(page.scrollTop()).toBe(382);
   });
 
   it('不在 #content 裡的目標（header、底部導覽列）不捲動；下半部在畫面外時聚光到畫面下緣為止', () => {
@@ -473,6 +500,7 @@ describe('BUG-152：手機上第一次看到導覽', () => {
     await settleObserver();
 
     expect(drawn.mock.calls.filter(([node]) => node.classList?.contains('tour-tooltip'))).toHaveLength(1);
+    drawn.mockRestore();
     expect(document.querySelectorAll('.tour-tooltip')).toHaveLength(1);
     expect(overlays()).toBe(3);
   });

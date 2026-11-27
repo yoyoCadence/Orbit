@@ -673,9 +673,11 @@ describe('a session whose task can never be linked (BUG-150/151)', () => {
   });
 
   it('a list saved with the tour\'s task before 1.42.19: the next pull goes through and the stuck session uploads', async () => {
-    cacheOwner([{ id: 'tour-task', isTutorial: true }, READING]);
+    // As syncableTask() wrote it: without `isTutorial` (#302 review).
+    const legacyTour = { id: 'tour-task', name: '完成你的第一個任務', value: 'B' };
+    cacheOwner([legacyTour, READING]);
     localStorage.setItem(pendingKey, JSON.stringify({
-      ownerId: OWNER, value: [{ id: 'tour-task', isTutorial: true }, READING], deletedIds: ['tour-task'],
+      ownerId: OWNER, value: [legacyTour, READING], deletedIds: ['tour-task'],
     }));
     localStorage.setItem('yoyo_sessions', JSON.stringify([{ ...session('tour-task', 's-tour'), _syncPending: true }]));
 

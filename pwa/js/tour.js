@@ -282,8 +282,10 @@ function _bringIntoView(target) {
   const scroller = target.closest('#content');
   if (!scroller) return;
   const box = target.getBoundingClientRect();
-  if (box.top >= 0 && box.bottom <= window.innerHeight) return;
   const view = scroller.getBoundingClientRect();
+  // On screen means inside #content: under the header or the bottom bar it
+  // is covered (430×932: the plan card under the header, #302 review).
+  if (box.top >= view.top && box.bottom <= view.bottom) return;
   scroller.scrollTop += (box.top + box.height / 2) - (view.top + view.height / 2);
 }
 
