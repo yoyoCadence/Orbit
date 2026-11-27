@@ -492,6 +492,14 @@ describe('renderHome: xpPreview XP label', () => {
     expect(label.textContent).toBe('回能');
   });
 
+  it('a recovery D-value task in the plan also shows "回能" (it regains energy at any value)', () => {
+    mockState.tasks = [makeTask({ id: 'rest', value: 'D', impactType: 'recovery', taskNature: 'recovery' })];
+    mockState.dailyPlan = ['rest'];
+    const c = makeContainer();
+    renderHome(c);
+    expect(c.querySelector('.plan-card .plan-task-xp').textContent.trim()).toMatch(/^回能/);
+  });
+
   it('entertainment B-value task shows "娛樂" label, not a misleading +XP', () => {
     mockState.tasks = [makeTask({ value: 'B', impactType: 'entertainment', taskNature: 'entertainment' })];
     const c = makeContainer();

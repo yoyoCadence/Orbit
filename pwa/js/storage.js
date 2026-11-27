@@ -22,6 +22,9 @@ import {
 } from './platform/sessionDeletionLog.js';
 
 const PREFIX = 'yoyo_';
+// BUG-133: the manual sync in progress (Settings' button), shared by a second
+// request instead of starting another load.
+let _manualSync = null;
 // Not exported (INFRA-105): app.js listens for the same name.
 const STORED_ACCOUNT_CHANGED_EVENT = 'orbit:stored-account-changed';
 // The leaderboard caches belong to leaderboardPublic.js (PRO-014E2); sign-out
@@ -1323,7 +1326,25 @@ export const storage = {
 
   // ── Manual cloud sync ────────────────────────────────────────────────────────
   // Two-tier rate limit: 10 s cooldown between clicks, 3 times per rolling hour.
-  async syncFromRemote() {
+  // BUG-133: one at a time; a request made meanwhile gets the same result.
+  syncFromRemote() {
+    if (_manualSync) return _manualSync;
+    // Cleared before the result is seen, so what runs next sees no sync.
+    const sync = (async () => {
+      try {
+        return await this._syncFromRemoteNow();
+      } finally {
+        if (_manualSync === sync) _manualSync = null;
+      }
+    })();
+    _manualSync = sync;
+    return sync;
+  },
+
+  /** The manual sync in progress, or null. */
+  currentManualSync: () => _manualSync,
+
+  async _syncFromRemoteNow() {
     const COOLDOWN_KEY = 'orbit_sync_last';
     const HISTORY_KEY  = 'orbit_sync_history';
     const COOLDOWN_MS  = 10_000;

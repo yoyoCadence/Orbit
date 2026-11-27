@@ -135,7 +135,12 @@ describe('session settlement safety', () => {
       window.completeInstant('task-stuck');
       vi.advanceTimersByTime(1000);
       expect(state.sessions).toHaveLength(1);
-      expect(state.sessions[0].finalXP).toBeGreaterThan(0);
+      expect(state.sessions[0].finalXP).toBeGreaterThan(5);
+      // B's 100 a day: with 95 already earned today, the next one gets 5.
+      state.sessions[0].finalXP = 95;
+      window.completeInstant('task-stuck');
+      vi.advanceTimersByTime(1000);
+      expect(state.sessions.filter(s => s.taskId === 'task-stuck').map(s => s.finalXP).sort((a, b) => a - b)).toEqual([5, 95]);
       // A custom cap is still a cap.
       state.tasks = [{ ...task, id: 'task-capped', dailyXpCap: 1 }];
       window.completeInstant('task-capped');

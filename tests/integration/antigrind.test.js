@@ -17,11 +17,12 @@ import {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Simulate the B-class XP cap logic from app.js */
+/** The B-class XP cap, as sessionFlow.js applyDailyCap settles it (a cap of 0
+ * on a B task, left by an older D → B edit, counts as none: BUG-131). */
 function applyBClassCap(task, finalXP, sessions, date) {
   if (task.value !== 'B') return finalXP;
   const alreadyToday = getDailyTaskXP(sessions, task.id, date);
-  const taskCap = task.dailyXpCap ?? 100;
+  const taskCap = task.dailyXpCap || 100;
   if (alreadyToday >= taskCap) return 0;
   return Math.min(finalXP, taskCap - alreadyToday);
 }
