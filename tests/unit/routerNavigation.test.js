@@ -99,6 +99,9 @@ describe('page change', () => {
     // No animationend yet: the next page slides the other way, alone.
     await renderPage('goals');
     expect([...content().classList]).toEqual(['page-slide-right']);
+    // And back again (#303 review: only clearing one of the two passed).
+    await renderPage('review');
+    expect([...content().classList]).toEqual(['page-slide-left']);
   });
 
   it('shows the home page with a message when a page cannot load', async () => {

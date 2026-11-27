@@ -8,6 +8,10 @@ import {
 import {
   buildDailyMainQuestIndex,
   selectDailyMainQuestWinners,
+  getDailyMainQuestWinnerIds,
+  isDailyMainQuestWinner,
+  getDailyMainQuestState,
+  deriveDailyMainQuest,
 } from '../../pwa/js/personalSpace/v2/questEngine.js';
 import {
   FORMAL_WORKSTATION_UNLOCK_KEY,
@@ -96,6 +100,37 @@ describe('Personal Space V2 reward session rules', () => {
     expect(getSessionRewardSpecs(adaptSession(makeSession({
       impactType: 'entertainment', taskNature: 'entertainment', value: 'D',
     })))).toEqual([]);
+  });
+
+  // TEST-020: the other questEngine.js helpers (the reconciler only uses the
+  // winners and the index today).
+  it('winner ids, the winner check and the day\'s quest state agree with the winners', () => {
+    const later = makeSession({ id: 'later', completedAt: `${EPOCH_DATE}T11:00:00.000Z` });
+    const earlier = makeSession({ id: 'earlier', completedAt: `${EPOCH_DATE}T09:00:00.000Z` });
+    const sessions = [later, earlier];
+
+    expect(getDailyMainQuestWinnerIds(sessions)).toEqual(['earlier']);
+    expect(isDailyMainQuestWinner(earlier, sessions)).toBe(true);
+    expect(isDailyMainQuestWinner(later, sessions)).toBe(false);
+    // An adapted Session carries the original under `original`.
+    expect(isDailyMainQuestWinner({ original: { id: 'earlier', date: EPOCH_DATE } }, sessions)).toBe(true);
+    expect(isDailyMainQuestWinner(null, sessions)).toBe(false);
+    expect(isDailyMainQuestWinner({ id: 'earlier' }, sessions)).toBe(false);
+
+    expect(getDailyMainQuestState(sessions, EPOCH_DATE)).toEqual({
+      id: `daily-main-quest:${EPOCH_DATE}`,
+      questKey: 'daily-main-quest',
+      date: EPOCH_DATE,
+      label: '完成一次 25 分鐘以上的 A／S 任務',
+      target: 1,
+      progress: 1,
+      completed: true,
+      completedBySessionId: 'earlier',
+    });
+    const otherDay = offsetDate(1);
+    expect(deriveDailyMainQuest(sessions, otherDay)).toMatchObject({
+      date: otherDay, progress: 0, completed: false, completedBySessionId: null,
+    });
   });
 
   it('uses the exact versioned deterministic reward id contract', () => {
