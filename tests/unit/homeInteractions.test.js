@@ -641,6 +641,9 @@ describe('drag edge cases (BUG-136)', () => {
     pointer(second, 'pointerdown', { y: 145, pointerId: 8 });
     expect(floating(c, 'plan-card')).toHaveLength(1);
     pointer(second, 'pointermove', { y: 100, pointerId: 8 });
+    // Its move does not drive the first drag (no highlight, copy not moved).
+    expect(c.querySelectorAll('.plan-drag-over-top, .plan-drag-over-bottom')).toHaveLength(0);
+    expect(floating(c, 'plan-card')[0].style.top).toBe('0px');
     pointer(second, 'pointerup', { y: 100, pointerId: 8 });
     pointer(second, 'pointercancel', { pointerId: 8 });
     expect(mockStorage.saveDailyPlan).not.toHaveBeenCalled();
@@ -666,6 +669,8 @@ describe('drag edge cases (BUG-136)', () => {
     expect(floating(c, 'task-card')).toHaveLength(1);
     expect(c.querySelector('.task-card[data-task-id="t2"]').classList.contains('drag-placeholder')).toBe(false);
     pointer(second, 'pointermove', { x: 10, y: 10, pointerId: 8 });
+    // Its move does not drive the first drag (no highlight).
+    expect(c.querySelectorAll('.drag-over')).toHaveLength(0);
     pointer(second, 'pointerup', { x: 10, y: 10, pointerId: 8 });
     pointer(second, 'pointercancel', { pointerId: 8 });
     expect(reorderTasks).not.toHaveBeenCalled();
