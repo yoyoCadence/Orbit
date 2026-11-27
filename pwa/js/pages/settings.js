@@ -1537,7 +1537,7 @@ function _showTaskModal(container, task) {
     const baseXP = earnsXP ? previewBaseXP(v, d, r) : 0;
     xpPreview.innerHTML = baseXP > 0
       ? `<span>預估 XP：<strong>+${baseXP}</strong>（完成）/ <strong>+${Math.round(baseXP * 0.6)}</strong>（部分完成）</span>`
-      : `<span style="color:var(--text-muted)">${nature === 'recovery' && v !== 'D' ? '此任務不提供 XP，完成後回能' : '此任務不提供 XP'}</span>`;
+      : `<span style="color:var(--text-muted)">${nature === 'recovery' ? '此任務不提供 XP，完成後回能' : '此任務不提供 XP'}</span>`;
   }
   updateXPPreview();
 
@@ -1616,8 +1616,11 @@ function _showTaskModal(container, task) {
       minEffectiveMinutes: category === 'focus' ? (minMap[diff] ?? 15) : 0,
       cooldownMinutes:     task?.cooldownMinutes ?? 0,
       // BUG-131: a task's own cap is kept while its value stays; a new value
-      // takes that value's cap (D's 0 would otherwise stay after D → B).
-      dailyXpCap:          task?.value === value ? (task.dailyXpCap ?? capMap[value] ?? 100) : (capMap[value] ?? 100),
+      // takes that value's cap (D's 0 would otherwise stay after D → B). A B
+      // task already left at 0 that way gets B's cap back.
+      dailyXpCap:          task?.value === value && !(value === 'B' && task.dailyXpCap === 0)
+        ? (task.dailyXpCap ?? capMap[value] ?? 100)
+        : (capMap[value] ?? 100),
       requiresReasonIfS:   value === 'S',
       reason:              modal.querySelector('#tm-reason')?.value.trim() || task?.reason || '',
       successCriteria:     modal.querySelector('#tm-success-criteria')?.value.trim() || task?.successCriteria || '',

@@ -968,6 +968,14 @@ describe('the daily XP cap after an edit (BUG-131)', () => {
     expect(mockState.tasks[0]).toMatchObject({ value: 'B', dailyXpCap: 1 });
   });
 
+  it('gives a B task left at D\'s cap of 0 its cap back when it is edited', () => {
+    mockState.tasks = [makeTask({ id: 't', value: 'B', dailyXpCap: 0 })];
+    const c = makeContainer();
+    renderSettings(c);
+    editValue(c, 't', 'growth', 'B');
+    expect(mockState.tasks[0]).toMatchObject({ value: 'B', dailyXpCap: 100 });
+  });
+
   it('gives a task with no cap its value\'s cap', () => {
     mockState.tasks = [makeTask({ id: 't', value: 'A', dailyXpCap: undefined })];
     const c = makeContainer();
@@ -978,6 +986,15 @@ describe('the daily XP cap after an edit (BUG-131)', () => {
 });
 
 describe('the XP preview for natures that earn none (BUG-132)', () => {
+  it('shows none for a stored entertainment task whose value is not D', () => {
+    mockState.user.mode = 'advanced';
+    mockState.tasks = [makeTask({ id: 'en', taskNature: 'entertainment', impactType: 'entertainment', value: 'B' })];
+    const c = makeContainer();
+    renderSettings(c);
+    c.querySelector('[data-edit="en"]').click();
+    expect(document.querySelector('.modal-overlay #tm-xp-preview').textContent).toBe('此任務不提供 XP');
+  });
+
   it('promises no XP for recovery (it gives energy) or entertainment, whatever the value', () => {
     const c = makeContainer();
     renderSettings(c);
@@ -990,7 +1007,10 @@ describe('the XP preview for natures that earn none (BUG-132)', () => {
     expect(preview()).toBe('此任務不提供 XP，完成後回能');
     change(modal.querySelector('#tm-value'), 'A');
     expect(preview()).toBe('此任務不提供 XP，完成後回能');
+    // Recovery gives energy whatever the value (calcEnergyGain), D included.
     change(modal.querySelector('#tm-value'), 'D');
+    expect(preview()).toBe('此任務不提供 XP，完成後回能');
+    change(modal.querySelector('#tm-nature'), 'entertainment');
     expect(preview()).toBe('此任務不提供 XP');
     change(modal.querySelector('#tm-nature'), 'obligation');
     change(modal.querySelector('#tm-value'), 'B');
