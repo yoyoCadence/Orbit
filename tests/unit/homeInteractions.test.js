@@ -143,6 +143,8 @@ function touch(el, type, x, y) {
 }
 
 beforeEach(() => {
+  // A drag's 50 ms reset may still be pending on real timers.
+  window._isDragging = false;
   window.HTMLElement.prototype.setPointerCapture = vi.fn();
   vi.clearAllMocks();
   mockStorage.currentDailyPlan.mockImplementation(plan => plan);
@@ -317,6 +319,8 @@ describe('reordering tasks by their handle', () => {
       expect(cardOf(c, 't1').classList.contains('drag-over')).toBe(true);
       expect(c.querySelectorAll('.drag-over')).toHaveLength(1);
       pointer(handle, 'pointerup', { x: 20, y: 10 });
+      // The drop redraws Home, and page swipes stay off for 50 ms more.
+      expect(window._isDragging).toBe(true);
 
       expect(reorderTasks).toHaveBeenCalledWith(expect.any(Array), 't3', 't1');
       expect(mockState.tasks.map(t => t.id)).toEqual(['t3', 't1', 't2']);
@@ -542,5 +546,105 @@ describe('home drawn again into the same page container (BUG-134)', () => {
     c.querySelector('#elsewhere').click();
     expect(lookups.mock.calls.filter(([selector]) => selector === '.task-grid.edit-mode')).toHaveLength(0);
     expect(c.querySelector('.task-grid').classList.contains('edit-mode')).toBe(true);
+  });
+});
+
+// ─── BUG-136: drag edge cases ───────────────────────────────────────────────
+
+describe('drag edge cases (BUG-136)', () => {
+  function page({ plan = [], tasks }) {
+    mockState.user = { ...mockState.user, id: 'owner-1' };
+    mockState.tasks = tasks;
+    mockState.dailyPlan = plan;
+    const c = makeContainer();
+    renderHome(c);
+    layOut(c.querySelectorAll('.plan-card'));
+    layOut(c.querySelectorAll('.task-card'));
+    return c;
+  }
+  const growth = id => makeTask({ id, name: id, taskNature: 'growth' });
+  const floating = (c, cls) => [...document.body.children].filter(el => el !== c && el.classList.contains(cls));
+
+  it('a task drag ends when Home is drawn again mid-drag: no floating copy, page swipes back', () => {
+    const c = page({ tasks: [growth('t1'), growth('t2')] });
+    const handle = c.querySelector('.task-card[data-task-id="t2"] .task-drag-handle');
+    pointer(handle, 'pointerdown', { x: 10, y: 80 });
+    expect(floating(c, 'task-card')).toHaveLength(1);
+    expect(window._isDragging).toBe(true);
+    renderHome(c);   // a sync finished, say
+    expect(floating(c, 'task-card')).toHaveLength(0);
+    expect(window._isDragging).toBe(false);
+    // The old handle's pointerup never comes; if it did, nothing would move.
+    pointer(handle, 'pointerup', { x: 10, y: 10 });
+    expect(mockStorage.saveTasks).not.toHaveBeenCalled();
+  });
+
+  it('a plan drag ends when Home is drawn again mid-drag', () => {
+    const c = page({ plan: ['p1', 'p2'], tasks: [growth('p1'), growth('p2')] });
+    const handle = c.querySelector('.plan-card[data-task-id="p1"] .plan-drag-handle');
+    pointer(handle, 'pointerdown', { y: 25 });
+    expect(floating(c, 'plan-card')).toHaveLength(1);
+    renderHome(c);
+    expect(floating(c, 'plan-card')).toHaveLength(0);
+    expect(window._isDragging).toBe(false);
+    pointer(handle, 'pointerup', { y: 100 });
+    expect(mockStorage.saveDailyPlan).not.toHaveBeenCalled();
+  });
+
+  it('a drop that redraws Home still blocks the page switch for 50 ms', () => {
+    vi.useFakeTimers();
+    const c = page({ plan: ['p1', 'p2'], tasks: [growth('p1'), growth('p2')] });
+    const handle = c.querySelector('.plan-card[data-task-id="p1"] .plan-drag-handle');
+    pointer(handle, 'pointerdown', { y: 25 });
+    expect(window._isDragging).toBe(true);
+    pointer(handle, 'pointermove', { y: 100 });
+    pointer(handle, 'pointerup', { y: 100 });
+    expect(mockState.dailyPlan).toEqual(['p2', 'p1']);
+    expect(window._isDragging).toBe(true);
+    vi.advanceTimersByTime(50);
+    expect(window._isDragging).toBe(false);
+  });
+
+  it('a cancelled drag puts the task back, in the plan and in the list', async () => {
+    const { reorderTasks } = await import('../../pwa/js/engine.js');
+    const c = page({ plan: ['p1', 'p2'], tasks: [growth('p1'), growth('p2')] });
+    const planHandle = c.querySelector('.plan-card[data-task-id="p1"] .plan-drag-handle');
+    pointer(planHandle, 'pointerdown', { y: 25 });
+    pointer(planHandle, 'pointermove', { y: 100 });
+    pointer(planHandle, 'pointercancel');
+    expect(mockStorage.saveDailyPlan).not.toHaveBeenCalled();
+    expect(mockState.dailyPlan).toEqual(['p1', 'p2']);
+
+    const taskHandle = c.querySelector('.task-card[data-task-id="p2"] .task-drag-handle');
+    pointer(taskHandle, 'pointerdown', { x: 10, y: 80 });
+    pointer(taskHandle, 'pointermove', { x: 10, y: 10 });
+    expect(c.querySelector('.task-card[data-task-id="p1"]').classList.contains('drag-over')).toBe(true);
+    pointer(taskHandle, 'pointercancel');
+    expect(reorderTasks).not.toHaveBeenCalled();
+    expect(mockStorage.saveTasks).not.toHaveBeenCalled();
+    expect(c.querySelectorAll('.drag-over, .drag-placeholder')).toHaveLength(0);
+  });
+
+  it('the plan handle ignores a right-click and has no context menu', () => {
+    const c = page({ plan: ['p1', 'p2'], tasks: [growth('p1'), growth('p2')] });
+    const handle = c.querySelector('.plan-card[data-task-id="p1"] .plan-drag-handle');
+    pointer(handle, 'pointerdown', { pointerType: 'mouse', button: 2 });
+    expect(floating(c, 'plan-card')).toHaveLength(0);
+    expect(window._isDragging).toBeFalsy();
+    const menu = new window.MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+    handle.dispatchEvent(menu);
+    expect(menu.defaultPrevented).toBe(true);
+  });
+
+  it('a task dragged onto another section is not dropped there', async () => {
+    const { reorderTasks } = await import('../../pwa/js/engine.js');
+    const c = page({ tasks: [growth('g1'), makeTask({ id: 'm1', name: 'm1', taskNature: 'maintenance', value: 'B' })] });
+    const handle = c.querySelector('.task-card[data-task-id="m1"] .task-drag-handle');
+    pointer(handle, 'pointerdown', { x: 10, y: 80 });
+    pointer(handle, 'pointermove', { x: 10, y: 10 });   // over g1, in 成長任務
+    expect(c.querySelector('.task-card[data-task-id="g1"]').classList.contains('drag-over')).toBe(false);
+    pointer(handle, 'pointerup', { x: 10, y: 10 });
+    expect(reorderTasks).not.toHaveBeenCalled();
+    expect(mockStorage.saveTasks).not.toHaveBeenCalled();
   });
 });
