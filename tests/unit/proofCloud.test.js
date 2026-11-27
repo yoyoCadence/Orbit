@@ -719,3 +719,88 @@ describe('achievement photo', () => {
     expect(mockDownload).not.toHaveBeenCalled();
   });
 });
+
+// ─── TEST-025: without this device's cache, and when it fails ───────────────
+
+describe('TEST-025：沒有或打不開這台裝置的快取（IndexedDB）', () => {
+  /** An indexedDB.open() whose request ends the given way, a tick later. */
+  function failingOpen(outcome) {
+    return vi.fn(() => {
+      const request = {};
+      setTimeout(() => (outcome === 'blocked' ? request.onblocked?.() : request.onerror?.()), 0);
+      return request;
+    });
+  }
+
+  /** Photos still show, from memory, and a restart downloads them again. */
+  async function showsFromMemoryOnly() {
+    signIn();
+    expect(await cloud.loadCloudProof(OWNER, sid(1))).toBe('blob:orbit/1');
+    expect(cloud.wantsCloudProof(OWNER, sid(1))).toBe(false);   // loaded: not asked for again
+    expect(await cloud.loadCloudProof(OWNER, sid(1))).toBe('blob:orbit/1');
+    expect(mockDownload).toHaveBeenCalledTimes(1);
+    await freshModule();
+    expect(await cloud.loadCloudProof(OWNER, sid(1))).toBe('blob:orbit/2');
+    expect(mockDownload).toHaveBeenCalledTimes(2);
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('沒有 IndexedDB 的瀏覽器：照樣下載並顯示，只留在記憶體', async () => {
+    vi.stubGlobal('indexedDB', undefined);
+    await showsFromMemoryOnly();
+    await expect(cloud.clearCloudProofs(OWNER)).resolves.toBeUndefined();
+  });
+
+  it('打開時丟出例外（例如私密瀏覽）：一樣只留在記憶體', async () => {
+    vi.spyOn(indexedDB, 'open').mockImplementation(() => { throw new Error('SecurityError'); });
+    await showsFromMemoryOnly();
+  });
+
+  it.each(['error', 'blocked'])('打開失敗（%s）：一樣只留在記憶體', async outcome => {
+    vi.spyOn(indexedDB, 'open').mockImplementation(failingOpen(outcome));
+    await showsFromMemoryOnly();
+  });
+
+  it('讀寫快取時出錯：照樣下載並顯示', async () => {
+    const brokenDb = { transaction: () => { throw new Error('InvalidStateError'); } };
+    vi.spyOn(indexedDB, 'open').mockImplementation(() => {
+      const request = { result: brokenDb };
+      setTimeout(() => request.onsuccess?.(), 0);
+      return request;
+    });
+    signIn();
+    expect(await cloud.loadCloudProof(OWNER, sid(1))).toBe('blob:orbit/1');
+    expect(mockDownload).toHaveBeenCalledTimes(1);
+  });
+
+  it('瀏覽器關掉資料庫（iOS 記憶體不足）後，下一次重新打開', async () => {
+    const realOpen = indexedDB.open.bind(indexedDB);
+    let opened = null;
+    const open = vi.spyOn(indexedDB, 'open').mockImplementation((...args) => {
+      const request = realOpen(...args);
+      request.addEventListener('success', () => { opened = request.result; });
+      return request;
+    });
+    signIn();
+    await cloud.loadCloudProof(OWNER, sid(1));
+    expect(open).toHaveBeenCalledTimes(1);
+    await cloud.loadCloudProof(OWNER, sid(2));
+    expect(open).toHaveBeenCalledTimes(1);      // the same connection
+
+    opened.onclose();                           // what the browser calls
+    await cloud.loadCloudProof(OWNER, sid(3));
+    expect(open).toHaveBeenCalledTimes(2);
+  });
+
+  it('取得 session 出錯時當作沒有登入：不下載', async () => {
+    const { supabase } = await import('../../pwa/js/supabase.js');
+    supabase.auth.getSession.mockRejectedValueOnce(new Error('storage unavailable'));
+    signIn();
+    expect(await cloud.loadCloudProof(OWNER, sid(1))).toBeNull();
+    expect(mockDownload).not.toHaveBeenCalled();
+  });
+});
