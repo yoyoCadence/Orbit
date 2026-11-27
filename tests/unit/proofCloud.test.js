@@ -11,6 +11,7 @@
 /* global Blob, indexedDB -- jsdom and fake-indexeddb provide them */
 
 import 'fake-indexeddb/auto';
+import { forceCloseDatabase } from 'fake-indexeddb';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const OWNER = '11111111-1111-4111-8111-111111111111';
@@ -791,7 +792,7 @@ describe('TEST-025：沒有或打不開這台裝置的快取（IndexedDB）', ()
     await cloud.loadCloudProof(OWNER, sid(2));
     expect(open).toHaveBeenCalledTimes(1);      // the same connection
 
-    opened.onclose();                           // what the browser calls
+    forceCloseDatabase(opened);                 // a real close, with its event (#309 review)
     await cloud.loadCloudProof(OWNER, sid(3));
     expect(open).toHaveBeenCalledTimes(2);
   });
@@ -801,6 +802,131 @@ describe('TEST-025：沒有或打不開這台裝置的快取（IndexedDB）', ()
     supabase.auth.getSession.mockRejectedValueOnce(new Error('storage unavailable'));
     signIn();
     expect(await cloud.loadCloudProof(OWNER, sid(1))).toBeNull();
+    expect(supabase.auth.getSession).toHaveBeenCalled();
     expect(mockDownload).not.toHaveBeenCalled();
+    // Not remembered as "not found": asked for again (#309 review).
+    expect(cloud.wantsCloudProof(OWNER, sid(1))).toBe(true);
+    expect(await cloud.loadCloudProof(OWNER, sid(1))).toBe('blob:orbit/1');
+  });
+});
+
+// ─── BUG-154: a failed open is not kept for the run ─────────────────────────
+
+describe('BUG-154：快取打不開一次，不會一直當作沒有', () => {
+  afterEach(() => { vi.restoreAllMocks(); });
+
+  /** indexedDB.open() that fails (error) the next `times` calls, then opens for real. */
+  function failNextOpens(times) {
+    const realOpen = indexedDB.open.bind(indexedDB);
+    let left = times;
+    return vi.spyOn(indexedDB, 'open').mockImplementation((...args) => {
+      if (left > 0) {
+        left -= 1;
+        const request = {};
+        setTimeout(() => request.onerror?.(), 0);
+        return request;
+      }
+      return realOpen(...args);
+    });
+  }
+
+  async function cachedOnThisDevice(sessionId) {
+    // A new run: loads from this device's cache without downloading, or not.
+    await freshModule();
+    signIn();
+    const before = mockDownload.mock.calls.length;
+    await cloud.loadCloudProof(OWNER, sessionId);
+    return mockDownload.mock.calls.length === before;
+  }
+
+  it('打開失敗過一次，登出時仍刪掉這台裝置上的照片', async () => {
+    signIn();
+    await cloud.loadCloudProof(OWNER, sid(1));           // run 1: cached here
+    await freshModule();                                 // run 2
+    signIn();
+    failNextOpens(1);
+    await cloud.loadCloudProof(OWNER, sid(2));           // this open fails
+    await cloud.clearCloudProofs(OWNER);                 // sign-out
+    expect(await cachedOnThisDevice(sid(1))).toBe(false); // run 3: gone
+  });
+
+  it('登出時那一次打開失敗，再試一次', async () => {
+    signIn();
+    await cloud.loadCloudProof(OWNER, sid(1));
+    await freshModule();
+    signIn();
+    const open = failNextOpens(1);
+    await cloud.clearCloudProofs(OWNER);
+    expect(open).toHaveBeenCalledTimes(2);
+    expect(await cachedOnThisDevice(sid(1))).toBe(false);
+  });
+
+  it('打開失敗後，下一張照片照樣存進快取', async () => {
+    signIn();
+    failNextOpens(1);
+    await cloud.loadCloudProof(OWNER, sid(1));   // read: open fails; write: opens
+    expect(await cachedOnThisDevice(sid(1))).toBe(true);
+  });
+
+  it('連線無聲無息斷掉（沒有 close 事件）後，下一次重新打開', async () => {
+    const realOpen = indexedDB.open.bind(indexedDB);
+    let opened = null;
+    vi.spyOn(indexedDB, 'open').mockImplementation((...args) => {
+      const request = realOpen(...args);
+      request.addEventListener('success', () => { opened = request.result; });
+      return request;
+    });
+    signIn();
+    await cloud.loadCloudProof(OWNER, sid(1));
+    opened.close();                                // no close event: the handle just stops working
+    await cloud.loadCloudProof(OWNER, sid(2));     // read fails; the write opens again
+    vi.restoreAllMocks();
+    expect(await cachedOnThisDevice(sid(2))).toBe(true);
+  });
+});
+
+describe('#310 review：丟掉的連線會關掉', () => {
+  afterEach(() => { vi.restoreAllMocks(); });
+
+  it('快取寫入一直失敗（例如空間不足）時，不會留下一堆打開的連線', async () => {
+    const realOpen = indexedDB.open.bind(indexedDB);
+    const connections = [];
+    vi.spyOn(indexedDB, 'open').mockImplementation((...args) => {
+      const request = realOpen(...args);
+      request.addEventListener('success', () => {
+        const db = request.result;
+        const entry = { open: true };
+        const close = db.close.bind(db);
+        db.close = () => { entry.open = false; close(); };
+        connections.push(entry);
+      });
+      return request;
+    });
+    // A photo whose bytes cannot be read: the cache write fails every time.
+    const unreadable = jpeg();
+    unreadable.arrayBuffer = () => Promise.reject(new window.DOMException('quota', 'QuotaExceededError'));
+    mockDownload.mockResolvedValue({ data: unreadable, error: null });
+    signIn();
+    for (let i = 1; i <= 4; i++) {
+      expect(await cloud.loadCloudProof(OWNER, sid(i))).not.toBeNull();   // still shown
+    }
+    expect(connections.length).toBeGreaterThan(1);           // reopened after each failure
+    expect(connections.filter(c => c.open).length).toBeLessThanOrEqual(1);
+  });
+
+  it('打開被擋住而放棄後，晚到的成功會把那個連線關掉', async () => {
+    const close = vi.fn();
+    let request;
+    vi.spyOn(indexedDB, 'open').mockImplementation(() => {
+      request = {};
+      setTimeout(() => request.onblocked?.(), 0);
+      return request;
+    });
+    signIn();
+    expect(await cloud.loadCloudProof(OWNER, sid(1))).toBe('blob:orbit/1');   // memory only
+    // The other tab lets go: the open finishes after all.
+    request.result = { close };
+    request.onsuccess?.();
+    expect(close).toHaveBeenCalled();
   });
 });

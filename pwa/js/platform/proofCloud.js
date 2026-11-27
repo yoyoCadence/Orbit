@@ -117,16 +117,33 @@ export function wantsCloudProof(ownerId, sessionId, { evenIfMissed = false } = {
 // ─── IndexedDB (best effort: without it, photos are only kept in memory) ─────
 
 let dbPromise = null;
+let currentDb = null;   // the connection dbPromise resolved to, while it is in use
+
+// Stop using `db` after it failed: closed (it may still be open, e.g. after a
+// quota error), and forgotten only if it is still the current one, so a newer
+// connection is kept (#310 review).
+function dropConnection(db) {
+  if (db && db === currentDb) {
+    currentDb = null;
+    dbPromise = null;
+  }
+  try { db?.close(); } catch { /* already closed */ }
+}
 
 function openDb() {
   if (typeof indexedDB === 'undefined') return Promise.resolve(null);
   if (!dbPromise) {
-    dbPromise = new Promise(resolve => {
+    const opening = new Promise(resolve => {
+      let settled = false;
+      const settle = db => {
+        settled = true;
+        resolve(db);
+      };
       let request;
       try {
         request = indexedDB.open(DB_NAME, DB_VERSION);
       } catch {
-        resolve(null);
+        settle(null);
         return;
       }
       request.onupgradeneeded = () => {
@@ -138,19 +155,27 @@ function openDb() {
       };
       request.onsuccess = () => {
         const db = request.result;
-        // Another tab upgrading or deleting the database: let it, open again later.
-        db.onversionchange = () => {
+        // Given up already (blocked, then the other tab let go): nobody uses
+        // this one, so it is not left open (#310 review).
+        if (settled) {
           db.close();
-          dbPromise = null;
-        };
+          return;
+        }
+        // Another tab upgrading or deleting the database: let it, open again later.
+        db.onversionchange = () => dropConnection(db);
         // The browser closed it (iOS does, under memory pressure): open again next time.
-        db.onclose = () => {
-          dbPromise = null;
-        };
-        resolve(db);
+        db.onclose = () => dropConnection(db);
+        currentDb = db;
+        settle(db);
       };
-      request.onerror = () => resolve(null);
-      request.onblocked = () => resolve(null);
+      request.onerror = () => settle(null);
+      request.onblocked = () => settle(null);
+    });
+    dbPromise = opening;
+    // A failed open is not kept for the run (BUG-154): the next use, a
+    // sign-out's deletion among them, tries again.
+    opening.then(db => {
+      if (!db && dbPromise === opening) dbPromise = null;
     });
   }
   return dbPromise;
@@ -184,6 +209,9 @@ async function readCached(ownerId, sessionId) {
     await finished(tx);
     return new Blob([photo.bytes], { type: photo.type || 'image/jpeg' });
   } catch {
+    // A connection that died without a close event fails here: the next use
+    // opens a new one (BUG-154).
+    dropConnection(db);
     return null;
   }
 }
@@ -204,7 +232,9 @@ async function writeCached(ownerId, sessionId, blob, generation) {
     await finished(tx);
     await trimCache(db, ownerId);
   } catch {
-    // Quota or a closed database: the photo is still shown from memory.
+    // Quota or a closed database: the photo is still shown from memory, and
+    // the next use opens a new connection (BUG-154).
+    dropConnection(db);
   }
 }
 
@@ -230,7 +260,8 @@ async function trimCache(db, ownerId) {
 async function deleteCached(which) {
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const db = await openDb();
-    if (!db) return;
+    // No connection this time (an open that failed): try once more (BUG-154).
+    if (!db) continue;
     try {
       const tx = db.transaction([PHOTOS, META], 'readwrite');
       const metas = await done(tx.objectStore(META).getAll());
@@ -242,7 +273,7 @@ async function deleteCached(which) {
       await finished(tx);
       return;
     } catch {
-      dbPromise = null;
+      dropConnection(db);
     }
   }
 }
