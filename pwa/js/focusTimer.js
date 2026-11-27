@@ -26,6 +26,7 @@ const focus = {
   deskStableSince:   0,
   deskMotionCleanup: null,
   deskAutoSuppressed: false,
+  deskGeneration:    0,      // bumps when desk mode stops, like ambientRequest
   ambient:           null,   // HW-106 monitor handle while the microphone is open
   ambientRequest:    0,      // bumps on stop so a late permission grant is discarded
   ambientPending:    false,  // permission prompt open; pressing again cancels it
@@ -230,6 +231,7 @@ function _startFocusDeskSensors() {
 }
 
 async function _requestFocusDeskSensors() {
+  const generation = focus.deskGeneration;
   const OrientationEvent = window.DeviceOrientationEvent;
   if (typeof OrientationEvent !== 'undefined' &&
       typeof OrientationEvent.requestPermission === 'function') {
@@ -237,8 +239,10 @@ async function _requestFocusDeskSensors() {
       const result = await OrientationEvent.requestPermission();
       if (result !== 'granted') return;
     } catch { return; }
-    // The session may have ended while iOS asked (BUG-153): no listener for it.
-    if (!focus.active) return;
+    // Desk mode may have stopped while iOS asked (BUG-153): the session ended
+    // (skip, end, the countdown; `active` stays true until a result is
+    // picked), so no listener for it.
+    if (generation !== focus.deskGeneration || !focus.active) return;
   }
   _startFocusDeskSensors();
 }
@@ -252,6 +256,7 @@ function _prepareFocusDeskMode() {
 }
 
 function _stopFocusDeskMode() {
+  focus.deskGeneration += 1;
   _setFocusDeskMode(false, 'reset');
   focus.deskStableSince = 0;
   focus.deskAutoSuppressed = false;
@@ -263,8 +268,10 @@ function _stopFocusDeskMode() {
 
 window.toggleFocusDeskMode = async function () {
   if (!focus.active) return;
+  const generation = focus.deskGeneration;
   await _requestFocusDeskSensors();
-  if (!focus.active) return;   // ended while iOS asked (BUG-153)
+  // Stopped while iOS asked (BUG-153), even if `active` is still true.
+  if (generation !== focus.deskGeneration || !focus.active) return;
   _setFocusDeskMode(!focus.deskMode, 'manual');
 };
 

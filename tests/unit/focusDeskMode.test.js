@@ -74,6 +74,8 @@ async function startFocus() {
 }
 
 function endFocus() {
+  // Ended but no result picked yet: the session is still on; pick one.
+  document.querySelector('.result-btn[data-result="complete"]')?.click();
   // Minimised counts as running too: bring it back first (#304 review).
   if (!document.getElementById('focus-pip').classList.contains('hidden')) window.restoreFocus();
   if (overlay().classList.contains('hidden')) return;
@@ -245,6 +247,10 @@ describe('手機平放時自動開啟', () => {
     await startFocus();
     await hold(null, null, 2000);
     expect(inDeskMode()).toBe(false);
+    await hold(0, null, 2000);
+    expect(inDeskMode()).toBe(false);
+    await hold(null, 0, 2000);
+    expect(inDeskMode()).toBe(false);
     await hold(NaN, 0, 2000);
     expect(inDeskMode()).toBe(false);
   });
@@ -307,7 +313,30 @@ describe('iOS 的方向感測器權限', () => {
       await startFocus();
       tap();                      // also waits for the same answer
       await flush();
-      endFocus();                 // e.g. the countdown ended meanwhile
+      endFocus();                 // skipped meanwhile
+      answer('granted');
+      await flush();
+    });
+    expect(listeners.added).toEqual([]);
+    expect(inDeskMode()).toBe(false);
+    expect(taps()).toBe(0);
+  });
+});
+
+describe('BUG-153：iOS 詢問中按「結束」（#304 review）', () => {
+  // Ending (and the countdown running out, which goes through the same
+  // _stopFocusDeskMode()) keeps `active` until a result is picked, so only
+  // stopping desk mode tells the late answer apart.
+  it('結束後才允許：不監看，也不切換；選結果時也沒有東西要移除', async () => {
+    let answer;
+    window.DeviceOrientationEvent.requestPermission = vi.fn(() => new Promise(resolve => { answer = resolve; }));
+    const listeners = await orientationListeners(async () => {
+      await startFocus();
+      tap();
+      await flush();
+      await vi.advanceTimersByTimeAsync(6 * 60_000);   // past the 5-minute minimum
+      window.endFocus();
+      expect(overlay().classList.contains('hidden')).toBe(true);
       answer('granted');
       await flush();
     });
