@@ -1235,7 +1235,9 @@ function _setupListeners(container) {
         authoritative: true,
       });
       window.showToast('資料已更新');
-      _renderView(container);
+      // BUG-129: the router reuses the page container; only repaint if
+      // Settings is still the page shown.
+      if (container.isConnected && container.querySelector('#sync-btn')) _renderView(container);
     } catch (err) {
       if (err.message.startsWith('cooldown:')) {
         const s = err.message.split(':')[1];
@@ -1334,8 +1336,8 @@ function _showTaskModal(container, task) {
         <div class="icon-row">
           <div class="icon-preview" id="tm-icon-preview">
             ${selectedIconImg
-              ? `<img src="${selectedIconImg}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
-              : selectedEmoji}
+              ? `<img src="${escHtml(selectedIconImg)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
+              : escHtml(selectedEmoji)}
           </div>
           <div style="flex:1;display:flex;flex-direction:column;gap:8px">
             <button class="btn btn-outline btn-sm" id="tm-icon-upload-btn">📷 上傳圖示</button>
@@ -1345,7 +1347,7 @@ function _showTaskModal(container, task) {
         </div>
       </div>
       <div class="form-group" id="tm-emoji-section" ${selectedIconImg ? 'style="display:none"' : ''}>
-        <label class="form-label">或選擇 Emoji <span id="tm-emoji-preview">${selectedEmoji}</span></label>
+        <label class="form-label">或選擇 Emoji <span id="tm-emoji-preview">${escHtml(selectedEmoji)}</span></label>
         <div class="emoji-picker">
           ${EMOJI_LIST.map(e => `<button class="emoji-option ${e === selectedEmoji ? 'selected' : ''}" data-emoji="${e}">${e}</button>`).join('')}
         </div>
@@ -1528,10 +1530,14 @@ function _showTaskModal(container, task) {
     const v  = valueEl.value;
     const d  = parseFloat(modal.querySelector('#tm-difficulty').value);
     const r  = parseFloat(modal.querySelector('#tm-resistance').value);
-    const baseXP = previewBaseXP(v, d, r);
+    // BUG-132: only 'task' impact earns XP (engine.calcBaseXP); recovery and
+    // entertainment natures never do, whatever the value.
+    const nature = natureEl.value;
+    const earnsXP = nature !== 'recovery' && nature !== 'entertainment';
+    const baseXP = earnsXP ? previewBaseXP(v, d, r) : 0;
     xpPreview.innerHTML = baseXP > 0
       ? `<span>預估 XP：<strong>+${baseXP}</strong>（完成）/ <strong>+${Math.round(baseXP * 0.6)}</strong>（部分完成）</span>`
-      : `<span style="color:var(--text-muted)">此任務不提供 XP</span>`;
+      : `<span style="color:var(--text-muted)">${nature === 'recovery' && v !== 'D' ? '此任務不提供 XP，完成後回能' : '此任務不提供 XP'}</span>`;
   }
   updateXPPreview();
 
@@ -1609,7 +1615,9 @@ function _showTaskModal(container, task) {
       iconImg:             selectedIconImg,
       minEffectiveMinutes: category === 'focus' ? (minMap[diff] ?? 15) : 0,
       cooldownMinutes:     task?.cooldownMinutes ?? 0,
-      dailyXpCap:          task?.dailyXpCap ?? (capMap[value] ?? 100),
+      // BUG-131: a task's own cap is kept while its value stays; a new value
+      // takes that value's cap (D's 0 would otherwise stay after D → B).
+      dailyXpCap:          task?.value === value ? (task.dailyXpCap ?? capMap[value] ?? 100) : (capMap[value] ?? 100),
       requiresReasonIfS:   value === 'S',
       reason:              modal.querySelector('#tm-reason')?.value.trim() || task?.reason || '',
       successCriteria:     modal.querySelector('#tm-success-criteria')?.value.trim() || task?.successCriteria || '',

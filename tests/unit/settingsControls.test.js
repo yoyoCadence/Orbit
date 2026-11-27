@@ -875,3 +875,125 @@ describe('task window', () => {
     expect(mockStorage.saveTasks).not.toHaveBeenCalled();
   });
 });
+
+// ─── BUG-129..132 ───────────────────────────────────────────────────────────
+
+describe('a finished sync on a page left meanwhile (BUG-129)', () => {
+  it('does not draw Settings over the page shown now', async () => {
+    window.showToast = vi.fn();
+    let finish;
+    mockStorage.syncFromRemote.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    const c = makeContainer();
+    renderSettings(c);
+    c.querySelector('#sync-btn').click();
+    // The router reuses the container for another page.
+    c.innerHTML = '<div id="other-page">首頁</div>';
+    finish();
+    await vi.waitFor(() => expect(window.showToast).toHaveBeenCalledWith('資料已更新'));
+    expect(c.innerHTML).toBe('<div id="other-page">首頁</div>');
+  });
+
+  it('draws Settings again when it is still shown', async () => {
+    window.showToast = vi.fn();
+    const c = makeContainer();
+    renderSettings(c);
+    const btn = c.querySelector('#sync-btn');
+    btn.click();
+    await vi.waitFor(() => expect(window.showToast).toHaveBeenCalledWith('資料已更新'));
+    expect(c.querySelector('#sync-btn')).not.toBe(btn);
+    expect(c.querySelector('#sync-btn').disabled).toBe(false);
+  });
+});
+
+describe('the edit window shows a stored emoji and icon as data (BUG-130)', () => {
+  it('as text and inside src, like the task list (AUDIT-001)', () => {
+    mockState.user.mode = 'advanced';
+    const iconImg = 'data:image/png;base64,AAAA" onerror="window.__xss=1';
+    mockState.tasks = [
+      makeTask({ id: 'e', emoji: '<img src=x onerror="window.__xss=1">' }),
+      makeTask({ id: 'i', iconImg }),
+    ];
+    const c = makeContainer();
+    renderSettings(c);
+    c.querySelector('[data-edit="e"]').click();
+    let modal = document.querySelector('.modal-overlay');
+    expect(modal.querySelector('[onerror]')).toBeNull();
+    expect(modal.querySelector('#tm-icon-preview').textContent.trim()).toBe('<img src=x onerror="window.__xss=1">');
+    expect(modal.querySelector('#tm-emoji-preview').textContent).toBe('<img src=x onerror="window.__xss=1">');
+    modal.remove();
+    c.querySelector('[data-edit="i"]').click();
+    modal = document.querySelector('.modal-overlay');
+    expect(modal.querySelector('[onerror]')).toBeNull();
+    expect(modal.querySelector('#tm-icon-preview img').getAttribute('src')).toBe(iconImg);
+  });
+});
+
+describe('the daily XP cap after an edit (BUG-131)', () => {
+  function editValue(c, id, nature, value) {
+    c.querySelector(`[data-edit="${id}"]`).click();
+    const modal = document.querySelector('.modal-overlay');
+    change(modal.querySelector('#tm-nature'), nature);
+    change(modal.querySelector('#tm-value'), value);
+    modal.querySelector('#tm-reason').value = '原因';
+    modal.querySelector('#tm-success-criteria').value = '標準';
+    modal.querySelector('#tm-save').click();
+  }
+
+  beforeEach(() => {
+    window.alert = vi.fn();
+    window.confirm = vi.fn(() => true);
+    mockState.user.mode = 'advanced';
+  });
+
+  it('takes the new value\'s cap when the value changes', () => {
+    mockState.tasks = [makeTask({ id: 't', taskNature: 'growth', value: 'B', dailyXpCap: 100 })];
+    const c = makeContainer();
+    renderSettings(c);
+    editValue(c, 't', 'entertainment', 'D');
+    expect(mockState.tasks[0]).toMatchObject({ value: 'D', dailyXpCap: 0 });
+    // Back to B: it earns XP again.
+    editValue(c, 't', 'growth', 'B');
+    expect(mockState.tasks[0]).toMatchObject({ value: 'B', dailyXpCap: 100 });
+    editValue(c, 't', 'growth', 'S');
+    expect(mockState.tasks[0]).toMatchObject({ value: 'S', dailyXpCap: 300 });
+    editValue(c, 't', 'growth', 'A');
+    expect(mockState.tasks[0]).toMatchObject({ value: 'A', dailyXpCap: 200 });
+  });
+
+  it('keeps a task\'s own cap while its value stays', () => {
+    mockState.tasks = [makeTask({ id: 't', value: 'B', dailyXpCap: 1 })];
+    const c = makeContainer();
+    renderSettings(c);
+    editValue(c, 't', 'growth', 'B');
+    expect(mockState.tasks[0]).toMatchObject({ value: 'B', dailyXpCap: 1 });
+  });
+
+  it('gives a task with no cap its value\'s cap', () => {
+    mockState.tasks = [makeTask({ id: 't', value: 'A', dailyXpCap: undefined })];
+    const c = makeContainer();
+    renderSettings(c);
+    editValue(c, 't', 'growth', 'A');
+    expect(mockState.tasks[0]).toMatchObject({ value: 'A', dailyXpCap: 200 });
+  });
+});
+
+describe('the XP preview for natures that earn none (BUG-132)', () => {
+  it('promises no XP for recovery (it gives energy) or entertainment, whatever the value', () => {
+    const c = makeContainer();
+    renderSettings(c);
+    c.querySelector('#add-task-btn').click();
+    const modal = document.querySelector('.modal-overlay');
+    const preview = () => modal.querySelector('#tm-xp-preview').textContent;
+    expect(preview()).toBe('預估 XP：+17（完成）/ +10（部分完成）');
+    change(modal.querySelector('#tm-nature'), 'recovery');
+    expect(modal.querySelector('#tm-value').value).toBe('B');
+    expect(preview()).toBe('此任務不提供 XP，完成後回能');
+    change(modal.querySelector('#tm-value'), 'A');
+    expect(preview()).toBe('此任務不提供 XP，完成後回能');
+    change(modal.querySelector('#tm-value'), 'D');
+    expect(preview()).toBe('此任務不提供 XP');
+    change(modal.querySelector('#tm-nature'), 'obligation');
+    change(modal.querySelector('#tm-value'), 'B');
+    expect(preview()).toBe('預估 XP：+17（完成）/ +10（部分完成）');
+  });
+});
