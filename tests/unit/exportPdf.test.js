@@ -98,17 +98,21 @@ describe('報告的「本月」（BUG-146）', () => {
   const rangeValues = () => [...document.querySelectorAll('input[name="rp-range"]')].map(input => input.value);
   const sessionOn = date => ({ id: `s-${date}`, date, finalXP: 10, result: 'valid', value: 'A' });
 
+  let savedUser;
+
   function pickAt(time, user = {}) {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date(time));
-    Object.assign(mockState.user, user);
+    mockState.user = { ...mockState.user, ...user };
     showReportPicker();
   }
+
+  beforeEach(() => { savedUser = mockState.user; });
 
   afterEach(() => {
     vi.useRealTimers();
     fixture.sessions = null;
-    delete mockState.user.newDayHour;
+    mockState.user = savedUser;
   });
 
   it('月初凌晨 2 點：本月是有效日所在的月份，上個月是再往前一個月', () => {

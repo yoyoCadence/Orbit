@@ -108,7 +108,11 @@ beforeEach(() => {
   day.value = '2026-11-10';
 });
 
-afterEach(() => {
+afterEach(async () => {
+  // A granted ask shows its celebration after `delayMs` (0 here): let it fire
+  // inside its own test, not in the next one's modal count (TEST-016; seen
+  // with --sequence.shuffle).
+  await flush();
   vi.useRealTimers();
 });
 

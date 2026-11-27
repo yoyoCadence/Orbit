@@ -13,7 +13,7 @@
  *   每個 beforeEach 透過 window._reviewSetMode('week') 重置。
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ─── Module mocks ─────────────────────────────────────────────────────────────
 
@@ -116,12 +116,28 @@ beforeEach(() => {
   container = document.createElement('div');
   document.body.appendChild(container);
 
-  // Reset module-level _viewMode to 'week'
-  if (typeof window._reviewSetMode === 'function') {
-    window._reviewSetMode('week');
-  }
   renderReview(container);
+  // The module keeps the month on view across tests: start each one on the
+  // current month (TEST-016; tests used to undo their own navigation in an
+  // afterAll, which broke when they ran in another order).
+  resetToCurrentMonth();
+  // Reset module-level _viewMode to 'week'
+  window._reviewSetMode('week');
 });
+
+function resetToCurrentMonth() {
+  window._reviewSetMode('month');
+  const now = new Date();
+  const target = now.getFullYear() * 12 + now.getMonth();
+  for (let i = 0; i < 48; i++) {
+    const [, year, month] = /(\d+)年(\d+)月/.exec(container.querySelector('.month-nav-label').textContent);
+    const shown = Number(year) * 12 + Number(month) - 1;
+    if (shown === target) return;
+    if (shown < target) window._reviewNextMonth();
+    else window._reviewPrevMonth();
+  }
+  throw new Error('could not return to the current month');
+}
 
 afterEach(() => {
   document.body.removeChild(container);
@@ -319,18 +335,6 @@ describe('月視圖 — 導航', () => {
     window._reviewSetMode('month');
   });
 
-  // Navigation tests accumulate a net -2 deficit on _viewMonth:
-  //   test 1: _reviewPrevMonth()      → -1
-  //   test 2: _reviewPrevMonth()      → -1
-  //   test 3: prev then next          →  0
-  // Compensate with two nextMonth calls so subsequent describes see the original month.
-  afterAll(() => {
-    if (typeof window._reviewNextMonth === 'function') {
-      window._reviewNextMonth();
-      window._reviewNextMonth();
-    }
-  });
-
   it('點擊「‹」按鈕 → monthLabel 改變（切換到上月）', () => {
     const before = container.querySelector('.month-nav-label').textContent;
     window._reviewPrevMonth();
@@ -418,10 +422,5 @@ describe('月視圖 — 免費版歷史限制', () => {
     window._reviewPrevMonth(); // should be blocked
     const labelAfter = container.querySelector('.month-nav-label').textContent;
     expect(labelAfter).toBe(labelBefore);
-  });
-
-  afterAll(() => {
-    // Restore navigation to current month for subsequent tests
-    for (let i = 0; i < 3; i++) window._reviewNextMonth();
   });
 });

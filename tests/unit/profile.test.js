@@ -98,6 +98,11 @@ beforeEach(() => {
   mockState.energy   = { currentEnergy: 80, maxEnergy: 100 };
   window.navigate    = vi.fn();
   vi.clearAllMocks();
+  // clearAllMocks() keeps a mockReturnValue(): a test's Pro state reached the
+  // tests after it (TEST-016, --sequence.shuffle). Start each one as free.
+  mockStorage.isProUser.mockReturnValue(false);
+  mockStorage.isPaidProUser.mockReturnValue(false);
+  mockStorage.isTrialUser.mockReturnValue(false);
 });
 
 afterEach(() => {
@@ -365,6 +370,10 @@ describe('renderProfile: template picker', () => {
 // ─── Template editor modal: open / add new (#15) ────────────────────────────
 
 describe('renderProfile: add template modal', () => {
+  // Pro only: every test here opens the editor (they used to rely on the
+  // first one setting this).
+  beforeEach(() => { mockStorage.isProUser.mockReturnValue(true); });
+
   it('"新增自訂主題" button exists for Pro user', () => {
     mockStorage.isProUser.mockReturnValue(true);
     const c = makeContainer();

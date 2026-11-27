@@ -3,9 +3,10 @@
 // would have failed from 2026-12-10 08:00 UTC). Not part of CI; run it after
 // adding tests with fixed dates:
 //
-//   FUTURE_NOW=2027-06-01T03:00:00Z npx vitest run --config tests/support/futureClock.config.js
+//   TZ=UTC FUTURE_NOW=2027-06-01T03:00:00Z npx vitest run --config tests/support/futureClock.config.js
 //
-// A time before 05:00 local also exercises the effective-day paths (newDayHour).
+// A time before 05:00 local also exercises the effective-day paths (newDayHour):
+// hence TZ=UTC with 03:00Z (in Taipei that would be 11:00).
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, mergeConfig } from 'vitest/config';
