@@ -471,6 +471,13 @@ export function renderHome(container) {
 
   return () => {
     if (_container === container) _container = null;
+    // BUG-134: leaving Home, its tap-outside listener leaves the shared
+    // page container too.
+    const outsideTap = _outsideTapListeners.get(container);
+    if (outsideTap) {
+      container.removeEventListener('click', outsideTap);
+      _outsideTapListeners.delete(container);
+    }
     try {
       _orbitWindowCleanup?.();
     } finally {
@@ -968,7 +975,13 @@ function _endDrag(container) {
   _drag.taskId = null;
   _drag.card   = null;
   _drag.clone  = null;
-  setTimeout(() => { window._isDragging = false; }, 50);
+  // BUG-135: the click right after the drop is suppressed, but a drop with no
+  // click after it (most touch drags, or a drop that redraws the list) must
+  // not swallow a later tap: the flag ends with the drag, as the plan's does.
+  setTimeout(() => {
+    window._isDragging = false;
+    _drag.wasDragging = false;
+  }, 50);
 }
 
 /**

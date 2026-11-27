@@ -3,9 +3,9 @@
  * homeInteractions.test.js — TEST-010: the home page's gestures and the
  * parts home.test.js does not reach. Reordering the plan and the task list by
  * dragging (and the click that follows a drag), card swipes (vertical moves,
- * the page-switch gesture, leaving edit mode), the plan's info window, the
- * Main Quest action and the Orbit Window's fallbacks. Same mocks as
- * home.test.js, with the storage calls a drag makes.
+ * the page-switch gesture, leaving edit mode), the task detail and plan info
+ * windows and the Main Quest's way to Settings. Same mocks as home.test.js,
+ * with the storage calls a drag makes.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -127,9 +127,11 @@ function layOut(cards) {
 }
 
 function pointer(el, type, { x = 10, y = 0, pointerType = 'touch', button = 0 } = {}) {
-  el.dispatchEvent(new window.PointerEvent(type, {
+  const event = new window.PointerEvent(type, {
     bubbles: true, cancelable: true, clientX: x, clientY: y, pointerType, button, pointerId: 7,
-  }));
+  });
+  el.dispatchEvent(event);
+  return event;
 }
 
 if (typeof Touch === 'undefined') {
@@ -146,6 +148,8 @@ beforeEach(() => {
   mockStorage.currentDailyPlan.mockImplementation(plan => plan);
 });
 afterEach(() => {
+  // Let a drag's 50 ms reset run, so no test starts with a drag's flags set.
+  if (vi.isFakeTimers()) vi.runOnlyPendingTimers();
   vi.useRealTimers();
   document.body.innerHTML = '';
 });
@@ -167,16 +171,21 @@ describe('reordering the plan by its handle', () => {
     vi.useFakeTimers();
     const c = planPage();
     const handle = handleOf(c, 'p1');
-    pointer(handle, 'pointerdown', { y: 25 });
+    // No text selection or click from the press itself.
+    expect(pointer(handle, 'pointerdown', { y: 25 }).defaultPrevented).toBe(true);
     // A floating copy follows the finger; the card itself is a placeholder.
     const clone = [...document.body.children].find(el => el !== c && el.classList.contains('plan-card'));
     expect(clone.style.position).toBe('fixed');
     expect(c.querySelector('.plan-card[data-task-id="p1"]').classList.contains('plan-drag-placeholder')).toBe(true);
     expect(handle.setPointerCapture).toHaveBeenCalledWith(7);
 
+    // Over p3 first: only the card under the finger is marked.
+    pointer(handle, 'pointermove', { y: 130 });
+    expect(c.querySelector('.plan-card[data-task-id="p3"]').classList.contains('plan-drag-over-top')).toBe(true);
     pointer(handle, 'pointermove', { y: 100 });   // lower half of p2 (60-110)
     expect(clone.style.top).toBe('75px');
     expect(c.querySelector('.plan-card[data-task-id="p2"]').classList.contains('plan-drag-over-bottom')).toBe(true);
+    expect(c.querySelectorAll('.plan-drag-over-top, .plan-drag-over-bottom')).toHaveLength(1);
     pointer(handle, 'pointerup', { y: 100 });
 
     expect(clone.isConnected).toBe(false);
@@ -227,6 +236,18 @@ describe('reordering the plan by its handle', () => {
     expect(window.completeInstant).toHaveBeenCalledWith('p2');
   });
 
+  it('a plan from an earlier day starts over empty, as other plan edits do (HW-113)', () => {
+    const c = planPage();
+    mockStorage.currentDailyPlan.mockReturnValue([]);
+    const handle = handleOf(c, 'p1');
+    pointer(handle, 'pointerdown', { y: 25 });
+    pointer(handle, 'pointermove', { y: 100 });
+    pointer(handle, 'pointerup', { y: 100 });
+    expect(mockStorage.currentDailyPlan).toHaveBeenCalledWith(['p1', 'p2', 'p3']);
+    expect(mockState.dailyPlan).toEqual([]);
+    expect(mockStorage.saveDailyPlan).toHaveBeenCalledWith([]);
+  });
+
   it('a cancelled drag does not swallow the next tap', () => {
     const c = planPage();
     const handle = handleOf(c, 'p1');
@@ -271,34 +292,64 @@ describe('reordering tasks by their handle', () => {
       return rest;
     });
     navigator.vibrate = vi.fn();
+    try {
+      const c = taskPage();
+      c.querySelector('.task-edit-btn[data-section="growth"]').click();
+      const handle = cardOf(c, 't3').querySelector('.task-drag-handle');
+      // The press stays with the handle: not passed up to the page.
+      const pageDown = vi.fn();
+      c.addEventListener('pointerdown', pageDown);
+      pointer(handle, 'pointerdown', { x: 10, y: 125 });
+      expect(pageDown).not.toHaveBeenCalled();
+      expect(handle.setPointerCapture).toHaveBeenCalledWith(7);
+      expect(navigator.vibrate).toHaveBeenCalledWith(50);
+      expect(window._isDragging).toBe(true);
+      expect(cardOf(c, 't3').classList.contains('drag-placeholder')).toBe(true);
+      const clone = [...document.body.children].find(el => el !== c && el.classList.contains('task-card'));
+      expect(clone.style.position).toBe('fixed');
+
+      // Over t2 first: only the card under the finger is marked.
+      pointer(handle, 'pointermove', { x: 20, y: 70 });
+      expect(cardOf(c, 't2').classList.contains('drag-over')).toBe(true);
+      pointer(handle, 'pointermove', { x: 20, y: 10 });
+      expect(clone.style.left).toBe('10px');
+      expect(clone.style.top).toBe('5px');      // 10 − (125 − 120)
+      expect(cardOf(c, 't1').classList.contains('drag-over')).toBe(true);
+      expect(c.querySelectorAll('.drag-over')).toHaveLength(1);
+      pointer(handle, 'pointerup', { x: 20, y: 10 });
+
+      expect(reorderTasks).toHaveBeenCalledWith(expect.any(Array), 't3', 't1');
+      expect(mockState.tasks.map(t => t.id)).toEqual(['t3', 't1', 't2']);
+      expect(mockStorage.saveTasks).toHaveBeenCalledWith(mockState.tasks, 'owner-1');
+      expect(clone.isConnected).toBe(false);
+      // Drawn again, still editing.
+      expect([...c.querySelectorAll('.task-card')].map(card => card.dataset.taskId)).toEqual(['t3', 't1', 't2']);
+      expect(c.querySelector('.task-grid[data-section="growth"]').classList.contains('edit-mode')).toBe(true);
+      expect(c.querySelector('.task-edit-btn[data-section="growth"]').textContent).toBe('完成');
+      // The click that follows the drop does not add a task to the plan...
+      cardOf(c, 't1').click();
+      expect(window.addToDailyPlan).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(50);
+      expect(window._isDragging).toBe(false);
+      // ...and the next tap does.
+      cardOf(c, 't2').click();
+      expect(window.addToDailyPlan).toHaveBeenCalledWith('t2');
+    } finally {
+      delete navigator.vibrate;
+    }
+  });
+
+  it('a drop with no click after it does not swallow a later tap (BUG-135)', () => {
+    vi.useFakeTimers();
     const c = taskPage();
-    c.querySelector('.task-edit-btn[data-section="growth"]').click();
-    const handle = cardOf(c, 't3').querySelector('.task-drag-handle');
-    pointer(handle, 'pointerdown', { x: 10, y: 125 });
-    expect(navigator.vibrate).toHaveBeenCalledWith(50);
-    expect(window._isDragging).toBe(true);
-    expect(cardOf(c, 't3').classList.contains('drag-placeholder')).toBe(true);
-    const clone = [...document.body.children].find(el => el !== c && el.classList.contains('task-card'));
-    expect(clone.style.position).toBe('fixed');
-
-    pointer(handle, 'pointermove', { x: 20, y: 10 });
-    expect(clone.style.left).toBe('10px');
-    expect(clone.style.top).toBe('5px');      // 10 − (125 − 120)
-    expect(cardOf(c, 't1').classList.contains('drag-over')).toBe(true);
-    pointer(handle, 'pointerup', { x: 20, y: 10 });
-
-    expect(reorderTasks).toHaveBeenCalledWith(expect.any(Array), 't3', 't1');
-    expect(mockState.tasks.map(t => t.id)).toEqual(['t3', 't1', 't2']);
-    expect(mockStorage.saveTasks).toHaveBeenCalledWith(mockState.tasks, 'owner-1');
-    expect(clone.isConnected).toBe(false);
-    // Drawn again, still editing.
-    expect([...c.querySelectorAll('.task-card')].map(card => card.dataset.taskId)).toEqual(['t3', 't1', 't2']);
-    expect(c.querySelector('.task-grid[data-section="growth"]').classList.contains('edit-mode')).toBe(true);
-    expect(c.querySelector('.task-edit-btn[data-section="growth"]').textContent).toBe('完成');
-    // The click that follows does not add a task to the plan.
-    vi.advanceTimersByTime(50);
-    expect(window._isDragging).toBe(false);
-    delete navigator.vibrate;
+    const handle = cardOf(c, 't2').querySelector('.task-drag-handle');
+    pointer(handle, 'pointerdown', { x: 10, y: 80 });
+    pointer(handle, 'pointermove', { x: 10, y: 55 });
+    pointer(handle, 'pointerup', { x: 10, y: 55 });
+    // A touch drag sends no click; seconds later the user taps a card.
+    vi.advanceTimersByTime(5000);
+    cardOf(c, 't1').click();
+    expect(window.addToDailyPlan).toHaveBeenCalledWith('t1');
   });
 
   it('changes nothing when dropped on itself or between cards', async () => {
@@ -313,11 +364,6 @@ describe('reordering tasks by their handle', () => {
     expect(reorderTasks).not.toHaveBeenCalled();
     expect(mockStorage.saveTasks).not.toHaveBeenCalled();
     expect(c.querySelectorAll('.drag-placeholder, .drag-over')).toHaveLength(0);
-    // The tap that follows a drag is not an "add to plan".
-    cardOf(c, 't1').click();
-    expect(window.addToDailyPlan).not.toHaveBeenCalled();
-    cardOf(c, 't1').click();
-    expect(window.addToDailyPlan).toHaveBeenCalledWith('t1');
   });
 
   it('a right-click does not start a drag, and the handle has no context menu', () => {
@@ -350,6 +396,8 @@ describe('card swipes and taps around them', () => {
     touch(card, 'touchstart', 100, 100);
     touch(card, 'touchmove', 92, 100);      // under 12 px
     touch(card, 'touchmove', 70, 130);      // more vertical than 1.5× horizontal
+    // One decision per gesture: turning sideways later does not open it.
+    touch(card, 'touchmove', 20, 131);
     expect(card.classList.contains('swipe-open')).toBe(false);
   });
 
@@ -372,18 +420,24 @@ describe('card swipes and taps around them', () => {
     }
   });
 
-  it('a tap outside the cards closes an open one and leaves edit mode', () => {
+  it('a tap outside the cards closes an open one', () => {
     const c = cards(1);
     const card = c.querySelector('.task-card');
     touch(card, 'touchstart', 100, 100);
     touch(card, 'touchmove', 60, 102);
+    expect(card.classList.contains('swipe-open')).toBe(true);
+    c.querySelector('.stats-bar').click();
+    expect(card.classList.contains('swipe-open')).toBe(false);
+    expect(window.addToDailyPlan).not.toHaveBeenCalled();
+  });
+
+  it('a tap outside the grid being edited leaves edit mode; a tap inside does not', () => {
+    const c = cards(1);
     c.querySelector('.task-edit-btn[data-section="growth"]').click();
     expect(c.querySelector('.task-grid[data-section="growth"]').classList.contains('edit-mode')).toBe(true);
-    // A tap inside the grid being edited stays in edit mode.
     c.querySelector('.task-grid[data-section="growth"]').click();
     expect(c.querySelector('.task-grid[data-section="growth"]').classList.contains('edit-mode')).toBe(true);
     c.querySelector('.stats-bar').click();
-    expect(card.classList.contains('swipe-open')).toBe(false);
     expect(c.querySelector('.task-grid[data-section="growth"]').classList.contains('edit-mode')).toBe(false);
     expect(c.querySelector('.task-edit-btn[data-section="growth"]').textContent).toBe('編輯');
   });
@@ -469,9 +523,24 @@ describe('home drawn again into the same page container (BUG-134)', () => {
     const card = c.querySelector('.task-card');
     touch(card, 'touchstart', 100, 100);
     touch(card, 'touchmove', 60, 102);
-    c.querySelector('.task-edit-btn[data-section="growth"]').click();
+    expect(card.classList.contains('swipe-open')).toBe(true);
     c.querySelector('.stats-bar').click();
     expect(card.classList.contains('swipe-open')).toBe(false);
+    c.querySelector('.task-edit-btn[data-section="growth"]').click();
+    c.querySelector('.stats-bar').click();
     expect(c.querySelector('.task-grid[data-section="growth"]').classList.contains('edit-mode')).toBe(false);
+  });
+
+  it('takes its tap-outside listener away when Home is left', () => {
+    mockState.tasks = [makeTask({ id: 'r1' })];
+    const c = makeContainer();
+    const cleanup = renderHome(c);
+    cleanup();
+    // The router reuses the container for another page.
+    c.innerHTML = '<div class="task-grid edit-mode" data-section="growth"></div><p id="elsewhere">設定</p>';
+    const lookups = vi.spyOn(c, 'querySelectorAll');
+    c.querySelector('#elsewhere').click();
+    expect(lookups.mock.calls.filter(([selector]) => selector === '.task-grid.edit-mode')).toHaveLength(0);
+    expect(c.querySelector('.task-grid').classList.contains('edit-mode')).toBe(true);
   });
 });
