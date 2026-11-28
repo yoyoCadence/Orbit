@@ -89,6 +89,25 @@ describe('HW-113 daily plan uses the effective date', () => {
   });
 });
 
+describe('BUG-205 the tour\'s task never stays in the stored plan', () => {
+  it('a save leaves it out, the rest in order', () => {
+    seedUser(0);
+    vi.setSystemTime(at(19, 12));
+    storage.saveDailyPlan(['a', 'tour-task', 'b']);
+
+    expect(storedPlan().taskIds).toEqual(['a', 'b']);
+    expect(storage.getDailyPlan()).toEqual(['a', 'b']);
+  });
+
+  it('a plan stored before this (with it) is read without it', () => {
+    seedUser(0);
+    vi.setSystemTime(at(19, 12));
+    localStorage.setItem('yoyo_dailyPlan', JSON.stringify({ date: '2026-10-19', taskIds: ['tour-task', 'a'] }));
+
+    expect(storage.getDailyPlan()).toEqual(['a']);
+  });
+});
+
 describe('HW-113 edits never carry a stale plan into the new day', () => {
   it('keeps the in-memory plan while it belongs to the current effective day', () => {
     seedUser(5);

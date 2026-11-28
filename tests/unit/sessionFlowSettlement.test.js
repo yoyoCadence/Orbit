@@ -93,6 +93,39 @@ describe('session settlement safety', () => {
     expect(loadSessionDeletionLog('owner-1')).toEqual({});
   });
 
+  it('BUG-205: the tour\'s practice task is saved but offered no proof photo (it would cover the tour\'s next steps)', () => {
+    vi.useFakeTimers();
+    try {
+      const practice = {
+        id: 'tour-task', name: '完成你的第一個任務', category: 'instant', impactType: 'task', taskNature: 'maintenance',
+        value: 'B', difficulty: 0.4, resistance: 1, dailyXpCap: 1, cooldownMinutes: 0, minEffectiveMinutes: 0,
+        isTutorial: true,
+      };
+      state.tasks = [practice];
+      window.completeInstant('tour-task');
+      vi.advanceTimersByTime(1000);
+      expect(state.sessions).toHaveLength(1);
+      expect(mocks.showProofSheet).not.toHaveBeenCalled();
+
+      // Rebuilt without the flag (an edit drops it, BUG-150): still the tour's.
+      state.tasks = [{ ...practice, isTutorial: undefined }];
+      state.sessions = [];
+      window.completeInstant('tour-task');
+      vi.advanceTimersByTime(1000);
+      expect(state.sessions).toHaveLength(1);
+      expect(mocks.showProofSheet).not.toHaveBeenCalled();
+
+      // Flagged under another id.
+      state.tasks = [{ ...practice, id: 'task-practice' }];
+      state.sessions = [];
+      window.completeInstant('task-practice');
+      vi.advanceTimersByTime(1000);
+      expect(mocks.showProofSheet).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('HW-112D (b): a session that was not saved is not offered a proof photo (#262 Codex P2)', () => {
     vi.useFakeTimers();
     try {
