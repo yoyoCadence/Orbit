@@ -62,9 +62,12 @@ const dayCycle = vi.hoisted(() => ({
   clearDayCycleModals: vi.fn(),
 }));
 
+// The effective day app.js sees; a test may move it on (reset in beforeEach).
+const clock = vi.hoisted(() => ({ today: null }));
+
 vi.mock('../../pwa/js/dayCycle.js', () => ({
   ...dayCycle,
-  eToday: () => TODAY,
+  eToday: () => clock.today ?? TODAY,
 }));
 
 const storage = vi.hoisted(() => ({
@@ -234,6 +237,7 @@ function recordListeners(target) {
 beforeEach(async () => {
   vi.resetModules();
   vi.clearAllMocks();
+  clock.today = null;
   // clearAllMocks() keeps queued *Once values: one a failed test never used
   // would reach the next test (#296 review).
   [...Object.values(db), auth.getSession, auth.signOut].forEach(fn => fn.mockReset());
@@ -1763,6 +1767,61 @@ describe('BUG-141：帳號沒有快取、雲端資料載入失敗之後', () => 
 
       expect(dayCycle.showDailyReport).toHaveBeenCalledTimes(1);   // only the first boot's
       expect(dayCycle.showMorningModal).toHaveBeenCalledTimes(1);
+    });
+
+    it('收起的是晨間視窗、換日後才改用訪客：從新的一天的日報問起（#316 review）', async () => {
+      await guestBootThenFailedLoad({
+        beforeFailure() {
+          document.getElementById('daily-report-modal').remove();
+          const morning = document.createElement('div');
+          morning.id = 'morning-modal';
+          document.body.appendChild(morning);
+        },
+      });
+      clock.today = '2026-08-27';                                   // the login screen stayed past the new day
+
+      window.continueAsGuest();
+      await flush();
+
+      expect(dayCycle.showDailyReport).toHaveBeenCalledTimes(2);
+      expect(dayCycle.showMorningModal).not.toHaveBeenCalled();
+      dayCycle.showDailyReport.mock.calls[1][0]();
+      expect(dayCycle.showMorningModal).toHaveBeenCalledTimes(1);
+    });
+
+    it('日報與晨間視窗都開著時失敗：再問的是日報（關掉後才問晨間狀態，#315 review）', async () => {
+      await guestBootThenFailedLoad({
+        beforeFailure() {
+          const morning = document.createElement('div');
+          morning.id = 'morning-modal';
+          document.body.appendChild(morning);
+        },
+      });
+      expect(document.getElementById('daily-report-modal')).toBeNull();
+      expect(document.getElementById('morning-modal')).toBeNull();
+
+      window.continueAsGuest();
+      await flush();
+
+      expect(dayCycle.showDailyReport).toHaveBeenCalledTimes(2);
+      expect(dayCycle.showMorningModal).not.toHaveBeenCalled();
+      dayCycle.showDailyReport.mock.calls[1][0]();
+      expect(dayCycle.showMorningModal).toHaveBeenCalledTimes(1);
+    });
+
+    it('在登入畫面再失敗一次（畫面上已沒有日報）：記號留著，改用訪客時照樣再問（#315 review）', async () => {
+      await guestBootThenFailedLoad();
+      db.loadFromRemote.mockRejectedValueOnce(new Error('500'));
+      await auth.callback('SIGNED_IN', sessionFor('owner-a'));
+      await flush();
+      expect(db.loadFromRemote).toHaveBeenCalledTimes(2);
+      expect(authFlow.showLoginScreen).toHaveBeenCalledTimes(2);   // once per failure
+
+      window.continueAsGuest();
+      await flush();
+
+      expect(dayCycle.showDailyReport).toHaveBeenCalledTimes(2);
+      expect(dayCycle.processYesterdayStreak).toHaveBeenCalledTimes(1);
     });
 
     it('改用訪客前換日計時器已掛上日報：不再疊一層', async () => {
