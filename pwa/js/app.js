@@ -47,6 +47,7 @@ import { sweepOrphanCloudProofs } from './platform/proofSweep.js';
 import { closeProofKeepSheet, showProofKeepSheet } from './ui/proofKeepSheet.js';
 import { isOnline, onConnectivityChange } from './platform/network.js';
 import { orbitWindowRuntimeDestroyer } from './personalSpace/v2/runtime/pixiSceneRuntime.js';
+import { forgetLocalSession } from './localSession.js';
 
 // Lazy proxy — tour.js is not imported at startup; loaded on first call.
 window.startTour = () =>
@@ -471,6 +472,17 @@ function bootWithLocalState() {
 }
 
 window.continueAsGuest = function () {
+  // BUG-141: an account whose load failed here still has its session on this
+  // device. A guest ends it (on this device only), or the next launch would
+  // load that account and replace the guest's data with its own.
+  const endedOwnerId = hasStoredSession() ? _endAccountSessionForGuest() : null;
+  // A sign-in still finishing (its Pro refresh) has already stored that
+  // account's data here: it goes with the account, as on a sign-out, and the
+  // guest starts afresh (#313 review).
+  if (endedOwnerId && storage.getUser()?.id === endedOwnerId) {
+    signOutProofCleanup({ authOwnerId: endedOwnerId, sessionsOwnerId: endedOwnerId, sessions: storage.getSessions() });
+    storage.clearAll();
+  }
   hideLoading();
   document.getElementById('login-screen').classList.add('hidden');
   loadStateFromStorage();
@@ -537,6 +549,17 @@ async function loadAndStart(session) {
   // absent or foreign-owner cache fails closed and waits for a retry.
   const hasCurrentOwnerCache = state.user?.id === session.user.id;
   if (!remoteLoaded && !hasCurrentOwnerCache) {
+    // BUG-141: nothing of this account is shown, so forget it here: a
+    // reconnect must not sync it behind the login screen (or under a guest),
+    // and signing in again must load it (its SIGNED_IN was ignored while
+    // _currentSession still held it). Its stored session stays, so a reload
+    // retries; the guest path ends it. A cached boot of another owner may have
+    // left its daily report or morning modal up, over the login screen and its
+    // guest button (#313 review; its proof photos closed at the top). Only
+    // those: clearDayCycleModals() takes every overlay, the password-reset
+    // form of a recovery link among them (#313 re-review).
+    _forgetCurrentAccount();
+    document.querySelectorAll(DAY_CYCLE_OVERLAYS).forEach(overlay => overlay.remove());
     showLoginScreen();
     showToast('無法載入雲端資料，請檢查連線後重新整理。');
     return;
@@ -608,6 +631,36 @@ function _askStreakUnlock(ownerId, isCurrent) {
       if (!isTextInputActive()) renderPage(currentHash());
     },
   });
+}
+
+// What dayCycle.js mounts on <body> (its mountModal ids, the shield confirm).
+// Listed here: app.js may not import a new export of dayCycle.js (INFRA-105).
+const DAY_CYCLE_OVERLAYS = [
+  '#daily-report-modal', '#morning-modal', '#streak-unlock-modal', 'body > .shield-confirm-overlay',
+].join(', ');
+
+// BUG-141: stops treating the current session as the account shown here,
+// without signing it out (loadAndStart's fail-closed return, the guest path).
+function _forgetCurrentAccount() {
+  authOperationGuard.invalidate();
+  _currentSession = null;
+  _clearSyncStatus();
+}
+
+// Set while the guest path ends the account's session: the SIGNED_OUT it
+// causes in this tab is not a sign-out of what is shown (supabase-js notifies
+// before signOut() resolves; every call waits for the client's start-up, so
+// the event is never queued past it).
+let _guestEndingSession = false;
+/** @returns {string|null} the account it stopped treating as current, if any */
+function _endAccountSessionForGuest() {
+  const ownerId = _currentSession?.user?.id ?? null;
+  _forgetCurrentAccount();
+  _guestEndingSession = true;
+  forgetLocalSession()
+    .catch(error => console.warn('Could not end the account session for the guest:', error))
+    .finally(() => { _guestEndingSession = false; });
+  return ownerId;
 }
 
 function handleSignOut() {
@@ -957,6 +1010,22 @@ async function init() {
     ) {
       await loadAndStart(session);
     } else if (event === 'SIGNED_OUT') {
+      // BUG-141: the guest path ended the session itself; the guest keeps
+      // this device's data and the page it is on.
+      if (_guestEndingSession) return;
+      // Another tab's guest path ended an account this tab does not show
+      // either (its load failed here too): what is stored here is a guest's,
+      // with no copy in the cloud, and stays. A synced account's cache still
+      // goes (a cached boot whose session ended before getSession()), and so
+      // does everything when this tab shows an account (#313 review).
+      // That holds while this tab is loading the account again (a refocus or
+      // a new tab retries it): the stored user is not that account; the load
+      // is dropped with it (#313 re-review).
+      const storedId = storage.getUser()?.id ?? null;
+      if (storedId && storedId !== _currentSession?.user?.id && !_isSyncedAccount(storedId)) {
+        _forgetCurrentAccount();
+        return;
+      }
       handleSignOut();
     }
   });

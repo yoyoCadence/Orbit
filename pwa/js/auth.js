@@ -1,5 +1,6 @@
 import { supabase } from './supabase.js';
 import { isOnline } from './platform/network.js';
+import { forgetLocalSession } from './localSession.js';
 
 export async function signUp(email, password) {
   const { data, error } = await supabase.auth.signUp({ email, password });
@@ -46,19 +47,6 @@ export async function signOut() {
   if (!error) return null;
   await forgetLocalSession();
   return error;
-}
-
-async function forgetLocalSession() {
-  // The SDK's own storage (localStorage, or memory when that is unavailable).
-  try { await supabase.auth.storage.removeItem(supabase.auth.storageKey); } catch { /* already gone */ }
-  // With nothing stored the SDK makes no request and runs its own cleanup:
-  // the `-user` and PKCE entries, a cached refresh failure, and SIGNED_OUT.
-  try {
-    const { error } = await supabase.auth.signOut({ scope: 'local' });
-    return error ?? null;
-  } catch (e) {
-    return e;
-  }
 }
 
 export async function getSession() {
