@@ -572,8 +572,13 @@ async function loadAndStart(session) {
     // form of a recovery link among them (#313 re-review).
     _forgetCurrentAccount();
     const dayCycleOverlays = [...document.querySelectorAll(DAY_CYCLE_OVERLAYS)];
-    if (dayCycleOverlays.some(overlay => overlay.id === 'daily-report-modal')) _dayCycleInterrupted = { at: 'report', day: eToday() };
-    else if (dayCycleOverlays.some(overlay => overlay.id === 'morning-modal')) _dayCycleInterrupted = { at: 'morning', day: eToday() };
+    const report = dayCycleOverlays.find(overlay => overlay.id === 'daily-report-modal');
+    const morning = dayCycleOverlays.find(overlay => overlay.id === 'morning-modal');
+    // A report is asked again whatever the day. A morning modal keeps the day
+    // it asked about (its data-day, BUG-204): one left open from an earlier
+    // day is that day's, not the day of the failure.
+    if (report) _dayCycleInterrupted = { at: 'report' };
+    else if (morning) _dayCycleInterrupted = { at: 'morning', day: morning.dataset.day || eToday() };
     dayCycleOverlays.forEach(overlay => overlay.remove());
     showLoginScreen();
     showToast('無法載入雲端資料，請檢查連線後重新整理。');
@@ -649,8 +654,8 @@ function _askStreakUnlock(ownerId, isCurrent) {
 }
 
 // BUG-201: which part of this launch's day rollover the fail-closed return
-// took down (`at`: 'report' | 'morning'), and on which day, for the guest
-// path to ask again.
+// took down (`at`: 'report' | 'morning'; for the morning modal, the `day` it
+// asked about), for the guest path to ask again.
 let _dayCycleInterrupted = null;
 
 // What dayCycle.js mounts on <body> (its mountModal ids, the shield confirm).

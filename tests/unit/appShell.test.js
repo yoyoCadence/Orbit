@@ -1769,6 +1769,42 @@ describe('BUG-141：帳號沒有快取、雲端資料載入失敗之後', () => 
       expect(dayCycle.showMorningModal).toHaveBeenCalledTimes(1);
     });
 
+    it('收起的是前一天留下沒回答的晨間視窗（換日計時器還沒檢查就失敗）：從今天的日報問起（BUG-204）', async () => {
+      await guestBootThenFailedLoad({
+        beforeFailure() {
+          document.getElementById('daily-report-modal').remove();
+          const morning = document.createElement('div');
+          morning.id = 'morning-modal';
+          morning.dataset.day = YESTERDAY;                          // mounted yesterday, never answered
+          document.body.appendChild(morning);
+        },
+      });
+
+      window.continueAsGuest();
+      await flush();
+
+      expect(dayCycle.showDailyReport).toHaveBeenCalledTimes(2);
+      expect(dayCycle.showMorningModal).not.toHaveBeenCalled();
+    });
+
+    it('收起的是今天的晨間視窗：只再問晨間狀態（BUG-204 的對照）', async () => {
+      await guestBootThenFailedLoad({
+        beforeFailure() {
+          document.getElementById('daily-report-modal').remove();
+          const morning = document.createElement('div');
+          morning.id = 'morning-modal';
+          morning.dataset.day = TODAY;
+          document.body.appendChild(morning);
+        },
+      });
+
+      window.continueAsGuest();
+      await flush();
+
+      expect(dayCycle.showDailyReport).toHaveBeenCalledTimes(1);   // only the first boot's
+      expect(dayCycle.showMorningModal).toHaveBeenCalledTimes(1);
+    });
+
     it('收起的是晨間視窗、換日後才改用訪客：從新的一天的日報問起（#316 review）', async () => {
       await guestBootThenFailedLoad({
         beforeFailure() {

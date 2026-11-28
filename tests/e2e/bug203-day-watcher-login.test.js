@@ -153,6 +153,24 @@ test.describe('BUG-203 cross-day watcher after a failed account load', () => {
     await expect(report(page)).toHaveCount(0);
   });
 
+  test('morning state left from 11/26, the load fails on 11/27 before the watcher looks: that day starts from its report (BUG-204)', async ({ page }) => {
+    await openGuest(page, '2026-11-25');
+    await page.locator('#rpt-next-btn').click();
+    await expect(morning(page)).toHaveCount(1);              // asked on 11/26, not answered
+    // Resumed after midnight: the clock moves on, no timer has fired yet.
+    await page.clock.setSystemTime(new Date('2026-11-27T00:00:10'));
+    await failAccountLoad(page);
+    await expect(morning(page)).toHaveCount(0);
+
+    await continueAsGuest(page);
+    await expect(report(page)).toHaveCount(1);
+    await expect(morning(page)).toHaveCount(0);
+    await page.locator('#rpt-next-btn').click();
+    await expect(morning(page)).toHaveCount(1);
+    await ticks(page, 2);
+    await expect(report(page)).toHaveCount(0);
+  });
+
   test('a report left open from 11/26 is replaced by 11/27\'s at midnight (#316 review)', async ({ page }) => {
     await openGuest(page, '2026-11-25');
     await expect(report(page)).toHaveCount(1);
