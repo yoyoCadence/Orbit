@@ -13,7 +13,7 @@
 // tap; and the stored plan kept its id.
 
 import { test, expect } from '@playwright/test';
-import { mockSupabase } from './support/seed.js';
+import { mockSupabase, seedStorage, INSTANT_TASK, TODAY } from './support/seed.js';
 
 const TOUR_TASK = '[data-task-id="tour-task"]';
 
@@ -162,6 +162,29 @@ test.describe('TEST-200 onboarding tour', () => {
     await expect(page.locator('.tour-counter')).toHaveText('3 / 6');
 
     await page.locator(`#plan-list .plan-card${TOUR_TASK}`).click();
+    await expect(page.locator('.tour-counter')).toHaveText('4 / 6');
+  });
+
+  test('restarted at the day\'s cap (3 practice completions today): step 3 goes on, no dead end (#318 Codex P2)', async ({ page }) => {
+    const practice = n => ({
+      id: `practice-${n}`, taskId: 'tour-task', taskName: '完成你的第一個任務', taskEmoji: '⭐',
+      date: TODAY, startedAt: `${TODAY}T08:0${n}:00.000Z`, completedAt: `${TODAY}T08:0${n}:00.000Z`,
+      durationMinutes: 0, result: 'instant', baseXP: 10, finalXP: n === 1 ? 1 : 0, energyCost: 0, energyGain: 0,
+      impactType: 'task', value: 'B',
+    });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await mockSupabase(page);
+    await page.addInitScript(() => localStorage.setItem('yoyo_tourDone', '1'));
+    await seedStorage(page, [INSTANT_TASK], [1, 2, 3].map(practice));
+    await page.goto('/index.html#settings');
+    await expect(page.locator('#main-app')).toBeVisible();
+
+    await page.locator('#tour-btn').click();
+    await page.locator('.tour-next').click();
+    await page.locator(`.task-card${TOUR_TASK}`).click();
+    await expect(page.locator('.tour-counter')).toHaveText('3 / 6');
+    await expect(page.locator(`#plan-list .plan-card${TOUR_TASK} .plan-count-badge`)).toHaveText('3');
+    // A tap can add nothing more today ("已達上限"): the step goes on by itself.
     await expect(page.locator('.tour-counter')).toHaveText('4 / 6');
   });
 

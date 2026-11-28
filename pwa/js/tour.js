@@ -12,6 +12,8 @@
 
 import { state } from './state.js';
 import { renderPage, currentHash } from './router.js';
+import { getDailyTaskCount } from './engine.js';
+import { effectiveToday } from './utils.js';
 
 const DONE_KEY = 'yoyo_tourDone';
 
@@ -102,8 +104,9 @@ const STEPS = [
     // BUG-205: restarted the same day, the badge is already there (today's
     // count) and the step went on without the user completing anything. A
     // completion in this run is what counts (also one tapped while step 2
-    // was still showing its success state).
-    doneWhen: () => _practiceRuns() > _practiceRunsAtStart,
+    // was still showing its success state). At the day's cap no completion
+    // can be added: the badge is enough, as before (#318 Codex P2).
+    doneWhen: () => _practiceRuns() > _practiceRunsAtStart || _practiceCappedToday(),
     cleanup:  true,
   },
   // 2 — week review
@@ -144,6 +147,12 @@ let _practiceRunsAtStart = 0;
 
 /** Completions of the practice task recorded so far (any day). */
 const _practiceRuns = () => (state.sessions || []).filter(s => s.taskId === TUTORIAL_TASK_ID).length;
+
+// completeInstant (sessionFlow.js) records a task at most 3 times a day.
+const DAILY_COMPLETION_CAP = 3;
+const _practiceCappedToday = () => getDailyTaskCount(
+  state.sessions || [], TUTORIAL_TASK_ID, effectiveToday(state.user?.newDayHour ?? 5),
+) >= DAILY_COMPLETION_CAP;
 
 // ─── Public API ──────────────────────────────────────────────────────────────
 

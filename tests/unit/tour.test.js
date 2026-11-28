@@ -95,6 +95,7 @@ beforeEach(async () => {
   mockState.tasks = [{ id: 't1', name: 'Task' }];
   mockState.dailyPlan = [];
   mockState.sessions = [];
+  mockState.user = null;
   // Two frames after navigating: run them at once.
   vi.stubGlobal('requestAnimationFrame', cb => { cb(0); return 0; });
   window.navigate = vi.fn(page => { if (page === 'home') renderHome(); });
@@ -288,6 +289,39 @@ describe('略過、跳過與重新開始', () => {
     await settleObserver();
     vi.advanceTimersByTime(600);
     expect(title()).toBe('週回顧');
+  });
+
+  it('BUG-205：今天已完成 3 次（completeInstant 的上限，再點也不會記）：計畫卡有次數就換下一步（#318 Codex P2）', async () => {
+    const today = new Date().toLocaleDateString('sv');
+    mockState.user = { newDayHour: 0 };
+    mockState.sessions = [1, 2, 3].map(() => ({ taskId: TUTORIAL, date: today, result: 'instant' }));
+    tour.startTour();
+    clickNext();
+    addPlanCard();
+    await settleObserver();
+    vi.advanceTimersByTime(600);
+    await settleObserver();
+    vi.advanceTimersByTime(600);
+    expect(title()).toBe('週回顧');
+  });
+
+  it('BUG-205：今天只有 2 次有效（另一筆無效、一筆是別天的，都不算上限）：仍等這一次完成', async () => {
+    const today = new Date().toLocaleDateString('sv');
+    mockState.user = { newDayHour: 0 };
+    mockState.sessions = [
+      { taskId: TUTORIAL, date: today, result: 'instant' },
+      { taskId: TUTORIAL, date: today, result: 'instant' },
+      { taskId: TUTORIAL, date: today, result: 'invalid' },
+      { taskId: TUTORIAL, date: '2000-01-01', result: 'instant' },
+    ];
+    tour.startTour();
+    clickNext();
+    addPlanCard();
+    await settleObserver();
+    vi.advanceTimersByTime(600);
+    await settleObserver();
+    vi.advanceTimersByTime(600);
+    expect(title()).toBe('完成任務 ✓');
   });
 
   it('BUG-205：第 2 步還在顯示時就點了計畫卡完成：第 3 步一出現就換下一步（不必再完成一次）', async () => {
