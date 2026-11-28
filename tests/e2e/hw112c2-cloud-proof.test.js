@@ -11,6 +11,13 @@
  * Runs the real vendored Supabase client against a stubbed host, as HW-112C1
  * does: reads of tables fail (500), so the app keeps the cached user and
  * sessions; Storage downloads are answered and counted.
+ *
+ * TEST-019: a launch can boot twice — the cached user, then a SIGNED_IN that
+ * lands before getSession() resolves (BUG-106) — and the second boot shows
+ * Home again, replacing the rows. `bootSettled()` waits for it: whichever path
+ * loads, it ends with the failed sync's banner, and with `trialStartedAt` set
+ * (as on any account that has signed in) the second boot's redraw follows that
+ * banner in the same task, with no start_trial call in between.
  */
 
 import { Buffer } from 'node:buffer';
@@ -50,6 +57,8 @@ const rowOf = (page, sessionId) => page.locator('.log-item', {
   has: page.locator(`.session-del-btn[data-session-id="${sessionId}"]`),
 });
 
+const bootSettled = page => expect(page.locator('#sync-banner')).toHaveClass('sync-error', { timeout: 8000 });
+
 test.describe('HW-112C2a cloud proof photos on another device', () => {
   test('shows the account\'s cloud photo, keeps it on this device, and forgets it on sign-out', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -74,7 +83,8 @@ test.describe('HW-112C2a cloud proof photos on another device', () => {
       });
     });
 
-    await seedStorage(page, [FOCUS_TASK], [session(WITH_PHOTO, 30), session(WITHOUT_PHOTO, 20)], { ...GUEST_USER, id: USER_ID });
+    const user = { ...GUEST_USER, id: USER_ID, trialStartedAt: new Date(Date.now() - 60 * 86_400_000).toISOString() };
+    await seedStorage(page, [FOCUS_TASK], [session(WITH_PHOTO, 30), session(WITHOUT_PHOTO, 20)], user);
     await page.addInitScript(([key, userId]) => {
       if (localStorage.getItem(key)) return;
       localStorage.setItem(key, JSON.stringify({
@@ -86,6 +96,7 @@ test.describe('HW-112C2a cloud proof photos on another device', () => {
 
     await page.goto('/');
     await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
+    await bootSettled(page);
     const photoPath = `/storage/v1/object/proofs/${USER_ID}/${WITH_PHOTO}.jpg`;
     const missingPath = `/storage/v1/object/proofs/${USER_ID}/${WITHOUT_PHOTO}.jpg`;
 
@@ -113,6 +124,7 @@ test.describe('HW-112C2a cloud proof photos on another device', () => {
     // After a reload it comes from this device's cache, not from Storage.
     await page.reload();
     await page.waitForSelector('#main-app:not(.hidden)', { timeout: 8000 });
+    await bootSettled(page);
     await rowOf(page, WITH_PHOTO).scrollIntoViewIfNeeded();
     await expect(rowOf(page, WITH_PHOTO).locator('.session-proof-thumb')).toHaveAttribute('src', /^blob:/, { timeout: 8000 });
     await expect(page.locator('[data-orbit-window] [data-achievement-photo]').first())
