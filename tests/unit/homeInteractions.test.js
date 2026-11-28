@@ -143,7 +143,10 @@ function touch(el, type, x, y) {
 }
 
 beforeEach(() => {
-  // A drag's 50 ms reset may still be pending on real timers.
+  // TEST-028: fake timers in every test, so a drag's 50 ms reset (and the
+  // Orbit Window's deferred start) never waits on real timers: it would fire
+  // after the file, when jsdom's `window` is gone.
+  vi.useFakeTimers();
   window._isDragging = false;
   window.HTMLElement.prototype.setPointerCapture = vi.fn();
   vi.clearAllMocks();
