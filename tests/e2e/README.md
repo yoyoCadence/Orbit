@@ -36,6 +36,9 @@ npx playwright test --repeat-each=3 <file>                 # 檢查是否穩定
 | `infra114-no-eval.test.js` | CSP 沒有 `'unsafe-eval'`：有 Pixi 的 unsafe-eval 外掛時場景 `ready`、沒有違規、沒有全域 `PIXI`，場景以外的 Pixi 功能（文字、filter、mesh、RenderTexture、ParticleContainer）也不需要 eval；把外掛換成空的模組時瀏覽器擋下 eval、場景退回 poster（INFRA-114） |
 | `infra115-pdf.test.js` | 成長報告 PDF：以 devDependency 的 jsPDF／html2canvas 回應 cdnjs 網址，下載多頁 PDF（jsPDF 4.2.1）、沒有 CSP 違規；檔案與 SRI 不符時拒絕並提示；**只在 CI**（`process.env.CI`）以網路取得 cdnjs 上的檔案，比對 SRI（INFRA-115） |
 | `bug116-signout.test.js` | 離線且 token 過期時登出：立即回到登入畫面、刪除裝置上的 Supabase session、不發任何 request。用真的 Supabase client（不 `mockSupabase`），Supabase host 全部以 routing 擋下（BUG-116） |
+| `bug203-day-watcher-login.test.js` | 帳號的雲端資料載入失敗、回到登入畫面後：換日計時器不在登入畫面上掛日報，改用訪客後才問一次；被收起的日報／晨間視窗在隔天改用訪客時從日報問起；前一天留下的日報在午夜換成今天的。可登入的 Supabase stub＋`page.clock`（BUG-203、BUG-204） |
+| `test200-tour.test.js` | 新手導覽在小手機、手機與桌面尺寸：每一步聚光的目標在畫面上、沒被蓋住、提示框沒擋到它；跳過、重新開始、同一天重新開始、今天已達完成上限（TEST-200、BUG-205） |
+| `test201-offline-sync.test.js` | 帳號離線時完成任務：排隊、「N 筆待同步」、不送出；連線後送出一次。離線重新開啟（service worker）佇列還在；連線但伺服器失敗時「同步暫停 · N 筆待同步」，下次連線送出。真的 Supabase client 對一個小的 PostgREST 假伺服器（TEST-201） |
 
 `support/`：
 
