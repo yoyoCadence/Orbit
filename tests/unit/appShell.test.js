@@ -1716,6 +1716,7 @@ describe('BUG-141：帳號沒有快取、雲端資料載入失敗之後', () => 
 
       expect(dayCycle.showDailyReport).toHaveBeenCalledTimes(2);
       expect(dayCycle.processYesterdayStreak).toHaveBeenCalledTimes(1);   // not run twice
+      expect(dayCycle.checkWeeklyBonus).toHaveBeenCalledTimes(1);
       // Closing the report asks the morning state, as on a first boot.
       dayCycle.showDailyReport.mock.calls[1][0]();
       expect(dayCycle.showMorningModal).toHaveBeenCalledTimes(1);
@@ -1735,17 +1736,100 @@ describe('BUG-141：帳號沒有快取、雲端資料載入失敗之後', () => 
       expect(dayCycle.showDailyReport).not.toHaveBeenCalled();
     });
 
-    it('畫面上還有晨間視窗時不再疊一層', async () => {
+    /** A cached guest boot with today unasked, then an account's load fails here. */
+    async function guestBootThenFailedLoad({ beforeFailure } = {}) {
       await bootCached('guest-1', { energy: { currentEnergy: 100, maxEnergy: 100, lastResetDate: YESTERDAY } });
-      document.getElementById('daily-report-modal')?.remove();
-      const morning = document.createElement('div');
-      morning.id = 'morning-modal';
-      document.body.appendChild(morning);
+      beforeFailure?.();
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+      db.loadFromRemote.mockRejectedValueOnce(new Error('500'));
+      presence.stored = true;
+      await auth.callback('SIGNED_IN', sessionFor('owner-a'));
+      await flush();
+    }
+
+    it('收起的是晨間視窗（日報已關掉）：只再問晨間狀態', async () => {
+      await guestBootThenFailedLoad({
+        beforeFailure() {
+          document.getElementById('daily-report-modal').remove();
+          const morning = document.createElement('div');
+          morning.id = 'morning-modal';
+          document.body.appendChild(morning);
+        },
+      });
+      expect(document.getElementById('morning-modal')).toBeNull();
+
+      window.continueAsGuest();
+      await flush();
+
+      expect(dayCycle.showDailyReport).toHaveBeenCalledTimes(1);   // only the first boot's
+      expect(dayCycle.showMorningModal).toHaveBeenCalledTimes(1);
+    });
+
+    it('改用訪客前換日計時器已掛上日報：不再疊一層', async () => {
+      await guestBootThenFailedLoad();
+      const report = document.createElement('div');
+      report.id = 'daily-report-modal';
+      document.body.appendChild(report);
 
       window.continueAsGuest();
       await flush();
 
       expect(dayCycle.showDailyReport).toHaveBeenCalledTimes(1);
+    });
+
+    it('只問一次：之後再開機（同一次開啟）不再問', async () => {
+      await guestBootThenFailedLoad();
+      window.continueAsGuest();
+      await flush();
+      expect(dayCycle.showDailyReport).toHaveBeenCalledTimes(2);
+      document.getElementById('daily-report-modal').remove();   // closed, morning not answered
+
+      window.continueAsGuest();
+      await flush();
+
+      expect(dayCycle.showDailyReport).toHaveBeenCalledTimes(2);
+    });
+
+    it('沒有被 fail-closed 收起過：重複的開機照舊不問（BUG-106 的帳號路徑，#315 review）', async () => {
+      // The cached boot asked; the user closed it, then a stale pull left
+      // yesterday's energy: the early SIGNED_IN's repeat boot does not ask.
+      await bootCached('owner-a', { energy: { currentEnergy: 100, maxEnergy: 100, lastResetDate: YESTERDAY } });
+      document.getElementById('daily-report-modal').remove();
+      seedCachedUser('owner-a', { energy: { currentEnergy: 100, maxEnergy: 100, lastResetDate: YESTERDAY } });
+
+      await auth.callback('SIGNED_IN', sessionFor('owner-a'));
+      await flush();
+
+      expect(dayCycle.showDailyReport).toHaveBeenCalledTimes(1);
+      expect(dayCycle.showMorningModal).not.toHaveBeenCalled();
+    });
+
+    it('另一個分頁已經回答了今天的狀態（共用的儲存）：不再問', async () => {
+      await guestBootThenFailedLoad();
+      cache.energy = { currentEnergy: 90, maxEnergy: 100, lastResetDate: TODAY };
+
+      window.continueAsGuest();
+      await flush();
+
+      expect(dayCycle.showDailyReport).toHaveBeenCalledTimes(1);
+      expect(dayCycle.showMorningModal).not.toHaveBeenCalled();
+    });
+
+    it('fail-closed 之後登入另一個帳號：記號清掉，那個帳號的重複開機不問', async () => {
+      await guestBootThenFailedLoad();
+      db.loadFromRemote.mockImplementationOnce(async () => { seedCachedUser('owner-b', { energy: { currentEnergy: 100, maxEnergy: 100, lastResetDate: YESTERDAY } }); });
+      await auth.callback('SIGNED_IN', sessionFor('owner-b'));
+      await flush();
+      expect(dayCycle.showDailyReport).toHaveBeenCalledTimes(2);    // owner-b's own first boot
+      document.getElementById('daily-report-modal').remove();
+      presence.stored = false;                                      // a repeat boot of the same data
+
+      window.continueAsGuest();
+      await flush();
+
+      expect(dayCycle.processYesterdayStreak).toHaveBeenCalledTimes(2);   // guest-1's, owner-b's
+      expect(dayCycle.showDailyReport).toHaveBeenCalledTimes(2);
+      expect(dayCycle.showMorningModal).not.toHaveBeenCalled();
     });
   });
 
@@ -1770,9 +1854,22 @@ describe('BUG-141：帳號沒有快取、雲端資料載入失敗之後', () => 
       void signingIn;
     });
 
+    it('這個分頁開著訪客的設定畫面：不切到登入畫面（#315 review）', async () => {
+      await failedLoad();
+      window.continueAsGuest();                    // no user: the setup screen
+      await flush();
+      expect(document.getElementById('setup-screen').classList.contains('hidden')).toBe(false);
+      cache.user = makeUser('guest-1');
+
+      await auth.callback('SIGNED_OUT', null);
+
+      expect(authFlow.showLoginScreen).toHaveBeenCalledTimes(2);
+      expect(document.getElementById('setup-screen').classList.contains('hidden')).toBe(false);
+    });
+
     it('這個分頁顯示著訪客的畫面：不切到登入畫面', async () => {
       await failedLoad();
-      cache.user = makeUser('guest-1');
+      seedCachedUser('guest-1');                 // the guest's user and tasks
       window.continueAsGuest();
       await flush();
 
