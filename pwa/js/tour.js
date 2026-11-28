@@ -106,7 +106,7 @@ const STEPS = [
     // completion in this run is what counts (also one tapped while step 2
     // was still showing its success state). At the day's cap no completion
     // can be added: the badge is enough, as before (#318 Codex P2).
-    doneWhen: () => _practiceRuns() > _practiceRunsAtStart || _practiceCappedToday(),
+    doneWhen: () => _practiceIds().some(id => !_practiceIdsAtStart.has(id)) || _practiceCappedToday(),
     cleanup:  true,
   },
   // 2 — week review
@@ -143,10 +143,16 @@ let _tooltip  = null;
 let _observer = null;
 let _advanceTimer = null;
 let _generation = 0;   // bumped by _clear(): a step drawn after it is stale
-let _practiceRunsAtStart = 0;
+let _practiceIdsAtStart = new Set();
 
-/** Completions of the practice task recorded so far (any day). */
-const _practiceRuns = () => (state.sessions || []).filter(s => s.taskId === TUTORIAL_TASK_ID).length;
+/**
+ * The practice task's sessions recorded so far (any day). A new id, not a
+ * higher count: an earlier one undone (or rewritten by a sync) meanwhile
+ * must not hide this run's completion (#318 review).
+ */
+const _practiceIds = () => (state.sessions || [])
+  .filter(s => s.taskId === TUTORIAL_TASK_ID)
+  .map(s => s.id);
 
 // completeInstant (sessionFlow.js) records a task at most 3 times a day.
 const DAILY_COMPLETION_CAP = 3;
@@ -161,7 +167,7 @@ export function startTour() {
   _removeTutorialTask();
   _clear();
   _step = 0;
-  _practiceRunsAtStart = _practiceRuns();
+  _practiceIdsAtStart = new Set(_practiceIds());
   _whenNoBlockingModal(_showStep);
 }
 
@@ -289,12 +295,14 @@ function _renderStep(s) {
   // Set up auto-advance observer for interactive steps
   if (s.waitFor) {
     _watchFor(s.waitFor, s.doneWhen, () => {
-      if (s.cleanup) _removeTutorialTask();
       _step++;
       // Small delay so the user sees the success state (e.g. count badge).
       // The step stays up meanwhile: skipping it cancels this (BUG-144).
+      // The practice task leaves only when the tour moves on: skipped in
+      // these 600 ms, the skip still finds it and redraws (#318 review).
       _advanceTimer = setTimeout(() => {
         _advanceTimer = null;
+        if (s.cleanup) _removeTutorialTask();
         _showStep();
       }, 600);
     });

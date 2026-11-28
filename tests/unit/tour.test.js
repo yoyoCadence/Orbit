@@ -20,6 +20,13 @@ vi.mock('../../pwa/js/router.js', () => router);
 const TUTORIAL = 'tour-task';
 let tour;
 
+const todayStr = () => new Date().toLocaleDateString('sv');
+let sessionSeq = 0;
+/** A completion of the practice task, as sessionFlow.js records it. */
+const practiceSession = (extra = {}) => ({
+  id: `practice-${++sessionSeq}`, taskId: TUTORIAL, date: todayStr(), result: 'instant', ...extra,
+});
+
 const tooltip = () => document.querySelector('.tour-tooltip');
 const title = () => tooltip()?.querySelector('.tour-title')?.textContent ?? null;
 const counter = () => tooltip()?.querySelector('.tour-counter')?.textContent ?? null;
@@ -46,8 +53,10 @@ function renderHome() {
     ${mockState.tasks.map(t => `<div class="task-card" data-task-id="${t.id}"></div>`).join('')}
     <div id="plan-list">
       ${mockState.dailyPlan.map(id => `<div class="plan-card" data-task-id="${id}">${
-    // Home shows today's count on the card once there is one.
-    mockState.sessions.some(x => x.taskId === id) ? '<span class="plan-count-badge"></span>' : ''
+    // Home shows today's count on the card once there is one (home.js: today's
+    // sessions that are not invalid).
+    mockState.sessions.some(x => x.taskId === id && x.date === todayStr() && x.result !== 'invalid')
+      ? '<span class="plan-count-badge"></span>' : ''
   }</div>`).join('')}
     </div>
   `;
@@ -66,7 +75,7 @@ function addPlanCard() {
  * shows its count badge (on the card drawn now).
  */
 function completePlanCard() {
-  mockState.sessions = [...mockState.sessions, { taskId: TUTORIAL }];
+  mockState.sessions = [...mockState.sessions, practiceSession()];
   const card = document.querySelector(`#plan-list .plan-card[data-task-id="${TUTORIAL}"]`);
   if (card.querySelector('.plan-count-badge')) { renderHome(); return; }
   const badge = document.createElement('span');
@@ -270,7 +279,7 @@ describe('略過、跳過與重新開始', () => {
   });
 
   it('BUG-205：同一天重新開始、計畫卡上已有今天的次數：第 3 步等到這一次完成才換下一步', async () => {
-    mockState.sessions = [{ taskId: TUTORIAL }];        // the first run, earlier today
+    mockState.sessions = [practiceSession()];           // the first run, earlier today
     tour.startTour();
     clickNext();
     addPlanCard();
@@ -292,9 +301,8 @@ describe('略過、跳過與重新開始', () => {
   });
 
   it('BUG-205：今天已完成 3 次（completeInstant 的上限，再點也不會記）：計畫卡有次數就換下一步（#318 Codex P2）', async () => {
-    const today = new Date().toLocaleDateString('sv');
     mockState.user = { newDayHour: 0 };
-    mockState.sessions = [1, 2, 3].map(() => ({ taskId: TUTORIAL, date: today, result: 'instant' }));
+    mockState.sessions = [1, 2, 3].map(() => practiceSession());
     tour.startTour();
     clickNext();
     addPlanCard();
@@ -306,13 +314,12 @@ describe('略過、跳過與重新開始', () => {
   });
 
   it('BUG-205：今天只有 2 次有效（另一筆無效、一筆是別天的，都不算上限）：仍等這一次完成', async () => {
-    const today = new Date().toLocaleDateString('sv');
     mockState.user = { newDayHour: 0 };
     mockState.sessions = [
-      { taskId: TUTORIAL, date: today, result: 'instant' },
-      { taskId: TUTORIAL, date: today, result: 'instant' },
-      { taskId: TUTORIAL, date: today, result: 'invalid' },
-      { taskId: TUTORIAL, date: '2000-01-01', result: 'instant' },
+      practiceSession(),
+      practiceSession(),
+      practiceSession({ result: 'invalid' }),
+      practiceSession({ date: '2000-01-01' }),
     ];
     tour.startTour();
     clickNext();
@@ -346,7 +353,7 @@ describe('略過、跳過與重新開始', () => {
   });
 
   it('BUG-205：第 3 步時完成的是別的任務（點擊穿過遮罩）：不換下一步', async () => {
-    mockState.sessions = [{ taskId: TUTORIAL }];        // restarted the same day: its badge is up
+    mockState.sessions = [practiceSession()];           // restarted the same day: its badge is up
     tour.startTour();
     clickNext();
     addPlanCard();
@@ -354,7 +361,7 @@ describe('略過、跳過與重新開始', () => {
     vi.advanceTimersByTime(600);
     expect(title()).toBe('完成任務 ✓');
 
-    mockState.sessions = [...mockState.sessions, { taskId: 't1' }];
+    mockState.sessions = [...mockState.sessions, { id: 'other-1', taskId: 't1', date: todayStr(), result: 'instant' }];
     renderHome();
     await settleObserver();
     vi.advanceTimersByTime(600);
@@ -368,7 +375,7 @@ describe('略過、跳過與重新開始', () => {
     await settleObserver();
     vi.advanceTimersByTime(600);
 
-    mockState.sessions = [...mockState.sessions, { taskId: TUTORIAL }];
+    mockState.sessions = [...mockState.sessions, practiceSession()];
     document.getElementById('content').appendChild(document.createElement('div'));   // some other change
     await settleObserver();
     vi.advanceTimersByTime(600);
@@ -378,6 +385,39 @@ describe('略過、跳過與重新開始', () => {
     await settleObserver();
     vi.advanceTimersByTime(600);
     expect(title()).toBe('週回顧');
+  });
+
+  it('同一天重新開始，第 3 步時前一次的紀錄被復原（首頁最近紀錄，點擊穿過遮罩）：這一次完成仍算（#318 review）', async () => {
+    mockState.sessions = [practiceSession()];
+    tour.startTour();
+    clickNext();
+    addPlanCard();
+    await settleObserver();
+    vi.advanceTimersByTime(600);
+    expect(title()).toBe('完成任務 ✓');
+
+    mockState.sessions = [];                            // the earlier one undone
+    completePlanCard();
+    await settleObserver();
+    vi.advanceTimersByTime(600);
+    expect(title()).toBe('週回顧');
+  });
+
+  it('完成練習任務後的 600 ms 內按「跳過」：練習任務在這時才移除並重畫，不留下卡片（#318 review）', async () => {
+    tour.startTour();
+    clickNext();
+    addPlanCard();
+    await settleObserver();
+    vi.advanceTimersByTime(600);
+    completePlanCard();
+    await settleObserver();
+    expect(mockState.tasks.map(t => t.id)).toContain(TUTORIAL);   // still there until the tour moves on
+
+    clickSkip();
+
+    expect(router.renderPage).toHaveBeenCalledTimes(1);
+    expect(mockState.tasks.map(t => t.id)).not.toContain(TUTORIAL);
+    expect(mockState.dailyPlan).not.toContain(TUTORIAL);
   });
 
   it('第 2 步（加入計畫）不受影響：計畫卡已在畫面上就換下一步', async () => {

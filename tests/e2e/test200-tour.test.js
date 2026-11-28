@@ -131,6 +131,19 @@ test.describe('TEST-200 onboarding tour', () => {
     await expect(page.locator('.tour-tooltip')).toHaveCount(0); // done: not again
   });
 
+  test('skipped right after completing the practice task (its 600 ms success state): no card of it is left', async ({ page }) => {
+    await newGuest(page);
+    await page.locator('.tour-next').click();
+    await page.locator(`.task-card${TOUR_TASK}`).click();
+    await expect(page.locator('.tour-counter')).toHaveText('3 / 6');
+    await page.locator(`#plan-list .plan-card${TOUR_TASK}`).click();
+    await page.locator('.tour-skip').click();                   // before step 4 shows
+
+    await expect(page.locator('.tour-tooltip')).toHaveCount(0);
+    await expect(page.locator(TOUR_TASK)).toHaveCount(0);
+    expect((await stored(page)).plan).toEqual([]);
+  });
+
   test('skipped at step 2 (practice card shown): its card goes too', async ({ page }) => {
     await newGuest(page);
     await page.locator('.tour-next').click();
