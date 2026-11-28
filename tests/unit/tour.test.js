@@ -389,7 +389,7 @@ describe('BUG-152：手機上第一次看到導覽', () => {
     expect(document.querySelector('.tour-spot').style.top).toBe('352px');
   });
 
-  it('卡片已在 #content 裡、剛好貼著它的上緣或下緣：不捲動', () => {
+  it('卡片已在 #content 裡、剛好貼著它的下緣：不捲動', () => {
     const page = scrollingPage({ cardTop: 768 - 120 });
     tour.startTour();
     clickNext();
@@ -496,11 +496,13 @@ describe('BUG-152：手機上第一次看到導覽', () => {
     tour.startTour();
     tour.startTour();
     const drawn = vi.spyOn(document.body, 'appendChild');
-    modal.remove();
-    await settleObserver();
-
-    expect(drawn.mock.calls.filter(([node]) => node.classList?.contains('tour-tooltip'))).toHaveLength(1);
-    drawn.mockRestore();
+    try {
+      modal.remove();
+      await settleObserver();
+      expect(drawn.mock.calls.filter(([node]) => node.classList?.contains('tour-tooltip'))).toHaveLength(1);
+    } finally {
+      drawn.mockRestore();
+    }
     expect(document.querySelectorAll('.tour-tooltip')).toHaveLength(1);
     expect(overlays()).toBe(3);
   });

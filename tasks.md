@@ -142,7 +142,9 @@
 
 ## Next
 
-> 2026-11-26 擁有者：「好啊 繼續做」「不用停 能做就一直做吧」→ 先做 PS-260F（#275 留下的兩個 P3，#276），之後 Next 只剩需要擁有者的項目，agent 依 2026-11-18 的做法列出新的完善項目：TEST-004～TEST-012（補單元測試，完成，見 Done）；BUG-121～127（review 找到的問題，完成）；BUG-129～132（#287 review 找到的設定頁問題，完成）；BUG-133（同時跑兩次同步，完成）；BUG-134（首頁重畫時累積監聽，完成）；BUG-135（拖曳後吃掉下一次點擊，完成）；BUG-136～137（拖曳的邊界情況，完成）；BUG-138～139（個人頁，完成）；TEST-013＋BUG-140（`app.js`；登出時收起同步橫幅，完成）；BUG-142～143（#296 記下的兩個同步狀態問題，完成）；TEST-014＋BUG-144～145（導覽、DOM 動作、auth 包裝與 utils 的測試；導覽跳過、完成紀錄的有效日，完成）；BUG-146（週回顧、個人頁與首頁的日期改用有效日，完成）；TEST-015（到期就會失敗的測試，完成）；TEST-016（依執行順序才會通過的測試，完成）；TEST-017（#301 的後續，完成）；TEST-020＋BUG-153（專注計時的桌面模式：測試與 4 個修正，完成）；TEST-021（#304 的後續測試，完成）；TEST-022（佐證照片雲端同步的出錯路徑，完成）；TEST-023（#306 的測試整理，完成）；TEST-024（#307 的兩個 P3，完成）；TEST-025（雲端佐證照片的快取打不開時，完成）；BUG-154（快取打不開一次後，登出沒有刪掉雲端照片，完成）；TEST-026（#310 留下的連線競態測試，完成）；TEST-018＋BUG-150～152（導覽在手機上看不到目標、教學任務的紀錄上傳不了、刪掉的任務的紀錄，完成）；TEST-019（e2e 的時序競速，Next）；BUG-120（註冊後自動登入失敗時沒有說明，需核准）；BUG-141（帳號載入失敗後改用訪客，仍以帳號同步，需核准）。
+> 2026-11-28 擁有者：「好 可以」（回覆 #302 之後的兩個問題）→ (1) 兩個同時跑這份清單的工作階段分開範圍：`claude/gallant-wozniak-*` 做同步、導覽與 e2e，`claude/zen-edison-*` 做單元測試覆蓋率；編號各自往上取、看到對方在用的就跳過。(2) 核准 BUG-141 的建議 (A)（auth 流程）。
+
+> 2026-11-26 擁有者：「好啊 繼續做」「不用停 能做就一直做吧」→ 先做 PS-260F（#275 留下的兩個 P3，#276），之後 Next 只剩需要擁有者的項目，agent 依 2026-11-18 的做法列出新的完善項目：TEST-004～TEST-012（補單元測試，完成，見 Done）；BUG-121～127（review 找到的問題，完成）；BUG-129～132（#287 review 找到的設定頁問題，完成）；BUG-133（同時跑兩次同步，完成）；BUG-134（首頁重畫時累積監聽，完成）；BUG-135（拖曳後吃掉下一次點擊，完成）；BUG-136～137（拖曳的邊界情況，完成）；BUG-138～139（個人頁，完成）；TEST-013＋BUG-140（`app.js`；登出時收起同步橫幅，完成）；BUG-142～143（#296 記下的兩個同步狀態問題，完成）；TEST-014＋BUG-144～145（導覽、DOM 動作、auth 包裝與 utils 的測試；導覽跳過、完成紀錄的有效日，完成）；BUG-146（週回顧、個人頁與首頁的日期改用有效日，完成）；TEST-015（到期就會失敗的測試，完成）；TEST-016（依執行順序才會通過的測試，完成）；TEST-017（#301 的後續，完成）；TEST-020＋BUG-153（專注計時的桌面模式：測試與 4 個修正，完成）；TEST-021（#304 的後續測試，完成）；TEST-022（佐證照片雲端同步的出錯路徑，完成）；TEST-023（#306 的測試整理，完成）；TEST-024（#307 的兩個 P3，完成）；TEST-025（雲端佐證照片的快取打不開時，完成）；BUG-154（快取打不開一次後，登出沒有刪掉雲端照片，完成）；TEST-026（#310 留下的連線競態測試，完成）；TEST-018＋BUG-150～152（導覽在手機上看不到目標、教學任務的紀錄上傳不了、刪掉的任務的紀錄，完成）；TEST-019（e2e 的時序競速，Next）；BUG-120（註冊後自動登入失敗時沒有說明，需核准）；BUG-141（帳號載入失敗後改用訪客，仍以帳號同步，2026-11-28 核准，完成）。
 
 > 2026-11-18 擁有者要求：「列出幾個你覺得需要完善的事 持續完善」，每完成一段就開 PR 並合併，不必特別詢問（必要時才問）。agent 列出的完善清單如下，依序做；需要核准的另外標明。
 
@@ -163,17 +165,6 @@
 - [ ] **TEST-019** `hw112c2-cloud-proof` 的 e2e 偶爾在重新載入後失敗（TEST-018 跑 e2e 時發現，2026-11-27，main 上原本就有）
   - `tests/e2e/hw112c2-cloud-proof.test.js`：`page.reload()` 之後等到 `#main-app` 出現就 `scrollIntoViewIfNeeded()` 那一列，偶爾得到 `Element is not attached to the DOM`：重新載入後背景同步（這個測試的 REST 一律回 500）結束時頁面又畫了一次，那一列被換掉。本機 6 個 worker 時 main 上 120 次失敗 1 次、TEST-018 的 branch 上約 80 次失敗 3 次（這個路徑沒有走到 TEST-018 改的程式）。CI 會重跑一次，所以沒有擋住合併，但不是可以略過的 flake：測試要先等同步結束（例如同步橫幅變成「同步暫停」）再找那一列。只改測試。
 
-- [ ] **BUG-141** 帳號載入失敗後改用訪客，app 仍以那個帳號同步（TEST-013 檢查 `app.js` 時發現，2026-11-27，main 上原本就有；屬 auth 流程，**需擁有者核准**）
-  - 根本原因：登入後雲端資料載入失敗（例如離線或 500），而這台裝置沒有這個帳號的快取時，`loadAndStart()` 回到登入畫面並提示「無法載入雲端資料，請檢查連線後重新整理。」（`app.js` 的 fail-closed return），但 `_currentSession` 仍是那個帳號，Supabase 的 session 也還在，`_showSyncFailure()` 也已設定 `_needsResync`。之後：
-    - (a) 按「以遊客身份繼續」：訪客的畫面上方一打開就是**那個帳號**的同步失敗橫幅（線上時也是，來自 `_showSyncFailure()`）；離線時完成紀錄，橫幅是那個帳號的「N 筆待同步」（`_refreshOfflineHint()` 只看 `_currentSession`）。
-    - (b) 連線恢復時 `_syncAfterReconnect()` 以那個帳號 `loadFromRemote()`（`_assertOwner` 看的是 Supabase 的 session，所以會通過）；`storage.js` 以帳號的雲端資料取代這台裝置的 `user`、`tasks`、`sessions`、`energy`（本機的 user 不是這個帳號，所以訪客的紀錄與任務不會被合併），訪客在這段期間記下的資料就不見了，畫面也悄悄變成那個帳號。訪客的寫入不會到帳號的雲端（`db.*` 的擁有者檢查會拒絕），只留在以訪客 id 區分的待同步資料裡。
-    - (c) 沒有選訪客、停在登入畫面：連線恢復時一樣在背景以那個帳號同步（隱藏的 `#main-app` 後面重畫，橫幅顯示「✓ 已更新」）。
-    - (d) 在那個登入畫面再登入同一個帳號：`SIGNED_IN` 因為 `_currentSession` 已是它而被略過，按鈕停在「登入中…」，要重新整理（提示也是這樣說）。
-    - (e) 下次打開 app：快取分支的 `getSession()` 拿到那個帳號，以它載入（同 (b)）。
-    - 登入另一個帳號時上一個帳號的橫幅已由 BUG-140 收起（#296 review）。
-    - 確認方式：寫 TEST-013 時以 `appShell.test.js` 的 mock 暫時測過 (a)(b)，#296 的獨立 review 另外測過 (b)(c)(d)；這些暫時的測試**沒有提交**（會固定錯誤的行為）。資料被取代是依 `storage.js` 的程式碼。
-  - 建議（都屬 auth 流程，需核准）：(A) fail-closed return 時忘掉 `_currentSession`（`authOperationGuard.invalidate()`、清掉 `_needsResync` 與橫幅），解決 (c)(d)，並讓這次開啟期間不再以帳號同步；再加上：有帳號 session 時選「以遊客身份繼續」，先結束這台裝置上的 Supabase session（`signOut({ scope: 'local' })`），解決 (a)(b)(e)。這和設定頁的登出不同：不跑 `storage.clearAll()` 與 `signOutProofCleanup()`（快取不是這個帳號的，訪客要用的是這台裝置的本機資料）。注意（#296 第二輪 review）：`signOut({ scope: 'local' })` 會送出 `SIGNED_OUT`（`auth.js` 的 `forgetLocalSession` 註解），`onAuthStateChange` 會因此跑 `handleSignOut()`；這台裝置有本機使用者時，它會跑 `signOutProofCleanup()`、`storage.clearAll()` 並回到登入畫面——正好是不要的。所以要能分辨這次的 `SIGNED_OUT`（例如呼叫前設一個旗標，`handleSignOut()` 看到就只清 `_currentSession`）。(B) 有帳號 session 時不提供訪客，改為「重試」。agent 建議 (A)（訪客本來就只存在本機；要回到帳號就重新登入）。只做 (A) 的第一半（不登出）只能擋住這次開啟期間，下次開啟仍會以帳號載入，所以沒有先做。
-  - 改的時候一併確認：`tests/unit/appBootSequence.test.js` 的「帳號載入失敗後改用遊客，設定頁不會沿用該帳號的 id」等測試仍成立。
 - [ ] **PRO-017RA-Auth**（擁有者）先完成 INFRA-101（Custom SMTP），再在 Supabase 開啟「確認 email」，並確認匿名登入維持關閉
   - 019 已於 2026-11-13 套用（見 Done 的 PRO-017RA）；這一步只能由擁有者在 Supabase Dashboard 做（agent 的工具改不到 Auth 設定）。
   - Authentication 設定裡（Email provider）開啟 Confirm email（畫面名稱以當時的 Dashboard 為準）。會影響**所有新使用者**的 email 註冊（要先收信確認才能登入）；開啟前確認註冊頁的提示與 email 範本（INFRA-101 的寄件人設定也相關）。Google 登入不受影響。
@@ -305,6 +296,25 @@
 ---
 
 ## Done
+
+- [x] **BUG-141** 帳號載入失敗後改用訪客，app 仍以那個帳號同步（TEST-013 檢查 `app.js` 時發現，2026-11-27，main 上原本就有；屬 auth 流程，擁有者 2026-11-28 核准 (A)）
+  - 根本原因：登入後雲端資料載入失敗（例如離線或 500），而這台裝置沒有這個帳號的快取時，`loadAndStart()` 回到登入畫面並提示「無法載入雲端資料，請檢查連線後重新整理。」（`app.js` 的 fail-closed return），但 `_currentSession` 仍是那個帳號，Supabase 的 session 也還在，`_showSyncFailure()` 也已設定 `_needsResync`。之後：
+    - (a) 按「以遊客身份繼續」：訪客的畫面上方一打開就是**那個帳號**的同步失敗橫幅（線上時也是，來自 `_showSyncFailure()`）；離線時完成紀錄，橫幅是那個帳號的「N 筆待同步」（`_refreshOfflineHint()` 只看 `_currentSession`）。
+    - (b) 連線恢復時 `_syncAfterReconnect()` 以那個帳號 `loadFromRemote()`（`_assertOwner` 看的是 Supabase 的 session，所以會通過）；`storage.js` 以帳號的雲端資料取代這台裝置的 `user`、`tasks`、`sessions`、`energy`（本機的 user 不是這個帳號，所以訪客的紀錄與任務不會被合併），訪客在這段期間記下的資料就不見了，畫面也悄悄變成那個帳號。訪客的寫入不會到帳號的雲端（`db.*` 的擁有者檢查會拒絕），只留在以訪客 id 區分的待同步資料裡。
+    - (c) 沒有選訪客、停在登入畫面：連線恢復時一樣在背景以那個帳號同步（隱藏的 `#main-app` 後面重畫，橫幅顯示「✓ 已更新」）。
+    - (d) 在那個登入畫面再登入同一個帳號：`SIGNED_IN` 因為 `_currentSession` 已是它而被略過，按鈕停在「登入中…」，要重新整理（提示也是這樣說）。
+    - (e) 下次打開 app：快取分支的 `getSession()` 拿到那個帳號，以它載入（同 (b)）。
+    - 登入另一個帳號時上一個帳號的橫幅已由 BUG-140 收起（#296 review）。
+    - 確認方式：寫 TEST-013 時以 `appShell.test.js` 的 mock 暫時測過 (a)(b)，#296 的獨立 review 另外測過 (b)(c)(d)；這些暫時的測試**沒有提交**（會固定錯誤的行為）。資料被取代是依 `storage.js` 的程式碼。
+  - 建議（都屬 auth 流程，需核准）：(A) fail-closed return 時忘掉 `_currentSession`（`authOperationGuard.invalidate()`、清掉 `_needsResync` 與橫幅），解決 (c)(d)，並讓這次開啟期間不再以帳號同步；再加上：有帳號 session 時選「以遊客身份繼續」，先結束這台裝置上的 Supabase session（`signOut({ scope: 'local' })`），解決 (a)(b)(e)。這和設定頁的登出不同：不跑 `storage.clearAll()` 與 `signOutProofCleanup()`（快取不是這個帳號的，訪客要用的是這台裝置的本機資料）。注意（#296 第二輪 review）：`signOut({ scope: 'local' })` 會送出 `SIGNED_OUT`（`auth.js` 的 `forgetLocalSession` 註解），`onAuthStateChange` 會因此跑 `handleSignOut()`；這台裝置有本機使用者時，它會跑 `signOutProofCleanup()`、`storage.clearAll()` 並回到登入畫面——正好是不要的。所以要能分辨這次的 `SIGNED_OUT`（例如呼叫前設一個旗標，`handleSignOut()` 看到就只清 `_currentSession`）。(B) 有帳號 session 時不提供訪客，改為「重試」。agent 建議 (A)（訪客本來就只存在本機；要回到帳號就重新登入）。只做 (A) 的第一半（不登出）只能擋住這次開啟期間，下次開啟仍會以帳號載入，所以沒有先做。
+  - 改的時候一併確認：`tests/unit/appBootSequence.test.js` 的「帳號載入失敗後改用遊客，設定頁不會沿用該帳號的 id」等測試仍成立。
+  - 完成（v1.42.21，(A)）：
+    - `loadAndStart()` 的 fail-closed return 改為先忘掉這個帳號（`authOperationGuard.invalidate()`、`_currentSession = null`、收起同步橫幅並清掉 `_needsResync`），不登出：存著的 session 留著，重新整理或再登入會重試。解決 (c)(d)：停在登入畫面時連線恢復不再以帳號同步；再登入同一個帳號會重新載入。
+    - 「以遊客身份繼續」時這台裝置還存著 Supabase session（`hasStoredSession()`），先忘掉這個帳號，再只在這台裝置結束 session（`forgetLocalSession()`：刪掉存著的 key 後 `signOut({ scope: 'local' })`，不發請求）；它在這個分頁送出的 `SIGNED_OUT` 以旗標略過（supabase-js 在 `signOut()` 結束前就通知；每個呼叫都先等 client 啟動完成，所以不會排到之後），不跑 `handleSignOut()` 的清資料與回到登入畫面。解決 (a)(b)(e)：訪客不再看到帳號的同步狀態，連線恢復與下次開啟都不再以帳號載入。結束失敗只記警告，訪客照常開機。
+    - `forgetLocalSession()` 從 `auth.js` 搬到新模組 `localSession.js`（INFRA-105：SHELL 模組不 import 既有 SHELL 模組的新 export），`auth.js` 的登出改為 import 它，行為不變；`sw.js` 的 SHELL 加上新模組。
+    - 測試（`appShell.test.js`）：(c) 連線恢復不同步；(d) 再登入重新載入並開機；(a)(b)(e) 改用訪客只結束這台裝置的 session（不是設定頁的登出）、它造成的 `SIGNED_OUT` 不清資料也不回到登入畫面、訪客照常開機、沒有帳號的待同步、連線恢復不載入；之後真的登出照常處理；結束失敗不擋住訪客；一般訪客不呼叫；同一個帳號有快取時照舊離線開機並在連線恢復後同步；再登入那個帳號、載入還沒完成時改用訪客，那次載入作廢。BUG-140 的一個測試原本檢查載入失敗後橫幅還在，現在失敗當下就收起。修正前 5 個測試失敗；開 PR 前以改動原始碼驗證：11 個改動都會讓測試失敗。
+    - 剩下的：另一個分頁也停在同一個「載入失敗」的登入畫面時，它收到這次的 `SIGNED_OUT`（BroadcastChannel）會照一般登出清掉這台裝置的資料（修正前，那種情況下連線恢復時訪客的資料本來就會被帳號的資料取代）。
+  - 一併做 #302 第三輪獨立 review 的兩個 P3：`tour.test.js` 的 `appendChild` spy 在 `finally` 還原；「剛好貼著上緣或下緣」的測試名稱改為只寫下緣（上緣另有測試）。
 
 - [x] **TEST-026** #310 第二輪 review 的 P3：`dropConnection()` 的兩個分支沒有測試（2026-11-27）
   - 只改測試，`proofCloud.test.js` 新增 2 個：(1) 慢的寫入先拿到連線 1、等資料時連線 1 無聲失效，另一張照片已換上連線 2，之後那個寫入在連線 1 上失敗——連線 2 照樣使用（不再打開第三個），只留一個打開的連線；(2) 讀取在正常的連線上出錯（不是失效）時那個連線會關掉，不會留著。拿掉「只清目前的連線」、讀取或寫入改回不關閉也不檢查的 `dbPromise = null`，都會讓測試失敗；打亂順序 6 個 seed 通過。

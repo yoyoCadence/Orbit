@@ -47,6 +47,7 @@ import { sweepOrphanCloudProofs } from './platform/proofSweep.js';
 import { closeProofKeepSheet, showProofKeepSheet } from './ui/proofKeepSheet.js';
 import { isOnline, onConnectivityChange } from './platform/network.js';
 import { orbitWindowRuntimeDestroyer } from './personalSpace/v2/runtime/pixiSceneRuntime.js';
+import { forgetLocalSession } from './localSession.js';
 
 // Lazy proxy — tour.js is not imported at startup; loaded on first call.
 window.startTour = () =>
@@ -471,6 +472,10 @@ function bootWithLocalState() {
 }
 
 window.continueAsGuest = function () {
+  // BUG-141: an account whose load failed here still has its session on this
+  // device. A guest ends it (on this device only), or the next launch would
+  // load that account and replace the guest's data with its own.
+  if (hasStoredSession()) _endAccountSessionForGuest();
   hideLoading();
   document.getElementById('login-screen').classList.add('hidden');
   loadStateFromStorage();
@@ -537,6 +542,12 @@ async function loadAndStart(session) {
   // absent or foreign-owner cache fails closed and waits for a retry.
   const hasCurrentOwnerCache = state.user?.id === session.user.id;
   if (!remoteLoaded && !hasCurrentOwnerCache) {
+    // BUG-141: nothing of this account is shown, so forget it here: a
+    // reconnect must not sync it behind the login screen (or under a guest),
+    // and signing in again must load it (its SIGNED_IN was ignored while
+    // _currentSession still held it). Its stored session stays, so a reload
+    // retries; the guest path ends it.
+    _forgetCurrentAccount();
     showLoginScreen();
     showToast('無法載入雲端資料，請檢查連線後重新整理。');
     return;
@@ -608,6 +619,27 @@ function _askStreakUnlock(ownerId, isCurrent) {
       if (!isTextInputActive()) renderPage(currentHash());
     },
   });
+}
+
+// BUG-141: stops treating the current session as the account shown here,
+// without signing it out (loadAndStart's fail-closed return, the guest path).
+function _forgetCurrentAccount() {
+  authOperationGuard.invalidate();
+  _currentSession = null;
+  _clearSyncStatus();
+}
+
+// Set while the guest path ends the account's session: the SIGNED_OUT it
+// causes in this tab is not a sign-out of what is shown (supabase-js notifies
+// before signOut() resolves; every call waits for the client's start-up, so
+// the event is never queued past it).
+let _guestEndingSession = false;
+function _endAccountSessionForGuest() {
+  _forgetCurrentAccount();
+  _guestEndingSession = true;
+  forgetLocalSession()
+    .catch(error => console.warn('Could not end the account session for the guest:', error))
+    .finally(() => { _guestEndingSession = false; });
 }
 
 function handleSignOut() {
@@ -957,6 +989,9 @@ async function init() {
     ) {
       await loadAndStart(session);
     } else if (event === 'SIGNED_OUT') {
+      // BUG-141: the guest path ended the session itself; the guest keeps
+      // this device's data and the page it is on.
+      if (_guestEndingSession) return;
       handleSignOut();
     }
   });

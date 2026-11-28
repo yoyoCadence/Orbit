@@ -165,6 +165,11 @@ vi.mock('../../pwa/js/router.js', () => ({
   markTextInputFocus: vi.fn(),
   teardownActivePageRenderer: vi.fn(),
 }));
+// BUG-141: whether this device stores a Supabase session, and ending it.
+const presence = vi.hoisted(() => ({ stored: false }));
+vi.mock('../../pwa/js/sessionPresence.js', () => ({ hasStoredSession: () => presence.stored }));
+const localSession = vi.hoisted(() => ({ forgetLocalSession: vi.fn() }));
+vi.mock('../../pwa/js/localSession.js', () => localSession);
 vi.mock('../../pwa/js/personalSpace/v2/runtime/pixiSceneRuntime.js', () => ({
   orbitWindowRuntimeDestroyer: { destroyNow: vi.fn() },
 }));
@@ -261,6 +266,9 @@ beforeEach(async () => {
   network.online = true;
   network.handlers = [];
   sessionFlow.badgeUpdater = null;
+  presence.stored = false;
+  localSession.forgetLocalSession.mockReset();
+  localSession.forgetLocalSession.mockResolvedValue(null);
   sessionStorage.clear();
   // Keeps warmEnhancementModules() from loading anything unless a test runs it.
   window.requestIdleCallback = () => 0;
@@ -493,7 +501,8 @@ describe('BUG-140：同步橫幅跟著帳號走', () => {
     await auth.callback('SIGNED_IN', sessionFor('owner-a'));
     await flush();
     expect(authFlow.showLoginScreen).toHaveBeenCalledTimes(2);
-    expect(syncBanner().textContent).toContain('同步暫停');
+    // BUG-141: cleared already when the load failed (nothing of it is shown).
+    expect(syncBanner().classList.contains('hidden')).toBe(true);
 
     await signInAs('owner-b');
 
@@ -1347,5 +1356,162 @@ describe('BUG-143：前一個帳號的連線恢復同步不擋住下一個帳號
     await network.emit(true);
     await flush();
     expect(loadsOf('owner-b')).toBe(3);
+  });
+});
+
+describe('BUG-141：帳號沒有快取、雲端資料載入失敗之後', () => {
+  /** A signs in on a device with no cache for it, and its remote load fails. */
+  async function failedLoad({ online = true } = {}) {
+    cache.user = null;
+    auth.getSession.mockResolvedValue(null);
+    await import('../../pwa/js/app.js');
+    await flush();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    network.online = online;
+    storage.getPendingSyncSummary.mockImplementation(owner => ({ total: owner === 'owner-a' ? 3 : 0 }));
+    db.loadFromRemote.mockRejectedValueOnce(new Error(online ? '500' : 'Failed to fetch'));
+    presence.stored = true;                     // A's session stays on this device
+    await auth.callback('SIGNED_IN', sessionFor('owner-a'));
+    await flush();
+    expect(authFlow.showLoginScreen).toHaveBeenCalledTimes(2);
+    expect(feedback.showToast).toHaveBeenCalledWith('無法載入雲端資料，請檢查連線後重新整理。');
+  }
+
+  it('(c) 停在登入畫面時連線恢復：不在背景以那個帳號同步', async () => {
+    await failedLoad({ online: false });
+    const loads = db.loadFromRemote.mock.calls.length;
+
+    await network.emit(true);
+    await flush();
+
+    expect(db.loadFromRemote.mock.calls.length).toBe(loads);
+    expect(syncBanner().classList.contains('hidden')).toBe(true);
+  });
+
+  it('(d) 在登入畫面再登入同一個帳號：重新載入，成功就開機', async () => {
+    await failedLoad();
+
+    db.loadFromRemote.mockImplementationOnce(async () => { seedCachedUser('owner-a'); });
+    await auth.callback('SIGNED_IN', sessionFor('owner-a'));
+    await flush();
+
+    expect(db.loadFromRemote).toHaveBeenLastCalledWith('owner-a');
+    expect(db.loadFromRemote).toHaveBeenCalledTimes(2);
+    expect(document.getElementById('main-app').classList.contains('hidden')).toBe(false);
+  });
+
+  it('(a)(b)(e) 改用訪客：只在這台裝置結束那個帳號的 session，訪客照常開機、不顯示帳號的同步狀態、連線恢復也不同步', async () => {
+    await failedLoad({ online: false });
+    // supabase-js notifies SIGNED_OUT before signOut() resolves.
+    localSession.forgetLocalSession.mockImplementationOnce(async () => {
+      presence.stored = false;
+      await auth.callback('SIGNED_OUT', null);
+      return null;
+    });
+    seedCachedUser('guest-1');
+
+    window.continueAsGuest();
+    await flush();
+
+    expect(localSession.forgetLocalSession).toHaveBeenCalledTimes(1);
+    expect(auth.signOut).not.toHaveBeenCalled();          // not the settings page's sign-out
+    // The SIGNED_OUT it caused is not a sign-out of what is shown.
+    expect(storage.clearAll).not.toHaveBeenCalled();
+    expect(authFlow.showLoginScreen).toHaveBeenCalledTimes(2);
+    expect(dayCycle.clearDayCycleModals).not.toHaveBeenCalled();
+    expect(document.getElementById('main-app').classList.contains('hidden')).toBe(false);
+    expect(dayCycle.processYesterdayStreak).toHaveBeenCalledTimes(1);
+
+    // (a) The guest's offline writes show no "N 筆待同步" of the account.
+    sessionFlow.badgeUpdater();
+    expect(syncBanner().classList.contains('hidden')).toBe(true);
+    // (b) Back online: nothing is loaded as the account.
+    const loads = db.loadFromRemote.mock.calls.length;
+    await network.emit(true);
+    await flush();
+    expect(db.loadFromRemote.mock.calls.length).toBe(loads);
+  });
+
+  it('再登入那個帳號、載入還沒完成時改用訪客：那次載入作廢，不以帳號開機、也不再同步', async () => {
+    await failedLoad();
+    let finishLoad;
+    db.loadFromRemote.mockImplementationOnce(() => new Promise(resolve => { finishLoad = resolve; }));
+    const signingIn = auth.callback('SIGNED_IN', sessionFor('owner-a'));
+    await flush();
+    seedCachedUser('guest-1');
+
+    window.continueAsGuest();
+    await flush();
+    expect(dayCycle.processYesterdayStreak).toHaveBeenCalledTimes(1);   // the guest's boot
+
+    cache.user = makeUser('owner-a');      // what the account's load writes here
+    finishLoad();
+    await signingIn;
+    await flush();
+
+    expect(db.refreshProEntitlement).not.toHaveBeenCalled();
+    expect(dayCycle.processYesterdayStreak).toHaveBeenCalledTimes(1);
+    const loads = db.loadFromRemote.mock.calls.length;
+    await network.emit(false);
+    await network.emit(true);
+    await flush();
+    expect(db.loadFromRemote.mock.calls.length).toBe(loads);
+  });
+
+  it('結束之後，真的登出（例如另一個分頁）照常處理', async () => {
+    await failedLoad();
+    seedCachedUser('guest-1');
+    window.continueAsGuest();
+    await flush();
+
+    await auth.callback('SIGNED_OUT', null);
+
+    expect(storage.clearAll).toHaveBeenCalledTimes(1);
+    expect(authFlow.showLoginScreen).toHaveBeenCalledTimes(3);
+  });
+
+  it('結束失敗也不擋住訪客，之後的登出照常處理', async () => {
+    await failedLoad();
+    localSession.forgetLocalSession.mockRejectedValueOnce(new Error('storage unavailable'));
+    seedCachedUser('guest-1');
+
+    window.continueAsGuest();
+    await flush();
+
+    expect(console.warn).toHaveBeenCalledWith('Could not end the account session for the guest:', expect.any(Error));
+    expect(document.getElementById('main-app').classList.contains('hidden')).toBe(false);
+    await auth.callback('SIGNED_OUT', null);
+    expect(storage.clearAll).toHaveBeenCalledTimes(1);
+  });
+
+  it('一般的訪客（這台裝置沒有 session）不呼叫登出', async () => {
+    cache.user = null;
+    auth.getSession.mockResolvedValue(null);
+    await import('../../pwa/js/app.js');
+    await flush();
+    seedCachedUser('guest-1');
+
+    window.continueAsGuest();
+    await flush();
+
+    expect(localSession.forgetLocalSession).not.toHaveBeenCalled();
+    expect(document.getElementById('main-app').classList.contains('hidden')).toBe(false);
+  });
+
+  it('同一個帳號有快取時照舊離線開機，不忘掉它（連線恢復後同步）', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    network.online = false;
+    db.loadFromRemote.mockRejectedValueOnce(new Error('Failed to fetch'));
+    await bootSignedIn('owner-a');
+    warn.mockRestore();
+    db.loadFromRemote.mockImplementationOnce(async () => {
+      storage.getPendingSyncSummary.mockImplementation(() => ({ total: 0 }));
+    });
+
+    await network.emit(true);
+    await flush();
+
+    expect(db.loadFromRemote).toHaveBeenLastCalledWith('owner-a');
+    expect(syncBanner().textContent).toBe('✓ 已更新');
   });
 });
