@@ -475,7 +475,14 @@ window.continueAsGuest = function () {
   // BUG-141: an account whose load failed here still has its session on this
   // device. A guest ends it (on this device only), or the next launch would
   // load that account and replace the guest's data with its own.
-  if (hasStoredSession()) _endAccountSessionForGuest();
+  const endedOwnerId = hasStoredSession() ? _endAccountSessionForGuest() : null;
+  // A sign-in still finishing (its Pro refresh) has already stored that
+  // account's data here: it goes with the account, as on a sign-out, and the
+  // guest starts afresh (#313 review).
+  if (endedOwnerId && storage.getUser()?.id === endedOwnerId) {
+    signOutProofCleanup({ authOwnerId: endedOwnerId, sessionsOwnerId: endedOwnerId, sessions: storage.getSessions() });
+    storage.clearAll();
+  }
   hideLoading();
   document.getElementById('login-screen').classList.add('hidden');
   loadStateFromStorage();
@@ -546,8 +553,11 @@ async function loadAndStart(session) {
     // reconnect must not sync it behind the login screen (or under a guest),
     // and signing in again must load it (its SIGNED_IN was ignored while
     // _currentSession still held it). Its stored session stays, so a reload
-    // retries; the guest path ends it.
+    // retries; the guest path ends it. A cached boot of another owner may have
+    // left its daily report or morning modal up, over the login screen and its
+    // guest button (#313 review; its proof photos closed at the top).
     _forgetCurrentAccount();
+    clearDayCycleModals();
     showLoginScreen();
     showToast('無法載入雲端資料，請檢查連線後重新整理。');
     return;
@@ -634,12 +644,15 @@ function _forgetCurrentAccount() {
 // before signOut() resolves; every call waits for the client's start-up, so
 // the event is never queued past it).
 let _guestEndingSession = false;
+/** @returns {string|null} the account it stopped treating as current, if any */
 function _endAccountSessionForGuest() {
+  const ownerId = _currentSession?.user?.id ?? null;
   _forgetCurrentAccount();
   _guestEndingSession = true;
   forgetLocalSession()
     .catch(error => console.warn('Could not end the account session for the guest:', error))
     .finally(() => { _guestEndingSession = false; });
+  return ownerId;
 }
 
 function handleSignOut() {
@@ -992,6 +1005,13 @@ async function init() {
       // BUG-141: the guest path ended the session itself; the guest keeps
       // this device's data and the page it is on.
       if (_guestEndingSession) return;
+      // Another tab's guest path ended an account this tab does not show
+      // either (its load failed here too): what is stored here is a guest's,
+      // with no copy in the cloud, and stays. A synced account's cache still
+      // goes (a cached boot whose session ended before getSession()), and so
+      // does everything when this tab shows an account (#313 review).
+      const storedId = storage.getUser()?.id ?? null;
+      if (!_currentSession && storedId && !_isSyncedAccount(storedId)) return;
       handleSignOut();
     }
   });

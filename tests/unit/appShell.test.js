@@ -14,7 +14,7 @@
  * 這裡記下每次 import 加上的 listener，測試結束時移除。
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, onTestFinished } from 'vitest';
 import { today } from '../../pwa/js/utils.js';
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -170,6 +170,8 @@ const presence = vi.hoisted(() => ({ stored: false }));
 vi.mock('../../pwa/js/sessionPresence.js', () => ({ hasStoredSession: () => presence.stored }));
 const localSession = vi.hoisted(() => ({ forgetLocalSession: vi.fn() }));
 vi.mock('../../pwa/js/localSession.js', () => localSession);
+const proofLocal = vi.hoisted(() => ({ signOutProofCleanup: vi.fn(), photosNotSurelyUploaded: vi.fn(() => 0) }));
+vi.mock('../../pwa/js/platform/proofLocal.js', () => proofLocal);
 vi.mock('../../pwa/js/personalSpace/v2/runtime/pixiSceneRuntime.js', () => ({
   orbitWindowRuntimeDestroyer: { destroyNow: vi.fn() },
 }));
@@ -1410,6 +1412,7 @@ describe('BUG-141：帳號沒有快取、雲端資料載入失敗之後', () => 
     });
     seedCachedUser('guest-1');
 
+    const modalsCleared = dayCycle.clearDayCycleModals.mock.calls.length;
     window.continueAsGuest();
     await flush();
 
@@ -1418,7 +1421,7 @@ describe('BUG-141：帳號沒有快取、雲端資料載入失敗之後', () => 
     // The SIGNED_OUT it caused is not a sign-out of what is shown.
     expect(storage.clearAll).not.toHaveBeenCalled();
     expect(authFlow.showLoginScreen).toHaveBeenCalledTimes(2);
-    expect(dayCycle.clearDayCycleModals).not.toHaveBeenCalled();
+    expect(dayCycle.clearDayCycleModals.mock.calls.length).toBe(modalsCleared);
     expect(document.getElementById('main-app').classList.contains('hidden')).toBe(false);
     expect(dayCycle.processYesterdayStreak).toHaveBeenCalledTimes(1);
 
@@ -1458,7 +1461,27 @@ describe('BUG-141：帳號沒有快取、雲端資料載入失敗之後', () => 
     expect(db.loadFromRemote.mock.calls.length).toBe(loads);
   });
 
-  it('結束之後，真的登出（例如另一個分頁）照常處理', async () => {
+  /** Signs in as `id` and its load succeeds: the tab shows an account again. */
+  async function signInAgainAs(id) {
+    db.loadFromRemote.mockImplementationOnce(async () => { seedCachedUser(id); });
+    await auth.callback('SIGNED_IN', sessionFor(id));
+    await flush();
+  }
+
+  it('結束之後旗標清掉：之後登入的帳號登出時照常處理', async () => {
+    await failedLoad();
+    seedCachedUser('guest-1');
+    window.continueAsGuest();
+    await flush();
+
+    await signInAgainAs('owner-b');
+    await auth.callback('SIGNED_OUT', null);
+
+    expect(storage.clearAll).toHaveBeenCalledTimes(1);
+    expect(authFlow.showLoginScreen).toHaveBeenCalledTimes(3);
+  });
+
+  it('訪客的分頁收到另一個分頁送來的 SIGNED_OUT：訪客的資料留著（#313 review）', async () => {
     await failedLoad();
     seedCachedUser('guest-1');
     window.continueAsGuest();
@@ -1466,8 +1489,31 @@ describe('BUG-141：帳號沒有快取、雲端資料載入失敗之後', () => 
 
     await auth.callback('SIGNED_OUT', null);
 
-    expect(storage.clearAll).toHaveBeenCalledTimes(1);
-    expect(authFlow.showLoginScreen).toHaveBeenCalledTimes(3);
+    expect(storage.clearAll).not.toHaveBeenCalled();
+    expect(authFlow.showLoginScreen).toHaveBeenCalledTimes(2);
+    expect(document.getElementById('main-app').classList.contains('hidden')).toBe(false);
+  });
+
+  it('另一個分頁也停在同一個「載入失敗」的登入畫面，那邊改用訪客：這裡存著的訪客資料不清（#313 review）', async () => {
+    await failedLoad();                          // the account's load fails here too
+    cache.user = makeUser('guest-1');            // a guest's data on this device (the other tab's)
+
+    await auth.callback('SIGNED_OUT', null);     // broadcast by the other tab's guest path
+
+    expect(storage.clearAll).not.toHaveBeenCalled();
+    expect(cache.user?.id).toBe('guest-1');
+  });
+
+  it('同步過的帳號的快取（getSession() 之前 session 已失效）收到 SIGNED_OUT：照舊清掉並回到登入畫面', async () => {
+    localStorage.setItem('yoyo_sessionSyncCutover:v1.21:owner-a', JSON.stringify({ ownerId: 'owner-a', completed: true }));
+    try {
+      await bootCached('owner-a');
+      await auth.callback('SIGNED_OUT', null);
+      expect(storage.clearAll).toHaveBeenCalledTimes(1);
+      expect(authFlow.showLoginScreen).toHaveBeenCalled();
+    } finally {
+      localStorage.removeItem('yoyo_sessionSyncCutover:v1.21:owner-a');
+    }
   });
 
   it('結束失敗也不擋住訪客，之後的登出照常處理', async () => {
@@ -1480,8 +1526,70 @@ describe('BUG-141：帳號沒有快取、雲端資料載入失敗之後', () => 
 
     expect(console.warn).toHaveBeenCalledWith('Could not end the account session for the guest:', expect.any(Error));
     expect(document.getElementById('main-app').classList.contains('hidden')).toBe(false);
+    await signInAgainAs('owner-b');
     await auth.callback('SIGNED_OUT', null);
     expect(storage.clearAll).toHaveBeenCalledTimes(1);
+  });
+
+  it('登入還在查 Pro 狀態（資料已存下）時改用訪客：那個帳號的資料清掉，訪客從頭設定、不顯示帳號（#313 review）', async () => {
+    cache.user = null;
+    auth.getSession.mockResolvedValue(null);
+    await import('../../pwa/js/app.js');
+    await flush();
+    presence.stored = true;
+    // A successful load marks the account synced here (storage.js).
+    localStorage.setItem('yoyo_sessionSyncCutover:v1.21:owner-a', JSON.stringify({ ownerId: 'owner-a', completed: true }));
+    onTestFinished(() => localStorage.removeItem('yoyo_sessionSyncCutover:v1.21:owner-a'));
+    // supabase-js notifies SIGNED_OUT before signOut() resolves: a synced
+    // account's data is stored here then, and only the flag keeps this from
+    // running handleSignOut() (clearing again and showing the login screen).
+    localSession.forgetLocalSession.mockImplementationOnce(async () => {
+      presence.stored = false;
+      await auth.callback('SIGNED_OUT', null);
+      return null;
+    });
+    let finishRefresh;
+    db.loadFromRemote.mockImplementationOnce(async () => { seedCachedUser('owner-a'); });
+    db.refreshProEntitlement.mockImplementationOnce(() => new Promise(resolve => { finishRefresh = resolve; }));
+    const signingIn = auth.callback('SIGNED_IN', sessionFor('owner-a'));
+    await flush();
+    expect(cache.user?.id).toBe('owner-a');      // the load wrote the account's data
+
+    window.continueAsGuest();
+    await flush();
+
+    expect(localSession.forgetLocalSession).toHaveBeenCalledTimes(1);
+    // As on a sign-out: its photos surely in the cloud and its downloads go too.
+    expect(proofLocal.signOutProofCleanup).toHaveBeenCalledWith({
+      authOwnerId: 'owner-a', sessionsOwnerId: 'owner-a', sessions: expect.any(Array),
+    });
+    expect(storage.clearAll).toHaveBeenCalledTimes(1);
+    expect(proofLocal.signOutProofCleanup.mock.invocationCallOrder[0])
+      .toBeLessThan(storage.clearAll.mock.invocationCallOrder[0]);
+    expect(document.getElementById('setup-screen').classList.contains('hidden')).toBe(false);
+    expect(document.getElementById('main-app').classList.contains('hidden')).toBe(true);
+    expect(dayCycle.processYesterdayStreak).not.toHaveBeenCalled();
+    expect(authFlow.showLoginScreen).toHaveBeenCalledTimes(1);   // the first launch's only
+    expect(dayCycle.clearDayCycleModals).not.toHaveBeenCalled();
+
+    finishRefresh(true);
+    await signingIn;
+    await flush();
+    expect(dayCycle.processYesterdayStreak).not.toHaveBeenCalled();
+    expect(document.getElementById('main-app').classList.contains('hidden')).toBe(true);
+  });
+
+  it('載入失敗回到登入畫面時，收起前一次開機留下的日報（#313 review）', async () => {
+    await bootCached('owner-c');                 // a cached boot of another owner
+    dayCycle.clearDayCycleModals.mockClear();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    db.loadFromRemote.mockRejectedValueOnce(new Error('500'));
+
+    await auth.callback('SIGNED_IN', sessionFor('owner-a'));
+    await flush();
+
+    expect(authFlow.showLoginScreen).toHaveBeenCalled();
+    expect(dayCycle.clearDayCycleModals).toHaveBeenCalled();
   });
 
   it('一般的訪客（這台裝置沒有 session）不呼叫登出', async () => {
