@@ -1,6 +1,6 @@
 {
   "name": "orbit",
-  "version": "1.42.24",
+  "version": "1.42.25",
   "type": "module",
   "scripts": {
     "bump": "node scripts/bump.mjs",

@@ -105,6 +105,9 @@ function buildSession(task, {
 }
 
 function offerProofSheet(session, task) {
+  // BUG-205: not for the tour's practice task (tour.js): the sheet covered the
+  // bottom bar the tour's next steps point at, and stayed after it ended.
+  if (task.isTutorial === true || task.id === 'tour-task') return;
   // Inline capability check avoids importing proofCapture.js at startup
   if (typeof window !== 'undefined' && typeof FileReader !== 'undefined') {
     setTimeout(() => showProofSheet(session.id, task.name), 700);

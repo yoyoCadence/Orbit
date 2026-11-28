@@ -1441,13 +1441,18 @@ export const storage = {
   // plan survives midnight until the new-day hour instead of vanishing at
   // 00:00, and a save after midnight no longer moves yesterday's plan to the
   // next calendar day.
+  //
+  // BUG-205: never the tour's task (BUG-150), which lives only in memory: the
+  // tour took it out of the plan in memory only, and the stored plan kept its
+  // id for the rest of the day. Read without it too (stored before this).
   getDailyPlan: () => {
     const data = get('dailyPlan');
     if (!data || data.date !== dailyPlanDate()) return [];
-    return data.taskIds || [];
+    return (data.taskIds || []).filter(id => id !== TOUR_TASK_ID);
   },
   saveDailyPlan: (taskIds) => {
-    set('dailyPlan', { date: dailyPlanDate(), taskIds });
+    const ids = Array.isArray(taskIds) ? taskIds.filter(id => id !== TOUR_TASK_ID) : taskIds;
+    set('dailyPlan', { date: dailyPlanDate(), taskIds: ids });
   },
   /**
    * HW-113: `state.dailyPlan` is loaded for one effective day. Once the stored

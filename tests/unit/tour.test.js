@@ -11,8 +11,11 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-const mockState = vi.hoisted(() => ({ tasks: [], dailyPlan: [] }));
+const mockState = vi.hoisted(() => ({ tasks: [], dailyPlan: [], sessions: [] }));
 vi.mock('../../pwa/js/state.js', () => ({ state: mockState }));
+// The real router.js sets window.navigate when it loads, over the test's.
+const router = vi.hoisted(() => ({ renderPage: vi.fn(), currentHash: vi.fn(() => 'home') }));
+vi.mock('../../pwa/js/router.js', () => router);
 
 const TUTORIAL = 'tour-task';
 let tour;
@@ -42,7 +45,10 @@ function renderHome() {
   document.getElementById('content').innerHTML = `
     ${mockState.tasks.map(t => `<div class="task-card" data-task-id="${t.id}"></div>`).join('')}
     <div id="plan-list">
-      ${mockState.dailyPlan.map(id => `<div class="plan-card" data-task-id="${id}"></div>`).join('')}
+      ${mockState.dailyPlan.map(id => `<div class="plan-card" data-task-id="${id}">${
+    // Home shows today's count on the card once there is one.
+    mockState.sessions.some(x => x.taskId === id) ? '<span class="plan-count-badge"></span>' : ''
+  }</div>`).join('')}
     </div>
   `;
   document.querySelectorAll('.task-card, .plan-card').forEach(card => place(card, { top: 300 }));
@@ -55,11 +61,17 @@ function addPlanCard() {
   return document.querySelector(`.plan-card[data-task-id="${TUTORIAL}"]`);
 }
 
-/** Completing it from the plan card shows its count badge (on the card drawn now). */
+/**
+ * Completing it from the plan card records a session (sessionFlow.js) and
+ * shows its count badge (on the card drawn now).
+ */
 function completePlanCard() {
+  mockState.sessions = [...mockState.sessions, { taskId: TUTORIAL }];
+  const card = document.querySelector(`#plan-list .plan-card[data-task-id="${TUTORIAL}"]`);
+  if (card.querySelector('.plan-count-badge')) { renderHome(); return; }
   const badge = document.createElement('span');
   badge.className = 'plan-count-badge';
-  document.querySelector(`#plan-list .plan-card[data-task-id="${TUTORIAL}"]`).appendChild(badge);
+  card.appendChild(badge);
 }
 
 /** Runs the tour to the review step through both interactive steps. */
@@ -78,9 +90,11 @@ async function walkToReview() {
 beforeEach(async () => {
   vi.resetModules();
   vi.useFakeTimers();
+  router.renderPage.mockClear();
   localStorage.clear();
   mockState.tasks = [{ id: 't1', name: 'Task' }];
   mockState.dailyPlan = [];
+  mockState.sessions = [];
   // Two frames after navigating: run them at once.
   vi.stubGlobal('requestAnimationFrame', cb => { cb(0); return 0; });
   window.navigate = vi.fn(page => { if (page === 'home') renderHome(); });
@@ -218,6 +232,138 @@ describe('略過、跳過與重新開始', () => {
     expect(mockState.tasks.map(t => t.id)).toEqual(['t1']);
     expect(mockState.dailyPlan).toEqual(['t1']);
     expect(tour.isTourDone()).toBe(true);
+  });
+
+  it('BUG-205：教學任務已放入（第 2、3 步）時跳過，重畫目前的頁面，不留下點了沒反應的卡片', () => {
+    tour.startTour();
+    clickNext();
+    expect(mockState.tasks.map(t => t.id)).toContain(TUTORIAL);
+    router.currentHash.mockReturnValueOnce('home');
+
+    clickSkip();
+
+    expect(router.renderPage).toHaveBeenCalledTimes(1);
+    expect(router.renderPage).toHaveBeenCalledWith('home');
+  });
+
+  it('BUG-205：第 2 步時點了底部導覽列（遮罩讓點擊穿過）到別頁再跳過：重畫那一頁', () => {
+    tour.startTour();
+    clickNext();
+    router.currentHash.mockReturnValueOnce('review');
+
+    clickSkip();
+
+    expect(router.renderPage).toHaveBeenCalledWith('review');
+  });
+
+  it('BUG-205：只剩計畫裡的教學任務（任務已不在）時跳過，也移除並重畫', () => {
+    tour.startTour();
+    clickNext();
+    mockState.tasks = mockState.tasks.filter(t => t.id !== TUTORIAL);
+    mockState.dailyPlan = [TUTORIAL];
+
+    clickSkip();
+
+    expect(router.renderPage).toHaveBeenCalledTimes(1);
+    expect(mockState.dailyPlan).toEqual([]);
+  });
+
+  it('BUG-205：同一天重新開始、計畫卡上已有今天的次數：第 3 步等到這一次完成才換下一步', async () => {
+    mockState.sessions = [{ taskId: TUTORIAL }];        // the first run, earlier today
+    tour.startTour();
+    clickNext();
+    addPlanCard();
+    expect(document.querySelector('.plan-count-badge')).not.toBeNull();
+    await settleObserver();
+    vi.advanceTimersByTime(600);
+    expect(title()).toBe('完成任務 ✓');
+
+    vi.advanceTimersByTime(5000);
+    renderHome();                                       // a redraw is not a completion
+    await settleObserver();
+    vi.advanceTimersByTime(600);
+    expect(title()).toBe('完成任務 ✓');
+
+    completePlanCard();
+    await settleObserver();
+    vi.advanceTimersByTime(600);
+    expect(title()).toBe('週回顧');
+  });
+
+  it('BUG-205：第 2 步還在顯示時就點了計畫卡完成：第 3 步一出現就換下一步（不必再完成一次）', async () => {
+    tour.startTour();
+    clickNext();
+    addPlanCard();
+    await settleObserver();
+    completePlanCard();                                 // within step 2's 600 ms
+    vi.advanceTimersByTime(600);
+    await settleObserver();
+    vi.advanceTimersByTime(600);
+    expect(title()).toBe('週回顧');
+  });
+
+  it('第 2 步什麼都沒做時一直停在那一步', async () => {
+    tour.startTour();
+    clickNext();
+    renderHome();
+    await settleObserver();
+    vi.advanceTimersByTime(5000);
+    expect(title()).toBe('加入今日計劃');
+  });
+
+  it('BUG-205：第 3 步時完成的是別的任務（點擊穿過遮罩）：不換下一步', async () => {
+    mockState.sessions = [{ taskId: TUTORIAL }];        // restarted the same day: its badge is up
+    tour.startTour();
+    clickNext();
+    addPlanCard();
+    await settleObserver();
+    vi.advanceTimersByTime(600);
+    expect(title()).toBe('完成任務 ✓');
+
+    mockState.sessions = [...mockState.sessions, { taskId: 't1' }];
+    renderHome();
+    await settleObserver();
+    vi.advanceTimersByTime(600);
+    expect(title()).toBe('完成任務 ✓');
+  });
+
+  it('BUG-205：第 3 步的紀錄已存、計畫卡還沒重畫出次數：等畫出來才換（讓使用者看到）', async () => {
+    tour.startTour();
+    clickNext();
+    addPlanCard();
+    await settleObserver();
+    vi.advanceTimersByTime(600);
+
+    mockState.sessions = [...mockState.sessions, { taskId: TUTORIAL }];
+    document.getElementById('content').appendChild(document.createElement('div'));   // some other change
+    await settleObserver();
+    vi.advanceTimersByTime(600);
+    expect(title()).toBe('完成任務 ✓');
+
+    renderHome();                                       // drawn with its count
+    await settleObserver();
+    vi.advanceTimersByTime(600);
+    expect(title()).toBe('週回顧');
+  });
+
+  it('第 2 步（加入計畫）不受影響：計畫卡已在畫面上就換下一步', async () => {
+    tour.startTour();
+    clickNext();
+    addPlanCard();
+    await settleObserver();
+    vi.advanceTimersByTime(600);
+    expect(title()).toBe('完成任務 ✓');
+  });
+
+  it('BUG-205：教學任務還沒放入（第 1 步）或已移除（週回顧那一步）時跳過，不重畫', async () => {
+    tour.startTour();
+    clickSkip();
+    expect(router.renderPage).not.toHaveBeenCalled();
+
+    await walkToReview();
+    expect(title()).toBe('週回顧');
+    clickSkip();
+    expect(router.renderPage).not.toHaveBeenCalled();
   });
 
   it('BUG-144：在換下一步的 600 ms 內按「跳過」，導覽不再出現', async () => {

@@ -11,6 +11,7 @@
  */
 
 import { state } from './state.js';
+import { renderPage, currentHash } from './router.js';
 
 const DONE_KEY = 'yoyo_tourDone';
 
@@ -50,9 +51,13 @@ function _injectTutorialTask() {
   }
 }
 
+/** @returns {boolean} whether the task was there (in the tasks or the plan) */
 function _removeTutorialTask() {
+  const wasThere = state.tasks.some(t => t.id === TUTORIAL_TASK_ID)
+    || (state.dailyPlan || []).includes(TUTORIAL_TASK_ID);
   state.tasks    = state.tasks.filter(t => t.id !== TUTORIAL_TASK_ID);
   state.dailyPlan = (state.dailyPlan || []).filter(id => id !== TUTORIAL_TASK_ID);
+  return wasThere;
 }
 
 // ─── Step definitions ─────────────────────────────────────────────────────────
@@ -63,6 +68,7 @@ function _removeTutorialTask() {
 // `tip`            — tooltip position: 'below' | 'above' | 'center'
 // `hideNext`       — hide "下一步" button; tour advances only via waitFor
 // `waitFor`        — CSS selector; tour auto-advances when this element appears in DOM
+// `doneWhen`       — with waitFor: also has to hold (checked on each DOM change)
 // `cleanup`        — remove tutorial task from state after this step auto-advances
 
 const STEPS = [
@@ -93,6 +99,11 @@ const STEPS = [
     tip:      'below',
     hideNext: true,
     waitFor:  `#plan-list .plan-card[data-task-id="${TUTORIAL_TASK_ID}"] .plan-count-badge`,
+    // BUG-205: restarted the same day, the badge is already there (today's
+    // count) and the step went on without the user completing anything. A
+    // completion in this run is what counts (also one tapped while step 2
+    // was still showing its success state).
+    doneWhen: () => _practiceRuns() > _practiceRunsAtStart,
     cleanup:  true,
   },
   // 2 — week review
@@ -129,6 +140,10 @@ let _tooltip  = null;
 let _observer = null;
 let _advanceTimer = null;
 let _generation = 0;   // bumped by _clear(): a step drawn after it is stale
+let _practiceRunsAtStart = 0;
+
+/** Completions of the practice task recorded so far (any day). */
+const _practiceRuns = () => (state.sessions || []).filter(s => s.taskId === TUTORIAL_TASK_ID).length;
 
 // ─── Public API ──────────────────────────────────────────────────────────────
 
@@ -137,6 +152,7 @@ export function startTour() {
   _removeTutorialTask();
   _clear();
   _step = 0;
+  _practiceRunsAtStart = _practiceRuns();
   _whenNoBlockingModal(_showStep);
 }
 
@@ -220,9 +236,12 @@ function _renderStep(s) {
     _tooltip.querySelector('.tour-next').addEventListener('click', () => { _step++; _showStep(); });
   }
   _tooltip.querySelector('.tour-skip').addEventListener('click', () => {
-    _removeTutorialTask();
+    const removed = _removeTutorialTask();
     _clear();
     _markDone();
+    // BUG-205: skipped at step 2 or 3, its task card (and plan card) stayed on
+    // Home until the page was drawn again, doing nothing when tapped.
+    if (removed) renderPage(currentHash());
   });
 
   if (s.selector) {
@@ -260,7 +279,7 @@ function _renderStep(s) {
 
   // Set up auto-advance observer for interactive steps
   if (s.waitFor) {
-    _watchFor(s.waitFor, () => {
+    _watchFor(s.waitFor, s.doneWhen, () => {
       if (s.cleanup) _removeTutorialTask();
       _step++;
       // Small delay so the user sees the success state (e.g. count badge).
@@ -291,17 +310,19 @@ function _bringIntoView(target) {
 
 // ─── DOM watcher ─────────────────────────────────────────────────────────────
 
-function _watchFor(selector, callback) {
+function _watchFor(selector, doneWhen, callback) {
   if (_observer) { _observer.disconnect(); _observer = null; }
 
+  const met = () => Boolean(document.querySelector(selector)) && (!doneWhen || doneWhen());
+
   // Already present? Advance immediately.
-  if (document.querySelector(selector)) {
+  if (met()) {
     callback();
     return;
   }
 
   _observer = new MutationObserver(() => {
-    if (document.querySelector(selector)) {
+    if (met()) {
       _observer.disconnect();
       _observer = null;
       callback();
