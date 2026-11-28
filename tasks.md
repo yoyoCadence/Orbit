@@ -144,7 +144,7 @@
 
 > 2026-11-28 擁有者：「好 可以」（回覆 #302 之後的兩個問題）→ (1) 兩個同時跑這份清單的工作階段分開範圍：`claude/gallant-wozniak-*` 做同步、導覽與 e2e，`claude/zen-edison-*` 做單元測試覆蓋率；(2) 核准 BUG-141 的建議 (A)（auth 流程）。編號（agent 的安排，不是擁有者的指示）：`gallant-wozniak` 之後的新項目從 BUG-200、TEST-200 起取（#313 起；之前的照舊），`zen-edison` 照原本往上取，兩邊不再撞號。
 
-> 2026-11-26 擁有者：「好啊 繼續做」「不用停 能做就一直做吧」→ 先做 PS-260F（#275 留下的兩個 P3，#276），之後 Next 只剩需要擁有者的項目，agent 依 2026-11-18 的做法列出新的完善項目：TEST-004～TEST-012（補單元測試，完成，見 Done）；BUG-121～127（review 找到的問題，完成）；BUG-129～132（#287 review 找到的設定頁問題，完成）；BUG-133（同時跑兩次同步，完成）；BUG-134（首頁重畫時累積監聽，完成）；BUG-135（拖曳後吃掉下一次點擊，完成）；BUG-136～137（拖曳的邊界情況，完成）；BUG-138～139（個人頁，完成）；TEST-013＋BUG-140（`app.js`；登出時收起同步橫幅，完成）；BUG-142～143（#296 記下的兩個同步狀態問題，完成）；TEST-014＋BUG-144～145（導覽、DOM 動作、auth 包裝與 utils 的測試；導覽跳過、完成紀錄的有效日，完成）；BUG-146（週回顧、個人頁與首頁的日期改用有效日，完成）；TEST-015（到期就會失敗的測試，完成）；TEST-016（依執行順序才會通過的測試，完成）；TEST-017（#301 的後續，完成）；TEST-020＋BUG-153（專注計時的桌面模式：測試與 4 個修正，完成）；TEST-021（#304 的後續測試，完成）；TEST-022（佐證照片雲端同步的出錯路徑，完成）；TEST-023（#306 的測試整理，完成）；TEST-024（#307 的兩個 P3，完成）；TEST-025（雲端佐證照片的快取打不開時，完成）；BUG-154（快取打不開一次後，登出沒有刪掉雲端照片，完成）；TEST-026（#310 留下的連線競態測試，完成）；TEST-018＋BUG-150～152（導覽在手機上看不到目標、教學任務的紀錄上傳不了、刪掉的任務的紀錄，完成）；TEST-019（e2e 的時序競速，完成）；TEST-027（#312 的 CI：測試留下的計時器在檔案結束後才觸發，完成）；TEST-028（其餘留下的計時器，Next）；BUG-120（註冊後自動登入失敗時沒有說明，需核准）；BUG-141（帳號載入失敗後改用訪客，仍以帳號同步，2026-11-28 核准，完成）；BUG-200（快取開機時 token 更新，帳號的同步狀態出現在訪客畫面，需核准）。
+> 2026-11-26 擁有者：「好啊 繼續做」「不用停 能做就一直做吧」→ 先做 PS-260F（#275 留下的兩個 P3，#276），之後 Next 只剩需要擁有者的項目，agent 依 2026-11-18 的做法列出新的完善項目：TEST-004～TEST-012（補單元測試，完成，見 Done）；BUG-121～127（review 找到的問題，完成）；BUG-129～132（#287 review 找到的設定頁問題，完成）；BUG-133（同時跑兩次同步，完成）；BUG-134（首頁重畫時累積監聽，完成）；BUG-135（拖曳後吃掉下一次點擊，完成）；BUG-136～137（拖曳的邊界情況，完成）；BUG-138～139（個人頁，完成）；TEST-013＋BUG-140（`app.js`；登出時收起同步橫幅，完成）；BUG-142～143（#296 記下的兩個同步狀態問題，完成）；TEST-014＋BUG-144～145（導覽、DOM 動作、auth 包裝與 utils 的測試；導覽跳過、完成紀錄的有效日，完成）；BUG-146（週回顧、個人頁與首頁的日期改用有效日，完成）；TEST-015（到期就會失敗的測試，完成）；TEST-016（依執行順序才會通過的測試，完成）；TEST-017（#301 的後續，完成）；TEST-020＋BUG-153（專注計時的桌面模式：測試與 4 個修正，完成）；TEST-021（#304 的後續測試，完成）；TEST-022（佐證照片雲端同步的出錯路徑，完成）；TEST-023（#306 的測試整理，完成）；TEST-024（#307 的兩個 P3，完成）；TEST-025（雲端佐證照片的快取打不開時，完成）；BUG-154（快取打不開一次後，登出沒有刪掉雲端照片，完成）；TEST-026（#310 留下的連線競態測試，完成）；TEST-018＋BUG-150～152（導覽在手機上看不到目標、教學任務的紀錄上傳不了、刪掉的任務的紀錄，完成）；TEST-019（e2e 的時序競速，完成）；TEST-027（#312 的 CI：測試留下的計時器在檔案結束後才觸發，完成）；TEST-028（其餘留下的計時器，完成）；BUG-120（註冊後自動登入失敗時沒有說明，需核准）；BUG-141（帳號載入失敗後改用訪客，仍以帳號同步，2026-11-28 核准，完成）；BUG-200（快取開機時 token 更新，帳號的同步狀態出現在訪客畫面，需核准）。
 
 > 2026-11-18 擁有者要求：「列出幾個你覺得需要完善的事 持續完善」，每完成一段就開 PR 並合併，不必特別詢問（必要時才問）。agent 列出的完善清單如下，依序做；需要核准的另外標明。
 
@@ -162,14 +162,6 @@
   - PRO-017RA-Auth 開啟「確認 email」之後：**每一個新註冊**都會走到這裡（Supabase 對還沒確認的帳號回 `Email not confirmed`），使用者沒有任何提示，再登入只會看到英文錯誤，不知道要先到信箱點確認連結。另外，依 Supabase 文件，開啟後用已註冊的 email 再註冊不會回 `User already registered`（回傳看起來成功的結果，以免洩漏帳號是否存在），「此 Email 已註冊，請直接登入」不會再出現，也會落到同一段。
   - 建議：`signUp` 成功但 `data.session` 為 null（需要確認 email）時不自動登入，切到登入分頁**之後**再顯示「確認信已寄到 …，點信中的連結後再登入；若這個 Email 已註冊過，請直接登入或重設密碼」；登入遇到 `Email not confirmed` 時顯示同樣的說明。`tests/unit/authFlowForms.test.js` 目前固定了現況（訊息被隱藏），改的時候一起改。
   - 順序：在 PRO-017RA-Auth 開啟「確認 email」之前完成。
-- [ ] **TEST-028** 其他單元測試留下的計時器，在 jsdom 拆掉後觸發會讀不到 `window`（TEST-027 掃描時發現，2026-11-28，main 上原本就有）
-  - 和 TEST-027 同一類：測試結束時仍在等的真計時器，若 worker 還沒結束就觸發，callback 讀到已被移除的全域變數，vitest 回報 unhandled error，整個 `test` job 失敗（測試本身都通過）。
-  - 掃描方式（沒有提交）：一個 setupFile 包住 `setTimeout`／`clearTimeout`，記下 `pwa/js/` 建立、檔案結束時仍未觸發也未清掉的計時器與建立它的測試。全套 60 個；多數的 callback 只動已拿到的元素（toast、同步橫幅、sheet 關閉、卡片的強調）或時間長到不會在測試期間觸發（`remindWindow` 的下一個邊界、下載逾時），不會出錯。會讀全域、可能出錯的：
-    - `app.js` 的 `setTimeout(() => window.startTour(), 600)`：`appBootSequence.test.js` 留下 7 個（新使用者的設定流程）。
-    - `home.js` 拖曳結束的 `window._isDragging = false`（50 ms）：`homeInteractions.test.js` 留下 8 個。
-    - `proNav.js` 的 `window._scrollToProCard?.()`：`profile.test.js` 留下 1 個。
-  - 建議：只改測試——這些測試改用 fake timers 並把計時器跑完（或在 `afterEach` 跑完／清掉），再用同樣的掃描確認沒有會讀全域的計時器留下。
-
 - [ ] **BUG-200** 快取開機時以 `TOKEN_REFRESHED` 接上 session，訪客的畫面仍以那個帳號同步（#313 獨立 review 發現，2026-11-28，main 上原本就有；屬 auth 流程，**需擁有者核准**）
   - 現況：`init()` 的快取分支以 `getSession()` 拿到的 session 設定 `_currentSession`，不檢查它是不是快取的那個使用者。這台裝置存著訪客的資料、又存著某個帳號的 session（例如 1.42.21 之前在「載入失敗」的登入畫面改用訪客，或載入失敗後依提示重新整理），而 token 已過期時，啟動時 SDK 送出 `TOKEN_REFRESHED` 而不是 `SIGNED_IN`，不經過 `loadAndStart()` 的 fail-closed：訪客的畫面出現那個帳號的「同步暫停」（review 以真的 supabase-js 重現），也會以那個帳號 `loadFromRemote()`，與 BUG-141 的 (a)(e) 相同。
   - 建議：快取分支在 `getSession()` 的帳號與快取的使用者不同時，比照 `loadAndStart()`（同步過的帳號：照舊載入；訪客的資料：不以它為目前的帳號，並提示或改走 BUG-141 的訪客流程）。屬 auth 流程，核准後再做。
@@ -334,17 +326,32 @@
       - P3：查 Pro 狀態時改用訪客的測試改為檢查傳給 `signOutProofCleanup` 的是那個帳號存著的紀錄；2026-11-28 那段說明裡的編號分法改註明是 agent 的安排；`_guestEndingSession` 旗標在真的 SDK 下多半已由上面的條件涵蓋，仍在訪客開到另一個同步過的帳號的快取時有用，保留。
       - 新的測試：重新載入中的分頁收到 `SIGNED_OUT` 不清、那次載入作廢；顯示著帳號的分頁照常登出；只收起日報類的視窗，重設密碼與忘記密碼的表單留著；`PASSWORD_RECOVERY` 後載入失敗表單留著。改動驗證：這一輪的 9 個改動都會讓測試失敗。
   - 一併做 #302 第三輪獨立 review 的兩個 P3：`tour.test.js` 的 `appendChild` spy 在 `finally` 還原；「剛好貼著上緣或下緣」的測試名稱改為只寫下緣（上緣另有測試）。
+- [x] **TEST-028** 其他單元測試留下的計時器，在 jsdom 拆掉後觸發會讀不到 `window`（TEST-027 掃描時發現，2026-11-28，main 上原本就有）
+  - 和 TEST-027 同一類：測試結束時仍在等的真計時器。不讓出 event loop 的測試（同步或只用 microtask）留下的計時器要等整個檔案跑完才有機會觸發；0 ms 的通常在 jsdom 拆掉前那一下觸發，較長的可能在之後，callback 讀到已被移除的全域變數時 vitest 回報 unhandled error，整個 `test` job 失敗（測試本身都通過）。
+  - 會讀全域、可能出錯的（掃描找到）：
+    - `app.js` 完成設定後的 `setTimeout(() => window.startTour(), 600)`：`appBootSequence.test.js` 的 7 個（`PRO-014Q Q6`、`HW-112D` 兩組）。它也可能在之後的測試裡觸發、載入真的 `tour.js`。
+    - `home.js` 拖曳結束的 `window._isDragging = false`（50 ms）：`homeInteractions.test.js` 的 8 個；同一個檔案的 `orbitWindow.js` 延後啟動（0 ms，讀 `document.hidden`，#312 review 指出）1 個。
+    - `proNav.js` 的 `window._scrollToProCard?.()`（300 ms）：`profile.test.js` 的 1 個。
+  - 修正（只改測試）：
+    - `appBootSequence.test.js`：完成設定的兩組 describe 以 fake timers 取代 `setTimeout`，每個測試後清掉（`fakeTimersForSetup()`）；`flush()` 與等 jsdom 的 `FileReader` 的那一處改用檔案開頭留下的真 `setTimeout`。
+    - `homeInteractions.test.js`：`beforeEach` 一律 `vi.useFakeTimers()`（`afterEach` 本來就把等著的跑完，原本的註解也提到拖曳的 50 ms 可能還在真計時器上）。
+    - `profile.test.js`：鎖住的模板導到 Pro 卡片的測試改用 fake timers，並確認 300 ms 後才捲到 Pro 卡片（之前沒有檢查）。
+  - 掃描工具提交為 `tests/support/pendingTimers.config.js`（不在 CI，用法見檔頭）：`setTimeout` 由 `pwa/js/` 直接呼叫、檔案結束時還沒觸發也沒清掉的，連同建立它的測試列出。修正後全套剩下的都只動已拿到的元素（toast、同步橫幅、sheet、卡片的強調、`settings.js` 的 `focus()`）、時間長到不會在測試期間觸發（`proofCloud.js` 的重試與下載逾時、`remindWindow.js` 的下一個邊界），或是 0 ms 且直接 return 的 `pixiSceneRuntime.js` 的 `destroy`。
+  - 驗證：三個檔案與全套單元測試通過；三個檔案以 3 個 seed 打亂順序通過；掃描在這三個檔案不再列出任何計時器。
+  - 一併處理 #312 review 的 P3：TEST-019 的說明（兩次啟動是固定的、「59 次有 1 次」量的是什麼、review 沒有重現那 5 次）；TEST-027 的測試固定 800 ms 的延遲。
+
 - [x] **TEST-027** `profileActions.test.js` 留下的計時器讓 #312 的 `test` job 失敗（2026-11-28，main 上原本就有）
   - 現象：2447 個測試都通過，但 vitest 回報 1 個 unhandled error：`ReferenceError: document is not defined`，在 `pages/profile.js:760` 的 `Timeout._onTimeout`，來自 `profileActions.test.js`。
   - 根本原因：「does not draw Profile over the page shown when the sync ends (BUG-138)」以真的計時器跑，名稱同步成功後 `profile.js` 排了 800 ms 後關掉視窗的 `setTimeout`（callback 讀 `document.body`）。檔案在 800 ms 內跑完時 jsdom 已拆掉，計時器之後才觸發。以 TEST-028 的掃描確認：這個檔案只留下這一個會讀全域的計時器。
   - 修正（只改測試）：這個測試改用 fake timers，最後把 800 ms 跑完，並確認視窗關掉、另一頁仍不被 Profile 蓋掉。掃描確認不再留下；全套單元測試與打亂順序都通過。
-  - 其餘同類的計時器見 Next 的 TEST-028。
+  - 其餘同類的計時器見 TEST-028。#312 review 的 P3（TEST-028 一併做）：視窗若立刻關掉測試仍會通過，改為 799 ms 時還開著、800 ms 時關掉（「saves, says it synced, and closes after 800 ms」同樣）；改成立刻關掉時這 2 個測試都會失敗。
 
 - [x] **TEST-019** `hw112c2-cloud-proof` 的 e2e 偶爾在重新載入後失敗（TEST-018 跑 e2e 時發現，2026-11-27，main 上原本就有）
   - 現象：`page.reload()` 之後等到 `#main-app` 出現就 `scrollIntoViewIfNeeded()` 那一列，偶爾得到 `Element is not attached to the DOM`（本機 6 個 worker 時 60 次、90 次各失敗 1 次，都在第 116 行）。CI 會重跑一次，所以沒有擋住合併。
-  - 根本原因（以暫時的探針確認，沒有提交）：一次開啟可能啟動兩次——快取的使用者先畫出首頁，之後在 `getSession()` 之前到的 `SIGNED_IN` 跑 `loadAndStart()`，它的 `showMainApp()` 再畫一次首頁（BUG-106 認為再顯示一次無害），那一列被換掉。第二次畫出在背景同步失敗的橫幅之後：這個測試的使用者沒有 `trialStartedAt`，`loadAndStart()` 先等 `start_trial`（REST 回 500）才畫，所以只等「同步暫停」橫幅（原本的建議）不夠——探針在沒有 `trialStartedAt` 時 59 次開啟有 1 次在橫幅之後才重畫。
+  - 根本原因（以暫時的探針確認，沒有提交）：這個測試每次開啟都啟動兩次——快取的使用者先畫出首頁，之後 `SIGNED_IN` 跑 `loadAndStart()`，它的 `showMainApp()` 再畫一次首頁（BUG-106 認為再顯示一次無害），那一列被換掉。兩次是固定的（#312 review）：supabase-js 2.112.4 把啟動時的 auth 事件留到啟動完成才送（`_pendingInitNotifications`），而且排在 `getSession()` 之前，所以 `SIGNED_IN` 一定先到、先設定 `_currentSession`。這個測試的使用者沒有 `trialStartedAt`，`loadAndStart()` 先等 `start_trial`（REST 回 500）才畫，所以第二次畫出**總是**在「同步暫停」橫幅之後的另一個 task（review 的探針以 DOM 變動的順序記錄：沒有 `trialStartedAt` 時 120 次都是）；只等橫幅（原本的建議）不夠。原本的失敗之所以少見，是這次重畫要剛好晚於測試自己找到那一列（`start_trial` 回應的時間）；agent 的探針記到的「59 次有 1 次」量的就是這個，不是重畫在橫幅之後的比例。
   - 修正（只改測試）：測試的使用者加上 `trialStartedAt`（60 天前；登入過的帳號都有，已過期所以不是 Pro），`goto` 與 `reload` 之後都先等同步橫幅變成 `sync-error`（`bootSettled()`）再找那一列。兩條路徑都以這個橫幅結束，而 `loadAndStart()` 的重畫與橫幅在同一個 task 裡（中間沒有 await），之後不會再換掉那一列；快取路徑先設定 `_currentSession`，之後的 `SIGNED_IN` 會被略過。
-  - 驗證：探針（橫幅之後首頁是否再被畫）300 次開啟都沒有；修正後的測試 6 個 worker 跑 300 次都通過。另一次 150 次的探針有 5 次失敗，當時沒有留下記錄，重跑同樣的 150 次沒有失敗，原因不明（見 PR 說明）。
+  - 驗證：探針（橫幅之後首頁是否再被畫）300 次開啟都沒有；修正後的測試 6 個 worker 跑 300 次都通過。另一次 150 次的探針有 5 次失敗，當時沒有留下記錄，重跑同樣的 150 次沒有失敗，原因不明（見 PR 說明）。#312 的獨立 review 另外跑了 180 次（都通過）與 420 次探針（有 `trialStartedAt` 時重畫都和橫幅在同一批 DOM 變動裡，4 倍 CPU 節流下也是），也沒有重現那 5 次。
+  - 快取路徑先拿到 session（`SIGNED_IN` 被略過）的情況依程式碼也成立，但這個測試走不到（見上面的固定順序）。
 
 - [x] **TEST-026** #310 第二輪 review 的 P3：`dropConnection()` 的兩個分支沒有測試（2026-11-27）
   - 只改測試，`proofCloud.test.js` 新增 2 個：(1) 慢的寫入先拿到連線 1、等資料時連線 1 無聲失效，另一張照片已換上連線 2，之後那個寫入在連線 1 上失敗——連線 2 照樣使用（不再打開第三個），只留一個打開的連線；(2) 讀取在正常的連線上出錯（不是失效）時那個連線會關掉，不會留著。拿掉「只清目前的連線」、讀取或寫入改回不關閉也不檢查的 `dbPromise = null`，都會讓測試失敗；打亂順序 6 個 seed 通過。

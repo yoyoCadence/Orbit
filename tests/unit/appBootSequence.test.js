@@ -171,7 +171,23 @@ vi.mock('../../pwa/js/personalSpace/v2/runtime/pixiSceneRuntime.js', () => ({
 
 // ─── Harness ──────────────────────────────────────────────────────────────────
 
-const flush = () => new Promise(resolve => { setTimeout(resolve, 0); });
+// The real setTimeout, so flush() still works where setTimeout is faked.
+const realSetTimeout = globalThis.setTimeout;
+const flush = () => new Promise(resolve => { realSetTimeout(resolve, 0); });
+
+/**
+ * TEST-028: finishing setup schedules the onboarding tour 600 ms later
+ * (app.js). On real timers that outlives the test: it could start the tour in
+ * a later test, and after the file it reads a `window` jsdom no longer has.
+ * Describes that finish setup fake setTimeout and drop it after each test.
+ */
+function fakeTimersForSetup() {
+  beforeEach(() => { vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] }); });
+  afterEach(() => {
+    vi.clearAllTimers();
+    vi.useRealTimers();
+  });
+}
 
 function seedCachedUser(id) {
   cache.user     = makeUser(id);
@@ -938,6 +954,8 @@ describe('PRO-014Q S0（A1）：另一個視窗按「還原」', () => {
 });
 
 describe('PRO-014Q Q6：遊客有任務但沒有 user', () => {
+  fakeTimersForSetup();
+
   it('進入設定頁重建 profile，而不是開機到無法記錄 Session 的狀態', async () => {
     // 「清除殘留」刪掉了遊客的本機 user（backup 屬於另一個帳號，無法分辨），任務還在。
     cache.user = null;
@@ -1065,6 +1083,8 @@ describe('PRO-014Q Q6：遊客有任務但沒有 user', () => {
 });
 
 describe('HW-112D：設定頁與另一個分頁（#262 審查）', () => {
+  fakeTimersForSetup();
+
   const submit = () => document.getElementById('setup-form').dispatchEvent(
     new Event('submit', { bubbles: true, cancelable: true }),
   );
@@ -1141,7 +1161,7 @@ describe('HW-112D：設定頁與另一個分頁（#262 審查）', () => {
     Object.defineProperty(input, 'files', { configurable: true, value: [file] });
     input.dispatchEvent(new Event('change'));
     window.continueAsGuest(); // opened again before the read finishes
-    await new Promise(resolve => setTimeout(resolve, 50));
+    await new Promise(resolve => { realSetTimeout(resolve, 50); }); // jsdom's FileReader is real
     await flush();
     const preview = document.getElementById('setup-avatar-preview');
     expect(preview.style.backgroundImage).toBe('');

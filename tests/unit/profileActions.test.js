@@ -294,7 +294,9 @@ describe('changing the name', () => {
       await flush();
       expect(modal.querySelector('#name-save-status').textContent).toBe('✓ 同步完成');
       expect(c.querySelector('#profile-name-display').textContent).toContain('新名字');
-      vi.advanceTimersByTime(800);
+      vi.advanceTimersByTime(799);
+      expect(modal.isConnected).toBe(true);
+      vi.advanceTimersByTime(1);
       expect(modal.isConnected).toBe(false);
     } finally {
       vi.useRealTimers();
@@ -391,7 +393,9 @@ describe('changing the name', () => {
       await flush();
       expect(c.innerHTML).toBe('<div id="other-page">首頁</div>');
       expect(modal.querySelector('#name-save-status').textContent).toBe('✓ 同步完成');
-      vi.advanceTimersByTime(800);
+      vi.advanceTimersByTime(799);
+      expect(modal.isConnected).toBe(true);
+      vi.advanceTimersByTime(1);
       expect(modal.isConnected).toBe(false);
       expect(c.innerHTML).toBe('<div id="other-page">首頁</div>');
     } finally {

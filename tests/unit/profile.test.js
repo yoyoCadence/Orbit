@@ -306,12 +306,26 @@ describe('renderProfile: template picker', () => {
   });
 
   it('free user clicking a locked template navigates to settings Pro section', () => {
-    mockStorage.isProUser.mockReturnValue(false);
-    const c = makeContainer();
-    renderProfile(c);
-    c.querySelector('[data-template="business"]').click();
-    expect(window.navigate).toHaveBeenCalledWith('settings');
-    expect(mockState.user.titleTemplate).toBe('rpg'); // unchanged
+    // TEST-028: fake timers, so the 300 ms scroll to the Pro card runs here
+    // rather than after the file, when jsdom's `window` is gone.
+    vi.useFakeTimers();
+    const scrollToProCard = vi.fn();
+    window._scrollToProCard = scrollToProCard;
+    try {
+      mockStorage.isProUser.mockReturnValue(false);
+      const c = makeContainer();
+      renderProfile(c);
+      c.querySelector('[data-template="business"]').click();
+      expect(window.navigate).toHaveBeenCalledWith('settings');
+      expect(mockState.user.titleTemplate).toBe('rpg'); // unchanged
+      vi.advanceTimersByTime(299);
+      expect(scrollToProCard).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(1);
+      expect(scrollToProCard).toHaveBeenCalledTimes(1);
+    } finally {
+      delete window._scrollToProCard;
+      vi.useRealTimers();
+    }
   });
 
   it('Pro user: clicking a template button updates user.titleTemplate and saves', () => {
