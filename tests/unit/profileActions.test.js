@@ -375,18 +375,28 @@ describe('changing the name', () => {
   });
 
   it('does not draw Profile over the page shown when the sync ends (BUG-138)', async () => {
-    mockState.user = freshUser({ id: 'owner-a' });
-    const sync = deferred();
-    mockStorage.saveUserAndSync.mockReturnValueOnce(sync.promise);
-    const c = makeContainer();
-    const modal = openName(c);
-    modal.querySelector('#name-input').value = '新名';
-    modal.querySelector('#name-save-btn').click();
-    c.innerHTML = '<div id="other-page">首頁</div>';
-    sync.resolve(true);
-    await flush();
-    expect(c.innerHTML).toBe('<div id="other-page">首頁</div>');
-    expect(modal.querySelector('#name-save-status').textContent).toBe('✓ 同步完成');
+    // TEST-027: fake timers, so the window's 800 ms close does not outlive the
+    // file — it reads `document`, which is gone once jsdom is torn down.
+    vi.useFakeTimers();
+    try {
+      mockState.user = freshUser({ id: 'owner-a' });
+      const sync = deferred();
+      mockStorage.saveUserAndSync.mockReturnValueOnce(sync.promise);
+      const c = makeContainer();
+      const modal = openName(c);
+      modal.querySelector('#name-input').value = '新名';
+      modal.querySelector('#name-save-btn').click();
+      c.innerHTML = '<div id="other-page">首頁</div>';
+      sync.resolve(true);
+      await flush();
+      expect(c.innerHTML).toBe('<div id="other-page">首頁</div>');
+      expect(modal.querySelector('#name-save-status').textContent).toBe('✓ 同步完成');
+      vi.advanceTimersByTime(800);
+      expect(modal.isConnected).toBe(false);
+      expect(c.innerHTML).toBe('<div id="other-page">首頁</div>');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
