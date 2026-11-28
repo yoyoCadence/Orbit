@@ -251,12 +251,15 @@ function _renderStep(s) {
     _tooltip.querySelector('.tour-next').addEventListener('click', () => { _step++; _showStep(); });
   }
   _tooltip.querySelector('.tour-skip').addEventListener('click', () => {
+    // Skipped during a step's 600 ms success state: step 3 has already taken
+    // the practice task out, but its cards are still drawn (#318 review).
+    const advancing = _advanceTimer !== null;
     const removed = _removeTutorialTask();
     _clear();
     _markDone();
     // BUG-205: skipped at step 2 or 3, its task card (and plan card) stayed on
     // Home until the page was drawn again, doing nothing when tapped.
-    if (removed) renderPage(currentHash());
+    if (removed || advancing) renderPage(currentHash());
   });
 
   if (s.selector) {
@@ -295,14 +298,14 @@ function _renderStep(s) {
   // Set up auto-advance observer for interactive steps
   if (s.waitFor) {
     _watchFor(s.waitFor, s.doneWhen, () => {
+      // Out at once: a second tap on its card in the next 600 ms then finds
+      // no task and records nothing (#318 re-review).
+      if (s.cleanup) _removeTutorialTask();
       _step++;
       // Small delay so the user sees the success state (e.g. count badge).
       // The step stays up meanwhile: skipping it cancels this (BUG-144).
-      // The practice task leaves only when the tour moves on: skipped in
-      // these 600 ms, the skip still finds it and redraws (#318 review).
       _advanceTimer = setTimeout(() => {
         _advanceTimer = null;
-        if (s.cleanup) _removeTutorialTask();
         _showStep();
       }, 600);
     });

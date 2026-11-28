@@ -144,6 +144,22 @@ test.describe('TEST-200 onboarding tour', () => {
     expect((await stored(page)).plan).toEqual([]);
   });
 
+  test('a quick second tap on the practice card (its 600 ms success state) records nothing more', async ({ page }) => {
+    await newGuest(page);
+    await page.locator('.tour-next').click();
+    await page.locator(`.task-card${TOUR_TASK}`).click();
+    await expect(page.locator('.tour-counter')).toHaveText('3 / 6');
+    const card = page.locator(`#plan-list .plan-card${TOUR_TASK}`);
+    await card.click();
+    // Only while it is still there (a slow runner may already be on step 4).
+    await card.click({ timeout: 300 }).catch(() => {});
+    await expect(page.locator('.tour-counter')).toHaveText('4 / 6');
+
+    const practice = await page.evaluate(() =>
+      JSON.parse(localStorage.getItem('yoyo_sessions') || '[]').filter(s => s.taskId === 'tour-task').length);
+    expect(practice).toBe(1);
+  });
+
   test('skipped at step 2 (practice card shown): its card goes too', async ({ page }) => {
     await newGuest(page);
     await page.locator('.tour-next').click();

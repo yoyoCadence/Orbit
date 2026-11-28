@@ -403,7 +403,7 @@ describe('略過、跳過與重新開始', () => {
     expect(title()).toBe('週回顧');
   });
 
-  it('完成練習任務後的 600 ms 內按「跳過」：練習任務在這時才移除並重畫，不留下卡片（#318 review）', async () => {
+  it('完成練習任務後就移除它：600 ms 的成功畫面裡再點一次，找不到任務、不會再記一筆（#318 re-review）', async () => {
     tour.startTour();
     clickNext();
     addPlanCard();
@@ -411,13 +411,32 @@ describe('略過、跳過與重新開始', () => {
     vi.advanceTimersByTime(600);
     completePlanCard();
     await settleObserver();
-    expect(mockState.tasks.map(t => t.id)).toContain(TUTORIAL);   // still there until the tour moves on
+
+    expect(title()).toBe('完成任務 ✓');                  // still showing its success state
+    expect(mockState.tasks.map(t => t.id)).not.toContain(TUTORIAL);
+    expect(mockState.dailyPlan).not.toContain(TUTORIAL);
+  });
+
+  it('完成練習任務後的 600 ms 內按「跳過」：它已移除，仍重畫，不留下卡片（#318 review）', async () => {
+    tour.startTour();
+    clickNext();
+    addPlanCard();
+    await settleObserver();
+    vi.advanceTimersByTime(600);
+    completePlanCard();
+    await settleObserver();
 
     clickSkip();
 
     expect(router.renderPage).toHaveBeenCalledTimes(1);
-    expect(mockState.tasks.map(t => t.id)).not.toContain(TUTORIAL);
-    expect(mockState.dailyPlan).not.toContain(TUTORIAL);
+    vi.advanceTimersByTime(600);
+    expect(tooltip()).toBeNull();                       // BUG-144: the advance was cancelled
+  });
+
+  it('週回顧那一步（成功畫面已結束）按「跳過」：不重畫', async () => {
+    await walkToReview();
+    clickSkip();
+    expect(router.renderPage).not.toHaveBeenCalled();
   });
 
   it('第 2 步（加入計畫）不受影響：計畫卡已在畫面上就換下一步', async () => {
