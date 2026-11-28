@@ -142,7 +142,7 @@
 
 ## Next
 
-> 2026-11-26 擁有者：「好啊 繼續做」「不用停 能做就一直做吧」→ 先做 PS-260F（#275 留下的兩個 P3，#276），之後 Next 只剩需要擁有者的項目，agent 依 2026-11-18 的做法列出新的完善項目：TEST-004～TEST-012（補單元測試，完成，見 Done）；BUG-121～127（review 找到的問題，完成）；BUG-129～132（#287 review 找到的設定頁問題，完成）；BUG-133（同時跑兩次同步，完成）；BUG-134（首頁重畫時累積監聽，完成）；BUG-135（拖曳後吃掉下一次點擊，完成）；BUG-136～137（拖曳的邊界情況，完成）；BUG-138～139（個人頁，完成）；TEST-013＋BUG-140（`app.js`；登出時收起同步橫幅，完成）；BUG-142～143（#296 記下的兩個同步狀態問題，完成）；TEST-014＋BUG-144～145（導覽、DOM 動作、auth 包裝與 utils 的測試；導覽跳過、完成紀錄的有效日，完成）；BUG-146（週回顧、個人頁與首頁的日期改用有效日，完成）；TEST-015（到期就會失敗的測試，完成）；TEST-016（依執行順序才會通過的測試，完成）；TEST-017（#301 的後續，完成）；TEST-020＋BUG-153（專注計時的桌面模式：測試與 4 個修正，完成）；TEST-021（#304 的後續測試，完成）；TEST-022（佐證照片雲端同步的出錯路徑，完成）；TEST-023（#306 的測試整理，完成）；TEST-024（#307 的兩個 P3，完成）；TEST-025（雲端佐證照片的快取打不開時，完成）；BUG-154（快取打不開一次後，登出沒有刪掉雲端照片，完成）；TEST-026（#310 留下的連線競態測試，完成）；TEST-018＋BUG-150～152（導覽在手機上看不到目標、教學任務的紀錄上傳不了、刪掉的任務的紀錄，完成）；TEST-019（e2e 的時序競速，完成）；BUG-120（註冊後自動登入失敗時沒有說明，需核准）；BUG-141（帳號載入失敗後改用訪客，仍以帳號同步，需核准）。
+> 2026-11-26 擁有者：「好啊 繼續做」「不用停 能做就一直做吧」→ 先做 PS-260F（#275 留下的兩個 P3，#276），之後 Next 只剩需要擁有者的項目，agent 依 2026-11-18 的做法列出新的完善項目：TEST-004～TEST-012（補單元測試，完成，見 Done）；BUG-121～127（review 找到的問題，完成）；BUG-129～132（#287 review 找到的設定頁問題，完成）；BUG-133（同時跑兩次同步，完成）；BUG-134（首頁重畫時累積監聽，完成）；BUG-135（拖曳後吃掉下一次點擊，完成）；BUG-136～137（拖曳的邊界情況，完成）；BUG-138～139（個人頁，完成）；TEST-013＋BUG-140（`app.js`；登出時收起同步橫幅，完成）；BUG-142～143（#296 記下的兩個同步狀態問題，完成）；TEST-014＋BUG-144～145（導覽、DOM 動作、auth 包裝與 utils 的測試；導覽跳過、完成紀錄的有效日，完成）；BUG-146（週回顧、個人頁與首頁的日期改用有效日，完成）；TEST-015（到期就會失敗的測試，完成）；TEST-016（依執行順序才會通過的測試，完成）；TEST-017（#301 的後續，完成）；TEST-020＋BUG-153（專注計時的桌面模式：測試與 4 個修正，完成）；TEST-021（#304 的後續測試，完成）；TEST-022（佐證照片雲端同步的出錯路徑，完成）；TEST-023（#306 的測試整理，完成）；TEST-024（#307 的兩個 P3，完成）；TEST-025（雲端佐證照片的快取打不開時，完成）；BUG-154（快取打不開一次後，登出沒有刪掉雲端照片，完成）；TEST-026（#310 留下的連線競態測試，完成）；TEST-018＋BUG-150～152（導覽在手機上看不到目標、教學任務的紀錄上傳不了、刪掉的任務的紀錄，完成）；TEST-019（e2e 的時序競速，完成）；TEST-027（#312 的 CI：測試留下的計時器在檔案結束後才觸發，完成）；TEST-028（其餘留下的計時器，Next）；BUG-120（註冊後自動登入失敗時沒有說明，需核准）；BUG-141（帳號載入失敗後改用訪客，仍以帳號同步，需核准）。
 
 > 2026-11-18 擁有者要求：「列出幾個你覺得需要完善的事 持續完善」，每完成一段就開 PR 並合併，不必特別詢問（必要時才問）。agent 列出的完善清單如下，依序做；需要核准的另外標明。
 
@@ -160,6 +160,14 @@
   - PRO-017RA-Auth 開啟「確認 email」之後：**每一個新註冊**都會走到這裡（Supabase 對還沒確認的帳號回 `Email not confirmed`），使用者沒有任何提示，再登入只會看到英文錯誤，不知道要先到信箱點確認連結。另外，依 Supabase 文件，開啟後用已註冊的 email 再註冊不會回 `User already registered`（回傳看起來成功的結果，以免洩漏帳號是否存在），「此 Email 已註冊，請直接登入」不會再出現，也會落到同一段。
   - 建議：`signUp` 成功但 `data.session` 為 null（需要確認 email）時不自動登入，切到登入分頁**之後**再顯示「確認信已寄到 …，點信中的連結後再登入；若這個 Email 已註冊過，請直接登入或重設密碼」；登入遇到 `Email not confirmed` 時顯示同樣的說明。`tests/unit/authFlowForms.test.js` 目前固定了現況（訊息被隱藏），改的時候一起改。
   - 順序：在 PRO-017RA-Auth 開啟「確認 email」之前完成。
+- [ ] **TEST-028** 其他單元測試留下的計時器，在 jsdom 拆掉後觸發會讀不到 `window`（TEST-027 掃描時發現，2026-11-28，main 上原本就有）
+  - 和 TEST-027 同一類：測試結束時仍在等的真計時器，若 worker 還沒結束就觸發，callback 讀到已被移除的全域變數，vitest 回報 unhandled error，整個 `test` job 失敗（測試本身都通過）。
+  - 掃描方式（沒有提交）：一個 setupFile 包住 `setTimeout`／`clearTimeout`，記下 `pwa/js/` 建立、檔案結束時仍未觸發也未清掉的計時器與建立它的測試。全套 60 個；多數的 callback 只動已拿到的元素（toast、同步橫幅、sheet 關閉、卡片的強調）或時間長到不會在測試期間觸發（`remindWindow` 的下一個邊界、下載逾時），不會出錯。會讀全域、可能出錯的：
+    - `app.js` 的 `setTimeout(() => window.startTour(), 600)`：`appBootSequence.test.js` 留下 7 個（新使用者的設定流程）。
+    - `home.js` 拖曳結束的 `window._isDragging = false`（50 ms）：`homeInteractions.test.js` 留下 8 個。
+    - `proNav.js` 的 `window._scrollToProCard?.()`：`profile.test.js` 留下 1 個。
+  - 建議：只改測試——這些測試改用 fake timers 並把計時器跑完（或在 `afterEach` 跑完／清掉），再用同樣的掃描確認沒有會讀全域的計時器留下。
+
 - [ ] **BUG-141** 帳號載入失敗後改用訪客，app 仍以那個帳號同步（TEST-013 檢查 `app.js` 時發現，2026-11-27，main 上原本就有；屬 auth 流程，**需擁有者核准**）
   - 根本原因：登入後雲端資料載入失敗（例如離線或 500），而這台裝置沒有這個帳號的快取時，`loadAndStart()` 回到登入畫面並提示「無法載入雲端資料，請檢查連線後重新整理。」（`app.js` 的 fail-closed return），但 `_currentSession` 仍是那個帳號，Supabase 的 session 也還在，`_showSyncFailure()` 也已設定 `_needsResync`。之後：
     - (a) 按「以遊客身份繼續」：訪客的畫面上方一打開就是**那個帳號**的同步失敗橫幅（線上時也是，來自 `_showSyncFailure()`）；離線時完成紀錄，橫幅是那個帳號的「N 筆待同步」（`_refreshOfflineHint()` 只看 `_currentSession`）。
@@ -302,6 +310,12 @@
 ---
 
 ## Done
+
+- [x] **TEST-027** `profileActions.test.js` 留下的計時器讓 #312 的 `test` job 失敗（2026-11-28，main 上原本就有）
+  - 現象：2447 個測試都通過，但 vitest 回報 1 個 unhandled error：`ReferenceError: document is not defined`，在 `pages/profile.js:760` 的 `Timeout._onTimeout`，來自 `profileActions.test.js`。
+  - 根本原因：「does not draw Profile over the page shown when the sync ends (BUG-138)」以真的計時器跑，名稱同步成功後 `profile.js` 排了 800 ms 後關掉視窗的 `setTimeout`（callback 讀 `document.body`）。檔案在 800 ms 內跑完時 jsdom 已拆掉，計時器之後才觸發。以 TEST-028 的掃描確認：這個檔案只留下這一個會讀全域的計時器。
+  - 修正（只改測試）：這個測試改用 fake timers，最後把 800 ms 跑完，並確認視窗關掉、另一頁仍不被 Profile 蓋掉。掃描確認不再留下；全套單元測試與打亂順序都通過。
+  - 其餘同類的計時器見 Next 的 TEST-028。
 
 - [x] **TEST-019** `hw112c2-cloud-proof` 的 e2e 偶爾在重新載入後失敗（TEST-018 跑 e2e 時發現，2026-11-27，main 上原本就有）
   - 現象：`page.reload()` 之後等到 `#main-app` 出現就 `scrollIntoViewIfNeeded()` 那一列，偶爾得到 `Element is not attached to the DOM`（本機 6 個 worker 時 60 次、90 次各失敗 1 次，都在第 116 行）。CI 會重跑一次，所以沒有擋住合併。
