@@ -42,6 +42,9 @@ export function eToday() { return effectiveToday(state.user?.newDayHour ?? 5); }
  */
 function mountModal(modal) {
   if (modal.id) document.getElementById(modal.id)?.remove();
+  // The day it asks about (BUG-203): the cross-day watcher leaves today's
+  // alone, and replaces one left open from an earlier day.
+  modal.dataset.day = eToday();
   document.body.appendChild(modal);
   return modal;
 }
@@ -466,11 +469,13 @@ export function startDayWatcher() {
       state.dailyPlan = storage.getDailyPlan();
       // Apply random theme for new day (if feature enabled)
       applyRandomThemeForToday();
-      // Show morning modal if energy not yet reset today, unless today's is
+      // Show morning modal if energy not yet reset today, unless today is
       // already being asked (the guest path asks again after a failed load,
-      // BUG-201; or the report was just closed for the morning modal).
-      if (state.energy.lastResetDate !== current
-        && !document.querySelector('#daily-report-modal, #morning-modal')) {
+      // BUG-201; or the report was just closed for the morning modal). One
+      // left open from an earlier day is replaced, as before.
+      const askingToday = [...document.querySelectorAll('#daily-report-modal, #morning-modal')]
+        .some(modal => modal.dataset.day === current);
+      if (state.energy.lastResetDate !== current && !askingToday) {
         showDailyReport(() => showMorningModal());
       }
     }

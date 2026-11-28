@@ -466,7 +466,8 @@ function bootWithLocalState() {
     const interrupted = _dayCycleInterrupted;
     _dayCycleInterrupted = null;
     if (interrupted && state.energy.lastResetDate !== eToday() && !document.querySelector(DAY_CYCLE_OVERLAYS)) {
-      if (interrupted === 'report') showDailyReport(() => showMorningModal());
+      // A new day since then starts from its own report (BUG-203).
+      if (interrupted.at === 'report' || interrupted.day !== eToday()) showDailyReport(() => showMorningModal());
       else showMorningModal();
     }
     return;
@@ -571,8 +572,8 @@ async function loadAndStart(session) {
     // form of a recovery link among them (#313 re-review).
     _forgetCurrentAccount();
     const dayCycleOverlays = [...document.querySelectorAll(DAY_CYCLE_OVERLAYS)];
-    if (dayCycleOverlays.some(overlay => overlay.id === 'daily-report-modal')) _dayCycleInterrupted = 'report';
-    else if (dayCycleOverlays.some(overlay => overlay.id === 'morning-modal')) _dayCycleInterrupted = 'morning';
+    if (dayCycleOverlays.some(overlay => overlay.id === 'daily-report-modal')) _dayCycleInterrupted = { at: 'report', day: eToday() };
+    else if (dayCycleOverlays.some(overlay => overlay.id === 'morning-modal')) _dayCycleInterrupted = { at: 'morning', day: eToday() };
     dayCycleOverlays.forEach(overlay => overlay.remove());
     showLoginScreen();
     showToast('無法載入雲端資料，請檢查連線後重新整理。');
@@ -648,7 +649,8 @@ function _askStreakUnlock(ownerId, isCurrent) {
 }
 
 // BUG-201: which part of this launch's day rollover the fail-closed return
-// took down ('report' | 'morning'), for the guest path to ask again.
+// took down (`at`: 'report' | 'morning'), and on which day, for the guest
+// path to ask again.
 let _dayCycleInterrupted = null;
 
 // What dayCycle.js mounts on <body> (its mountModal ids, the shield confirm).

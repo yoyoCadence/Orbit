@@ -40,6 +40,16 @@ async function startWatcher() {
   startDayWatcher();
 }
 
+/** A day-cycle modal already on screen, mounted for `day`. */
+function mounted(id, day) {
+  const modal = document.createElement('div');
+  modal.id = id;
+  modal.className = 'modal-overlay';
+  modal.dataset.day = day;
+  document.body.appendChild(modal);
+  return modal;
+}
+
 const pastMidnight = (at = '2026-11-27T00:00:30') => {
   vi.setSystemTime(new Date(at));
   vi.advanceTimersByTime(60_000);
@@ -107,11 +117,9 @@ describe('BUG-203：app 隱藏時', () => {
 });
 
 describe('BUG-203：今天已經在問時', () => {
-  it('日報已在畫面上（訪客回來時再問的那一次）：不再掛一次，那一天算看過了', async () => {
+  it('今天的日報已在畫面上（訪客回來時再問的那一次）：不再掛一次，那一天算看過了', async () => {
     await startWatcher();
-    const asked = document.createElement('div');
-    asked.id = 'daily-report-modal';
-    document.body.appendChild(asked);
+    const asked = mounted('daily-report-modal', '2026-11-27');
 
     pastMidnight();
 
@@ -122,16 +130,39 @@ describe('BUG-203：今天已經在問時', () => {
     expect(report()).toBeNull();
   });
 
-  it('日報剛關掉、晨間視窗開著：不再掛日報（#315 review 的 60 秒時間窗）', async () => {
+  it('日報剛關掉、今天的晨間視窗開著：不再掛日報（#315 review 的 60 秒時間窗）', async () => {
     await startWatcher();
-    const asking = document.createElement('div');
-    asking.id = 'morning-modal';
-    document.body.appendChild(asking);
+    const asking = mounted('morning-modal', '2026-11-27');
 
     pastMidnight();
 
     expect(report()).toBeNull();
     expect(morning()).toBe(asking);
+  });
+
+  it('前一天的日報還開著（沒點就離開，隔天才回來）：換成今天的日報（#316 review）', async () => {
+    await startWatcher();
+    const stale = mounted('daily-report-modal', '2026-11-26');
+
+    pastMidnight();
+
+    expect(report()).not.toBeNull();
+    expect(report()).not.toBe(stale);
+    expect(report().dataset.day).toBe('2026-11-27');
+    expect(document.querySelectorAll('#daily-report-modal')).toHaveLength(1);
+  });
+
+  it('前一天沒回答的晨間視窗還開著：照樣掛今天的日報，關掉後問今天的狀態（#316 review）', async () => {
+    await startWatcher();
+    mounted('morning-modal', '2026-11-26');
+
+    pastMidnight();
+    expect(report()).not.toBeNull();
+
+    document.getElementById('rpt-next-btn').click();
+    expect(report()).toBeNull();
+    expect(morning().dataset.day).toBe('2026-11-27');
+    expect(document.querySelectorAll('#morning-modal')).toHaveLength(1);
   });
 
   it('今天已經回答過：不問', async () => {
