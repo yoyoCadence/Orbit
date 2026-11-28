@@ -453,6 +453,11 @@ export function startDayWatcher() {
   setInterval(() => {
     const current = eToday();
     if (current !== _lastDate) {
+      // BUG-203: a failed account load leaves the login screen up with the
+      // guest's data still in memory (BUG-141); the report would cover it and
+      // its guest button. The new day waits for the first tick after the app
+      // is shown again.
+      if (state.user && document.getElementById('main-app')?.classList.contains('hidden')) return;
       _lastDate = current;
       if (!state.user) return;
       // New day: reload the plan instead of writing an empty one. getDailyPlan()
@@ -461,8 +466,11 @@ export function startDayWatcher() {
       state.dailyPlan = storage.getDailyPlan();
       // Apply random theme for new day (if feature enabled)
       applyRandomThemeForToday();
-      // Show morning modal if energy not yet reset today
-      if (state.energy.lastResetDate !== current) {
+      // Show morning modal if energy not yet reset today, unless today's is
+      // already being asked (the guest path asks again after a failed load,
+      // BUG-201; or the report was just closed for the morning modal).
+      if (state.energy.lastResetDate !== current
+        && !document.querySelector('#daily-report-modal, #morning-modal')) {
         showDailyReport(() => showMorningModal());
       }
     }

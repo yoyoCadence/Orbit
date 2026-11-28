@@ -1765,6 +1765,41 @@ describe('BUG-141：帳號沒有快取、雲端資料載入失敗之後', () => 
       expect(dayCycle.showMorningModal).toHaveBeenCalledTimes(1);
     });
 
+    it('日報與晨間視窗都開著時失敗：再問的是日報（關掉後才問晨間狀態，#315 review）', async () => {
+      await guestBootThenFailedLoad({
+        beforeFailure() {
+          const morning = document.createElement('div');
+          morning.id = 'morning-modal';
+          document.body.appendChild(morning);
+        },
+      });
+      expect(document.getElementById('daily-report-modal')).toBeNull();
+      expect(document.getElementById('morning-modal')).toBeNull();
+
+      window.continueAsGuest();
+      await flush();
+
+      expect(dayCycle.showDailyReport).toHaveBeenCalledTimes(2);
+      expect(dayCycle.showMorningModal).not.toHaveBeenCalled();
+      dayCycle.showDailyReport.mock.calls[1][0]();
+      expect(dayCycle.showMorningModal).toHaveBeenCalledTimes(1);
+    });
+
+    it('在登入畫面再失敗一次（畫面上已沒有日報）：記號留著，改用訪客時照樣再問（#315 review）', async () => {
+      await guestBootThenFailedLoad();
+      db.loadFromRemote.mockRejectedValueOnce(new Error('500'));
+      await auth.callback('SIGNED_IN', sessionFor('owner-a'));
+      await flush();
+      expect(db.loadFromRemote).toHaveBeenCalledTimes(2);
+      expect(authFlow.showLoginScreen).toHaveBeenCalledTimes(2);   // once per failure
+
+      window.continueAsGuest();
+      await flush();
+
+      expect(dayCycle.showDailyReport).toHaveBeenCalledTimes(2);
+      expect(dayCycle.processYesterdayStreak).toHaveBeenCalledTimes(1);
+    });
+
     it('改用訪客前換日計時器已掛上日報：不再疊一層', async () => {
       await guestBootThenFailedLoad();
       const report = document.createElement('div');
