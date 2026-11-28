@@ -308,11 +308,13 @@
 
 - [x] **TEST-201** 帳號離線再連線的同步 e2e（2026-11-28）
   - 單元測試都 mock 了 `network.js` 與 Supabase client：真的 vendored supabase-js 經過瀏覽器自己的 offline／online 事件、離線排隊、連線後送出，沒有在瀏覽器裡跑過。
-  - 新的 `tests/e2e/test201-offline-sync.test.js`：真的 client 對一個小的 PostgREST 假伺服器（`profiles`、`tasks`、`sessions`、`energy` 的 GET／POST（含 upsert）／PATCH／DELETE、`.single()`、RPC），以 `context.setOffline()` 切換連線：
-    - 帳號開機（遠端載入四張表、不顯示橫幅）→ 離線（「📴 離線中」）→ 完成任務：「3 筆待同步」（紀錄、個人資料的 XP、精力），沒有送出任何 request → 連線：個人資料與精力 upsert、紀錄送出一次（id、`user_id`、`task_id`、XP 與本機相同），橫幅「✓ 已更新」後消失，待同步歸零（以 app 自己的 `getPendingSyncSummary` 計算）。
+  - 新的 `tests/e2e/test201-offline-sync.test.js`：真的 client 對一個小的 PostgREST 假伺服器（`profiles`、`tasks`、`sessions`、`energy` 的 GET／POST（含 upsert 與 `on_conflict`）／PATCH／DELETE、`.single()`、RPC），以 `context.setOffline()` 切換連線。假伺服器的欄位取自 `pwa/db/*.sql`（`CREATE TABLE` 與之後的 `ADD COLUMN`）：寫入資料庫沒有的欄位、或對不存在的欄位 `on_conflict`，回 PostgREST 的錯誤；型別、NOT NULL、外鍵、RLS 沒有檢查。
+    - 帳號開機（遠端載入四張表、不顯示橫幅）→ 離線（「📴 離線中」）→ 完成任務：「3 筆待同步」（紀錄、個人資料的 XP、精力）；app 仍會嘗試送出（storage 的寫入不看連線），都失敗，伺服器沒有收到 → 連線（紀錄的上傳故意慢 1.5 秒）：個人資料與精力 upsert、紀錄只送出一次（id、`user_id`、`task_id`、XP 與本機相同），上傳完成後橫幅才「✓ 已更新」並消失，待同步歸零（以 app 自己的 `getPendingSyncSummary` 計算）。
     - 離線時重新開啟（service worker 提供頁面）：佇列與「3 筆待同步」還在 → 連線但伺服器 500：「⚠️ 同步暫停，將於下次連線重試 · 3 筆待同步」，伺服器沒有存到 → 下次連線：送出一次，待同步歸零。
-  - 沒有找到問題。把 `app.js` 的連線恢復同步拿掉、或同步後不回報剩下的待同步時，兩個測試都失敗。
+    - 連線時遠端載入成功、只有紀錄的上傳失敗：「⚠️ 同步暫停，將於下次連線重試 · 1 筆待同步」（個人資料與精力已送出）→ 下次連線：送出一次。
+  - 沒有找到問題。以下改動都讓測試失敗：拿掉 `app.js` 的連線恢復同步；同步後不檢查剩下的待同步；不等紀錄的上傳完成就檢查；每筆紀錄送出兩次（伺服器拒絕重複的那次被忽略）；精力的 upsert 改用不存在的 `on_conflict` 欄位；紀錄多送一個資料庫沒有的欄位。
   - 另把 `bug203-day-watcher-login`、`test200-tour`、`test201-offline-sync` 加進 `tests/e2e/README.md` 的清單。
+  - 審查（#319）：Codex 沒有問題。獨立 review 沒有 P1；P2：第一版說「沒有送出任何 request」不正確（app 離線時仍會嘗試，假伺服器在記錄前就擋掉，那個檢查不可能失敗），改為記下離線時的嘗試並檢查伺服器沒有收到。依 P3：檢查紀錄只送出一次（不靠伺服器拒絕重複）、欄位與 `on_conflict` 依資料庫檢查、加上「只有紀錄的上傳失敗」與「上傳較慢」兩種情況（第一版的 mutation 說明只有一半成立）、等待時間放寬。
 
 - [x] **TEST-200＋BUG-205** 新手導覽的 e2e，以及它找到的問題（2026-11-28，main 上原本就有）
   - TEST-200：`tour.js` 只有 jsdom 的單元測試，jsdom 沒有版面：每一步聚光的目標是否真的在畫面上、有沒有被 header／底部導覽列或別的東西蓋住，從沒檢查過（BUG-152 就是手機版面的問題）。新的 `tests/e2e/test200-tour.test.js` 以新訪客走完設定、晨間狀態與整個導覽（360×640、390×844、1280×800；安裝後的 PWA 只有直向，`manifest.json`），每一步檢查目標在畫面上（在 `#content` 裡的不在 header 或底部導覽列下）、目標中心最上層（撇開導覽自己的圖層）是目標本身、聚光框在目標上、提示框在畫面上且沒蓋住目標。另有第 2、3 步跳過、重新整理後重新開始、同一天完成後重新開始。手機橫放（844×390、640×360）時第 2 步的提示框會蓋住練習任務卡上緣 22～37 px（卡片仍點得到），PWA 不會橫放，沒有改。

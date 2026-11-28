@@ -4,9 +4,14 @@
 // vendored supabase-js through the browser's own offline/online events. Here a
 // small stateful fake of PostgREST (profiles, tasks, sessions, energy) answers
 // the real client: the account boots online, the connection drops, a task is
-// completed (queued, "N 筆待同步", nothing sent), and the reconnect sends it.
+// completed (queued, "N 筆待同步"; the app still tries to send it, and the
+// server receives nothing), and the reconnect sends it.
+//
+// The fake takes its column lists from pwa/db/*.sql: a write with a column the
+// database does not have, or an on_conflict on one, gets PostgREST's error.
+// It does not check types, NOT NULL, foreign keys or RLS.
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
 import { GUEST_USER, TODAY } from './support/seed.js';
 
@@ -14,6 +19,31 @@ const config = readFileSync(new URL('../../pwa/js/config.js', import.meta.url), 
 const SUPABASE_URL = /export const SUPABASE_URL\s*=\s*'([^']+)'/.exec(config)[1];
 const SESSION_KEY = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`;
 const USER_ID = '00000000-0000-4000-8000-0000000e2e01';
+
+const TABLES = ['profiles', 'tasks', 'sessions', 'energy'];
+const PRIMARY_KEY = { profiles: 'user_id', tasks: 'id', sessions: 'id', energy: 'user_id' };
+
+/** The four tables' columns: CREATE TABLE in pwa/db, plus each ADD COLUMN after it. */
+function schemaColumns() {
+  const dir = new URL('../../pwa/db/', import.meta.url);
+  const columns = Object.fromEntries(TABLES.map(table => [table, new Set()]));
+  const files = readdirSync(dir).filter(name => name.endsWith('.sql')).sort();
+  for (const name of files) {
+    const sql = readFileSync(new URL(name, dir), 'utf8').replace(/--.*$/gm, '');
+    for (const [, table, body] of sql.matchAll(/CREATE TABLE (?:IF NOT EXISTS )?(?:public\.)?(\w+)\s*\(([\s\S]*?)\n\);/gi)) {
+      if (!columns[table]) continue;
+      for (const [, column] of body.matchAll(/^\s*(\w+)\s+(?:uuid|text|int|integer|numeric|boolean|date|timestamptz|smallint|char)\b/gim)) {
+        columns[table].add(column);
+      }
+    }
+    for (const [, table, body] of sql.matchAll(/ALTER TABLE (?:IF EXISTS )?(?:public\.)?(\w+)([^;]*);/gi)) {
+      if (!columns[table]) continue;
+      for (const [, column] of body.matchAll(/ADD COLUMN (?:IF NOT EXISTS )?(\w+)/gi)) columns[table].add(column);
+    }
+  }
+  return columns;
+}
+const SCHEMA = schemaColumns();
 const TASK_ID = '00000000-0000-4000-8000-00000000a001';
 
 const USER = { ...GUEST_USER, id: USER_ID, name: 'Sync Tester', newDayHour: 0 };
@@ -47,8 +77,9 @@ function serverRows() {
 /** A fake PostgREST over in-memory tables, enough for the app's queries. */
 async function fakeSupabase(page) {
   const db = serverRows();
-  const log = [];
-  const net = { offline: false };
+  const log = [];        // requests the server received
+  const attempts = [];   // requests sent while offline (they fail)
+  const net = { offline: false, fail: false, failSessionWrites: false, sessionWriteDelayMs: 0 };
 
   const matches = (row, params) => {
     for (const [key, raw] of params) {
@@ -61,39 +92,46 @@ async function fakeSupabase(page) {
     }
     return true;
   };
-  const keyOf = (table, row) => (table === 'profiles' || table === 'energy' ? row.user_id : row.id);
+  const error = (route, status, code, message) => route.fulfill({
+    status, contentType: 'application/json', body: JSON.stringify({ code, message: `e2e: ${message}` }),
+  });
 
   await page.route(`${SUPABASE_URL}/**`, async route => {
     const request = route.request();
     const url = new URL(request.url());
-    if (net.offline) return route.abort('internetdisconnected');
-    log.push(`${request.method()} ${url.pathname}${url.search}`);
+    const line = `${request.method()} ${url.pathname}${url.search}`;
+    if (net.offline) {
+      attempts.push(line);
+      return route.abort('internetdisconnected');
+    }
+    log.push(line);
     // PostgREST retries only 503 and 520.
-    if (net.fail && url.pathname.startsWith('/rest/')) {
-      return route.fulfill({ status: 500, contentType: 'application/json', body: '{"message":"e2e: server down"}' });
+    if (net.fail && url.pathname.startsWith('/rest/')) return error(route, 500, 'XX000', 'server down');
+    if (url.pathname === '/rest/v1/sessions' && request.method() !== 'GET') {
+      if (net.failSessionWrites) return error(route, 500, 'XX000', 'sessions down');
+      // A slow upload: it lands after the rest of the reconnect sync.
+      if (net.sessionWriteDelayMs) await new Promise(resolve => setTimeout(resolve, net.sessionWriteDelayMs));
     }
 
     const rest = /^\/rest\/v1\/([a-z_]+)$/.exec(url.pathname);
     if (url.pathname.startsWith('/rest/v1/rpc/')) {
       return route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
     }
-    if (!rest || !(rest[1] in db)) {
-      return route.fulfill({ status: 404, contentType: 'application/json', body: '{"message":"e2e: not faked"}' });
-    }
-    const table = db[rest[1]];
+    if (!rest || !(rest[1] in db)) return error(route, 404, 'PGRST205', 'not faked');
+    const name = rest[1];
+    const table = db[name];
     const params = [...url.searchParams.entries()];
     const single = (request.headers().accept || '').includes('vnd.pgrst.object');
     const prefer = request.headers().prefer || '';
     const reply = (rows, status = 200) => {
       if (single) {
-        if (rows.length !== 1) {
-          return route.fulfill({ status: 406, contentType: 'application/json', body: JSON.stringify({ code: 'PGRST116', message: 'e2e: not one row' }) });
-        }
+        if (rows.length !== 1) return error(route, 406, 'PGRST116', 'not one row');
         return route.fulfill({ status, contentType: 'application/vnd.pgrst.object+json', body: JSON.stringify(rows[0]) });
       }
       const body = prefer.includes('return=representation') || request.method() === 'GET' ? JSON.stringify(rows) : '';
       return route.fulfill({ status: body ? status : 204, contentType: 'application/json', body });
     };
+    const unknownColumn = rows => rows.flatMap(row => Object.keys(row)).find(column => !SCHEMA[name].has(column));
 
     switch (request.method()) {
       case 'GET':
@@ -102,13 +140,15 @@ async function fakeSupabase(page) {
       case 'POST': {
         const body = request.postDataJSON();
         const rows = Array.isArray(body) ? body : [body];
+        const missing = unknownColumn(rows);
+        if (missing) return error(route, 400, 'PGRST204', `no '${missing}' column in '${name}'`);
+        const conflict = url.searchParams.get('on_conflict') ?? PRIMARY_KEY[name];
+        if (!SCHEMA[name].has(conflict)) return error(route, 400, '42703', `no '${conflict}' column in '${name}'`);
         const upsert = prefer.includes('resolution=merge-duplicates');
         const written = [];
         for (const row of rows) {
-          const index = table.findIndex(existing => keyOf(rest[1], existing) === keyOf(rest[1], row));
-          if (index >= 0 && !upsert) {
-            return route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ code: '23505', message: 'e2e: duplicate key' }) });
-          }
+          const index = table.findIndex(existing => existing[conflict] === row[conflict]);
+          if (index >= 0 && !upsert) return error(route, 409, '23505', 'duplicate key');
           if (index >= 0) table[index] = { ...table[index], ...row };
           else table.push({ ...row });
           written.push(index >= 0 ? table[index] : table[table.length - 1]);
@@ -117,6 +157,8 @@ async function fakeSupabase(page) {
       }
       case 'PATCH': {
         const patch = request.postDataJSON();
+        const missing = unknownColumn([patch]);
+        if (missing) return error(route, 400, 'PGRST204', `no '${missing}' column in '${name}'`);
         const rows = table.filter(row => matches(row, params));
         rows.forEach(row => Object.assign(row, patch));
         return reply(rows);
@@ -130,7 +172,7 @@ async function fakeSupabase(page) {
         return route.fulfill({ status: 405, body: '' });
     }
   });
-  return { db, log, net, get fail() { return net.fail; }, set fail(v) { net.fail = v; } };
+  return { db, log, attempts, net };
 }
 
 async function seedAccount(page) {
@@ -189,8 +231,16 @@ const localState = page => page.evaluate(() => ({
   energy: JSON.parse(localStorage.getItem('yoyo_energy')),
 }));
 
+const sessionWrites = server => server.log.filter(line => line.startsWith('POST /rest/v1/sessions'));
+
+/** '✓ 已更新', then gone after its 2 s (and whatever is left of the sync). */
+async function expectSynced(page) {
+  await expect(syncBanner(page)).toHaveText('✓ 已更新', { timeout: 10_000 });
+  await expect(syncBanner(page)).toHaveClass('hidden', { timeout: 10_000 });
+}
+
 test.describe('TEST-201 an account offline, then back online', () => {
-  test('a task completed offline is queued (nothing sent), and the reconnect sends it once', async ({ page, context }) => {
+  test('a task completed offline is queued (the server receives nothing), and the reconnect sends it once', async ({ page, context }) => {
     const server = await fakeSupabase(page);
     await bootOnline(page, server);
 
@@ -202,12 +252,18 @@ test.describe('TEST-201 an account offline, then back online', () => {
     // The session, the profile (XP) and Energy wait here.
     await expect(syncBanner(page)).toHaveText('📴 離線中 · 3 筆待同步，連線後自動同步');
     expect(await localPending(page)).toBe(3);
+    // The app tried to send them (storage writes do not look at the
+    // connection); none got through.
+    await expect.poll(() => server.attempts.some(line => line.startsWith('POST /rest/v1/sessions'))).toBe(true);
     expect(server.log).toEqual([]);
     expect(server.db.sessions).toEqual([]);
 
+    // The session's upload is slow: "synced" only once it has landed.
+    server.net.sessionWriteDelayMs = 1500;
     await goOnline(context, server);
-    await expect.poll(() => server.db.sessions.length).toBe(1);
-    await expect(syncBanner(page)).toHaveClass('hidden');            // '✓ 已更新', then gone
+    await expectSynced(page);
+    expect(sessionWrites(server)).toHaveLength(1);                     // sent once, not twice
+    expect(server.db.sessions).toHaveLength(1);
     expect(await localPending(page)).toBe(0);
 
     const local = await localState(page);
@@ -222,6 +278,7 @@ test.describe('TEST-201 an account offline, then back online', () => {
   });
 
   test('reopened offline (service worker): the queue is still there; a failed reconnect keeps it; the next one sends it once', async ({ page, context }) => {
+    test.slow();
     const server = await fakeSupabase(page);
     await bootOnline(page, server);
     await page.evaluate(() => navigator.serviceWorker.ready);
@@ -236,17 +293,45 @@ test.describe('TEST-201 an account offline, then back online', () => {
     await expect(syncBanner(page)).toHaveText('📴 離線中 · 3 筆待同步，連線後自動同步');
     expect((await localState(page)).sessions).toHaveLength(1);
 
-    server.fail = true;                                              // the server is down
+    server.net.fail = true;                                          // the server is down
     await goOnline(context, server);
-    await expect(syncBanner(page)).toHaveText('⚠️ 同步暫停，將於下次連線重試 · 3 筆待同步');
+    await expect(syncBanner(page)).toHaveText('⚠️ 同步暫停，將於下次連線重試 · 3 筆待同步', { timeout: 10_000 });
     expect(server.db.sessions).toEqual([]);
 
-    server.fail = false;
+    server.net.fail = false;
     await goOffline(page, context, server);
+    server.log.length = 0;
     await goOnline(context, server);
-    await expect.poll(() => server.db.sessions.length).toBe(1);
-    await expect(syncBanner(page)).toHaveClass('hidden');
+    await expectSynced(page);
+    expect(sessionWrites(server)).toHaveLength(1);
+    expect(server.db.sessions).toHaveLength(1);
     expect(await localPending(page)).toBe(0);
     expect(server.db.sessions[0]).toMatchObject({ user_id: USER_ID, task_id: TASK_ID });
+  });
+
+  test('a reconnect whose load succeeds but whose session upload fails says what is left ("1 筆待同步")', async ({ page, context }) => {
+    test.slow();
+    const server = await fakeSupabase(page);
+    await bootOnline(page, server);
+    await goOffline(page, context, server);
+    await completeTask(page);
+    await expect(syncBanner(page)).toHaveText('📴 離線中 · 3 筆待同步，連線後自動同步');
+
+    server.net.failSessionWrites = true;
+    await goOnline(context, server);
+    // The profile and Energy went; the session did not.
+    await expect(syncBanner(page)).toHaveText('⚠️ 同步暫停，將於下次連線重試 · 1 筆待同步', { timeout: 10_000 });
+    expect(server.db.profiles[0].total_xp).toBeGreaterThan(0);
+    expect(server.db.sessions).toEqual([]);
+    expect(await localPending(page)).toBe(1);
+
+    server.net.failSessionWrites = false;
+    await goOffline(page, context, server);
+    server.log.length = 0;
+    await goOnline(context, server);
+    await expectSynced(page);
+    expect(sessionWrites(server)).toHaveLength(1);
+    expect(server.db.sessions).toHaveLength(1);
+    expect(await localPending(page)).toBe(0);
   });
 });
