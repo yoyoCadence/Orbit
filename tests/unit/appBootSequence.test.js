@@ -200,6 +200,13 @@ function sessionFor(userId) {
 beforeEach(() => {
   vi.resetModules();
   Object.values(dayCycle).forEach(fn => fn.mockClear());
+  // As dayCycle.js does: the report is an overlay on <body> (BUG-201 looks for one).
+  dayCycle.showDailyReport.mockImplementation(() => {
+    const report = document.createElement('div');
+    report.id = 'daily-report-modal';
+    report.className = 'modal-overlay';
+    document.body.appendChild(report);
+  });
   db.loadFromRemote.mockClear();
   db.loadFromRemote.mockResolvedValue();
   db.refreshProEntitlement.mockClear();

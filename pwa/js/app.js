@@ -459,8 +459,19 @@ function bootWithLocalState() {
   // the lastStreakDate / lastWeeklyBonusDate the first pass wrote locally.
   if (!bootSequenceGuard.claim(state.user?.id ?? null)) {
     showMainApp();
+    // BUG-201: a failed account load took this launch's daily report or
+    // morning modal down over the login screen (BUG-141); a guest who then
+    // continues was never asked today: ask again, from where it was. Only
+    // then: a repeat boot otherwise leaves the first pass's to it (BUG-106).
+    const interrupted = _dayCycleInterrupted;
+    _dayCycleInterrupted = null;
+    if (interrupted && state.energy.lastResetDate !== eToday() && !document.querySelector(DAY_CYCLE_OVERLAYS)) {
+      if (interrupted === 'report') showDailyReport(() => showMorningModal());
+      else showMorningModal();
+    }
     return;
   }
+  _dayCycleInterrupted = null;
   processYesterdayStreak();
   if (state.energy.lastResetDate !== eToday()) {
     showMainApp();
@@ -559,7 +570,10 @@ async function loadAndStart(session) {
     // those: clearDayCycleModals() takes every overlay, the password-reset
     // form of a recovery link among them (#313 re-review).
     _forgetCurrentAccount();
-    document.querySelectorAll(DAY_CYCLE_OVERLAYS).forEach(overlay => overlay.remove());
+    const dayCycleOverlays = [...document.querySelectorAll(DAY_CYCLE_OVERLAYS)];
+    if (dayCycleOverlays.some(overlay => overlay.id === 'daily-report-modal')) _dayCycleInterrupted = 'report';
+    else if (dayCycleOverlays.some(overlay => overlay.id === 'morning-modal')) _dayCycleInterrupted = 'morning';
+    dayCycleOverlays.forEach(overlay => overlay.remove());
     showLoginScreen();
     showToast('無法載入雲端資料，請檢查連線後重新整理。');
     return;
@@ -632,6 +646,10 @@ function _askStreakUnlock(ownerId, isCurrent) {
     },
   });
 }
+
+// BUG-201: which part of this launch's day rollover the fail-closed return
+// took down ('report' | 'morning'), for the guest path to ask again.
+let _dayCycleInterrupted = null;
 
 // What dayCycle.js mounts on <body> (its mountModal ids, the shield confirm).
 // Listed here: app.js may not import a new export of dayCycle.js (INFRA-105).
@@ -1024,6 +1042,9 @@ async function init() {
       const storedId = storage.getUser()?.id ?? null;
       if (storedId && storedId !== _currentSession?.user?.id && !_isSyncedAccount(storedId)) {
         _forgetCurrentAccount();
+        // BUG-202: the load just dropped may be this tab's own sign-in: give
+        // its form back (the button would stay at 登入中… until a reload).
+        if (!document.getElementById('login-screen')?.classList.contains('hidden')) showLoginScreen();
         return;
       }
       handleSignOut();
