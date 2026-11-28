@@ -459,6 +459,12 @@ function bootWithLocalState() {
   // the lastStreakDate / lastWeeklyBonusDate the first pass wrote locally.
   if (!bootSequenceGuard.claim(state.user?.id ?? null)) {
     showMainApp();
+    // BUG-201: the first pass's daily report or morning modal is normally
+    // still up. A failed account load takes it down over the login screen
+    // (BUG-141); a guest who then continues was never asked today: ask again.
+    if (state.energy.lastResetDate !== eToday() && !document.querySelector(DAY_CYCLE_OVERLAYS)) {
+      showDailyReport(() => showMorningModal());
+    }
     return;
   }
   processYesterdayStreak();
@@ -1024,6 +1030,9 @@ async function init() {
       const storedId = storage.getUser()?.id ?? null;
       if (storedId && storedId !== _currentSession?.user?.id && !_isSyncedAccount(storedId)) {
         _forgetCurrentAccount();
+        // BUG-202: the load just dropped may be this tab's own sign-in: give
+        // its form back (the button would stay at 登入中… until a reload).
+        if (!document.getElementById('login-screen')?.classList.contains('hidden')) showLoginScreen();
         return;
       }
       handleSignOut();

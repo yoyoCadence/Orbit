@@ -270,6 +270,13 @@ beforeEach(async () => {
   sessionFlow.badgeUpdater = null;
   presence.stored = false;
   localSession.forgetLocalSession.mockReset();
+  // As dayCycle.js does: the report is an overlay on <body> (BUG-201 looks for one).
+  dayCycle.showDailyReport.mockImplementation(() => {
+    const report = document.createElement('div');
+    report.id = 'daily-report-modal';
+    report.className = 'modal-overlay';
+    document.body.appendChild(report);
+  });
   // What dayCycle.js's own clearDayCycleModals() does: it takes every overlay
   // (BUG-141: the fail-closed return must not take the password-reset form).
   dayCycle.clearDayCycleModals.mockImplementation(() => {
@@ -1690,5 +1697,89 @@ describe('BUG-141：帳號沒有快取、雲端資料載入失敗之後', () => 
 
     expect(db.loadFromRemote).toHaveBeenLastCalledWith('owner-a');
     expect(syncBanner().textContent).toBe('✓ 已更新');
+  });
+
+  describe('BUG-201：失敗時收起的日報，改用訪客後再問一次', () => {
+    it('快取的訪客開機（今天還沒問）、帳號載入失敗收起日報，再改用訪客：日報再出現一次', async () => {
+      await bootCached('guest-1', { energy: { currentEnergy: 100, maxEnergy: 100, lastResetDate: YESTERDAY } });
+      expect(dayCycle.showDailyReport).toHaveBeenCalledTimes(1);
+      expect(document.getElementById('daily-report-modal')).not.toBeNull();
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+      db.loadFromRemote.mockRejectedValueOnce(new Error('500'));
+      presence.stored = true;
+      await auth.callback('SIGNED_IN', sessionFor('owner-a'));
+      await flush();
+      expect(document.getElementById('daily-report-modal')).toBeNull();
+
+      window.continueAsGuest();
+      await flush();
+
+      expect(dayCycle.showDailyReport).toHaveBeenCalledTimes(2);
+      expect(dayCycle.processYesterdayStreak).toHaveBeenCalledTimes(1);   // not run twice
+      // Closing the report asks the morning state, as on a first boot.
+      dayCycle.showDailyReport.mock.calls[1][0]();
+      expect(dayCycle.showMorningModal).toHaveBeenCalledTimes(1);
+    });
+
+    it('今天已經回答過（精力已重設）：不再問', async () => {
+      await bootCached('guest-1', { energy: { currentEnergy: 90, maxEnergy: 100, lastResetDate: TODAY } });
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+      db.loadFromRemote.mockRejectedValueOnce(new Error('500'));
+      presence.stored = true;
+      await auth.callback('SIGNED_IN', sessionFor('owner-a'));
+      await flush();
+
+      window.continueAsGuest();
+      await flush();
+
+      expect(dayCycle.showDailyReport).not.toHaveBeenCalled();
+    });
+
+    it('畫面上還有晨間視窗時不再疊一層', async () => {
+      await bootCached('guest-1', { energy: { currentEnergy: 100, maxEnergy: 100, lastResetDate: YESTERDAY } });
+      document.getElementById('daily-report-modal')?.remove();
+      const morning = document.createElement('div');
+      morning.id = 'morning-modal';
+      document.body.appendChild(morning);
+
+      window.continueAsGuest();
+      await flush();
+
+      expect(dayCycle.showDailyReport).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('BUG-202：被打斷的登入表單還原', () => {
+    function showLogin() {
+      document.getElementById('login-screen').classList.remove('hidden');
+    }
+
+    it('這個分頁停在登入畫面、自己的登入載入中，被另一個分頁的訪客流程打斷：登入表單還原', async () => {
+      await failedLoad();
+      showLogin();
+      cache.user = makeUser('guest-1');
+      db.loadFromRemote.mockImplementationOnce(() => new Promise(() => {}));   // its sign-in hangs
+      const signingIn = auth.callback('SIGNED_IN', sessionFor('owner-a'));
+      await flush();
+      expect(authFlow.showLoginScreen).toHaveBeenCalledTimes(2);
+
+      await auth.callback('SIGNED_OUT', null);
+
+      expect(authFlow.showLoginScreen).toHaveBeenCalledTimes(3);
+      expect(storage.clearAll).not.toHaveBeenCalled();
+      void signingIn;
+    });
+
+    it('這個分頁顯示著訪客的畫面：不切到登入畫面', async () => {
+      await failedLoad();
+      cache.user = makeUser('guest-1');
+      window.continueAsGuest();
+      await flush();
+
+      await auth.callback('SIGNED_OUT', null);
+
+      expect(authFlow.showLoginScreen).toHaveBeenCalledTimes(2);
+      expect(document.getElementById('main-app').classList.contains('hidden')).toBe(false);
+    });
   });
 });
