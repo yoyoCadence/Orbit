@@ -555,9 +555,11 @@ async function loadAndStart(session) {
     // _currentSession still held it). Its stored session stays, so a reload
     // retries; the guest path ends it. A cached boot of another owner may have
     // left its daily report or morning modal up, over the login screen and its
-    // guest button (#313 review; its proof photos closed at the top).
+    // guest button (#313 review; its proof photos closed at the top). Only
+    // those: clearDayCycleModals() takes every overlay, the password-reset
+    // form of a recovery link among them (#313 re-review).
     _forgetCurrentAccount();
-    clearDayCycleModals();
+    document.querySelectorAll(DAY_CYCLE_OVERLAYS).forEach(overlay => overlay.remove());
     showLoginScreen();
     showToast('無法載入雲端資料，請檢查連線後重新整理。');
     return;
@@ -630,6 +632,12 @@ function _askStreakUnlock(ownerId, isCurrent) {
     },
   });
 }
+
+// What dayCycle.js mounts on <body> (its mountModal ids, the shield confirm).
+// Listed here: app.js may not import a new export of dayCycle.js (INFRA-105).
+const DAY_CYCLE_OVERLAYS = [
+  '#daily-report-modal', '#morning-modal', '#streak-unlock-modal', 'body > .shield-confirm-overlay',
+].join(', ');
 
 // BUG-141: stops treating the current session as the account shown here,
 // without signing it out (loadAndStart's fail-closed return, the guest path).
@@ -1010,8 +1018,14 @@ async function init() {
       // with no copy in the cloud, and stays. A synced account's cache still
       // goes (a cached boot whose session ended before getSession()), and so
       // does everything when this tab shows an account (#313 review).
+      // That holds while this tab is loading the account again (a refocus or
+      // a new tab retries it): the stored user is not that account; the load
+      // is dropped with it (#313 re-review).
       const storedId = storage.getUser()?.id ?? null;
-      if (!_currentSession && storedId && !_isSyncedAccount(storedId)) return;
+      if (storedId && storedId !== _currentSession?.user?.id && !_isSyncedAccount(storedId)) {
+        _forgetCurrentAccount();
+        return;
+      }
       handleSignOut();
     }
   });

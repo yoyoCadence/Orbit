@@ -270,6 +270,11 @@ beforeEach(async () => {
   sessionFlow.badgeUpdater = null;
   presence.stored = false;
   localSession.forgetLocalSession.mockReset();
+  // What dayCycle.js's own clearDayCycleModals() does: it takes every overlay
+  // (BUG-141: the fail-closed return must not take the password-reset form).
+  dayCycle.clearDayCycleModals.mockImplementation(() => {
+    document.querySelectorAll('body > .modal-overlay, body > .shield-confirm-overlay').forEach(el => el.remove());
+  });
   localSession.forgetLocalSession.mockResolvedValue(null);
   sessionStorage.clear();
   // Keeps warmEnhancementModules() from loading anything unless a test runs it.
@@ -1504,6 +1509,33 @@ describe('BUG-141：帳號沒有快取、雲端資料載入失敗之後', () => 
     expect(cache.user?.id).toBe('guest-1');
   });
 
+  it('另一個分頁改用訪客時，這個分頁正在重新載入那個帳號：訪客的資料留著，那次載入作廢（#313 re-review）', async () => {
+    await failedLoad();
+    cache.user = makeUser('guest-1');            // a guest's data on this device
+    // A refocus or a newly opened tab retries the account; its load hangs.
+    let finishLoad;
+    db.loadFromRemote.mockImplementationOnce(() => new Promise(resolve => { finishLoad = resolve; }));
+    const retrying = auth.callback('SIGNED_IN', sessionFor('owner-a'));
+    await flush();
+
+    await auth.callback('SIGNED_OUT', null);     // the other tab's guest path
+
+    expect(storage.clearAll).not.toHaveBeenCalled();
+    expect(cache.user?.id).toBe('guest-1');
+    finishLoad();
+    await retrying;
+    await flush();
+    expect(db.refreshProEntitlement).not.toHaveBeenCalled();
+    expect(dayCycle.processYesterdayStreak).not.toHaveBeenCalled();
+  });
+
+  it('這個分頁顯示著帳號（存著的就是它）時，SIGNED_OUT 照常登出', async () => {
+    await bootSignedIn('owner-a');
+    await auth.callback('SIGNED_OUT', null);
+    expect(storage.clearAll).toHaveBeenCalledTimes(1);
+    expect(authFlow.showLoginScreen).toHaveBeenCalled();
+  });
+
   it('同步過的帳號的快取（getSession() 之前 session 已失效）收到 SIGNED_OUT：照舊清掉並回到登入畫面', async () => {
     localStorage.setItem('yoyo_sessionSyncCutover:v1.21:owner-a', JSON.stringify({ ownerId: 'owner-a', completed: true }));
     try {
@@ -1549,7 +1581,11 @@ describe('BUG-141：帳號沒有快取、雲端資料載入失敗之後', () => 
       return null;
     });
     let finishRefresh;
-    db.loadFromRemote.mockImplementationOnce(async () => { seedCachedUser('owner-a'); });
+    const accountSessions = [{ id: 's-a1', date: TODAY, result: 'complete' }];
+    db.loadFromRemote.mockImplementationOnce(async () => {
+      seedCachedUser('owner-a', { sessions: accountSessions });
+      storage.getSessions.mockReturnValue(accountSessions);
+    });
     db.refreshProEntitlement.mockImplementationOnce(() => new Promise(resolve => { finishRefresh = resolve; }));
     const signingIn = auth.callback('SIGNED_IN', sessionFor('owner-a'));
     await flush();
@@ -1561,7 +1597,7 @@ describe('BUG-141：帳號沒有快取、雲端資料載入失敗之後', () => 
     expect(localSession.forgetLocalSession).toHaveBeenCalledTimes(1);
     // As on a sign-out: its photos surely in the cloud and its downloads go too.
     expect(proofLocal.signOutProofCleanup).toHaveBeenCalledWith({
-      authOwnerId: 'owner-a', sessionsOwnerId: 'owner-a', sessions: expect.any(Array),
+      authOwnerId: 'owner-a', sessionsOwnerId: 'owner-a', sessions: accountSessions,
     });
     expect(storage.clearAll).toHaveBeenCalledTimes(1);
     expect(proofLocal.signOutProofCleanup.mock.invocationCallOrder[0])
@@ -1579,9 +1615,22 @@ describe('BUG-141：帳號沒有快取、雲端資料載入失敗之後', () => 
     expect(document.getElementById('main-app').classList.contains('hidden')).toBe(true);
   });
 
-  it('載入失敗回到登入畫面時，收起前一次開機留下的日報（#313 review）', async () => {
+  function overlay(id, className = 'modal-overlay') {
+    const el = document.createElement('div');
+    el.className = className;
+    if (id) el.id = id;
+    document.body.append(el);
+    return el;
+  }
+
+  it('載入失敗回到登入畫面時，只收起前一次開機留下的日報類視窗，不收重設密碼的表單（#313 review）', async () => {
     await bootCached('owner-c');                 // a cached boot of another owner
-    dayCycle.clearDayCycleModals.mockClear();
+    const dayCycleOverlays = [
+      overlay('daily-report-modal'), overlay('morning-modal'), overlay('streak-unlock-modal'),
+      overlay(null, 'shield-confirm-overlay'),
+    ];
+    const resetPassword = overlay(null);         // authFlow's 設定新密碼 (no id)
+    const forgotPassword = overlay('forgot-pw-modal');
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     db.loadFromRemote.mockRejectedValueOnce(new Error('500'));
 
@@ -1589,7 +1638,27 @@ describe('BUG-141：帳號沒有快取、雲端資料載入失敗之後', () => 
     await flush();
 
     expect(authFlow.showLoginScreen).toHaveBeenCalled();
-    expect(dayCycle.clearDayCycleModals).toHaveBeenCalled();
+    expect(dayCycleOverlays.map(el => el.isConnected)).toEqual([false, false, false, false]);
+    expect(resetPassword.isConnected).toBe(true);
+    expect(forgotPassword.isConnected).toBe(true);
+  });
+
+  it('PASSWORD_RECOVERY 之後載入失敗：設定新密碼的表單留著（#313 re-review）', async () => {
+    cache.user = null;
+    auth.getSession.mockResolvedValue(null);
+    await import('../../pwa/js/app.js');
+    await flush();
+    let resetForm = null;
+    window._showResetPasswordModal = vi.fn(() => { resetForm = overlay(null); });
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    db.loadFromRemote.mockRejectedValueOnce(new Error('500'));
+
+    await auth.callback('PASSWORD_RECOVERY', sessionFor('owner-a'));
+    await auth.callback('SIGNED_IN', sessionFor('owner-a'));
+    await flush();
+
+    expect(authFlow.showLoginScreen).toHaveBeenCalledTimes(2);
+    expect(resetForm.isConnected).toBe(true);
   });
 
   it('一般的訪客（這台裝置沒有 session）不呼叫登出', async () => {
