@@ -3,6 +3,13 @@
 所有版本記錄於此。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)。
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.42.24] - 2026-11-28
+
+### Fixed
+- 換日（BUG-204）：前一天的「今天的狀態？」沒回答、隔天回到 app 時，如果換日計時器還沒檢查就有帳號的雲端資料載入失敗，改用訪客後從新的一天的日報問起；原本只問晨間狀態，那一天的日報不會出現。
+
+---
+
 ## [1.42.23] - 2026-11-28
 
 ### Fixed
